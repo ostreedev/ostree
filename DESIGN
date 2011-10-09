@@ -7,6 +7,56 @@ manages root filesystems.  They both share an executable name
 hacktree-build
 hacktree-root-manager
 
+== Problem statement ==
+
+Hacking on the core operating system is painful.  We want a system
+that matches these requirements:
+
+0) Does not disturb your existing OS
+1) Is not terribly slow to use
+2) Shares your $HOME - you have your data
+3) Allows easy rollback
+4) Ideally allows access to existing apps
+
+== Comparison with existing tools ==
+
+Virtualization:
+ Fails on points 1) and 2).
+
+Rebuilding OS packages:
+ Fails on points 0) and 3).  Is also just very annoying.
+
+jhbuild + OS packages:
+  The state of the art in GNOME - but can only build non-root things -
+  this means you can't build NetworkManager, and thus are permanently
+  stuck on whatever the distro provides.
+
+== The core idea ==
+
+chroots are the original lightweight "virtualization".  Let's use
+them.  So basically, you install a mainstream distribution (say
+Debian).  It has a root filesystem with a regular layout, /etc, /usr,
+/lib etc.
+
+Now, what we can do is have a system that installs chroots, like:
+
+/gnomeos/root-3.0-opt
+/gnomeos/root-3.2-opt
+
+These live in the same root filesystem as your regular distribution
+(Note though, the root partition should be reasonably sized, or
+ hopefully you've used just one big partition).
+
+We allow booting into these roots via a modified dracut - if you have
+this system installed, at boot time it shows a prompt like:
+
+[0] Default root
+[1] /gnomeos/root-3.0-opt
+[2] /gnomeos/root-3.2-opt
+
+If you pick [1] or [2], then instead of calling switch_root for /,
+it uses the selected root.
+
 == The recipe set ==
 
 A recipe is similar to Bitbake's format, except just have metadata -
@@ -115,6 +165,8 @@ we then diff?
 
 If the script fails, we can roll back the update, or drop to a shell
 if interactive.
+
+== Booting ==
 
 == Local modifications ==
 
