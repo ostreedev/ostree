@@ -9,8 +9,9 @@ hacktree-root-manager
 
 == Problem statement ==
 
-Hacking on the core operating system is painful.  We want a system
-that matches these requirements:
+Hacking on the core operating system is painful - this includes most
+of GNOME from upower and NetworkManager up to gnome-shell.  I want a
+system that matches these requirements:
 
 0) Does not disturb your existing OS
 1) Is not terribly slow to use
@@ -30,6 +31,29 @@ jhbuild + OS packages:
   The state of the art in GNOME - but can only build non-root things -
   this means you can't build NetworkManager, and thus are permanently
   stuck on whatever the distro provides.
+
+== Who is hacktree for? ==
+
+First - operating system developers and testers.  I specifically keep
+a few people in mind - Dan Williams and Eric Anholt, as well as myself
+obviously.  For Eric Anholt, a key use case for him is being able to
+try out the latest gnome-shell, and combine it with his work on Mesa,
+and see how it works/performs - while retaining the ability to roll
+back if one or both breaks.
+
+The rollback concept is absolutely key for shipping anything to
+enthusiasts or knowledable testers.  With a system like this, a tester
+can easily perform a local rollback - something just not well
+supported by dpkg/rpm.  (Why not Conary?  AIUI Conary is targeted at
+individual roots, so while you could roll back a given root, it would
+use significantly more disk space than hacktree)
+
+Also, distributing operating system trees (instead of packages) gives
+us a sane place to perform automated QA **before** we ship it to
+testers.  We should never be wasting these people's time.
+
+Even better, this system would allow testers to bisect across
+operating system builds efficiently.
 
 == The core idea ==
 
