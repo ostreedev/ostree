@@ -8,4 +8,4 @@ noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 
 
-include Makefile-gbuild.am
+include Makefile-hacktree.am

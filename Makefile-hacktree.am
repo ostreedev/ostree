@@ -1,9 +1,9 @@
-bin_SCRIPTS += gbuild
+bin_SCRIPTS += hacktree
 
 SUBSTITUTIONS = sed -e s,@libdir\@,$(libdir), -e s,@datarootdir\@,$(datarootdir), -e s,@PYTHON\@,$(PYTHON),
 
-gbuild: src/gbuild.in Makefile
+hacktree: src/hacktree.in Makefile
 	$(AM_V_GEN) $(SUBSTITUTIONS) $< > $@.tmp && mv $@.tmp $@
 	@chmod a+x $@
 
-CLEANFILES += gbuild
+CLEANFILES += hacktree
