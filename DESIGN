@@ -71,15 +71,13 @@ These live in the same root filesystem as your regular distribution
 (Note though, the root partition should be reasonably sized, or
  hopefully you've used just one big partition).
 
-We allow booting into these roots via a modified dracut - if you have
-this system installed, at boot time it shows a prompt like:
+You should be able to boot into one of these roots.  Since hacktree
+lives inside a distro created partition, a tricky part here is that we
+need to know how to interact with the installed distribution's grub.
+This is an annoying but tractable problem.
 
-[0] Default root
-[1] /gnomeos/root-3.0-opt
-[2] /gnomeos/root-3.2-opt
-
-If you pick [1] or [2], then instead of calling switch_root for /,
-it uses the selected root.
+Hacktree will allow efficiently parallel installing and downloading OS
+builds.
 
 == The recipe set ==
 
@@ -189,8 +187,6 @@ we then diff?
 
 If the script fails, we can roll back the update, or drop to a shell
 if interactive.
-
-== Booting ==
 
 == Local modifications ==
 
