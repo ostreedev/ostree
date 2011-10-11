@@ -1,9 +1,18 @@
-bin_SCRIPTS += hacktree
+noinst_LTLIBRARIES += libhacktree.la
 
-SUBSTITUTIONS = sed -e s,@libdir\@,$(libdir), -e s,@datarootdir\@,$(datarootdir), -e s,@PYTHON\@,$(PYTHON),
+libhacktree_la_SOURCES = src/hacktree.h \
+	src/hacktree-repo.c \
+	src/hacktree-repo.h \
+	src/hacktree-types.h \
+	$(NULL)
+libhacktree_la_CFLAGS = -I$(srcdir)/src -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+libhacktree_la_LIBADD = $(GIO_UNIX_LIBS)
 
-hacktree: src/hacktree.in Makefile
-	$(AM_V_GEN) $(SUBSTITUTIONS) $< > $@.tmp && mv $@.tmp $@
-	@chmod a+x $@
+bin_PROGRAMS += hacktree
 
-CLEANFILES += hacktree
+hacktree_SOURCES = src/main.c \
+	src/ht-builtins.h \
+	src/ht-builtin-init.c \
+	$(NULL)
+hacktree_CFLAGS = -I$(srcdir)/src -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+hacktree_LDADD = libhacktree.la $(GIO_UNIX_LIBS)
