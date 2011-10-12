@@ -38,6 +38,7 @@ typedef struct {
 
 gboolean hacktree_builtin_init (int argc, const char **argv, const char *prefix, GError **error);
 gboolean hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GError **error);
+gboolean hacktree_builtin_fsck (int argc, const char **argv, const char *prefix, GError **error);
 
 G_END_DECLS
 

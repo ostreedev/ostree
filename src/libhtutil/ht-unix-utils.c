@@ -30,7 +30,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-
 void
 ht_util_set_error_from_errno (GError **error,
                               gint     saved_errno)

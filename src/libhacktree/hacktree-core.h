@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>.
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,19 @@
  *
  * Author: Colin Walters <walters@verbum.org>
  */
+/* hacktree-repo.h */
 
-#ifndef __HACKTREE_H__
+#ifndef _HACKTREE_CORE
+#define _HACKTREE_CORE
 
-#include <hacktree-core.h>
-#include <hacktree-repo.h>
-#include <hacktree-types.h>
+#include <htutil.h>
 
-#endif
+G_BEGIN_DECLS
+
+gboolean hacktree_stat_and_checksum_file (int dirfd, const char *path,
+                                          GChecksum **out_checksum,
+                                          struct stat *out_stbuf,
+                                          GError **error);
+
+
+#endif /* _HACKTREE_REPO */

@@ -57,6 +57,14 @@ gboolean      hacktree_repo_link_file (HacktreeRepo *repo,
                                        const char   *path,
                                        GError      **error);
 
+typedef void (*HacktreeRepoObjectIter) (HacktreeRepo *repo, const char *path,
+                                        GFileInfo *fileinfo, gpointer user_data);
+
+gboolean     hacktree_repo_iter_objects (HacktreeRepo  *repo,
+                                         HacktreeRepoObjectIter callback,
+                                         gpointer       user_data,
+                                         GError        **error);
+
 G_END_DECLS
 
 #endif /* _HACKTREE_REPO */
