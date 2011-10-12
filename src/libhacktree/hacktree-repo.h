@@ -51,8 +51,11 @@ GType hacktree_repo_get_type (void);
 
 HacktreeRepo* hacktree_repo_new (const char *path);
 
+gboolean      hacktree_repo_check (HacktreeRepo  *repo, GError **error);
+
 gboolean      hacktree_repo_import (HacktreeRepo *repo,
-                                    const char   *path);
+                                    const char   *path,
+                                    GError      **error);
 
 G_END_DECLS
 
