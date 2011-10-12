@@ -19,26 +19,41 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_BUILTINS__
-#define __HACKTREE_BUILTINS__
+#include "config.h"
 
-#include <glib-object.h>
+#include "ht-builtins.h"
+#include "hacktree.h"
 
-G_BEGIN_DECLS
+#include <glib/gi18n.h>
 
-typedef enum {
-  HACKTREE_BUILTIN_FLAG_NONE = 0,
-} HacktreeBuiltinFlags;
+static char *repo_path;
+static GOptionEntry options[] = {
+  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
+  { NULL }
+};
 
-typedef struct {
-  const char *name;
-  gboolean (*fn) (int argc, const char **argv, const char *prefix, GError **error);
-  int flags; /* HacktreeBuiltinFlags */
-} HacktreeBuiltin;
+gboolean
+hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GError **error)
+{
+  gboolean ret = FALSE;
+  HacktreeRepo *repo = NULL;
+  int i;
 
-gboolean hacktree_builtin_init (int argc, const char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GError **error);
+  if (repo_path == NULL)
+    repo_path = ".";
 
-G_END_DECLS
+  repo = hacktree_repo_new (repo_path);
+  if (!hacktree_repo_check (repo, error))
+    goto out;
 
-#endif
+  for (i = 0; i < argc; i++)
+    {
+      if (!hacktree_repo_link_file (repo, argv[i], error))
+        goto out;
+    }
+ 
+  ret = TRUE;
+ out:
+  g_clear_object (&repo);
+  return ret;
+}

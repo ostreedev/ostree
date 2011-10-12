@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#include "hacktree-repo.h"
+#include "hacktree.h"
 #include "htutil.h"
 
 enum {
@@ -47,6 +47,12 @@ struct _HacktreeRepoPrivate {
 static void
 hacktree_repo_finalize (GObject *object)
 {
+  HacktreeRepo *self = HACKTREE_REPO (object);
+  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+
+  g_free (priv->path);
+  g_free (priv->objects_path);
+
   G_OBJECT_CLASS (hacktree_repo_parent_class)->finalize (object);
 }
 
@@ -90,6 +96,27 @@ hacktree_repo_get_property(GObject         *object,
     }
 }
 
+static GObject *
+hacktree_repo_constructor (GType                  gtype,
+                           guint                  n_properties,
+                           GObjectConstructParam *properties)
+{
+  GObject *object;
+  GObjectClass *parent_class;
+  HacktreeRepoPrivate *priv;
+
+  parent_class = G_OBJECT_CLASS (hacktree_repo_parent_class);
+  object = parent_class->constructor (gtype, n_properties, properties);
+
+  priv = GET_PRIVATE (object);
+
+  g_assert (priv->path != NULL);
+
+  priv->objects_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "objects", NULL);
+
+  return object;
+}
+
 static void
 hacktree_repo_class_init (HacktreeRepoClass *klass)
 {
@@ -97,6 +124,9 @@ hacktree_repo_class_init (HacktreeRepoClass *klass)
 
   g_type_class_add_private (klass, sizeof (HacktreeRepoPrivate));
 
+  object_class->constructor = hacktree_repo_constructor;
+  object_class->get_property = hacktree_repo_get_property;
+  object_class->set_property = hacktree_repo_set_property;
   object_class->finalize = hacktree_repo_finalize;
 
   g_object_class_install_property (object_class,
@@ -113,9 +143,6 @@ hacktree_repo_init (HacktreeRepo *self)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   
-  g_assert (priv->path);
-
-  priv->objects_path = g_build_filename (priv->path, "objects", NULL);
 }
 
 HacktreeRepo*
@@ -128,6 +155,13 @@ gboolean
 hacktree_repo_check (HacktreeRepo *self, GError **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+
+  if (!g_file_test (priv->objects_path, G_FILE_TEST_IS_DIR))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Couldn't find objects directory '%s'", priv->objects_path);
+      return FALSE;
+    }
   
   priv->inited = TRUE;
   return TRUE;
@@ -188,13 +222,23 @@ stat_and_compute_checksum (int dirfd, const char *path,
   char *symlink_target = NULL;
   char *device_id = NULL;
 
-  if (fstat (fd, out_stbuf) < 0)
+  basename = g_path_get_basename (path);
+
+  if (fstatat (dirfd, basename, out_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
       ht_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  basename = g_path_get_basename (path);
+  if (!S_ISLNK(out_stbuf->st_mode))
+    {
+      fd = ht_util_open_file_read_at (dirfd, basename, error);
+      if (fd < 0)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
 
   stat_string = stat_to_string (out_stbuf);
 
@@ -237,12 +281,6 @@ stat_and_compute_checksum (int dirfd, const char *path,
     {
       guint8 buf[8192];
 
-      fd = ht_util_open_file_read_at (dirfd, basename, error);
-      if (fd < 0)
-        {
-          ht_util_set_error_from_errno (error, errno);
-          goto out;
-        }
       while ((bytes_read = read (fd, buf, sizeof (buf))) > 0)
         g_checksum_update (content_sha256, buf, bytes_read);
       if (bytes_read < 0)
@@ -262,7 +300,7 @@ stat_and_compute_checksum (int dirfd, const char *path,
         }
       g_checksum_update (content_sha256, symlink_target, strlen (symlink_target));
     }
-  else if (S_ISDEV(out_stbuf->st_mode))
+  else if (S_ISCHR(out_stbuf->st_mode) || S_ISBLK(out_stbuf->st_mode))
     {
       device_id = g_strdup_printf ("%d", out_stbuf->st_rdev);
       g_checksum_update (content_sha256, device_id, strlen (device_id));
@@ -282,6 +320,7 @@ stat_and_compute_checksum (int dirfd, const char *path,
   g_checksum_update (content_and_meta_sha256, xattrs_canonicalized, strlen (stat_string));
 
   *out_checksum = content_and_meta_sha256;
+  ret = TRUE;
  out:
   if (fd >= 0)
     close (fd);
@@ -297,63 +336,73 @@ stat_and_compute_checksum (int dirfd, const char *path,
 }
 
 static char *
-get_object_dir_for_checksum (HacktreeRepo *self,
-                             GChecksum    *checksum,
-                             GError      **error)
+prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
+                                          GChecksum    *checksum,
+                                          GError      **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *checksum_prefix;
-  char *path;
-  gboolean ret = FALSE;
+  char *checksum_prefix = NULL;
+  char *checksum_dir = NULL;
+  char *object_path = NULL;
   GError *temp_error = NULL;
 
   checksum_prefix = g_strdup (g_checksum_get_string (checksum));
-  checksum_prefix[3] = '\0';
-  path = g_build_filename (priv->objects_path, checksum_prefix, NULL);
+  checksum_prefix[2] = '\0';
+  checksum_dir = g_build_filename (priv->objects_path, checksum_prefix, NULL);
 
-  if (!ht_util_ensure_directory (path, FALSE, error))
+  if (!ht_util_ensure_directory (checksum_dir, FALSE, error))
     goto out;
   
-  ret = TRUE;
+  object_path = g_build_filename (checksum_dir, checksum_prefix + 3, NULL);
  out:
   g_free (checksum_prefix);
-  if (ret)
-    return path;
-  g_free (path);
-  return NULL;
+  g_free (checksum_dir);
+  return object_path;
 }
 
 static gboolean
-import_one_file (HacktreeRepo *self, const char *path, GError **error)
+link_one_file (HacktreeRepo *self, const char *path, GError **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *basename = NULL;
-  char *dirname = NULL;
+  char *src_basename = NULL;
+  char *src_dirname = NULL;
+  char *dest_basename = NULL;
+  char *dest_dirname = NULL;
   GChecksum *id = NULL;
-  DIR *dir = NULL;
+  DIR *src_dir = NULL;
+  DIR *dest_dir = NULL;
   gboolean ret = FALSE;
   int fd;
   struct stat stbuf;
   char *dest_path = NULL;
   char *checksum_prefix;
 
-  basename = g_path_get_dirname (path);
-  dirname = g_path_get_dirname (path);
+  src_basename = g_path_get_basename (path);
+  src_dirname = g_path_get_dirname (path);
 
-  dir = opendir (dirname);
-  if (dir == NULL)
+  src_dir = opendir (src_dirname);
+  if (src_dir == NULL)
     {
       ht_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  if (!stat_and_compute_checksum (dirfd (dir), path, &id, &stbuf, error))
+  if (!stat_and_compute_checksum (dirfd (src_dir), path, &id, &stbuf, error))
     goto out;
-  dest_path = get_object_dir_for_checksum (self, id, error);
+  dest_path = prepare_dir_for_checksum_get_object_path (self, id, error);
   if (!dest_path)
     goto out;
+
+  dest_basename = g_path_get_basename (dest_path);
+  dest_dirname = g_path_get_dirname (dest_path);
+  dest_dir = opendir (dest_dirname);
+  if (dest_dir == NULL)
+    {
+      ht_util_set_error_from_errno (error, errno);
+      goto out;
+    }
   
-  if (linkat (dirfd, basename, -1, dest_path, 0) < 0)
+  if (linkat (dirfd (src_dir), src_basename, dirfd (dest_dir), dest_basename, 0) < 0)
     {
       ht_util_set_error_from_errno (error, errno);
       goto out;
@@ -363,21 +412,25 @@ import_one_file (HacktreeRepo *self, const char *path, GError **error)
  out:
   if (id != NULL)
     g_checksum_free (id);
-  if (dir != NULL)
-    closedir (dir);
-  g_free (basename);
-  g_free (dirname);
+  if (src_dir != NULL)
+    closedir (src_dir);
+  if (dest_dir != NULL)
+    closedir (dest_dir);
+  g_free (src_basename);
+  g_free (src_dirname);
+  g_free (dest_basename);
+  g_free (dest_dirname);
   return ret;
 }
 
 gboolean
-hacktree_repo_import (HacktreeRepo *self,
-                      const char   *path,
-                      GError      **error)
+hacktree_repo_link_file (HacktreeRepo *self,
+                         const char   *path,
+                         GError      **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_return_val_if_fail (priv->inited, FALSE);
 
-  return import_one_file (self, path, error);
+  return link_one_file (self, path, error);
 }
