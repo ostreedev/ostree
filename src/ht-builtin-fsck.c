@@ -27,9 +27,11 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean quiet;
 
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
+  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &quiet, "Don't display informational messages", NULL },
   { NULL }
 };
 
@@ -57,7 +59,7 @@ object_iter_callback (HacktreeRepo  *repo,
   
   nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
 
-  if (nlinks < 2)
+  if (nlinks < 2 && !quiet)
     g_printerr ("note: floating object: %s\n", path);
 
   if (!hacktree_stat_and_checksum_file (-1, path, &checksum, &stbuf, &error))
@@ -112,7 +114,8 @@ hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error
   if (!hacktree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;
 
-  g_printerr ("Total Objects: %u\n", data.n_objects);
+  if (!quiet)
+    g_printerr ("Total Objects: %u\n", data.n_objects);
 
   ret = TRUE;
  out:
