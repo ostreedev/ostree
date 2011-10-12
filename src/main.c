@@ -68,6 +68,8 @@ main (int    argc,
 
   g_type_init ();
 
+  g_set_prgname (argv[0]);
+
   builtin = builtins;
 
   if (argc < 2)
@@ -80,12 +82,24 @@ main (int    argc,
       GError *error = NULL;
       if (strcmp (cmd, builtin->name) == 0)
         {
-          if (!builtin->fn (argc - 2, (const char**)argv + 2, NULL, &error))
+          int i;
+          int tmp_argc;
+          char **tmp_argv;
+
+          tmp_argc = argc - 1;
+          tmp_argv = g_new0 (char *, tmp_argc + 1);
+
+          tmp_argv[0] = (char*)builtin->name;
+          for (i = 0; i < tmp_argc; i++)
+            tmp_argv[i+1] = argv[i+2];
+          if (!builtin->fn (tmp_argc, tmp_argv, NULL, &error))
             {
+              g_free (tmp_argv);
               g_printerr ("%s\n", error->message);
               g_clear_error (&error);
               return 1;
             }
+          g_free (tmp_argv);
           return 0;
         }
       builtin++;

@@ -32,13 +32,13 @@ typedef enum {
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, const char **argv, const char *prefix, GError **error);
+  gboolean (*fn) (int argc, char **argv, const char *prefix, GError **error);
   int flags; /* HacktreeBuiltinFlags */
 } HacktreeBuiltin;
 
-gboolean hacktree_builtin_init (int argc, const char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_fsck (int argc, const char **argv, const char *prefix, GError **error);
+gboolean hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error);
+gboolean hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error);
+gboolean hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);
 
 G_END_DECLS
 

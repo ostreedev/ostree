@@ -86,12 +86,19 @@ object_iter_callback (HacktreeRepo  *repo,
 }
 
 gboolean
-hacktree_builtin_fsck (int argc, const char **argv, const char *prefix, GError **error)
+hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error)
 {
+  GOptionContext *context;
   HtFsckData data;
   gboolean ret = FALSE;
   HacktreeRepo *repo = NULL;
   int i;
+
+  context = g_option_context_new ("- Check the repository for consistency");
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
 
   if (repo_path == NULL)
     repo_path = ".";
@@ -109,6 +116,8 @@ hacktree_builtin_fsck (int argc, const char **argv, const char *prefix, GError *
 
   ret = TRUE;
  out:
+  if (context)
+    g_option_context_free (context);
   g_clear_object (&repo);
   return ret;
 }

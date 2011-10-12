@@ -27,17 +27,29 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean ignore_exists;
+static gboolean force;
+
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
+  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
+  { "ignore-exists", 'n', 0, G_OPTION_ARG_NONE, &ignore_exists, "Don't error if file exists", NULL },
+  { "force", 'f', 0, G_OPTION_ARG_NONE, &force, "If object exists, relink file", NULL },
   { NULL }
 };
 
 gboolean
-hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GError **error)
+hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error)
 {
+  GOptionContext *context;
   gboolean ret = FALSE;
   HacktreeRepo *repo = NULL;
   int i;
+
+  context = g_option_context_new ("- Create a new hard link in the repository");
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
 
   if (repo_path == NULL)
     repo_path = ".";
@@ -46,14 +58,16 @@ hacktree_builtin_link_file (int argc, const char **argv, const char *prefix, GEr
   if (!hacktree_repo_check (repo, error))
     goto out;
 
-  for (i = 0; i < argc; i++)
+  for (i = 0; i < argc-1; i++)
     {
-      if (!hacktree_repo_link_file (repo, argv[i], error))
+      if (!hacktree_repo_link_file (repo, argv[i+1], ignore_exists, force, error))
         goto out;
     }
  
   ret = TRUE;
  out:
+  if (context)
+    g_option_context_free (context);
   g_clear_object (&repo);
   return ret;
 }

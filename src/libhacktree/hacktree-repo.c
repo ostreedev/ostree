@@ -194,12 +194,14 @@ prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
 }
 
 static gboolean
-link_one_file (HacktreeRepo *self, const char *path, GError **error)
+link_one_file (HacktreeRepo *self, const char *path,
+               gboolean ignore_exists, gboolean force, GError **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   char *src_basename = NULL;
   char *src_dirname = NULL;
   char *dest_basename = NULL;
+  char *tmp_dest_basename = NULL;
   char *dest_dirname = NULL;
   GChecksum *id = NULL;
   DIR *src_dir = NULL;
@@ -234,11 +236,33 @@ link_one_file (HacktreeRepo *self, const char *path, GError **error)
       ht_util_set_error_from_errno (error, errno);
       goto out;
     }
-  
-  if (linkat (dirfd (src_dir), src_basename, dirfd (dest_dir), dest_basename, 0) < 0)
+
+  if (force)
     {
-      ht_util_set_error_from_errno (error, errno);
-      goto out;
+      tmp_dest_basename = g_strconcat (dest_basename, ".tmp", NULL);
+      (void) unlinkat (dirfd (dest_dir), tmp_dest_basename, 0);
+    }
+  else
+    tmp_dest_basename = g_strdup (dest_basename);
+  
+  if (linkat (dirfd (src_dir), src_basename, dirfd (dest_dir), tmp_dest_basename, 0) < 0)
+    {
+      if (errno != EEXIST || !ignore_exists)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  if (force)
+    {
+      if (renameat (dirfd (dest_dir), tmp_dest_basename, 
+                    dirfd (dest_dir), dest_basename) < 0)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      (void) unlinkat (dirfd (dest_dir), tmp_dest_basename, 0);
     }
 
   ret = TRUE;
@@ -252,6 +276,7 @@ link_one_file (HacktreeRepo *self, const char *path, GError **error)
   g_free (src_basename);
   g_free (src_dirname);
   g_free (dest_basename);
+  g_free (tmp_dest_basename);
   g_free (dest_dirname);
   return ret;
 }
@@ -259,13 +284,15 @@ link_one_file (HacktreeRepo *self, const char *path, GError **error)
 gboolean
 hacktree_repo_link_file (HacktreeRepo *self,
                          const char   *path,
+                         gboolean      ignore_exists,
+                         gboolean      force,
                          GError      **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_return_val_if_fail (priv->inited, FALSE);
 
-  return link_one_file (self, path, error);
+  return link_one_file (self, path, ignore_exists, force, error);
 }
 
 static gboolean

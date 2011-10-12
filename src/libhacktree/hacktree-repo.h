@@ -55,6 +55,8 @@ gboolean      hacktree_repo_check (HacktreeRepo  *repo, GError **error);
 
 gboolean      hacktree_repo_link_file (HacktreeRepo *repo,
                                        const char   *path,
+                                       gboolean      ignore_exists,
+                                       gboolean      force,
                                        GError      **error);
 
 typedef void (*HacktreeRepoObjectIter) (HacktreeRepo *repo, const char *path,
