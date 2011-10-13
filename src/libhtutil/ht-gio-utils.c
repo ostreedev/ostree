@@ -23,10 +23,11 @@
 
 #include <glib-unix.h>
 #include <gio/gio.h>
+#include <gio/gunixinputstream.h>
 
 #include <string.h>
 
-#include "ht-gio-utils.h"
+#include "htutil.h"
 
 gboolean
 ht_util_ensure_directory (const char *path, gboolean with_parents, GError **error)
@@ -54,5 +55,53 @@ ht_util_ensure_directory (const char *path, gboolean with_parents, GError **erro
   ret = TRUE;
  out:
   g_clear_object (&dir);
+  return ret;
+}
+
+
+char *
+ht_util_get_file_contents_utf8 (const char *path,
+                                GError    **error)
+{
+  char *contents;
+  gsize len;
+  if (!g_file_get_contents (path, &contents, &len, error))
+    return NULL;
+  if (!g_utf8_validate (contents, len, NULL))
+    {
+      g_free (contents);
+      g_set_error (error,
+                   G_IO_ERROR,
+                   G_IO_ERROR_FAILED,
+                   "File %s contains invalid UTF-8",
+                   path);
+      return NULL;
+    }
+  return contents;
+}
+
+GInputStream *
+ht_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error)
+{
+  GInputStream *ret = NULL;
+  int fd;
+  int flags = O_RDONLY;
+  char *path = NULL;
+
+  path = g_file_get_path (file);
+#ifdef O_NOATIME
+  flags |= O_NOATIME;
+#endif
+  fd = open (path, flags);
+  if (fd < 0)
+    {
+      ht_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret = (GInputStream*)g_unix_input_stream_new (fd, TRUE);
+  
+ out:
+  g_free (path);
   return ret;
 }

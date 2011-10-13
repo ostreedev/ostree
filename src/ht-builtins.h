@@ -36,6 +36,7 @@ typedef struct {
   int flags; /* HacktreeBuiltinFlags */
 } HacktreeBuiltin;
 
+gboolean hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **error);
 gboolean hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error);
 gboolean hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error);
 gboolean hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);

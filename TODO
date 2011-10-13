@@ -1,5 +1,5 @@
-* hacktree import-tar
-  - Accepts tarball on stdin, stores the objects
 * tree and commit objects
 * hacktree import
+* hacktree import-tar
+  - Accepts tarball on stdin, stores the objects
 * branches

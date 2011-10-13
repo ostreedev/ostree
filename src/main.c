@@ -30,6 +30,7 @@
 
 static HacktreeBuiltin builtins[] = {
   { "init", hacktree_builtin_init, 0 },
+  { "commit", hacktree_builtin_commit, 0 },
   { "link-file", hacktree_builtin_link_file, 0 },
   { "fsck", hacktree_builtin_fsck, 0 },
   { NULL }

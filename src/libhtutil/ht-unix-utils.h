@@ -31,8 +31,20 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 G_BEGIN_DECLS
+
+gboolean ht_util_filename_has_dotdot (const char *path);
+
+GPtrArray *ht_util_sort_filenames_by_component_length (GPtrArray *files);
+
+GPtrArray* ht_util_path_split (const char *path);
+
+char *ht_util_path_join_n (const char *base, GPtrArray *components, int n);
+
+int ht_util_count_filename_components (const char *path);
 
 int ht_util_open_file_read (const char *path, GError **error);
 

@@ -24,10 +24,16 @@
 #include "hacktree.h"
 #include "htutil.h"
 
-char *
+#include <sys/types.h>
+#include <attr/xattr.h>
+
+static char *
 stat_to_string (struct stat *stbuf)
 {
-  return g_strdup_printf ("%d:%d:%d", stbuf->st_mode, stbuf->st_uid, stbuf->st_gid);
+  return g_strdup_printf ("%u:%u:%u",
+                          (guint32)(stbuf->st_mode & ~S_IFMT),
+                          (guint32)stbuf->st_uid, 
+                          (guint32)stbuf->st_gid);
 }
 
 static char *
@@ -56,6 +62,52 @@ canonicalize_xattrs (char *xattr_string, size_t len)
 }
 
 gboolean
+hacktree_get_xattrs_for_directory (const char *path,
+                                   char      **out_xattrs, /* out */
+                                   gsize      *out_len, /* out */
+                                   GError **error)
+{
+  gboolean ret = FALSE;
+  char *xattrs = NULL;
+  ssize_t bytes_read;
+
+  bytes_read = llistxattr (path, NULL, 0);
+
+  if (bytes_read < 0)
+    {
+      if (errno != ENOTSUP)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (bytes_read > 0)
+    {
+      xattrs = g_malloc (bytes_read);
+      if (!llistxattr (path, xattrs, bytes_read))
+        {
+          ht_util_set_error_from_errno (error, errno);
+          g_free (xattrs);
+          xattrs = NULL;
+          goto out;
+        }
+
+      *out_xattrs = canonicalize_xattrs (xattrs, bytes_read);
+      *out_len = (gsize)bytes_read;
+    }
+  else
+    {
+      *out_xattrs = NULL;
+      *out_len = 0;
+    }
+
+  ret = TRUE;
+ out:
+  g_free (xattrs);
+  return ret;
+}
+
+gboolean
 hacktree_stat_and_checksum_file (int dir_fd, const char *path,
                                  GChecksum **out_checksum,
                                  struct stat *out_stbuf,
@@ -73,6 +125,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
   gboolean ret = FALSE;
   char *symlink_target = NULL;
   char *device_id = NULL;
+  struct stat stbuf;
 
   basename = g_path_get_basename (path);
 
@@ -89,13 +142,13 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
       dir_fd = dirfd (temp_dir);
     }
 
-  if (fstatat (dir_fd, basename, out_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
+  if (fstatat (dir_fd, basename, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
       ht_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  if (!S_ISLNK(out_stbuf->st_mode))
+  if (!S_ISLNK(stbuf.st_mode))
     {
       fd = ht_util_open_file_read_at (dir_fd, basename, error);
       if (fd < 0)
@@ -105,10 +158,10 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
         }
     }
 
-  stat_string = stat_to_string (out_stbuf);
+  stat_string = stat_to_string (&stbuf);
 
   /* FIXME - Add llistxattrat */
-  if (!S_ISLNK(out_stbuf->st_mode))
+  if (!S_ISLNK(stbuf.st_mode))
     bytes_read = flistxattr (fd, NULL, 0);
   else
     bytes_read = llistxattr (path, NULL, 0);
@@ -121,12 +174,12 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
           goto out;
         }
     }
-  if (errno != ENOTSUP)
+  else if (bytes_read > 0)
     {
       gboolean tmp;
       xattrs = g_malloc (bytes_read);
       /* FIXME - Add llistxattrat */
-      if (!S_ISLNK(out_stbuf->st_mode))
+      if (!S_ISLNK(stbuf.st_mode))
         tmp = flistxattr (fd, xattrs, bytes_read);
       else
         tmp = llistxattr (path, xattrs, bytes_read);
@@ -142,7 +195,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
 
   content_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
  
-  if (S_ISREG(out_stbuf->st_mode))
+  if (S_ISREG(stbuf.st_mode))
     {
       guint8 buf[8192];
 
@@ -154,7 +207,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
           goto out;
         }
     }
-  else if (S_ISLNK(out_stbuf->st_mode))
+  else if (S_ISLNK(stbuf.st_mode))
     {
       symlink_target = g_malloc (PATH_MAX);
 
@@ -163,12 +216,12 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
           ht_util_set_error_from_errno (error, errno);
           goto out;
         }
-      g_checksum_update (content_sha256, symlink_target, strlen (symlink_target));
+      g_checksum_update (content_sha256, (guint8*)symlink_target, strlen (symlink_target));
     }
-  else if (S_ISCHR(out_stbuf->st_mode) || S_ISBLK(out_stbuf->st_mode))
+  else if (S_ISCHR(stbuf.st_mode) || S_ISBLK(stbuf.st_mode))
     {
-      device_id = g_strdup_printf ("%d", out_stbuf->st_rdev);
-      g_checksum_update (content_sha256, device_id, strlen (device_id));
+      device_id = g_strdup_printf ("%u", (guint)stbuf.st_rdev);
+      g_checksum_update (content_sha256, (guint8*)device_id, strlen (device_id));
     }
   else
     {
@@ -181,9 +234,10 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
 
   content_and_meta_sha256 = g_checksum_copy (content_sha256);
 
-  g_checksum_update (content_and_meta_sha256, stat_string, strlen (stat_string));
-  g_checksum_update (content_and_meta_sha256, xattrs_canonicalized, strlen (stat_string));
+  g_checksum_update (content_and_meta_sha256, (guint8*)stat_string, strlen (stat_string));
+  g_checksum_update (content_and_meta_sha256, (guint8*)xattrs_canonicalized, strlen (stat_string));
 
+  *out_stbuf = stbuf;
   *out_checksum = content_and_meta_sha256;
   ret = TRUE;
  out:
