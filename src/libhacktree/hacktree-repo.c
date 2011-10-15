@@ -1602,6 +1602,7 @@ hacktree_repo_load_variant (HacktreeRepo *repo,
     {
       if (ret_variant)
         g_variant_unref (ret_variant);
+      g_prefix_error (error, "Failed to load metadata variant '%s': ", sha256);
     }
   return ret;
 }

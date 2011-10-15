@@ -51,6 +51,7 @@ hacktree_SOURCES = src/main.c \
 	src/ht-builtin-fsck.c \
 	src/ht-builtin-init.c \
 	src/ht-builtin-link-file.c \
+	src/ht-builtin-log.c \
 	src/ht-builtin-show.c \
 	$(NULL)
 hacktree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libhacktree -I$(srcdir)/src/libhtutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)

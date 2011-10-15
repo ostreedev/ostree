@@ -25,10 +25,53 @@
 
 #include <glib-unix.h>
 #include <gio/gio.h>
+#include <gio/gunixoutputstream.h>
 
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
+
+gboolean
+ht_util_spawn_pager (GOutputStream  **out_stream,
+                     GError         **error)
+{
+  const char *pager;
+  char *argv[2];
+  int stdin_fd;
+  pid_t pid;
+  gboolean ret = FALSE;
+  GOutputStream *ret_stream = NULL;
+
+  if (!isatty (1))
+    {
+      ret_stream = (GOutputStream*)g_unix_output_stream_new (1, TRUE);
+    }
+  else
+    {
+      pager = g_getenv ("GIT_PAGER");
+      if (pager == NULL)
+        pager = "less";
+      
+      argv[0] = (char*)pager;
+      argv[1] = NULL;
+      
+      if (!g_spawn_async_with_pipes (NULL, argv, NULL, G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid, &stdin_fd, NULL, NULL, error))
+        {
+          g_prefix_error (error, "%s", "Failed to spawn pager: ");
+          goto out;
+        }
+      
+      ret_stream = (GOutputStream*)g_unix_output_stream_new (stdin_fd, TRUE);
+    }
+
+  *out_stream = ret_stream;
+  ret_stream = NULL;
+  ret = TRUE;
+ out:
+  g_clear_object (&ret_stream);
+  return ret;
+}
 
 static int
 compare_filenames_by_component_length (const char *a,

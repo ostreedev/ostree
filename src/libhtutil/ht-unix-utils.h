@@ -36,6 +36,8 @@
 
 G_BEGIN_DECLS
 
+gboolean ht_util_spawn_pager (GOutputStream  **out_stream, GError         **error);
+
 gboolean ht_util_filename_has_dotdot (const char *path);
 
 GPtrArray *ht_util_sort_filenames_by_component_length (GPtrArray *files);
