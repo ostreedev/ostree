@@ -1228,7 +1228,7 @@ hacktree_repo_commit (HacktreeRepo *self,
                           HACKTREE_COMMIT_VERSION,
                           create_empty_gvariant_dict (),
                           priv->current_head ? priv->current_head : "",
-                          subject, body,
+                          subject, body ? body : "",
                           g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
                           g_checksum_get_string (root_checksum));
   if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
