@@ -25,7 +25,11 @@ cd "$test_tmpdir"
 touch "$test_tmpdir/.test$$"
 
 die () {
-    test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
+    if test -z "$HT_TESTS_SAVE_TEMPS"; then
+        test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
+    else
+        echo "Temporary files saved in $test_tmpdir"
+    fi
 }
 
 trap 'die' EXIT
