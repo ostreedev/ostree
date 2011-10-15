@@ -46,7 +46,6 @@ object_iter_callback (HacktreeRepo  *repo,
                       gpointer       user_data)
 {
   HtFsckData *data = user_data;
-  guint32 nlinks;
   struct stat stbuf;
   GChecksum *checksum = NULL;
   GError *error = NULL;
@@ -57,10 +56,9 @@ object_iter_callback (HacktreeRepo  *repo,
   dirname = g_path_get_dirname (path);
   checksum_prefix = g_path_get_basename (dirname);
   
-  nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
-
-  if (nlinks < 2 && !quiet)
-    g_printerr ("note: floating object: %s\n", path);
+  /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
+     if (nlinks < 2 && !quiet)
+     g_printerr ("note: floating object: %s\n", path); */
 
   if (!hacktree_stat_and_checksum_file (-1, path, &checksum, &stbuf, &error))
     goto out;
@@ -94,6 +92,7 @@ hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error
   HtFsckData data;
   gboolean ret = FALSE;
   HacktreeRepo *repo = NULL;
+  const char *head;
 
   context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);
@@ -112,6 +111,13 @@ hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error
 
   if (!hacktree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;
+
+  head = hacktree_repo_get_head (repo);
+  if (!head)
+    {
+      if (!quiet)
+        g_printerr ("No HEAD file\n");
+    }
 
   if (!quiet)
     g_printerr ("Total Objects: %u\n", data.n_objects);
