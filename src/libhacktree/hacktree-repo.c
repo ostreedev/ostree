@@ -786,7 +786,7 @@ load_commit_and_trees (HacktreeRepo   *self,
       *out_commit = ret_commit;
       *out_tree_data = ret_tree_data;
     }
-  return FALSE;
+  return ret;
 }
 
 static GVariant *
