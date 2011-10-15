@@ -25,6 +25,7 @@
 #include "htutil.h"
 
 #include <gio/gunixoutputstream.h>
+#include <gio/gunixinputstream.h>
 
 static gboolean
 link_one_file (HacktreeRepo *self, const char *path,
@@ -875,6 +876,13 @@ check_path (const char *filename,
       goto out;
     }
 
+  if (strcmp (filename, ".") == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Self-reference '.' in filename '%s' not allowed (yet)", filename);
+      goto out;
+    }
+  
   if (ht_util_filename_has_dotdot (filename))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -1117,6 +1125,8 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
       file_sha1 = g_hash_table_lookup (current_tree->files, component);
       dir = g_hash_table_lookup (current_tree->directories, component);
 
+      g_assert_cmpstr (component, !=, ".");
+
       if (i < components->len - 1)
         {
           if (file_sha1 != NULL)
@@ -1195,6 +1205,56 @@ add_files_to_tree_and_import (HacktreeRepo   *self,
   return ret;
 }
 
+static gboolean
+commit_parsed_tree (HacktreeRepo *self,
+                    const char   *subject,
+                    const char   *body,
+                    GVariant     *metadata,
+                    ParsedTreeData *tree,
+                    GChecksum   **out_commit,
+                    GError      **error)
+{
+  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  gboolean ret = FALSE;
+  GChecksum *root_checksum = NULL;
+  GChecksum *ret_commit = NULL;
+  GVariant *commit = NULL;
+  GDateTime *now = NULL;
+
+  if (!import_parsed_tree (self, tree, &root_checksum, error))
+    goto out;
+
+  now = g_date_time_new_now_utc ();
+  commit = g_variant_new ("(u@a{sv}sssts)",
+                          HACKTREE_COMMIT_VERSION,
+                          create_empty_gvariant_dict (),
+                          priv->current_head ? priv->current_head : "",
+                          subject, body ? body : "",
+                          g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
+                          g_checksum_get_string (root_checksum));
+  if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
+                               commit, &ret_commit, error))
+    goto out;
+
+  if (!write_checksum_file (priv->head_ref_path, g_checksum_get_string (ret_commit), error))
+    goto out;
+
+  g_free (priv->current_head);
+  priv->current_head = g_strdup (g_checksum_get_string (ret_commit));
+
+  ret = TRUE;
+  *out_commit = ret_commit;
+ out:
+  if (root_checksum)
+    g_checksum_free (root_checksum);
+  if (commit)
+    g_variant_unref (commit);
+  if (now)
+    g_date_time_unref (now);
+  return ret;
+}
+
+
 gboolean
 hacktree_repo_commit (HacktreeRepo *self,
                       const char   *subject,
@@ -1210,10 +1270,7 @@ hacktree_repo_commit (HacktreeRepo *self,
   gboolean ret = FALSE;
   ParsedTreeData *tree = NULL;
   GVariant *previous_commit = NULL;
-  GVariant *commit = NULL;
-  GChecksum *root_checksum = NULL;
   GChecksum *ret_commit_checksum = NULL;
-  GDateTime *now = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
@@ -1234,28 +1291,10 @@ hacktree_repo_commit (HacktreeRepo *self,
 
   if (!add_files_to_tree_and_import (self, base, modified_files, tree, error))
     goto out;
+
+  if (!commit_parsed_tree (self, subject, body, metadata, tree, &ret_commit_checksum, error))
+    goto out;
   
-  if (!import_parsed_tree (self, tree, &root_checksum, error))
-    goto out;
-
-  now = g_date_time_new_now_utc ();
-  commit = g_variant_new ("(u@a{sv}sssts)",
-                          HACKTREE_COMMIT_VERSION,
-                          create_empty_gvariant_dict (),
-                          priv->current_head ? priv->current_head : "",
-                          subject, body ? body : "",
-                          g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
-                          g_checksum_get_string (root_checksum));
-  if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
-                               commit, &ret_commit_checksum, error))
-    goto out;
-
-  if (!write_checksum_file (priv->head_ref_path, g_checksum_get_string (ret_commit_checksum), error))
-    goto out;
-
-  g_free (priv->current_head);
-  priv->current_head = g_strdup (g_checksum_get_string (ret_commit_checksum));
-
   ret = TRUE;
  out:
   if (!ret)
@@ -1267,16 +1306,85 @@ hacktree_repo_commit (HacktreeRepo *self,
     {
       *out_commit = ret_commit_checksum;
     }
-  if (root_checksum)
-    g_checksum_free (root_checksum);
   if (previous_commit)
     g_variant_unref (previous_commit);
   parsed_tree_data_free (tree);
-  if (commit)
-    g_variant_unref (commit);
-  if (now)
-    g_date_time_unref (now);
   return ret;
+}
+
+gboolean      
+hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
+                                       const char   *subject,
+                                       const char   *body,
+                                       GVariant     *metadata,
+                                       const char   *base,
+                                       int           fd,
+                                       char          separator,
+                                       GChecksum   **out_commit,
+                                       GError      **error)
+{
+  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  gboolean ret = FALSE;
+  ParsedTreeData *tree = NULL;
+  GVariant *previous_commit = NULL;
+  GChecksum *ret_commit_checksum = NULL;
+  GUnixInputStream *in = NULL;
+  GDataInputStream *datain = NULL;
+  char *filename = NULL;
+  gsize filename_len;
+  GError *temp_error = NULL;
+
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (priv->inited, FALSE);
+
+  /* We're overwriting the tree */
+  tree = parsed_tree_data_new ();
+
+  in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);
+  datain = g_data_input_stream_new ((GInputStream*)in);
+
+  while ((filename = g_data_input_stream_read_upto (datain, &separator, 1,
+                                                    &filename_len, NULL, &temp_error)) != NULL)
+    {
+      if (!g_data_input_stream_read_byte (datain, NULL, &temp_error))
+        {
+          if (temp_error != NULL)
+            {
+              g_propagate_prefixed_error (error, temp_error, "%s", "While reading filelist: ");
+              goto out;
+            }
+        }
+      if (!add_one_path_to_tree_and_import (self, base, filename, tree, error))
+        goto out;
+      g_free (filename);
+      filename = NULL;
+    }
+  if (filename == NULL && temp_error != NULL)
+    {
+      g_propagate_prefixed_error (error, temp_error, "%s", "While reading filelist: ");
+      goto out;
+    }
+  if (!commit_parsed_tree (self, subject, body, metadata,
+                           tree, &ret_commit_checksum, error))
+    goto out;
+  
+  ret = TRUE;
+ out:
+  if (!ret)
+    {
+      if (ret_commit_checksum)
+        g_checksum_free (ret_commit_checksum);
+    }
+  else
+    {
+      *out_commit = ret_commit_checksum;
+    }
+  g_clear_object (&datain);
+  g_clear_object (&in);
+  g_free (filename);
+  parsed_tree_data_free (tree);
+  return ret;
+  
 }
 
 static gboolean
@@ -1491,6 +1599,7 @@ checkout_one_directory (HacktreeRepo  *self,
   if (mkdir (dest_path, (mode_t)mode) < 0)
     {
       ht_util_set_error_from_errno (error, errno);
+      g_prefix_error (error, "Failed to create directory '%s': ", dest_path);
       goto out;
     }
       

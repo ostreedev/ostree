@@ -100,6 +100,7 @@ ht_util_path_split (const char *path)
   GPtrArray *ret = NULL;
   const char *p;
   const char *slash;
+  int i;
 
   g_return_val_if_fail (path[0] != '/', NULL);
 
@@ -120,6 +121,13 @@ ht_util_path_split (const char *path)
         p = slash + 1;
       }
   } while (p && *p);
+
+  /* Canonicalize by removing duplicate '.' */
+  for (i = ret->len-1; i >= 0; i--)
+    {
+      if (strcmp (ret->pdata[i], ".") == 0)
+        g_ptr_array_remove_index (ret, i);
+    }
 
   return ret;
 }
