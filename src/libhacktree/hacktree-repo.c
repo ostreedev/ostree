@@ -228,6 +228,8 @@ hacktree_repo_check (HacktreeRepo *self, GError **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
 
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   if (priv->inited)
     return TRUE;
 
@@ -600,6 +602,7 @@ hacktree_repo_link_file (HacktreeRepo *self,
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   GChecksum *checksum = NULL;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
   if (!link_one_file (self, path, HACKTREE_OBJECT_TYPE_FILE,
@@ -765,7 +768,7 @@ load_commit_and_trees (HacktreeRepo   *self,
                              commit_sha256, &ret_commit, error))
     goto out;
 
-  g_variant_get_child (ret_commit, 5, "&s", &tree_checksum);
+  g_variant_get_child (ret_commit, 6, "&s", &tree_checksum);
 
   if (!parse_tree (self, tree_checksum, &ret_tree_data, error))
     goto out;
@@ -1039,6 +1042,7 @@ add_one_file_to_tree_and_import (HacktreeRepo   *self,
   gboolean ret = FALSE;
   GChecksum *checksum = NULL;
   
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_assert (tree != NULL);
 
   if (!link_one_file (self, abspath, HACKTREE_OBJECT_TYPE_FILE,
@@ -1073,7 +1077,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
   ParsedDirectoryData *dir;
   int i;
   gboolean is_directory;
-      
+
   if (!check_path (filename, error))
     goto out;
 
@@ -1196,6 +1200,7 @@ hacktree_repo_commit (HacktreeRepo *self,
   GChecksum *ret_commit_checksum = NULL;
   GDateTime *now = NULL;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
   if (priv->current_head)
@@ -1335,6 +1340,7 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
   GFileInfo *file_info = NULL;
   GError *temp_error = NULL;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
   objectdir = g_file_new_for_path (priv->objects_path);
@@ -1391,6 +1397,8 @@ hacktree_repo_load_variant (HacktreeRepo *repo,
   gboolean ret = FALSE;
   HacktreeSerializedVariantType ret_type;
   GVariant *ret_variant = NULL;
+
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   
   if (!load_gvariant_object_unknown (repo, sha256, &ret_type, &ret_variant, error))
     goto out;
