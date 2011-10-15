@@ -706,7 +706,7 @@ parse_tree (HacktreeRepo    *self,
       GVariant *metadata = NULL;
       ParsedDirectoryData *child_dir = NULL;
 
-      g_variant_get_child (files_variant, i, "(sss)",
+      g_variant_get_child (dirs_variant, i, "(sss)",
                            &dirname, &tree_checksum, &meta_checksum);
       
       if (!parse_tree (self, tree_checksum, &child_tree, error))
