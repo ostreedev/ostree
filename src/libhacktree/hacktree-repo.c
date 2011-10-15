@@ -193,10 +193,33 @@ parse_checksum_file (HacktreeRepo   *self,
           goto out;
         }
     }
+  else
+    {
+      g_strchomp (ret_sha256);
+    }
 
   *sha256 = ret_sha256;
   ret = TRUE;
  out:
+  return ret;
+}
+
+static gboolean
+write_checksum_file (const char *path,
+                     const char *sha256,
+                     GError    **error)
+{
+  gboolean ret = FALSE;
+  char *buf = NULL;
+
+  buf = g_strconcat (sha256, "\n", NULL);
+  
+  if (!g_file_set_contents (path, buf, -1, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  g_free (buf);
   return ret;
 }
 
@@ -1206,6 +1229,12 @@ hacktree_repo_commit (HacktreeRepo *self,
   if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
                                commit, &ret_commit_checksum, error))
     goto out;
+
+  if (!write_checksum_file (priv->head_ref_path, g_checksum_get_string (ret_commit_checksum), error))
+    goto out;
+
+  g_free (priv->current_head);
+  priv->current_head = g_strdup (g_checksum_get_string (ret_commit_checksum));
 
   ret = TRUE;
  out:
