@@ -51,23 +51,23 @@ GType hacktree_repo_get_type (void);
 
 HacktreeRepo* hacktree_repo_new (const char *path);
 
-gboolean      hacktree_repo_check (HacktreeRepo  *repo, GError **error);
+gboolean      hacktree_repo_check (HacktreeRepo  *self, GError **error);
 
-gboolean      hacktree_repo_link_file (HacktreeRepo *repo,
+gboolean      hacktree_repo_link_file (HacktreeRepo *self,
                                        const char   *path,
                                        gboolean      ignore_exists,
                                        gboolean      force,
                                        GError      **error);
 
-const char *  hacktree_repo_get_head (HacktreeRepo  *repo);
+const char *  hacktree_repo_get_head (HacktreeRepo  *self);
 
-gboolean      hacktree_repo_load_variant (HacktreeRepo *repo,
+gboolean      hacktree_repo_load_variant (HacktreeRepo *self,
                                           const char   *sha256,
                                           HacktreeSerializedVariantType *out_type,
                                           GVariant    **out_variant,
                                           GError      **error);
 
-gboolean      hacktree_repo_commit (HacktreeRepo *repo,
+gboolean      hacktree_repo_commit (HacktreeRepo *self,
                                     const char   *subject,
                                     const char   *body,
                                     GVariant     *metadata,
@@ -77,10 +77,15 @@ gboolean      hacktree_repo_commit (HacktreeRepo *repo,
                                     GChecksum   **out_commit,
                                     GError      **error);
 
-typedef void (*HacktreeRepoObjectIter) (HacktreeRepo *repo, const char *path,
+gboolean      hacktree_repo_checkout (HacktreeRepo *self,
+                                      const char   *commit,
+                                      const char   *destination,
+                                      GError      **error);
+
+typedef void (*HacktreeRepoObjectIter) (HacktreeRepo *self, const char *path,
                                         GFileInfo *fileinfo, gpointer user_data);
 
-gboolean     hacktree_repo_iter_objects (HacktreeRepo  *repo,
+gboolean     hacktree_repo_iter_objects (HacktreeRepo  *self,
                                          HacktreeRepoObjectIter callback,
                                          gpointer       user_data,
                                          GError        **error);
