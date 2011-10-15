@@ -751,14 +751,18 @@ static gboolean
 load_commit_and_trees (HacktreeRepo   *self,
                        const char     *commit_sha256,
                        GVariant      **out_commit,
-                       ParsedTreeData **out_tree_data, 
+                       ParsedDirectoryData **out_root_data,
                        GError        **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   GVariant *ret_commit = NULL;
-  ParsedTreeData *ret_tree_data = NULL;
+  ParsedDirectoryData *ret_root_data = NULL;
+  ParsedTreeData *tree_data = NULL;
+  char *ret_metadata_checksum = NULL;
+  GVariant *root_metadata = NULL;
   gboolean ret = FALSE;
-  const char *tree_checksum;
+  const char *tree_contents_checksum;
+  const char *tree_meta_checksum;
 
   if (!priv->current_head)
     {
@@ -771,24 +775,34 @@ load_commit_and_trees (HacktreeRepo   *self,
                              commit_sha256, &ret_commit, error))
     goto out;
 
-  g_variant_get_child (ret_commit, 6, "&s", &tree_checksum);
+  g_variant_get_child (ret_commit, 6, "&s", &tree_contents_checksum);
+  g_variant_get_child (ret_commit, 7, "&s", &tree_meta_checksum);
 
-  if (!parse_tree (self, tree_checksum, &ret_tree_data, error))
+  if (!load_gvariant_object (self, HACKTREE_SERIALIZED_DIRMETA_VARIANT,
+                             tree_meta_checksum, &root_metadata, error))
     goto out;
 
+  if (!parse_tree (self, tree_contents_checksum, &tree_data, error))
+    goto out;
+
+  ret_root_data = g_new0 (ParsedDirectoryData, 1);
+  ret_root_data->tree_data = tree_data;
+  ret_root_data->metadata_sha256 = g_strdup (tree_meta_checksum);
+  ret_root_data->meta_data = root_metadata;
+  root_metadata = NULL;
+
   ret = TRUE;
+  *out_commit = ret_commit;
+  ret_commit = NULL;
+  *out_root_data = ret_root_data;
+  ret_root_data = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_commit)
-        g_variant_unref (ret_commit);
-      parsed_tree_data_free (ret_tree_data);
-    }
-  else
-    {
-      *out_commit = ret_commit;
-      *out_tree_data = ret_tree_data;
-    }
+  if (ret_commit)
+    g_variant_unref (ret_commit);
+  parsed_directory_data_free (ret_root_data);
+  g_free (ret_metadata_checksum);
+  if (root_metadata)
+    g_variant_unref (root_metadata);
   return ret;
 }
 
@@ -1210,7 +1224,7 @@ commit_parsed_tree (HacktreeRepo *self,
                     const char   *subject,
                     const char   *body,
                     GVariant     *metadata,
-                    ParsedTreeData *tree,
+                    ParsedDirectoryData *root,
                     GChecksum   **out_commit,
                     GError      **error)
 {
@@ -1221,17 +1235,18 @@ commit_parsed_tree (HacktreeRepo *self,
   GVariant *commit = NULL;
   GDateTime *now = NULL;
 
-  if (!import_parsed_tree (self, tree, &root_checksum, error))
+  if (!import_parsed_tree (self, root->tree_data, &root_checksum, error))
     goto out;
 
   now = g_date_time_new_now_utc ();
-  commit = g_variant_new ("(u@a{sv}sssts)",
+  commit = g_variant_new ("(u@a{sv}ssstss)",
                           HACKTREE_COMMIT_VERSION,
                           create_empty_gvariant_dict (),
                           priv->current_head ? priv->current_head : "",
                           subject, body ? body : "",
                           g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
-                          g_checksum_get_string (root_checksum));
+                          g_checksum_get_string (root_checksum),
+                          root->metadata_sha256);
   if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
                                commit, &ret_commit, error))
     goto out;
@@ -1254,6 +1269,37 @@ commit_parsed_tree (HacktreeRepo *self,
   return ret;
 }
 
+static gboolean
+import_root (HacktreeRepo     *self,
+             const char        *base,
+             ParsedDirectoryData **out_root,
+             GError              **error)
+{
+  gboolean ret = FALSE;
+  ParsedDirectoryData *ret_root = NULL;
+  GVariant *root_metadata = NULL;
+  GChecksum *root_meta_checksum = NULL;
+
+  if (!import_directory_meta (self, base, &root_metadata, &root_meta_checksum, error))
+    goto out;
+
+  ret_root = g_new0 (ParsedDirectoryData, 1);
+  ret_root->tree_data = parsed_tree_data_new ();
+  ret_root->meta_data = root_metadata;
+  root_metadata = NULL;
+  ret_root->metadata_sha256 = g_strdup (g_checksum_get_string (root_meta_checksum));
+
+  ret = TRUE;
+  *out_root = ret_root;
+  ret_root = NULL;
+ out:
+  if (root_metadata)
+    g_variant_unref (root_metadata);
+  if (root_meta_checksum)
+    g_checksum_free (root_meta_checksum);
+  parsed_directory_data_free (ret_root);
+  return ret;
+}
 
 gboolean
 hacktree_repo_commit (HacktreeRepo *self,
@@ -1268,31 +1314,42 @@ hacktree_repo_commit (HacktreeRepo *self,
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  ParsedTreeData *tree = NULL;
+  ParsedDirectoryData *root = NULL;
   GVariant *previous_commit = NULL;
   GChecksum *ret_commit_checksum = NULL;
+  char *orig_root_metadata_sha256 = NULL;
+  GVariant *root_metadata = NULL;
+  GChecksum *root_meta_checksum = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
   if (priv->current_head)
     {
-      if (!load_commit_and_trees (self, priv->current_head, &previous_commit, &tree, error))
+      if (!load_commit_and_trees (self, priv->current_head, &previous_commit, &root, error))
         goto out;
+      if (!import_directory_meta (self, base, &root_metadata, &root_meta_checksum, error))
+        goto out;
+      g_variant_unref (root->meta_data);
+      root->meta_data = root_metadata;
+      root_metadata = NULL;
+      root->metadata_sha256 = g_strdup (g_checksum_get_string (root_meta_checksum));
     }
   else
     {
       /* Initial commit */
-      tree = parsed_tree_data_new ();
+      if (!import_root (self, base, &root, error))
+        goto out;
     }
 
-  if (!remove_files_from_tree (self, base, removed_files, tree, error))
+  if (!remove_files_from_tree (self, base, removed_files, root->tree_data, error))
     goto out;
 
-  if (!add_files_to_tree_and_import (self, base, modified_files, tree, error))
+  if (!add_files_to_tree_and_import (self, base, modified_files, root->tree_data, error))
     goto out;
 
-  if (!commit_parsed_tree (self, subject, body, metadata, tree, &ret_commit_checksum, error))
+  if (!commit_parsed_tree (self, subject, body, metadata, root,
+                           &ret_commit_checksum, error))
     goto out;
   
   ret = TRUE;
@@ -1308,7 +1365,11 @@ hacktree_repo_commit (HacktreeRepo *self,
     }
   if (previous_commit)
     g_variant_unref (previous_commit);
-  parsed_tree_data_free (tree);
+  parsed_directory_data_free (root);
+  if (root_metadata)
+    g_variant_unref (root_metadata);
+  if (root_meta_checksum)
+    g_checksum_free (root_meta_checksum);
   return ret;
 }
 
@@ -1325,7 +1386,7 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  ParsedTreeData *tree = NULL;
+  ParsedDirectoryData *root = NULL;
   GVariant *previous_commit = NULL;
   GChecksum *ret_commit_checksum = NULL;
   GUnixInputStream *in = NULL;
@@ -1333,12 +1394,15 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
   char *filename = NULL;
   gsize filename_len;
   GError *temp_error = NULL;
+  GVariant *root_metadata = NULL;
+  GChecksum *root_meta_checksum = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
   /* We're overwriting the tree */
-  tree = parsed_tree_data_new ();
+  if (!import_root (self, base, &root, error))
+    goto out;
 
   in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);
   datain = g_data_input_stream_new ((GInputStream*)in);
@@ -1354,7 +1418,7 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
               goto out;
             }
         }
-      if (!add_one_path_to_tree_and_import (self, base, filename, tree, error))
+      if (!add_one_path_to_tree_and_import (self, base, filename, root->tree_data, error))
         goto out;
       g_free (filename);
       filename = NULL;
@@ -1365,7 +1429,7 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
       goto out;
     }
   if (!commit_parsed_tree (self, subject, body, metadata,
-                           tree, &ret_commit_checksum, error))
+                           root, &ret_commit_checksum, error))
     goto out;
   
   ret = TRUE;
@@ -1379,10 +1443,14 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
     {
       *out_commit = ret_commit_checksum;
     }
+  if (root_metadata)
+    g_variant_unref (root_metadata);
+  if (root_meta_checksum)
+    g_checksum_free (root_meta_checksum);
   g_clear_object (&datain);
   g_clear_object (&in);
   g_free (filename);
-  parsed_tree_data_free (tree);
+  parsed_directory_data_free (root);
   return ret;
   
 }
@@ -1569,7 +1637,6 @@ resolve_ref (HacktreeRepo *self,
   return FALSE;
 }
 
-
 static gboolean
 checkout_tree (HacktreeRepo    *self,
                ParsedTreeData  *tree,
@@ -1670,7 +1737,8 @@ hacktree_repo_checkout (HacktreeRepo *self,
   gboolean ret = FALSE;
   GVariant *commit = NULL;
   char *resolved = NULL;
-  ParsedTreeData *tree = NULL;
+  char *root_meta_sha = NULL;
+  ParsedDirectoryData *root = NULL;
 
   if (g_file_test (destination, G_FILE_TEST_EXISTS))
     {
@@ -1683,17 +1751,10 @@ hacktree_repo_checkout (HacktreeRepo *self,
   if (!resolve_ref (self, ref, &resolved, error))
     goto out;
 
-  /* FIXME - perms etc on root directory */
-  if (mkdir (destination, (mode_t)0755) < 0)
-    {
-      ht_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  if (!load_commit_and_trees (self, resolved, &commit, &tree, error))
+  if (!load_commit_and_trees (self, resolved, &commit, &root, error))
     goto out;
 
-  if (!checkout_tree (self, tree, destination, error))
+  if (!checkout_one_directory (self, destination, NULL, root, error))
     goto out;
 
   ret = TRUE;
@@ -1701,6 +1762,7 @@ hacktree_repo_checkout (HacktreeRepo *self,
   g_free (resolved);
   if (commit)
     g_variant_unref (commit);
-  parsed_tree_data_free (tree);
+  parsed_directory_data_free (root);
+  g_free (root_meta_sha);
   return ret;
 }

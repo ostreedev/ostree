@@ -74,13 +74,14 @@ typedef enum {
  * Commit objects:
  * u - Version
  * a{sv} - Metadata
- * s - parent checksum
+ * s - parent checksum (empty string for initial)
  * s - subject 
  * s - body
  * t - Timestamp in seconds since the epoch (UTC)
- * s - Tree SHA256
+ * s - Root tree contents
+ * s - Root tree metadata
  */
-#define HACKTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}sssts)"
+#define HACKTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}ssstss)"
 
 GVariant *hacktree_get_xattrs_for_path (const char *path,
                                         GError    **error);
