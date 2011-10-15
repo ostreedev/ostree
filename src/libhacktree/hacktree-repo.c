@@ -275,11 +275,11 @@ import_gvariant_object (HacktreeRepo  *self,
 }
 
 static gboolean
-load_gvariant_object (HacktreeRepo  *self,
-                      HacktreeSerializedVariantType expected_type,
-                      const char    *sha256, 
-                      GVariant     **out_variant,
-                      GError       **error)
+load_gvariant_object_unknown (HacktreeRepo  *self,
+                              const char    *sha256,
+                              HacktreeSerializedVariantType *out_type,
+                              GVariant     **out_variant,
+                              GError       **error)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   GMappedFile *mfile = NULL;
@@ -287,6 +287,7 @@ load_gvariant_object (HacktreeRepo  *self,
   GVariant *ret_variant = NULL;
   GVariant *container = NULL;
   char *path = NULL;
+  guint32 ret_type;
 
   path = get_object_path_for_checksum (self, sha256);
   
@@ -295,7 +296,6 @@ load_gvariant_object (HacktreeRepo  *self,
     goto out;
   else
     {
-      guint32 type;
       container = g_variant_new_from_data (G_VARIANT_TYPE (HACKTREE_SERIALIZED_VARIANT_FORMAT),
                                            g_mapped_file_get_contents (mfile),
                                            g_mapped_file_get_length (mfile),
@@ -309,15 +309,7 @@ load_gvariant_object (HacktreeRepo  *self,
           goto out;
         }
       g_variant_get (container, "(uv)",
-                     &type, &ret_variant);
-      if (type != expected_type)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Corrupted metadata object '%s'; found type %u, expected %u", sha256,
-                       type, (guint32)expected_type);
-          goto out;
-
-        }
+                     &ret_type, &ret_variant);
       mfile = NULL;
     }
 
@@ -329,12 +321,49 @@ load_gvariant_object (HacktreeRepo  *self,
         g_variant_unref (ret_variant);
     }
   else
-    *out_variant = ret_variant;
+    {
+      *out_type = ret_type;
+      *out_variant = ret_variant;
+    }
   if (container != NULL)
     g_variant_unref (container);
   g_free (path);
   if (mfile != NULL)
     g_mapped_file_unref (mfile);
+  return ret;
+}
+
+static gboolean
+load_gvariant_object (HacktreeRepo  *self,
+                      HacktreeSerializedVariantType expected_type,
+                      const char    *sha256, 
+                      GVariant     **out_variant,
+                      GError       **error)
+{
+  gboolean ret = FALSE;
+  HacktreeSerializedVariantType type;
+  GVariant *ret_variant = NULL;
+
+  if (!load_gvariant_object_unknown (self, sha256, &type, &ret_variant, error))
+    goto out;
+
+  if (type != expected_type)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted metadata object '%s'; found type %u, expected %u", sha256,
+                   type, (guint32)expected_type);
+      goto out;
+      
+    }
+
+  ret = TRUE;
+  *out_variant = ret_variant;
+ out:
+  if (!ret)
+    {
+      if (ret_variant)
+        g_variant_unref (ret_variant);
+    }
   return ret;
 }
 
@@ -1198,7 +1227,7 @@ iter_object_dir (HacktreeRepo   *self,
 
   dirpath = g_file_get_path (dir);
 
-  enumerator = g_file_enumerate_children (dir, "standard::*,unix::*", 
+  enumerator = g_file_enumerate_children (dir, "standard::name,standard::type,unix::*", 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);
@@ -1293,4 +1322,40 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
   g_clear_object (&enumerator);
   g_clear_object (&objectdir);
   return ret;
+}
+
+gboolean
+hacktree_repo_load_variant (HacktreeRepo *repo,
+                            const char   *sha256,
+                            HacktreeSerializedVariantType *out_type,
+                            GVariant    **out_variant,
+                            GError      **error)
+{
+  gboolean ret = FALSE;
+  HacktreeSerializedVariantType ret_type;
+  GVariant *ret_variant = NULL;
+  
+  if (!load_gvariant_object_unknown (repo, sha256, &ret_type, &ret_variant, error))
+    goto out;
+
+  ret = TRUE;
+  *out_type = ret_type;
+  *out_variant = ret_variant;
+ out:
+  if (!ret)
+    {
+      if (ret_variant)
+        g_variant_unref (ret_variant);
+    }
+  return ret;
+}
+
+const char *
+hacktree_repo_get_head (HacktreeRepo  *self)
+{
+  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+
+  g_return_val_if_fail (priv->inited, NULL);
+
+  return priv->current_head;
 }

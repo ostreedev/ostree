@@ -59,6 +59,14 @@ gboolean      hacktree_repo_link_file (HacktreeRepo *repo,
                                        gboolean      force,
                                        GError      **error);
 
+const char *  hacktree_repo_get_head (HacktreeRepo  *repo);
+
+gboolean      hacktree_repo_load_variant (HacktreeRepo *repo,
+                                          const char   *sha256,
+                                          HacktreeSerializedVariantType *out_type,
+                                          GVariant    **out_variant,
+                                          GError      **error);
+
 gboolean      hacktree_repo_commit (HacktreeRepo *repo,
                                     const char   *subject,
                                     const char   *body,
