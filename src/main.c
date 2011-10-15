@@ -29,6 +29,7 @@
 #include "ht-builtins.h"
 
 static HacktreeBuiltin builtins[] = {
+  { "checkout", hacktree_builtin_checkout, 0 },
   { "init", hacktree_builtin_init, 0 },
   { "commit", hacktree_builtin_commit, 0 },
   { "link-file", hacktree_builtin_link_file, 0 },

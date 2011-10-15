@@ -46,6 +46,7 @@ bin_PROGRAMS += hacktree
 
 hacktree_SOURCES = src/main.c \
 	src/ht-builtins.h \
+	src/ht-builtin-checkout.c \
 	src/ht-builtin-commit.c \
 	src/ht-builtin-fsck.c \
 	src/ht-builtin-init.c \

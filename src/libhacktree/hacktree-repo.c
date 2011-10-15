@@ -425,7 +425,7 @@ import_directory_meta (HacktreeRepo  *self,
                            HACKTREE_DIR_META_VERSION,
                            (guint32)stbuf.st_uid,
                            (guint32)stbuf.st_gid,
-                           (guint32)(stbuf.st_mode & ~S_IFMT),
+                           (guint32)(stbuf.st_mode & (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)),
                            g_variant_new_fixed_array (G_VARIANT_TYPE ("y"),
                                                       xattrs, xattr_len, 1));
   g_variant_ref_sink (dirmeta);
@@ -1423,4 +1423,161 @@ hacktree_repo_get_head (HacktreeRepo  *self)
   g_return_val_if_fail (priv->inited, NULL);
 
   return priv->current_head;
+}
+
+static gboolean
+resolve_ref (HacktreeRepo *self,
+             const char   *ref,
+             char       **resolved,
+             GError      **error)
+{
+  if (strcmp (ref, "HEAD") == 0)
+    {
+      *resolved = g_strdup (hacktree_repo_get_head (self));
+      return TRUE;
+    }
+  else if (strlen (ref) == 64)
+    {
+      *resolved = g_strdup (ref);
+      return TRUE;
+    }
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+               "Invalid ref '%s' (must be SHA256 or HEAD)", ref);
+  return FALSE;
+}
+
+
+static gboolean
+checkout_tree (HacktreeRepo    *self,
+               ParsedTreeData  *tree,
+               const char      *destination,
+               GError         **error);
+
+static gboolean
+checkout_one_directory (HacktreeRepo  *self,
+                        const char *destination,
+                        const char *dirname,
+                        ParsedDirectoryData *dir,
+                        GError         **error)
+{
+  gboolean ret = FALSE;
+  char *dest_path = NULL;
+  guint32 version, uid, gid, mode;
+  GVariant *xattr_variant = NULL;
+  const guint8 *xattrs = NULL;
+  gsize xattr_len;
+
+  dest_path = g_build_filename (destination, dirname, NULL);
+      
+  g_variant_get (dir->meta_data, "(uuuu@ay)",
+                 &version, &uid, &gid, &mode,
+                 &xattr_variant);
+  xattrs = g_variant_get_fixed_array (xattr_variant, &xattr_len, 1);
+
+  if (mkdir (dest_path, (mode_t)mode) < 0)
+    {
+      ht_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+      
+  if (!checkout_tree (self, dir->tree_data, dest_path, error))
+    goto out;
+
+  /* TODO - xattrs */
+      
+  ret = TRUE;
+ out:
+  g_free (dest_path);
+  g_variant_unref (xattr_variant);
+  return ret;
+}
+
+static gboolean
+checkout_tree (HacktreeRepo    *self,
+               ParsedTreeData  *tree,
+               const char      *destination,
+               GError         **error)
+{
+  gboolean ret = FALSE;
+  GHashTableIter hash_iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&hash_iter, tree->files);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *filename = key;
+      const char *checksum = value;
+      char *object_path;
+      char *dest_path;
+
+      object_path = get_object_path (self, checksum, HACKTREE_OBJECT_TYPE_FILE);
+      dest_path = g_build_filename (destination, filename, NULL);
+      if (link (object_path, dest_path) < 0)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          g_free (object_path);
+          g_free (dest_path);
+          goto out;
+        }
+      g_free (object_path);
+      g_free (dest_path);
+    }
+
+  g_hash_table_iter_init (&hash_iter, tree->directories);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *dirname = key;
+      ParsedDirectoryData *dir = value;
+      
+      if (!checkout_one_directory (self, destination, dirname, dir, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+hacktree_repo_checkout (HacktreeRepo *self,
+                        const char   *ref,
+                        const char   *destination,
+                        GError      **error)
+{
+  gboolean ret = FALSE;
+  GVariant *commit = NULL;
+  char *resolved = NULL;
+  ParsedTreeData *tree = NULL;
+
+  if (g_file_test (destination, G_FILE_TEST_EXISTS))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Destination path '%s' already exists",
+                   destination);
+      goto out;
+    }
+
+  if (!resolve_ref (self, ref, &resolved, error))
+    goto out;
+
+  /* FIXME - perms etc on root directory */
+  if (mkdir (destination, (mode_t)0755) < 0)
+    {
+      ht_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (!load_commit_and_trees (self, resolved, &commit, &tree, error))
+    goto out;
+
+  if (!checkout_tree (self, tree, destination, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  g_free (resolved);
+  if (commit)
+    g_variant_unref (commit);
+  parsed_tree_data_free (tree);
+  return ret;
 }

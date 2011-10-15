@@ -78,7 +78,7 @@ gboolean      hacktree_repo_commit (HacktreeRepo *self,
                                     GError      **error);
 
 gboolean      hacktree_repo_checkout (HacktreeRepo *self,
-                                      const char   *commit,
+                                      const char   *ref,
                                       const char   *destination,
                                       GError      **error);
 

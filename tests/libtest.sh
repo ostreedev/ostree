@@ -32,4 +32,21 @@ die () {
     fi
 }
 
+setup_test_repository1 () {
+    mkdir files
+    cd files
+    ht_files=`pwd`
+    export ht_files
+    echo first > firstfile
+    echo second > secondfile
+
+    mkdir ../repo
+    ht_repo="--repo=../repo"
+    export ht_repo
+    hacktree init $ht_repo
+    hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
+    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body first" --add=secondfile
+    hacktree fsck -q $ht_repo
+}
+
 trap 'die' EXIT
