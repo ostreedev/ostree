@@ -258,7 +258,7 @@ import_gvariant_object (HacktreeRepo  *self,
                               NULL, error))
     goto out;
 
-  if (!link_one_file (self, tmp_name, FALSE, FALSE, out_checksum, error))
+  if (!link_one_file (self, tmp_name, TRUE, FALSE, out_checksum, error))
     goto out;
   
   ret = TRUE;
