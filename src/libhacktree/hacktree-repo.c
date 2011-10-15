@@ -402,7 +402,7 @@ import_directory_meta (HacktreeRepo  *self,
   struct stat stbuf;
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
-  char *xattrs = NULL;
+  GVariant *xattrs = NULL;
   gsize xattr_len;
 
   if (lstat (path, &stbuf) < 0)
@@ -418,16 +418,17 @@ import_directory_meta (HacktreeRepo  *self,
       goto out;
     }
 
-  if (!hacktree_get_xattrs_for_directory (path, &xattrs, &xattr_len, error))
+  xattrs = hacktree_get_xattrs_for_path (path, error);
+  if (!xattrs)
     goto out;
 
-  dirmeta = g_variant_new ("(uuuu@ay)",
+  dirmeta = g_variant_new ("(uuuu@a(ayay))",
                            HACKTREE_DIR_META_VERSION,
                            (guint32)stbuf.st_uid,
                            (guint32)stbuf.st_gid,
                            (guint32)(stbuf.st_mode & (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)),
-                           g_variant_new_fixed_array (G_VARIANT_TYPE ("y"),
-                                                      xattrs, xattr_len, 1));
+                           xattrs);
+  xattrs = NULL; /* was floating */
   g_variant_ref_sink (dirmeta);
 
   if (!import_gvariant_object (self, HACKTREE_SERIALIZED_DIRMETA_VARIANT, 
@@ -448,7 +449,8 @@ import_directory_meta (HacktreeRepo  *self,
       *out_checksum = ret_checksum;
       *out_variant = dirmeta;
     }
-  g_free (xattrs);
+  if (xattrs)
+    g_variant_unref (xattrs);
   return ret;
 }
 
@@ -1473,10 +1475,9 @@ checkout_one_directory (HacktreeRepo  *self,
 
   dest_path = g_build_filename (destination, dirname, NULL);
       
-  g_variant_get (dir->meta_data, "(uuuu@ay)",
+  g_variant_get (dir->meta_data, "(uuuu@a(ayay))",
                  &version, &uid, &gid, &mode,
                  &xattr_variant);
-  xattrs = g_variant_get_fixed_array (xattr_variant, &xattr_len, 1);
 
   if (mkdir (dest_path, (mode_t)mode) < 0)
     {

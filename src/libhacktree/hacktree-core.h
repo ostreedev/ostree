@@ -36,10 +36,17 @@ typedef enum {
 typedef enum {
   HACKTREE_SERIALIZED_TREE_VARIANT = 1,
   HACKTREE_SERIALIZED_COMMIT_VARIANT = 2,
-  HACKTREE_SERIALIZED_DIRMETA_VARIANT = 3
+  HACKTREE_SERIALIZED_DIRMETA_VARIANT = 3,
+  HACKTREE_SERIALIZED_XATTR_VARIANT = 4
 } HacktreeSerializedVariantType;
 
 #define HACKTREE_SERIALIZED_VARIANT_FORMAT "(uv)"
+
+/*
+ * xattr objects:
+ * a(ayay) - array of (name, value) pairs, both binary data, though name is a bytestring
+ */
+#define HACKTREE_XATTR_GVARIANT_FORMAT "a(ayay)"
 
 #define HACKTREE_DIR_META_VERSION 0
 /*
@@ -48,9 +55,9 @@ typedef enum {
  * u - uid
  * u - gid
  * u - mode
- * ay - xattrs
+ * a(ayay) - xattrs
  */
-#define HACKTREE_DIRMETA_GVARIANT_FORMAT "(uuuuay)"
+#define HACKTREE_DIRMETA_GVARIANT_FORMAT "(uuuua(ayay))"
 
 #define HACKTREE_TREE_VERSION 0
 /*
@@ -75,10 +82,8 @@ typedef enum {
  */
 #define HACKTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}sssts)"
 
-gboolean   hacktree_get_xattrs_for_directory (const char *path,
-                                              char      **out_xattrs,
-                                              gsize      *out_len,
-                                              GError    **error);
+GVariant *hacktree_get_xattrs_for_path (const char *path,
+                                        GError    **error);
 
 gboolean hacktree_stat_and_checksum_file (int dirfd, const char *path,
                                           GChecksum **out_checksum,

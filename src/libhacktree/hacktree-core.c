@@ -61,15 +61,63 @@ canonicalize_xattrs (char *xattr_string, size_t len)
   return g_string_free (result, FALSE);
 }
 
-gboolean
-hacktree_get_xattrs_for_directory (const char *path,
-                                   char      **out_xattrs, /* out */
-                                   gsize      *out_len, /* out */
-                                   GError **error)
+static gboolean
+read_xattr_name_array (const char *path,
+                       const char *xattrs,
+                       size_t      len,
+                       GVariantBuilder *builder,
+                       GError  **error)
 {
   gboolean ret = FALSE;
-  char *xattrs = NULL;
+  const char *p;
+
+  p = xattrs;
+  while (p < xattrs+len)
+    {
+      ssize_t bytes_read;
+      char *buf;
+
+      bytes_read = lgetxattr (path, p, NULL, 0);
+      if (bytes_read < 0)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      if (bytes_read == 0)
+        continue;
+
+      buf = g_malloc (bytes_read);
+      if (lgetxattr (path, p, buf, bytes_read) < 0)
+        {
+          ht_util_set_error_from_errno (error, errno);
+          g_free (buf);
+          goto out;
+        }
+      
+      g_variant_builder_add (builder, "(@ay@ay)",
+                             g_variant_new_bytestring (p),
+                             g_variant_new_fixed_array (G_VARIANT_TYPE ("y"), buf, bytes_read, 1));
+
+      g_free (buf);
+      p = p + strlen (p) + 1;
+    }
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+GVariant *
+hacktree_get_xattrs_for_path (const char *path,
+                              GError    **error)
+{
+  GVariant *ret = NULL;
+  GVariantBuilder builder;
+  char *xattr_names = NULL;
+  char *xattr_names_canonical = NULL;
   ssize_t bytes_read;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
 
   bytes_read = llistxattr (path, NULL, 0);
 
@@ -83,27 +131,25 @@ hacktree_get_xattrs_for_directory (const char *path,
     }
   else if (bytes_read > 0)
     {
-      xattrs = g_malloc (bytes_read);
-      if (!llistxattr (path, xattrs, bytes_read))
+      const char *p;
+      xattr_names = g_malloc (bytes_read);
+      if (llistxattr (path, xattr_names, bytes_read) < 0)
         {
           ht_util_set_error_from_errno (error, errno);
-          g_free (xattrs);
-          xattrs = NULL;
           goto out;
         }
-
-      *out_xattrs = canonicalize_xattrs (xattrs, bytes_read);
-      *out_len = (gsize)bytes_read;
-    }
-  else
-    {
-      *out_xattrs = NULL;
-      *out_len = 0;
+      xattr_names_canonical = canonicalize_xattrs (xattr_names, bytes_read);
+      
+      if (!read_xattr_name_array (path, xattr_names_canonical, bytes_read, &builder, error))
+        goto out;
     }
 
-  ret = TRUE;
+  ret = g_variant_builder_end (&builder);
  out:
-  g_free (xattrs);
+  if (!ret)
+    g_variant_builder_clear (&builder);
+  g_free (xattr_names);
+  g_free (xattr_names_canonical);
   return ret;
 }
 
@@ -117,8 +163,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
   GChecksum *content_and_meta_sha256 = NULL;
   char *stat_string = NULL;
   ssize_t bytes_read;
-  char *xattrs = NULL;
-  char *xattrs_canonicalized = NULL;
+  GVariant *xattrs = NULL;
   int fd = -1;
   DIR *temp_dir = NULL;
   char *basename = NULL;
@@ -159,39 +204,9 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
     }
 
   stat_string = stat_to_string (&stbuf);
-
-  /* FIXME - Add llistxattrat */
-  if (!S_ISLNK(stbuf.st_mode))
-    bytes_read = flistxattr (fd, NULL, 0);
-  else
-    bytes_read = llistxattr (path, NULL, 0);
-
-  if (bytes_read < 0)
-    {
-      if (errno != ENOTSUP)
-        {
-          ht_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else if (bytes_read > 0)
-    {
-      gboolean tmp;
-      xattrs = g_malloc (bytes_read);
-      /* FIXME - Add llistxattrat */
-      if (!S_ISLNK(stbuf.st_mode))
-        tmp = flistxattr (fd, xattrs, bytes_read);
-      else
-        tmp = llistxattr (path, xattrs, bytes_read);
-          
-      if (!tmp)
-        {
-          ht_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      xattrs_canonicalized = canonicalize_xattrs (xattrs, bytes_read);
-    }
+  xattrs = hacktree_get_xattrs_for_path (path, error);
+  if (!xattrs)
+    goto out;
 
   content_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
  
@@ -235,7 +250,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
   content_and_meta_sha256 = g_checksum_copy (content_sha256);
 
   g_checksum_update (content_and_meta_sha256, (guint8*)stat_string, strlen (stat_string));
-  g_checksum_update (content_and_meta_sha256, (guint8*)xattrs_canonicalized, strlen (stat_string));
+  g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
 
   *out_stbuf = stbuf;
   *out_checksum = content_and_meta_sha256;
@@ -248,8 +263,8 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
   g_free (symlink_target);
   g_free (basename);
   g_free (stat_string);
-  g_free (xattrs);
-  g_free (xattrs_canonicalized);
+  if (xattrs)
+    g_variant_unref (xattrs);
   if (content_sha256)
     g_checksum_free (content_sha256);
 
