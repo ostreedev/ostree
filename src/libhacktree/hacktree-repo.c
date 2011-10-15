@@ -899,7 +899,7 @@ walk_parsed_tree (HacktreeRepo  *self,
                   const char    *filename,
                   ParsedTreeData *tree,
                   int            *out_filename_index, /* out*/
-                  char          **out_component, /* out, but do not free */
+                  char          **out_component, /* out, must free */
                   ParsedTreeData **out_tree, /* out, but do not free */
                   GError        **error)
 {
@@ -907,8 +907,8 @@ walk_parsed_tree (HacktreeRepo  *self,
   GPtrArray *components = NULL;
   ParsedTreeData *current_tree = tree;
   const char *component = NULL;
-  const char *file_sha1;
-  ParsedDirectoryData *dir;
+  const char *file_sha1 = NULL;
+  ParsedDirectoryData *dir = NULL;
   int i;
   int ret_filename_index = 0;
 
@@ -921,7 +921,7 @@ walk_parsed_tree (HacktreeRepo  *self,
       component = components->pdata[i];
       file_sha1 = g_hash_table_lookup (current_tree->files, component);
       dir = g_hash_table_lookup (current_tree->directories, component);
-          
+
       if (!(file_sha1 || dir))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -937,16 +937,18 @@ walk_parsed_tree (HacktreeRepo  *self,
                        filename);
           goto out;
         }
-      else if (!dir)
-        g_assert_not_reached ();
-      current_tree = dir->tree_data;
-      ret_filename_index++;
+      else
+        {
+          g_assert (dir != NULL);
+          current_tree = dir->tree_data;
+          ret_filename_index++;
+        }
     }
 
   ret = TRUE;
-  g_assert (!(file_sha1 && dir));
   *out_filename_index = i;
-  *out_component = components->pdata[i-1];
+  *out_component = components->pdata[components->len-1];
+  components->pdata[components->len-1] = NULL; /* steal */
   *out_tree = current_tree;
  out:
   g_ptr_array_free (components, TRUE);
@@ -967,7 +969,7 @@ remove_files_from_tree (HacktreeRepo   *self,
     {
       const char *filename = removed_files->pdata[i];
       int filename_index;
-      const char *component;
+      char *component = NULL;
       ParsedTreeData *parent;
       const char *file_sha1;
       ParsedTreeData *dir;
@@ -988,7 +990,14 @@ remove_files_from_tree (HacktreeRepo   *self,
       else if (dir)
         g_hash_table_remove (parent->directories, component);
       else
-        g_assert_not_reached ();
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "No such file or directory: %s",
+                       filename);
+          g_free (component);
+          goto out;
+        }
+      g_free (component);
     }
   
   ret = TRUE;

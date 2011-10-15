@@ -33,7 +33,13 @@ die () {
 }
 
 assert_has_file () {
-    test -f $1 || (echo "Couldn't find $1"; exit 1)
+    test -f "$1" || (echo "Couldn't find '$1'"; exit 1)
+}
+
+assert_not_has_file () {
+    if test -f "$1"; then
+	echo "File '$1' exists"; exit 1
+    fi
 }
 
 setup_test_repository1 () {
@@ -67,8 +73,11 @@ setup_test_repository2 () {
     mkdir baz/another/
     echo x > baz/another/y
 
-    mkdir ../repo
-    ht_repo="--repo=../repo"
+    cd ..
+    mkdir repo
+    cd repo
+    ht_repo="--repo=`pwd`"
+    cd ../files
     export ht_repo
     hacktree init $ht_repo
     hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
