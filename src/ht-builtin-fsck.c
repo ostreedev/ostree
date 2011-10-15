@@ -49,9 +49,11 @@ object_iter_callback (HacktreeRepo  *repo,
   struct stat stbuf;
   GChecksum *checksum = NULL;
   GError *error = NULL;
-  char *dirname;
-  char *checksum_prefix;
-  char *checksum_string;
+  char *dirname = NULL;
+  char *checksum_prefix = NULL;
+  char *checksum_string = NULL;
+  char *filename_checksum = NULL;
+  char *dot;
 
   dirname = g_path_get_dirname (path);
   checksum_prefix = g_path_get_basename (dirname);
@@ -63,7 +65,12 @@ object_iter_callback (HacktreeRepo  *repo,
   if (!hacktree_stat_and_checksum_file (-1, path, &checksum, &stbuf, &error))
     goto out;
 
-  checksum_string = g_strconcat (checksum_prefix, g_file_info_get_name (file_info), NULL);
+  filename_checksum = g_strdup (g_file_info_get_name (file_info));
+  dot = strrchr (filename_checksum, '.');
+  g_assert (dot != NULL);
+  *dot = '\0';
+
+  checksum_string = g_strconcat (checksum_prefix, filename_checksum, NULL);
 
   if (strcmp (checksum_string, g_checksum_get_string (checksum)) != 0)
     {
@@ -78,6 +85,8 @@ object_iter_callback (HacktreeRepo  *repo,
     g_checksum_free (checksum);
   g_free (dirname);
   g_free (checksum_prefix);
+  g_free (checksum_string);
+  g_free (filename_checksum);
   if (error != NULL)
     {
       g_printerr ("%s\n", error->message);

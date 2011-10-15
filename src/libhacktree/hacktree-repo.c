@@ -28,12 +28,14 @@
 
 static gboolean
 link_one_file (HacktreeRepo *self, const char *path,
+               HacktreeObjectType type,
                gboolean ignore_exists, gboolean force,
                GChecksum **out_checksum,
                GError **error);
 static char *
-get_object_path_for_checksum (HacktreeRepo  *self,
-                              const char    *checksum);
+get_object_path (HacktreeRepo  *self,
+                 const char    *checksum,
+                 HacktreeObjectType type);
 
 enum {
   PROP_0,
@@ -258,7 +260,8 @@ import_gvariant_object (HacktreeRepo  *self,
                               NULL, error))
     goto out;
 
-  if (!link_one_file (self, tmp_name, TRUE, FALSE, out_checksum, error))
+  if (!link_one_file (self, tmp_name, HACKTREE_OBJECT_TYPE_META, 
+                      TRUE, FALSE, out_checksum, error))
     goto out;
   
   ret = TRUE;
@@ -289,7 +292,7 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
   char *path = NULL;
   guint32 ret_type;
 
-  path = get_object_path_for_checksum (self, sha256);
+  path = get_object_path (self, sha256, HACKTREE_OBJECT_TYPE_META);
   
   mfile = g_mapped_file_new (priv->index_path, FALSE, error);
   if (mfile == NULL)
@@ -429,15 +432,31 @@ import_directory_meta (HacktreeRepo  *self,
 }
 
 static char *
-get_object_path_for_checksum (HacktreeRepo  *self,
-                              const char    *checksum)
+get_object_path (HacktreeRepo  *self,
+                 const char    *checksum,
+                 HacktreeObjectType type)
 {
   HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   char *checksum_prefix;
+  char *base_path;
   char *ret;
+  const char *type_string;
 
   checksum_prefix = g_strndup (checksum, 2);
-  ret = g_build_filename (priv->objects_path, checksum_prefix, checksum + 2, NULL);
+  base_path = g_build_filename (priv->objects_path, checksum_prefix, checksum + 2, NULL);
+  switch (type)
+    {
+    case HACKTREE_OBJECT_TYPE_FILE:
+      type_string = ".file";
+      break;
+    case HACKTREE_OBJECT_TYPE_META:
+      type_string = ".meta";
+      break;
+    default:
+      g_assert_not_reached ();
+    }
+  ret = g_strconcat (base_path, type_string, NULL);
+  g_free (base_path);
   g_free (checksum_prefix);
  
   return ret;
@@ -446,12 +465,13 @@ get_object_path_for_checksum (HacktreeRepo  *self,
 static char *
 prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
                                           GChecksum    *checksum,
+                                          HacktreeObjectType type,
                                           GError      **error)
 {
   char *checksum_dir = NULL;
   char *object_path = NULL;
 
-  object_path = get_object_path_for_checksum (self, g_checksum_get_string (checksum));
+  object_path = get_object_path (self, g_checksum_get_string (checksum), type);
   checksum_dir = g_path_get_dirname (object_path);
 
   if (!ht_util_ensure_directory (checksum_dir, FALSE, error))
@@ -463,7 +483,7 @@ prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
 }
 
 static gboolean
-link_one_file (HacktreeRepo *self, const char *path,
+link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
                gboolean ignore_exists, gboolean force,
                GChecksum **out_checksum,
                GError **error)
@@ -492,7 +512,7 @@ link_one_file (HacktreeRepo *self, const char *path,
 
   if (!hacktree_stat_and_checksum_file (dirfd (src_dir), path, &id, &stbuf, error))
     goto out;
-  dest_path = prepare_dir_for_checksum_get_object_path (self, id, error);
+  dest_path = prepare_dir_for_checksum_get_object_path (self, id, type, error);
   if (!dest_path)
     goto out;
 
@@ -563,7 +583,8 @@ hacktree_repo_link_file (HacktreeRepo *self,
 
   g_return_val_if_fail (priv->inited, FALSE);
 
-  if (!link_one_file (self, path, ignore_exists, force, &checksum, error))
+  if (!link_one_file (self, path, HACKTREE_OBJECT_TYPE_FILE,
+                      ignore_exists, force, &checksum, error))
     return FALSE;
   g_checksum_free (checksum);
   return TRUE;
@@ -1001,7 +1022,8 @@ add_one_file_to_tree_and_import (HacktreeRepo   *self,
   
   g_assert (tree != NULL);
 
-  if (!link_one_file (self, abspath, TRUE, FALSE, &checksum, error))
+  if (!link_one_file (self, abspath, HACKTREE_OBJECT_TYPE_FILE,
+                      TRUE, FALSE, &checksum, error))
     goto out;
 
   g_hash_table_replace (tree->files, g_strdup (basename),
@@ -1241,12 +1263,22 @@ iter_object_dir (HacktreeRepo   *self,
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
       
-      /* 64 - 2 */
-      if (strlen (name) == 62 && type != G_FILE_TYPE_DIRECTORY)
+      if (type != G_FILE_TYPE_DIRECTORY
+          && (g_str_has_suffix (name, ".meta")
+              || g_str_has_suffix (name, ".file")))
         {
-          char *path = g_build_filename (dirpath, name, NULL);
-          callback (self, path, file_info, user_data);
-          g_free (path);
+          char *dot;
+          char *path;
+          
+          dot = strrchr (name, '.');
+          g_assert (dot);
+          
+          if ((dot - name) == 62)
+            {
+              path = g_build_filename (dirpath, name, NULL);
+              callback (self, path, file_info, user_data);
+              g_free (path);
+            }
         }
 
       g_object_unref (file_info);
@@ -1281,7 +1313,7 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
   g_return_val_if_fail (priv->inited, FALSE);
 
   objectdir = g_file_new_for_path (priv->objects_path);
-  enumerator = g_file_enumerate_children (objectdir, "standard::*,unix::*", 
+  enumerator = g_file_enumerate_children (objectdir, "standard::name,standard::type,unix::*", 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);
