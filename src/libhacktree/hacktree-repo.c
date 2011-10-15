@@ -1116,7 +1116,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
             }
           /* Implicitly add intermediate directories */
           if (!add_one_directory_to_tree_and_import (self, component,
-                                                     abspath, current_tree, dir,
+                                                     component_abspath, current_tree, dir,
                                                      error))
             goto out;
         }

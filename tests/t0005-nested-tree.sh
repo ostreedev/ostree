@@ -24,13 +24,16 @@ set -e
 
 echo '1..3'
 
-setup_test_repository1
+setup_test_repository2
 echo 'ok setup'
-hacktree checkout $ht_repo HEAD $test_tmpdir/checkout1-head
+hacktree checkout $ht_repo HEAD $test_tmpdir/checkout2-head
 echo 'ok checkout cmd'
-cd $test_tmpdir/checkout1-head
+cd $test_tmpdir/checkout2-head
 assert_has_file firstfile
-assert_has_file secondfile
+assert_has_file baz/cow
+assert_has_file baz/saucer
+assert_has_file baz/deeper/ohyeah
+assert_has_file baz/another/y
 echo 'ok checkout verify exists'
 
 

@@ -32,6 +32,10 @@ die () {
     fi
 }
 
+assert_has_file () {
+    test -f $1 || (echo "Couldn't find $1"; exit 1)
+}
+
 setup_test_repository1 () {
     mkdir files
     cd files
@@ -45,7 +49,30 @@ setup_test_repository1 () {
     export ht_repo
     hacktree init $ht_repo
     hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
-    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body first" --add=secondfile
+    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body second" --add=secondfile
+    hacktree fsck -q $ht_repo
+}
+
+setup_test_repository2 () {
+    mkdir files
+    cd files
+    ht_files=`pwd`
+    export ht_files
+    echo first > firstfile
+    mkdir baz
+    echo moo > baz/cow
+    echo alien > baz/saucer
+    mkdir baz/deeper
+    echo hi > baz/deeper/ohyeah
+    mkdir baz/another/
+    echo x > baz/another/y
+
+    mkdir ../repo
+    ht_repo="--repo=../repo"
+    export ht_repo
+    hacktree init $ht_repo
+    hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
+    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
     hacktree fsck -q $ht_repo
 }
 

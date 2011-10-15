@@ -117,9 +117,9 @@ ht_util_path_split (const char *path)
     else
       {
         g_ptr_array_add (ret, g_strndup (p, slash - p));
-        p += 1;
+        p = slash + 1;
       }
-  } while (p);
+  } while (p && *p);
 
   return ret;
 }
@@ -127,7 +127,7 @@ ht_util_path_split (const char *path)
 char *
 ht_util_path_join_n (const char *base, GPtrArray *components, int n)
 {
-  int max = MAX(n+1, components->len);
+  int max = MIN(n+1, components->len);
   GPtrArray *subcomponents;
   char *path;
   int i;
