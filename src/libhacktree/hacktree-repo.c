@@ -999,33 +999,35 @@ add_one_directory_to_tree_and_import (HacktreeRepo   *self,
                                       const char     *basename,
                                       const char     *abspath,
                                       ParsedTreeData *tree,
-                                      ParsedDirectoryData *dir,
+                                      ParsedDirectoryData **dir, /*inout*/
                                       GError        **error)
 {
   gboolean ret = FALSE;
   GVariant *dirmeta = NULL;
   GChecksum *dir_meta_checksum = NULL;
-
+  ParsedDirectoryData *dir_value = *dir;
+  
   g_assert (tree != NULL);
 
   if (!import_directory_meta (self, abspath, &dirmeta, &dir_meta_checksum, error))
     goto out;
 
-  if (dir)
+  if (dir_value)
     {
-      g_variant_unref (dir->meta_data);
-      dir->meta_data = dirmeta;
+      g_variant_unref (dir_value->meta_data);
+      dir_value->meta_data = dirmeta;
     }
   else
     {
-      dir = g_new0 (ParsedDirectoryData, 1);
-      dir->tree_data = parsed_tree_data_new ();
-      dir->metadata_sha256 = g_strdup (g_checksum_get_string (dir_meta_checksum));
-      dir->meta_data = dirmeta;
-      g_hash_table_insert (tree->directories, g_strdup (basename), dir);
+      dir_value = g_new0 (ParsedDirectoryData, 1);
+      dir_value->tree_data = parsed_tree_data_new ();
+      dir_value->metadata_sha256 = g_strdup (g_checksum_get_string (dir_meta_checksum));
+      dir_value->meta_data = dirmeta;
+      g_hash_table_insert (tree->directories, g_strdup (basename), dir_value);
     }
 
   ret = TRUE;
+  *dir = dir_value;
  out:
   if (dir_meta_checksum)
     g_checksum_free (dir_meta_checksum);
@@ -1103,7 +1105,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
       component_abspath = ht_util_path_join_n (base, components, i);
       file_sha1 = g_hash_table_lookup (current_tree->files, component);
       dir = g_hash_table_lookup (current_tree->directories, component);
-          
+
       if (i < components->len - 1)
         {
           if (file_sha1 != NULL)
@@ -1116,9 +1118,11 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
             }
           /* Implicitly add intermediate directories */
           if (!add_one_directory_to_tree_and_import (self, component,
-                                                     component_abspath, current_tree, dir,
+                                                     component_abspath, current_tree, &dir,
                                                      error))
             goto out;
+          g_assert (dir != NULL);
+          current_tree = dir->tree_data;
         }
       else if (is_directory)
         {
@@ -1130,7 +1134,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
               goto out;
             }
           if (!add_one_directory_to_tree_and_import (self, component,
-                                                     abspath, current_tree, dir,
+                                                     abspath, current_tree, &dir,
                                                      error))
             goto out;
         }
