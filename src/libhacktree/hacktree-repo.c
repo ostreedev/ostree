@@ -54,7 +54,6 @@ struct _HacktreeRepoPrivate {
   char *path;
   GFile *repo_file;
   char *head_ref_path;
-  char *index_path;
   char *objects_path;
 
   gboolean inited;
@@ -70,7 +69,6 @@ hacktree_repo_finalize (GObject *object)
   g_free (priv->path);
   g_clear_object (&priv->repo_file);
   g_free (priv->head_ref_path);
-  g_free (priv->index_path);
   g_free (priv->objects_path);
   g_free (priv->current_head);
 
@@ -136,7 +134,6 @@ hacktree_repo_constructor (GType                  gtype,
   priv->repo_file = g_file_new_for_path (priv->path);
   priv->head_ref_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "HEAD", NULL);
   priv->objects_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "objects", NULL);
-  priv->index_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "index", NULL);
 
   return object;
 }
@@ -284,7 +281,6 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
                               GVariant     **out_variant,
                               GError       **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
   GMappedFile *mfile = NULL;
   gboolean ret = FALSE;
   GVariant *ret_variant = NULL;
@@ -294,7 +290,7 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
 
   path = get_object_path (self, sha256, HACKTREE_OBJECT_TYPE_META);
   
-  mfile = g_mapped_file_new (priv->index_path, FALSE, error);
+  mfile = g_mapped_file_new (path, FALSE, error);
   if (mfile == NULL)
     goto out;
   else
@@ -320,7 +316,7 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
  out:
   if (!ret)
     {
-      if (!ret_variant)
+      if (ret_variant)
         g_variant_unref (ret_variant);
     }
   else
