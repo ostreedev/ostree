@@ -27,6 +27,10 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean separator_null;
+static int from_fd = -1;
+static gboolean from_stdin;
+static char *from_file;
 static char *subject;
 static char *body;
 static char **additions;
@@ -36,6 +40,10 @@ static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'b', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
+  { "from-fd", 0, 0, G_OPTION_ARG_INT, &from_fd, "Read new tree files from fd", "file descriptor" },
+  { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &from_stdin, "Read new tree files from stdin", "file descriptor" },
+  { "from-file", 0, 0, G_OPTION_ARG_FILENAME, &from_file, "Read new tree files from another file", "path" },
+  { "separator-null", 0, 0, G_OPTION_ARG_NONE, &separator_null, "", "Use '\\0' as filename separator, as with find -print0" },
   { "add", 'a', 0, G_OPTION_ARG_FILENAME_ARRAY, &additions, "Relative file path to add", "filename" },
   { "remove", 'r', 0, G_OPTION_ARG_FILENAME_ARRAY, &removals, "Relative file path to remove", "filename" },
   { NULL }
@@ -47,6 +55,8 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
   GOptionContext *context;
   gboolean ret = FALSE;
   HacktreeRepo *repo = NULL;
+  gboolean using_filename_cmdline;
+  gboolean using_filedescriptors;
   GPtrArray *additions_array = NULL;
   GPtrArray *removals_array = NULL;
   GChecksum *commit_checksum = NULL;
@@ -67,10 +77,19 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
   if (!hacktree_repo_check (repo, error))
     goto out;
 
-  if (!(removals || additions))
+  using_filename_cmdline = (removals || additions);
+  using_filedescriptors = (from_file || from_fd >= 0 || from_stdin);
+
+  if (!(using_filename_cmdline || using_filedescriptors))
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "No additions or removals specified");
+      goto out;
+    }
+  if (using_filename_cmdline && using_filedescriptors)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "File descriptors may not be combined with --add or --remove");
       goto out;
     }
 
@@ -81,23 +100,54 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
       goto out;
     }
 
-  additions_array = g_ptr_array_new ();
-  removals_array = g_ptr_array_new ();
+  if (using_filename_cmdline)
+    {
+      g_assert (removals || additions);
+      additions_array = g_ptr_array_new ();
+      removals_array = g_ptr_array_new ();
 
-  if (additions)
-    for (iter = additions; *iter; iter++)
-      g_ptr_array_add (additions_array, *iter);
-  if (removals)
-    for (iter = removals; *iter; iter++)
-      g_ptr_array_add (removals_array, *iter);
+      if (additions)
+        for (iter = additions; *iter; iter++)
+          g_ptr_array_add (additions_array, *iter);
+      if (removals)
+        for (iter = removals; *iter; iter++)
+          g_ptr_array_add (removals_array, *iter);
+      
+      if (!hacktree_repo_commit (repo, subject, body, NULL,
+                                 prefix, additions_array,
+                                 removals_array,
+                                 &commit_checksum,
+                                 error))
+        goto out;
+    }
+  else if (using_filedescriptors)
+    {
+      char separator = separator_null ? '\0' : '\n';
+      gboolean temp_fd = -1;
 
-  if (!hacktree_repo_commit (repo, subject, body, NULL,
-                             prefix, additions_array,
-                             removals_array,
-                             &commit_checksum,
-                             error))
-    goto out;
-     
+      if (from_stdin)
+        from_fd = 0;
+      else if (from_file)
+        {
+          temp_fd = ht_util_open_file_read (from_file, error);
+          if (temp_fd < 0)
+            {
+              g_prefix_error (error, "Failed to open '%s': ", from_file);
+              goto out;
+            }
+          from_fd = temp_fd;
+        }
+      if (!hacktree_repo_commit_from_filelist_fd (repo, subject, body, NULL,
+                                                  prefix, from_fd, separator,
+                                                  &commit_checksum, error))
+        {
+          if (temp_fd >= 0)
+            close (temp_fd);
+          goto out;
+        }
+      if (temp_fd >= 0)
+        close (temp_fd);
+    }
  
   ret = TRUE;
   g_print ("%s\n", g_checksum_get_string (commit_checksum));

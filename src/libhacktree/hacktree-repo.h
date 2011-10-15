@@ -77,6 +77,16 @@ gboolean      hacktree_repo_commit (HacktreeRepo *self,
                                     GChecksum   **out_commit,
                                     GError      **error);
 
+gboolean      hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
+                                                     const char   *subject,
+                                                     const char   *body,
+                                                     GVariant     *metadata,
+                                                     const char   *base,
+                                                     int           fd,
+                                                     char          separator,
+                                                     GChecksum   **out_commit,
+                                                     GError      **error);
+
 gboolean      hacktree_repo_checkout (HacktreeRepo *self,
                                       const char   *ref,
                                       const char   *destination,

@@ -42,6 +42,12 @@ assert_not_has_file () {
     fi
 }
 
+assert_file_has_content () {
+    if ! grep -q "$2" "$1"; then
+	echo "File '$1' doesn't match regexp '$2'"; exit 1
+    fi
+}
+
 setup_test_repository1 () {
     mkdir files
     cd files
