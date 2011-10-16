@@ -73,17 +73,25 @@ The core idea - chroots
 
 chroots are the original lightweight "virtualization".  Let's use
 them.  So basically, you install a mainstream distribution (say
-Debian).  It has a root filesystem with a regular layout, /etc, /usr,
-/lib etc.
+Debian).  It has a root filesystem like this:
 
-Now, what we can do is have a system that installs chroots, like:
+		/usr
+		/etc
+		/home
+		...
 
+Now, what we can do is have a system that installs chroots as a subdirectory
+of the root, like:
+
+		/usr
+		/etc
+		/home
 		/gnomeos/root-3.0-opt/{usr,etc,var,...}
 		/gnomeos/root-3.2-opt/{usr,etc,var,...}
 
 These live in the same root filesystem as your regular distribution
 (Note though, the root partition should be reasonably sized, or
- hopefully you've used just one big partition).
+hopefully you've used just one big partition).
 
 You should be able to boot into one of these roots.  Since hacktree
 lives inside a distro created partition, a tricky part here is that we
@@ -162,6 +170,19 @@ There is also a "repository" that looks like this:
 Each object is either metadata (like a commit or tree), or a hard link
 to a regular file.
 
+Note that also unlike git, the checksum here includes *metadata* such
+as uid, gid, permissions, and extended attributes.  (It does not include
+file access times, since those shouldn't matter for the OS)
+
+This is another important component to allowing the hardlinks.  We
+wouldn't want say all empty files to be shared necessarily.  (Though
+maybe this is wrong, and since the OS is readonly, we can make all
+files owned by root without loss of generality).
+
+However this tradeoff means that we probably need a second index by
+content, so we don't have to redownload the entire OS if permissions
+change =)
+
 Atomic upgrades, rollback
 -------------------------
 
@@ -201,6 +222,15 @@ a tree, we check out a new copy, then run your script on top.
 
 If the script fails, we can roll back the update, or drop to a shell
 if interactive.
+
+However, we also need to consider cases where the administrator
+modifies state indirectly by a program.  Think "adduser" for example.
+
+Possible approaches:
+
+ 1. Patch all of these programs to know how to write to the writable
+    location, instead of the R/O bind mount overlay.
+ 2. Move the data to /var
 
 What about "packages"?
 ----------------------
@@ -294,20 +324,3 @@ didn't use them:
 
    What we've been using in GNOME, and has the essential property of allowing you
    to "fall back" to a stable system.  But hacktree will blow it out of the water.
-
-Challenges
-----------
-
-We need some place for components to drop mutable state.  For example,
-NetworkManager writing wireless configuration; presently this lives in
-/etc.  Perhaps move it to /var?  If /var is mutable incidentally,
-we'll have to figure out how to leave it writable while keeping /etc,
-/usr, /bin etc. read-only; individual r/o bind mounts?  Another
-possibility is chattr +i on ext3.
-
-Or we could patch NetworkManager to understand how to write
-configuration to the writable /etc tree.  Note that since these are
-files not shipped with the OS, that's OK.
-
-Ensuring that OS subtrees can read both applications and $HOME may not
-be easy.
