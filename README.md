@@ -199,6 +199,20 @@ difference internally), we simply check out a new tree into
 /gnomeos-b90ae4763 for example, then swap the symbolic link, then
 remove the old tree.
 
+But does this mean you have to "reboot" for OS upgrades?  Very likely,
+yes - and this is no different from RPM/deb or whatever.  They just
+typically lie to you about it =) But read on.
+
+Let's consider a security update to a shared library.  We can download
+the update to the repository, build a new tree and atomically swap it
+as above, but what if a process has the old shared library in use?
+
+Here's where we will probably need to inspect which processes are
+using the library - if any are, then we need to trigger either a
+logout/login if it's just the desktop shell and/or apps, or a
+"fastboot" if not.  A fastboot is dropping to "init 1" effectively,
+then going back to "init 5".
+
 Configuration Management
 ------------------------
 
