@@ -1,5 +1,32 @@
-* tree and commit objects
-* hacktree import
-* hacktree import-tar
-  - Accepts tarball on stdin, stores the objects
+FS Core
+-------
+
+* Possibly rename to "ostree"?  It sounds nicer...doesn't appear to be taken
+
 * branches
+
+Deployment
+----------
+
+* Daemon mode / DBus service
+
+* Triggers (ldconfig, gtk-update-icon-cache, ...)
+
+* GRUB management
+
+* Configuration management
+  - boot essential, how the OS was initially deployed
+  - What about e.g. users added after OS installation?
+  - host SSH keys?
+  - Then other stuff
+
+* pulling from other repositories
+
+* GPG signatures on commits
+
+* Picking a distribution base as a starting point (likely Debian)
+
+Development
+-----------
+
+* Infrasturcture for rebuilding artifacts
