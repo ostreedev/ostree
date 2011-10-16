@@ -30,6 +30,14 @@ Comparison with existing tools
     Now your system is in an undefined state - it's very possble left over files here
     will come back later to screw you.
 
+ - LXC / containers
+
+   Focused on running multiple systems at the *same time*, which isn't
+   what we want (at least, not right now), and honestly even trying to
+   support that for a graphical desktop would be a lot of tricky work,
+   for example getting two GDM instances not to fight over VT
+   allocations. But some bits of the technology may make sense to use.
+
  - jhbuild + OS packages
 
     The state of the art in GNOME - but can only build non-root things -
@@ -287,7 +295,19 @@ didn't use them:
    What we've been using in GNOME, and has the essential property of allowing you
    to "fall back" to a stable system.  But hacktree will blow it out of the water.
 
+Challenges
+----------
 
+We need some place for components to drop mutable state.  For example,
+NetworkManager writing wireless configuration; presently this lives in
+/etc.  Perhaps move it to /var?  If /var is mutable incidentally,
+we'll have to figure out how to leave it writable while keeping /etc,
+/usr, /bin etc. read-only; individual r/o bind mounts?  Another
+possibility is chattr +i on ext3.
 
+Or we could patch NetworkManager to understand how to write
+configuration to the writable /etc tree.  Note that since these are
+files not shipped with the OS, that's OK.
 
- 
+Ensuring that OS subtrees can read both applications and $HOME may not
+be easy.
