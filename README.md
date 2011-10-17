@@ -8,37 +8,59 @@ Hacking on the core operating system is painful - this includes most
 of GNOME from upower and NetworkManager up to gnome-shell.  I want a
 system that matches these requirements:
 
-0. Does not disturb your existing OS
-1. Is not terribly slow to use
-2. Shares your $HOME - you have your data
-3. Allows easy rollback
-4. Ideally allows access to existing apps
+1. Does not disturb your existing OS
+2. Is not terribly slow to use
+3. Shares your $HOME - you have your data
+4. Allows easy rollback
+5. Ideally allows access to existing apps
 
 Comparison with existing tools
 ------------------------------
 
  - Virtualization
 
-    Fails on points 2) and 3).
+    Fails on points 2) and 3).  Actually qemu-kvm can be pretty fast,
+    but in a lot of cases there is no substitute for actually booting
+    on bare metal; GNOME 3 really needs some hardware GPU
+    acceleration.
 
- - Rebuilding OS packages
+ - Rebuilding distribution packages
 
-    Fails on points 1) and 4).  Is also just very annoying.
+    Fails on points 1) and 4).  Is also just very annoying: dpkg/rpm
+    both want tarballs, which you don't have since you're working from
+    git.  The suggested "mock/pbuilder" type chroot builds are *slow*.
+    And even with non-chroot builds there is lots of pointless build
+    wrapping going on.  Both dpkg and rpm also are poor at helping you
+    revert back to the original system.
+
+    All of this can be scripted to be less bad of course - and I have
+    worked on such scripts.  But fundamentally you're still fighting
+    the system, and if you're hacking on a lowlevel library like say
+    glib, you can easily get yourself to the point where you need a
+    recovery CD - at that point your edit/compile/debug cycle is just
+    too long.
 
  - "sudo make install"
 
-    Now your system is in an undefined state - it's very possble left over files here
-    will come back later to screw you.
+    Now your system is in an undefined state.  You can use e.g. rpm
+    -qV to try to find out what you overwrote, but neither dpkg nor
+    rpm will help clean up any files left over that aren't shipped by
+    the old package.  
+
+    This is most realistic option for people hacking on system
+    components currently, but hacktree will be better.
 
  - LXC / containers
 
-   Focused on running multiple systems at the *same time*, which isn't
-   what we want (at least, not right now), and honestly even trying to
-   support that for a graphical desktop would be a lot of tricky work,
-   for example getting two GDM instances not to fight over VT
+   Fails on 3), and 4) is questionable.  Also shares the annoying part
+   of rebuilding distribution packages. LXC is focused on running
+   multiple server systems at the *same time*, which isn't what we
+   want (at least, not right now), and honestly even trying to support
+   that for a graphical desktop would be a lot of tricky work, for
+   example getting two GDM instances not to fight over VT
    allocations. But some bits of the technology may make sense to use.
 
- - jhbuild + OS packages
+ - jhbuild + distribution packages
 
     The state of the art in GNOME - but can only build non-root things -
     this means you can't build NetworkManager, and thus are permanently
@@ -57,16 +79,14 @@ back if one or both breaks.
 The rollback concept is absolutely key for shipping anything to
 enthusiasts or knowledable testers.  With a system like this, a tester
 can easily perform a local rollback - something just not well
-supported by dpkg/rpm.  (Why not Conary?  AIUI Conary is targeted at
-individual roots, so while you could roll back a given root, it would
-use significantly more disk space than hacktree)
+supported by dpkg/rpm.  (What about Conary?  See below.)
 
 Also, distributing operating system trees (instead of packages) gives
 us a sane place to perform automated QA **before** we ship it to
 testers.  We should never be wasting these people's time.
 
-Even better, this system would allow testers to bisect across
-operating system builds efficiently.
+Even better, this system would allow testers to *bisect* across
+operating system builds, and do so very efficiently.
 
 The core idea - chroots
 -----------------------
@@ -267,10 +287,11 @@ Downloads
 ---------
 
 I'm pretty sure hacktree should be significantly better than RPM with
-deltarpms.  Note we only download changed objects.  This means that if
-OpenOffice is rebuilt and just the binary changes, but no data files,
-we don't redownload ANY of that data.  And bsdiff is supposedly very
-good for binaries.
+deltarpms.  Note we only download changed objects.  If say just one
+translation changes, we only download that new translation!  One
+problem we will have to hunt down is programs that inject
+e.g. timestamps into generated files.  "gzip" is the canonical
+offender here.
 
 Upstream branches
 ----------------
