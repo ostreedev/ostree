@@ -325,6 +325,37 @@ harder would be maintaining binary compatibilty with any arbitrary
 Note these RPMs act like local configuration - they would be
 reinstalled every time you switch roots.
 
+What about BTRFS?  Doesn't it solve everything?
+-----------------------------------------------
+
+In short, BTRFS is not a magic bullet, but yes - it helps
+significantly.  The obvious thing to do is layer BTRFS under dpkg/rpm,
+and have a separate subvolume for /home so rollbacks don't lose your
+data.  See e.g.
+<http://fedoraproject.org/wiki/Features/SystemRollbackWithBtrfs>
+
+As a general rule an issue with the BTRFS is that it can't roll back
+just changes to things installed by RPM (i.e. what's in rpm -qal).
+
+For example, it's possible to e.g. run yum update, then edit something
+in /etc, reboot and notice things are broken, then roll back and have
+silently lost your changes to /etc.
+
+Another example is adding a new binary in /usr/local.  You could say,
+"OK, we'll use subvolumes for those!".  But then what about /var (and
+your VM images that live in /var/lib/libvirt ?)
+
+Finally, probably the biggest disadvantage of the rpm/dpkg + BTRFS
+approach is it doesn't solve the race conditions that happen when
+unpacking packages into the live system.  This problem is really
+important to me.
+
+Note though hacktree can definitely take advantage of BTRFS features!
+In particular, we could use "reflink"
+<http://lwn.net/Articles/331808/> instead of hard links, and avoid
+having the object store corrupted if somehow the files are modified
+directly.
+
 Other systems
 -------------
 
@@ -354,6 +385,10 @@ didn't use them:
    If rpm/dpkg are like CVS, Conary is closer to Subversion.  It's not
    bad, but hacktree is better than it for the exact same reasons git
    is better than Subversion.
+
+ - BTRFS: <http://en.wikipedia.org/wiki/Btrfs>
+
+   See above.
 
  - Jhbuild: <https://live.gnome.org/Jhbuild>
 
