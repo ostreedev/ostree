@@ -26,6 +26,8 @@
 
 G_BEGIN_DECLS
 
+GFile *ht_util_new_file_for_path (const char *path);
+
 gboolean ht_util_ensure_directory (const char *path, gboolean with_parents, GError **error);
 
 char * ht_util_get_file_contents_utf8 (const char *path, GError    **error);

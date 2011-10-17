@@ -132,7 +132,7 @@ hacktree_repo_constructor (GType                  gtype,
 
   g_assert (priv->path != NULL);
   
-  priv->repo_file = g_file_new_for_path (priv->path);
+  priv->repo_file = ht_util_new_file_for_path (priv->path);
   priv->head_ref_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "HEAD", NULL);
   priv->objects_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "objects", NULL);
 
@@ -1534,7 +1534,7 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  objectdir = g_file_new_for_path (priv->objects_path);
+  objectdir = ht_util_new_file_for_path (priv->objects_path);
   enumerator = g_file_enumerate_children (objectdir, "standard::name,standard::type,unix::*", 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 

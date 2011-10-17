@@ -52,7 +52,7 @@ hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error
     repo_path = ".";
 
   htdir_path = g_build_filename (repo_path, HACKTREE_REPO_DIR, NULL);
-  htdir = g_file_new_for_path (htdir_path);
+  htdir = ht_util_new_file_for_path (htdir_path);
 
   if (!g_file_make_directory (htdir, NULL, error))
     goto out;

@@ -105,3 +105,10 @@ ht_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
   g_free (path);
   return ret;
 }
+
+/* Like g_file_new_for_path, but only do local stuff, not GVFS */
+GFile *
+ht_util_new_file_for_path (const char *path)
+{
+  return g_vfs_get_file_for_path (g_vfs_get_local (), path);
+}
