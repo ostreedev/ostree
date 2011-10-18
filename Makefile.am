@@ -10,5 +10,4 @@ libexec_PROGRAMS =
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 
-
-include Makefile-hacktree.am
+include Makefile-src.am

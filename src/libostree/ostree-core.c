@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "hacktree.h"
-#include "htutil.h"
+#include "ostree.h"
+#include "otutil.h"
 
 #include <sys/types.h>
 #include <attr/xattr.h>
@@ -80,7 +80,7 @@ read_xattr_name_array (const char *path,
       bytes_read = lgetxattr (path, p, NULL, 0);
       if (bytes_read < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
       if (bytes_read == 0)
@@ -89,7 +89,7 @@ read_xattr_name_array (const char *path,
       buf = g_malloc (bytes_read);
       if (lgetxattr (path, p, buf, bytes_read) < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           g_free (buf);
           goto out;
         }
@@ -108,7 +108,7 @@ read_xattr_name_array (const char *path,
 }
 
 GVariant *
-hacktree_get_xattrs_for_path (const char *path,
+ostree_get_xattrs_for_path (const char *path,
                               GError    **error)
 {
   GVariant *ret = NULL;
@@ -125,7 +125,7 @@ hacktree_get_xattrs_for_path (const char *path,
     {
       if (errno != ENOTSUP)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -135,7 +135,7 @@ hacktree_get_xattrs_for_path (const char *path,
       xattr_names = g_malloc (bytes_read);
       if (llistxattr (path, xattr_names, bytes_read) < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
       xattr_names_canonical = canonicalize_xattrs (xattr_names, bytes_read);
@@ -154,7 +154,7 @@ hacktree_get_xattrs_for_path (const char *path,
 }
 
 gboolean
-hacktree_stat_and_checksum_file (int dir_fd, const char *path,
+ostree_stat_and_checksum_file (int dir_fd, const char *path,
                                  GChecksum **out_checksum,
                                  struct stat *out_stbuf,
                                  GError **error)
@@ -180,7 +180,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
       temp_dir = opendir (dirname);
       if (temp_dir == NULL)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           g_free (dirname);
         }
       g_free (dirname);
@@ -189,22 +189,22 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
 
   if (fstatat (dir_fd, basename, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
   if (!S_ISLNK(stbuf.st_mode))
     {
-      fd = ht_util_open_file_read_at (dir_fd, basename, error);
+      fd = ot_util_open_file_read_at (dir_fd, basename, error);
       if (fd < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
 
   stat_string = stat_to_string (&stbuf);
-  xattrs = hacktree_get_xattrs_for_path (path, error);
+  xattrs = ostree_get_xattrs_for_path (path, error);
   if (!xattrs)
     goto out;
 
@@ -218,7 +218,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
         g_checksum_update (content_sha256, buf, bytes_read);
       if (bytes_read < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -228,7 +228,7 @@ hacktree_stat_and_checksum_file (int dir_fd, const char *path,
 
       if (readlinkat (dir_fd, basename, symlink_target, PATH_MAX) < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
       g_checksum_update (content_sha256, (guint8*)symlink_target, strlen (symlink_target));

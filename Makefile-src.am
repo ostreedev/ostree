@@ -1,0 +1,58 @@
+# Makefile for C source code
+#
+# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+# Author: Colin Walters <walters@verbum.org>
+
+noinst_LTLIBRARIES += libotutil.la
+
+libotutil_la_SOURCES = \
+	src/libotutil/ot-unix-utils.c \
+	src/libotutil/ot-unix-utils.h \
+	src/libotutil/ot-gio-utils.c \
+	src/libotutil/ot-gio-utils.h \
+	src/libotutil/otutil.h \
+	$(NULL)
+libotutil_la_CFLAGS = -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+libotutil_la_LIBADD = $(GIO_UNIX_LIBS)
+
+noinst_LTLIBRARIES += libostree.la
+
+libostree_la_SOURCES = src/libostree/ostree.h \
+	src/libostree/ostree-core.c \
+	src/libostree/ostree-core.h \
+	src/libostree/ostree-repo.c \
+	src/libostree/ostree-repo.h \
+	src/libostree/ostree-types.h \
+	$(NULL)
+libostree_la_CFLAGS = -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+libostree_la_LIBADD = libotutil.la $(GIO_UNIX_LIBS)
+
+bin_PROGRAMS += ostree
+
+ostree_SOURCES = src/main.c \
+	src/ot-builtins.h \
+	src/ot-builtin-checkout.c \
+	src/ot-builtin-commit.c \
+	src/ot-builtin-fsck.c \
+	src/ot-builtin-init.c \
+	src/ot-builtin-link-file.c \
+	src/ot-builtin-log.c \
+	src/ot-builtin-show.c \
+	$(NULL)
+ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+ostree_LDADD = libotutil.la libostree.la $(GIO_UNIX_LIBS)

@@ -37,8 +37,11 @@ parts of the OS to a new directory "r0".
 	$ mkdir r0
 	$ DIRS="bin dev etc lib lib32 lib64 media mnt opt proc root run sbin selinux srv sys tmp usr"
 	$ mv $DIRS r0 
+	$ mkdir r0/{boot,var,home}
+	$ touch r0/{boot,var,home}/EMPTY
 
-Note that /boot, /home and /var are left shared.  Now with it still
+Note that /boot, /home and /var are left shared; we create empty
+destination directories that will be mounted over.  Now with it still
 mounted, we need to move on to the next part - modifying the initrd.
 
 Then I started hacking on the initrd, making understand how to chroot

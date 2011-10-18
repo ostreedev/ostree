@@ -19,30 +19,30 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_BUILTINS__
-#define __HACKTREE_BUILTINS__
+#ifndef __OSTREE_BUILTINS__
+#define __OSTREE_BUILTINS__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
 typedef enum {
-  HACKTREE_BUILTIN_FLAG_NONE = 0,
-} HacktreeBuiltinFlags;
+  OSTREE_BUILTIN_FLAG_NONE = 0,
+} OstreeBuiltinFlags;
 
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, const char *prefix, GError **error);
-  int flags; /* HacktreeBuiltinFlags */
-} HacktreeBuiltin;
+  int flags; /* OstreeBuiltinFlags */
+} OstreeBuiltin;
 
-gboolean hacktree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_log (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);
-gboolean hacktree_builtin_show (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error);
 
 G_END_DECLS
 

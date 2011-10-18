@@ -19,8 +19,8 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_UNIX_UTILS_H__
-#define __HACKTREE_UNIX_UTILS_H__
+#ifndef __OSTREE_UNIX_UTILS_H__
+#define __OSTREE_UNIX_UTILS_H__
 
 #include <gio/gio.h>
 #include <glib-unix.h>
@@ -36,23 +36,23 @@
 
 G_BEGIN_DECLS
 
-gboolean ht_util_spawn_pager (GOutputStream  **out_stream, GError         **error);
+gboolean ot_util_spawn_pager (GOutputStream  **out_stream, GError         **error);
 
-gboolean ht_util_filename_has_dotdot (const char *path);
+gboolean ot_util_filename_has_dotdot (const char *path);
 
-GPtrArray *ht_util_sort_filenames_by_component_length (GPtrArray *files);
+GPtrArray *ot_util_sort_filenames_by_component_length (GPtrArray *files);
 
-GPtrArray* ht_util_path_split (const char *path);
+GPtrArray* ot_util_path_split (const char *path);
 
-char *ht_util_path_join_n (const char *base, GPtrArray *components, int n);
+char *ot_util_path_join_n (const char *base, GPtrArray *components, int n);
 
-int ht_util_count_filename_components (const char *path);
+int ot_util_count_filename_components (const char *path);
 
-int ht_util_open_file_read (const char *path, GError **error);
+int ot_util_open_file_read (const char *path, GError **error);
 
-int ht_util_open_file_read_at (int dirfd, const char *name, GError **error);
+int ot_util_open_file_read_at (int dirfd, const char *name, GError **error);
 
-void ht_util_set_error_from_errno (GError **error, gint saved_errno);
+void ot_util_set_error_from_errno (GError **error, gint saved_errno);
 
 G_END_DECLS
 

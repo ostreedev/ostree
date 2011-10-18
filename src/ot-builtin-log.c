@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
@@ -34,11 +34,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-hacktree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
+  OstreeRepo *repo = NULL;
   GOutputStream *pager = NULL;
   GVariant *commit = NULL;
   char *head;
@@ -54,23 +54,23 @@ hacktree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   if (prefix == NULL)
     prefix = ".";
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
-  head = g_strdup (hacktree_repo_get_head (repo));
+  head = g_strdup (ostree_repo_get_head (repo));
   if (!head)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "No HEAD exists");
       goto out;
     }
 
-  if (!ht_util_spawn_pager (&pager, error))
+  if (!ot_util_spawn_pager (&pager, error))
     goto out;
 
   while (TRUE)
     {
-      HacktreeSerializedVariantType type;
+      OstreeSerializedVariantType type;
       char *formatted = NULL;
       guint32 version;
       const char *parent;
@@ -88,7 +88,7 @@ hacktree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
       
       if (commit)
         g_variant_unref (commit);
-      if (!hacktree_repo_load_variant (repo, head, &type, &commit, error))
+      if (!ostree_repo_load_variant (repo, head, &type, &commit, error))
         goto out;
 
       /* Ignore commit metadata for now */

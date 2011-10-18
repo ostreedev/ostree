@@ -27,10 +27,10 @@
 
 #include <string.h>
 
-#include "htutil.h"
+#include "otutil.h"
 
 gboolean
-ht_util_ensure_directory (const char *path, gboolean with_parents, GError **error)
+ot_util_ensure_directory (const char *path, gboolean with_parents, GError **error)
 {
   GFile *dir;
   GError *temp_error = NULL;
@@ -60,7 +60,7 @@ ht_util_ensure_directory (const char *path, gboolean with_parents, GError **erro
 
 
 char *
-ht_util_get_file_contents_utf8 (const char *path,
+ot_util_get_file_contents_utf8 (const char *path,
                                 GError    **error)
 {
   char *contents;
@@ -81,7 +81,7 @@ ht_util_get_file_contents_utf8 (const char *path,
 }
 
 GInputStream *
-ht_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error)
+ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error)
 {
   GInputStream *ret = NULL;
   int fd;
@@ -95,7 +95,7 @@ ht_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
   fd = open (path, flags);
   if (fd < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -108,7 +108,7 @@ ht_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
 
 /* Like g_file_new_for_path, but only do local stuff, not GVFS */
 GFile *
-ht_util_new_file_for_path (const char *path)
+ot_util_new_file_for_path (const char *path)
 {
   return g_vfs_get_file_for_path (g_vfs_get_local (), path);
 }

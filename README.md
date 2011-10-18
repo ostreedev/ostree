@@ -1,4 +1,4 @@
-Hacktree
+OSTree
 ========
 
 Problem statement
@@ -48,7 +48,7 @@ Comparison with existing tools
     the old package.  
 
     This is most realistic option for people hacking on system
-    components currently, but hacktree will be better.
+    components currently, but ostree will be better.
 
  - LXC / containers
 
@@ -66,7 +66,7 @@ Comparison with existing tools
     this means you can't build NetworkManager, and thus are permanently
     stuck on whatever the distro provides.
 
-Who is hacktree for?
+Who is ostree for?
 ------------------------------
 
 First - operating system developers and testers.  I specifically keep
@@ -103,28 +103,59 @@ Debian).  It has a root filesystem like this:
 Now, what we can do is have a system that installs chroots as a subdirectory
 of the root, like:
 
-		/usr
-		/etc
-		/home
-		/gnomeos/root-3.0-opt/{usr,etc,var,...}
-		/gnomeos/root-3.2-opt/{usr,etc,var,...}
+		/ostree/gnomeos-3.0-opt-393a4555/{usr,etc,sbin,...}
+		/ostree/gnomeos-3.2-opt-7e9788a2/{usr,etc,sbin,...}
 
 These live in the same root filesystem as your regular distribution
 (Note though, the root partition should be reasonably sized, or
 hopefully you've used just one big partition).
 
-You should be able to boot into one of these roots.  Since hacktree
+You should be able to boot into one of these roots.  Since ostree
 lives inside a distro created partition, a tricky part here is that we
 need to know how to interact with the installed distribution's grub.
 This is an annoying but tractable problem.
 
-Hacktree will allow efficiently parallel installing and downloading OS
+OSTree will allow efficiently parallel installing and downloading OS
 builds.
 
 An important note here is that we explicitly link /home in each root
 to the real /home.  This means you have your data.  This also implies
 we share uid/gid, so /etc/passwd will have to be in sync.  Probably
 what we'll do is have a script to pull the data from the "host" OS.
+
+Other shared directories are /var and /root.  Note that /etc is
+explicitly NOT shared!
+
+On a pure OSTree system, the filesystem layout will look like this:
+
+		.
+		|-- boot
+		|-- home
+		|-- ostree
+		|   |-- current -> gnomeos-3.2-opt-7e9788a2
+		|   |-- gnomeos-3.0-opt-393a4555
+		|   |   |-- etc
+		|   |   |-- lib
+		|   |   |-- mnt
+		|   |   |-- proc
+		|   |   |-- run
+		|   |   |-- sbin
+		|   |   |-- srv
+		|   |   |-- sys
+		|   |   `-- usr
+		|   `-- gnomeos-3.2-opt-7e9788a2
+		|       |-- etc
+		|       |-- lib
+		|       |-- mnt
+		|       |-- proc
+		|       |-- run
+		|       |-- sbin
+		|       |-- srv
+		|       |-- sys
+		|       `-- usr
+		|-- root
+		`-- var
+		
 
 Making this efficient
 ---------------------
@@ -142,14 +173,14 @@ that point to it.  This mutability means that we have to either:
     This is probably tractable over a long period of time, but if anything
     has a bug, then it corrupts the file effectively.
  2. Make the core OS read-only, with a well-defined mechanism for mutating
-    under the control of hacktree.
+    under the control of ostree.
 
 I chose 2.
 
 A userspace content-addressed versioning filesystem
 ---------------------------------------------------
 
-At its very core, that's what hacktree is.  Just like git.  If you
+At its very core, that's what ostree is.  Just like git.  If you
 understand git, you know it's not like other revision control systems.
 git is effectively a specialized, userspace filesystem, and that is a
 very powerful idea.
@@ -162,16 +193,16 @@ source trees - it goes to effort to be sure it's compressing text for
 example, under the assumption that you have a lot of text.  Its
 handling of binaries is very generic and unoptimized.
 
-In contrast, hacktree is explicitly designed for binaries, and in
+In contrast, ostree is explicitly designed for binaries, and in
 particular one type of binary - ELF executables (or it will be once we
 start using bsdiff).  
 
-Another big difference versus git is that hacktree uses hard links
+Another big difference versus git is that ostree uses hard links
 between "checkouts" and the repository.  This means each checkout uses
 almost no additional space, and is *extremely* fast to check out.  We
 can do this because again each checkout is designed to be read-only.
 
-So we mentioned above the 
+So we mentioned above there are:
 
 		/gnomeos/root-3.0-opt
 		/gnomeos/root-3.2-opt
@@ -206,7 +237,7 @@ change =)
 Atomic upgrades, rollback
 -------------------------
 
-Hacktree is designed to atomically swap operating systems - such that
+OSTree is designed to atomically swap operating systems - such that
 during an upgrade and reboot process, you either get the full new
 system, or the old one.  There is no "Please don't turn off your
 computer".  We do this by simply using a symbolic link like:
@@ -272,13 +303,13 @@ What about "packages"?
 Basically I think they're a broken idea.  There are several different
 classes of things that demand targeted solutions:
 
- 1. Managing and upgrading the core OS (hacktree)
+ 1. Managing and upgrading the core OS (ostree)
  2. Managing and upgrading desktop applications (gnome-shell, glick?)
  3. System extensions - these are arbitrary RPMs like say the nVidia driver.
     We apply them after constructing each root.  Media codecs also fall
     into this category.
 
-How one might install say Apache on top of hacktree is an open
+How one might install say Apache on top of ostree is an open
 question - I think it probably makes sense honestly to ship services
 like this with no configuration - just the binaries.  Then admins can
 do whatever they want.
@@ -286,7 +317,7 @@ do whatever they want.
 Downloads
 ---------
 
-I'm pretty sure hacktree should be significantly better than RPM with
+I'm pretty sure ostree should be significantly better than RPM with
 deltarpms.  Note we only download changed objects.  If say just one
 translation changes, we only download that new translation!  One
 problem we will have to hunt down is programs that inject
@@ -350,7 +381,7 @@ approach is it doesn't solve the race conditions that happen when
 unpacking packages into the live system.  This problem is really
 important to me.
 
-Note though hacktree can definitely take advantage of BTRFS features!
+Note though ostree can definitely take advantage of BTRFS features!
 In particular, we could use "reflink"
 <http://lwn.net/Articles/331808/> instead of hard links, and avoid
 having the object store corrupted if somehow the files are modified
@@ -383,7 +414,7 @@ didn't use them:
  - Conary: <http://wiki.rpath.com/wiki/Conary:Updates_and_Rollbacks>
 
    If rpm/dpkg are like CVS, Conary is closer to Subversion.  It's not
-   bad, but hacktree is better than it for the exact same reasons git
+   bad, but ostree is better than it for the exact same reasons git
    is better than Subversion.
 
  - BTRFS: <http://en.wikipedia.org/wiki/Btrfs>
@@ -393,4 +424,4 @@ didn't use them:
  - Jhbuild: <https://live.gnome.org/Jhbuild>
 
    What we've been using in GNOME, and has the essential property of allowing you
-   to "fall back" to a stable system.  But hacktree will blow it out of the water.
+   to "fall back" to a stable system.  But ostree will blow it out of the water.

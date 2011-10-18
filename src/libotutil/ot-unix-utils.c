@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#include "ht-unix-utils.h"
+#include "ot-unix-utils.h"
 
 #include <glib-unix.h>
 #include <gio/gio.h>
@@ -32,7 +32,7 @@
 #include <dirent.h>
 
 gboolean
-ht_util_spawn_pager (GOutputStream  **out_stream,
+ot_util_spawn_pager (GOutputStream  **out_stream,
                      GError         **error)
 {
   const char *pager;
@@ -97,7 +97,7 @@ compare_filenames_by_component_length (const char *a,
 }
 
 GPtrArray *
-ht_util_sort_filenames_by_component_length (GPtrArray *files)
+ot_util_sort_filenames_by_component_length (GPtrArray *files)
 {
   GPtrArray *array = g_ptr_array_sized_new (files->len);
   memcpy (array->pdata, files->pdata, sizeof (gpointer) * files->len);
@@ -106,7 +106,7 @@ ht_util_sort_filenames_by_component_length (GPtrArray *files)
 }
 
 int
-ht_util_count_filename_components (const char *path)
+ot_util_count_filename_components (const char *path)
 {
   int i = 0;
 
@@ -121,7 +121,7 @@ ht_util_count_filename_components (const char *path)
 }
 
 gboolean
-ht_util_filename_has_dotdot (const char *path)
+ot_util_filename_has_dotdot (const char *path)
 {
   char *p;
   char last;
@@ -138,7 +138,7 @@ ht_util_filename_has_dotdot (const char *path)
 }
 
 GPtrArray *
-ht_util_path_split (const char *path)
+ot_util_path_split (const char *path)
 {
   GPtrArray *ret = NULL;
   const char *p;
@@ -176,7 +176,7 @@ ht_util_path_split (const char *path)
 }
 
 char *
-ht_util_path_join_n (const char *base, GPtrArray *components, int n)
+ot_util_path_join_n (const char *base, GPtrArray *components, int n)
 {
   int max = MIN(n+1, components->len);
   GPtrArray *subcomponents;
@@ -201,7 +201,7 @@ ht_util_path_join_n (const char *base, GPtrArray *components, int n)
 }
 
 void
-ht_util_set_error_from_errno (GError **error,
+ot_util_set_error_from_errno (GError **error,
                               gint     saved_errno)
 {
   g_set_error_literal (error,
@@ -212,7 +212,7 @@ ht_util_set_error_from_errno (GError **error,
 }
 
 int
-ht_util_open_file_read (const char *path, GError **error)
+ot_util_open_file_read (const char *path, GError **error)
 {
   char *dirname = NULL;
   char *basename = NULL;
@@ -224,11 +224,11 @@ ht_util_open_file_read (const char *path, GError **error)
   dir = opendir (dirname);
   if (dir == NULL)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  fd = ht_util_open_file_read_at (dirfd (dir), basename, error);
+  fd = ot_util_open_file_read_at (dirfd (dir), basename, error);
 
  out:
   g_free (basename);
@@ -239,7 +239,7 @@ ht_util_open_file_read (const char *path, GError **error)
 }
 
 int
-ht_util_open_file_read_at (int dirfd, const char *name, GError **error)
+ot_util_open_file_read_at (int dirfd, const char *name, GError **error)
 {
   int fd;
   int flags = O_RDONLY;
@@ -252,6 +252,6 @@ ht_util_open_file_read_at (int dirfd, const char *name, GError **error)
 #endif
   fd = openat (dirfd, name, flags);
   if (fd < 0)
-    ht_util_set_error_from_errno (error, errno);
+    ot_util_set_error_from_errno (error, errno);
   return fd;
 }

@@ -21,22 +21,22 @@
 
 #include "config.h"
 
-#include "hacktree.h"
-#include "htutil.h"
+#include "ostree.h"
+#include "otutil.h"
 
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
 
 static gboolean
-link_one_file (HacktreeRepo *self, const char *path,
-               HacktreeObjectType type,
+link_one_file (OstreeRepo *self, const char *path,
+               OstreeObjectType type,
                gboolean ignore_exists, gboolean force,
                GChecksum **out_checksum,
                GError **error);
 static char *
-get_object_path (HacktreeRepo  *self,
+get_object_path (OstreeRepo  *self,
                  const char    *checksum,
-                 HacktreeObjectType type);
+                 OstreeObjectType type);
 
 enum {
   PROP_0,
@@ -44,14 +44,14 @@ enum {
   PROP_PATH
 };
 
-G_DEFINE_TYPE (HacktreeRepo, hacktree_repo, G_TYPE_OBJECT)
+G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 
 #define GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), HACKTREE_TYPE_REPO, HacktreeRepoPrivate))
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), OSTREE_TYPE_REPO, OstreeRepoPrivate))
 
-typedef struct _HacktreeRepoPrivate HacktreeRepoPrivate;
+typedef struct _OstreeRepoPrivate OstreeRepoPrivate;
 
-struct _HacktreeRepoPrivate {
+struct _OstreeRepoPrivate {
   char *path;
   GFile *repo_file;
   char *head_ref_path;
@@ -62,10 +62,10 @@ struct _HacktreeRepoPrivate {
 };
 
 static void
-hacktree_repo_finalize (GObject *object)
+ostree_repo_finalize (GObject *object)
 {
-  HacktreeRepo *self = HACKTREE_REPO (object);
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepo *self = OSTREE_REPO (object);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_free (priv->path);
   g_clear_object (&priv->repo_file);
@@ -73,17 +73,17 @@ hacktree_repo_finalize (GObject *object)
   g_free (priv->objects_path);
   g_free (priv->current_head);
 
-  G_OBJECT_CLASS (hacktree_repo_parent_class)->finalize (object);
+  G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
 
 static void
-hacktree_repo_set_property(GObject         *object,
+ostree_repo_set_property(GObject         *object,
 			   guint            prop_id,
 			   const GValue    *value,
 			   GParamSpec      *pspec)
 {
-  HacktreeRepo *self = HACKTREE_REPO (object);
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepo *self = OSTREE_REPO (object);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   switch (prop_id)
     {
@@ -97,13 +97,13 @@ hacktree_repo_set_property(GObject         *object,
 }
 
 static void
-hacktree_repo_get_property(GObject         *object,
+ostree_repo_get_property(GObject         *object,
 			   guint            prop_id,
 			   GValue          *value,
 			   GParamSpec      *pspec)
 {
-  HacktreeRepo *self = HACKTREE_REPO (object);
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepo *self = OSTREE_REPO (object);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   switch (prop_id)
     {
@@ -117,39 +117,39 @@ hacktree_repo_get_property(GObject         *object,
 }
 
 static GObject *
-hacktree_repo_constructor (GType                  gtype,
+ostree_repo_constructor (GType                  gtype,
                            guint                  n_properties,
                            GObjectConstructParam *properties)
 {
   GObject *object;
   GObjectClass *parent_class;
-  HacktreeRepoPrivate *priv;
+  OstreeRepoPrivate *priv;
 
-  parent_class = G_OBJECT_CLASS (hacktree_repo_parent_class);
+  parent_class = G_OBJECT_CLASS (ostree_repo_parent_class);
   object = parent_class->constructor (gtype, n_properties, properties);
 
   priv = GET_PRIVATE (object);
 
   g_assert (priv->path != NULL);
   
-  priv->repo_file = ht_util_new_file_for_path (priv->path);
-  priv->head_ref_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "HEAD", NULL);
-  priv->objects_path = g_build_filename (priv->path, HACKTREE_REPO_DIR, "objects", NULL);
+  priv->repo_file = ot_util_new_file_for_path (priv->path);
+  priv->head_ref_path = g_build_filename (priv->path, OSTREE_REPO_DIR, "HEAD", NULL);
+  priv->objects_path = g_build_filename (priv->path, OSTREE_REPO_DIR, "objects", NULL);
 
   return object;
 }
 
 static void
-hacktree_repo_class_init (HacktreeRepoClass *klass)
+ostree_repo_class_init (OstreeRepoClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  g_type_class_add_private (klass, sizeof (HacktreeRepoPrivate));
+  g_type_class_add_private (klass, sizeof (OstreeRepoPrivate));
 
-  object_class->constructor = hacktree_repo_constructor;
-  object_class->get_property = hacktree_repo_get_property;
-  object_class->set_property = hacktree_repo_set_property;
-  object_class->finalize = hacktree_repo_finalize;
+  object_class->constructor = ostree_repo_constructor;
+  object_class->get_property = ostree_repo_get_property;
+  object_class->set_property = ostree_repo_set_property;
+  object_class->finalize = ostree_repo_finalize;
 
   g_object_class_install_property (object_class,
                                    PROP_PATH,
@@ -161,18 +161,18 @@ hacktree_repo_class_init (HacktreeRepoClass *klass)
 }
 
 static void
-hacktree_repo_init (HacktreeRepo *self)
+ostree_repo_init (OstreeRepo *self)
 {
 }
 
-HacktreeRepo*
-hacktree_repo_new (const char *path)
+OstreeRepo*
+ostree_repo_new (const char *path)
 {
-  return g_object_new (HACKTREE_TYPE_REPO, "path", path, NULL);
+  return g_object_new (OSTREE_TYPE_REPO, "path", path, NULL);
 }
 
 static gboolean
-parse_checksum_file (HacktreeRepo   *self,
+parse_checksum_file (OstreeRepo   *self,
                      const char     *path,
                      char          **sha256,
                      GError        **error)
@@ -181,7 +181,7 @@ parse_checksum_file (HacktreeRepo   *self,
   gboolean ret = FALSE;
   char *ret_sha256 = NULL;
 
-  ret_sha256 = ht_util_get_file_contents_utf8 (path, &temp_error);
+  ret_sha256 = ot_util_get_file_contents_utf8 (path, &temp_error);
   if (ret_sha256 == NULL)
     {
       if (g_error_matches (temp_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
@@ -225,9 +225,9 @@ write_checksum_file (const char *path,
 }
 
 gboolean
-hacktree_repo_check (HacktreeRepo *self, GError **error)
+ostree_repo_check (OstreeRepo *self, GError **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -247,13 +247,13 @@ hacktree_repo_check (HacktreeRepo *self, GError **error)
 }
 
 static gboolean
-import_gvariant_object (HacktreeRepo  *self,
-                        HacktreeSerializedVariantType type,
+import_gvariant_object (OstreeRepo  *self,
+                        OstreeSerializedVariantType type,
                         GVariant       *variant,
                         GChecksum    **out_checksum,
                         GError       **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GVariant *serialized = NULL;
   gboolean ret = FALSE;
   gsize bytes_written;
@@ -267,7 +267,7 @@ import_gvariant_object (HacktreeRepo  *self,
   fd = mkstemp (tmp_name);
   if (fd < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -283,7 +283,7 @@ import_gvariant_object (HacktreeRepo  *self,
                               NULL, error))
     goto out;
 
-  if (!link_one_file (self, tmp_name, HACKTREE_OBJECT_TYPE_META, 
+  if (!link_one_file (self, tmp_name, OSTREE_OBJECT_TYPE_META, 
                       TRUE, FALSE, out_checksum, error))
     goto out;
   
@@ -301,9 +301,9 @@ import_gvariant_object (HacktreeRepo  *self,
 }
 
 static gboolean
-load_gvariant_object_unknown (HacktreeRepo  *self,
+load_gvariant_object_unknown (OstreeRepo  *self,
                               const char    *sha256,
-                              HacktreeSerializedVariantType *out_type,
+                              OstreeSerializedVariantType *out_type,
                               GVariant     **out_variant,
                               GError       **error)
 {
@@ -314,20 +314,20 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
   char *path = NULL;
   guint32 ret_type;
 
-  path = get_object_path (self, sha256, HACKTREE_OBJECT_TYPE_META);
+  path = get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
   
   mfile = g_mapped_file_new (path, FALSE, error);
   if (mfile == NULL)
     goto out;
   else
     {
-      container = g_variant_new_from_data (G_VARIANT_TYPE (HACKTREE_SERIALIZED_VARIANT_FORMAT),
+      container = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
                                            g_mapped_file_get_contents (mfile),
                                            g_mapped_file_get_length (mfile),
                                            FALSE,
                                            (GDestroyNotify) g_mapped_file_unref,
                                            mfile);
-      if (!g_variant_is_of_type (container, G_VARIANT_TYPE (HACKTREE_SERIALIZED_VARIANT_FORMAT)))
+      if (!g_variant_is_of_type (container, G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT)))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Corrupted metadata object '%s'", sha256);
@@ -359,14 +359,14 @@ load_gvariant_object_unknown (HacktreeRepo  *self,
 }
 
 static gboolean
-load_gvariant_object (HacktreeRepo  *self,
-                      HacktreeSerializedVariantType expected_type,
+load_gvariant_object (OstreeRepo  *self,
+                      OstreeSerializedVariantType expected_type,
                       const char    *sha256, 
                       GVariant     **out_variant,
                       GError       **error)
 {
   gboolean ret = FALSE;
-  HacktreeSerializedVariantType type;
+  OstreeSerializedVariantType type;
   GVariant *ret_variant = NULL;
 
   if (!load_gvariant_object_unknown (self, sha256, &type, &ret_variant, error))
@@ -393,7 +393,7 @@ load_gvariant_object (HacktreeRepo  *self,
 }
 
 static gboolean
-import_directory_meta (HacktreeRepo  *self,
+import_directory_meta (OstreeRepo  *self,
                        const char *path,
                        GVariant  **out_variant,
                        GChecksum **out_checksum,
@@ -408,7 +408,7 @@ import_directory_meta (HacktreeRepo  *self,
 
   if (lstat (path, &stbuf) < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
   
@@ -419,12 +419,12 @@ import_directory_meta (HacktreeRepo  *self,
       goto out;
     }
 
-  xattrs = hacktree_get_xattrs_for_path (path, error);
+  xattrs = ostree_get_xattrs_for_path (path, error);
   if (!xattrs)
     goto out;
 
   dirmeta = g_variant_new ("(uuuu@a(ayay))",
-                           HACKTREE_DIR_META_VERSION,
+                           OSTREE_DIR_META_VERSION,
                            (guint32)stbuf.st_uid,
                            (guint32)stbuf.st_gid,
                            (guint32)(stbuf.st_mode & (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)),
@@ -432,7 +432,7 @@ import_directory_meta (HacktreeRepo  *self,
   xattrs = NULL; /* was floating */
   g_variant_ref_sink (dirmeta);
 
-  if (!import_gvariant_object (self, HACKTREE_SERIALIZED_DIRMETA_VARIANT, 
+  if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
                                dirmeta, &ret_checksum, error))
         goto out;
 
@@ -456,11 +456,11 @@ import_directory_meta (HacktreeRepo  *self,
 }
 
 static char *
-get_object_path (HacktreeRepo  *self,
+get_object_path (OstreeRepo  *self,
                  const char    *checksum,
-                 HacktreeObjectType type)
+                 OstreeObjectType type)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   char *checksum_prefix;
   char *base_path;
   char *ret;
@@ -470,10 +470,10 @@ get_object_path (HacktreeRepo  *self,
   base_path = g_build_filename (priv->objects_path, checksum_prefix, checksum + 2, NULL);
   switch (type)
     {
-    case HACKTREE_OBJECT_TYPE_FILE:
+    case OSTREE_OBJECT_TYPE_FILE:
       type_string = ".file";
       break;
-    case HACKTREE_OBJECT_TYPE_META:
+    case OSTREE_OBJECT_TYPE_META:
       type_string = ".meta";
       break;
     default:
@@ -487,9 +487,9 @@ get_object_path (HacktreeRepo  *self,
 }
 
 static char *
-prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
+prepare_dir_for_checksum_get_object_path (OstreeRepo *self,
                                           GChecksum    *checksum,
-                                          HacktreeObjectType type,
+                                          OstreeObjectType type,
                                           GError      **error)
 {
   char *checksum_dir = NULL;
@@ -498,7 +498,7 @@ prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
   object_path = get_object_path (self, g_checksum_get_string (checksum), type);
   checksum_dir = g_path_get_dirname (object_path);
 
-  if (!ht_util_ensure_directory (checksum_dir, FALSE, error))
+  if (!ot_util_ensure_directory (checksum_dir, FALSE, error))
     goto out;
   
  out:
@@ -507,7 +507,7 @@ prepare_dir_for_checksum_get_object_path (HacktreeRepo *self,
 }
 
 static gboolean
-link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
+link_one_file (OstreeRepo *self, const char *path, OstreeObjectType type,
                gboolean ignore_exists, gboolean force,
                GChecksum **out_checksum,
                GError **error)
@@ -530,11 +530,11 @@ link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
   src_dir = opendir (src_dirname);
   if (src_dir == NULL)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  if (!hacktree_stat_and_checksum_file (dirfd (src_dir), path, &id, &stbuf, error))
+  if (!ostree_stat_and_checksum_file (dirfd (src_dir), path, &id, &stbuf, error))
     goto out;
   dest_path = prepare_dir_for_checksum_get_object_path (self, id, type, error);
   if (!dest_path)
@@ -545,7 +545,7 @@ link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
   dest_dir = opendir (dest_dirname);
   if (dest_dir == NULL)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -561,7 +561,7 @@ link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
     {
       if (errno != EEXIST || !ignore_exists)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -571,7 +571,7 @@ link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
       if (renameat (dirfd (dest_dir), tmp_dest_basename, 
                     dirfd (dest_dir), dest_basename) < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
       (void) unlinkat (dirfd (dest_dir), tmp_dest_basename, 0);
@@ -596,19 +596,19 @@ link_one_file (HacktreeRepo *self, const char *path, HacktreeObjectType type,
 }
 
 gboolean
-hacktree_repo_link_file (HacktreeRepo *self,
+ostree_repo_link_file (OstreeRepo *self,
                          const char   *path,
                          gboolean      ignore_exists,
                          gboolean      force,
                          GError      **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GChecksum *checksum = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  if (!link_one_file (self, path, HACKTREE_OBJECT_TYPE_FILE,
+  if (!link_one_file (self, path, OSTREE_OBJECT_TYPE_FILE,
                       ignore_exists, force, &checksum, error))
     return FALSE;
   g_checksum_free (checksum);
@@ -666,7 +666,7 @@ parsed_tree_data_free (ParsedTreeData *pdata)
 }
 
 static gboolean
-parse_tree (HacktreeRepo    *self,
+parse_tree (OstreeRepo    *self,
             const char      *sha256,
             ParsedTreeData **out_pdata,
             GError         **error)
@@ -680,7 +680,7 @@ parse_tree (HacktreeRepo    *self,
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
 
-  if (!load_gvariant_object (self, HACKTREE_SERIALIZED_TREE_VARIANT,
+  if (!load_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT,
                              sha256, &tree_variant, error))
     goto out;
 
@@ -715,7 +715,7 @@ parse_tree (HacktreeRepo    *self,
       if (!parse_tree (self, tree_checksum, &child_tree, error))
         goto out;
 
-      if (!load_gvariant_object (self, HACKTREE_SERIALIZED_DIRMETA_VARIANT,
+      if (!load_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
                                  meta_checksum, &metadata, error))
         {
           parsed_tree_data_free (child_tree);
@@ -748,13 +748,13 @@ parse_tree (HacktreeRepo    *self,
 }
 
 static gboolean
-load_commit_and_trees (HacktreeRepo   *self,
+load_commit_and_trees (OstreeRepo   *self,
                        const char     *commit_sha256,
                        GVariant      **out_commit,
                        ParsedDirectoryData **out_root_data,
                        GError        **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GVariant *ret_commit = NULL;
   ParsedDirectoryData *ret_root_data = NULL;
   ParsedTreeData *tree_data = NULL;
@@ -771,14 +771,14 @@ load_commit_and_trees (HacktreeRepo   *self,
       goto out;
     }
 
-  if (!load_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
+  if (!load_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
                              commit_sha256, &ret_commit, error))
     goto out;
 
   g_variant_get_child (ret_commit, 6, "&s", &tree_contents_checksum);
   g_variant_get_child (ret_commit, 7, "&s", &tree_meta_checksum);
 
-  if (!load_gvariant_object (self, HACKTREE_SERIALIZED_DIRMETA_VARIANT,
+  if (!load_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
                              tree_meta_checksum, &root_metadata, error))
     goto out;
 
@@ -815,7 +815,7 @@ create_empty_gvariant_dict (void)
 }
 
 static gboolean
-import_parsed_tree (HacktreeRepo    *self,
+import_parsed_tree (OstreeRepo    *self,
                     ParsedTreeData  *tree,
                     GChecksum      **out_checksum,
                     GError         **error)
@@ -862,7 +862,7 @@ import_parsed_tree (HacktreeRepo    *self,
                                    g_variant_builder_end (&dirs_builder));
   builders_initialized = FALSE;
   g_variant_ref_sink (serialized_tree);
-  if (!import_gvariant_object (self, HACKTREE_SERIALIZED_TREE_VARIANT, serialized_tree, out_checksum, error))
+  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT, serialized_tree, out_checksum, error))
     goto out;
   
   ret = TRUE;
@@ -897,7 +897,7 @@ check_path (const char *filename,
       goto out;
     }
   
-  if (ht_util_filename_has_dotdot (filename))
+  if (ot_util_filename_has_dotdot (filename))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Path uplink '..' in filename '%s' not allowed (yet)", filename);
@@ -917,7 +917,7 @@ check_path (const char *filename,
 }
 
 static gboolean
-walk_parsed_tree (HacktreeRepo  *self,
+walk_parsed_tree (OstreeRepo  *self,
                   const char    *filename,
                   ParsedTreeData *tree,
                   int            *out_filename_index, /* out*/
@@ -934,7 +934,7 @@ walk_parsed_tree (HacktreeRepo  *self,
   int i;
   int ret_filename_index = 0;
 
-  components = ht_util_path_split (filename);
+  components = ot_util_path_split (filename);
   g_assert (components != NULL);
 
   current_tree = tree;
@@ -978,7 +978,7 @@ walk_parsed_tree (HacktreeRepo  *self,
 }
 
 static gboolean
-remove_files_from_tree (HacktreeRepo   *self,
+remove_files_from_tree (OstreeRepo   *self,
                         const char     *base,
                         GPtrArray      *removed_files,
                         ParsedTreeData *tree,
@@ -1028,7 +1028,7 @@ remove_files_from_tree (HacktreeRepo   *self,
 }
 
 static gboolean
-add_one_directory_to_tree_and_import (HacktreeRepo   *self,
+add_one_directory_to_tree_and_import (OstreeRepo   *self,
                                       const char     *basename,
                                       const char     *abspath,
                                       ParsedTreeData *tree,
@@ -1068,7 +1068,7 @@ add_one_directory_to_tree_and_import (HacktreeRepo   *self,
 }
 
 static gboolean
-add_one_file_to_tree_and_import (HacktreeRepo   *self,
+add_one_file_to_tree_and_import (OstreeRepo   *self,
                                  const char     *basename,
                                  const char     *abspath,
                                  ParsedTreeData *tree,
@@ -1080,7 +1080,7 @@ add_one_file_to_tree_and_import (HacktreeRepo   *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_assert (tree != NULL);
 
-  if (!link_one_file (self, abspath, HACKTREE_OBJECT_TYPE_FILE,
+  if (!link_one_file (self, abspath, OSTREE_OBJECT_TYPE_FILE,
                       TRUE, FALSE, &checksum, error))
     goto out;
 
@@ -1095,7 +1095,7 @@ add_one_file_to_tree_and_import (HacktreeRepo   *self,
 }
 
 static gboolean
-add_one_path_to_tree_and_import (HacktreeRepo   *self,
+add_one_path_to_tree_and_import (OstreeRepo   *self,
                                  const char     *base,
                                  const char     *filename,
                                  ParsedTreeData *tree,
@@ -1120,14 +1120,14 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
 
   if (lstat (abspath, &stbuf) < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       goto out;
     }
   is_directory = S_ISDIR(stbuf.st_mode);
        
   if (components)
     g_ptr_array_free (components, TRUE);
-  components = ht_util_path_split (filename);
+  components = ot_util_path_split (filename);
   g_assert (components->len > 0);
 
   current_tree = tree;
@@ -1135,7 +1135,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
     {
       component = components->pdata[i];
       g_free (component_abspath);
-      component_abspath = ht_util_path_join_n (base, components, i);
+      component_abspath = ot_util_path_join_n (base, components, i);
       file_sha1 = g_hash_table_lookup (current_tree->files, component);
       dir = g_hash_table_lookup (current_tree->directories, component);
 
@@ -1197,7 +1197,7 @@ add_one_path_to_tree_and_import (HacktreeRepo   *self,
 }
 
 static gboolean
-add_files_to_tree_and_import (HacktreeRepo   *self,
+add_files_to_tree_and_import (OstreeRepo   *self,
                               const char     *base,
                               GPtrArray      *added_files,
                               ParsedTreeData *tree,
@@ -1220,7 +1220,7 @@ add_files_to_tree_and_import (HacktreeRepo   *self,
 }
 
 static gboolean
-commit_parsed_tree (HacktreeRepo *self,
+commit_parsed_tree (OstreeRepo *self,
                     const char   *subject,
                     const char   *body,
                     GVariant     *metadata,
@@ -1228,7 +1228,7 @@ commit_parsed_tree (HacktreeRepo *self,
                     GChecksum   **out_commit,
                     GError      **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GChecksum *root_checksum = NULL;
   GChecksum *ret_commit = NULL;
@@ -1240,14 +1240,14 @@ commit_parsed_tree (HacktreeRepo *self,
 
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(u@a{sv}ssstss)",
-                          HACKTREE_COMMIT_VERSION,
+                          OSTREE_COMMIT_VERSION,
                           create_empty_gvariant_dict (),
                           priv->current_head ? priv->current_head : "",
                           subject, body ? body : "",
                           g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
                           g_checksum_get_string (root_checksum),
                           root->metadata_sha256);
-  if (!import_gvariant_object (self, HACKTREE_SERIALIZED_COMMIT_VARIANT,
+  if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
                                commit, &ret_commit, error))
     goto out;
 
@@ -1270,7 +1270,7 @@ commit_parsed_tree (HacktreeRepo *self,
 }
 
 static gboolean
-import_root (HacktreeRepo     *self,
+import_root (OstreeRepo     *self,
              const char        *base,
              ParsedDirectoryData **out_root,
              GError              **error)
@@ -1302,7 +1302,7 @@ import_root (HacktreeRepo     *self,
 }
 
 gboolean
-hacktree_repo_commit (HacktreeRepo *self,
+ostree_repo_commit (OstreeRepo *self,
                       const char   *subject,
                       const char   *body,
                       GVariant     *metadata,
@@ -1312,7 +1312,7 @@ hacktree_repo_commit (HacktreeRepo *self,
                       GChecksum   **out_commit,
                       GError      **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   ParsedDirectoryData *root = NULL;
   GVariant *previous_commit = NULL;
@@ -1374,7 +1374,7 @@ hacktree_repo_commit (HacktreeRepo *self,
 }
 
 gboolean      
-hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
+ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
                                        const char   *subject,
                                        const char   *body,
                                        GVariant     *metadata,
@@ -1384,7 +1384,7 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
                                        GChecksum   **out_commit,
                                        GError      **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   ParsedDirectoryData *root = NULL;
   GVariant *previous_commit = NULL;
@@ -1456,9 +1456,9 @@ hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
 }
 
 static gboolean
-iter_object_dir (HacktreeRepo   *self,
+iter_object_dir (OstreeRepo   *self,
                  GFile          *dir,
-                 HacktreeRepoObjectIter  callback,
+                 OstreeRepoObjectIter  callback,
                  gpointer                user_data,
                  GError                **error)
 {
@@ -1519,12 +1519,12 @@ iter_object_dir (HacktreeRepo   *self,
 }
 
 gboolean
-hacktree_repo_iter_objects (HacktreeRepo  *self,
-                            HacktreeRepoObjectIter callback,
+ostree_repo_iter_objects (OstreeRepo  *self,
+                            OstreeRepoObjectIter callback,
                             gpointer       user_data,
                             GError        **error)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GFile *objectdir = NULL;
   GFileEnumerator *enumerator = NULL;
   gboolean ret = FALSE;
@@ -1534,7 +1534,7 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  objectdir = ht_util_new_file_for_path (priv->objects_path);
+  objectdir = ot_util_new_file_for_path (priv->objects_path);
   enumerator = g_file_enumerate_children (objectdir, "standard::name,standard::type,unix::*", 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
@@ -1579,14 +1579,14 @@ hacktree_repo_iter_objects (HacktreeRepo  *self,
 }
 
 gboolean
-hacktree_repo_load_variant (HacktreeRepo *repo,
+ostree_repo_load_variant (OstreeRepo *repo,
                             const char   *sha256,
-                            HacktreeSerializedVariantType *out_type,
+                            OstreeSerializedVariantType *out_type,
                             GVariant    **out_variant,
                             GError      **error)
 {
   gboolean ret = FALSE;
-  HacktreeSerializedVariantType ret_type;
+  OstreeSerializedVariantType ret_type;
   GVariant *ret_variant = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
@@ -1608,9 +1608,9 @@ hacktree_repo_load_variant (HacktreeRepo *repo,
 }
 
 const char *
-hacktree_repo_get_head (HacktreeRepo  *self)
+ostree_repo_get_head (OstreeRepo  *self)
 {
-  HacktreeRepoPrivate *priv = GET_PRIVATE (self);
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_return_val_if_fail (priv->inited, NULL);
 
@@ -1618,14 +1618,14 @@ hacktree_repo_get_head (HacktreeRepo  *self)
 }
 
 static gboolean
-resolve_ref (HacktreeRepo *self,
+resolve_ref (OstreeRepo *self,
              const char   *ref,
              char       **resolved,
              GError      **error)
 {
   if (strcmp (ref, "HEAD") == 0)
     {
-      *resolved = g_strdup (hacktree_repo_get_head (self));
+      *resolved = g_strdup (ostree_repo_get_head (self));
       return TRUE;
     }
   else if (strlen (ref) == 64)
@@ -1639,13 +1639,13 @@ resolve_ref (HacktreeRepo *self,
 }
 
 static gboolean
-checkout_tree (HacktreeRepo    *self,
+checkout_tree (OstreeRepo    *self,
                ParsedTreeData  *tree,
                const char      *destination,
                GError         **error);
 
 static gboolean
-checkout_one_directory (HacktreeRepo  *self,
+checkout_one_directory (OstreeRepo  *self,
                         const char *destination,
                         const char *dirname,
                         ParsedDirectoryData *dir,
@@ -1666,7 +1666,7 @@ checkout_one_directory (HacktreeRepo  *self,
 
   if (mkdir (dest_path, (mode_t)mode) < 0)
     {
-      ht_util_set_error_from_errno (error, errno);
+      ot_util_set_error_from_errno (error, errno);
       g_prefix_error (error, "Failed to create directory '%s': ", dest_path);
       goto out;
     }
@@ -1684,7 +1684,7 @@ checkout_one_directory (HacktreeRepo  *self,
 }
 
 static gboolean
-checkout_tree (HacktreeRepo    *self,
+checkout_tree (OstreeRepo    *self,
                ParsedTreeData  *tree,
                const char      *destination,
                GError         **error)
@@ -1701,11 +1701,11 @@ checkout_tree (HacktreeRepo    *self,
       char *object_path;
       char *dest_path;
 
-      object_path = get_object_path (self, checksum, HACKTREE_OBJECT_TYPE_FILE);
+      object_path = get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
       dest_path = g_build_filename (destination, filename, NULL);
       if (link (object_path, dest_path) < 0)
         {
-          ht_util_set_error_from_errno (error, errno);
+          ot_util_set_error_from_errno (error, errno);
           g_free (object_path);
           g_free (dest_path);
           goto out;
@@ -1730,7 +1730,7 @@ checkout_tree (HacktreeRepo    *self,
 }
 
 gboolean
-hacktree_repo_checkout (HacktreeRepo *self,
+ostree_repo_checkout (OstreeRepo *self,
                         const char   *ref,
                         const char   *destination,
                         GError      **error)

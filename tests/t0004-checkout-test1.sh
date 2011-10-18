@@ -26,7 +26,7 @@ echo '1..3'
 
 setup_test_repository1
 echo 'ok setup'
-hacktree checkout $ht_repo HEAD $test_tmpdir/checkout1-head
+ostree checkout $ot_repo HEAD $test_tmpdir/checkout1-head
 echo 'ok checkout cmd'
 cd $test_tmpdir/checkout1-head
 assert_has_file firstfile

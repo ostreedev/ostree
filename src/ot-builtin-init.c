@@ -21,31 +21,28 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
 static char *repo_path;
-static gboolean ignore_exists;
-static gboolean force;
-
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
-  { "ignore-exists", 'n', 0, G_OPTION_ARG_NONE, &ignore_exists, "Don't error if file exists", NULL },
-  { "force", 'f', 0, G_OPTION_ARG_NONE, &force, "If object exists, relink file", NULL },
+  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
   { NULL }
 };
 
 gboolean
-hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
 {
-  GOptionContext *context;
+  GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
-  int i;
+  char *htdir_path = NULL;
+  char *objects_path = NULL;
+  GFile *htdir = NULL;
+  GFile *objects_dir = NULL;
 
-  context = g_option_context_new ("- Create a new hard link in the repository");
+  context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -54,20 +51,22 @@ hacktree_builtin_link_file (int argc, char **argv, const char *prefix, GError **
   if (repo_path == NULL)
     repo_path = ".";
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  htdir_path = g_build_filename (repo_path, OSTREE_REPO_DIR, NULL);
+  htdir = ot_util_new_file_for_path (htdir_path);
+
+  if (!g_file_make_directory (htdir, NULL, error))
     goto out;
 
-  for (i = 0; i < argc-1; i++)
-    {
-      if (!hacktree_repo_link_file (repo, argv[i+1], ignore_exists, force, error))
-        goto out;
-    }
+  objects_path = g_build_filename (htdir_path, "objects", NULL);
+  objects_dir = g_file_new_for_path (objects_path);
+  if (!g_file_make_directory (objects_dir, NULL, error))
+    goto out;
  
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
+  g_free (htdir_path);
+  g_clear_object (&htdir);
   return ret;
 }

@@ -26,23 +26,23 @@
 
 #include <string.h>
 
-#include "ht-builtins.h"
+#include "ot-builtins.h"
 
-static HacktreeBuiltin builtins[] = {
-  { "checkout", hacktree_builtin_checkout, 0 },
-  { "init", hacktree_builtin_init, 0 },
-  { "commit", hacktree_builtin_commit, 0 },
-  { "link-file", hacktree_builtin_link_file, 0 },
-  { "log", hacktree_builtin_log, 0 },
-  { "fsck", hacktree_builtin_fsck, 0 },
-  { "show", hacktree_builtin_show, 0 },
+static OstreeBuiltin builtins[] = {
+  { "checkout", ostree_builtin_checkout, 0 },
+  { "init", ostree_builtin_init, 0 },
+  { "commit", ostree_builtin_commit, 0 },
+  { "link-file", ostree_builtin_link_file, 0 },
+  { "log", ostree_builtin_log, 0 },
+  { "fsck", ostree_builtin_fsck, 0 },
+  { "show", ostree_builtin_show, 0 },
   { NULL }
 };
 
 static int
 usage (char **argv, gboolean is_error)
 {
-  HacktreeBuiltin *builtin = builtins;
+  OstreeBuiltin *builtin = builtins;
   void (*print_func) (const gchar *format, ...);
 
   if (is_error)
@@ -67,7 +67,7 @@ int
 main (int    argc,
       char **argv)
 {
-  HacktreeBuiltin *builtin;
+  OstreeBuiltin *builtin;
   const char *cmd;
 
   g_type_init ();

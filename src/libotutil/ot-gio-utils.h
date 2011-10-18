@@ -19,9 +19,21 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_UTIL_H__
+#ifndef __OSTREE_GIO_UTILS_H__
+#define __OSTREE_GIO_UTILS_H__
 
-#include <ht-unix-utils.h>
-#include <ht-gio-utils.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+GFile *ot_util_new_file_for_path (const char *path);
+
+gboolean ot_util_ensure_directory (const char *path, gboolean with_parents, GError **error);
+
+char * ot_util_get_file_contents_utf8 (const char *path, GError    **error);
+
+GInputStream *ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error);
+
+G_END_DECLS
 
 #endif

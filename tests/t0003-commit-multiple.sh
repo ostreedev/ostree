@@ -31,11 +31,11 @@ echo second > secondfile
 
 mkdir ../repo
 repo="--repo=../repo"
-hacktree init $repo
+ostree init $repo
 echo 'ok init'
-hacktree commit $repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
+ostree commit $repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
 echo 'ok commit 1'
-hacktree commit $repo -s "Test Commit 2" -b "Commit body first" --add=secondfile
+ostree commit $repo -s "Test Commit 2" -b "Commit body first" --add=secondfile
 echo 'ok commit 2'
-hacktree fsck -q $repo
+ostree fsck -q $repo
 echo 'ok fsck'

@@ -22,10 +22,10 @@ set -e
 
 . libtest.sh
 
-echo "1..2"
+echo "1..1"
 
 setup_test_repository2
-hacktree log $ht_repo > $test_tmpdir/log.txt
+ostree log $ot_repo > $test_tmpdir/log.txt
 assert_file_has_content $test_tmpdir/log.txt "Test Commit 1"
 assert_file_has_content $test_tmpdir/log.txt "Test Commit 2"
 echo "ok log"

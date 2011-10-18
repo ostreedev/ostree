@@ -18,56 +18,56 @@
  *
  * Author: Colin Walters <walters@verbum.org>
  */
-/* hacktree-repo.h */
+/* ostree-repo.h */
 
-#ifndef _HACKTREE_REPO
-#define _HACKTREE_REPO
+#ifndef _OSTREE_REPO
+#define _OSTREE_REPO
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define HACKTREE_TYPE_REPO hacktree_repo_get_type()
-#define HACKTREE_REPO(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), HACKTREE_TYPE_REPO, HacktreeRepo))
-#define HACKTREE_REPO_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST ((klass), HACKTREE_TYPE_REPO, HacktreeRepoClass))
-#define HACKTREE_IS_REPO(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), HACKTREE_TYPE_REPO))
-#define HACKTREE_IS_REPO_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE ((klass), HACKTREE_TYPE_REPO))
-#define HACKTREE_REPO_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), HACKTREE_TYPE_REPO, HacktreeRepoClass))
+#define OSTREE_TYPE_REPO ostree_repo_get_type()
+#define OSTREE_REPO(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), OSTREE_TYPE_REPO, OstreeRepo))
+#define OSTREE_REPO_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST ((klass), OSTREE_TYPE_REPO, OstreeRepoClass))
+#define OSTREE_IS_REPO(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_REPO))
+#define OSTREE_IS_REPO_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE ((klass), OSTREE_TYPE_REPO))
+#define OSTREE_REPO_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), OSTREE_TYPE_REPO, OstreeRepoClass))
 
 typedef struct {
   GObject parent;
-} HacktreeRepo;
+} OstreeRepo;
 
 typedef struct {
   GObjectClass parent_class;
-} HacktreeRepoClass;
+} OstreeRepoClass;
 
-GType hacktree_repo_get_type (void);
+GType ostree_repo_get_type (void);
 
-HacktreeRepo* hacktree_repo_new (const char *path);
+OstreeRepo* ostree_repo_new (const char *path);
 
-gboolean      hacktree_repo_check (HacktreeRepo  *self, GError **error);
+gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
-gboolean      hacktree_repo_link_file (HacktreeRepo *self,
+gboolean      ostree_repo_link_file (OstreeRepo *self,
                                        const char   *path,
                                        gboolean      ignore_exists,
                                        gboolean      force,
                                        GError      **error);
 
-const char *  hacktree_repo_get_head (HacktreeRepo  *self);
+const char *  ostree_repo_get_head (OstreeRepo  *self);
 
-gboolean      hacktree_repo_load_variant (HacktreeRepo *self,
+gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           const char   *sha256,
-                                          HacktreeSerializedVariantType *out_type,
+                                          OstreeSerializedVariantType *out_type,
                                           GVariant    **out_variant,
                                           GError      **error);
 
-gboolean      hacktree_repo_commit (HacktreeRepo *self,
+gboolean      ostree_repo_commit (OstreeRepo *self,
                                     const char   *subject,
                                     const char   *body,
                                     GVariant     *metadata,
@@ -77,7 +77,7 @@ gboolean      hacktree_repo_commit (HacktreeRepo *self,
                                     GChecksum   **out_commit,
                                     GError      **error);
 
-gboolean      hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
+gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
                                                      const char   *subject,
                                                      const char   *body,
                                                      GVariant     *metadata,
@@ -87,19 +87,19 @@ gboolean      hacktree_repo_commit_from_filelist_fd (HacktreeRepo *self,
                                                      GChecksum   **out_commit,
                                                      GError      **error);
 
-gboolean      hacktree_repo_checkout (HacktreeRepo *self,
+gboolean      ostree_repo_checkout (OstreeRepo *self,
                                       const char   *ref,
                                       const char   *destination,
                                       GError      **error);
 
-typedef void (*HacktreeRepoObjectIter) (HacktreeRepo *self, const char *path,
+typedef void (*OstreeRepoObjectIter) (OstreeRepo *self, const char *path,
                                         GFileInfo *fileinfo, gpointer user_data);
 
-gboolean     hacktree_repo_iter_objects (HacktreeRepo  *self,
-                                         HacktreeRepoObjectIter callback,
+gboolean     ostree_repo_iter_objects (OstreeRepo  *self,
+                                         OstreeRepoObjectIter callback,
                                          gpointer       user_data,
                                          GError        **error);
 
 G_END_DECLS
 
-#endif /* _HACKTREE_REPO */
+#endif /* _OSTREE_REPO */

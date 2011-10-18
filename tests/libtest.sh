@@ -20,7 +20,7 @@
 
 TMPDIR=${TMPDIR:-/tmp}
 export TMPDIR
-test_tmpdir=`mktemp -d "$TMPDIR/hacktree-tests.XXXXXXXXXX"`
+test_tmpdir=`mktemp -d "$TMPDIR/ostree-tests.XXXXXXXXXX"`
 cd "$test_tmpdir"
 touch "$test_tmpdir/.test$$"
 
@@ -57,12 +57,12 @@ setup_test_repository1 () {
     echo second > secondfile
 
     mkdir ../repo
-    ht_repo="--repo=../repo"
-    export ht_repo
-    hacktree init $ht_repo
-    hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
-    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body second" --add=secondfile
-    hacktree fsck -q $ht_repo
+    ot_repo="--repo=../repo"
+    export ot_repo
+    ostree init $ot_repo
+    ostree commit $ot_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
+    ostree commit $ot_repo -s "Test Commit 2" -b "Commit body second" --add=secondfile
+    ostree fsck -q $ot_repo
 }
 
 setup_test_repository2 () {
@@ -82,13 +82,13 @@ setup_test_repository2 () {
     cd ..
     mkdir repo
     cd repo
-    ht_repo="--repo=`pwd`"
+    ot_repo="--repo=`pwd`"
     cd ../files
-    export ht_repo
-    hacktree init $ht_repo
-    hacktree commit $ht_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
-    hacktree commit $ht_repo -s "Test Commit 2" -b "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
-    hacktree fsck -q $ht_repo
+    export ot_repo
+    ostree init $ot_repo
+    ostree commit $ot_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
+    ostree commit $ot_repo -s "Test Commit 2" -b "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
+    ostree fsck -q $ot_repo
 }
 
 trap 'die' EXIT

@@ -30,9 +30,9 @@ echo hello > yy
 
 mkdir ../repo
 repo="--repo=../repo"
-hacktree init $repo
+ostree init $repo
 echo 'ok init'
-hacktree commit $repo -s "Test Commit" -b "Commit body" --add=yy
+ostree commit $repo -s "Test Commit" -b "Commit body" --add=yy
 echo 'ok commit'
-hacktree fsck -q $repo
+ostree fsck -q $repo
 echo 'ok fsck'

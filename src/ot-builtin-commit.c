@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
@@ -50,11 +50,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
+  OstreeRepo *repo = NULL;
   gboolean using_filename_cmdline;
   gboolean using_filedescriptors;
   GPtrArray *additions_array = NULL;
@@ -73,8 +73,8 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
   if (prefix == NULL)
     prefix = ".";
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
   using_filename_cmdline = (removals || additions);
@@ -113,7 +113,7 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
         for (iter = removals; *iter; iter++)
           g_ptr_array_add (removals_array, *iter);
       
-      if (!hacktree_repo_commit (repo, subject, body, NULL,
+      if (!ostree_repo_commit (repo, subject, body, NULL,
                                  prefix, additions_array,
                                  removals_array,
                                  &commit_checksum,
@@ -129,7 +129,7 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
         from_fd = 0;
       else if (from_file)
         {
-          temp_fd = ht_util_open_file_read (from_file, error);
+          temp_fd = ot_util_open_file_read (from_file, error);
           if (temp_fd < 0)
             {
               g_prefix_error (error, "Failed to open '%s': ", from_file);
@@ -137,7 +137,7 @@ hacktree_builtin_commit (int argc, char **argv, const char *prefix, GError **err
             }
           from_fd = temp_fd;
         }
-      if (!hacktree_repo_commit_from_filelist_fd (repo, subject, body, NULL,
+      if (!ostree_repo_commit_from_filelist_fd (repo, subject, body, NULL,
                                                   prefix, from_fd, separator,
                                                   &commit_checksum, error))
         {

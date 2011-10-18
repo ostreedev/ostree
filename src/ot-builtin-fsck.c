@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
@@ -40,7 +40,7 @@ typedef struct {
 } HtFsckData;
 
 static void
-object_iter_callback (HacktreeRepo  *repo,
+object_iter_callback (OstreeRepo  *repo,
                       const char    *path,
                       GFileInfo     *file_info,
                       gpointer       user_data)
@@ -62,7 +62,7 @@ object_iter_callback (HacktreeRepo  *repo,
      if (nlinks < 2 && !quiet)
      g_printerr ("note: floating object: %s\n", path); */
 
-  if (!hacktree_stat_and_checksum_file (-1, path, &checksum, &stbuf, &error))
+  if (!ostree_stat_and_checksum_file (-1, path, &checksum, &stbuf, &error))
     goto out;
 
   filename_checksum = g_strdup (g_file_info_get_name (file_info));
@@ -95,12 +95,12 @@ object_iter_callback (HacktreeRepo  *repo,
 }
 
 gboolean
-hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   HtFsckData data;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
+  OstreeRepo *repo = NULL;
   const char *head;
 
   context = g_option_context_new ("- Check the repository for consistency");
@@ -114,14 +114,14 @@ hacktree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error
 
   data.n_objects = 0;
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (!hacktree_repo_iter_objects (repo, object_iter_callback, &data, error))
+  if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;
 
-  head = hacktree_repo_get_head (repo);
+  head = ostree_repo_get_head (repo);
   if (!head)
     {
       if (!quiet)

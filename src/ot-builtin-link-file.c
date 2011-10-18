@@ -21,31 +21,31 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean ignore_exists;
+static gboolean force;
 
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
+  { "ignore-exists", 'n', 0, G_OPTION_ARG_NONE, &ignore_exists, "Don't error if file exists", NULL },
+  { "force", 'f', 0, G_OPTION_ARG_NONE, &force, "If object exists, relink file", NULL },
   { NULL }
 };
 
 gboolean
-hacktree_builtin_show (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
+  OstreeRepo *repo = NULL;
   int i;
-  const char *target;
-  HacktreeSerializedVariantType type;
-  GVariant *variant = NULL;
-  char *formatted_variant = NULL;
 
-  context = g_option_context_new ("- Output a metadata object");
+  context = g_option_context_new ("- Create a new hard link in the repository");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -54,37 +54,20 @@ hacktree_builtin_show (int argc, char **argv, const char *prefix, GError **error
   if (repo_path == NULL)
     repo_path = ".";
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc < 2)
+  for (i = 0; i < argc-1; i++)
     {
-      target = hacktree_repo_get_head (repo);
-      if (!target)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "No arguments specified and no HEAD exists");
-          goto out;
-        }
+      if (!ostree_repo_link_file (repo, argv[i+1], ignore_exists, force, error))
+        goto out;
     }
-  else
-    target = argv[1];
-
-  if (!hacktree_repo_load_variant (repo, target, &type, &variant, error))
-    goto out;
-
-  g_print ("Object: %s\nType: %d\n", target, type);
-  formatted_variant = g_variant_print (variant, TRUE);
-  g_print ("%s\n", formatted_variant);
  
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (variant)
-    g_variant_unref (variant);
-  g_free (formatted_variant);
   return ret;
 }

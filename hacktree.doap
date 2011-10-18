@@ -5,8 +5,8 @@
          xmlns:gnome="http://api.gnome.org/doap-extensions#"
          xmlns="http://usefulinc.com/ns/doap#">
 
-  <name>hacktree</name>
-  <shortname>hacktree</shortname>
+  <name>ostree</name>
+  <shortname>ostree</shortname>
 
   <shortdesc xml:lang="en">GNOME OS build tool</shortdesc>
 

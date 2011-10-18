@@ -21,28 +21,31 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
 static char *repo_path;
+
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
+  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { NULL }
 };
 
 gboolean
-hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error)
 {
-  GOptionContext *context = NULL;
+  GOptionContext *context;
   gboolean ret = FALSE;
-  char *htdir_path = NULL;
-  char *objects_path = NULL;
-  GFile *htdir = NULL;
-  GFile *objects_dir = NULL;
+  OstreeRepo *repo = NULL;
+  int i;
+  const char *target;
+  OstreeSerializedVariantType type;
+  GVariant *variant = NULL;
+  char *formatted_variant = NULL;
 
-  context = g_option_context_new ("- Check the repository for consistency");
+  context = g_option_context_new ("- Output a metadata object");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -51,22 +54,37 @@ hacktree_builtin_init (int argc, char **argv, const char *prefix, GError **error
   if (repo_path == NULL)
     repo_path = ".";
 
-  htdir_path = g_build_filename (repo_path, HACKTREE_REPO_DIR, NULL);
-  htdir = ht_util_new_file_for_path (htdir_path);
-
-  if (!g_file_make_directory (htdir, NULL, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
-  objects_path = g_build_filename (htdir_path, "objects", NULL);
-  objects_dir = g_file_new_for_path (objects_path);
-  if (!g_file_make_directory (objects_dir, NULL, error))
+  if (argc < 2)
+    {
+      target = ostree_repo_get_head (repo);
+      if (!target)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "No arguments specified and no HEAD exists");
+          goto out;
+        }
+    }
+  else
+    target = argv[1];
+
+  if (!ostree_repo_load_variant (repo, target, &type, &variant, error))
     goto out;
+
+  g_print ("Object: %s\nType: %d\n", target, type);
+  formatted_variant = g_variant_print (variant, TRUE);
+  g_print ("%s\n", formatted_variant);
  
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
-  g_free (htdir_path);
-  g_clear_object (&htdir);
+  g_clear_object (&repo);
+  if (variant)
+    g_variant_unref (variant);
+  g_free (formatted_variant);
   return ret;
 }

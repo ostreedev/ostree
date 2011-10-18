@@ -19,10 +19,15 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_H__
+#ifndef __OSTREE_TYPES_H__
+#define __OSTREE_TYPES_H__
 
-#include <hacktree-core.h>
-#include <hacktree-repo.h>
-#include <hacktree-types.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+#define OSTREE_REPO_DIR ".ot"
+
+G_END_DECLS
 
 #endif

@@ -29,9 +29,9 @@ cd files
 echo hello > yy
 
 mkdir ../repo
-hacktree init --repo=../repo
+ostree init --repo=../repo
 echo 'ok init'
-hacktree fsck --repo=../repo -q
+ostree fsck --repo=../repo -q
 echo 'ok fsck'
-hacktree link-file --repo=../repo yy
+ostree link-file --repo=../repo yy
 echo 'ok link'

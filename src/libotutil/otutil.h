@@ -19,15 +19,9 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __HACKTREE_TYPES_H__
-#define __HACKTREE_TYPES_H__
+#ifndef __OSTREE_UTIL_H__
 
-#include <gio/gio.h>
-
-G_BEGIN_DECLS
-
-#define HACKTREE_REPO_DIR ".ht"
-
-G_END_DECLS
+#include <ot-unix-utils.h>
+#include <ot-gio-utils.h>
 
 #endif

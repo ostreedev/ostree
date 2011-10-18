@@ -21,8 +21,8 @@
 
 #include "config.h"
 
-#include "ht-builtins.h"
-#include "hacktree.h"
+#include "ot-builtins.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 
@@ -34,11 +34,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-hacktree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  HacktreeRepo *repo = NULL;
+  OstreeRepo *repo = NULL;
   int i;
   const char *commit;
   const char *destination;
@@ -52,8 +52,8 @@ hacktree_builtin_checkout (int argc, char **argv, const char *prefix, GError **e
   if (repo_path == NULL)
     repo_path = ".";
 
-  repo = hacktree_repo_new (repo_path);
-  if (!hacktree_repo_check (repo, error))
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (argc < 3)
@@ -69,7 +69,7 @@ hacktree_builtin_checkout (int argc, char **argv, const char *prefix, GError **e
   commit = argv[1];
   destination = argv[2];
 
-  if (!hacktree_repo_checkout (repo, commit, destination, error))
+  if (!ostree_repo_checkout (repo, commit, destination, error))
     goto out;
  
   ret = TRUE;
