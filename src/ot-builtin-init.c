@@ -37,12 +37,12 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  char *htdir_path = NULL;
+  char *otdir_path = NULL;
   char *objects_path = NULL;
-  GFile *htdir = NULL;
+  GFile *otdir = NULL;
   GFile *objects_dir = NULL;
 
-  context = g_option_context_new ("- Check the repository for consistency");
+  context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -51,13 +51,7 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   if (repo_path == NULL)
     repo_path = ".";
 
-  htdir_path = g_build_filename (repo_path, OSTREE_REPO_DIR, NULL);
-  htdir = ot_util_new_file_for_path (htdir_path);
-
-  if (!g_file_make_directory (htdir, NULL, error))
-    goto out;
-
-  objects_path = g_build_filename (htdir_path, "objects", NULL);
+  objects_path = g_build_filename (repo_path, "objects", NULL);
   objects_dir = g_file_new_for_path (objects_path);
   if (!g_file_make_directory (objects_dir, NULL, error))
     goto out;
@@ -66,7 +60,7 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
  out:
   if (context)
     g_option_context_free (context);
-  g_free (htdir_path);
-  g_clear_object (&htdir);
+  g_free (otdir_path);
+  g_clear_object (&otdir);
   return ret;
 }

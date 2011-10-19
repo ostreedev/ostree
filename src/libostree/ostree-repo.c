@@ -133,8 +133,9 @@ ostree_repo_constructor (GType                  gtype,
   g_assert (priv->path != NULL);
   
   priv->repo_file = ot_util_new_file_for_path (priv->path);
-  priv->head_ref_path = g_build_filename (priv->path, OSTREE_REPO_DIR, "HEAD", NULL);
-  priv->objects_path = g_build_filename (priv->path, OSTREE_REPO_DIR, "objects", NULL);
+  
+  priv->head_ref_path = g_build_filename (priv->path, "HEAD", NULL);
+  priv->objects_path = g_build_filename (priv->path, "objects", NULL);
 
   return object;
 }

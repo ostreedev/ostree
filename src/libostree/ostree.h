@@ -23,6 +23,5 @@
 
 #include <ostree-core.h>
 #include <ostree-repo.h>
-#include <ostree-types.h>
 
 #endif

@@ -37,7 +37,6 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-core.h \
 	src/libostree/ostree-repo.c \
 	src/libostree/ostree-repo.h \
-	src/libostree/ostree-types.h \
 	$(NULL)
 libostree_la_CFLAGS = -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
 libostree_la_LIBADD = libotutil.la $(GIO_UNIX_LIBS)
