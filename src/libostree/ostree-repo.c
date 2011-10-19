@@ -1096,7 +1096,7 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
 }
 
 static gboolean
-add_one_path_to_tree_and_import (OstreeRepo   *self,
+add_one_path_to_tree_and_import (OstreeRepo     *self,
                                  const char     *base,
                                  const char     *filename,
                                  ParsedTreeData *tree,

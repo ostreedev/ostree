@@ -193,7 +193,7 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
       goto out;
     }
 
-  if (!S_ISLNK(stbuf.st_mode))
+  if (S_ISREG(stbuf.st_mode))
     {
       fd = ot_util_open_file_read_at (dir_fd, basename, error);
       if (fd < 0)
