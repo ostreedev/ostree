@@ -144,6 +144,10 @@ static int make_readonly(const char *tree)
 static int switchroot(const char *newroot, const char *subroot)
 {
 	const char *root_bind_mounts[] = { "/home", "/root", "/var", NULL };
+	const char *readonly_bind_mounts[] = { "/bin", "/etc", "/lib",
+					       "/lib32", "/lib64", "/sbin",
+					       "/usr",
+					       NULL };
 	int i;
 	int orig_cfd;
 	int new_cfd;
@@ -182,7 +186,7 @@ static int switchroot(const char *newroot, const char *subroot)
 	}
 
 	if (fchdir (new_cfd) < 0) {
-		perrorv("failed to fchdir back to initrd");
+		perrorv("failed to fchdir back to root");
 		return -1;
 	}
 
@@ -191,6 +195,17 @@ static int switchroot(const char *newroot, const char *subroot)
 		return -1;
 	}
 
+	if (chdir ("/") < 0) {
+		perrorv("failed to chdir to subroot");
+		return -1;
+	}
+
+	for (i = 0; readonly_bind_mounts[i] != NULL; i++) {
+		if (make_readonly(readonly_bind_mounts[i]) < 0) {
+			return -1;
+		}
+	}
+	
 	if (orig_cfd >= 0) {
 		pid = fork();
 		if (pid <= 0) {
