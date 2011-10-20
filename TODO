@@ -1,9 +1,16 @@
-FS Core
+Core
 -------
 
-* Possibly rename to "ostree"?  It sounds nicer...doesn't appear to be taken
-
 * branches
+
+Base
+----
+
+* Replace Debian network scripts with NM
+* Builder should get source packages for everything too
+ - Try rebuilding them
+* Infrastructure for overlaying artifacts on top
+ - jhbuild
 
 Deployment
 ----------
