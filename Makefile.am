@@ -1,4 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
+AM_CPPFLAGS = -DDATADIR='"$(datadir)"'
 
 NULL = 
 BUILT_SOURCES =
@@ -11,3 +12,4 @@ noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 
 include Makefile-src.am
+include Makefile-triggers.am

@@ -27,9 +27,11 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean no_triggers;
 
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
+  { "no-triggers", 0, 0, G_OPTION_ARG_NONE, &no_triggers, "Do not run post-installation trigger scripts", NULL },
   { NULL }
 };
 
@@ -39,6 +41,7 @@ ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **err
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
+  OstreeCheckout *checkout = NULL;
   int i;
   const char *commit;
   const char *destination;
@@ -71,11 +74,19 @@ ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **err
 
   if (!ostree_repo_checkout (repo, commit, destination, error))
     goto out;
+
+  if (!no_triggers)
+    {
+      checkout = ostree_checkout_new (repo, destination);
+      if (!ostree_checkout_run_triggers (checkout, error))
+        goto out;
+    }
  
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
+  g_clear_object (&checkout);
   return ret;
 }
