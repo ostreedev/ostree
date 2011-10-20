@@ -2,6 +2,12 @@
 Experimenting with multiple roots
 ---------------------------------
 
+	$ mkdir gnomeos-chroot 
+	$ qemu-img create gnomeos.raw 2G
+	$ mkfs.ext2 -F gnomeos.raw
+	$ mount -o loop gnomeos.raw gnomeos-chroot
+	$ debootstrap --arch=amd64 squeeze gnomeos-chroot
+
 <http://wiki.debian.org/QEMU#Setting_up_a_testing.2BAC8-unstable_system>
 
 Follow the steps for making a disk image, downloading the business

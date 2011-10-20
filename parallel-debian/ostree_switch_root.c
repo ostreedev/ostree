@@ -143,7 +143,9 @@ static int make_readonly(const char *tree)
 
 static int switchroot(const char *newroot, const char *subroot)
 {
-	const char *root_bind_mounts[] = { "/home", "/root", "/var", NULL };
+	const char *toproot_bind_mounts[] = { "/boot", NULL };
+	const char *ostree_inherit_mounts[] = { "/home", "/root", NULL };
+	const char *ostree_bind_mounts[] = { "/var", NULL };
 	const char *readonly_bind_mounts[] = { "/bin", "/etc", "/lib",
 					       "/lib32", "/lib64", "/sbin",
 					       "/usr",
@@ -151,12 +153,22 @@ static int switchroot(const char *newroot, const char *subroot)
 	int i;
 	int orig_cfd;
 	int new_cfd;
+	int subroot_cfd;
 	pid_t pid;
+	char subroot_path[PATH_MAX];
 	char srcpath[PATH_MAX];
 	char destpath[PATH_MAX];
+	struct stat stbuf;
 
 	orig_cfd = open("/", O_RDONLY);
 	new_cfd = open(newroot, O_RDONLY);
+
+	snprintf(subroot_path, sizeof(subroot_path), "%s/ostree/%s", newroot, subroot);
+	subroot_cfd = open(subroot_path, O_RDONLY);
+	if (subroot_cfd < 0) {
+		perrorv("failed to open subroot %s", subroot_path);
+		return -1;
+	}
 
 	/* For now just remount the rootfs r/w.  Should definitely
 	 * handle this better later... (famous last words)
@@ -166,11 +178,31 @@ static int switchroot(const char *newroot, const char *subroot)
 		return -1;
 	}
 
-	for (i = 0; root_bind_mounts[i] != NULL; i++) {
-		snprintf(srcpath, sizeof(srcpath), "%s%s", newroot, root_bind_mounts[i]);
-		snprintf(destpath, sizeof(destpath), "%s/%s%s", newroot, subroot, root_bind_mounts[i]);
+	for (i = 0; toproot_bind_mounts[i] != NULL; i++) {
+		snprintf(srcpath, sizeof(srcpath), "%s%s", newroot, toproot_bind_mounts[i]);
+		snprintf(destpath, sizeof(destpath), "%s/%s", subroot_path, toproot_bind_mounts[i]);
 		if (mount(srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0) {
-			perrorv("failed to bind mount %s to %s", srcpath, destpath);
+			perrorv("failed to bind mount (class:toproot) %s to %s", srcpath, destpath);
+			return -1;
+		}
+	}
+
+	for (i = 0; ostree_inherit_mounts[i] != NULL; i++) {
+		snprintf(srcpath, sizeof(srcpath), "%s%s", newroot, ostree_inherit_mounts[i]);
+		if (stat (srcpath, &stbuf) < 0)
+			snprintf(srcpath, sizeof(srcpath), "%s/ostree%s", newroot, ostree_inherit_mounts[i]);
+		snprintf(destpath, sizeof(destpath), "%s%s", subroot_path, ostree_inherit_mounts[i]);
+		if (mount(srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0) {
+			perrorv("failed to bind mount (class:inherit) %s to %s", srcpath, destpath);
+			return -1;
+		}
+	}
+
+	for (i = 0; ostree_bind_mounts[i] != NULL; i++) {
+		snprintf(srcpath, sizeof(srcpath), "%s/ostree%s", newroot, ostree_bind_mounts[i]);
+		snprintf(destpath, sizeof(destpath), "%s%s", subroot_path, ostree_bind_mounts[i]);
+		if (mount(srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0) {
+			perrorv("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
 			return -1;
 		}
 	}
