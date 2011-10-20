@@ -22,33 +22,45 @@
 set -e
 set -x
 
-DEBTARGET=squeeze
-KERNEL_BIN=http://ftp.us.debian.org/debian/pool/main/l/linux-latest-2.6/linux-image-2.6-amd64_2.6.32+29_amd64.deb
-
-NOTSHARED_DIRS="dev bin etc lib lib32 lib64 proc media mnt run sbin selinux sys srv usr"
-SHARED_DIRS="home root opt tmp var"
-
 case `uname -p` in
     x86_64)
         ARCH=amd64
         ;;
-    i?86)
-        ARCH=i386
+    *)
+        echo "Unsupported architecture"
         ;;
 esac;
 
+DEBTARGET=wheezy
+KERNELPKG=linux-image-3.0.0-1-amd64
+
+NOTSHARED_DIRS="dev bin etc lib lib32 lib64 proc media mnt run sbin selinux sys srv usr"
+SHARED_DIRS="home root opt tmp var"
+
 if ! test -f $DEBTARGET.img; then
     echo "Creating $DEBTARGET.img"
+    mkdir -p debootstrap-$DEBTARGET
+    debootstrap --download-only --arch $ARCH $DEBTARGET debootstrap-$DEBTARGET
+    
+    umount gnomeos-fs-$DEBTARGET || true
+    mkdir -p gnomeos-fs-$DEBTARGET
     qemu-img create $DEBTARGET.img.tmp 2G
     mkfs.ext2 -q -F $DEBTARGET.img.tmp
-    mkdir -p gnomeos-fs
-    mount -o loop $DEBTARGET.img.tmp gnomeos-fs
-    debootstrap --arch $ARCH $DEBTARGET gnomeos-fs
-    umount gnomeos-fs
+    mount -o loop $DEBTARGET.img.tmp gnomeos-fs-$DEBTARGET
+
+    for d in debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
+        tmpdir=`mktemp -d`
+        (cd tmpdir;
+            ar x ../$d;
+            tar -x -z -C ../gnomeos-fs-$DEBTARGET -f data.tar.gz)
+    done
+
+    umount gnomeos-fs-$DEBTARGET
     mv $DEBTARGET.img.tmp $DEBTARGET.img
 fi
 
-if ! test -f 
+# TODO download source for above
+# TODO download build dependencies for above
 
 if ! test -f gnomeos.img; then
     echo "Cloning gnomeos.img from $DEBTARGET.img"
