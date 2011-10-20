@@ -131,7 +131,6 @@ ostree_get_xattrs_for_path (const char *path,
     }
   else if (bytes_read > 0)
     {
-      const char *p;
       xattr_names = g_malloc (bytes_read);
       if (llistxattr (path, xattr_names, bytes_read) < 0)
         {

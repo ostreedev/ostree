@@ -39,7 +39,6 @@ ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  int i;
   const char *target;
   OstreeSerializedVariantType type;
   GVariant *variant = NULL;

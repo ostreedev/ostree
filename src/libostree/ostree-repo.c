@@ -405,7 +405,6 @@ import_directory_meta (OstreeRepo  *self,
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
   GVariant *xattrs = NULL;
-  gsize xattr_len;
 
   if (lstat (path, &stbuf) < 0)
     {
@@ -1318,7 +1317,6 @@ ostree_repo_commit (OstreeRepo *self,
   ParsedDirectoryData *root = NULL;
   GVariant *previous_commit = NULL;
   GChecksum *ret_commit_checksum = NULL;
-  char *orig_root_metadata_sha256 = NULL;
   GVariant *root_metadata = NULL;
   GChecksum *root_meta_checksum = NULL;
 
@@ -1388,7 +1386,6 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   ParsedDirectoryData *root = NULL;
-  GVariant *previous_commit = NULL;
   GChecksum *ret_commit_checksum = NULL;
   GUnixInputStream *in = NULL;
   GDataInputStream *datain = NULL;
@@ -1656,8 +1653,6 @@ checkout_one_directory (OstreeRepo  *self,
   char *dest_path = NULL;
   guint32 version, uid, gid, mode;
   GVariant *xattr_variant = NULL;
-  const guint8 *xattrs = NULL;
-  gsize xattr_len;
 
   dest_path = g_build_filename (destination, dirname, NULL);
       

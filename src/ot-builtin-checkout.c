@@ -42,7 +42,6 @@ ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **err
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   OstreeCheckout *checkout = NULL;
-  int i;
   const char *commit;
   const char *destination;
 
