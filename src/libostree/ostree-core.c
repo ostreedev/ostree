@@ -96,9 +96,9 @@ read_xattr_name_array (const char *path,
       
       g_variant_builder_add (builder, "(@ay@ay)",
                              g_variant_new_bytestring (p),
-                             g_variant_new_fixed_array (G_VARIANT_TYPE ("y"), buf, bytes_read, 1));
+                             g_variant_new_from_data (G_VARIANT_TYPE ("ay"),
+                                                      buf, bytes_read, FALSE, g_free, buf));
 
-      g_free (buf);
       p = p + strlen (p) + 1;
     }
   
