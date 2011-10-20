@@ -194,6 +194,8 @@ run_trigger (OstreeCheckout *self,
 
   path = g_file_get_path (trigger);
   basename = g_path_get_basename (path);
+
+  args = g_ptr_array_new ();
   
   if (requires_chroot)
     {
@@ -291,7 +293,7 @@ ostree_checkout_run_triggers (OstreeCheckout *self,
   GFileInfo *file_info = NULL;
   GFileEnumerator *enumerator = NULL;
 
-  triggerdir_path = g_build_filename (DATADIR, "ostree", "triggers.d", NULL);
+  triggerdir_path = g_build_filename (LIBEXECDIR, "ostree", "triggers.d", NULL);
   triggerdir = ot_util_new_file_for_path (triggerdir_path);
 
   enumerator = g_file_enumerate_children (triggerdir, "standard::name,standard::type,unix::*", 

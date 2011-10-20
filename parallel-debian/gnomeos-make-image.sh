@@ -32,30 +32,34 @@ case `uname -p` in
 esac;
 
 DEBTARGET=wheezy
-KERNELPKG=linux-image-3.0.0-1-amd64
 
 NOTSHARED_DIRS="dev bin etc lib lib32 lib64 proc media mnt run sbin selinux sys srv usr"
-SHARED_DIRS="home root opt tmp var"
+SHARED_DIRS="home root tmp var"
+
+if ! test -d debootstrap-$DEBTARGET; then
+    echo "Creating $DEBTARGET.img"
+    mkdir -p debootstrap-$DEBTARGET.tmp
+    debootstrap --download-only --arch $ARCH $DEBTARGET debootstrap-$DEBTARGET.tmp
+    mv debootstrap-$DEBTARGET.tmp debootstrap-$DEBTARGET
+fi
 
 if ! test -f $DEBTARGET.img; then
     echo "Creating $DEBTARGET.img"
-    mkdir -p debootstrap-$DEBTARGET
-    debootstrap --download-only --arch $ARCH $DEBTARGET debootstrap-$DEBTARGET
-    
-    umount gnomeos-fs-$DEBTARGET || true
-    mkdir -p gnomeos-fs-$DEBTARGET
+    umount fs || true
+    mkdir -p fs
     qemu-img create $DEBTARGET.img.tmp 2G
-    mkfs.ext2 -q -F $DEBTARGET.img.tmp
-    mount -o loop $DEBTARGET.img.tmp gnomeos-fs-$DEBTARGET
+    mkfs.ext4 -q -F $DEBTARGET.img.tmp
+    mount -o loop $DEBTARGET.img.tmp fs
 
     for d in debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
-        tmpdir=`mktemp -d`
-        (cd tmpdir;
+        tmpdir=`mktemp --tmpdir=. -d`
+        (cd ${tmpdir};
             ar x ../$d;
-            tar -x -z -C ../gnomeos-fs-$DEBTARGET -f data.tar.gz)
+            tar -x -z -C ../fs -f data.tar.gz)
+        rm -rf ${tmpdir}
     done
 
-    umount gnomeos-fs-$DEBTARGET
+    umount fs
     mv $DEBTARGET.img.tmp $DEBTARGET.img
 fi
 
@@ -65,9 +69,10 @@ fi
 if ! test -f gnomeos.img; then
     echo "Cloning gnomeos.img from $DEBTARGET.img"
     cp -a --sparse=always $DEBTARGET.img gnomeos.img.tmp
-    umount gnomeos-fs || true
-    mount -o loop gnomeos.img.tmp gnomeos-fs
-    (cd gnomeos-fs;
+    mkdir -p fs
+    umount fs || true
+    mount -o loop gnomeos.img.tmp fs
+    (cd fs;
         mkdir ostree
         mkdir ostree/repo
         mkdir ostree/gnomeos-origin
@@ -89,7 +94,7 @@ if ! test -f gnomeos.img; then
             ostree checkout --repo=repo HEAD gnomeos-${rev}
             ln -s gnomeos-${rev} current)
     )
-    umount gnomeos-fs
+    umount fs
     mv gnomeos.img.tmp gnomeos.img
 fi
 
