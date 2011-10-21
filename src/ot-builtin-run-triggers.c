@@ -34,16 +34,15 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_run_triggers (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   OstreeCheckout *checkout = NULL;
-  const char *commit;
-  const char *destination;
+  const char *dir;
 
-  context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
+  context = g_option_context_new ("DIR - Run trigger scripts for directory");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -56,22 +55,22 @@ ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **err
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc < 3)
+  if (argc < 1)
     {
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s\n", help);
       g_free (help);
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "COMMIT and DESTINATION must be specified");
+                           "DIR must be specified");
       goto out;
     }
 
-  commit = argv[1];
-  destination = argv[2];
+  dir = argv[1];
 
-  if (!ostree_repo_checkout (repo, commit, destination, error))
+  checkout = ostree_checkout_new (repo, dir);
+  if (!ostree_checkout_run_triggers (checkout, error))
     goto out;
-
+ 
   ret = TRUE;
  out:
   if (context)

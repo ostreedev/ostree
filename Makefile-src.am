@@ -53,6 +53,7 @@ ostree_SOURCES = src/main.c \
 	src/ot-builtin-init.c \
 	src/ot-builtin-link-file.c \
 	src/ot-builtin-log.c \
+	src/ot-builtin-run-triggers.c \
 	src/ot-builtin-show.c \
 	$(NULL)
 ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)

@@ -35,6 +35,7 @@ static OstreeBuiltin builtins[] = {
   { "link-file", ostree_builtin_link_file, 0 },
   { "log", ostree_builtin_log, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
+  { "run-triggers", ostree_builtin_run_triggers, 0 },
   { "show", ostree_builtin_show, 0 },
   { NULL }
 };
