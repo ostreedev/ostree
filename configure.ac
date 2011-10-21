@@ -18,8 +18,8 @@ if test "x$GCC" = "xyes"; then
   *) CFLAGS="$CFLAGS -Wall" ;;
   esac
   case " $CFLAGS " in
-  *[\ \	]-Wmissing-prototypes[\ \	]*) ;;
-  *) CFLAGS="$CFLAGS -Wmissing-prototypes" ;;
+  *[\ \	]-Werror=missing-prototypes[\ \	]*) ;;
+  *) CFLAGS="$CFLAGS -Werror=missing-prototypes" ;;
   esac
 fi
 changequote([,])dnl
