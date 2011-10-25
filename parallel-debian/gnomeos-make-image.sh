@@ -1,6 +1,6 @@
 #!/bin/sh
 # -*- indent-tabs-mode: nil; -*-
-# Generate an ext2 root filesystem disk image.
+# Generate a root filesystem image
 #
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
@@ -22,6 +22,9 @@
 set -e
 set -x
 
+SRCDIR=`dirname $0`
+WORKDIR=`pwd`
+
 case `uname -p` in
     x86_64)
         ARCH=amd64
@@ -33,69 +36,101 @@ esac;
 
 DEBTARGET=wheezy
 
-NOTSHARED_DIRS="dev bin etc lib lib32 lib64 proc media mnt run sbin selinux sys srv usr"
-SHARED_DIRS="home root tmp var"
+INITRD_MOVE_MOUNTS="dev proc sys"
+TOPROOT_BIND_MOUNTS="boot home root tmp"
+OSTREE_BIND_MOUNTS="var"
+MOVE_MOUNTS="selinux mnt media"
+READONLY_BIND_MOUNTS="bin etc lib lib32 lib64 sbin usr"
 
-if ! test -d debootstrap-$DEBTARGET; then
+OBJ=debootstrap-$DEBTARGET
+if ! test -d ${OBJ} ; then
     echo "Creating $DEBTARGET.img"
-    mkdir -p debootstrap-$DEBTARGET.tmp
-    debootstrap --download-only --arch $ARCH $DEBTARGET debootstrap-$DEBTARGET.tmp
-    mv debootstrap-$DEBTARGET.tmp debootstrap-$DEBTARGET
+    mkdir -p ${OBJ}.tmp
+    debootstrap --download-only --arch $ARCH $DEBTARGET ${OBJ}.tmp
+    mv ${OBJ}.tmp ${OBJ}
 fi
 
-if ! test -f $DEBTARGET.img; then
-    echo "Creating $DEBTARGET.img"
+OBJ=$DEBTARGET.img
+if ! test -f ${OBJ}; then
     umount fs || true
     mkdir -p fs
-    qemu-img create $DEBTARGET.img.tmp 2G
-    mkfs.ext4 -q -F $DEBTARGET.img.tmp
-    mount -o loop $DEBTARGET.img.tmp fs
+    qemu-img create ${OBJ}.tmp 2G
+    mkfs.ext4 -q -F ${OBJ}.tmp
+    mount -o loop ${OBJ}.tmp fs
 
     for d in debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
-        tmpdir=`mktemp --tmpdir=. -d`
-        (cd ${tmpdir};
-            ar x ../$d;
-            tar -x -z -C ../fs -f data.tar.gz)
-        rm -rf ${tmpdir}
+        rm -rf work; mkdir work
+        (cd work && ar x ../$d && tar -x -z -C ../fs -f data.tar.gz)
     done
 
     umount fs
-    mv $DEBTARGET.img.tmp $DEBTARGET.img
+    mv ${OBJ}.tmp ${OBJ}
 fi
 
 # TODO download source for above
 # TODO download build dependencies for above
 
-if ! test -f gnomeos.img; then
-    echo "Cloning gnomeos.img from $DEBTARGET.img"
-    cp -a --sparse=always $DEBTARGET.img gnomeos.img.tmp
+OBJ=gnomeos-filesystem.img
+if ! test -f ${OBJ}; then
+    cp -a --sparse=always $DEBTARGET.img ${OBJ}.tmp
     mkdir -p fs
     umount fs || true
-    mount -o loop gnomeos.img.tmp fs
+    mount -o loop ${OBJ}.tmp fs
     (cd fs;
         mkdir ostree
         mkdir ostree/repo
         mkdir ostree/gnomeos-origin
-        for d in $NOTSHARED_DIRS; do
+        for d in $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS; do
+            mkdir -p ostree/gnomeos-origin/$d
+            chmod --reference $d ostree/gnomeos-origin/$d
+        done
+        for d in $OSTREE_BIND_MOUNTS; do
+            mkdir -p ostree/gnomeos-origin/$d
+            chmod --reference $d ostree/gnomeos-origin/$d
+            mv $d ostree
+        done
+        for d in $READONLY_BIND_MOUNTS $MOVE_MOUNTS; do
             if test -d $d; then
                 mv $d ostree/gnomeos-origin
             fi
         done
-	for d in $SHARED_DIRS; do
-	    mv $d ostree
-	    mkdir ostree/gnomeos-origin/$d
-	    touch ostree/gnomeos-origin/$d/EMPTY
-        done
+
+        cp ${SRCDIR}/debian-setup.sh ostree/gnomeos-origin/
+        chroot ostree/gnomeos-origin ./debian-setup.sh
+        rm ostree/gnomeos-origin/debian-setup.sh
+
         ostree init --repo=ostree/repo
         (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | ostree commit -s 'Initial import' --repo=../repo --from-stdin)
         rm -rf ostree/gnomeos-origin
         (cd ostree;
             rev=`cat repo/HEAD`
             ostree checkout --repo=repo HEAD gnomeos-${rev}
+            ostree run-triggers --repo=repo current
             ln -s gnomeos-${rev} current)
     )
     umount fs
-    mv gnomeos.img.tmp gnomeos.img
+    mv ${OBJ}.tmp ${OBJ}
 fi
 
+OBJ=gnomeos-kernel
+if ! test -f ${OBJ}; then
+    if test -x /sbin/grubby; then
+        kernel=`grubby --default-kernel`
+        cp $kernel ${OBJ}.tmp
+    else
+        echo "ERROR: couldn't find /sbin/grubby (which we use to find the running kernel)"
+        echo "  You can copy any kernel image you want in here as gnomeos-kernel"
+        echo "  For example: cp /boot/vmlinuz-2.6.40.6-0.fc15.x86_64 gnomeos-kernel"
+        exit 1
+    fi
+    mv ${OBJ}.tmp ${OBJ}
+fi
 
+cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
+
+OBJ=gnomeos-initrd.img
+if ! test -f ${OBJ}; then
+    rm -f ${OBJ}.tmp
+    dracutbasedir=/src/build/jhbuild/share/dracut /src/build/jhbuild/sbin/dracut -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${OBJ}.tmp
+    mv ${OBJ}.tmp ${OBJ}
+fi

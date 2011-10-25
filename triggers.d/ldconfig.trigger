@@ -1,3 +1,4 @@
+#!/bin/sh
 # Post-installation hook for shared libraries.  -*- mode: sh -*-
 #
 # Written by Colin Walters <walters@verbum.org>

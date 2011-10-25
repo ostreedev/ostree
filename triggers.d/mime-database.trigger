@@ -1,3 +1,4 @@
+#!/bin/sh
 # Post-installation hook for shared-mime-info.  -*- mode: sh -*-
 #
 # Written by Matthias Clasen <mclasen@redhat.com>

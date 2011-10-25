@@ -188,6 +188,9 @@ run_trigger (OstreeCheckout *self,
   OstreeCheckoutPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   char *path = NULL;
+  char *temp_path = NULL;
+  char *rel_temp_path = NULL;
+  GFile *temp_copy = NULL;
   char *basename = NULL;
   GPtrArray *args = NULL;
   int estatus;
@@ -199,9 +202,16 @@ run_trigger (OstreeCheckout *self,
   
   if (requires_chroot)
     {
+      temp_path = g_build_filename (priv->path, basename, NULL);
+      rel_temp_path = g_strconcat ("./", basename, NULL);
+      temp_copy = g_file_new_for_path (temp_path);
+
+      if (!g_file_copy (trigger, temp_copy, 0, NULL, NULL, NULL, error))
+        goto out;
+
       g_ptr_array_add (args, "chroot");
-      g_ptr_array_add (args, priv->path);
-      g_ptr_array_add (args, path);
+      g_ptr_array_add (args, ".");
+      g_ptr_array_add (args, rel_temp_path);
       g_ptr_array_add (args, NULL);
     }
   else
@@ -210,10 +220,12 @@ run_trigger (OstreeCheckout *self,
       g_ptr_array_add (args, NULL);
     }
       
+  g_print ("Running trigger: %s\n", path);
   if (!g_spawn_sync (priv->path,
                      (char**)args->pdata,
                      NULL,
-                     0, NULL, NULL, NULL, NULL,
+                     G_SPAWN_SEARCH_PATH,
+                     NULL, NULL, NULL, NULL,
                      &estatus,
                      error))
     {
@@ -223,8 +235,14 @@ run_trigger (OstreeCheckout *self,
 
   ret = TRUE;
  out:
+  if (requires_chroot && temp_path)
+    (void)unlink (temp_path);
+    
   g_free (path);
   g_free (basename);
+  g_free (temp_path);
+  g_free (rel_temp_path);
+  g_clear_object (&temp_copy);
   if (args)
     g_ptr_array_free (args, TRUE);
   return ret;
@@ -242,7 +260,7 @@ check_trigger (OstreeCheckout *self,
   GError *temp_error = NULL;
   char *line;
   gsize len;
-  gboolean requires_chroot = FALSE;
+  gboolean requires_chroot = TRUE;
   gboolean matches = FALSE;
 
   instream = (GInputStream*)g_file_read (trigger, NULL, error);
@@ -259,8 +277,6 @@ check_trigger (OstreeCheckout *self,
           matches = executable_exists_in_checkout (priv->path, executable);
           g_free (executable);
         }
-      if (g_str_has_prefix (line, "# RequiresChroot: "))
-        requires_chroot = TRUE;
 
       g_free (line);
     }

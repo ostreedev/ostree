@@ -1,3 +1,4 @@
+#!/bin/sh
 # Post-installation hook for pango.  -*- mode: sh -*-
 # Corresponds to gdk-pixbuf/gdk-pixbuf/Makefile.am:install-data-hook
 #

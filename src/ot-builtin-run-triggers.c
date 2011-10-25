@@ -27,9 +27,11 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean quiet;
 
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
+  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &quiet, "Don't display informational messages", NULL },
   { NULL }
 };
 

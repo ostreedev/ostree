@@ -1,0 +1,149 @@
+From e9cb0f0c6ef13773c823610f27a562bd54b2acd3 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 24 Oct 2011 22:01:17 -0400
+Subject: [PATCH] Support OSTree
+
+See http://git.gnome.org/browse/ostree
+---
+ modules.d/95rootfs-block/mount-root.sh |   12 ++++++------
+ modules.d/99base/init                  |   32 ++++++++++++++++++++++----------
+ 2 files changed, 28 insertions(+), 16 deletions(-)
+
+diff --git a/modules.d/95rootfs-block/mount-root.sh b/modules.d/95rootfs-block/mount-root.sh
+index 2c89431..4f411da 100755
+--- a/modules.d/95rootfs-block/mount-root.sh
++++ b/modules.d/95rootfs-block/mount-root.sh
+@@ -34,8 +34,8 @@ mount_root() {
+ 
+     READONLY=
+     fsckoptions=
+-    if [ -f "$NEWROOT"/etc/sysconfig/readonly-root ]; then
+-        . "$NEWROOT"/etc/sysconfig/readonly-root
++    if [ -f "$NEWROOT_PREFIX"/etc/sysconfig/readonly-root ]; then
++        . "$NEWROOT_PREFIX"/etc/sysconfig/readonly-root
+     fi
+ 
+     if getargbool 0 "readonlyroot=" -y readonlyroot; then
+@@ -57,7 +57,7 @@ mount_root() {
+     if [ -f "$NEWROOT"/forcefsck ] || getargbool 0 forcefsck ; then
+         fsckoptions="-f $fsckoptions"
+     elif [ -f "$NEWROOT"/.autofsck ]; then
+-        [ -f "$NEWROOT"/etc/sysconfig/autofsck ] && . "$NEWROOT"/etc/sysconfig/autofsck
++        [ -f "$NEWROOT_PREFIX"/etc/sysconfig/autofsck ] && . "$NEWROOT_PREFIX"/etc/sysconfig/autofsck
+         if [ "$AUTOFSCK_DEF_CHECK" = "yes" ]; then
+             AUTOFSCK_OPT="$AUTOFSCK_OPT -f"
+         fi
+@@ -73,8 +73,8 @@ mount_root() {
+     rootopts=
+     if getargbool 1 rd.fstab -n rd_NO_FSTAB \
+         && ! getarg rootflags \
+-        && [ -f "$NEWROOT/etc/fstab" ] \
+-        && ! [ -L "$NEWROOT/etc/fstab" ]; then
++        && [ -f "$NEWROOT_PREFIX/etc/fstab" ] \
++        && ! [ -L "$NEWROOT_PREFIX/etc/fstab" ]; then
+         # if $NEWROOT/etc/fstab contains special mount options for
+         # the root filesystem,
+         # remount it with the proper options
+@@ -89,7 +89,7 @@ mount_root() {
+                 rootopts=$opts
+                 break
+             fi
+-        done < "$NEWROOT/etc/fstab"
++        done < "$NEWROOT_PREFIX/etc/fstab"
+ 
+         rootopts=$(filter_rootopts $rootopts)
+     fi
+diff --git a/modules.d/99base/init b/modules.d/99base/init
+index 36b2152..9636990 100755
+--- a/modules.d/99base/init
++++ b/modules.d/99base/init
+@@ -275,6 +275,13 @@ unset queuetriggered
+ unset main_loop
+ unset RDRETRY
+ 
++ostree=$(getarg ostree=)
++if test -n $ostree; then
++    NEWROOT_PREFIX=${NEWROOT}/ostree/$ostree
++else
++    NEWROOT_PREFIX=$NEWROOT
++fi
++
+ # pre-mount happens before we try to mount the root filesystem,
+ # and happens once.
+ getarg 'rd.break=pre-mount' 'rdbreak=pre-mount' && emergency_shell -n pre-mount "Break pre-mount"
+@@ -287,14 +294,15 @@ getarg 'rd.break=mount' 'rdbreak=mount' && emergency_shell -n mount "Break mount
+ i=0
+ while :; do
+     if ismounted "$NEWROOT"; then
+-        usable_root "$NEWROOT" && break;
++        echo "Checking usable $NEWROOT_PREFIX"
++        usable_root "$NEWROOT_PREFIX" && break;
+         umount "$NEWROOT"
+     fi
+     for f in $hookdir/mount/*.sh; do
+         [ -f "$f" ] && . "$f"
+         if ismounted "$NEWROOT"; then
+-            usable_root "$NEWROOT" && break;
+-            warn "$NEWROOT has no proper rootfs layout, ignoring and removing offending mount hook"
++            usable_root "$NEWROOT_PREFIX" && break;
++            warn "$NEWROOT_PREFIX has no proper rootfs layout, ignoring and removing offending mount hook"
+             umount "$NEWROOT"
+             rm -f "$f"
+         fi
+@@ -320,11 +328,11 @@ unset __usr_found
+ for i in "$(getarg real_init=)" "$(getarg init=)" /sbin/init /etc/init /init /bin/sh; do
+     [ -n "$i" ] || continue
+ 
+-    __p=$(readlink -m "$NEWROOT$i")
++    __p=$(readlink -m "$NEWROOT_PREFIX$i")
+     if [ -n "$__p" ] \
+         && [ "x$__usr_found" = "x" ] \
+         && [ ! -x "$__p" ] \
+-        && strstr "$__p" "$NEWROOT/usr" \
++        && strstr "$__p" "$NEWROOT_PREFIX/usr" \
+         ; then
+         # we have to mount /usr
+         while read dev mp fs opts rest; do
+@@ -333,14 +341,14 @@ for i in "$(getarg real_init=)" "$(getarg init=)" /sbin/init /etc/init /init /bi
+                 __usr_found="1"
+                 break
+             fi
+-        done < "$NEWROOT/etc/fstab" >> /etc/fstab
++        done < "$NEWROOT_PREFIX/etc/fstab" >> /etc/fstab
+         if [ "x$__usr_found" != "x" ]; then
+             info "Mounting /usr"
+-            mount "$NEWROOT/usr" 2>&1 | vinfo
++            mount "$NEWROOT_PREFIX/usr" 2>&1 | vinfo
+         fi
+     fi
+ 
+-    __p=$(readlink -f "$NEWROOT$i")
++    __p=$(readlink -f "$NEWROOT_PREFIX$i")
+     if [ -x "$__p" ]; then
+         INIT="$i"
+         break
+@@ -445,7 +453,11 @@ info "Switching root"
+ unset PS4
+ 
+ CAPSH=$(command -v capsh)
+-SWITCH_ROOT=$(command -v switch_root)
++if test -n "${ostree}"; then
++    SWITCH_ROOT=$(command -v ostree_switch_root)
++else
++    SWITCH_ROOT=$(command -v switch_root)
++fi
+ PATH=$OLDPATH
+ export PATH
+ 
+@@ -463,7 +475,7 @@ if [ -f /etc/capsdrop ]; then
+     }
+ else
+     unset RD_DEBUG
+-    exec $SWITCH_ROOT "$NEWROOT" "$INIT" $initargs || {
++    exec $SWITCH_ROOT "$NEWROOT" $ostree "$INIT" $initargs || {
+ 	warn "Something went very badly wrong in the initramfs.  Please "
+ 	warn "file a bug against dracut."
+ 	emergency_shell
+-- 
+1.7.6.4
+

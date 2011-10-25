@@ -1,3 +1,4 @@
+#!/bin/sh
 # Post-installation hook for desktop files.  -*- mode: sh -*-
 #
 # Written by Matthias Clasen <mclasen@redhat.com>

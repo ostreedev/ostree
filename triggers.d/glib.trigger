@@ -1,3 +1,4 @@
+#!/bin/sh
 # Post-installation hook for glib/gschema.  -*- mode: sh -*-
 #
 # Written by Colin Walters <walters@verbum.org>

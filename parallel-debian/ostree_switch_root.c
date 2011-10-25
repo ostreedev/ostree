@@ -39,6 +39,9 @@
 #include <dirent.h>
 
 static int
+perrorv (const char *format, ...) __attribute__ ((format (printf, 1, 2)));
+
+static int
 perrorv (const char *format, ...)
 {
 	va_list args;
@@ -51,8 +54,11 @@ perrorv (const char *format, ...)
 
 	vfprintf (stderr, format, args);
 	fprintf (stderr, ": %s\n", p);
+	fflush (stderr);
 
 	va_end (args);
+
+	sleep (3);
 	
 	return 0;
 }
@@ -129,6 +135,12 @@ done:
 
 static int make_readonly(const char *tree)
 {
+	struct stat stbuf;
+	/* Ignore nonexistent directories for now;
+	 * some installs won't have e.g. lib64
+	 */
+	if (stat (tree, &stbuf) < 0)
+		return 0;
 	if (mount(tree, tree, NULL, MS_BIND, NULL) < 0) {
 		perrorv("Failed to do initial RO bind mount %s", tree);
 		return -1;
@@ -143,8 +155,8 @@ static int make_readonly(const char *tree)
 
 static int switchroot(const char *newroot, const char *subroot)
 {
-	const char *toproot_bind_mounts[] = { "/boot", NULL };
-	const char *ostree_inherit_mounts[] = { "/home", "/root", NULL };
+	const char *initrd_move_mounts[] = { "/dev", "/proc", "/sys", NULL };
+	const char *toproot_bind_mounts[] = { "/boot", "/home", "/root", "/tmp", NULL };
 	const char *ostree_bind_mounts[] = { "/var", NULL };
 	const char *readonly_bind_mounts[] = { "/bin", "/etc", "/lib",
 					       "/lib32", "/lib64", "/sbin",
@@ -158,10 +170,19 @@ static int switchroot(const char *newroot, const char *subroot)
 	char subroot_path[PATH_MAX];
 	char srcpath[PATH_MAX];
 	char destpath[PATH_MAX];
-	struct stat stbuf;
+
+	fprintf (stderr, "switching to root %s subroot: %s\n", newroot, subroot);
 
 	orig_cfd = open("/", O_RDONLY);
 	new_cfd = open(newroot, O_RDONLY);
+
+	/* For now just remount the rootfs r/w.  Should definitely
+	 * handle this better later... (famous last words)
+	 */
+	if (mount(newroot, newroot, NULL, MS_REMOUNT, NULL) < 0) {
+		perrorv("failed to remount %s read/write", newroot);
+		return -1;
+	}
 
 	snprintf(subroot_path, sizeof(subroot_path), "%s/ostree/%s", newroot, subroot);
 	subroot_cfd = open(subroot_path, O_RDONLY);
@@ -170,12 +191,14 @@ static int switchroot(const char *newroot, const char *subroot)
 		return -1;
 	}
 
-	/* For now just remount the rootfs r/w.  Should definitely
-	 * handle this better later... (famous last words)
-	 */
-	if (mount(newroot, newroot, NULL, MS_REMOUNT & ~MS_RDONLY, NULL) < 0) {
-		perrorv("failed to remount / read/write", newroot);
-		return -1;
+	for (i = 0; initrd_move_mounts[i] != NULL; i++) {
+		snprintf(destpath, sizeof(destpath), "%s%s", subroot_path, initrd_move_mounts[i]);
+
+		if (mount(initrd_move_mounts[i], destpath, NULL, MS_MOVE, NULL) < 0) {
+			perrorv("failed to move initramfs mount %s to %s",
+				initrd_move_mounts[i], destpath);
+			umount2(initrd_move_mounts[i], MNT_FORCE);
+		}
 	}
 
 	for (i = 0; toproot_bind_mounts[i] != NULL; i++) {
@@ -183,17 +206,6 @@ static int switchroot(const char *newroot, const char *subroot)
 		snprintf(destpath, sizeof(destpath), "%s/%s", subroot_path, toproot_bind_mounts[i]);
 		if (mount(srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0) {
 			perrorv("failed to bind mount (class:toproot) %s to %s", srcpath, destpath);
-			return -1;
-		}
-	}
-
-	for (i = 0; ostree_inherit_mounts[i] != NULL; i++) {
-		snprintf(srcpath, sizeof(srcpath), "%s%s", newroot, ostree_inherit_mounts[i]);
-		if (stat (srcpath, &stbuf) < 0)
-			snprintf(srcpath, sizeof(srcpath), "%s/ostree%s", newroot, ostree_inherit_mounts[i]);
-		snprintf(destpath, sizeof(destpath), "%s%s", subroot_path, ostree_inherit_mounts[i]);
-		if (mount(srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0) {
-			perrorv("failed to bind mount (class:inherit) %s to %s", srcpath, destpath);
 			return -1;
 		}
 	}
@@ -222,8 +234,9 @@ static int switchroot(const char *newroot, const char *subroot)
 		return -1;
 	}
 
-	if (chroot(subroot) < 0) {
-		perrorv("failed to change root to %s", subroot);
+	snprintf(destpath, sizeof(destpath), "ostree/%s", subroot);
+	if (chroot(destpath) < 0) {
+		perrorv("failed to change root to %s", destpath);
 		return -1;
 	}
 
@@ -237,7 +250,7 @@ static int switchroot(const char *newroot, const char *subroot)
 			return -1;
 		}
 	}
-	
+
 	if (orig_cfd >= 0) {
 		pid = fork();
 		if (pid <= 0) {
@@ -253,7 +266,7 @@ static int switchroot(const char *newroot, const char *subroot)
 
 static void usage(FILE *output)
 {
-	fprintf(output, "usage: %s <newrootdir> <subroot> <init> <args to init>\n",
+	fprintf(output, "usage: %s <newrootdir> <init> <args to init>\n",
 			program_invocation_short_name);
 	exit(output == stderr ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -262,7 +275,8 @@ int main(int argc, char *argv[])
 {
 	char *newroot, *subroot, *init, **initargs;
 
-	if (argc < 3)
+	fflush (stderr);
+	if (argc < 4)
 		usage(stderr);
 
 	if ((!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
@@ -273,7 +287,7 @@ int main(int argc, char *argv[])
 	init = argv[3];
 	initargs = &argv[3];
 
-	if (!*newroot || !*init)
+	if (!*newroot || !*subroot || !*init)
 		usage(stderr);
 
 	if (switchroot(newroot, subroot))
@@ -283,6 +297,7 @@ int main(int argc, char *argv[])
 		perrorv("cannot access %s", init);
 
 	execv(init, initargs);
+	perrorv("Failed to exec init '%s'", init);
 	exit(1);
 }
 
