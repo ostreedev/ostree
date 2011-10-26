@@ -18,12 +18,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
-
 set -e
 set -x
 
 SRCDIR=`dirname $0`
 WORKDIR=`pwd`
+
+OSTREE=${OSTREE:-ostree}
 
 case `uname -p` in
     x86_64)
@@ -100,12 +101,12 @@ if ! test -f ${OBJ}; then
         rm ostree/gnomeos-origin/debian-setup.sh
 
         ostree init --repo=ostree/repo
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | ostree commit -s 'Initial import' --repo=../repo --from-stdin)
+        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Initial import' --repo=../repo --from-stdin)
         rm -rf ostree/gnomeos-origin
         (cd ostree;
             rev=`cat repo/HEAD`
-            ostree checkout --repo=repo HEAD gnomeos-${rev}
-            ostree run-triggers --repo=repo current
+            $OSTREE checkout --repo=repo HEAD gnomeos-${rev}
+            $OSTREE run-triggers --repo=repo current
             ln -s gnomeos-${rev} current)
     )
     umount fs
