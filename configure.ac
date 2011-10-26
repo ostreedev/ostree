@@ -25,6 +25,7 @@ fi
 changequote([,])dnl
 
 # Initialize libtool
+AC_PROG_LIBTOOL
 LT_PREREQ([2.2])
 LT_INIT
 
