@@ -24,6 +24,15 @@ set -x
 SRCDIR=`dirname $0`
 WORKDIR=`pwd`
 
+DEPENDS="debootstrap qemu-img"
+
+for x in $DEPENDS; do
+    if ! command -v $x; then
+        echo "Couldn't find required dependency $x";
+        exit 1
+    fi
+done
+
 OSTREE=${OSTREE:-ostree}
 
 case `uname -p` in
