@@ -24,7 +24,7 @@ set -x
 SRCDIR=`dirname $0`
 WORKDIR=`pwd`
 
-DEPENDS="debootstrap qemu-img"
+DEPENDS="debootstrap qemu-img grubby"
 
 for x in $DEPENDS; do
     if ! command -v $x; then
@@ -133,9 +133,14 @@ fi
 
 cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
 
+kernel=`grubby --default-kernel`
+kv=$(basename $kernel | sed -e s,vmlinuz-,,)
+
 OBJ=gnomeos-initrd.img
+VOBJ=gnomeos-initrd-${kv}.img
 if ! test -f ${OBJ}; then
-    rm -f ${OBJ}.tmp
-    $DRACUT -l -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${OBJ}.tmp
-    mv ${OBJ}.tmp ${OBJ}
+    rm -f ${OBJ}.tmp ${VOBJ}.tmp
+    $DRACUT -l -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${VOBJ}.tmp
+    mv ${VOBJ}.tmp ${VOBJ}
+    ln -sf ${VOBJ} gnomeos-initrd.img
 fi
