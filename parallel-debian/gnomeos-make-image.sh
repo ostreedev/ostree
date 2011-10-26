@@ -131,20 +131,6 @@ if ! test -f ${OBJ}; then
     mv ${OBJ}.tmp ${OBJ}
 fi
 
-OBJ=gnomeos-kernel
-if ! test -f ${OBJ}; then
-    if test -x /sbin/grubby; then
-        kernel=`grubby --default-kernel`
-        cp $kernel ${OBJ}.tmp
-    else
-        echo "ERROR: couldn't find /sbin/grubby (which we use to find the running kernel)"
-        echo "  You can copy any kernel image you want in here as gnomeos-kernel"
-        echo "  For example: cp /boot/vmlinuz-2.6.40.6-0.fc15.x86_64 gnomeos-kernel"
-        exit 1
-    fi
-    mv ${OBJ}.tmp ${OBJ}
-fi
-
 cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
 
 OBJ=gnomeos-initrd.img
