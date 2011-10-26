@@ -100,7 +100,7 @@ if ! test -f ${OBJ}; then
         chroot ostree/gnomeos-origin ./debian-setup.sh
         rm ostree/gnomeos-origin/debian-setup.sh
 
-        ostree init --repo=ostree/repo
+        $OSTREE init --repo=ostree/repo
         (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Initial import' --repo=../repo --from-stdin)
         rm -rf ostree/gnomeos-origin
         (cd ostree;
