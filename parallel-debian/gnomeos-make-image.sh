@@ -69,33 +69,17 @@ if ! test -d ${OBJ} ; then
     mv ${OBJ}.tmp ${OBJ}
 fi
 
-OBJ=$DEBTARGET.img
-if ! test -f ${OBJ}; then
-    umount fs || true
-    mkdir -p fs
-    qemu-img create ${OBJ}.tmp 2G
-    mkfs.ext4 -q -F ${OBJ}.tmp
-    mount -o loop ${OBJ}.tmp fs
+OBJ=$DEBTARGET-fs
+if ! test -d ${OBJ}; then
+    rm -rf ${OBJ}.tmp
+    mkdir ${OBJ}.tmp
 
     for d in debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
         rm -rf work; mkdir work
-        (cd work && ar x ../$d && tar -x -z -C ../fs -f data.tar.gz)
+        (cd work && ar x ../$d && tar -x -z -C ../${OBJ}.tmp -f data.tar.gz)
     done
 
-    umount fs
-    mv ${OBJ}.tmp ${OBJ}
-fi
-
-# TODO download source for above
-# TODO download build dependencies for above
-
-OBJ=gnomeos-filesystem.img
-if ! test -f ${OBJ}; then
-    cp -a --sparse=always $DEBTARGET.img ${OBJ}.tmp
-    mkdir -p fs
-    umount fs || true
-    mount -o loop ${OBJ}.tmp fs
-    (cd fs;
+    (cd ${OBJ}.tmp;
         mkdir ostree
         mkdir ostree/repo
         mkdir ostree/gnomeos-origin
@@ -114,21 +98,44 @@ if ! test -f ${OBJ}; then
             fi
         done
 
+        $OSTREE init --repo=ostree/repo
+        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Initial import' --repo=../repo --from-stdin)
+    )
+    if test -d ${OBJ}; then
+        mv ${OBJ} ${OBJ}.old
+    fi
+    mv ${OBJ}.tmp ${OBJ}
+    rm -rf ${OBJ}.old
+fi
+
+# TODO download source for above
+# TODO download build dependencies for above
+
+OBJ=gnomeos-fs
+if ! test -d ${OBJ}; then
+    rm -rf ${OBJ}.tmp
+    cp -al $DEBTARGET-fs ${OBJ}.tmp
+    (cd ${OBJ}.tmp;
+
         cp ${SRCDIR}/debian-setup.sh ostree/gnomeos-origin/
         chroot ostree/gnomeos-origin ./debian-setup.sh
         rm ostree/gnomeos-origin/debian-setup.sh
+        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Run debian-setup.sh' --repo=../repo --from-stdin)
 
-        $OSTREE init --repo=ostree/repo
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Initial import' --repo=../repo --from-stdin)
-        rm -rf ostree/gnomeos-origin
+        cp -p ${SRCDIR}/chroot_break ostree/gnomeos-origin/sbin/chroot_break
+        (cd ostree/gnomeos-origin; $OSTREE commit -s 'Add chroot_break' --repo=../repo --add=sbin/chroot_break)
+
         (cd ostree;
             rev=`cat repo/HEAD`
             $OSTREE checkout --repo=repo HEAD gnomeos-${rev}
             $OSTREE run-triggers --repo=repo current
             ln -s gnomeos-${rev} current)
     )
-    umount fs
+    if test -d ${OBJ}; then
+        mv ${OBJ} ${OBJ}.old
+    fi
     mv ${OBJ}.tmp ${OBJ}
+    rm -rf ${OBJ}.old
 fi
 
 cp ${SRCDIR}/ostree_switch_root ${WORKDIR}

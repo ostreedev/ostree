@@ -24,11 +24,22 @@ set -x
 SRCDIR=`dirname $0`
 WORKDIR=`pwd`
 
-OBJ=gnomeos-initrd.img
-if ! test -f ${OBJ}; then
-    echo "Error: couldn't find '$OBJ'. Run gnomeos-make-image.sh"
+if ! test -d gnomeos-fs; then
+    echo "Error: couldn't find gnomeos-fs. Run gnomeos-make-image.sh"
     exit 1
 fi
 
-umount fs || true
-exec qemu-kvm -kernel `grubby --default-kernel` -initrd gnomeos-initrd.img -hda gnomeos-filesystem.img -append "root=/dev/sda ostree=current"
+OBJ=gnomeos-fs.img
+if (! test -f ${OBJ}) || test gnomeos-fs -nt ${OBJ}; then
+    rm -f ${OBJ}.tmp
+    qemu-img create ${OBJ}.tmp 2G
+    mkfs.ext4 -q -F ${OBJ}.tmp
+    mkdir -p fs
+    umount fs || true
+    mount -o loop ${OBJ}.tmp fs
+    cp -a gnomeos-fs/* fs
+    umount fs
+    mv ${OBJ}.tmp ${OBJ}
+fi
+
+exec qemu-kvm -kernel `grubby --default-kernel` -initrd gnomeos-initrd.img -hda gnomeos-fs.img -append "root=/dev/sda ostree=current"

@@ -35,11 +35,7 @@ if test -d /ostree; then
     exit 1
 fi
 
-mkdir -p fs
-umount fs || true
-mount -o loop gnomeos-filesystem.img fs
-cp -a fs/ostree /
-umount fs
+cp -a gnomeos-fs/ostree /
 initrd=`readlink gnomeos-initrd.img`
 cp ${initrd} /boot
 grubby --title "GNOME OS" --add-kernel=$kernel --copy-default --initrd=/boot/${initrd}
