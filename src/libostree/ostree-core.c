@@ -224,13 +224,14 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
   else if (S_ISLNK(stbuf.st_mode))
     {
       symlink_target = g_malloc (PATH_MAX);
-
-      if (readlinkat (dir_fd, basename, symlink_target, PATH_MAX) < 0)
+      
+      bytes_read = readlinkat (dir_fd, basename, symlink_target, PATH_MAX);
+      if (bytes_read < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-      g_checksum_update (content_sha256, (guint8*)symlink_target, strlen (symlink_target));
+      g_checksum_update (content_sha256, (guint8*)symlink_target, bytes_read);
     }
   else if (S_ISCHR(stbuf.st_mode) || S_ISBLK(stbuf.st_mode))
     {
