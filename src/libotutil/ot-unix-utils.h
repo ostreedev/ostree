@@ -23,10 +23,10 @@
 #define __OSTREE_UNIX_UTILS_H__
 
 #include <gio/gio.h>
-#include <glib-unix.h>
 
 /* I just put all this shit here. Sue me. */
 #include <sys/types.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>

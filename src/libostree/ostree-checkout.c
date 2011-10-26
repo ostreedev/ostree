@@ -268,7 +268,7 @@ check_trigger (OstreeCheckout *self,
     goto out;
   datain = g_data_input_stream_new (instream);
 
-  while ((line = g_data_input_stream_read_line_utf8 (datain, &len, NULL, &temp_error)) != NULL)
+  while ((line = g_data_input_stream_read_line (datain, &len, NULL, &temp_error)) != NULL)
     {
       if (g_str_has_prefix (line, "# IfExecutable: "))
         {

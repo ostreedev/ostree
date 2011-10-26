@@ -19,6 +19,8 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "ostree.h"
@@ -265,7 +267,7 @@ import_gvariant_object (OstreeRepo  *self,
   serialized = g_variant_new ("(uv)", (guint32)type, variant);
 
   tmp_name = g_build_filename (priv->objects_path, "variant-tmp-XXXXXX", NULL);
-  fd = mkstemp (tmp_name);
+  fd = g_mkstemp (tmp_name);
   if (fd < 0)
     {
       ot_util_set_error_from_errno (error, errno);

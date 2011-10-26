@@ -23,7 +23,6 @@
 
 #include "ot-unix-utils.h"
 
-#include <glib-unix.h>
 #include <gio/gio.h>
 #include <gio/gunixoutputstream.h>
 
@@ -205,7 +204,7 @@ ot_util_set_error_from_errno (GError **error,
                               gint     saved_errno)
 {
   g_set_error_literal (error,
-                       G_UNIX_ERROR,
+                       G_IO_ERROR,
                        0,
                        g_strerror (saved_errno));
   errno = saved_errno;
