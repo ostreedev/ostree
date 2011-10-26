@@ -34,6 +34,15 @@ for x in $DEPENDS; do
 done
 
 OSTREE=${OSTREE:-ostree}
+if test -z "$DRACUT"; then
+    if ! test -d dracut; then
+        echo "Checking out and patching dracut..."
+        git clone git://git.kernel.org/pub/scm/boot/dracut/dracut.git
+        (cd dracut; git am $SRCDIR/0001-Support-OSTree.patch)
+        (cd dracut; make)
+    fi
+    DRACUT=`pwd`/dracut/dracut
+fi
 
 case `uname -p` in
     x86_64)
@@ -141,6 +150,6 @@ cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
 OBJ=gnomeos-initrd.img
 if ! test -f ${OBJ}; then
     rm -f ${OBJ}.tmp
-    dracutbasedir=/src/build/jhbuild/share/dracut /src/build/jhbuild/sbin/dracut -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${OBJ}.tmp
+    $DRACUT -l -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${OBJ}.tmp
     mv ${OBJ}.tmp ${OBJ}
 fi
