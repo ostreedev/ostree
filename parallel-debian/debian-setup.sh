@@ -1,20 +1,67 @@
 #!/bin/sh
+# This script sets up things we want to ship with the OS tree.  It should
+# NOT set up caches.  For example, do NOT run ldconfig in here.
 
-cat > etc/inittab <<EOF
-id:3:initdefault:
-si::sysinit:/etc/init.d/rcS
-~~:S:wait:/sbin/sulogin
-l0:0:wait:/etc/init.d/rc 0
-l1:1:wait:/etc/init.d/rc 1
-l2:2:wait:/etc/init.d/rc 2
-l3:3:wait:/etc/init.d/rc 3
-l4:4:wait:/etc/init.d/rc 4
-l5:5:wait:/etc/init.d/rc 5
-l6:6:wait:/etc/init.d/rc 6
-1:2345:respawn:/sbin/mingetty --noclear tty1
-2:23:respawn:/sbin/mingetty tty2
-3:23:respawn:/sbin/mingetty tty3
-4:23:respawn:/sbin/mingetty tty4
-5:23:respawn:/sbin/mingetty tty5
-6:23:respawn:/sbin/mingetty tty6
+set -e
+set -x
+
+echo gnomeos > /etc/hostname
+
+cat > /etc/default/locale <<EOF
+LANG="en_US.UTF-8"
 EOF
+
+cp -p /usr/share/sysvinit/inittab /etc/inittab
+cp -p /usr/share/base-files/nsswitch.conf /etc/nsswitch.conf
+
+cat >/etc/pam.d/common-account <<EOF
+account [success=1 new_authtok_reqd=done default=ignore]        pam_unix.so 
+account requisite                       pam_deny.so
+account required                        pam_permit.so
+EOF
+cat >/etc/pam.d/common-auth <<EOF
+auth    [success=1 default=ignore]      pam_unix.so nullok_secure
+auth    requisite                       pam_deny.so
+auth    required                        pam_permit.so
+EOF
+cat >/etc/pam.d/common-password <<EOF
+password        [success=1 default=ignore]      pam_unix.so obscure sha512
+password        requisite                       pam_deny.so
+password        required                        pam_permit.so
+EOF
+cat >/etc/pam.d/common-session <<EOF
+session [default=1]                     pam_permit.so
+session requisite                       pam_deny.so
+session required                        pam_permit.so
+session required        pam_unix.so 
+EOF
+
+# base-passwd
+cp -p /usr/share/base-passwd/passwd.master /etc/passwd
+cp -p /usr/share/base-passwd/group.master /etc/group
+
+# From debian-installer user-setup
+shadowconfig on
+chpasswd <<EOF
+root:root
+EOF
+
+# Service rc.d defaults
+setuprc () {
+    name=$1
+    shift
+    type=$1
+    shift
+    priority=$1
+    shift
+    
+    for x in $@; do
+	cd /etc/rc${x}.d
+	ln -s ../init.d/$name ${type}${priority}${name}
+    done
+}
+    
+setuprc rsyslog S 10 2 3 4 5
+setuprc rsyslog S 30 0 6 
+setuprc rsyslog K 90 1
+setuprc cron S 89 2 3 4 5
