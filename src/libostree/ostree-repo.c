@@ -58,9 +58,12 @@ struct _OstreeRepoPrivate {
   GFile *repo_file;
   char *head_ref_path;
   char *objects_path;
+  char *config_path;
 
   gboolean inited;
   char *current_head;
+
+  GKeyFile *config;
 };
 
 static void
@@ -73,7 +76,10 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&priv->repo_file);
   g_free (priv->head_ref_path);
   g_free (priv->objects_path);
+  g_free (priv->config_path);
   g_free (priv->current_head);
+  if (priv->config)
+    g_key_file_free (priv->config);
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
@@ -138,6 +144,7 @@ ostree_repo_constructor (GType                  gtype,
   
   priv->head_ref_path = g_build_filename (priv->path, "HEAD", NULL);
   priv->objects_path = g_build_filename (priv->path, "objects", NULL);
+  priv->config_path = g_build_filename (priv->path, "config", NULL);
 
   return object;
 }
@@ -231,6 +238,8 @@ gboolean
 ostree_repo_check (OstreeRepo *self, GError **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  gboolean ret = FALSE;
+  char *version = NULL;;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -241,12 +250,36 @@ ostree_repo_check (OstreeRepo *self, GError **error)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Couldn't find objects directory '%s'", priv->objects_path);
-      return FALSE;
+      goto out;
     }
   
-  priv->inited = TRUE;
+  if (!parse_checksum_file (self, priv->head_ref_path, &priv->current_head, error))
+    goto out;
 
-  return parse_checksum_file (self, priv->head_ref_path, &priv->current_head, error);
+  priv->config = g_key_file_new ();
+  if (!g_key_file_load_from_file (priv->config, priv->config_path, 0, error))
+    {
+      g_prefix_error (error, "Couldn't parse config file: ");
+      goto out;
+    }
+
+  version = g_key_file_get_value (priv->config, "core", "repo_version", error);
+  if (!version)
+    goto out;
+
+  if (strcmp (version, "0") != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid repository version '%s'", version);
+      goto out;
+    }
+
+  priv->inited = TRUE;
+  
+  ret = TRUE;
+ out:
+  g_free (version);
+  return ret;
 }
 
 static gboolean

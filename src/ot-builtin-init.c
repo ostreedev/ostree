@@ -32,6 +32,10 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+#define DEFAULT_CONFIG_CONTENTS ("[core]\n" \
+                                 "repo_version=0\n")
+
+
 gboolean
 ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
 {
@@ -39,8 +43,10 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   gboolean ret = FALSE;
   char *otdir_path = NULL;
   char *objects_path = NULL;
+  char *config_path = NULL;
   GFile *otdir = NULL;
   GFile *objects_dir = NULL;
+  GFile *configf = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -55,12 +61,26 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   objects_dir = g_file_new_for_path (objects_path);
   if (!g_file_make_directory (objects_dir, NULL, error))
     goto out;
+
+  config_path = g_build_filename (repo_path, "config", NULL);
+  configf = g_file_new_for_path (config_path);
+
+  if (!g_file_replace_contents (configf,
+                                DEFAULT_CONFIG_CONTENTS,
+                                strlen (DEFAULT_CONFIG_CONTENTS),
+                                NULL, FALSE, 0, NULL,
+                                NULL, error))
+    goto out;
  
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   g_free (otdir_path);
+  g_free (objects_path);
+  g_free (config_path);
   g_clear_object (&otdir);
+  g_clear_object (&objects_dir);
+  g_clear_object (&configf);
   return ret;
 }
