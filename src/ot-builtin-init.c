@@ -41,12 +41,9 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  char *otdir_path = NULL;
-  char *objects_path = NULL;
-  char *config_path = NULL;
-  GFile *otdir = NULL;
-  GFile *objects_dir = NULL;
-  GFile *configf = NULL;
+  GFile *repodir = NULL;
+  GFile *child = NULL;
+  GFile *grandchild = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -57,30 +54,47 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   if (repo_path == NULL)
     repo_path = ".";
 
-  objects_path = g_build_filename (repo_path, "objects", NULL);
-  objects_dir = g_file_new_for_path (objects_path);
-  if (!g_file_make_directory (objects_dir, NULL, error))
-    goto out;
+  repodir = g_file_new_for_path (repo_path);
 
-  config_path = g_build_filename (repo_path, "config", NULL);
-  configf = g_file_new_for_path (config_path);
-
-  if (!g_file_replace_contents (configf,
+  child = g_file_get_child (repodir, "config");
+  if (!g_file_replace_contents (child,
                                 DEFAULT_CONFIG_CONTENTS,
                                 strlen (DEFAULT_CONFIG_CONTENTS),
                                 NULL, FALSE, 0, NULL,
                                 NULL, error))
     goto out;
- 
+  g_clear_object (&child);
+
+  child = g_file_get_child (repodir, "objects");
+  if (!g_file_make_directory (child, NULL, error))
+    goto out;
+  g_clear_object (&child);
+
+  child = g_file_get_child (repodir, "refs");
+  if (!g_file_make_directory (child, NULL, error))
+    goto out;
+  grandchild = g_file_get_child (child, "heads");
+  if (!g_file_make_directory (grandchild, NULL, error))
+    goto out;
+  g_clear_object (&child);
+  g_clear_object (&grandchild);
+
+  child = g_file_get_child (repodir, "tags");
+  if (!g_file_make_directory (child, NULL, error))
+    goto out;
+  g_clear_object (&child);
+
+  child = g_file_get_child (repodir, "remotes");
+  if (!g_file_make_directory (child, NULL, error))
+    goto out;
+  g_clear_object (&child);
+
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
-  g_free (otdir_path);
-  g_free (objects_path);
-  g_free (config_path);
-  g_clear_object (&otdir);
-  g_clear_object (&objects_dir);
-  g_clear_object (&configf);
+  g_clear_object (&repodir);
+  g_clear_object (&child);
+  g_clear_object (&grandchild);
   return ret;
 }
