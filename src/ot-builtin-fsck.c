@@ -101,7 +101,6 @@ ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error)
   HtFsckData data;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  const char *head;
 
   context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);
