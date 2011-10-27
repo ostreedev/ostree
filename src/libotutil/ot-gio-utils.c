@@ -62,21 +62,56 @@ char *
 ot_util_get_file_contents_utf8 (const char *path,
                                 GError    **error)
 {
-  char *contents;
+  GFile *file = NULL;
+  char *ret = NULL;
+
+  file = ot_util_new_file_for_path (path);
+  if (!ot_util_gfile_load_contents_utf8 (file, NULL, &ret, NULL, error))
+    goto out;
+
+ out:
+  g_clear_object (&file);
+  return ret;
+}
+
+gboolean
+ot_util_gfile_load_contents_utf8 (GFile         *file,
+                                  GCancellable  *cancellable,
+                                  char         **contents_out,
+                                  char         **etag_out,
+                                  GError       **error)
+{
+  char *ret_contents = NULL;
+  char *ret_etag = NULL;
   gsize len;
-  if (!g_file_get_contents (path, &contents, &len, error))
-    return NULL;
-  if (!g_utf8_validate (contents, len, NULL))
+  gboolean ret = FALSE;
+
+  if (!g_file_load_contents (file, cancellable, &ret_contents, &len, &ret_etag, error))
+    goto out;
+  if (!g_utf8_validate (ret_contents, len, NULL))
     {
-      g_free (contents);
       g_set_error (error,
                    G_IO_ERROR,
-                   G_IO_ERROR_FAILED,
-                   "File %s contains invalid UTF-8",
-                   path);
-      return NULL;
+                   G_IO_ERROR_INVALID_DATA,
+                   "Invalid UTF-8");
+      goto out;
     }
-  return contents;
+
+  if (contents_out)
+    *contents_out = ret_contents;
+  else
+    g_free (ret_contents);
+  ret_contents = NULL;
+  if (etag_out)
+    *etag_out = ret_etag;
+  else
+    g_free (ret_etag);
+  ret_etag = NULL;
+  ret = TRUE;
+ out:
+  g_free (ret_contents);
+  g_free (ret_etag);
+  return ret;
 }
 
 GInputStream *

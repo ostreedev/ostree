@@ -59,7 +59,10 @@ gboolean      ostree_repo_link_file (OstreeRepo *self,
                                        gboolean      force,
                                        GError      **error);
 
-const char *  ostree_repo_get_head (OstreeRepo  *self);
+gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
+                                       const char  *rev,
+                                       char       **out_resolved,
+                                       GError     **error);
 
 gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           const char   *sha256,
@@ -68,24 +71,26 @@ gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           GError      **error);
 
 gboolean      ostree_repo_commit (OstreeRepo *self,
-                                    const char   *subject,
-                                    const char   *body,
-                                    GVariant     *metadata,
-                                    const char   *base,
-                                    GPtrArray    *modified_files,
-                                    GPtrArray    *removed_files,
-                                    GChecksum   **out_commit,
-                                    GError      **error);
+                                  const char   *branch,
+                                  const char   *subject,
+                                  const char   *body,
+                                  GVariant     *metadata,
+                                  const char   *base,
+                                  GPtrArray    *modified_files,
+                                  GPtrArray    *removed_files,
+                                  GChecksum   **out_commit,
+                                  GError      **error);
 
 gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
-                                                     const char   *subject,
-                                                     const char   *body,
-                                                     GVariant     *metadata,
-                                                     const char   *base,
-                                                     int           fd,
-                                                     char          separator,
-                                                     GChecksum   **out_commit,
-                                                     GError      **error);
+                                                   const char   *branch,
+                                                   const char   *subject,
+                                                   const char   *body,
+                                                   GVariant     *metadata,
+                                                   const char   *base,
+                                                   int           fd,
+                                                   char          separator,
+                                                   GChecksum   **out_commit,
+                                                   GError      **error);
 
 gboolean      ostree_repo_checkout (OstreeRepo *self,
                                       const char   *ref,

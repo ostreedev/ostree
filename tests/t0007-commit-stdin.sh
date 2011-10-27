@@ -25,7 +25,7 @@ set -e
 echo "1..2"
 
 setup_test_repository2
-ostree checkout $ot_repo HEAD $test_tmpdir/checkout2-head
+ostree checkout $ot_repo master $test_tmpdir/checkout2-head
 cd $test_tmpdir/checkout2-head
 mkdir -p a/nested/tree
 echo one > a/nested/tree/1
@@ -41,7 +41,7 @@ echo whee2 > another/whee
 # FIXME - remove grep for .
 find | grep -v '^\.$' | ostree commit $ot_repo --from-stdin -s "From find"
 echo "ok commit stdin"
-ostree checkout $ot_repo HEAD $test_tmpdir/checkout3-head
+ostree checkout $ot_repo master $test_tmpdir/checkout3-head
 cd $test_tmpdir/checkout3-head
 assert_has_file a/nested/2
 assert_file_has_content a/nested/2 'two2'

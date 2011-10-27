@@ -25,7 +25,7 @@ cd "$test_tmpdir"
 touch "$test_tmpdir/.test$$"
 
 die () {
-    if test -z "$HT_TESTS_SAVE_TEMPS"; then
+    if test -z "$OT_TESTS_SAVE_TEMPS"; then
         test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
     else
         echo "Temporary files saved in $test_tmpdir"
@@ -60,8 +60,8 @@ setup_test_repository1 () {
     ot_repo="--repo=../repo"
     export ot_repo
     ostree init $ot_repo
-    ostree commit $ot_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
-    ostree commit $ot_repo -s "Test Commit 2" -b "Commit body second" --add=secondfile
+    ostree commit $ot_repo -s "Test Commit 1" -m "Commit body first" --add=firstfile
+    ostree commit $ot_repo -s "Test Commit 2" -m "Commit body second" --add=secondfile
     ostree fsck -q $ot_repo
 }
 
@@ -86,8 +86,8 @@ setup_test_repository2 () {
     cd ../files
     export ot_repo
     ostree init $ot_repo
-    ostree commit $ot_repo -s "Test Commit 1" -b "Commit body first" --add=firstfile
-    ostree commit $ot_repo -s "Test Commit 2" -b "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
+    ostree commit $ot_repo -s "Test Commit 1" -m "Commit body first" --add=firstfile
+    ostree commit $ot_repo -s "Test Commit 2" -m "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
     ostree fsck -q $ot_repo
 }
 

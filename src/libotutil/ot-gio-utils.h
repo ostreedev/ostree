@@ -32,6 +32,12 @@ gboolean ot_util_ensure_directory (const char *path, gboolean with_parents, GErr
 
 char * ot_util_get_file_contents_utf8 (const char *path, GError    **error);
 
+gboolean ot_util_gfile_load_contents_utf8 (GFile         *file,
+                                           GCancellable  *cancellable,
+                                           char         **contents_out,
+                                           char         **etag_out,
+                                           GError       **error);
+
 GInputStream *ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error);
 
 G_END_DECLS

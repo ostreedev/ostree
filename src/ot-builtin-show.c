@@ -39,7 +39,8 @@ ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  const char *target;
+  const char *rev = "master";
+  char *resolved_rev = NULL;
   OstreeSerializedVariantType type;
   GVariant *variant = NULL;
   char *formatted_variant = NULL;
@@ -57,28 +58,22 @@ ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc < 2)
-    {
-      target = ostree_repo_get_head (repo);
-      if (!target)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "No arguments specified and no HEAD exists");
-          goto out;
-        }
-    }
-  else
-    target = argv[1];
+  if (argc > 1)
+    rev = argv[1];
 
-  if (!ostree_repo_load_variant (repo, target, &type, &variant, error))
+  if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
     goto out;
 
-  g_print ("Object: %s\nType: %d\n", target, type);
+  if (!ostree_repo_load_variant (repo, resolved_rev, &type, &variant, error))
+    goto out;
+
+  g_print ("Object: %s\nType: %d\n", resolved_rev, type);
   formatted_variant = g_variant_print (variant, TRUE);
   g_print ("%s\n", formatted_variant);
  
   ret = TRUE;
  out:
+  g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);

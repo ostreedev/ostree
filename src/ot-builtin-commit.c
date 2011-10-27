@@ -33,13 +33,15 @@ static gboolean from_stdin;
 static char *from_file;
 static char *subject;
 static char *body;
+static char *branch;
 static char **additions;
 static char **removals;
 
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
-  { "body", 'b', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
+  { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
+  { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "from-fd", 0, 0, G_OPTION_ARG_INT, &from_fd, "Read new tree files from fd", "file descriptor" },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &from_stdin, "Read new tree files from stdin", "file descriptor" },
   { "from-file", 0, 0, G_OPTION_ARG_FILENAME, &from_file, "Read new tree files from another file", "path" },
@@ -113,11 +115,11 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
         for (iter = removals; *iter; iter++)
           g_ptr_array_add (removals_array, *iter);
       
-      if (!ostree_repo_commit (repo, subject, body, NULL,
-                                 prefix, additions_array,
-                                 removals_array,
-                                 &commit_checksum,
-                                 error))
+      if (!ostree_repo_commit (repo, branch, subject, body, NULL,
+                               prefix, additions_array,
+                               removals_array,
+                               &commit_checksum,
+                               error))
         goto out;
     }
   else if (using_filedescriptors)
@@ -137,9 +139,9 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
             }
           from_fd = temp_fd;
         }
-      if (!ostree_repo_commit_from_filelist_fd (repo, subject, body, NULL,
-                                                  prefix, from_fd, separator,
-                                                  &commit_checksum, error))
+      if (!ostree_repo_commit_from_filelist_fd (repo, branch, subject, body, NULL,
+                                                prefix, from_fd, separator,
+                                                &commit_checksum, error))
         {
           if (temp_fd >= 0)
             close (temp_fd);

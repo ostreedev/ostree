@@ -41,7 +41,8 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   OstreeRepo *repo = NULL;
   GOutputStream *pager = NULL;
   GVariant *commit = NULL;
-  char *head;
+  const char *rev = "master";
+  char *resolved_rev;
 
   context = g_option_context_new ("- Show revision log");
   g_option_context_add_main_entries (context, options, NULL);
@@ -54,18 +55,17 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   if (prefix == NULL)
     prefix = ".";
 
+  if (argc > 1)
+    rev = argv[1];
+
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  head = g_strdup (ostree_repo_get_head (repo));
-  if (!head)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "No HEAD exists");
-      goto out;
-    }
-
   if (!ot_util_spawn_pager (&pager, error))
+    goto out;
+
+  if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
     goto out;
 
   while (TRUE)
@@ -88,7 +88,7 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
       
       if (commit)
         g_variant_unref (commit);
-      if (!ostree_repo_load_variant (repo, head, &type, &commit, error))
+      if (!ostree_repo_load_variant (repo, resolved_rev, &type, &commit, error))
         goto out;
 
       /* Ignore commit metadata for now */
@@ -103,7 +103,7 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
       formatted_metadata = g_variant_print (commit_metadata, TRUE);
       g_variant_unref (commit_metadata);
       formatted = g_strdup_printf ("commit %s\nSubject: %s\nDate: %s\nMetadata: %s\n\n",
-                                   head, subject, formatted_date, formatted_metadata);
+                                   resolved_rev, subject, formatted_date, formatted_metadata);
       g_free (formatted_metadata);
       g_free (formatted_date);
       formatted_date = NULL;
@@ -134,8 +134,8 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
 
       if (strcmp (parent, "") == 0)
         break;
-      g_free (head);
-      head = g_strdup (parent);
+      g_free (resolved_rev);
+      resolved_rev = g_strdup (parent);
     }
 
   if (!g_output_stream_close (pager, NULL, error))
@@ -143,6 +143,7 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
  
   ret = TRUE;
  out:
+  g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
   if (commit)

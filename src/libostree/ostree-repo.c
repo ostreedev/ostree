@@ -56,12 +56,11 @@ typedef struct _OstreeRepoPrivate OstreeRepoPrivate;
 struct _OstreeRepoPrivate {
   char *path;
   GFile *repo_file;
-  char *head_ref_path;
+  GFile *local_heads_dir;
   char *objects_path;
   char *config_path;
 
   gboolean inited;
-  char *current_head;
 
   GKeyFile *config;
 };
@@ -74,10 +73,9 @@ ostree_repo_finalize (GObject *object)
 
   g_free (priv->path);
   g_clear_object (&priv->repo_file);
-  g_free (priv->head_ref_path);
+  g_clear_object (&priv->local_heads_dir);
   g_free (priv->objects_path);
   g_free (priv->config_path);
-  g_free (priv->current_head);
   if (priv->config)
     g_key_file_free (priv->config);
 
@@ -141,8 +139,8 @@ ostree_repo_constructor (GType                  gtype,
   g_assert (priv->path != NULL);
   
   priv->repo_file = ot_util_new_file_for_path (priv->path);
+  priv->local_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/heads");
   
-  priv->head_ref_path = g_build_filename (priv->path, "HEAD", NULL);
   priv->objects_path = g_build_filename (priv->path, "objects", NULL);
   priv->config_path = g_build_filename (priv->path, "config", NULL);
 
@@ -182,17 +180,37 @@ ostree_repo_new (const char *path)
 }
 
 static gboolean
-parse_checksum_file (OstreeRepo   *self,
-                     const char     *path,
-                     char          **sha256,
-                     GError        **error)
+validate_checksum_string (const char *sha256,
+                          GError    **error)
 {
+  if (strlen (sha256) != 64)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid rev '%s'", sha256);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+static gboolean
+parse_rev_file (OstreeRepo     *self,
+                const char     *path,
+                char          **sha256,
+                GError        **error) G_GNUC_UNUSED;
+
+static gboolean
+parse_rev_file (OstreeRepo     *self,
+                const char     *path,
+                char          **sha256,
+                GError        **error)
+{
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GError *temp_error = NULL;
   gboolean ret = FALSE;
-  char *ret_sha256 = NULL;
+  char *rev = NULL;
 
-  ret_sha256 = ot_util_get_file_contents_utf8 (path, &temp_error);
-  if (ret_sha256 == NULL)
+  rev = ot_util_get_file_contents_utf8 (path, &temp_error);
+  if (rev == NULL)
     {
       if (g_error_matches (temp_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
         {
@@ -206,31 +224,136 @@ parse_checksum_file (OstreeRepo   *self,
     }
   else
     {
-      g_strchomp (ret_sha256);
+      g_strchomp (rev);
     }
 
-  *sha256 = ret_sha256;
+  if (g_str_has_prefix (rev, "ref: "))
+    {
+      GFile *ref;
+      char *ref_path;
+      char *ref_sha256;
+      gboolean subret;
+
+      ref = g_file_resolve_relative_path (priv->local_heads_dir, rev + 5);
+      ref_path = g_file_get_path (ref);
+
+      subret = parse_rev_file (self, ref_path, &ref_sha256, error);
+      g_clear_object (&ref);
+      g_free (ref_path);
+        
+      if (!subret)
+        {
+          g_free (ref_sha256);
+          goto out;
+        }
+      
+      g_free (rev);
+      rev = ref_sha256;
+    }
+  else 
+    {
+      if (!validate_checksum_string (rev, error))
+        goto out;
+    }
+
+  *sha256 = rev;
+  rev = NULL;
   ret = TRUE;
  out:
+  g_free (rev);
   return ret;
 }
 
 static gboolean
-write_checksum_file (const char *path,
+resolve_rev (OstreeRepo     *self,
+             const char     *rev,
+             gboolean        allow_noent,
+             char          **sha256,
+             GError        **error)
+{
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  gboolean ret = FALSE;
+  char *ret_rev = NULL;
+  GFile *child = NULL;
+  char *child_path = NULL;
+  GError *temp_error = NULL;
+
+ if (strlen (rev) == 64)
+   {
+     ret_rev = g_strdup (rev);
+   }
+ else
+   {
+     child = g_file_get_child (priv->local_heads_dir, rev);
+     child_path = g_file_get_path (child);
+     if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
+       {
+         if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+           {
+             g_free (ret_rev);
+             ret_rev = NULL;
+           }
+         else
+           {
+             g_propagate_error (error, temp_error);
+             g_prefix_error (error, "Couldn't open ref '%s': ", child_path);
+             goto out;
+           }
+       }
+     else
+       {
+         g_strchomp (ret_rev);
+         
+         if (!validate_checksum_string (ret_rev, error))
+           goto out;
+       }
+   }
+
+  *sha256 = ret_rev;
+  ret_rev = NULL;
+  ret = TRUE;
+ out:
+  g_clear_object (&child);
+  g_free (child_path);
+  g_free (ret_rev);
+  return ret;
+}
+
+gboolean
+ostree_repo_resolve_rev (OstreeRepo     *self,
+                         const char     *rev,
+                         char          **sha256,
+                         GError        **error)
+{
+  return resolve_rev (self, rev, FALSE, sha256, error);
+}
+
+static gboolean
+write_checksum_file (GFile *parentdir,
+                     const char *name,
                      const char *sha256,
-                     GError    **error)
+                     GError **error)
 {
   gboolean ret = FALSE;
-  char *buf = NULL;
+  GFile *child = NULL;
+  GOutputStream *out = NULL;
+  gsize bytes_written;
 
-  buf = g_strconcat (sha256, "\n", NULL);
-  
-  if (!g_file_set_contents (path, buf, -1, error))
+  child = g_file_get_child (parentdir, name);
+
+  if ((out = (GOutputStream*)g_file_replace (child, NULL, FALSE, 0, NULL, error)) == NULL)
+    goto out;
+  if (!g_output_stream_write_all (out, sha256, strlen (sha256), &bytes_written, NULL, error))
+    goto out;
+  if (!g_output_stream_write_all (out, "\n", 1, &bytes_written, NULL, error))
+    goto out;
+  if (!g_output_stream_close (out, NULL, error))
     goto out;
 
   ret = TRUE;
  out:
-  g_free (buf);
+  g_clear_object (&child);
+  g_clear_object (&out);
   return ret;
 }
 
@@ -253,9 +376,6 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
   
-  if (!parse_checksum_file (self, priv->head_ref_path, &priv->current_head, error))
-    goto out;
-
   priv->config = g_key_file_new ();
   if (!g_key_file_load_from_file (priv->config, priv->config_path, 0, error))
     {
@@ -789,7 +909,6 @@ load_commit_and_trees (OstreeRepo   *self,
                        ParsedDirectoryData **out_root_data,
                        GError        **error)
 {
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GVariant *ret_commit = NULL;
   ParsedDirectoryData *ret_root_data = NULL;
   ParsedTreeData *tree_data = NULL;
@@ -798,13 +917,6 @@ load_commit_and_trees (OstreeRepo   *self,
   gboolean ret = FALSE;
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
-
-  if (!priv->current_head)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Can't load current commit; no HEAD reference");
-      goto out;
-    }
 
   if (!load_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
                              commit_sha256, &ret_commit, error))
@@ -1256,6 +1368,8 @@ add_files_to_tree_and_import (OstreeRepo   *self,
 
 static gboolean
 commit_parsed_tree (OstreeRepo *self,
+                    const char   *branch,
+                    const char   *parent,
                     const char   *subject,
                     const char   *body,
                     GVariant     *metadata,
@@ -1270,6 +1384,9 @@ commit_parsed_tree (OstreeRepo *self,
   GVariant *commit = NULL;
   GDateTime *now = NULL;
 
+  g_assert (branch != NULL);
+  g_assert (subject != NULL);
+
   if (!import_parsed_tree (self, root->tree_data, &root_checksum, error))
     goto out;
 
@@ -1277,7 +1394,7 @@ commit_parsed_tree (OstreeRepo *self,
   commit = g_variant_new ("(u@a{sv}ssstss)",
                           OSTREE_COMMIT_VERSION,
                           create_empty_gvariant_dict (),
-                          priv->current_head ? priv->current_head : "",
+                          parent ? parent : "",
                           subject, body ? body : "",
                           g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
                           g_checksum_get_string (root_checksum),
@@ -1286,11 +1403,8 @@ commit_parsed_tree (OstreeRepo *self,
                                commit, &ret_commit, error))
     goto out;
 
-  if (!write_checksum_file (priv->head_ref_path, g_checksum_get_string (ret_commit), error))
+  if (!write_checksum_file (priv->local_heads_dir, branch, g_checksum_get_string (ret_commit), error))
     goto out;
-
-  g_free (priv->current_head);
-  priv->current_head = g_strdup (g_checksum_get_string (ret_commit));
 
   ret = TRUE;
   *out_commit = ret_commit;
@@ -1305,8 +1419,8 @@ commit_parsed_tree (OstreeRepo *self,
 }
 
 static gboolean
-import_root (OstreeRepo     *self,
-             const char        *base,
+import_root (OstreeRepo           *self,
+             const char           *base,
              ParsedDirectoryData **out_root,
              GError              **error)
 {
@@ -1338,6 +1452,7 @@ import_root (OstreeRepo     *self,
 
 gboolean
 ostree_repo_commit (OstreeRepo *self,
+                      const char   *branch,
                       const char   *subject,
                       const char   *body,
                       GVariant     *metadata,
@@ -1354,13 +1469,20 @@ ostree_repo_commit (OstreeRepo *self,
   GChecksum *ret_commit_checksum = NULL;
   GVariant *root_metadata = NULL;
   GChecksum *root_meta_checksum = NULL;
+  char *current_head = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  if (priv->current_head)
+  if (branch == NULL)
+    branch = "master";
+
+  if (!resolve_rev (self, branch, TRUE, &current_head, error))
+    goto out;
+
+  if (current_head)
     {
-      if (!load_commit_and_trees (self, priv->current_head, &previous_commit, &root, error))
+      if (!load_commit_and_trees (self, current_head, &previous_commit, &root, error))
         goto out;
       if (!import_directory_meta (self, base, &root_metadata, &root_meta_checksum, error))
         goto out;
@@ -1382,21 +1504,18 @@ ostree_repo_commit (OstreeRepo *self,
   if (!add_files_to_tree_and_import (self, base, modified_files, root->tree_data, error))
     goto out;
 
-  if (!commit_parsed_tree (self, subject, body, metadata, root,
+  if (!commit_parsed_tree (self, branch, current_head,
+                           subject, body, metadata, root,
                            &ret_commit_checksum, error))
     goto out;
   
   ret = TRUE;
+  *out_commit = ret_commit_checksum;
+  ret_commit_checksum = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_commit_checksum)
-        g_checksum_free (ret_commit_checksum);
-    }
-  else
-    {
-      *out_commit = ret_commit_checksum;
-    }
+  if (ret_commit_checksum)
+    g_checksum_free (ret_commit_checksum);
+  g_free (current_head);
   if (previous_commit)
     g_variant_unref (previous_commit);
   parsed_directory_data_free (root);
@@ -1409,14 +1528,15 @@ ostree_repo_commit (OstreeRepo *self,
 
 gboolean      
 ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
-                                       const char   *subject,
-                                       const char   *body,
-                                       GVariant     *metadata,
-                                       const char   *base,
-                                       int           fd,
-                                       char          separator,
-                                       GChecksum   **out_commit,
-                                       GError      **error)
+                                     const char   *branch,
+                                     const char   *subject,
+                                     const char   *body,
+                                     GVariant     *metadata,
+                                     const char   *base,
+                                     int           fd,
+                                     char          separator,
+                                     GChecksum   **out_commit,
+                                     GError      **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
@@ -1429,12 +1549,19 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   GError *temp_error = NULL;
   GVariant *root_metadata = NULL;
   GChecksum *root_meta_checksum = NULL;
+  char *current_head = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
+  if (branch == NULL)
+    branch = "master";
+
   /* We're overwriting the tree */
   if (!import_root (self, base, &root, error))
+    goto out;
+
+  if (!resolve_rev (self, branch, TRUE, &current_head, error))
     goto out;
 
   in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);
@@ -1461,21 +1588,17 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
       g_propagate_prefixed_error (error, temp_error, "%s", "While reading filelist: ");
       goto out;
     }
-  if (!commit_parsed_tree (self, subject, body, metadata,
+  if (!commit_parsed_tree (self, branch, current_head, subject, body, metadata,
                            root, &ret_commit_checksum, error))
     goto out;
   
   ret = TRUE;
+  *out_commit = ret_commit_checksum;
+  ret_commit_checksum = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_commit_checksum)
-        g_checksum_free (ret_commit_checksum);
-    }
-  else
-    {
-      *out_commit = ret_commit_checksum;
-    }
+  if (ret_commit_checksum)
+    g_checksum_free (ret_commit_checksum);
+  g_free (current_head);
   if (root_metadata)
     g_variant_unref (root_metadata);
   if (root_meta_checksum)
@@ -1640,37 +1763,6 @@ ostree_repo_load_variant (OstreeRepo *repo,
   return ret;
 }
 
-const char *
-ostree_repo_get_head (OstreeRepo  *self)
-{
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-
-  g_return_val_if_fail (priv->inited, NULL);
-
-  return priv->current_head;
-}
-
-static gboolean
-resolve_ref (OstreeRepo *self,
-             const char   *ref,
-             char       **resolved,
-             GError      **error)
-{
-  if (strcmp (ref, "HEAD") == 0)
-    {
-      *resolved = g_strdup (ostree_repo_get_head (self));
-      return TRUE;
-    }
-  else if (strlen (ref) == 64)
-    {
-      *resolved = g_strdup (ref);
-      return TRUE;
-    }
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-               "Invalid ref '%s' (must be SHA256 or HEAD)", ref);
-  return FALSE;
-}
-
 static gboolean
 checkout_tree (OstreeRepo    *self,
                ParsedTreeData  *tree,
@@ -1762,9 +1854,9 @@ checkout_tree (OstreeRepo    *self,
 
 gboolean
 ostree_repo_checkout (OstreeRepo *self,
-                        const char   *ref,
-                        const char   *destination,
-                        GError      **error)
+                      const char   *rev,
+                      const char   *destination,
+                      GError      **error)
 {
   gboolean ret = FALSE;
   GVariant *commit = NULL;
@@ -1780,7 +1872,7 @@ ostree_repo_checkout (OstreeRepo *self,
       goto out;
     }
 
-  if (!resolve_ref (self, ref, &resolved, error))
+  if (!resolve_rev (self, rev, FALSE, &resolved, error))
     goto out;
 
   if (!load_commit_and_trees (self, resolved, &commit, &root, error))

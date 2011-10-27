@@ -121,13 +121,6 @@ ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error)
   if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;
 
-  head = ostree_repo_get_head (repo);
-  if (!head)
-    {
-      if (!quiet)
-        g_printerr ("No HEAD file\n");
-    }
-
   if (!quiet)
     g_printerr ("Total Objects: %u\n", data.n_objects);
 
