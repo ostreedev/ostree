@@ -148,10 +148,11 @@ if ! test -d ${OBJ}; then
         (cd ostree/gnomeos-origin; $OSTREE commit -s 'Add chroot_break' --repo=../repo --add=sbin/chroot_break)
 
         (cd ostree;
-            rev=`cat repo/HEAD`
-            $OSTREE checkout --repo=repo HEAD gnomeos-${rev}
+            rev=$($OSTREE rev-parse --repo=repo master)
+            $OSTREE checkout --repo=repo ${rev} gnomeos-${rev}
             $OSTREE run-triggers --repo=repo gnomeos-${rev}
-            ln -s gnomeos-${rev} current)
+            ln -s gnomeos-${rev} current
+            rm -rf gnomeos-origin)
     )
     if test -d ${OBJ}; then
         mv ${OBJ} ${OBJ}.old
