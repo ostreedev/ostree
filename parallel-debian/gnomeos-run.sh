@@ -42,4 +42,7 @@ if (! test -f ${OBJ}) || test gnomeos-fs -nt ${OBJ}; then
     mv ${OBJ}.tmp ${OBJ}
 fi
 
-exec qemu-kvm -kernel `grubby --default-kernel` -initrd gnomeos-initrd.img -hda gnomeos-fs.img -append "root=/dev/sda ostree=current"
+kv=`uname -r`
+kernel=/boot/vmlinuz-${kv}
+
+exec qemu-kvm -kernel ${kernel} -initrd gnomeos-initrd.img -hda gnomeos-fs.img -append "root=/dev/sda ostree=current"
