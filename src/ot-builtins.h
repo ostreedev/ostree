@@ -44,6 +44,7 @@ gboolean ostree_builtin_link_file (int argc, char **argv, const char *prefix, GE
 gboolean ostree_builtin_run_triggers (int argc, char **argv, const char *prefix, GError **error);
 gboolean ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);
 gboolean ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_rev_parse (int argc, char **argv, const char *prefix, GError **error);
 
 G_END_DECLS
 

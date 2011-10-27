@@ -22,7 +22,7 @@ set -e
 
 . libtest.sh
 
-echo '1..3'
+echo '1..4'
 
 mkdir files
 cd files
@@ -36,3 +36,5 @@ ostree commit $repo -s "Test Commit" -m "Commit body" --add=yy
 echo 'ok commit'
 ostree fsck -q $repo
 echo 'ok fsck'
+ostree rev-parse
+echo 'ok rev-parse'
