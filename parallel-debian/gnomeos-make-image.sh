@@ -28,15 +28,37 @@ DEPENDS="debootstrap qemu-img grubby"
 
 for x in $DEPENDS; do
     if ! command -v $x; then
-        echo "Couldn't find required dependency $x";
+        cat <<EOF
+Couldn't find required dependency $x
+EOF
         exit 1
     fi
 done
 
-OSTREE=${OSTREE:-ostree}
+if test $(id -u) != 0; then
+    cat <<EOF
+This script must be run as root.
+EOF
+    exit 1
+fi
+
+if test -z "${OSTREE}"; then
+    OSTREE=`command -v ostree || true`
+fi
+if test -z "${OSTREE}"; then
+    cat <<EOF
+ERROR:
+Couldn't find ostree; you can set the OSTREE environment variable to point to it
+e.g.: OSTREE=~user/checkout/ostree/ostree $0
+EOF
+    exit 1
+fi
+
 if test -z "$DRACUT"; then
     if ! test -d dracut; then
-        echo "Checking out and patching dracut..."
+        cat <<EOF
+Checking out and patching dracut...
+EOF
         git clone git://git.kernel.org/pub/scm/boot/dracut/dracut.git
         (cd dracut; git am $SRCDIR/0001-Support-OSTree.patch)
         (cd dracut; make)
@@ -128,7 +150,7 @@ if ! test -d ${OBJ}; then
         (cd ostree;
             rev=`cat repo/HEAD`
             $OSTREE checkout --repo=repo HEAD gnomeos-${rev}
-            $OSTREE run-triggers --repo=repo current
+            $OSTREE run-triggers --repo=repo gnomeos-${rev}
             ln -s gnomeos-${rev} current)
     )
     if test -d ${OBJ}; then
@@ -140,8 +162,13 @@ fi
 
 cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
 
-kernel=`grubby --default-kernel`
-kv=$(basename $kernel | sed -e s,vmlinuz-,,)
+kv=`uname -r`
+kernel=/boot/vmlinuz-${kv}
+if ! test -f "${kernel}"; then
+    cat <<EOF
+Failed to find ${kernel}
+EOF
+fi
 
 OBJ=gnomeos-initrd.img
 VOBJ=gnomeos-initrd-${kv}.img
