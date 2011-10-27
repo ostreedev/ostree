@@ -11,13 +11,13 @@ Base
  - Try rebuilding them
 * Infrastructure for overlaying artifacts on top
  - jhbuild
+* Actually boot into X/GNOME
+* Split trees between base and devel
 
 Deployment
 ----------
 
 * Daemon mode / DBus service
-
-* Triggers (ldconfig, gtk-update-icon-cache, ...)
 
 * GRUB management
 
@@ -30,8 +30,6 @@ Deployment
 * pulling from other repositories
 
 * GPG signatures on commits
-
-* Picking a distribution base as a starting point (likely Debian)
 
 Development
 -----------
