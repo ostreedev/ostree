@@ -144,8 +144,10 @@ if ! test -d ${OBJ}; then
         rm ostree/gnomeos-origin/debian-setup.sh
         (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Run debian-setup.sh' --repo=../repo --from-stdin)
 
-        cp -p ${SRCDIR}/chroot_break ostree/gnomeos-origin/sbin/chroot_break
-        (cd ostree/gnomeos-origin; $OSTREE commit -s 'Add chroot_break' --repo=../repo --add=sbin/chroot_break)
+        # This is the name for the real rootfs, not the chroot
+        (cd ostree/gnomeos-origin;
+            mkdir sysroot;
+            $OSTREE commit -s 'Add sysroot' --repo=../repo --add=sysroot)
 
         (cd ostree;
             rev=$($OSTREE rev-parse --repo=repo master)

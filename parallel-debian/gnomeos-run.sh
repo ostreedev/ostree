@@ -45,4 +45,4 @@ fi
 kv=`uname -r`
 kernel=/boot/vmlinuz-${kv}
 
-exec qemu-kvm -kernel ${kernel} -initrd gnomeos-initrd.img -hda gnomeos-fs.img -append "root=/dev/sda ostree=current"
+exec qemu-kvm -kernel ${kernel} -initrd gnomeos-initrd.img -hda gnomeos-fs.img -append "root=/dev/sda ostree=current $1"

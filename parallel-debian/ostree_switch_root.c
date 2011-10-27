@@ -219,6 +219,12 @@ static int switchroot(const char *newroot, const char *subroot)
 		}
 	}
 
+	snprintf(destpath, sizeof(destpath), "%s/sysroot", subroot_path);
+	if (mount(newroot, destpath, NULL, MS_BIND, NULL) < 0) {
+		perrorv("Failed bind mount sysroot");
+		return -1;
+	}
+
 	if (chdir(newroot)) {
 		perrorv("failed to change directory to %s", newroot);
 		return -1;
