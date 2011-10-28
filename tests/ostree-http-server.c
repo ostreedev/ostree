@@ -22,6 +22,7 @@
 #include <libsoup/soup-gnome.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 static void
 request_callback (SoupServer *server, SoupMessage *msg,
@@ -48,6 +49,19 @@ request_callback (SoupServer *server, SoupMessage *msg,
     }
 }
 
+static void
+on_dir_changed (GFileMonitor  *mon,
+		GFile *file,
+		GFile *other,
+		GFileMonitorEvent  event,
+		gpointer user_data)
+{
+  GMainLoop *loop = user_data;
+
+  if (event == G_FILE_MONITOR_EVENT_DELETED)
+    g_main_loop_quit (loop);
+}
+
 int
 main (int     argc,
       char  **argv)
@@ -55,11 +69,21 @@ main (int     argc,
   SoupAddress *addr;
   SoupServer *server;
   GMainLoop *loop;
+  GFileMonitor *monitor;
+  GFile *curdir;
+  GError *error = NULL;
 
   g_type_init ();
 
   loop = g_main_loop_new (NULL, TRUE);
-  
+
+  curdir = g_file_new_for_path (".");
+  monitor = g_file_monitor_directory (curdir, 0, NULL, &error);
+  if (!monitor)
+    exit (1);
+  g_signal_connect (monitor, "changed",
+		    G_CALLBACK (on_dir_changed), loop);
+
   addr = soup_address_new ("127.0.0.1", SOUP_ADDRESS_ANY_PORT);
   soup_address_resolve_sync (addr, NULL);
 
@@ -72,7 +96,7 @@ main (int     argc,
 
   soup_server_run_async (server);
 
-  g_print ("%ld %ld\n", (long)getpid(), (long)soup_server_get_port (server));
+  g_print ("http://127.0.0.1:%ld\n", (long)soup_server_get_port (server));
 
   g_main_loop_run (loop);
 
