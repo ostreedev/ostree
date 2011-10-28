@@ -32,9 +32,9 @@ mkdir ../repo
 repo="--repo=../repo"
 ostree init $repo
 echo 'ok init'
-ostree commit $repo -s "Test Commit" -m "Commit body" --add=yy
+ostree commit $repo -b test -s "Test Commit" -m "Commit body" --add=yy
 echo 'ok commit'
 ostree fsck -q $repo
 echo 'ok fsck'
-ostree rev-parse
+ostree rev-parse $repo test
 echo 'ok rev-parse'

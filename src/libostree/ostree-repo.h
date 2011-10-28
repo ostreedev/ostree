@@ -70,8 +70,9 @@ gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           GVariant    **out_variant,
                                           GError      **error);
 
-gboolean      ostree_repo_commit (OstreeRepo *self,
+gboolean      ostree_repo_commit (OstreeRepo   *self,
                                   const char   *branch,
+                                  const char   *parent,
                                   const char   *subject,
                                   const char   *body,
                                   GVariant     *metadata,
@@ -81,8 +82,9 @@ gboolean      ostree_repo_commit (OstreeRepo *self,
                                   GChecksum   **out_commit,
                                   GError      **error);
 
-gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
+gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo   *self,
                                                    const char   *branch,
+                                                   const char   *parent,
                                                    const char   *subject,
                                                    const char   *body,
                                                    GVariant     *metadata,

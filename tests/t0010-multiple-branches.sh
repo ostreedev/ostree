@@ -22,10 +22,16 @@ set -e
 
 . libtest.sh
 
-echo "1..1"
+echo '1..3'
 
 setup_test_repository2
-ostree log $ot_repo test2 > $test_tmpdir/log.txt
-assert_file_has_content $test_tmpdir/log.txt "Test Commit 1"
-assert_file_has_content $test_tmpdir/log.txt "Test Commit 2"
-echo "ok log"
+ostree checkout $ot_repo test2 $test_tmpdir/checkout2-head
+cd $test_tmpdir/checkout2-head
+echo test3file > test3file
+ostree commit $ot_repo -s 'Add test3file' -b test3 -p test2 --add test3file
+echo "ok commit test3 branch"
+ostree checkout $ot_repo test3 $test_tmpdir/checkout3-head
+echo "ok checkout test3 branch"
+cd $test_tmpdir/checkout3-head
+assert_has_file test3file
+echo "ok checkout test3file"

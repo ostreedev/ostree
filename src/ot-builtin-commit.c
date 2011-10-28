@@ -33,6 +33,7 @@ static gboolean from_stdin;
 static char *from_file;
 static char *subject;
 static char *body;
+static char *parent;
 static char *branch;
 static char **additions;
 static char **removals;
@@ -42,6 +43,7 @@ static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
+  { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
   { "from-fd", 0, 0, G_OPTION_ARG_INT, &from_fd, "Read new tree files from fd", "file descriptor" },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &from_stdin, "Read new tree files from stdin", "file descriptor" },
   { "from-file", 0, 0, G_OPTION_ARG_FILENAME, &from_file, "Read new tree files from another file", "path" },
@@ -95,6 +97,13 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
       goto out;
     }
 
+  if (!branch)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "A branch must be specified with --branch");
+      goto out;
+    }
+
   if (!subject)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -115,7 +124,7 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
         for (iter = removals; *iter; iter++)
           g_ptr_array_add (removals_array, *iter);
       
-      if (!ostree_repo_commit (repo, branch, subject, body, NULL,
+      if (!ostree_repo_commit (repo, branch, parent, subject, body, NULL,
                                prefix, additions_array,
                                removals_array,
                                &commit_checksum,
@@ -139,7 +148,7 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
             }
           from_fd = temp_fd;
         }
-      if (!ostree_repo_commit_from_filelist_fd (repo, branch, subject, body, NULL,
+      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
                                                 prefix, from_fd, separator,
                                                 &commit_checksum, error))
         {

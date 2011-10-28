@@ -33,9 +33,9 @@ mkdir ../repo
 repo="--repo=../repo"
 ostree init $repo
 echo 'ok init'
-ostree commit $repo -s "Test Commit 1" -m "Commit body first" --add=firstfile
+ostree commit $repo -b test -s "Test Commit 1" -m "Commit body first" --add=firstfile
 echo 'ok commit 1'
-ostree commit $repo -s "Test Commit 2" -m "Commit body first" --add=secondfile
+ostree commit $repo -b test -s "Test Commit 2" -m "Commit body first" --add=secondfile
 echo 'ok commit 2'
 ostree fsck -q $repo
 echo 'ok fsck'

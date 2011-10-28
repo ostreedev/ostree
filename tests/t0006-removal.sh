@@ -25,14 +25,14 @@ set -e
 echo '1..4'
 
 setup_test_repository2
-ostree checkout $ot_repo master $test_tmpdir/checkout2-head
+ostree checkout $ot_repo test2 $test_tmpdir/checkout2-head
 echo 'ok setup'
 cd $test_tmpdir/checkout2-head
-ostree commit -s delete $ot_repo -r firstfile
+ostree commit $ot_repo -b test2 -s delete -r firstfile
 echo 'ok rm firstfile'
 assert_has_file firstfile  # It should still exist in this checkout
 cd $test_tmpdir
-ostree checkout $ot_repo master $test_tmpdir/checkout3-head
+ostree checkout $ot_repo test2 $test_tmpdir/checkout3-head
 echo 'ok checkout 3'
 cd $test_tmpdir/checkout3-head
 assert_not_has_file firstfile

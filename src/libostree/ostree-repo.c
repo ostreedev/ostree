@@ -1452,15 +1452,16 @@ import_root (OstreeRepo           *self,
 
 gboolean
 ostree_repo_commit (OstreeRepo *self,
-                      const char   *branch,
-                      const char   *subject,
-                      const char   *body,
-                      GVariant     *metadata,
-                      const char   *base,
-                      GPtrArray    *modified_files,
-                      GPtrArray    *removed_files,
-                      GChecksum   **out_commit,
-                      GError      **error)
+                    const char   *branch,
+                    const char   *parent,
+                    const char   *subject,
+                    const char   *body,
+                    GVariant     *metadata,
+                    const char   *base,
+                    GPtrArray    *modified_files,
+                    GPtrArray    *removed_files,
+                    GChecksum   **out_commit,
+                    GError      **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
@@ -1473,11 +1474,13 @@ ostree_repo_commit (OstreeRepo *self,
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
+  g_return_val_if_fail (branch != NULL, FALSE);
+  g_return_val_if_fail (subject != NULL, FALSE);
 
-  if (branch == NULL)
-    branch = "master";
+  if (parent == NULL)
+    parent = branch;
 
-  if (!resolve_rev (self, branch, TRUE, &current_head, error))
+  if (!resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
   if (current_head)
@@ -1529,6 +1532,7 @@ ostree_repo_commit (OstreeRepo *self,
 gboolean      
 ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
                                      const char   *branch,
+                                     const char   *parent,
                                      const char   *subject,
                                      const char   *body,
                                      GVariant     *metadata,
@@ -1553,15 +1557,17 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
+  g_return_val_if_fail (branch != NULL, FALSE);
+  g_return_val_if_fail (subject != NULL, FALSE);
 
-  if (branch == NULL)
-    branch = "master";
+  if (parent == NULL)
+    parent = branch;
 
   /* We're overwriting the tree */
   if (!import_root (self, base, &root, error))
     goto out;
 
-  if (!resolve_rev (self, branch, TRUE, &current_head, error))
+  if (!resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
   in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);

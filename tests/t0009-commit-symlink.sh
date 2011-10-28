@@ -26,10 +26,10 @@ echo "1..2"
 
 setup_test_repository2
 
-ostree checkout $ot_repo master $test_tmpdir/checkout2-head
+ostree checkout $ot_repo test2 $test_tmpdir/checkout2-head
 cd $ht_files
 ln -s foo bar
-ostree commit $ot_repo -s "Add a symlink" -m "To test it" --add=bar
+ostree commit $ot_repo -b test2 -s "Add a symlink" -m "To test it" --add=bar
 echo "ok commit symlink"
 ostree fsck $ot_repo
 echo "ok fsck"

@@ -40,8 +40,8 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   GOutputStream *pager = NULL;
+  const char *rev;
   GVariant *commit = NULL;
-  const char *rev = "master";
   char *resolved_rev;
 
   context = g_option_context_new ("- Show revision log");
@@ -55,8 +55,14 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   if (prefix == NULL)
     prefix = ".";
 
-  if (argc > 1)
-    rev = argv[1];
+  if (argc < 2)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "A revision must be specified");
+      goto out;
+    }
+                   
+  rev = argv[1];
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))

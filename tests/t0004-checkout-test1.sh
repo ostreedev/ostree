@@ -26,7 +26,7 @@ echo '1..3'
 
 setup_test_repository1
 echo 'ok setup'
-ostree checkout $ot_repo master $test_tmpdir/checkout1-head
+ostree checkout $ot_repo test $test_tmpdir/checkout1-head
 echo 'ok checkout cmd'
 cd $test_tmpdir/checkout1-head
 assert_has_file firstfile

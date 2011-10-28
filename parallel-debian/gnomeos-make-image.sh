@@ -121,7 +121,7 @@ if ! test -d ${OBJ}; then
         done
 
         $OSTREE init --repo=ostree/repo
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Initial import' --repo=../repo --from-stdin)
+        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -b gnomeos -s 'Initial import' --repo=../repo --from-stdin)
     )
     if test -d ${OBJ}; then
         mv ${OBJ} ${OBJ}.old
@@ -142,15 +142,15 @@ if ! test -d ${OBJ}; then
         cp ${SRCDIR}/debian-setup.sh ostree/gnomeos-origin/
         chroot ostree/gnomeos-origin ./debian-setup.sh
         rm ostree/gnomeos-origin/debian-setup.sh
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -s 'Run debian-setup.sh' --repo=../repo --from-stdin)
+        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE commit -b gnomeos -s 'Run debian-setup.sh' --repo=../repo --from-stdin)
 
         # This is the name for the real rootfs, not the chroot
         (cd ostree/gnomeos-origin;
             mkdir sysroot;
-            $OSTREE commit -s 'Add sysroot' --repo=../repo --add=sysroot)
+            $OSTREE commit -b gnomeos -s 'Add sysroot' --repo=../repo --add=sysroot)
 
         (cd ostree;
-            rev=$($OSTREE rev-parse --repo=repo master)
+            rev=$($OSTREE rev-parse --repo=repo gnomeos)
             $OSTREE checkout --repo=repo ${rev} gnomeos-${rev}
             $OSTREE run-triggers --repo=repo gnomeos-${rev}
             ln -s gnomeos-${rev} current
