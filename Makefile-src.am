@@ -54,6 +54,7 @@ ostree_SOURCES = src/main.c \
 	src/ot-builtin-link-file.c \
 	src/ot-builtin-log.c \
 	src/ot-builtin-run-triggers.c \
+	src/ot-builtin-remote.c \
 	src/ot-builtin-rev-parse.c \
 	src/ot-builtin-show.c \
 	$(NULL)
