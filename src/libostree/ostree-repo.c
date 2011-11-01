@@ -910,178 +910,6 @@ ostree_repo_link_file (OstreeRepo *self,
   return TRUE;
 }
 
-static gboolean
-unpack_and_checksum_packfile (OstreeRepo   *self,
-                              const char   *path,
-                              gchar       **out_filename,
-                              GChecksum   **out_checksum,
-                              GError      **error)
-{
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  gboolean ret = FALSE;
-  GFile *file = NULL;
-  char *temp_path = NULL;
-  GFile *temp_file = NULL;
-  GFileOutputStream *temp_out = NULL;
-  char *metadata_buf = NULL;
-  GVariant *metadata = NULL;
-  GVariant *xattrs = NULL;
-  GFileInputStream *in = NULL;
-  GChecksum *ret_checksum = NULL;
-  guint32 metadata_len;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
-  gsize bytes_read, bytes_written;
-  char buf[8192];
-  int temp_fd = -1;
-
-  file = ot_util_new_file_for_path (path);
-
-  in = g_file_read (file, NULL, error);
-  if (!in)
-    goto out;
-      
-  if (!g_input_stream_read_all ((GInputStream*)in, &metadata_len, 4, &bytes_read, NULL, error))
-    goto out;
-  if (bytes_read != 4)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; too short while reading metadata length");
-      goto out;
-    }
-      
-  metadata_len = GUINT32_FROM_BE (metadata_len);
-  metadata_buf = g_malloc (metadata_len);
-
-  if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
-    goto out;
-  if (bytes_read != metadata_len)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; too short while reading metadata");
-      goto out;
-    }
-
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
-                                      metadata_buf, metadata_len, FALSE, NULL, NULL);
-      
-  g_variant_get (metadata, "(uuuu@a(ayay)t)",
-                 &version, &uid, &gid, &mode,
-                 &xattrs, &content_len);
-  uid = GUINT32_FROM_BE (uid);
-  gid = GUINT32_FROM_BE (gid);
-  mode = GUINT32_FROM_BE (mode);
-  content_len = GUINT64_FROM_BE (content_len);
-
-  temp_path = g_build_filename (priv->path, "tmp-packfile-XXXXXX");
-  temp_file = ot_util_new_file_for_path (temp_path);
-      
-  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
-  if (S_ISREG (mode))
-    {
-      temp_fd = g_mkstemp (temp_path);
-      if (temp_fd < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-      close (temp_fd);
-      temp_fd = -1;
-      temp_out = g_file_replace (temp_file, NULL, FALSE, 0, NULL, error);
-      if (!temp_out)
-        goto out;
-
-      do
-        {
-          if (!g_input_stream_read_all ((GInputStream*)in, buf, sizeof(buf), &bytes_read, NULL, error))
-            goto out;
-          g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
-          if (!g_output_stream_write_all ((GOutputStream*)temp_out, buf, bytes_read, &bytes_written, NULL, error))
-            goto out;
-        }
-      while (bytes_read > 0);
-
-      if (!g_output_stream_close ((GOutputStream*)temp_out, NULL, error))
-        goto out;
-    }
-  else if (S_ISLNK (mode))
-    {
-      g_assert (sizeof (buf) > PATH_MAX);
-
-      if (!g_input_stream_read_all ((GInputStream*)in, buf, sizeof(buf), &bytes_read, NULL, error))
-        goto out;
-      buf[bytes_read] = '\0';
-      if (symlink (buf, temp_path) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else if (S_ISCHR (mode) || S_ISBLK (mode))
-    {
-      guint32 dev;
-
-      if (!g_input_stream_read_all ((GInputStream*)in, &dev, 4, &bytes_read, NULL, error))
-        goto out;
-      if (bytes_read != 4)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Corrupted packfile; too short while reading device id");
-          goto out;
-        }
-      dev = GUINT32_FROM_BE (dev);
-      if (mknod (temp_path, mode, dev) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; invalid mode %u", mode);
-      goto out;
-    }
-
-  if (!S_ISLNK (mode))
-    {
-      if (chmod (temp_path, mode) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-
-  if (!ostree_set_xattrs (temp_path, xattrs, error))
-    goto out;
-
-  ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
-  g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-
-  ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
-  *out_filename = temp_path;
-  temp_path = NULL;
- out:
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
-  g_free (metadata_buf);
-  if (temp_path)
-    (void) unlink (temp_path);
-  g_free (temp_path);
-  g_clear_object (&file);
-  g_clear_object (&in);
-  g_clear_object (&temp_file);
-  g_clear_object (&temp_out);
-  if (metadata)
-   g_variant_unref (metadata);
-  if (xattrs)
-    g_variant_unref (xattrs);
-  return ret;
-}
-
 gboolean
 ostree_repo_store_packfile (OstreeRepo       *self,
                             const char       *expected_checksum,
@@ -1089,23 +917,18 @@ ostree_repo_store_packfile (OstreeRepo       *self,
                             OstreeObjectType  objtype,
                             GError          **error)
 {
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  char *tempfile = NULL;
+  GString *tempfile_path = NULL;
   GChecksum *checksum = NULL;
   struct stat stbuf;
   gboolean did_exist;
 
-  if (objtype == OSTREE_OBJECT_TYPE_META)
-    {
-      if (!ostree_stat_and_checksum_file (-1, path, objtype, &checksum, &stbuf, error))
-        goto out;
-    }
-  else
-    {
-      if (!unpack_and_checksum_packfile (self, path, &tempfile, &checksum, error))
-        goto out;
-
-    }
+  tempfile_path = g_string_new (priv->path);
+  g_string_append_printf (tempfile_path, "/tmp-unpack-%s", expected_checksum);
+  
+  if (!ostree_unpack_object (path, objtype, tempfile_path->str, &checksum, error))
+    goto out;
 
   if (strcmp (g_checksum_get_string (checksum), expected_checksum) != 0)
     {
@@ -1115,7 +938,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
       goto out;
     }
 
-  if (!ostree_repo_store_object_trusted (self, tempfile ? tempfile : path,
+  if (!ostree_repo_store_object_trusted (self, tempfile_path ? tempfile_path->str : path,
                                          expected_checksum,
                                          objtype,
                                          TRUE, FALSE, &did_exist, error))
@@ -1123,9 +946,11 @@ ostree_repo_store_packfile (OstreeRepo       *self,
 
   ret = TRUE;
  out:
-  if (tempfile)
-    (void) unlink (tempfile);
-  g_free (tempfile);
+  if (tempfile_path)
+    {
+      (void) unlink (tempfile_path->str);
+      g_string_free (tempfile_path, TRUE);
+    }
   if (checksum)
     g_checksum_free (checksum);
   return ret;
@@ -2184,8 +2009,9 @@ checkout_one_directory (OstreeRepo  *self,
   if (!checkout_tree (self, dir->tree_data, dest_path, error))
     goto out;
 
-  /* TODO - xattrs */
-      
+  if (!ostree_set_xattrs (dest_path, xattr_variant, error))
+    goto out;
+
   ret = TRUE;
  out:
   g_free (dest_path);
@@ -2199,6 +2025,7 @@ checkout_tree (OstreeRepo    *self,
                const char      *destination,
                GError         **error)
 {
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -2213,15 +2040,24 @@ checkout_tree (OstreeRepo    *self,
 
       object_path = get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
       dest_path = g_build_filename (destination, filename, NULL);
-      if (link (object_path, dest_path) < 0)
+      
+      if (priv->archive)
         {
-          ot_util_set_error_from_errno (error, errno);
+          if (!ostree_unpack_object (object_path, OSTREE_OBJECT_TYPE_FILE, dest_path, NULL, error))
+            goto out;
+        }
+      else
+        {
+          if (link (object_path, dest_path) < 0)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              g_free (object_path);
+              g_free (dest_path);
+              goto out;
+            }
           g_free (object_path);
           g_free (dest_path);
-          goto out;
         }
-      g_free (object_path);
-      g_free (dest_path);
     }
 
   g_hash_table_iter_init (&hash_iter, tree->directories);

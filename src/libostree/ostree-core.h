@@ -131,6 +131,12 @@ gboolean  ostree_pack_object (GOutputStream     *output,
                               GCancellable     *cancellable,
                               GError          **error);
 
+gboolean ostree_unpack_object (const char   *path,
+                               OstreeObjectType  objtype,
+                               const char   *dest_path,    
+                               GChecksum   **out_checksum,
+                               GError      **error);
+
 void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
 
 

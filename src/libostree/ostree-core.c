@@ -554,3 +554,260 @@ ostree_pack_object (GOutputStream     *output,
   return ret;
 }
 
+static gboolean
+splice_and_checksum (GOutputStream  *out,
+                     GInputStream   *in,
+                     GChecksum      *checksum,
+                     GCancellable   *cancellable,
+                     GError        **error)
+{
+  gboolean ret = FALSE;
+  
+  if (checksum != NULL)
+    {
+      gsize bytes_read, bytes_written;
+      char buf[4096];
+      do
+        {
+          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
+            goto out;
+          if (checksum)
+            g_checksum_update (checksum, (guint8*)buf, bytes_read);
+          if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
+            goto out;
+        }
+      while (bytes_read > 0);
+    }
+  else
+    {
+      if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+unpack_meta (const char   *path,
+             const char   *dest_path,    
+             GChecksum   **out_checksum,
+             GError      **error)
+{
+  gboolean ret = FALSE;
+  GFile *file = NULL;
+  GFile *dest_file = NULL;
+  GFileInputStream *in = NULL;
+  GChecksum *ret_checksum = NULL;
+  GFileOutputStream *out = NULL;
+
+  file = ot_util_new_file_for_path (path);
+  dest_file = ot_util_new_file_for_path (dest_path);
+
+  if (out_checksum)
+    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+  in = g_file_read (file, NULL, error);
+  if (!in)
+    goto out;
+
+  out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
+  if (!out)
+    goto out;
+
+  if (!splice_and_checksum ((GOutputStream*)out, (GInputStream*)in, ret_checksum, NULL, error))
+    goto out;
+
+  if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+    goto out;
+
+  ret = TRUE;
+  if (out_checksum)
+    *out_checksum = ret_checksum;
+  ret_checksum = NULL;
+ out:
+  if (!ret)
+    (void) unlink (dest_path);
+  if (ret_checksum)
+    g_checksum_free (ret_checksum);
+  g_clear_object (&file);
+  g_clear_object (&dest_file);
+  g_clear_object (&in);
+  return ret;
+}
+
+
+static gboolean
+unpack_file (const char   *path,
+             const char   *dest_path,    
+             GChecksum   **out_checksum,
+             GError      **error)
+{
+  gboolean ret = FALSE;
+  GFile *file = NULL;
+  GFile *dest_file = NULL;
+  char *metadata_buf = NULL;
+  GVariant *metadata = NULL;
+  GVariant *xattrs = NULL;
+  GFileInputStream *in = NULL;
+  GFileOutputStream *out = NULL;
+  GChecksum *ret_checksum = NULL;
+  guint32 metadata_len;
+  guint32 version, uid, gid, mode;
+  guint64 content_len;
+  gsize bytes_read, bytes_written;
+  int temp_fd = -1;
+
+  file = ot_util_new_file_for_path (path);
+
+  in = g_file_read (file, NULL, error);
+  if (!in)
+    goto out;
+      
+  if (!g_input_stream_read_all ((GInputStream*)in, &metadata_len, 4, &bytes_read, NULL, error))
+    goto out;
+  if (bytes_read != 4)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted packfile; too short while reading metadata length");
+      goto out;
+    }
+      
+  metadata_len = GUINT32_FROM_BE (metadata_len);
+  metadata_buf = g_malloc (metadata_len);
+
+  if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
+    goto out;
+  if (bytes_read != metadata_len)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted packfile; too short while reading metadata");
+      goto out;
+    }
+
+  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
+                                      metadata_buf, metadata_len, FALSE, NULL, NULL);
+      
+  g_variant_get (metadata, "(uuuu@a(ayay)t)",
+                 &version, &uid, &gid, &mode,
+                 &xattrs, &content_len);
+  uid = GUINT32_FROM_BE (uid);
+  gid = GUINT32_FROM_BE (gid);
+  mode = GUINT32_FROM_BE (mode);
+  content_len = GUINT64_FROM_BE (content_len);
+
+  dest_file = ot_util_new_file_for_path (dest_path);
+      
+  if (out_checksum)
+    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+  if (S_ISREG (mode))
+    {
+      out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
+      if (!out)
+        goto out;
+
+      if (!splice_and_checksum ((GOutputStream*)out, (GInputStream*)in, ret_checksum, NULL, error))
+        goto out;
+
+      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+        goto out;
+    }
+  else if (S_ISLNK (mode))
+    {
+      char target[PATH_MAX+1];
+
+      if (!g_input_stream_read_all ((GInputStream*)in, target, sizeof(target)-1, &bytes_read, NULL, error))
+        goto out;
+      target[bytes_read] = '\0';
+      if (ret_checksum)
+        g_checksum_update (ret_checksum, (guint8*)target, bytes_read);
+      if (symlink (target, dest_path) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISCHR (mode) || S_ISBLK (mode))
+    {
+      guint32 dev;
+
+      if (!g_input_stream_read_all ((GInputStream*)in, &dev, 4, &bytes_read, NULL, error))
+        goto out;
+      if (bytes_read != 4)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Corrupted packfile; too short while reading device id");
+          goto out;
+        }
+      dev = GUINT32_FROM_BE (dev);
+      if (ret_checksum)
+        g_checksum_update (ret_checksum, (guint8*)&dev, 4);
+      if (mknod (dest_path, mode, dev) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted packfile; invalid mode %u", mode);
+      goto out;
+    }
+
+  if (!S_ISLNK (mode))
+    {
+      if (chmod (dest_path, mode) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  if (!ostree_set_xattrs (dest_path, xattrs, error))
+    goto out;
+
+  if (ret_checksum)
+    {
+      ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
+      g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+    }
+
+  ret = TRUE;
+  if (out_checksum)
+    *out_checksum = ret_checksum;
+  ret_checksum = NULL;
+ out:
+  if (!ret)
+    (void) unlink (dest_path);
+  if (ret_checksum)
+    g_checksum_free (ret_checksum);
+  g_free (metadata_buf);
+  g_clear_object (&file);
+  g_clear_object (&dest_file);
+  g_clear_object (&in);
+  g_clear_object (&out);
+  if (metadata)
+   g_variant_unref (metadata);
+  if (xattrs)
+    g_variant_unref (xattrs);
+  return ret;
+}
+
+gboolean
+ostree_unpack_object (const char   *path,
+                      OstreeObjectType  objtype,
+                      const char   *dest_path,    
+                      GChecksum   **out_checksum,
+                      GError      **error)
+{
+  if (objtype == OSTREE_OBJECT_TYPE_META)
+    return unpack_meta (path, dest_path, out_checksum, error);
+  else
+    return unpack_file (path, dest_path, out_checksum, error);
+}
+  
+
+
