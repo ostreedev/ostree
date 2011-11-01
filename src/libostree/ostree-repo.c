@@ -643,7 +643,6 @@ import_directory_meta (OstreeRepo  *self,
                            GUINT32_TO_BE ((guint32)stbuf.st_gid),
                            GUINT32_TO_BE ((guint32)stbuf.st_mode),
                            xattrs);
-  xattrs = NULL; /* was floating */
   g_variant_ref_sink (dirmeta);
 
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
@@ -791,6 +790,7 @@ link_object_trusted (OstreeRepo   *self,
   g_free (dest_basename);
   g_free (tmp_dest_basename);
   g_free (dest_dirname);
+  g_free (dest_path);
   return ret;
 }
 
@@ -1037,7 +1037,7 @@ parse_tree (OstreeRepo    *self,
       const char *filename;
       const char *checksum;
 
-      g_variant_get_child (files_variant, i, "(ss)", &filename, &checksum);
+      g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
 
       g_hash_table_insert (ret_pdata->files, g_strdup (filename), g_strdup (checksum));
     }
@@ -1052,7 +1052,7 @@ parse_tree (OstreeRepo    *self,
       GVariant *metadata = NULL;
       ParsedDirectoryData *child_dir = NULL;
 
-      g_variant_get_child (dirs_variant, i, "(sss)",
+      g_variant_get_child (dirs_variant, i, "(&s&s&s)",
                            &dirname, &tree_checksum, &meta_checksum);
       
       if (!parse_tree (self, tree_checksum, &child_tree, error))
@@ -1068,7 +1068,7 @@ parse_tree (OstreeRepo    *self,
       child_dir = g_new0 (ParsedDirectoryData, 1);
       child_dir->tree_data = child_tree;
       child_dir->metadata_sha256 = g_strdup (meta_checksum);
-      child_dir->meta_data = g_variant_ref_sink (metadata);
+      child_dir->meta_data = metadata;
 
       g_hash_table_insert (ret_pdata->directories, g_strdup (dirname), child_dir);
     }
@@ -1189,6 +1189,7 @@ import_parsed_tree (OstreeRepo    *self,
 
       g_variant_builder_add (&dirs_builder, "(sss)",
                              name, g_checksum_get_string (dir_checksum), dir->metadata_sha256);
+      g_checksum_free (dir_checksum);
     }
 
   serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
@@ -1527,6 +1528,8 @@ add_one_path_to_tree_and_import (OstreeRepo     *self,
 
   ret = TRUE;
  out:
+  if (components)
+    g_ptr_array_unref (components);
   g_free (component_abspath);
   g_free (abspath);
   return ret;
@@ -1599,6 +1602,7 @@ commit_parsed_tree (OstreeRepo *self,
                           GUINT64_TO_BE (g_date_time_to_unix (now)),
                           g_checksum_get_string (root_checksum),
                           root->metadata_sha256);
+  g_variant_ref_sink (commit);
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
                                commit, &ret_commit, error))
     goto out;

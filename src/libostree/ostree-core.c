@@ -354,6 +354,8 @@ ostree_parse_metadata_file (const char                  *path,
                                            FALSE,
                                            (GDestroyNotify) g_mapped_file_unref,
                                            mfile);
+      mfile = NULL;
+      g_variant_ref_sink (container);
       g_variant_get (container, "(uv)",
                      &ret_type, &ret_variant);
       ret_type = GUINT32_FROM_BE (ret_type);
@@ -363,12 +365,11 @@ ostree_parse_metadata_file (const char                  *path,
                        "Corrupted metadata object '%s'; invalid type %d", path, ret_type);
           goto out;
         }
-      mfile = NULL;
     }
 
   ret = TRUE;
   *out_type = ret_type;
-  *out_variant = ret_variant;
+  *out_variant = g_variant_ref_sink (ret_variant);
   ret_variant = NULL;
  out:
   if (ret_variant)
