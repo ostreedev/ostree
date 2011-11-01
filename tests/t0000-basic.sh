@@ -20,12 +20,17 @@
 
 set -e
 
-echo "1..6"
+echo "1..7"
 
 . libtest.sh
 
 setup_test_repository "regular"
 echo "ok setup"
+
+assert_file_has_content ${test_tmpdir}/repo/objects/f2/c7a70e5e252c1cb7a018d98f34cbf01d553185e9adc775e10213f4187fa91a.file moo
+assert_streq "$(readlink ${test_tmpdir}/repo/objects/cf/443bea5eb400bc25b376c07925cc06cd05235d5fb38f20cd5f7ca53b7b3b10.file)" nonexistent
+
+echo "ok check"
 
 ostree checkout $ot_repo test2 checkout-test2
 echo "ok checkout"

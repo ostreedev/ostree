@@ -35,6 +35,10 @@ die () {
     fi
 }
 
+assert_streq () {
+    test "$1" = "$2" || (echo "$1 != $2"; exit 1)
+}
+
 assert_has_file () {
     test -f "$1" || (echo "Couldn't find '$1'"; exit 1)
 }
@@ -81,7 +85,7 @@ setup_test_repository () {
     if test "$mode" = "archive"; then
 	ostree init --archive $ot_repo
     else
-	ostree init --archive $ot_repo
+	ostree init $ot_repo
     fi
     ostree commit $ot_repo -b test2 -s "Test Commit 1" -m "Commit body first" --add=firstfile --add=somelink
     ostree commit $ot_repo -b test2 -s "Test Commit 2" -m "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y --add=baz/alink
