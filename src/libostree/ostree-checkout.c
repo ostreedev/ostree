@@ -204,7 +204,7 @@ run_trigger (OstreeCheckout *self,
     {
       temp_path = g_build_filename (priv->path, basename, NULL);
       rel_temp_path = g_strconcat ("./", basename, NULL);
-      temp_copy = g_file_new_for_path (temp_path);
+      temp_copy = ot_util_new_file_for_path (temp_path);
 
       if (!g_file_copy (trigger, temp_copy, 0, NULL, NULL, NULL, error))
         goto out;
