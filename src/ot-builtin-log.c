@@ -42,7 +42,7 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
   GOutputStream *pager = NULL;
   const char *rev;
   GVariant *commit = NULL;
-  char *resolved_rev;
+  char *resolved_rev = NULL;
 
   context = g_option_context_new ("- Show revision log");
   g_option_context_add_main_entries (context, options, NULL);
