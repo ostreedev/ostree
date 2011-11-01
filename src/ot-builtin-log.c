@@ -101,6 +101,8 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
       g_variant_get (commit, "(u@a{sv}&s&s&st&s&s)",
                      &version, &commit_metadata, &parent, &subject, &body,
                      &timestamp, &contents, &root_metadata);
+      version = GUINT32_FROM_BE (version);
+      timestamp = GUINT64_FROM_BE (timestamp);
       time_obj = g_date_time_new_from_unix_utc (timestamp);
       formatted_date = g_date_time_format (time_obj, "%a %b %d %H:%M:%S %Y %z");
       g_date_time_unref (time_obj);

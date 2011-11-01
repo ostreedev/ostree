@@ -356,6 +356,7 @@ ostree_parse_metadata_file (const char                  *path,
                                            mfile);
       g_variant_get (container, "(uv)",
                      &ret_type, &ret_variant);
+      ret_type = GUINT32_FROM_BE (ret_type);
       if (ret_type <= 0 || ret_type > OSTREE_SERIALIZED_VARIANT_LAST)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

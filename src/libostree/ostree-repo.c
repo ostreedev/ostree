@@ -518,7 +518,7 @@ import_gvariant_object (OstreeRepo  *self,
   int fd = -1;
   GUnixOutputStream *stream = NULL;
 
-  serialized = g_variant_new ("(uv)", (guint32)type, variant);
+  serialized = g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
 
   tmp_name = g_build_filename (priv->objects_path, "variant-tmp-XXXXXX", NULL);
   fd = g_mkstemp (tmp_name);
@@ -639,9 +639,9 @@ import_directory_meta (OstreeRepo  *self,
 
   dirmeta = g_variant_new ("(uuuu@a(ayay))",
                            OSTREE_DIR_META_VERSION,
-                           (guint32)stbuf.st_uid,
-                           (guint32)stbuf.st_gid,
-                           (guint32)(stbuf.st_mode & (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO)),
+                           GUINT32_TO_BE ((guint32)stbuf.st_uid),
+                           GUINT32_TO_BE ((guint32)stbuf.st_gid),
+                           GUINT32_TO_BE ((guint32)stbuf.st_mode),
                            xattrs);
   xattrs = NULL; /* was floating */
   g_variant_ref_sink (dirmeta);
@@ -1203,6 +1203,7 @@ parse_tree (OstreeRepo    *self,
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
   g_variant_get (tree_variant, "(u@a{sv}@a(ss)@a(sss))",
                  &version, &meta_variant, &files_variant, &dirs_variant);
+  version = GUINT32_FROM_BE (version);
 
   ret_pdata = parsed_tree_data_new ();
   n = g_variant_n_children (files_variant);
@@ -1366,7 +1367,7 @@ import_parsed_tree (OstreeRepo    *self,
     }
 
   serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
-                                   0,
+                                   GUINT32_TO_BE (0),
                                    create_empty_gvariant_dict (),
                                    g_variant_builder_end (&files_builder),
                                    g_variant_builder_end (&dirs_builder));
@@ -1766,11 +1767,11 @@ commit_parsed_tree (OstreeRepo *self,
 
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(u@a{sv}ssstss)",
-                          OSTREE_COMMIT_VERSION,
+                          GUINT32_TO_BE (OSTREE_COMMIT_VERSION),
                           create_empty_gvariant_dict (),
                           parent ? parent : "",
                           subject, body ? body : "",
-                          g_date_time_to_unix (now) / G_TIME_SPAN_SECOND,
+                          GUINT64_TO_BE (g_date_time_to_unix (now)),
                           g_checksum_get_string (root_checksum),
                           root->metadata_sha256);
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
@@ -2168,6 +2169,10 @@ checkout_one_directory (OstreeRepo  *self,
   g_variant_get (dir->meta_data, "(uuuu@a(ayay))",
                  &version, &uid, &gid, &mode,
                  &xattr_variant);
+  version = GUINT32_FROM_BE (version);
+  uid = GUINT32_FROM_BE (uid);
+  gid = GUINT32_FROM_BE (gid);
+  mode = GUINT32_FROM_BE (mode);
 
   if (mkdir (dest_path, (mode_t)mode) < 0)
     {
