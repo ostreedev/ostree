@@ -53,16 +53,49 @@ OstreeRepo* ostree_repo_new (const char *path);
 
 gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
+const char *  ostree_repo_get_path (OstreeRepo  *self);
+
+gboolean      ostree_repo_is_archive (OstreeRepo  *self);
+
+GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
+
+GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);
+
+gboolean      ostree_repo_write_config (OstreeRepo *self,
+                                        GKeyFile   *new_config,
+                                        GError    **error);
+
 gboolean      ostree_repo_link_file (OstreeRepo *self,
-                                       const char   *path,
-                                       gboolean      ignore_exists,
-                                       gboolean      force,
-                                       GError      **error);
+                                     const char   *path,
+                                     gboolean      ignore_exists,
+                                     gboolean      force,
+                                     GError      **error);
+
+gboolean      ostree_repo_store_packfile (OstreeRepo       *self,
+                                           const char       *expected_checksum,
+                                           const char       *path,
+                                           OstreeObjectType  objtype,
+                                           GError          **error);
+
+gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
+                                                const char   *path,
+                                                const char   *checksum,
+                                                OstreeObjectType objtype,
+                                                gboolean      ignore_exists,
+                                                gboolean      force,
+                                                gboolean     *did_exist,
+                                                GError      **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *rev,
                                        char       **out_resolved,
                                        GError     **error);
+
+gboolean      ostree_repo_write_ref (OstreeRepo  *self,
+                                     gboolean     is_local,
+                                     const char  *name,
+                                     const char  *rev,
+                                     GError     **error);
 
 gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           const char   *sha256,

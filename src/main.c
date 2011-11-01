@@ -33,6 +33,7 @@ static OstreeBuiltin builtins[] = {
   { "commit", ostree_builtin_commit, 0 },
   { "link-file", ostree_builtin_link_file, 0 },
   { "log", ostree_builtin_log, 0 },
+  { "pull", ostree_builtin_pull, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },

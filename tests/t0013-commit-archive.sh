@@ -1,4 +1,4 @@
-# Toplevel tests Makefile
+#!/bin/bash
 #
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
@@ -18,19 +18,25 @@
 #
 # Author: Colin Walters <walters@verbum.org>
 
-TESTS = $(wildcard t[0-9][0-9][0-9][0-9]-*.sh)
+set -e
 
-all: tmpdir-lifecycle run-apache
+. libtest.sh
 
-tmpdir-lifecycle: tmpdir-lifecycle.c Makefile
-	gcc $(CFLAGS) `pkg-config --cflags --libs gio-unix-2.0` -o $@ $<
+echo '1..4'
 
-run-apache: run-apache.c Makefile
-	gcc $(CFLAGS) `pkg-config --cflags --libs gio-unix-2.0` -o $@ $<
+mkdir files
+cd files
+echo first > firstfile
+echo second > secondfile
+ln -s foo bar
 
-check:
-	@for test in $(TESTS); do \
-	  echo $$test; \
-	  ./$$test; \
-	done
-
+mkdir ../repo
+repo="--repo=../repo"
+ostree init --archive $repo
+echo 'ok init'
+ostree commit $repo -b test -s "Test Commit 1" -m "Commit body first" --add=firstfile
+echo 'ok commit 1'
+ostree commit $repo -b test -s "Test Commit 2" -m "Commit body first" --add=secondfile --add=bar
+echo 'ok commit 2'
+ostree fsck -q $repo
+echo 'ok fsck'

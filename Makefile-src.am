@@ -40,8 +40,8 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-checkout.c \
 	src/libostree/ostree-checkout.h \
 	$(NULL)
-libostree_la_CFLAGS = -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
-libostree_la_LIBADD = libotutil.la $(GIO_UNIX_LIBS)
+libostree_la_CFLAGS = -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+libostree_la_LIBADD = libotutil.la $(OT_COREBIN_DEP_LIBS)
 
 bin_PROGRAMS += ostree
 
@@ -53,10 +53,18 @@ ostree_SOURCES = src/main.c \
 	src/ot-builtin-init.c \
 	src/ot-builtin-link-file.c \
 	src/ot-builtin-log.c \
+	src/ot-builtin-pull.c \
 	src/ot-builtin-run-triggers.c \
 	src/ot-builtin-remote.c \
 	src/ot-builtin-rev-parse.c \
 	src/ot-builtin-show.c \
 	$(NULL)
-ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
-ostree_LDADD = libotutil.la libostree.la $(GIO_UNIX_LIBS)
+ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
+
+bin_PROGRAMS += ostree-http-backend
+
+ostree_http_backend_SOURCES = src/ostree-http-backend.c
+ostree_http_backend_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostree_http_backend_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
+

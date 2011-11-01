@@ -1,5 +1,7 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
+ * Kill a child process when the current directory is deleted
+ *
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,35 +21,16 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#include <libsoup/soup-gnome.h>
-#include <sys/types.h>
+#include <gio/gio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
-static void
-request_callback (SoupServer *server, SoupMessage *msg,
-		  const char *path, GHashTable *query,
-		  SoupClientContext *context, gpointer data)
-{
-  if (msg->method == SOUP_METHOD_GET) 
-    {
-      GFile *file;
-      char *content;
-      gsize len;
-      
-      /* Strip leading / */
-      file = g_file_new_for_path (path + 1);
-      
-      if (g_file_load_contents (file, NULL, &content, &len, NULL, NULL))
-	soup_message_set_response (msg, "application/octet-stream", SOUP_MEMORY_TAKE, content, len);
-      else
-	soup_message_set_status (msg, SOUP_STATUS_NOT_FOUND);
-    }
-  else
-    {
-      soup_message_set_status (msg, SOUP_STATUS_METHOD_NOT_ALLOWED);
-    }
-}
+struct TmpdirLifecyleData {
+  GMainLoop *loop;
+  GPid pid;
+  gboolean exited;
+};
 
 static void
 on_dir_changed (GFileMonitor  *mon,
@@ -56,49 +39,65 @@ on_dir_changed (GFileMonitor  *mon,
 		GFileMonitorEvent  event,
 		gpointer user_data)
 {
-  GMainLoop *loop = user_data;
+  struct TmpdirLifecyleData *data = user_data;
 
   if (event == G_FILE_MONITOR_EVENT_DELETED)
-    g_main_loop_quit (loop);
+    g_main_loop_quit (data->loop);
+}
+
+static void
+on_child_exited (GPid  pid,
+                 int status,
+                 gpointer user_data)
+{
+  struct TmpdirLifecyleData *data = user_data;
+
+  data->exited = TRUE;
+  g_main_loop_quit (data->loop);
 }
 
 int
 main (int     argc,
       char  **argv)
 {
-  SoupAddress *addr;
-  SoupServer *server;
-  GMainLoop *loop;
   GFileMonitor *monitor;
   GFile *curdir;
   GError *error = NULL;
+  GPtrArray *new_argv;
+  int i;
+  GPid pid;
+  struct TmpdirLifecyleData data;
 
   g_type_init ();
 
-  loop = g_main_loop_new (NULL, TRUE);
+  memset (&data, 0, sizeof (data));
+
+  data.loop = g_main_loop_new (NULL, TRUE);
 
   curdir = g_file_new_for_path (".");
   monitor = g_file_monitor_directory (curdir, 0, NULL, &error);
   if (!monitor)
     exit (1);
   g_signal_connect (monitor, "changed",
-		    G_CALLBACK (on_dir_changed), loop);
+		    G_CALLBACK (on_dir_changed), &data);
 
-  addr = soup_address_new ("127.0.0.1", SOUP_ADDRESS_ANY_PORT);
-  soup_address_resolve_sync (addr, NULL);
+  new_argv = g_ptr_array_new ();
+  for (i = 1; i < argc; i++)
+    g_ptr_array_add (new_argv, argv[i]);
+  g_ptr_array_add (new_argv, NULL);
 
-  server = soup_server_new (SOUP_SERVER_INTERFACE, addr,
-			    SOUP_SERVER_ASYNC_CONTEXT, g_main_loop_get_context (loop),
-			    NULL);
-  soup_server_add_handler (server, NULL,
-			   request_callback,
-			   NULL, NULL);
+  if (!g_spawn_async (NULL, (char**)new_argv->pdata, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
+                      NULL, NULL, &pid, &error))
+    {
+      g_printerr ("%s\n", error->message);
+      return 1;
+    }
+  g_child_watch_add (pid, on_child_exited, &data);
 
-  soup_server_run_async (server);
+  g_main_loop_run (data.loop);
 
-  g_print ("http://127.0.0.1:%ld\n", (long)soup_server_get_port (server));
-
-  g_main_loop_run (loop);
+  if (!data.exited)
+    kill (data.pid, SIGTERM);
 
   return 0;
 }

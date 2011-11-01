@@ -39,6 +39,7 @@ typedef enum {
   OSTREE_SERIALIZED_DIRMETA_VARIANT = 3,
   OSTREE_SERIALIZED_XATTR_VARIANT = 4
 } OstreeSerializedVariantType;
+#define OSTREE_SERIALIZED_VARIANT_LAST 4
 
 #define OSTREE_SERIALIZED_VARIANT_FORMAT "(uv)"
 
@@ -83,13 +84,54 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}ssstss)"
 
-GVariant *ostree_get_xattrs_for_path (const char *path,
-                                        GError    **error);
+gboolean ostree_validate_checksum_string (const char *sha256,
+                                          GError    **error);
+
+char *ostree_get_relative_object_path (const char *checksum,
+                                       OstreeObjectType type,
+                                       gboolean         archive);
+
+GVariant *ostree_get_xattrs_for_path (const char   *path,
+                                      GError     **error);
+
+gboolean ostree_set_xattrs (const char *path, GVariant *xattrs, GError **error);
+
+gboolean ostree_parse_metadata_file (const char                  *path,
+                                     OstreeSerializedVariantType *out_type,
+                                     GVariant                   **out_variant,
+                                     GError                     **error);
 
 gboolean ostree_stat_and_checksum_file (int dirfd, const char *path,
-                                          GChecksum **out_checksum,
-                                          struct stat *out_stbuf,
-                                          GError **error);
+                                        OstreeObjectType type,
+                                        GChecksum **out_checksum,
+                                        struct stat *out_stbuf,
+                                        GError **error);
+
+/* Packed files:
+ *
+ * guint32 metadata_length [metadata gvariant] [content]
+ *
+ * metadata variant:
+ * u - Version
+ * u - uid
+ * u - gid
+ * u - mode
+ * a(ayay) - xattrs
+ * t - content length
+ *
+ * And then following the end of the variant is the content.  If
+ * symlink, then this is the target; if device, then device ID as
+ * network byte order uint32.
+ */
+#define OSTREE_PACK_FILE_VARIANT_FORMAT "(uuuua(ayay)t)"
+
+gboolean  ostree_pack_object (GOutputStream     *output,
+                              GFile             *path,
+                              OstreeObjectType  objtype,
+                              GCancellable     *cancellable,
+                              GError          **error);
+
+void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
 
 
 #endif /* _OSTREE_REPO */

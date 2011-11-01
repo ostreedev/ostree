@@ -1,4 +1,4 @@
-# Toplevel tests Makefile
+#!/bin/bash
 #
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
@@ -18,19 +18,16 @@
 #
 # Author: Colin Walters <walters@verbum.org>
 
-TESTS = $(wildcard t[0-9][0-9][0-9][0-9]-*.sh)
+set -e
 
-all: tmpdir-lifecycle run-apache
+. libtest.sh
 
-tmpdir-lifecycle: tmpdir-lifecycle.c Makefile
-	gcc $(CFLAGS) `pkg-config --cflags --libs gio-unix-2.0` -o $@ $<
+echo '1..1'
 
-run-apache: run-apache.c Makefile
-	gcc $(CFLAGS) `pkg-config --cflags --libs gio-unix-2.0` -o $@ $<
-
-check:
-	@for test in $(TESTS); do \
-	  echo $$test; \
-	  ./$$test; \
-	done
-
+setup_fake_remote_repo1
+cd ${test_tmpdir}
+mkdir repo
+ostree init --repo=repo
+ostree remote --repo=repo add origin $(cat httpd-address)/ostree/gnomerepo
+ostree pull --repo=repo origin main
+echo "ok pull"

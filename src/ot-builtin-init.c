@@ -27,8 +27,11 @@
 #include <glib/gi18n.h>
 
 static char *repo_path;
+static gboolean archive;
+
 static GOptionEntry options[] = {
   { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
+  { "archive", 0, 0, G_OPTION_ARG_NONE, &archive, "Initialize repository as archive", NULL },
   { NULL }
 };
 
@@ -44,6 +47,7 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   GFile *repodir = NULL;
   GFile *child = NULL;
   GFile *grandchild = NULL;
+  GString *config_data = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -54,12 +58,15 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   if (repo_path == NULL)
     repo_path = ".";
 
-  repodir = g_file_new_for_path (repo_path);
+  repodir = ot_util_new_file_for_path (repo_path);
 
   child = g_file_get_child (repodir, "config");
+
+  config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
+  g_string_append_printf (config_data, "archive=%s\n", archive ? "true" : "false");
   if (!g_file_replace_contents (child,
-                                DEFAULT_CONFIG_CONTENTS,
-                                strlen (DEFAULT_CONFIG_CONTENTS),
+                                config_data->str,
+                                config_data->len,
                                 NULL, FALSE, 0, NULL,
                                 NULL, error))
     goto out;
@@ -73,18 +80,20 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
   child = g_file_get_child (repodir, "refs");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
+
   grandchild = g_file_get_child (child, "heads");
   if (!g_file_make_directory (grandchild, NULL, error))
     goto out;
-  g_clear_object (&child);
   g_clear_object (&grandchild);
 
-  child = g_file_get_child (repodir, "tags");
-  if (!g_file_make_directory (child, NULL, error))
+  grandchild = g_file_get_child (child, "remotes");
+  if (!g_file_make_directory (grandchild, NULL, error))
     goto out;
+  g_clear_object (&grandchild);
+
   g_clear_object (&child);
 
-  child = g_file_get_child (repodir, "remotes");
+  child = g_file_get_child (repodir, "tags");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
   g_clear_object (&child);
@@ -93,6 +102,8 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
  out:
   if (context)
     g_option_context_free (context);
+  if (config_data)
+    g_string_free (config_data, TRUE);
   g_clear_object (&repodir);
   g_clear_object (&child);
   g_clear_object (&grandchild);

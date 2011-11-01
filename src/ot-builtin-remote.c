@@ -51,9 +51,6 @@ ostree_builtin_remote (int argc, char **argv, const char *prefix, GError **error
   OstreeRepo *repo = NULL;
   OstreeCheckout *checkout = NULL;
   const char *op;
-  gsize len;
-  char *config_path = NULL;
-  char *data = NULL;
   GKeyFile *config = NULL;
 
   context = g_option_context_new ("OPERATION [args] - Control remote repository configuration");
@@ -77,10 +74,7 @@ ostree_builtin_remote (int argc, char **argv, const char *prefix, GError **error
 
   op = argv[1];
 
-  config = g_key_file_new ();
-  config_path = g_build_filename (repo_path, "config", NULL);
-  if (!g_key_file_load_from_file (config, config_path, 0, error))
-    goto out;
+  config = ostree_repo_copy_config (repo);
 
   if (!strcmp (op, "add"))
     {
@@ -92,25 +86,23 @@ ostree_builtin_remote (int argc, char **argv, const char *prefix, GError **error
         }
       key = g_strdup_printf ("remote \"%s\"", argv[2]);
       g_key_file_set_string (config, key, "url", argv[3]);
+      g_free (key);
     }
   else
     {
       usage_error (context, "Unknown operation", error);
       goto out;
     }
- 
-  data = g_key_file_to_data (config, &len, error);
-  if (!g_file_set_contents (config_path, data, len, error))
-    goto out;
 
+  if (!ostree_repo_write_config (repo, config, error))
+    goto out;
+ 
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   if (config)
     g_key_file_unref (config);
-  g_free (data);
-  g_free (config_path);
   g_clear_object (&repo);
   g_clear_object (&checkout);
   return ret;

@@ -1,1 +1,4 @@
 !Makefile
+ostree-http-server
+run-apache
+tmpdir-lifecycle
