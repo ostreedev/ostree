@@ -139,7 +139,18 @@ StartServers 1
 Alias /ostree/ ${test_tmpdir}/ostree-srv/
 # ScriptAlias /ostree/  ${test_tmpdir}/httpd/ostree-http-backend/
 EOF
-    ${SRCDIR}/tmpdir-lifecycle ${SRCDIR}/run-apache `pwd`/httpd.conf ${test_tmpdir}/httpd-address
+    ${SRCDIR}/tmpdir-lifecycle ${SRCDIR}/run-apache `pwd`/httpd.conf ${test_tmpdir}/httpd-address &
+    for i in $(seq 5); do
+	if ! test -f ${test_tmpdir}/httpd-address; then
+	    sleep 1
+	else
+	    break
+	fi
+    done
+    if ! test -f ${test_tmpdir}/httpd-address; then
+	echo "Error: timed out waiting for httpd-address file"
+	exit 1
+    fi
     cd ${oldpwd} 
 }
 

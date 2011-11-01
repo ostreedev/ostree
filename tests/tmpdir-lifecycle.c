@@ -65,7 +65,6 @@ main (int     argc,
   GError *error = NULL;
   GPtrArray *new_argv;
   int i;
-  GPid pid;
   struct TmpdirLifecyleData data;
 
   g_type_init ();
@@ -87,12 +86,12 @@ main (int     argc,
   g_ptr_array_add (new_argv, NULL);
 
   if (!g_spawn_async (NULL, (char**)new_argv->pdata, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
-                      NULL, NULL, &pid, &error))
+                      NULL, NULL, &data.pid, &error))
     {
       g_printerr ("%s\n", error->message);
       return 1;
     }
-  g_child_watch_add (pid, on_child_exited, &data);
+  g_child_watch_add (data.pid, on_child_exited, &data);
 
   g_main_loop_run (data.loop);
 
