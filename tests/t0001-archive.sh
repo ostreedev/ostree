@@ -22,20 +22,17 @@ set -e
 
 . libtest.sh
 
-echo '1..5'
+echo '1..3'
 
-setup_test_repository2
-echo 'ok setup'
-ostree checkout $ot_repo test2 $test_tmpdir/checkout2-head
-echo 'ok checkout cmd'
-cd $test_tmpdir/checkout2-head
+setup_test_repository "archive"
+echo "ok setup"
+
+ostree checkout $ot_repo test2 checkout-test2
+echo "ok checkout"
+
+cd checkout-test2
 assert_has_file firstfile
-echo 'ok checkout firstfile'
 assert_has_file baz/cow
-assert_has_file baz/saucer
-echo 'ok checkout baz (2)'
+assert_file_has_content baz/cow moo
 assert_has_file baz/deeper/ohyeah
-assert_has_file baz/another/y
-echo 'ok checkout verify exists'
-
-
+echo "ok content"

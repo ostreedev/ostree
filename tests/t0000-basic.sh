@@ -20,21 +20,50 @@
 
 set -e
 
+echo "1..6"
+
 . libtest.sh
 
-echo '1..4'
+setup_test_repository "regular"
+echo "ok setup"
 
-setup_test_repository2
-ostree checkout $ot_repo test2 $test_tmpdir/checkout2-head
-echo 'ok setup'
-cd $test_tmpdir/checkout2-head
+ostree checkout $ot_repo test2 checkout-test2
+echo "ok checkout"
+
+cd checkout-test2
+assert_has_file firstfile
+assert_has_file baz/cow
+assert_file_has_content baz/cow moo
+assert_has_file baz/deeper/ohyeah
+echo "ok content"
+
 ostree commit $ot_repo -b test2 -s delete -r firstfile
-echo 'ok rm firstfile'
 assert_has_file firstfile  # It should still exist in this checkout
 cd $test_tmpdir
-ostree checkout $ot_repo test2 $test_tmpdir/checkout3-head
-echo 'ok checkout 3'
-cd $test_tmpdir/checkout3-head
+ostree checkout $ot_repo test2 $test_tmpdir/checkout-test2-2
+cd $test_tmpdir/checkout-test2-2
 assert_not_has_file firstfile
 assert_has_file baz/saucer
-echo 'ok removal full'
+echo "ok removal"
+
+mkdir -p a/nested/tree
+echo one > a/nested/tree/1
+echo two2 > a/nested/2
+echo 3 > a/nested/3
+touch a/4
+echo fivebaby > a/5
+touch a/6
+echo whee > 7
+mkdir -p another/nested/tree
+echo anotherone > another/nested/tree/1
+echo whee2 > another/whee
+# FIXME - remove grep for .
+find | grep -v '^\.$' | ostree commit $ot_repo -b test2 -s "From find" --from-stdin
+echo "ok stdin commit"
+
+cd ${test_tmpdir}
+ostree checkout $ot_repo test2 $test_tmpdir/checkout-test2-3
+cd checkout-test2-3
+assert_has_file a/nested/2
+assert_file_has_content a/nested/2 'two2'
+echo "ok stdin contents"

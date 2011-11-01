@@ -22,10 +22,10 @@ set -e
 
 . libtest.sh
 
-echo '1..2'
+echo "1..1"
 
-setup_test_repository2
-ostree remote add $ot_repo origin http://example.com/ostree/gnome
-echo "ok remote add"
-assert_file_has_content $test_tmpdir/repo/config "example.com"
-echo "ok config"
+setup_test_repository "regular"
+ostree log $ot_repo test2 > $test_tmpdir/log.txt
+assert_file_has_content $test_tmpdir/log.txt "Test Commit 1"
+assert_file_has_content $test_tmpdir/log.txt "Test Commit 2"
+echo "ok log"

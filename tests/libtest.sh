@@ -51,47 +51,43 @@ assert_file_has_content () {
     fi
 }
 
-setup_test_repository1 () {
+setup_test_repository () {
+    mode=$1
+    shift
+
+    oldpwd=`pwd`
+
     mkdir files
     cd files
-    ht_files=`pwd`
+    ot_files=`pwd`
     export ht_files
-    echo first > firstfile
-    echo second > secondfile
-
-    mkdir ../repo
-    ot_repo="--repo=../repo"
-    export ot_repo
-    ostree init $ot_repo
-    ostree commit $ot_repo -b test -s "Test Commit 1" -m "Commit body first" --add=firstfile
-    ostree commit $ot_repo -b test -s "Test Commit 2" -m "Commit body second" --add=secondfile
-    ostree fsck -q $ot_repo
-}
-
-setup_test_repository2 () {
-    mkdir files
-    cd files
-    ht_files=`pwd`
-    export ht_files
+    ln -s nosuchfile somelink
     echo first > firstfile
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
     mkdir baz/deeper
     echo hi > baz/deeper/ohyeah
+    ln -s nonexistent baz/alink
     mkdir baz/another/
     echo x > baz/another/y
 
-    cd ..
+    cd ${test_tmpdir}
     mkdir repo
     cd repo
     ot_repo="--repo=`pwd`"
     cd ../files
     export ot_repo
-    ostree init $ot_repo
-    ostree commit $ot_repo -b test2 -s "Test Commit 1" -m "Commit body first" --add=firstfile
-    ostree commit $ot_repo -b test2 -s "Test Commit 2" -m "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y
+    if test "$mode" = "archive"; then
+	ostree init --archive $ot_repo
+    else
+	ostree init --archive $ot_repo
+    fi
+    ostree commit $ot_repo -b test2 -s "Test Commit 1" -m "Commit body first" --add=firstfile --add=somelink
+    ostree commit $ot_repo -b test2 -s "Test Commit 2" -m "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y --add=baz/alink
     ostree fsck -q $ot_repo
+
+    cd $oldpwd
 }
 
 setup_fake_remote_repo1() {
