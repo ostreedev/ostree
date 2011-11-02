@@ -11,5 +11,7 @@ libexec_PROGRAMS =
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 
-include Makefile-src.am
+include Makefile-otutil.am
+include Makefile-libostree.am
+include Makefile-ostree.am
 include Makefile-triggers.am

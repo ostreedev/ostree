@@ -1,0 +1,38 @@
+# Makefile for C source code
+#
+# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+# Author: Colin Walters <walters@verbum.org>
+
+bin_PROGRAMS += ostree
+
+ostree_SOURCES = ostree/main.c \
+	ostree/ot-builtins.h \
+	ostree/ot-builtin-checkout.c \
+	ostree/ot-builtin-commit.c \
+	ostree/ot-builtin-fsck.c \
+	ostree/ot-builtin-init.c \
+	ostree/ot-builtin-link-file.c \
+	ostree/ot-builtin-log.c \
+	ostree/ot-builtin-pull.c \
+	ostree/ot-builtin-run-triggers.c \
+	ostree/ot-builtin-remote.c \
+	ostree/ot-builtin-rev-parse.c \
+	ostree/ot-builtin-show.c \
+	$(NULL)
+ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/libostree -I$(srcdir)/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)

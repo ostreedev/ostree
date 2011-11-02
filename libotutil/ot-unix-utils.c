@@ -54,7 +54,7 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
       argv[0] = (char*)pager;
       argv[1] = NULL;
       
-      if (!g_spawn_async_with_pipes (NULL, argv, NULL, G_SPAWN_SEARCH_PATH,
+      if (!g_spawn_async_with_pipes (NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
                                      NULL, NULL, &pid, &stdin_fd, NULL, NULL, error))
         {
           g_prefix_error (error, "%s", "Failed to spawn pager: ");
