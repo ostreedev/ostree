@@ -21,6 +21,8 @@
 noinst_LTLIBRARIES += libotutil.la
 
 libotutil_la_SOURCES = \
+	src/libotutil/ot-opt-utils.c \
+	src/libotutil/ot-opt-utils.h \
 	src/libotutil/ot-unix-utils.c \
 	src/libotutil/ot-unix-utils.h \
 	src/libotutil/ot-gio-utils.c \

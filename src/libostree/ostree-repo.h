@@ -103,6 +103,12 @@ gboolean      ostree_repo_load_variant (OstreeRepo *self,
                                           GVariant    **out_variant,
                                           GError      **error);
 
+gboolean      ostree_repo_load_variant_checked (OstreeRepo  *self,
+                                                OstreeSerializedVariantType expected_type,
+                                                const char    *sha256, 
+                                                GVariant     **out_variant,
+                                                GError       **error);
+
 gboolean      ostree_repo_commit (OstreeRepo   *self,
                                   const char   *branch,
                                   const char   *parent,

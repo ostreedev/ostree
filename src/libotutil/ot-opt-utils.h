@@ -19,10 +19,15 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UTIL_H__
+#ifndef __OSTREE_GIO_UTILS_H__
+#define __OSTREE_GIO_UTILS_H__
 
-#include <ot-unix-utils.h>
-#include <ot-gio-utils.h>
-#include <ot-opt-utils.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+void ot_util_usage_error (GOptionContext *context, const char *message, GError **error);
+
+G_END_DECLS
 
 #endif

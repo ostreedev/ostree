@@ -35,16 +35,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static void
-usage_error (GOptionContext *context, const char *message, GError **error)
-{
-  gchar *help = g_option_context_get_help (context, TRUE, NULL);
-  g_printerr ("%s\n", help);
-  g_free (help);
-  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       message);
-}
-
 static gboolean
 fetch_uri (OstreeRepo  *repo,
            SoupSession *soup,
@@ -295,7 +285,7 @@ ostree_builtin_pull (int argc, char **argv, const char *prefix, GError **error)
 
   if (argc < 3)
     {
-      usage_error (context, "REMOTE and BRANCH must be specified", error);
+      ot_util_usage_error (context, "REMOTE and BRANCH must be specified", error);
       goto out;
     }
 

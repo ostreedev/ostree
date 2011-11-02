@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..7"
+echo "1..8"
 
 . libtest.sh
 
@@ -34,6 +34,11 @@ echo "ok check"
 
 ostree checkout $ot_repo test2 checkout-test2
 echo "ok checkout"
+
+ostree rev-parse $ot_repo test2
+ostree rev-parse $ot_repo 'test2^'
+ostree rev-parse $ot_repo 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
+echo "ok rev-parse"
 
 cd checkout-test2
 assert_has_file firstfile

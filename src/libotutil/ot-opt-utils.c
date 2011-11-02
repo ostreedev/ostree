@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>.
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,19 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UTIL_H__
+#include "config.h"
 
-#include <ot-unix-utils.h>
-#include <ot-gio-utils.h>
-#include <ot-opt-utils.h>
+#include <gio/gio.h>
 
-#endif
+#include <string.h>
+
+#include "otutil.h"
+
+void
+ot_util_usage_error (GOptionContext *context, const char *message, GError **error)
+{
+  gchar *help = g_option_context_get_help (context, TRUE, NULL);
+  g_printerr ("%s\n", help);
+  g_free (help);
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, message);
+}

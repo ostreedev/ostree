@@ -264,46 +264,79 @@ resolve_rev (OstreeRepo     *self,
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
+  char *tmp = NULL;
+  char *tmp2 = NULL;
   char *ret_rev = NULL;
   GFile *child = NULL;
   char *child_path = NULL;
   GError *temp_error = NULL;
+  GVariant *commit = NULL;
 
- if (strlen (rev) == 64)
-   {
-     ret_rev = g_strdup (rev);
-   }
- else
-   {
-     child = g_file_get_child (priv->local_heads_dir, rev);
-     child_path = g_file_get_path (child);
-     if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
-       {
-         if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-           {
-             g_free (ret_rev);
-             ret_rev = NULL;
-           }
-         else
-           {
-             g_propagate_error (error, temp_error);
-             g_prefix_error (error, "Couldn't open ref '%s': ", child_path);
-             goto out;
-           }
-       }
-     else
-       {
-         g_strchomp (ret_rev);
+  if (strlen (rev) == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid empty rev");
+      goto out;
+    }
+  else if (strlen (rev) == 64)
+    {
+      ret_rev = g_strdup (rev);
+    }
+  else if (g_str_has_suffix (rev, "^"))
+    {
+      tmp = g_strdup (rev);
+      tmp[strlen(tmp) - 1] = '\0';
+
+      if (!resolve_rev (self, tmp, allow_noent, &tmp2, error))
+        goto out;
+
+      if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_COMMIT_VARIANT, tmp2, &commit, error))
+        goto out;
+      
+      g_variant_get_child (commit, 2, "s", &ret_rev);
+      if (strlen (ret_rev) == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Commit %s has no parent", tmp2);
+          goto out;
+
+        }
+    }
+  else
+    {
+      child = g_file_get_child (priv->local_heads_dir, rev);
+      child_path = g_file_get_path (child);
+      if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
+        {
+          if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_free (ret_rev);
+              ret_rev = NULL;
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              g_prefix_error (error, "Couldn't open ref '%s': ", child_path);
+              goto out;
+            }
+        }
+      else
+        {
+          g_strchomp (ret_rev);
          
-         if (!ostree_validate_checksum_string (ret_rev, error))
-           goto out;
-       }
-   }
+          if (!ostree_validate_checksum_string (ret_rev, error))
+            goto out;
+        }
+    }
 
   *sha256 = ret_rev;
   ret_rev = NULL;
   ret = TRUE;
  out:
+  if (commit)
+    g_variant_unref (commit);
+  g_free (tmp);
+  g_free (tmp2);
   g_clear_object (&child);
   g_free (child_path);
   g_free (ret_rev);
@@ -557,35 +590,18 @@ import_gvariant_object (OstreeRepo  *self,
   return ret;
 }
 
-static gboolean
-load_gvariant_object_unknown (OstreeRepo  *self,
-                              const char    *sha256,
-                              OstreeSerializedVariantType *out_type,
-                              GVariant     **out_variant,
-                              GError       **error)
-{
-  gboolean ret = FALSE;
-  char *path = NULL;
-
-  path = get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
-  ret = ostree_parse_metadata_file (path, out_type, out_variant, error);
-  g_free (path);
-
-  return ret;
-}
-
-static gboolean
-load_gvariant_object (OstreeRepo  *self,
-                      OstreeSerializedVariantType expected_type,
-                      const char    *sha256, 
-                      GVariant     **out_variant,
-                      GError       **error)
+gboolean
+ostree_repo_load_variant_checked (OstreeRepo  *self,
+                                  OstreeSerializedVariantType expected_type,
+                                  const char    *sha256, 
+                                  GVariant     **out_variant,
+                                  GError       **error)
 {
   gboolean ret = FALSE;
   OstreeSerializedVariantType type;
   GVariant *ret_variant = NULL;
 
-  if (!load_gvariant_object_unknown (self, sha256, &type, &ret_variant, error))
+  if (!ostree_repo_load_variant (self, sha256, &type, &ret_variant, error))
     goto out;
 
   if (type != expected_type)
@@ -598,12 +614,10 @@ load_gvariant_object (OstreeRepo  *self,
 
   ret = TRUE;
   *out_variant = ret_variant;
+  ret_variant = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_variant)
-        g_variant_unref (ret_variant);
-    }
+  if (ret_variant)
+    g_variant_unref (ret_variant);
   return ret;
 }
 
@@ -1021,8 +1035,8 @@ parse_tree (OstreeRepo    *self,
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
 
-  if (!load_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT,
-                             sha256, &tree_variant, error))
+  if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_TREE_VARIANT,
+                                         sha256, &tree_variant, error))
     goto out;
 
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
@@ -1058,8 +1072,8 @@ parse_tree (OstreeRepo    *self,
       if (!parse_tree (self, tree_checksum, &child_tree, error))
         goto out;
 
-      if (!load_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                                 meta_checksum, &metadata, error))
+      if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
+                                             meta_checksum, &metadata, error))
         {
           parsed_tree_data_free (child_tree);
           goto out;
@@ -1106,16 +1120,16 @@ load_commit_and_trees (OstreeRepo   *self,
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
 
-  if (!load_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
-                             commit_sha256, &ret_commit, error))
+  if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
+                                         commit_sha256, &ret_commit, error))
     goto out;
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   g_variant_get_child (ret_commit, 6, "&s", &tree_contents_checksum);
   g_variant_get_child (ret_commit, 7, "&s", &tree_meta_checksum);
 
-  if (!load_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                             tree_meta_checksum, &root_metadata, error))
+  if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_DIRMETA_VARIANT,
+                                         tree_meta_checksum, &root_metadata, error))
     goto out;
 
   if (!parse_tree (self, tree_contents_checksum, &tree_data, error))
@@ -1946,31 +1960,31 @@ ostree_repo_iter_objects (OstreeRepo  *self,
 }
 
 gboolean
-ostree_repo_load_variant (OstreeRepo *repo,
-                            const char   *sha256,
-                            OstreeSerializedVariantType *out_type,
-                            GVariant    **out_variant,
-                            GError      **error)
+ostree_repo_load_variant (OstreeRepo *self,
+                          const char   *sha256,
+                          OstreeSerializedVariantType *out_type,
+                          GVariant    **out_variant,
+                          GError      **error)
 {
   gboolean ret = FALSE;
   OstreeSerializedVariantType ret_type;
   GVariant *ret_variant = NULL;
+  char *path = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-  
-  if (!load_gvariant_object_unknown (repo, sha256, &ret_type, &ret_variant, error))
+
+  path = get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
+  if (!ostree_parse_metadata_file (path, &ret_type, &ret_variant, error))
     goto out;
 
   ret = TRUE;
   *out_type = ret_type;
   *out_variant = ret_variant;
+  ret_variant = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_variant)
-        g_variant_unref (ret_variant);
-      g_prefix_error (error, "Failed to load metadata variant '%s': ", sha256);
-    }
+  if (ret_variant)
+    g_variant_unref (ret_variant);
+  g_free (path);
   return ret;
 }
 
