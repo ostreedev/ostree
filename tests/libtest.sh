@@ -119,8 +119,6 @@ setup_fake_remote_repo1() {
     cd ${test_tmpdir}
     mkdir ${test_tmpdir}/httpd
     cd httpd
-    cp $(command -v ostree-http-backend) .
-    chmod a+x ostree-http-backend
     cat >httpd.conf <<EOF
 ServerRoot ${test_tmpdir}/httpd
 PidFile pid

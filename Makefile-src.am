@@ -61,10 +61,3 @@ ostree_SOURCES = src/main.c \
 	$(NULL)
 ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
-
-bin_PROGRAMS += ostree-http-backend
-
-ostree_http_backend_SOURCES = src/ostree-http-backend.c
-ostree_http_backend_CFLAGS = -I$(srcdir)/src -I$(srcdir)/src/libostree -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
-ostree_http_backend_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
-
