@@ -28,6 +28,8 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <dirent.h>
 
 gboolean
@@ -253,4 +255,18 @@ ot_util_open_file_read_at (int dirfd, const char *name, GError **error)
   if (fd < 0)
     ot_util_set_error_from_errno (error, errno);
   return fd;
+}
+
+void
+ot_util_fatal_literal (const char *msg)
+{
+  g_printerr ("%s\n", msg);
+  exit (1);
+}
+
+void
+ot_util_fatal_gerror (GError *error)
+{
+  g_assert (error != NULL);
+  ot_util_fatal_literal (error->message);
 }

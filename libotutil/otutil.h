@@ -24,5 +24,6 @@
 #include <ot-unix-utils.h>
 #include <ot-gio-utils.h>
 #include <ot-opt-utils.h>
+#include <ot-glib-compat.h>
 
 #endif

@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>.
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,14 +19,24 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_OPT_UTILS_H__
-#define __OSTREE_OPT_UTILS_H__
+#ifndef __OSBUILD_BUILTINS__
+#define __OSBUILD_BUILTINS__
 
-#include <gio/gio.h>
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
-void ot_util_usage_error (GOptionContext *context, const char *message, GError **error);
+typedef enum {
+  OSBUILD_BUILTIN_FLAG_NONE = 0,
+} OsbuildBuiltinFlags;
+
+typedef struct {
+  const char *name;
+  gboolean (*fn) (int argc, char **argv, const char *prefix, GError **error);
+  int flags; /* OsbuildBuiltinFlags */
+} OsbuildBuiltin;
+
+gboolean osbuild_builtin_buildone (int argc, char **argv, const char *prefix, GError **error);
 
 G_END_DECLS
 

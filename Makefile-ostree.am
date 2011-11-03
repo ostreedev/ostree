@@ -34,5 +34,5 @@ ostree_SOURCES = ostree/main.c \
 	ostree/ot-builtin-rev-parse.c \
 	ostree/ot-builtin-show.c \
 	$(NULL)
-ostree_CFLAGS = -I$(srcdir)/src -I$(srcdir)/libostree -I$(srcdir)/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostree_CFLAGS = -I$(srcdir)/libotutil -I$(srcdir)/libostree -I$(srcdir)/ostree  -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)

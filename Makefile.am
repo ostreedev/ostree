@@ -14,4 +14,5 @@ noinst_PROGRAMS =
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
+include Makefile-osbuild.am
 include Makefile-triggers.am

@@ -19,14 +19,33 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_OPT_UTILS_H__
-#define __OSTREE_OPT_UTILS_H__
+#ifndef __OSTREE_GLIB_COMPAT_H__
+#define __OSTREE_GLIB_COMPAT_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-void ot_util_usage_error (GOptionContext *context, const char *message, GError **error);
+#if GLIB_CHECK_VERSION(2,32,0)
+#define ot_g_environ_getenv g_environ_getenv
+#define ot_g_environ_setenv g_environ_setenv
+#define ot_g_environ_unsetenv g_environ_unsetenv
+#else
+const gchar *
+ot_g_environ_getenv (gchar       **envp,
+                     const gchar  *variable);
+
+gchar **
+ot_g_environ_setenv (gchar       **envp,
+                     const gchar  *variable,
+                     const gchar  *value,
+                     gboolean      overwrite);
+
+gchar **
+ot_g_environ_unsetenv (gchar       **envp,
+                       const gchar  *variable);
+#endif
+
 
 G_END_DECLS
 
