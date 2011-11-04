@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..2"
+echo "1..3"
 
 . libtest.sh
 
@@ -61,3 +61,11 @@ echo 'ok artifacts committed'
 cd "${test_tmpdir}"
 ostree compose $ot_repo some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
 echo 'ok compose command'
+
+cd some-compose
+assert_file_has_content ./usr/bin/bar 'another ELF file'
+assert_file_has_content ./usr/share/doc/foo.txt 'some documentation'
+find | md5sum > ../some-compose-md5
+assert_file_has_content ../some-compose-md5 9038703e43d2ff2745fb7dd844de65c8 
+
+echo 'ok compose content'
