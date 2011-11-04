@@ -349,6 +349,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
                          char          **sha256,
                          GError        **error)
 {
+  g_return_val_if_fail (rev != NULL, FALSE);
   return resolve_rev (self, rev, FALSE, sha256, error);
 }
 
