@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..10"
+echo "1..12"
 
 . libtest.sh
 
@@ -93,3 +93,16 @@ assert_file_has_content yet/another/tree/green 'leaf'
 assert_file_has_content four '4'
 echo "ok cwd contents"
 
+cd ${test_tmpdir}/checkout-test2-4
+echo afile > oh-look-a-file
+cat > ostree-commit-metadata <<EOF
+{'origin': <'http://example.com'>, 'buildid': <@u 42>}
+EOF
+$OSTREE commit -b test2 -s "Metadata test" --metadata-variant-text=./ostree-commit-metadata --add=oh-look-a-file
+rm ostree-commit-metadata
+echo "ok metadata commit"
+
+$OSTREE show test2 > ${test_tmpdir}/show
+assert_file_has_content ${test_tmpdir}/show 'example.com'
+assert_file_has_content ${test_tmpdir}/show 'buildid'
+echo "ok metadata content"

@@ -32,6 +32,8 @@ static gboolean separator_null;
 static int from_fd = -1;
 static gboolean from_stdin;
 static char *from_file;
+static char *metadata_text_path;
+static char *metadata_bin_path;
 static char *subject;
 static char *body;
 static char *parent;
@@ -42,6 +44,8 @@ static char **removals;
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
+  { "metadata-variant-text", 0, 0, G_OPTION_ARG_FILENAME, &metadata_text_path, "File containing g_variant_print() output", "path" },
+  { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
   { "from-fd", 0, 0, G_OPTION_ARG_INT, &from_fd, "Read new tree files from fd", "file descriptor" },
@@ -199,6 +203,8 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   GChecksum *commit_checksum = NULL;
   char **iter;
   char separator;
+  GVariant *metadata = NULL;
+  GMappedFile *metadata_mappedf = NULL;
 
   context = g_option_context_new ("[DIR] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -221,6 +227,33 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid empty directory");
       goto out;
+    }
+
+  if (metadata_text_path || metadata_bin_path)
+    {
+      metadata_mappedf = g_mapped_file_new (metadata_text_path ? metadata_text_path : metadata_bin_path, FALSE, error);
+      if (!metadata_mappedf)
+        goto out;
+      if (metadata_text_path)
+        {
+          metadata = g_variant_parse (G_VARIANT_TYPE ("a{sv}"),
+                                      g_mapped_file_get_contents (metadata_mappedf),
+                                      g_mapped_file_get_contents (metadata_mappedf) + g_mapped_file_get_length (metadata_mappedf),
+                                      NULL, error);
+          if (!metadata)
+            goto out;
+        }
+      else if (metadata_bin_path)
+        {
+          metadata = g_variant_new_from_data (G_VARIANT_TYPE ("a{sv}"),
+                                              g_mapped_file_get_contents (metadata_mappedf),
+                                              g_mapped_file_get_length (metadata_mappedf),
+                                              FALSE,
+                                              (GDestroyNotify) g_mapped_file_unref,
+                                              metadata_mappedf);
+        }
+      else
+        g_assert_not_reached ();
     }
 
   repo = ostree_repo_new (repo_path);
@@ -264,7 +297,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
         for (iter = removals; *iter; iter++)
           g_ptr_array_add (removals_array, *iter);
       
-      if (!ostree_repo_commit (repo, branch, parent, subject, body, NULL,
+      if (!ostree_repo_commit (repo, branch, parent, subject, body, metadata,
                                dir, additions_array,
                                removals_array,
                                &commit_checksum,
@@ -332,6 +365,8 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   g_print ("%s\n", g_checksum_get_string (commit_checksum));
  out:
   g_free (dir);
+  if (metadata_mappedf)
+    g_mapped_file_unref (metadata_mappedf);
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);

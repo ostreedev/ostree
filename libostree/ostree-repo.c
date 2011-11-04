@@ -1611,7 +1611,7 @@ commit_parsed_tree (OstreeRepo *self,
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(u@a{sv}ssstss)",
                           GUINT32_TO_BE (OSTREE_COMMIT_VERSION),
-                          create_empty_gvariant_dict (),
+                          metadata ? metadata : create_empty_gvariant_dict (),
                           parent ? parent : "",
                           subject, body ? body : "",
                           GUINT64_TO_BE (g_date_time_to_unix (now)),
