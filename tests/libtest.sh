@@ -27,6 +27,8 @@ test_tmpdir=`mktemp -d "$TMPDIR/ostree-tests.XXXXXXXXXX"`
 cd "$test_tmpdir"
 touch "$test_tmpdir/.test$$"
 
+export G_DEBUG=fatal-warnings
+
 die () {
     if test -z "$OT_TESTS_SAVE_TEMPS"; then
         test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
