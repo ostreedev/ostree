@@ -32,7 +32,6 @@ static OstreeBuiltin builtins[] = {
   { "init", ostree_builtin_init, 0 },
   { "commit", ostree_builtin_commit, 0 },
   { "compose", ostree_builtin_compose, 0 },
-  { "link-file", ostree_builtin_link_file, 0 },
   { "log", ostree_builtin_log, 0 },
   { "pull", ostree_builtin_pull, 0 },
   { "fsck", ostree_builtin_fsck, 0 },

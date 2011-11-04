@@ -27,7 +27,6 @@ ostree_SOURCES = ostree/main.c \
 	ostree/ot-builtin-compose.c \
 	ostree/ot-builtin-fsck.c \
 	ostree/ot-builtin-init.c \
-	ostree/ot-builtin-link-file.c \
 	ostree/ot-builtin-log.c \
 	ostree/ot-builtin-pull.c \
 	ostree/ot-builtin-run-triggers.c \
