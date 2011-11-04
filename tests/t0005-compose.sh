@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..8"
+echo "1..2"
 
 . libtest.sh
 
@@ -59,5 +59,5 @@ find | grep -v '^\.$' | ostree commit $ot_repo -b artifact-barapp -s 'Build 42 o
 echo 'ok artifacts committed'
 
 cd "${test_tmpdir}"
-ostree checkout $ot_repo --compose some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+ostree compose $ot_repo some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
 echo 'ok compose command'
