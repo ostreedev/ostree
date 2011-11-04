@@ -24,6 +24,8 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
+#include <gio/gunixoutputstream.h>
+
 #include <glib/gi18n.h>
 
 static gboolean separator_null;
@@ -51,27 +53,175 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+typedef struct {
+  GFile *dir;
+  char separator;
+  GOutputStream *out;
+  GCancellable *cancellable;
+} FindThreadData;
+
+static gboolean
+find (const char *basepath,
+      GFile *dir,
+      char separator,
+      GOutputStream *out,
+      GCancellable *cancellable,
+      GError  **error);
+
+static gboolean
+find_write_child (const char *basepath,
+                  GFile      *dir,
+                  char        separator,
+                  GOutputStream *out,
+                  GFileInfo  *finfo,
+                  GCancellable *cancellable,
+                  GError    **error)
+{
+  gboolean ret = FALSE;
+  guint32 type;
+  const char *name;
+  char buf[1];
+  char *child_path = NULL;
+  GString *child_trimmed_path = NULL;
+  GFile *child = NULL;
+  gsize bytes_written;
+
+  type = g_file_info_get_attribute_uint32 (finfo, "standard::type");
+  name = g_file_info_get_attribute_byte_string (finfo, "standard::name");
+
+  child = g_file_get_child (dir, name);
+
+  if (type == G_FILE_TYPE_DIRECTORY)
+    {
+      if (!find (basepath, child, separator, out, cancellable, error))
+        goto out;
+    }
+
+  child_path = g_file_get_path (child);
+  child_trimmed_path = g_string_new (child_path + strlen (basepath));
+  if (!*(child_trimmed_path->str))
+    {
+      /* do nothing - we implicitly add the root . */
+    }
+  else
+    {
+      g_assert (*(child_trimmed_path->str) == '/');
+      g_string_insert_c (child_trimmed_path, 0, '.');
+
+      if (!g_output_stream_write_all (out, child_trimmed_path->str, child_trimmed_path->len,
+                                      &bytes_written, cancellable, error))
+        goto out;
+      buf[0] = separator;
+      if (!g_output_stream_write_all (out, buf, 1, &bytes_written,
+                                      cancellable, error))
+        goto out;
+    }
+      
+  ret = TRUE;
+ out:
+  g_string_free (child_trimmed_path, TRUE);
+  child_trimmed_path = NULL;
+  g_free (child_path);
+  child_path = NULL;
+  g_clear_object (&child);
+  return ret;
+}
+
+static gboolean
+find (const char *basepath,
+      GFile *dir,
+      char separator,
+      GOutputStream *out,
+      GCancellable *cancellable,
+      GError  **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  GFileEnumerator *enumerator = NULL;
+  GFileInfo *finfo = NULL;
+
+  enumerator = g_file_enumerate_children (dir, "standard::type,standard::name", 
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, error);
+  if (!enumerator)
+    goto out;
+
+  while ((finfo = g_file_enumerator_next_file (enumerator, cancellable, error)) != NULL)
+    {
+      if (!find_write_child (basepath, dir, separator, out, finfo, cancellable, error))
+        goto out;
+      g_clear_object (&finfo);
+    }
+  if (temp_error)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  g_clear_object (&finfo);
+  g_clear_object (&enumerator);
+  return ret;
+}
+
+static gpointer
+find_thread (gpointer data)
+{
+  FindThreadData *tdata = data;
+  GError *error = NULL;
+  char *path;
+  
+  path = g_file_get_path (tdata->dir);
+  if (!find (path, tdata->dir, tdata->separator, tdata->out,
+             tdata->cancellable, &error))
+    {
+      g_printerr ("%s", error->message);
+      g_clear_error (&error);
+    }
+  g_free (path);
+  g_clear_object (&(tdata->dir));
+  g_clear_object (&(tdata->out));
+  return NULL;
+}
+
 gboolean
 ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  char *cwd;
+  char *dir;
   gboolean using_filename_cmdline;
   gboolean using_filedescriptors;
   GPtrArray *additions_array = NULL;
   GPtrArray *removals_array = NULL;
   GChecksum *commit_checksum = NULL;
   char **iter;
+  char separator;
 
-  cwd = g_get_current_dir ();
-
-  context = g_option_context_new ("- Commit a new revision");
+  context = g_option_context_new ("[DIR] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
+
+  if (argc > 1)
+    dir = g_strdup (argv[1]);
+  else
+    dir = g_get_current_dir ();
+
+  if (g_str_has_suffix (dir, "/"))
+    dir[strlen (dir) - 1] = '\0';
+
+  separator = separator_null ? '\0' : '\n';
+
+  if (!*dir)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid empty directory");
+      goto out;
+    }
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
@@ -80,12 +230,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   using_filename_cmdline = (removals || additions);
   using_filedescriptors = (from_file || from_fd >= 0 || from_stdin);
 
-  if (!(using_filename_cmdline || using_filedescriptors))
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "No additions or removals specified");
-      goto out;
-    }
   if (using_filename_cmdline && using_filedescriptors)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -121,7 +265,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
           g_ptr_array_add (removals_array, *iter);
       
       if (!ostree_repo_commit (repo, branch, parent, subject, body, NULL,
-                               cwd, additions_array,
+                               dir, additions_array,
                                removals_array,
                                &commit_checksum,
                                error))
@@ -129,7 +273,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
     }
   else if (using_filedescriptors)
     {
-      char separator = separator_null ? '\0' : '\n';
       gboolean temp_fd = -1;
 
       if (from_stdin)
@@ -145,7 +288,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
           from_fd = temp_fd;
         }
       if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
-                                                cwd, from_fd, separator,
+                                                dir, from_fd, separator,
                                                 &commit_checksum, error))
         {
           if (temp_fd >= 0)
@@ -155,11 +298,40 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       if (temp_fd >= 0)
         close (temp_fd);
     }
+  else
+    {
+      int pipefd[2];
+      GOutputStream *out;
+      FindThreadData fdata;
+
+      if (pipe (pipefd) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      out = (GOutputStream*)g_unix_output_stream_new (pipefd[1], TRUE);
+
+      fdata.dir = ot_util_new_file_for_path (dir);
+      fdata.separator = separator;
+      fdata.out = out;
+      fdata.cancellable = NULL;
+
+      if (g_thread_create (find_thread, &fdata, FALSE, error) == NULL)
+        goto out;
+
+      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
+                                                dir, pipefd[0], separator,
+                                                &commit_checksum, error))
+        goto out;
+
+      (void)close (pipefd[0]);
+    }
  
   ret = TRUE;
   g_print ("%s\n", g_checksum_get_string (commit_checksum));
  out:
-  g_free (cwd);
+  g_free (dir);
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);

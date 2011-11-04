@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..8"
+echo "1..10"
 
 . libtest.sh
 
@@ -77,3 +77,19 @@ cd checkout-test2-3
 assert_has_file a/nested/2
 assert_file_has_content a/nested/2 'two2'
 echo "ok stdin contents"
+
+cd ${test_tmpdir}/checkout-test2-3
+echo 4 > four
+mkdir -p yet/another/tree
+echo leaf > yet/another/tree/green
+echo helloworld > yet/message
+$OSTREE commit -b test2 -s "Current directory"
+echo "ok cwd commit"
+
+cd ${test_tmpdir}
+$OSTREE checkout test2 $test_tmpdir/checkout-test2-4
+cd checkout-test2-4
+assert_file_has_content yet/another/tree/green 'leaf'
+assert_file_has_content four '4'
+echo "ok cwd contents"
+
