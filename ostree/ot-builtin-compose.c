@@ -140,6 +140,9 @@ merge_dir (GFile    *destination,
               if (!g_file_move (src_subfile, dest_subfile, 0, NULL, NULL, NULL, error))
                 goto out;
             }
+          
+          g_clear_object (&dest_subfile);
+          g_clear_object (&src_subfile);
         }
       if (temp_error)
         {
