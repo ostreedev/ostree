@@ -1695,6 +1695,7 @@ ostree_repo_commit (OstreeRepo *self,
   g_return_val_if_fail (priv->inited, FALSE);
   g_return_val_if_fail (branch != NULL, FALSE);
   g_return_val_if_fail (subject != NULL, FALSE);
+  g_return_val_if_fail (metadata == NULL || g_variant_is_of_type (metadata, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
   if (parent == NULL)
     parent = branch;
@@ -1778,6 +1779,7 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   g_return_val_if_fail (priv->inited, FALSE);
   g_return_val_if_fail (branch != NULL, FALSE);
   g_return_val_if_fail (subject != NULL, FALSE);
+  g_return_val_if_fail (metadata == NULL || g_variant_is_of_type (metadata, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
   if (parent == NULL)
     parent = branch;

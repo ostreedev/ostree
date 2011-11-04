@@ -19,12 +19,25 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UTIL_H__
+#ifndef __OSTREE_VARIANT_UTILS_H__
+#define __OSTREE_VARIANT_UTILS_H__
 
-#include <ot-gio-utils.h>
-#include <ot-glib-compat.h>
-#include <ot-opt-utils.h>
-#include <ot-unix-utils.h>
-#include <ot-variant-utils.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
+
+gboolean ot_util_variant_save (GFile *dest,
+                               GVariant *variant,
+                               GCancellable *cancellable,
+                               GError  **error);
+
+gboolean ot_util_variant_map (GFile *src,
+                              const GVariantType *type,
+                              GVariant **out_variant,
+                              GError  **error);
+
+G_END_DECLS
 
 #endif

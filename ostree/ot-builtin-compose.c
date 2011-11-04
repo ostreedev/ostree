@@ -28,8 +28,10 @@
 
 #define FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,unix::*"
 
+static char *compose_metadata_path;
+
 static GOptionEntry options[] = {
-  { NULL }
+  { "out-metadata", 0, 0, G_OPTION_ARG_FILENAME, &compose_metadata_path, "Output a file containing serialized metadata about the compose, in host endianness", "path" },
 };
 
 static void
@@ -175,6 +177,7 @@ static gboolean
 compose_branch_on_dir (OstreeRepo *repo,
                        GFile *destination,
                        const char *branch,
+                       GVariantBuilder *metadata_builder,
                        GError **error)
 {
   char *destpath = NULL;
@@ -196,10 +199,13 @@ compose_branch_on_dir (OstreeRepo *repo,
   g_print ("Checking out %s (commit %s)...\n", branch, branchrev);
   if (!ostree_repo_checkout (repo, branchrev, branchpath, error))
     goto out;
-  g_print ("...done\n", branch);
-  g_print ("Merging over destination...\n", branch, branchrev);
+  g_print ("...done\n");
+  g_print ("Merging over destination...\n");
   if (!merge_dir (destination, branchf, error))
     goto out;
+
+  if (metadata_builder)
+    g_variant_builder_add (metadata_builder, "(ss)", branch, branchrev);
 
   ret = TRUE;
  out:
@@ -222,6 +228,12 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
   OstreeCheckout *checkout = NULL;
   const char *destination;
   GFile *destf = NULL;
+  gboolean compose_metadata_builder_initialized = FALSE;
+  GVariantBuilder compose_metadata_builder;
+  gboolean commit_metadata_builder_initialized = FALSE;
+  GVariantBuilder commit_metadata_builder;
+  GVariant *commit_metadata = NULL;
+  GFile *metadata_f = NULL;
   int i;
 
   context = g_option_context_new ("DESTINATION BRANCH1 BRANCH2 ... - Merge multiple commits into a single filesystem tree");
@@ -234,10 +246,6 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  destination = argv[1];
-  
-  destf = ot_util_new_file_for_path (destination);
-  
   if (argc < 3)
     {
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
@@ -247,21 +255,53 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
                                "DESTINATION and at least one COMMIT must be specified");
       goto out;
     }
+
+  destination = argv[1];
+  destf = ot_util_new_file_for_path (destination);
+  
+  if (compose_metadata_path)
+    {
+      compose_metadata_builder_initialized = TRUE;
+      g_variant_builder_init (&compose_metadata_builder, G_VARIANT_TYPE ("a(ss)"));
+    }
   
   for (i = 2; i < argc; i++)
     {
       const char *branch = argv[i];
       
-      if (!compose_branch_on_dir (repo, destf, branch, error))
+      if (!compose_branch_on_dir (repo, destf, branch, compose_metadata_builder_initialized ? &compose_metadata_builder : NULL, error))
+        goto out;
+    }
+
+  if (compose_metadata_path)
+    {
+      commit_metadata_builder_initialized = TRUE;
+      g_variant_builder_init (&commit_metadata_builder, G_VARIANT_TYPE ("a{sv}"));
+
+      g_variant_builder_add (&commit_metadata_builder, "{sv}",
+                             "ostree-compose", g_variant_builder_end (&compose_metadata_builder));
+      compose_metadata_builder_initialized = FALSE;
+
+      metadata_f = ot_util_new_file_for_path (compose_metadata_path);
+
+      commit_metadata = g_variant_builder_end (&commit_metadata_builder);
+      if (!ot_util_variant_save (metadata_f, commit_metadata, NULL, error))
         goto out;
     }
 
   ret = TRUE;
  out:
+  if (compose_metadata_builder_initialized)
+    g_variant_builder_clear (&compose_metadata_builder);
+  if (commit_metadata_builder_initialized)
+    g_variant_builder_clear (&commit_metadata_builder);
   if (context)
     g_option_context_free (context);
+  if (commit_metadata)
+    g_variant_unref (commit_metadata);
   g_clear_object (&repo);
   g_clear_object (&checkout);
   g_clear_object (&destf);
+  g_clear_object (&metadata_f);
   return ret;
 }

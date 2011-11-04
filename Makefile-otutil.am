@@ -25,6 +25,8 @@ libotutil_la_SOURCES = \
 	libotutil/ot-opt-utils.h \
 	libotutil/ot-unix-utils.c \
 	libotutil/ot-unix-utils.h \
+	libotutil/ot-variant-utils.c \
+	libotutil/ot-variant-utils.h \
 	libotutil/ot-gio-utils.c \
 	libotutil/ot-gio-utils.h \
 	libotutil/ot-glib-compat.c \

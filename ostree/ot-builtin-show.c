@@ -26,9 +26,121 @@
 
 #include <glib/gi18n.h>
 
+static gboolean print_compose;
+static char* print_variant_type;
+
 static GOptionEntry options[] = {
+  { "print-compose", 0, 0, G_OPTION_ARG_NONE, &print_compose, "If given, show the branches which make up the given compose commit", NULL },
+  { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
   { NULL }
 };
+
+static void
+print_variant (GVariant *variant)
+{
+  char *formatted_variant = NULL;
+
+  formatted_variant = g_variant_print (variant, TRUE);
+  g_print ("%s\n", formatted_variant);
+
+  g_free (formatted_variant);
+}
+
+static gboolean
+do_print_variant_generic (const GVariantType *type,
+                          const char *filename,
+                          GError **error)
+{
+  gboolean ret = FALSE;
+  GFile *f = NULL;
+  GVariant *variant = NULL;
+
+  f = ot_util_new_file_for_path (filename);
+
+  if (!ot_util_variant_map (f, type, &variant, error))
+    goto out;
+
+  print_variant (variant);
+
+  ret = TRUE;
+ out:
+  if (variant)
+    g_variant_unref (variant);
+  g_clear_object (&f);
+  return ret;
+}
+
+static gboolean
+show_repo_meta (OstreeRepo  *repo,
+                const char *rev,
+                const char *resolved_rev,
+                GError **error)
+{
+  OstreeSerializedVariantType type;
+  gboolean ret = FALSE;
+  GVariant *variant = NULL;
+
+  if (!ostree_repo_load_variant (repo, resolved_rev, &type, &variant, error))
+    goto out;
+  g_print ("Object: %s\nType: %d\n", resolved_rev, type);
+  print_variant (variant);
+
+  ret = TRUE;
+ out:
+  if (variant)
+    g_variant_unref (variant);
+  return ret;
+}
+
+static gboolean
+do_print_compose (OstreeRepo  *repo,
+                  const char *rev,
+                  const char *resolved_rev,
+                  GError **error)
+{
+  gboolean ret = FALSE;
+  GVariant *variant = NULL;
+  GVariant *metadata = NULL;
+  GVariant *compose_contents = NULL;
+  GVariantIter *viter = NULL;
+  GHashTable *metadata_hash = NULL;
+  const char *branch;
+  const char *branchrev;
+
+  if (!ostree_repo_load_variant_checked (repo, OSTREE_SERIALIZED_COMMIT_VARIANT,
+                                         resolved_rev, &variant, error))
+    goto out;
+      
+  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+  metadata = g_variant_get_child_value (variant, 1);
+  metadata_hash = ot_util_variant_asv_to_hash_table (metadata);
+  
+  compose_contents = g_hash_table_lookup (metadata_hash, "ostree-compose");
+  if (!compose_contents)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Commit %s does not have compose metadata key \"ostree-compose\"", resolved_rev);
+      goto out;
+    }
+
+  g_variant_get_child (compose_contents, 0, "a(ss)", &viter);
+  while (g_variant_iter_next (viter, "(&s&s)", &branch, &branchrev))
+    {
+      g_print ("%s %s\n", branch, branchrev);
+    }
+
+  ret = TRUE;
+ out:
+  if (variant)
+    g_variant_unref (variant);
+  if (viter)
+    g_variant_iter_free (viter);
+  if (metadata)
+    g_variant_unref (metadata);
+  if (metadata_hash)
+    g_hash_table_destroy (metadata_hash);
+  return ret;
+}
 
 gboolean
 ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **error)
@@ -38,9 +150,6 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
   OstreeRepo *repo = NULL;
   const char *rev = "master";
   char *resolved_rev = NULL;
-  OstreeSerializedVariantType type;
-  GVariant *variant = NULL;
-  char *formatted_variant = NULL;
 
   context = g_option_context_new ("- Output a metadata object");
   g_option_context_add_main_entries (context, options, NULL);
@@ -55,15 +164,27 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
   if (argc > 1)
     rev = argv[1];
 
-  if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
-    goto out;
+  if (print_compose)
+    {
+      if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+        goto out;
 
-  if (!ostree_repo_load_variant (repo, resolved_rev, &type, &variant, error))
-    goto out;
+      if (!do_print_compose (repo, rev, resolved_rev, error))
+        goto out;
+    }
+  else if (print_variant_type)
+    {
+      if (!do_print_variant_generic (G_VARIANT_TYPE (print_variant_type), rev, error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+        goto out;
 
-  g_print ("Object: %s\nType: %d\n", resolved_rev, type);
-  formatted_variant = g_variant_print (variant, TRUE);
-  g_print ("%s\n", formatted_variant);
+      if (!show_repo_meta (repo, rev, resolved_rev, error))
+        goto out;
+    }
  
   ret = TRUE;
  out:
@@ -71,8 +192,5 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (variant)
-    g_variant_unref (variant);
-  g_free (formatted_variant);
   return ret;
 }

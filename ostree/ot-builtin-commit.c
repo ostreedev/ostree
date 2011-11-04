@@ -204,7 +204,8 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   char **iter;
   char separator;
   GVariant *metadata = NULL;
-  GMappedFile *metadata_mappedf = NULL;
+  GMappedFile *metadata_mappedf;
+  GFile *metadata_f = NULL;
 
   context = g_option_context_new ("[DIR] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -245,12 +246,9 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
         }
       else if (metadata_bin_path)
         {
-          metadata = g_variant_new_from_data (G_VARIANT_TYPE ("a{sv}"),
-                                              g_mapped_file_get_contents (metadata_mappedf),
-                                              g_mapped_file_get_length (metadata_mappedf),
-                                              FALSE,
-                                              (GDestroyNotify) g_mapped_file_unref,
-                                              metadata_mappedf);
+          metadata_f = ot_util_new_file_for_path (metadata_bin_path);
+          if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), &metadata, error))
+            goto out;
         }
       else
         g_assert_not_reached ();
@@ -320,7 +318,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
             }
           from_fd = temp_fd;
         }
-      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
+      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
                                                 dir, from_fd, separator,
                                                 &commit_checksum, error))
         {
@@ -353,7 +351,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       if (g_thread_create (find_thread, &fdata, FALSE, error) == NULL)
         goto out;
 
-      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
+      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
                                                 dir, pipefd[0], separator,
                                                 &commit_checksum, error))
         goto out;

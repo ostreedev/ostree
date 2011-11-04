@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..3"
+echo "1..6"
 
 . libtest.sh
 
@@ -69,3 +69,17 @@ find | md5sum > ../some-compose-md5
 assert_file_has_content ../some-compose-md5 9038703e43d2ff2745fb7dd844de65c8 
 
 echo 'ok compose content'
+
+cd "${test_tmpdir}"
+rm -rf some-compose
+$OSTREE compose --out-metadata=./some-compose-metadata some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+echo 'ok compose output metadata'
+
+cd some-compose
+$OSTREE commit --metadata-variant=${test_tmpdir}/some-compose-metadata -b some-compose -s 'Initial commit of some-compose'
+echo 'ok compose commit with metadata'
+
+$OSTREE show --print-compose some-compose > ${test_tmpdir}/some-compose-contents
+assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-runtime
+assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-devel
+echo 'ok compose verify metadata'

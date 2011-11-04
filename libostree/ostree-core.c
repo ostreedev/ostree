@@ -335,36 +335,26 @@ ostree_parse_metadata_file (const char                  *path,
                             GVariant                   **out_variant,
                             GError                     **error)
 {
-  GMappedFile *mfile = NULL;
+  GFile *pathf = NULL;
   gboolean ret = FALSE;
   GVariant *ret_variant = NULL;
   GVariant *container = NULL;
   guint32 ret_type;
 
-  mfile = g_mapped_file_new (path, FALSE, error);
-  if (mfile == NULL)
+  pathf = ot_util_new_file_for_path (path);
+  if (!ot_util_variant_map (pathf, G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
+                            &container, error))
+    goto out;
+
+  g_variant_ref_sink (container);
+  g_variant_get (container, "(uv)",
+                 &ret_type, &ret_variant);
+  ret_type = GUINT32_FROM_BE (ret_type);
+  if (ret_type <= 0 || ret_type > OSTREE_SERIALIZED_VARIANT_LAST)
     {
-      goto out;
-    }
-  else
-    {
-      container = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
-                                           g_mapped_file_get_contents (mfile),
-                                           g_mapped_file_get_length (mfile),
-                                           FALSE,
-                                           (GDestroyNotify) g_mapped_file_unref,
-                                           mfile);
-      mfile = NULL;
-      g_variant_ref_sink (container);
-      g_variant_get (container, "(uv)",
-                     &ret_type, &ret_variant);
-      ret_type = GUINT32_FROM_BE (ret_type);
-      if (ret_type <= 0 || ret_type > OSTREE_SERIALIZED_VARIANT_LAST)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Corrupted metadata object '%s'; invalid type %d", path, ret_type);
-          goto out;
-        }
+      goto out;
     }
 
   ret = TRUE;
@@ -376,8 +366,7 @@ ostree_parse_metadata_file (const char                  *path,
     g_variant_unref (ret_variant);
   if (container != NULL)
     g_variant_unref (container);
-  if (mfile != NULL)
-    g_mapped_file_unref (mfile);
+  g_clear_object (&pathf);
   return ret;
 }
 
