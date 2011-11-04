@@ -20,7 +20,7 @@
 
 set -e
 
-echo "1..6"
+echo "1..8"
 
 . libtest.sh
 
@@ -83,3 +83,24 @@ $OSTREE show --print-compose some-compose > ${test_tmpdir}/some-compose-contents
 assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-runtime
 assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-devel
 echo 'ok compose verify metadata'
+
+cd "${test_tmpdir}"
+rm -rf some-compose some-compose-metadata
+cd "${test_tmpdir}"/artifact-barapp
+echo 'updated bar ELF file' > usr/bin/bar
+$OSTREE commit -b artifact-barapp -s 'Build 43 of barapp'
+
+cd "${test_tmpdir}"
+$OSTREE compose --out-metadata=./some-compose-metadata some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+cd some-compose
+assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
+
+echo 'ok updated artifact barapp'
+$OSTREE commit --metadata-variant=${test_tmpdir}/some-compose-metadata -b some-compose -s 'Updated some-compose'
+cd ${test_tmpdir}
+rm -rf some-compose
+
+$OSTREE checkout some-compose some-compose-checkout
+cd some-compose-checkout
+assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
+echo 'ok updated compose commit'
