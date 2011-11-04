@@ -36,22 +36,22 @@ die () {
 }
 
 assert_streq () {
-    test "$1" = "$2" || (echo "$1 != $2"; exit 1)
+    test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
 }
 
 assert_has_file () {
-    test -f "$1" || (echo "Couldn't find '$1'"; exit 1)
+    test -f "$1" || (echo 1>&2 "Couldn't find '$1'"; exit 1)
 }
 
 assert_not_has_file () {
     if test -f "$1"; then
-	echo "File '$1' exists"; exit 1
+	echo 1>&2 "File '$1' exists"; exit 1
     fi
 }
 
 assert_file_has_content () {
     if ! grep -q "$2" "$1"; then
-	echo "File '$1' doesn't match regexp '$2'"; exit 1
+	echo 1>&2 "File '$1' doesn't match regexp '$2'"; exit 1
     fi
 }
 
