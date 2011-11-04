@@ -26,15 +26,12 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
-
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { NULL }
 };
 
 gboolean
-ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -49,11 +46,6 @@ ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error)
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (repo_path == NULL)
-    repo_path = ".";
-  if (prefix == NULL)
-    prefix = ".";
 
   if (argc < 2)
     {

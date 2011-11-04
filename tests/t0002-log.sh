@@ -25,7 +25,7 @@ set -e
 echo "1..1"
 
 setup_test_repository "regular"
-ostree log $ot_repo test2 > $test_tmpdir/log.txt
+$OSTREE log test2 > $test_tmpdir/log.txt
 assert_file_has_content $test_tmpdir/log.txt "Test Commit 1"
 assert_file_has_content $test_tmpdir/log.txt "Test Commit 2"
 echo "ok log"

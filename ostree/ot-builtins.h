@@ -32,22 +32,22 @@ typedef enum {
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, const char *prefix, GError **error);
+  gboolean (*fn) (int argc, char **argv, const char *repo, GError **error);
   int flags; /* OstreeBuiltinFlags */
 } OstreeBuiltin;
 
-gboolean ostree_builtin_checkout (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_compose (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_log (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_pull (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_run_triggers (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_fsck (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_show (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_rev_parse (int argc, char **argv, const char *prefix, GError **error);
-gboolean ostree_builtin_remote (int argc, char **argv, const char *prefix, GError **error);
+gboolean ostree_builtin_checkout (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_commit (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_compose (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_init (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_log (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_link_file (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_pull (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_run_triggers (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_fsck (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_show (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_rev_parse (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_remote (int argc, char **argv, const char *repo, GError **error);
 
 G_END_DECLS
 

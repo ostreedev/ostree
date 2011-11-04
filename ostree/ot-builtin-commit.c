@@ -26,7 +26,6 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
 static gboolean separator_null;
 static int from_fd = -1;
 static gboolean from_stdin;
@@ -39,7 +38,6 @@ static char **additions;
 static char **removals;
 
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
@@ -54,11 +52,12 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
+  char *cwd;
   gboolean using_filename_cmdline;
   gboolean using_filedescriptors;
   GPtrArray *additions_array = NULL;
@@ -66,16 +65,13 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
   GChecksum *commit_checksum = NULL;
   char **iter;
 
+  cwd = g_get_current_dir ();
+
   context = g_option_context_new ("- Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (repo_path == NULL)
-    repo_path = ".";
-  if (prefix == NULL)
-    prefix = ".";
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
@@ -125,7 +121,7 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
           g_ptr_array_add (removals_array, *iter);
       
       if (!ostree_repo_commit (repo, branch, parent, subject, body, NULL,
-                               prefix, additions_array,
+                               cwd, additions_array,
                                removals_array,
                                &commit_checksum,
                                error))
@@ -149,7 +145,7 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
           from_fd = temp_fd;
         }
       if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, NULL,
-                                                prefix, from_fd, separator,
+                                                cwd, from_fd, separator,
                                                 &commit_checksum, error))
         {
           if (temp_fd >= 0)
@@ -163,6 +159,7 @@ ostree_builtin_commit (int argc, char **argv, const char *prefix, GError **error
   ret = TRUE;
   g_print ("%s\n", g_checksum_get_string (commit_checksum));
  out:
+  g_free (cwd);
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);

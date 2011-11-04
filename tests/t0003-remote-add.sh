@@ -25,7 +25,7 @@ set -e
 echo '1..2'
 
 setup_test_repository "regular"
-ostree remote add $ot_repo origin http://example.com/ostree/gnome
+$OSTREE remote add origin http://example.com/ostree/gnome
 echo "ok remote add"
 assert_file_has_content $test_tmpdir/repo/config "example.com"
 echo "ok config"

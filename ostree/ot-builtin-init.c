@@ -26,11 +26,9 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
 static gboolean archive;
 
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", NULL },
   { "archive", 0, 0, G_OPTION_ARG_NONE, &archive, "Initialize repository as archive", NULL },
   { NULL }
 };
@@ -40,7 +38,7 @@ static GOptionEntry options[] = {
 
 
 gboolean
-ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
@@ -54,9 +52,6 @@ ostree_builtin_init (int argc, char **argv, const char *prefix, GError **error)
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (repo_path == NULL)
-    repo_path = ".";
 
   repodir = ot_util_new_file_for_path (repo_path);
 

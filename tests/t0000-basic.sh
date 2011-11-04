@@ -32,12 +32,12 @@ assert_streq "$(readlink ${test_tmpdir}/repo/objects/cf/443bea5eb400bc25b376c079
 
 echo "ok check"
 
-ostree checkout $ot_repo test2 checkout-test2
+$OSTREE checkout test2 checkout-test2
 echo "ok checkout"
 
-ostree rev-parse $ot_repo test2
-ostree rev-parse $ot_repo 'test2^'
-ostree rev-parse $ot_repo 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
+$OSTREE rev-parse test2
+$OSTREE rev-parse 'test2^'
+$OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
 echo "ok rev-parse"
 
 cd checkout-test2
@@ -47,10 +47,10 @@ assert_file_has_content baz/cow moo
 assert_has_file baz/deeper/ohyeah
 echo "ok content"
 
-ostree commit $ot_repo -b test2 -s delete -r firstfile
+$OSTREE commit -b test2 -s delete -r firstfile
 assert_has_file firstfile  # It should still exist in this checkout
 cd $test_tmpdir
-ostree checkout $ot_repo test2 $test_tmpdir/checkout-test2-2
+$OSTREE checkout test2 $test_tmpdir/checkout-test2-2
 cd $test_tmpdir/checkout-test2-2
 assert_not_has_file firstfile
 assert_has_file baz/saucer
@@ -68,11 +68,11 @@ mkdir -p another/nested/tree
 echo anotherone > another/nested/tree/1
 echo whee2 > another/whee
 # FIXME - remove grep for .
-find | grep -v '^\.$' | ostree commit $ot_repo -b test2 -s "From find" --from-stdin
+find | grep -v '^\.$' | $OSTREE commit -b test2 -s "From find" --from-stdin
 echo "ok stdin commit"
 
 cd ${test_tmpdir}
-ostree checkout $ot_repo test2 $test_tmpdir/checkout-test2-3
+$OSTREE checkout test2 $test_tmpdir/checkout-test2-3
 cd checkout-test2-3
 assert_has_file a/nested/2
 assert_file_has_content a/nested/2 'two2'

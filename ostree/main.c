@@ -55,7 +55,7 @@ usage (char **argv, gboolean is_error)
   else
     print_func = g_print;
 
-  print_func ("usage: %s COMMAND [options]\n",
+  print_func ("usage: %s --repo=PATH COMMAND [options]\n",
               argv[0]);
   print_func ("Builtin commands:\n");
 
@@ -74,6 +74,7 @@ main (int    argc,
 {
   OstreeBuiltin *builtin;
   const char *cmd;
+  const char *repo;
 
   g_type_init ();
 
@@ -81,10 +82,14 @@ main (int    argc,
 
   builtin = builtins;
 
-  if (argc < 2)
+  if (argc < 3)
     return usage (argv, 1);
   
-  cmd = argv[1];
+  if (!g_str_has_prefix (argv[1], "--repo="))
+    return usage (argv, 1);
+  repo = argv[1] + strlen ("--repo=");
+
+  cmd = argv[2];
 
   while (builtin->name)
     {
@@ -95,13 +100,13 @@ main (int    argc,
           int tmp_argc;
           char **tmp_argv;
 
-          tmp_argc = argc - 1;
+          tmp_argc = argc - 2;
           tmp_argv = g_new0 (char *, tmp_argc + 1);
 
           tmp_argv[0] = (char*)builtin->name;
           for (i = 0; i < tmp_argc; i++)
-            tmp_argv[i+1] = argv[i+2];
-          if (!builtin->fn (tmp_argc, tmp_argv, NULL, &error))
+            tmp_argv[i+1] = argv[i+3];
+          if (!builtin->fn (tmp_argc, tmp_argv, repo, &error))
             {
               g_free (tmp_argv);
               g_printerr ("%s\n", error->message);

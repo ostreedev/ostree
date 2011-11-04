@@ -26,19 +26,17 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
 static gboolean ignore_exists;
 static gboolean force;
 
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { "ignore-exists", 'n', 0, G_OPTION_ARG_NONE, &ignore_exists, "Don't error if file exists", NULL },
   { "force", 'f', 0, G_OPTION_ARG_NONE, &force, "If object exists, relink file", NULL },
   { NULL }
 };
 
 gboolean
-ostree_builtin_link_file (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_link_file (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -50,9 +48,6 @@ ostree_builtin_link_file (int argc, char **argv, const char *prefix, GError **er
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (repo_path == NULL)
-    repo_path = ".";
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))

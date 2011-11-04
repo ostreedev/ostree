@@ -26,7 +26,7 @@ echo "1..3"
 
 setup_test_repository "regular"
 
-ostree checkout $ot_repo test2 checkout-test2
+$OSTREE checkout test2 checkout-test2
 
 cd "${test_tmpdir}"
 mkdir artifact-libfoo-runtime
@@ -36,7 +36,7 @@ echo 'an ELF file' > usr/lib/libfoo.so
 mkdir -p usr/share
 echo 'some data' > usr/share/foo.data
 
-find | grep -v '^\.$' | ostree commit $ot_repo -b artifact-libfoo-runtime -s 'Build 12345 of libfoo' --from-stdin
+find | grep -v '^\.$' | $OSTREE commit -b artifact-libfoo-runtime -s 'Build 12345 of libfoo' --from-stdin
 
 cd "${test_tmpdir}"
 mkdir artifact-libfoo-devel
@@ -46,7 +46,7 @@ echo 'a header' > usr/include/foo.h
 mkdir -p usr/share/doc
 echo 'some documentation' > usr/share/doc/foo.txt
 
-find | grep -v '^\.$' | ostree commit $ot_repo -b artifact-libfoo-devel -s 'Build 12345 of libfoo' --from-stdin
+find | grep -v '^\.$' | $OSTREE commit -b artifact-libfoo-devel -s 'Build 12345 of libfoo' --from-stdin
 
 cd "${test_tmpdir}"
 mkdir artifact-barapp
@@ -54,12 +54,12 @@ cd artifact-barapp
 mkdir -p usr/bin
 echo 'another ELF file' > usr/bin/bar
 
-find | grep -v '^\.$' | ostree commit $ot_repo -b artifact-barapp -s 'Build 42 of barapp' --from-stdin
+find | grep -v '^\.$' | $OSTREE commit -b artifact-barapp -s 'Build 42 of barapp' --from-stdin
 
 echo 'ok artifacts committed'
 
 cd "${test_tmpdir}"
-ostree compose $ot_repo some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+$OSTREE compose some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
 echo 'ok compose command'
 
 cd some-compose

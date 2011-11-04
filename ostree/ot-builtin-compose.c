@@ -26,12 +26,9 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
-
 #define FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,unix::*"
 
 static GOptionEntry options[] = {
-  { "repo", 0, 0, G_OPTION_ARG_FILENAME, &repo_path, "Repository path", "repo" },
   { NULL }
 };
 
@@ -214,7 +211,7 @@ compose_branch_on_dir (OstreeRepo *repo,
 }
 
 gboolean
-ostree_builtin_compose (int argc, char **argv, const char *prefix, GError **error)
+ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -229,9 +226,6 @@ ostree_builtin_compose (int argc, char **argv, const char *prefix, GError **erro
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (repo_path == NULL)
-    repo_path = ".";
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))

@@ -27,7 +27,7 @@ echo '1..3'
 setup_test_repository "archive"
 echo "ok setup"
 
-ostree checkout $ot_repo test2 checkout-test2
+$OSTREE checkout test2 checkout-test2
 echo "ok checkout"
 
 cd checkout-test2

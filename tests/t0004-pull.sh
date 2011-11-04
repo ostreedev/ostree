@@ -27,7 +27,7 @@ echo '1..1'
 setup_fake_remote_repo1
 cd ${test_tmpdir}
 mkdir repo
-ostree init --repo=repo
-ostree remote --repo=repo add origin $(cat httpd-address)/ostree/gnomerepo
-ostree pull --repo=repo origin main
+$OSTREE init
+$OSTREE remote add origin $(cat httpd-address)/ostree/gnomerepo
+$OSTREE pull origin main
 echo "ok pull"
