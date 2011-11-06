@@ -26,8 +26,6 @@
 
 #include <glib/gi18n.h>
 
-#define FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,unix::*"
-
 static char *compose_metadata_path;
 
 static GOptionEntry options[] = {
@@ -41,7 +39,7 @@ rm_rf (GFile *path)
   GFileEnumerator *path_enum = NULL;
   guint32 type;
   
-  finfo = g_file_query_info (path, FAST_QUERYINFO,
+  finfo = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                              NULL, NULL);
   if (!finfo)
@@ -50,7 +48,7 @@ rm_rf (GFile *path)
   type = g_file_info_get_attribute_uint32 (finfo, "standard::type");
   if (type == G_FILE_TYPE_DIRECTORY)
     {
-      path_enum = g_file_enumerate_children (path, FAST_QUERYINFO, 
+      path_enum = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO, 
                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                              NULL, NULL);
       if (!path_enum)
@@ -94,7 +92,7 @@ merge_dir (GFile    *destination,
   dest_path = g_file_get_path (destination);
   src_path = g_file_get_path (src);
 
-  dest_fileinfo = g_file_query_info (destination, FAST_QUERYINFO,
+  dest_fileinfo = g_file_query_info (destination, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                      NULL, &temp_error);
   if (dest_fileinfo)
@@ -108,7 +106,7 @@ merge_dir (GFile    *destination,
           goto out;
         }
 
-      src_enum = g_file_enumerate_children (src, FAST_QUERYINFO, 
+      src_enum = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO, 
                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                             NULL, error);
       if (!src_enum)

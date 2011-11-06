@@ -1853,7 +1853,7 @@ iter_object_dir (OstreeRepo   *self,
 
   dirpath = g_file_get_path (dir);
 
-  enumerator = g_file_enumerate_children (dir, "standard::name,standard::type,unix::*", 
+  enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);
@@ -1919,7 +1919,7 @@ ostree_repo_iter_objects (OstreeRepo  *self,
   g_return_val_if_fail (priv->inited, FALSE);
 
   objectdir = ot_util_new_file_for_path (priv->objects_path);
-  enumerator = g_file_enumerate_children (objectdir, "standard::name,standard::type,unix::*", 
+  enumerator = g_file_enumerate_children (objectdir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);

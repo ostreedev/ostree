@@ -312,7 +312,7 @@ ostree_checkout_run_triggers (OstreeCheckout *self,
   triggerdir_path = g_build_filename (LIBEXECDIR, "ostree", "triggers.d", NULL);
   triggerdir = ot_util_new_file_for_path (triggerdir_path);
 
-  enumerator = g_file_enumerate_children (triggerdir, "standard::name,standard::type,unix::*", 
+  enumerator = g_file_enumerate_children (triggerdir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);
