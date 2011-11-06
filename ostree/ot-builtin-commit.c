@@ -195,7 +195,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  char *dir;
+  char *dir = NULL;
   gboolean using_filename_cmdline;
   gboolean using_filedescriptors;
   GPtrArray *additions_array = NULL;
@@ -204,7 +204,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   char **iter;
   char separator;
   GVariant *metadata = NULL;
-  GMappedFile *metadata_mappedf;
+  GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
 
   context = g_option_context_new ("[DIR] - Commit a new revision");
@@ -348,7 +348,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       fdata.out = out;
       fdata.cancellable = NULL;
 
-      if (g_thread_create (find_thread, &fdata, FALSE, error) == NULL)
+      if (g_thread_create_full (find_thread, &fdata, 0, FALSE, FALSE, G_THREAD_PRIORITY_NORMAL, error) == NULL)
         goto out;
 
       if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
