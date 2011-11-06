@@ -83,6 +83,7 @@ OSTREE_BIND_MOUNTS="var"
 MOVE_MOUNTS="selinux mnt media"
 READONLY_BIND_MOUNTS="bin etc lib lib32 lib64 sbin usr"
 
+cd ${WORKDIR}
 OBJ=debootstrap-$DEBTARGET
 if ! test -d ${OBJ} ; then
     echo "Creating $DEBTARGET.img"
@@ -91,38 +92,60 @@ if ! test -d ${OBJ} ; then
     mv ${OBJ}.tmp ${OBJ}
 fi
 
+cd ${WORKDIR}
 OBJ=$DEBTARGET-fs
 if ! test -d ${OBJ}; then
     rm -rf ${OBJ}.tmp
     mkdir ${OBJ}.tmp
 
-    for d in debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
-        rm -rf work; mkdir work
-        (cd work && ar x ../$d && tar -x -z -C ../${OBJ}.tmp -f data.tar.gz)
+    cd ${OBJ}.tmp;
+    mkdir -m 0755 $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS
+    chmod a=rwxt tmp
+
+    mkdir ostree
+
+    mkdir -m 0755 ostree/var
+
+    mkdir ostree/repo
+
+    $OSTREE --repo=ostree/repo init 
+    
+    BRANCHES=""
+
+    mkdir ostree/worktree
+    cd ostree/worktree
+    mkdir -m 0755 $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS $OSTREE_BIND_MOUNTS $READONLY_BIND_MOUNTS $MOVE_MOUNTS
+    chmod a=rwxt tmp
+    $OSTREE --repo=../repo commit -b gnomeos-filesystem -s 'Base filesystem layout'
+    BRANCHES="$BRANCHES gnomeos-filesystem"
+    cd ..
+    rm -rf worktree
+
+    for d in ${WORKDIR}/debootstrap-$DEBTARGET/var/cache/apt/archives/*.deb; do
+        bn=$(basename $d)
+        debname=$(echo $bn | cut -f 1 -d _)
+        debversion=$(echo $bn | cut -f 2 -d _)
+        archivename="archive-${debname}"
+        rm -rf worktree; mkdir worktree;
+        cd worktree;
+        mkdir data;
+        ar x $d;
+        tar -x -z -C data -f data.tar.gz;
+        cd data;
+        rm -f dev/.initctl  # Hack since we don't support committing named pipes
+        $OSTREE --repo=../../repo commit -b "${archivename}" -s "Version ${debversion}"
+        BRANCHES="$BRANCHES $archivename"
+        cd ../..
     done
+    rm -rf worktree
 
-    (cd ${OBJ}.tmp;
-        mkdir ostree
-        mkdir ostree/repo
-        mkdir ostree/gnomeos-origin
-        for d in $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS; do
-            mkdir -p ostree/gnomeos-origin/$d
-            chmod --reference $d ostree/gnomeos-origin/$d
-        done
-        for d in $OSTREE_BIND_MOUNTS; do
-            mkdir -p ostree/gnomeos-origin/$d
-            chmod --reference $d ostree/gnomeos-origin/$d
-            mv $d ostree
-        done
-        for d in $READONLY_BIND_MOUNTS $MOVE_MOUNTS; do
-            if test -d $d; then
-                mv $d ostree/gnomeos-origin
-            fi
-        done
-
-        $OSTREE --repo=ostree/repo init 
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE --repo=../repo commit -b gnomeos -s 'Initial import' --from-stdin)
-    )
+    $OSTREE --repo=repo compose --out-metadata=./compose-meta worktree $BRANCHES
+    cd worktree
+    $OSTREE --repo=../repo commit --metadata-variant=../compose-meta -b gnomeos -s 'Compose of Debian $DEBTARGET'
+    cd ..
+    rm -rf worktree
+    
+    cd ${WORKDIR}
     if test -d ${OBJ}; then
         mv ${OBJ} ${OBJ}.old
     fi
@@ -133,29 +156,32 @@ fi
 # TODO download source for above
 # TODO download build dependencies for above
 
+cd ${WORKDIR}
 OBJ=gnomeos-fs
 if ! test -d ${OBJ}; then
     rm -rf ${OBJ}.tmp
     cp -al $DEBTARGET-fs ${OBJ}.tmp
-    (cd ${OBJ}.tmp;
+    cd ${OBJ}.tmp/ostree;
+    rm -rf worktree
+    $OSTREE --repo=repo checkout gnomeos worktree
+    cp ${SRCDIR}/debian-setup.sh worktree
+    chroot worktree ./debian-setup.sh
+    rm worktree/debian-setup.sh
+    cd worktree;
+    $OSTREE --repo=../repo commit -b gnomeos -s 'Run debian-setup.sh'
+    
+    # This is the name for the real rootfs, not the chroot
+    mkdir sysroot;
+    $OSTREE --repo=../repo commit -b gnomeos -s 'Add sysroot' --add=sysroot
+    cd ..
+    rm -rf worktree
 
-        cp ${SRCDIR}/debian-setup.sh ostree/gnomeos-origin/
-        chroot ostree/gnomeos-origin ./debian-setup.sh
-        rm ostree/gnomeos-origin/debian-setup.sh
-        (cd ostree/gnomeos-origin; find . '!' -type p | grep -v '^.$' | $OSTREE --repo=../repo commit -b gnomeos -s 'Run debian-setup.sh' --from-stdin)
-
-        # This is the name for the real rootfs, not the chroot
-        (cd ostree/gnomeos-origin;
-            mkdir sysroot;
-            $OSTREE --repo=../repo commit -b gnomeos -s 'Add sysroot' --add=sysroot)
-
-        (cd ostree;
-            rev=$($OSTREE --repo=repo rev-parse gnomeos)
-            $OSTREE --repo=repo checkout ${rev} gnomeos-${rev}
-            $OSTREE --repo=repo run-triggers gnomeos-${rev}
-            ln -s gnomeos-${rev} current
-            rm -rf gnomeos-origin)
-    )
+    rev=$($OSTREE --repo=repo rev-parse gnomeos);
+    $OSTREE --repo=repo checkout ${rev} gnomeos-${rev}
+    $OSTREE --repo=repo run-triggers gnomeos-${rev}
+    ln -s gnomeos-${rev} current
+    
+    cd ${WORKDIR}
     if test -d ${OBJ}; then
         mv ${OBJ} ${OBJ}.old
     fi
@@ -163,6 +189,7 @@ if ! test -d ${OBJ}; then
     rm -rf ${OBJ}.old
 fi
 
+cd ${WORKDIR}
 cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
 
 kv=`uname -r`
@@ -173,6 +200,7 @@ Failed to find ${kernel}
 EOF
 fi
 
+cd ${WORKDIR}
 OBJ=gnomeos-initrd.img
 VOBJ=gnomeos-initrd-${kv}.img
 if ! test -f ${OBJ}; then
