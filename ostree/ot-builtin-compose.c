@@ -30,6 +30,7 @@ static char *compose_metadata_path;
 
 static GOptionEntry options[] = {
   { "out-metadata", 0, 0, G_OPTION_ARG_FILENAME, &compose_metadata_path, "Output a file containing serialized metadata about the compose, in host endianness", "path" },
+  { NULL }
 };
 
 static void
