@@ -1,7 +1,7 @@
 Core
 -------
 
-* branches
+* ostree diff - diff working copy versus branch
 
 Base
 ----
@@ -26,8 +26,6 @@ Deployment
   - What about e.g. users added after OS installation?
   - host SSH keys?
   - Then other stuff
-
-* pulling from other repositories
 
 * GPG signatures on commits
 
