@@ -64,7 +64,7 @@ ostree_builtin_checkout (int argc, char **argv, const char *repo_path, GError **
   commit = argv[1];
   destination = argv[2];
   
-  if (!ostree_repo_checkout (repo, commit, destination, error))
+  if (!ostree_repo_checkout (repo, commit, destination, NULL, error))
     goto out;
 
   ret = TRUE;

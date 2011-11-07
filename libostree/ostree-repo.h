@@ -18,7 +18,6 @@
  *
  * Author: Colin Walters <walters@verbum.org>
  */
-/* ostree-repo.h */
 
 #ifndef _OSTREE_REPO
 #define _OSTREE_REPO
@@ -120,9 +119,10 @@ gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo   *self,
                                                    GError      **error);
 
 gboolean      ostree_repo_checkout (OstreeRepo *self,
-                                      const char   *ref,
-                                      const char   *destination,
-                                      GError      **error);
+                                    const char   *ref,
+                                    const char   *destination,
+                                    GCancellable   *cancellable,
+                                    GError      **error);
 
 typedef void (*OstreeRepoObjectIter) (OstreeRepo *self, const char *path,
                                         GFileInfo *fileinfo, gpointer user_data);

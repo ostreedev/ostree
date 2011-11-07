@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 
 #define OSTREE_MAX_METADATA_SIZE (1 << 26)
 
-#define OSTREE_GIO_FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,unix::*"
+#define OSTREE_GIO_FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,standard::is-hidden,unix::*"
 
 #define OSTREE_EMPTY_STRING_SHA256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -98,7 +98,8 @@ char *ostree_get_relative_object_path (const char *checksum,
 GVariant *ostree_get_xattrs_for_path (const char   *path,
                                       GError     **error);
 
-gboolean ostree_set_xattrs (const char *path, GVariant *xattrs, GError **error);
+gboolean ostree_set_xattrs (const char *path, GVariant *xattrs,
+                            GCancellable *cancellable, GError **error);
 
 gboolean ostree_parse_metadata_file (const char                  *path,
                                      OstreeSerializedVariantType *out_type,

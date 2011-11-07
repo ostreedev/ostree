@@ -296,7 +296,7 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
 }
 
 gboolean
-ostree_set_xattrs (const char *path, GVariant *xattrs, GError **error)
+ostree_set_xattrs (const char *path, GVariant *xattrs, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   int i, n;
@@ -790,7 +790,7 @@ unpack_file (const char   *path,
         }
     }
 
-  if (!ostree_set_xattrs (dest_path, xattrs, error))
+  if (!ostree_set_xattrs (dest_path, xattrs, NULL, error))
     goto out;
 
   if (ret_checksum)

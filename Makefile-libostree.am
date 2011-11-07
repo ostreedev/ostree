@@ -25,6 +25,10 @@ libostree_la_SOURCES = libostree/ostree.h \
 	libostree/ostree-core.h \
 	libostree/ostree-repo.c \
 	libostree/ostree-repo.h \
+	libostree/ostree-repo-file.c \
+	libostree/ostree-repo-file.h \
+	libostree/ostree-repo-file-enumerator.c \
+	libostree/ostree-repo-file-enumerator.h \
 	libostree/ostree-checkout.c \
 	libostree/ostree-checkout.h \
 	$(NULL)
