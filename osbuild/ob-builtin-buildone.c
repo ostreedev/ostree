@@ -47,6 +47,9 @@ static GOptionEntry options[] = {
 };
 
 static char *
+get_tmpdir (void) G_GNUC_UNUSED;
+
+static char *
 get_tmpdir (void)
 {
   char *tmp_prefix = g_strdup (g_getenv ("XDG_RUNTIME_DIR"));
@@ -73,6 +76,11 @@ get_tmpdir (void)
   g_free (tmp_prefix);
   return ret;
 }
+
+static gboolean
+open_log (const char *name, 
+          GOutputStream **out_log,
+          GError **error) G_GNUC_UNUSED;
 
 static gboolean
 open_log (const char *name, 
@@ -108,7 +116,6 @@ osbuild_builtin_buildone (int argc, char **argv, const char *prefix, GError **er
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  char *tmpdir;
 
   context = g_option_context_new ("- Build current directory");
   g_option_context_add_main_entries (context, options, NULL);

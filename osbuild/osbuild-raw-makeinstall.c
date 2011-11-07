@@ -129,9 +129,7 @@ main (int    argc,
   GPtrArray *make_args;
   GPtrArray *makeinstall_args;
   GPtrArray *args;
-  int i;
   char **subprocess_env;
-  GError *error = NULL;
 
   g_type_init ();
 
@@ -150,7 +148,7 @@ main (int    argc,
       const char *autogen;
       char **autogen_env;
       
-      autogen = find_first_file (G_FILE_TEST_IS_EXECUTABLE, "./autogen", "./autogen.sh");
+      autogen = find_first_file (G_FILE_TEST_IS_EXECUTABLE, "./autogen", "./autogen.sh", NULL);
       if (!autogen)
         ot_util_fatal_literal ("No executable configure or autogen script found"); 
 

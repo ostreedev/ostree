@@ -26,8 +26,6 @@
 
 #include <glib/gi18n.h>
 
-static char *repo_path;
-
 static GOptionEntry options[] = {
   { NULL }
 };

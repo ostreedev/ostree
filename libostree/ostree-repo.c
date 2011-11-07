@@ -936,7 +936,6 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   gboolean ret = FALSE;
   GString *tempfile_path = NULL;
   GChecksum *checksum = NULL;
-  struct stat stbuf;
   gboolean did_exist;
 
   tempfile_path = g_string_new (priv->path);

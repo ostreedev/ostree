@@ -646,8 +646,7 @@ unpack_file (const char   *path,
   guint32 metadata_len;
   guint32 version, uid, gid, mode;
   guint64 content_len;
-  gsize bytes_read, bytes_written;
-  int temp_fd = -1;
+  gsize bytes_read;
 
   file = ot_util_new_file_for_path (path);
 

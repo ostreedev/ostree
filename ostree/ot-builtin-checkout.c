@@ -40,7 +40,6 @@ ostree_builtin_checkout (int argc, char **argv, const char *repo_path, GError **
   const char *commit;
   const char *destination;
   GFile *destf = NULL;
-  int i;
 
   context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
   g_option_context_add_main_entries (context, options, NULL);
