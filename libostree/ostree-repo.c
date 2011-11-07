@@ -1177,6 +1177,8 @@ import_parsed_tree (OstreeRepo    *self,
   GVariantBuilder files_builder;
   GVariantBuilder dirs_builder;
   GHashTableIter hash_iter;
+  GSList *sorted_filenames = NULL;
+  GSList *iter;
   gpointer key, value;
 
   g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(ss)"));
@@ -1187,17 +1189,39 @@ import_parsed_tree (OstreeRepo    *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *name = key;
-      const char *checksum = value;
-
-      g_variant_builder_add (&files_builder, "(ss)", name, checksum);
+      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
     }
+
+  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
+
+  for (iter = sorted_filenames; iter; iter = iter->next)
+    {
+      const char *name = iter->data;
+      const char *value;
+
+      value = g_hash_table_lookup (tree->files, name);
+      g_variant_builder_add (&files_builder, "(ss)", name, value);
+    }
+
+  g_slist_free (sorted_filenames);
+  sorted_filenames = NULL;
 
   g_hash_table_iter_init (&hash_iter, tree->directories);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *name = key;
+      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
+    }
+
+  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
+
+  for (iter = sorted_filenames; iter; iter = iter->next)
+    {
+      const char *name = iter->data;
       GChecksum *dir_checksum = NULL;
-      ParsedDirectoryData *dir = value;
+      ParsedDirectoryData *dir;
+
+      dir = g_hash_table_lookup (tree->directories, name);
 
       if (!import_parsed_tree (self, dir->tree_data, &dir_checksum, error))
         goto out;
@@ -1206,6 +1230,9 @@ import_parsed_tree (OstreeRepo    *self,
                              name, g_checksum_get_string (dir_checksum), dir->metadata_sha256);
       g_checksum_free (dir_checksum);
     }
+
+  g_slist_free (sorted_filenames);
+  sorted_filenames = NULL;
 
   serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
                                    GUINT32_TO_BE (0),
@@ -1219,6 +1246,7 @@ import_parsed_tree (OstreeRepo    *self,
   
   ret = TRUE;
  out:
+  g_slist_free (sorted_filenames);
   if (builders_initialized)
     {
       g_variant_builder_clear (&files_builder);
