@@ -63,12 +63,28 @@ setup_test_repository () {
 
     oldpwd=`pwd`
 
+    cd ${test_tmpdir}
+    mkdir repo
+    cd repo
+    ot_repo="--repo=`pwd`"
+    export OSTREE="ostree ${ot_repo}"
+    if test "$mode" = "archive"; then
+	$OSTREE init --archive
+    else
+	$OSTREE init
+    fi
+
+    cd ${test_tmpdir}
     mkdir files
     cd files
     ot_files=`pwd`
     export ht_files
     ln -s nosuchfile somelink
     echo first > firstfile
+
+    cd ${test_tmpdir}/files
+    $OSTREE commit -b test2 -s "Test Commit 1" -m "Commit body first"
+
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
@@ -78,19 +94,8 @@ setup_test_repository () {
     mkdir baz/another/
     echo x > baz/another/y
 
-    cd ${test_tmpdir}
-    mkdir repo
-    cd repo
-    ot_repo="--repo=`pwd`"
-    export OSTREE="ostree ${ot_repo}"
-    cd ../files
-    if test "$mode" = "archive"; then
-	$OSTREE init --archive
-    else
-	$OSTREE init
-    fi
-    $OSTREE commit -b test2 -s "Test Commit 1" -m "Commit body first" --add=firstfile --add=somelink
-    $OSTREE commit -b test2 -s "Test Commit 2" -m "Commit body second" --add=baz/cow  --add=baz/saucer --add=baz/deeper/ohyeah --add=baz/another/y --add=baz/alink
+    cd ${test_tmpdir}/files
+    $OSTREE commit -b test2 -s "Test Commit 2" -m "Commit body second"
     $OSTREE fsck -q
 
     cd $oldpwd
@@ -108,13 +113,13 @@ setup_fake_remote_repo1() {
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
-    find | grep -v '^\.$' | ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body" --from-stdin
+    ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body"
     mkdir baz/deeper
-    ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper" --add=baz/deeper
+    ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper"
     echo hi > baz/deeper/ohyeah
     mkdir baz/another/
     echo x > baz/another/y
-    find | grep -v '^\.$' | ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --from-stdin
+    ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest"
     cd ..
     rm -rf gnomerepo-files
     

@@ -38,8 +38,6 @@ static char *subject;
 static char *body;
 static char *parent;
 static char *branch;
-static char **additions;
-static char **removals;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
@@ -52,8 +50,6 @@ static GOptionEntry options[] = {
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &from_stdin, "Read new tree files from stdin", "file descriptor" },
   { "from-file", 0, 0, G_OPTION_ARG_FILENAME, &from_file, "Read new tree files from another file", "path" },
   { "separator-null", 0, 0, G_OPTION_ARG_NONE, &separator_null, "", "Use '\\0' as filename separator, as with find -print0" },
-  { "add", 'a', 0, G_OPTION_ARG_FILENAME_ARRAY, &additions, "Relative file path to add", "filename" },
-  { "remove", 'r', 0, G_OPTION_ARG_FILENAME_ARRAY, &removals, "Relative file path to remove", "filename" },
   { NULL }
 };
 
@@ -196,16 +192,15 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   char *dir = NULL;
-  gboolean using_filename_cmdline;
-  gboolean using_filedescriptors;
-  GPtrArray *additions_array = NULL;
-  GPtrArray *removals_array = NULL;
   GChecksum *commit_checksum = NULL;
-  char **iter;
   char separator;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
+  gboolean temp_fd = -1;
+  int pipefd[2] = { -1, -1 };
+  GOutputStream *out = NULL;
+  FindThreadData fdata;
 
   context = g_option_context_new ("[DIR] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -258,16 +253,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  using_filename_cmdline = (removals || additions);
-  using_filedescriptors = (from_file || from_fd >= 0 || from_stdin);
-
-  if (using_filename_cmdline && using_filedescriptors)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "File descriptors may not be combined with --add or --remove");
-      goto out;
-    }
-
   if (!branch)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -282,59 +267,26 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       goto out;
     }
 
-  if (using_filename_cmdline)
+  if (!(from_file || from_fd >= 0 || from_stdin))
     {
-      g_assert (removals || additions);
-      additions_array = g_ptr_array_new ();
-      removals_array = g_ptr_array_new ();
+      /* We're using the current directory */
 
-      if (additions)
-        for (iter = additions; *iter; iter++)
-          g_ptr_array_add (additions_array, *iter);
-      if (removals)
-        for (iter = removals; *iter; iter++)
-          g_ptr_array_add (removals_array, *iter);
-      
-      if (!ostree_repo_commit (repo, branch, parent, subject, body, metadata,
-                               dir, additions_array,
-                               removals_array,
-                               &commit_checksum,
-                               error))
-        goto out;
     }
-  else if (using_filedescriptors)
-    {
-      gboolean temp_fd = -1;
 
-      if (from_stdin)
-        from_fd = 0;
-      else if (from_file)
+  if (from_stdin)
+    from_fd = 0;
+  else if (from_file)
+    {
+      temp_fd = ot_util_open_file_read (from_file, error);
+      if (temp_fd < 0)
         {
-          temp_fd = ot_util_open_file_read (from_file, error);
-          if (temp_fd < 0)
-            {
-              g_prefix_error (error, "Failed to open '%s': ", from_file);
-              goto out;
-            }
-          from_fd = temp_fd;
-        }
-      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
-                                                dir, from_fd, separator,
-                                                &commit_checksum, error))
-        {
-          if (temp_fd >= 0)
-            close (temp_fd);
+          g_prefix_error (error, "Failed to open '%s': ", from_file);
           goto out;
         }
-      if (temp_fd >= 0)
-        close (temp_fd);
+      from_fd = temp_fd;
     }
   else
     {
-      int pipefd[2];
-      GOutputStream *out;
-      FindThreadData fdata;
-
       if (pipe (pipefd) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -342,6 +294,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
         }
 
       out = (GOutputStream*)g_unix_output_stream_new (pipefd[1], TRUE);
+      from_fd = pipefd[0];
 
       fdata.dir = ot_util_new_file_for_path (dir);
       fdata.separator = separator;
@@ -351,27 +304,30 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       if (g_thread_create_full (find_thread, &fdata, 0, FALSE, FALSE, G_THREAD_PRIORITY_NORMAL, error) == NULL)
         goto out;
 
-      if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
-                                                dir, pipefd[0], separator,
-                                                &commit_checksum, error))
-        goto out;
-
-      (void)close (pipefd[0]);
+      out = NULL;
     }
- 
+
+  if (!ostree_repo_commit_from_filelist_fd (repo, branch, parent, subject, body, metadata,
+                                            dir, from_fd, separator,
+                                            &commit_checksum, error))
+    goto out;
+
   ret = TRUE;
   g_print ("%s\n", g_checksum_get_string (commit_checksum));
  out:
+  g_clear_object (&out);
+  if (temp_fd >= 0)
+    (void)close (temp_fd);
+  if (pipefd[0] > 0)
+    (void) close (pipefd[0]);
+  if (pipefd[1] > 0)
+    (void) close (pipefd[1]);
   g_free (dir);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (removals_array)
-    g_ptr_array_free (removals_array, TRUE);
-  if (additions_array)
-    g_ptr_array_free (additions_array, TRUE);
   if (commit_checksum)
     g_checksum_free (commit_checksum);
   return ret;
