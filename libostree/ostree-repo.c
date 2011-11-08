@@ -56,6 +56,7 @@ typedef struct _OstreeRepoPrivate OstreeRepoPrivate;
 struct _OstreeRepoPrivate {
   char *path;
   GFile *repo_file;
+  GFile *tmp_dir;
   GFile *local_heads_dir;
   GFile *remote_heads_dir;
   char *objects_path;
@@ -75,6 +76,7 @@ ostree_repo_finalize (GObject *object)
 
   g_free (priv->path);
   g_clear_object (&priv->repo_file);
+  g_clear_object (&priv->tmp_dir);
   g_clear_object (&priv->local_heads_dir);
   g_clear_object (&priv->remote_heads_dir);
   g_free (priv->objects_path);
@@ -142,6 +144,7 @@ ostree_repo_constructor (GType                  gtype,
   g_assert (priv->path != NULL);
   
   priv->repo_file = ot_util_new_file_for_path (priv->path);
+  priv->tmp_dir = g_file_resolve_relative_path (priv->repo_file, "tmp");
   priv->local_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/heads");
   priv->remote_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/remotes");
   
@@ -538,29 +541,33 @@ ostree_repo_is_archive (OstreeRepo  *self)
 }
 
 static gboolean
-import_gvariant_object (OstreeRepo  *self,
-                        OstreeSerializedVariantType type,
-                        GVariant       *variant,
-                        GChecksum    **out_checksum,
-                        GError       **error)
+write_gvariant_to_tmp (OstreeRepo  *self,
+                       OstreeSerializedVariantType type,
+                       GVariant    *variant,
+                       GChecksum    **out_checksum,
+                       GError       **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GVariant *serialized = NULL;
   gboolean ret = FALSE;
   gsize bytes_written;
   char *tmp_name = NULL;
+  char *dest_name = NULL;
   int fd = -1;
   GUnixOutputStream *stream = NULL;
+  GChecksum *checksum;
 
   serialized = g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
 
-  tmp_name = g_build_filename (priv->objects_path, "variant-tmp-XXXXXX", NULL);
+  tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), "variant-tmp-XXXXXX", NULL);
   fd = g_mkstemp (tmp_name);
   if (fd < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
+
+  checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   stream = (GUnixOutputStream*)g_unix_output_stream_new (fd, FALSE);
   if (!g_output_stream_write_all ((GOutputStream*)stream,
@@ -570,24 +577,71 @@ import_gvariant_object (OstreeRepo  *self,
                                   NULL,
                                   error))
     goto out;
+
+  g_checksum_update (checksum, (guint8*)g_variant_get_data (serialized), g_variant_get_size (serialized));
+
   if (!g_output_stream_close ((GOutputStream*)stream,
                               NULL, error))
     goto out;
 
-  if (!link_one_file (self, tmp_name, OSTREE_OBJECT_TYPE_META, 
-                      TRUE, FALSE, out_checksum, error))
-    goto out;
-  
+  dest_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), g_checksum_get_string (checksum), NULL);
+  if (rename (tmp_name, dest_name) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   ret = TRUE;
+  *out_checksum = checksum;
+  checksum = NULL;
  out:
   /* Unconditionally unlink; if we suceeded, there's a new link, if not, clean up. */
   (void) unlink (tmp_name);
   if (fd != -1)
     close (fd);
+  if (checksum)
+    g_checksum_free (checksum);
   if (serialized != NULL)
     g_variant_unref (serialized);
   g_free (tmp_name);
+  g_free (dest_name);
   g_clear_object (&stream);
+  return ret;
+}
+
+static gboolean
+import_gvariant_object (OstreeRepo  *self,
+                        OstreeSerializedVariantType type,
+                        GVariant       *variant,
+                        GChecksum    **out_checksum,
+                        GError       **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  char *tmp_name = NULL;
+  GChecksum *ret_checksum = NULL;
+  gboolean did_exist;
+  
+  if (!write_gvariant_to_tmp (self, type, variant, &ret_checksum, error))
+    goto out;
+
+  tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir),
+                               g_checksum_get_string (ret_checksum), NULL);
+
+  if (!ostree_repo_store_object_trusted (self, tmp_name,
+                                         g_checksum_get_string (ret_checksum),
+                                         OSTREE_OBJECT_TYPE_META,
+                                         TRUE, FALSE, &did_exist, error))
+    goto out;
+
+  ret = TRUE;
+  *out_checksum = ret_checksum;
+  ret_checksum = NULL;
+ out:
+  (void) unlink (tmp_name);
+  g_free (tmp_name);
+  if (ret_checksum)
+    g_checksum_free (ret_checksum);
   return ret;
 }
 
