@@ -72,6 +72,11 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
     goto out;
   g_clear_object (&child);
 
+  child = g_file_get_child (repodir, "tmp");
+  if (!g_file_make_directory (child, NULL, error))
+    goto out;
+  g_clear_object (&child);
+
   child = g_file_get_child (repodir, "refs");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
