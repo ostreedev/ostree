@@ -146,3 +146,32 @@ ot_util_new_file_for_path (const char *path)
 {
   return g_vfs_get_file_for_path (g_vfs_get_local (), path);
 }
+
+const char *
+ot_gfile_get_path_cached (GFile *file)
+{
+  const char *path;
+
+  path = g_object_get_data ((GObject*)file, "ostree-file-path");
+  if (!path)
+    {
+      path = g_file_get_path (file);
+      g_object_set_data_full ((GObject*)file, "ostree-file-path", (char*)path, (GDestroyNotify)g_free);
+    }
+  return path;
+}
+
+
+const char *
+ot_gfile_get_basename_cached (GFile *file)
+{
+  const char *name;
+
+  name = g_object_get_data ((GObject*)file, "ostree-file-name");
+  if (!name)
+    {
+      name = g_file_get_basename (file);
+      g_object_set_data_full ((GObject*)file, "ostree-file-name", (char*)name, (GDestroyNotify)g_free);
+    }
+  return name;
+}

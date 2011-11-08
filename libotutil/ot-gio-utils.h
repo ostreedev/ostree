@@ -28,6 +28,10 @@ G_BEGIN_DECLS
 
 GFile *ot_util_new_file_for_path (const char *path);
 
+const char *ot_gfile_get_path_cached (GFile *file);
+
+const char *ot_gfile_get_basename_cached (GFile *file);
+
 gboolean ot_util_ensure_directory (const char *path, gboolean with_parents, GError **error);
 
 char * ot_util_get_file_contents_utf8 (const char *path, GError    **error);
