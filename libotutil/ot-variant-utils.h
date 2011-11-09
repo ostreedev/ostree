@@ -28,6 +28,8 @@ G_BEGIN_DECLS
 
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
+GVariant * ot_util_variant_take_ref (GVariant *variant);
+
 gboolean ot_util_variant_save (GFile *dest,
                                GVariant *variant,
                                GCancellable *cancellable,

@@ -75,6 +75,18 @@ ot_util_variant_save (GFile *dest,
   return ret;
 }
 
+GVariant *
+ot_util_variant_take_ref (GVariant *variant)
+{
+#if GLIB_CHECK_VERSION(2,32,0)
+  return g_variant_take_ref (variant);
+#else
+  if (g_variant_is_floating (variant))
+    return g_variant_ref_sink (variant);
+  return variant;
+#endif
+}
+
 gboolean
 ot_util_variant_map (GFile *src,
                      const GVariantType *type,

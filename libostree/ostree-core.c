@@ -358,7 +358,7 @@ ostree_parse_metadata_file (const char                  *path,
 
   ret = TRUE;
   *out_type = ret_type;
-  *out_variant = g_variant_take_ref (ret_variant);
+  *out_variant = ot_util_variant_take_ref (ret_variant);
   ret_variant = NULL;
  out:
   if (ret_variant)
