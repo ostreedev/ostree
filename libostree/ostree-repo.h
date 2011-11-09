@@ -23,7 +23,7 @@
 #ifndef _OSTREE_REPO
 #define _OSTREE_REPO
 
-#include <glib-object.h>
+#include "ostree-core.h"
 
 G_BEGIN_DECLS
 
@@ -64,6 +64,10 @@ GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);
 gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GKeyFile   *new_config,
                                         GError    **error);
+
+char *        ostree_repo_get_object_path (OstreeRepo   *self,
+                                           const char   *object,
+                                           OstreeObjectType type);
 
 gboolean      ostree_repo_store_packfile (OstreeRepo       *self,
                                            const char       *expected_checksum,
