@@ -300,61 +300,40 @@ Possible approaches:
 What about "packages"?
 ----------------------
 
-Basically I think they're a broken idea.  There are several different
-classes of things that demand targeted solutions:
+There are several complex and separate issues hiding in this seemingly
+simple question. 
 
- 1. Managing and upgrading the core OS (ostree)
- 2. Managing and upgrading desktop applications (gnome-shell, glick?)
- 3. System extensions - these are arbitrary RPMs like say the nVidia driver.
-    We apply them after constructing each root.  Media codecs also fall
-    into this category.
+I think OSTree always makes sense to use as a core operating system
+builder and updater.  By "core" here I mean the parts that aren't
+removable.  Debian has Essential: yes, any other distribution has this
+too implicitly in the set of dependencies for their updater tool.
 
-How one might install say Apache on top of ostree is an open
-question - I think it probably makes sense honestly to ship services
-like this with no configuration - just the binaries.  Then admins can
-do whatever they want.
+Now, let me just say I will absolutely support using something like
+apt/yum/zypper (and consequently deb/rpm) on top of OSTree.  This
+isn't trivial, but there aren't any conceptual issues.
 
-Downloads
----------
+Concretely for example, RPM or .deb might make sense as a delivery
+vehicle for third party OS extensions.  A canoncial example is the
+NVidia graphics driver.
 
-I'm pretty sure ostree should be significantly better than RPM with
-deltarpms.  Note we only download changed objects.  If say just one
-translation changes, we only download that new translation!  One
-problem we will have to hunt down is programs that inject
-e.g. timestamps into generated files.  "gzip" is the canonical
-offender here.
+If one is using OSTree to build an *operating system*, then there has
+to be some API for applications.  And that demands its own targeted
+solution - something like an evolved glick (zeroinstall is also
+similar).
 
-Upstream branches
-----------------
+Current package systems are totally broken for application deployment
+though; for example, they will remove files away from under running
+applications on update.  And we clearly need the ability to install
+and upgrade applications without rebooting the OS.
 
-Note that this system will make it easy to have multiple *upstream* roots too.
-For example, something like:
-
- - builds
-
-   A filesystem tree generated after every time an artifact is built.
-
- - fastqa
-
-   After each root is built, a very quick test suite is run in it;
-   probably this is booting to GDM.  If that works, a new commit is
-   made here.  Hopefully we can get fastqa under 2 minutes.
-
- - dailyqa
-
-   Much more extensive tests, let's say they take 24 hours.
-
-RPM Compatibility
------------------
+Details of RPM installation
+---------------------------
 
 We should be able to install LSB rpms.  This implies providing "rpm".
 The tricky part here is since the OS itself is not assembled via RPMs,
 we need to fake up a database of "provides" as if we were.  Even
 harder would be maintaining binary compatibilty with any arbitrary
 %post scripts that may be run.
-
-Note these RPMs act like local configuration - they would be
-reinstalled every time you switch roots.
 
 What about BTRFS?  Doesn't it solve everything?
 -----------------------------------------------
