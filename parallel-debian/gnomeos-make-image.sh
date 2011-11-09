@@ -132,7 +132,6 @@ if ! test -d ${OBJ}; then
         ar x $d;
         tar -x -z -C data -f data.tar.gz;
         cd data;
-        rm -f dev/.initctl  # Hack since we don't support committing named pipes
         $OSTREE --repo=../../repo commit -b "${archivename}" -s "Version ${debversion}"
         BRANCHES="$BRANCHES $archivename"
         cd ../..
