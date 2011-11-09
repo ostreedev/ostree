@@ -29,12 +29,6 @@
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
 
-static gboolean
-link_one_file (OstreeRepo *self, const char *path,
-               OstreeObjectType type,
-               gboolean ignore_exists, gboolean force,
-               GChecksum **out_checksum,
-               GError **error);
 static char *
 get_object_path (OstreeRepo  *self,
                  const char    *checksum,
@@ -932,53 +926,6 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
     return link_object_trusted (self, path, checksum, objtype, ignore_exists, force, did_exist, error);
 }
 
-static gboolean
-link_one_file (OstreeRepo *self, const char *path, OstreeObjectType type,
-               gboolean ignore_exists, gboolean force,
-               GChecksum **out_checksum,
-               GError **error)
-{
-  gboolean ret = FALSE;
-  struct stat stbuf;
-  GChecksum *id = NULL;
-  gboolean did_exist;
-
-  if (!ostree_stat_and_checksum_file (-1, path, type, &id, &stbuf, error))
-    goto out;
-
-  if (!ostree_repo_store_object_trusted (self, path, g_checksum_get_string (id), type,
-                                         ignore_exists, force, &did_exist, error))
-    goto out;
-
-  *out_checksum = id;
-  id = NULL;
-  ret = TRUE;
- out:
-  if (id != NULL)
-    g_checksum_free (id);
-  return ret;
-}
-
-gboolean
-ostree_repo_link_file (OstreeRepo *self,
-                       const char   *path,
-                       gboolean      ignore_exists,
-                       gboolean      force,
-                       GError      **error)
-{
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GChecksum *checksum = NULL;
-
-  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-  g_return_val_if_fail (priv->inited, FALSE);
-
-  if (!link_one_file (self, path, OSTREE_OBJECT_TYPE_FILE,
-                      ignore_exists, force, &checksum, error))
-    return FALSE;
-  g_checksum_free (checksum);
-  return TRUE;
-}
-
 gboolean
 ostree_repo_store_packfile (OstreeRepo       *self,
                             const char       *expected_checksum,
@@ -1509,12 +1456,17 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
 {
   gboolean ret = FALSE;
   GChecksum *checksum = NULL;
+  struct stat stbuf;
+  gboolean did_exist;
   
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_assert (tree != NULL);
 
-  if (!link_one_file (self, abspath, OSTREE_OBJECT_TYPE_FILE,
-                      TRUE, FALSE, &checksum, error))
+  if (!ostree_stat_and_checksum_file (-1, abspath, OSTREE_OBJECT_TYPE_FILE, &checksum, &stbuf, error))
+    goto out;
+
+  if (!ostree_repo_store_object_trusted (self, abspath, g_checksum_get_string (checksum),
+                                         OSTREE_OBJECT_TYPE_FILE, TRUE, FALSE, &did_exist, error))
     goto out;
 
   g_hash_table_replace (tree->files, g_strdup (basename),
