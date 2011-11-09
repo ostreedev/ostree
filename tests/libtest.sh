@@ -29,6 +29,10 @@ touch "$test_tmpdir/.test$$"
 
 export G_DEBUG=fatal-warnings
 
+if test -n "${OT_TESTS_DEBUG}"; then
+    set -x
+fi
+
 die () {
     if test -z "$OT_TESTS_SAVE_TEMPS"; then
         test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
