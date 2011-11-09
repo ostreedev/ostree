@@ -259,11 +259,15 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
       device_id = g_strdup_printf ("%u", (guint)stbuf.st_rdev);
       g_checksum_update (content_sha256, (guint8*)device_id, strlen (device_id));
     }
+  else if (S_ISFIFO(stbuf.st_mode))
+    {
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+    }
   else
     {
       g_set_error (error, G_IO_ERROR,
                    G_IO_ERROR_FAILED,
-                   "Unsupported file '%s' (must be regular, symbolic link, or device)",
+                   "Unsupported file '%s' (must be regular, symbolic link, fifo, or character/block device)",
                    path);
       goto out;
     }
@@ -477,6 +481,10 @@ ostree_pack_object (GOutputStream     *output,
           device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_DEVICE);
           object_size = 4;
         }
+      else if (S_ISFIFO (mode))
+        {
+          object_size = 0;
+        }
       else
         g_assert_not_reached ();
 
@@ -524,6 +532,9 @@ ostree_pack_object (GOutputStream     *output,
                                           &bytes_written, cancellable, error))
             goto out;
           g_assert (bytes_written == 4);
+        }
+      else if (S_ISFIFO (mode))
+        {
         }
       else
         g_assert_not_reached ();
@@ -769,6 +780,14 @@ unpack_file (const char   *path,
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)&dev, 4);
       if (mknod (dest_path, mode, dev) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISFIFO (mode))
+    {
+      if (mkfifo (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;

@@ -827,7 +827,7 @@ query_child_info_file_archive (OstreeRepo       *repo,
     file_type = G_FILE_TYPE_SYMBOLIC_LINK;
   else if (S_ISREG (mode))
     file_type = G_FILE_TYPE_REGULAR;
-  else if (S_ISBLK (mode) || S_ISCHR(mode))
+  else if (S_ISBLK (mode) || S_ISCHR(mode) || S_ISFIFO(mode))
     file_type = G_FILE_TYPE_SPECIAL;
   else
     {
