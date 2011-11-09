@@ -35,10 +35,11 @@ static GOptionEntry options[] = {
 
 typedef struct {
   guint n_objects;
-} HtFsckData;
+  gboolean had_error;
+} OtFsckData;
 
 static gboolean
-checksum_packed_file (HtFsckData   *data,
+checksum_packed_file (OtFsckData   *data,
                       const char   *path,
                       GChecksum   **out_checksum,
                       GError      **error)
@@ -111,7 +112,6 @@ checksum_packed_file (HtFsckData   *data,
     g_variant_unref (xattrs);
   return ret;
 }
-                    
 
 static void
 object_iter_callback (OstreeRepo  *repo,
@@ -119,7 +119,7 @@ object_iter_callback (OstreeRepo  *repo,
                       GFileInfo     *file_info,
                       gpointer       user_data)
 {
-  HtFsckData *data = user_data;
+  OtFsckData *data = user_data;
   struct stat stbuf;
   GChecksum *checksum = NULL;
   GError *error = NULL;
@@ -169,6 +169,7 @@ object_iter_callback (OstreeRepo  *repo,
   
   if (strcmp (checksum_string, g_checksum_get_string (checksum)) != 0)
     {
+      data->had_error = TRUE;
       g_printerr ("ERROR: corrupted object '%s' expected checksum: %s\n",
                   path, g_checksum_get_string (checksum));
     }
@@ -193,7 +194,7 @@ gboolean
 ostree_builtin_fsck (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
-  HtFsckData data;
+  OtFsckData data;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
 
@@ -204,6 +205,7 @@ ostree_builtin_fsck (int argc, char **argv, const char *repo_path, GError **erro
     goto out;
 
   data.n_objects = 0;
+  data.had_error = FALSE;
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
@@ -212,6 +214,12 @@ ostree_builtin_fsck (int argc, char **argv, const char *repo_path, GError **erro
   if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;
 
+  if (data.had_error)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Encountered filesystem consistency errors");
+      goto out;
+    }
   if (!quiet)
     g_printerr ("Total Objects: %u\n", data.n_objects);
 
