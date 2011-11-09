@@ -627,28 +627,19 @@ unpack_meta (const char   *path,
   return ret;
 }
 
-
-static gboolean
-unpack_file (const char   *path,
-             const char   *dest_path,    
-             GChecksum   **out_checksum,
-             GError      **error)
+gboolean
+ostree_parse_packed_file (GFile            *file,
+                          GVariant    **out_metadata,
+                          GInputStream **out_content,
+                          GCancellable *cancellable,
+                          GError      **error)
 {
   gboolean ret = FALSE;
-  GFile *file = NULL;
-  GFile *dest_file = NULL;
   char *metadata_buf = NULL;
-  GVariant *metadata = NULL;
-  GVariant *xattrs = NULL;
+  GVariant *ret_metadata = NULL;
   GFileInputStream *in = NULL;
-  GFileOutputStream *out = NULL;
-  GChecksum *ret_checksum = NULL;
   guint32 metadata_len;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
   gsize bytes_read;
-
-  file = ot_util_new_file_for_path (path);
 
   in = g_file_read (file, NULL, error);
   if (!in)
@@ -664,6 +655,13 @@ unpack_file (const char   *path,
     }
       
   metadata_len = GUINT32_FROM_BE (metadata_len);
+  if (metadata_len > OSTREE_MAX_METADATA_SIZE)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted packfile; metadata length %u is larger than maximum %u",
+                   metadata_len, OSTREE_MAX_METADATA_SIZE);
+      goto out;
+    }
   metadata_buf = g_malloc (metadata_len);
 
   if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
@@ -675,9 +673,47 @@ unpack_file (const char   *path,
       goto out;
     }
 
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
-                                      metadata_buf, metadata_len, FALSE, NULL, NULL);
-      
+  ret_metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
+                                          metadata_buf, metadata_len, FALSE,
+                                          (GDestroyNotify)g_free,
+                                          metadata_buf);
+  metadata_buf = NULL;
+
+  ret = TRUE;
+  *out_metadata = ret_metadata;
+  ret_metadata = NULL;
+  *out_content = (GInputStream*)in;
+  in = NULL;
+ out:
+  g_clear_object (&in);
+  if (ret_metadata)
+   g_variant_unref (ret_metadata);
+  return ret;
+}
+
+static gboolean
+unpack_file (const char   *path,
+             const char   *dest_path,    
+             GChecksum   **out_checksum,
+             GError      **error)
+{
+  gboolean ret = FALSE;
+  GFile *file = NULL;
+  GFile *dest_file = NULL;
+  GVariant *metadata = NULL;
+  GVariant *xattrs = NULL;
+  GInputStream *in = NULL;
+  GFileOutputStream *out = NULL;
+  GChecksum *ret_checksum = NULL;
+  guint32 version, uid, gid, mode;
+  guint64 content_len;
+  gsize bytes_read;
+
+  file = ot_util_new_file_for_path (path);
+
+  if (!ostree_parse_packed_file (file, &metadata, &in, NULL, error))
+    goto out;
+
   g_variant_get (metadata, "(uuuu@a(ayay)t)",
                  &version, &uid, &gid, &mode,
                  &xattrs, &content_len);
@@ -697,7 +733,7 @@ unpack_file (const char   *path,
       if (!out)
         goto out;
 
-      if (!splice_and_checksum ((GOutputStream*)out, (GInputStream*)in, ret_checksum, NULL, error))
+      if (!splice_and_checksum ((GOutputStream*)out, in, ret_checksum, NULL, error))
         goto out;
 
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
@@ -707,7 +743,7 @@ unpack_file (const char   *path,
     {
       char target[PATH_MAX+1];
 
-      if (!g_input_stream_read_all ((GInputStream*)in, target, sizeof(target)-1, &bytes_read, NULL, error))
+      if (!g_input_stream_read_all (in, target, sizeof(target)-1, &bytes_read, NULL, error))
         goto out;
       target[bytes_read] = '\0';
       if (ret_checksum)
@@ -722,7 +758,7 @@ unpack_file (const char   *path,
     {
       guint32 dev;
 
-      if (!g_input_stream_read_all ((GInputStream*)in, &dev, 4, &bytes_read, NULL, error))
+      if (!g_input_stream_read_all (in, &dev, 4, &bytes_read, NULL, error))
         goto out;
       if (bytes_read != 4)
         {
@@ -773,7 +809,6 @@ unpack_file (const char   *path,
     (void) unlink (dest_path);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
-  g_free (metadata_buf);
   g_clear_object (&file);
   g_clear_object (&dest_file);
   g_clear_object (&in);
