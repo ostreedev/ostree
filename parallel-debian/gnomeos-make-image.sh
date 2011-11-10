@@ -200,7 +200,7 @@ OBJ=gnomeos-initrd.img
 VOBJ=gnomeos-initrd-${kv}.img
 if ! test -f ${OBJ}; then
     rm -f ${OBJ}.tmp ${VOBJ}.tmp
-    $DRACUT -l -v --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${VOBJ}.tmp
+    $DRACUT -l -v -o plymouth --include `pwd`/ostree_switch_root /sbin/ostree_switch_root ${VOBJ}.tmp
     mv ${VOBJ}.tmp ${VOBJ}
     ln -sf ${VOBJ} gnomeos-initrd.img
 fi
