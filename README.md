@@ -400,6 +400,12 @@ didn't use them:
 
    See above.
 
+ - Solaris IPS: <http://hub.opensolaris.org/bin/view/Project+pkg/>
+
+   Rollback is ZFS level, so I think this shares the same tradeoffs as BTRFS+RPM/deb.
+   They probably have some vertical integration though which definitely helps.
+   Obviously we can't use ZFS.
+
  - Jhbuild: <https://live.gnome.org/Jhbuild>
 
    What we've been using in GNOME, and has the essential property of allowing you
