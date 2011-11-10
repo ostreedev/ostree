@@ -35,6 +35,11 @@ EOF
     fi
 done
 
+if test $(id -u) == 0; then
+    echo "Should not run this script as root."
+    exit 1
+fi
+
 if test -z "${OSTREE}"; then
     OSTREE=`command -v ostree || true`
 fi
