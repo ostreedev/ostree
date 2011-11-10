@@ -104,7 +104,7 @@ if ! test -d ${OBJ}; then
 
     mkdir ostree
 
-    mkdir -m 0755 ostree/var
+    mkdir -p -m 0755 ostree/var/{log,run}
 
     mkdir ostree/repo
 
@@ -114,7 +114,7 @@ if ! test -d ${OBJ}; then
 
     mkdir ostree/worktree
     cd ostree/worktree
-    mkdir -m 0755 $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS $OSTREE_BIND_MOUNTS $READONLY_BIND_MOUNTS $MOVE_MOUNTS
+    mkdir -m 0755 $INITRD_MOVE_MOUNTS $TOPROOT_BIND_MOUNTS $OSTREE_BIND_MOUNTS $READONLY_BIND_MOUNTS $MOVE_MOUNTS sysroot
     chmod a=rwxt tmp
     $OSTREE --repo=../repo commit -b gnomeos-filesystem -s "Base filesystem layout"
     BRANCHES="$BRANCHES gnomeos-filesystem"
@@ -168,10 +168,6 @@ if ! test -d ${OBJ}; then
     rm worktree/debian-setup.sh
     cd worktree;
     $OSTREE --repo=../repo commit -b gnomeos -s "Run debian-setup.sh"
-    
-    # This is the name for the real rootfs, not the chroot
-    mkdir sysroot;
-    $OSTREE --repo=../repo commit -b gnomeos -s "Add sysroot"
     cd ..
     rm -rf worktree
 
