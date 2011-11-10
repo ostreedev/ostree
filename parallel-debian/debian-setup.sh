@@ -5,31 +5,31 @@
 set -e
 set -x
 
-echo gnomeos > /etc/hostname
+echo gnomeos >./etc/hostname
 
-cat > /etc/default/locale <<EOF
+cat >./etc/default/locale <<EOF
 LANG="en_US.UTF-8"
 EOF
 
-cp -p /usr/share/sysvinit/inittab /etc/inittab
-cp -p /usr/share/base-files/nsswitch.conf /etc/nsswitch.conf
+cp -p ./usr/share/sysvinit/inittab ./etc/inittab
+cp -p ./usr/share/base-files/nsswitch.conf ./etc/nsswitch.conf
 
-cat >/etc/pam.d/common-account <<EOF
+cat >./etc/pam.d/common-account <<EOF
 account [success=1 new_authtok_reqd=done default=ignore]        pam_unix.so 
 account requisite                       pam_deny.so
 account required                        pam_permit.so
 EOF
-cat >/etc/pam.d/common-auth <<EOF
+cat >./etc/pam.d/common-auth <<EOF
 auth    [success=1 default=ignore]      pam_unix.so nullok_secure
 auth    requisite                       pam_deny.so
 auth    required                        pam_permit.so
 EOF
-cat >/etc/pam.d/common-password <<EOF
+cat >./etc/pam.d/common-password <<EOF
 password        [success=1 default=ignore]      pam_unix.so obscure sha512
 password        requisite                       pam_deny.so
 password        required                        pam_permit.so
 EOF
-cat >/etc/pam.d/common-session <<EOF
+cat >./etc/pam.d/common-session <<EOF
 session [default=1]                     pam_permit.so
 session requisite                       pam_deny.so
 session required                        pam_permit.so
@@ -37,14 +37,8 @@ session required        pam_unix.so
 EOF
 
 # base-passwd
-cp -p /usr/share/base-passwd/passwd.master /etc/passwd
-cp -p /usr/share/base-passwd/group.master /etc/group
-
-# From debian-installer user-setup
-shadowconfig on
-chpasswd <<EOF
-root:root
-EOF
+cp -p ./usr/share/base-passwd/passwd.master ./etc/passwd
+cp -p ./usr/share/base-passwd/group.master ./etc/group
 
 # Service rc.d defaults
 setuprc () {
@@ -56,8 +50,7 @@ setuprc () {
     shift
     
     for x in $@; do
-	cd /etc/rc${x}.d
-	ln -s ../init.d/$name ${type}${priority}${name}
+	ln -s ../init.d/$name ./etc/rc${x}.d/${type}${priority}${name}
     done
 }
     

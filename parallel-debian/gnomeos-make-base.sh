@@ -24,7 +24,7 @@ set -x
 SRCDIR=`dirname $0`
 WORKDIR=`pwd`
 
-DEPENDS="debootstrap qemu-img grubby"
+DEPENDS="debootstrap"
 
 for x in $DEPENDS; do
     if ! command -v $x; then
@@ -34,13 +34,6 @@ EOF
         exit 1
     fi
 done
-
-if test $(id -u) != 0; then
-    cat <<EOF
-This script must be run as root.
-EOF
-    exit 1
-fi
 
 if test -z "${OSTREE}"; then
     OSTREE=`command -v ostree || true`
@@ -163,10 +156,8 @@ if ! test -d ${OBJ}; then
     cd ${OBJ}.tmp/ostree;
     rm -rf worktree
     $OSTREE --repo=repo checkout gnomeos worktree
-    cp ${SRCDIR}/debian-setup.sh worktree
-    chroot worktree ./debian-setup.sh
-    rm worktree/debian-setup.sh
-    cd worktree;
+    cd worktree
+    ${SRCDIR}/debian-setup.sh
     $OSTREE --repo=../repo commit -b gnomeos -s "Run debian-setup.sh"
     cd ..
     rm -rf worktree
