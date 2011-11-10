@@ -383,6 +383,15 @@ didn't use them:
     bup is cool.  But it shares the negative tradeoffs with git, though it
     does add positives of its own.  It also inspired me.
 
+ - git-annex: <http://git-annex.branchable.com/git-annex/>
+
+   Looks interesting; I think this will share the same negative tradeoffs with git
+   as far as using it for an OS goes.
+
+ - schroot: <http://www.debian-administration.org/articles/566>
+
+   Like LXC/containers, but just using a chroot.
+
  - NixOS: <http://nixos.org/>
 
     The NixOS people have a lot of really good ideas, and they've definitely
