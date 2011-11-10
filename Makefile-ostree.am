@@ -25,6 +25,7 @@ ostree_SOURCES = ostree/main.c \
 	ostree/ot-builtin-checkout.c \
 	ostree/ot-builtin-commit.c \
 	ostree/ot-builtin-compose.c \
+	ostree/ot-builtin-diff.c \
 	ostree/ot-builtin-fsck.c \
 	ostree/ot-builtin-init.c \
 	ostree/ot-builtin-log.c \

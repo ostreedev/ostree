@@ -1842,3 +1842,33 @@ ostree_repo_checkout (OstreeRepo *self,
   g_clear_object (&root_info);
   return ret;
 }
+
+gboolean
+ostree_repo_diff (OstreeRepo     *self,
+                  const char     *ref,
+                  GFile          *target,
+                  GPtrArray     **out_modified,
+                  GPtrArray     **out_removed,
+                  GPtrArray     **out_added,
+                  GCancellable   *cancellable,
+                  GError        **error)
+{
+  gboolean ret = FALSE;
+  GPtrArray *ret_modified = NULL;
+  GPtrArray *ret_removed = NULL;
+  GPtrArray *ret_added = NULL;
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "Not implemented yet");
+  goto out;
+
+  ret = TRUE;
+ out:
+  if (ret_modified)
+    g_ptr_array_free (ret_modified, TRUE);
+  if (ret_removed)
+    g_ptr_array_free (ret_removed, TRUE);
+  if (ret_added)
+    g_ptr_array_free (ret_added, TRUE);
+  return ret;
+}

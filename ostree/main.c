@@ -29,6 +29,7 @@
 
 static OstreeBuiltin builtins[] = {
   { "checkout", ostree_builtin_checkout, 0 },
+  { "diff", ostree_builtin_diff, 0 },
   { "init", ostree_builtin_init, 0 },
   { "commit", ostree_builtin_commit, 0 },
   { "compose", ostree_builtin_compose, 0 },
