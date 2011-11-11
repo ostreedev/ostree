@@ -13,16 +13,10 @@ AM_PROG_CC_C_O
 
 changequote(,)dnl
 if test "x$GCC" = "xyes"; then
-  case " $CFLAGS " in
-  *[\ \	]-Wall[\ \	]*) ;;
-  *) CFLAGS="$CFLAGS -Wall" ;;
-  esac
-  case " $CFLAGS " in
-  *[\ \	]-Werror=missing-prototypes[\ \	]*) ;;
-  *) CFLAGS="$CFLAGS -Werror=missing-prototypes" ;;
-  esac
+  WARN_CFLAGS="-Wall -Werror=missing-prototypes"
 fi
 changequote([,])dnl
+AC_SUBST(WARN_CFLAGS)
 
 # Initialize libtool
 AC_PROG_LIBTOOL

@@ -31,5 +31,5 @@ libostree_la_SOURCES = libostree/ostree.h \
 	libostree/ostree-checkout.c \
 	libostree/ostree-checkout.h \
 	$(NULL)
-libostree_la_CFLAGS = -I$(srcdir)/libotutil -I$(srcdir)/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+libostree_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libotutil -I$(srcdir)/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 libostree_la_LIBADD = libotutil.la $(OT_COREBIN_DEP_LIBS)
