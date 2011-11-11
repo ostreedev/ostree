@@ -1,5 +1,3 @@
-# Makefile for C source code
-#
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -17,21 +15,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-bin_PROGRAMS += ostree-build
-
-osbuild_common_cflags = -I$(srcdir)/libotutil -I$(srcdir)/osbuild -DLOCALEDIR=\"$(datadir)/locale\" -DG_LOG_DOMAIN=\"osbuild\" $(GIO_UNIX_CFLAGS)
-osbuild_common_ldadd = libotutil.la $(GIO_UNIX_LIBS)
-
-ostree_build_SOURCES = osbuild/main.c \
-	osbuild/ob-builtins.h \
-	osbuild/ob-builtin-buildone.c \
+bin_SCRIPTS += osbuild/ostree-buildone \
+	osbuild/ostree-buildone-make \
+	osbuild/ostree-buildone-makeinstall-split-artifacts \
 	$(NULL)
-ostree_build_CFLAGS = $(osbuild_common_cflags)
-ostree_build_LDADD = $(osbuild_common_ldadd)
-
-bin_PROGRAMS += osbuild-raw-makeinstall
-
-osbuild_raw_makeinstall_SOURCES = osbuild/osbuild-raw-makeinstall.c \
-	$(NULL)
-osbuild_raw_makeinstall_CFLAGS = $(osbuild_common_cflags)
-osbuild_raw_makeinstall_LDADD = $(osbuild_common_ldadd)
