@@ -243,12 +243,36 @@ def _on_make_exit(pid, estatus):
     else:
         _output_filter.finish(False)
 
+def _get_version():
+    if not os.path.isdir('.git'):
+        sys.stderr.write("ostree-buildone: error: Couldn't find .git directory")
+        sys.exit(1)
+
+    proc = subprocess.Popen(['git', 'describe'], stdout=subprocess.PIPE)
+    output = proc.communicate()[0].strip()
+    if proc.wait() != 0:
+        proc = subprocess.Popen(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE)
+        if proc.wait() != 0:
+            sys.stderr.write("ostree-buildone: error: git rev-parse HEAD failed")
+            sys.exit(1)
+        output = proc.communicate()[0].strip()
+    return output
+
 if __name__ == '__main__':
     user_tmpdir = os.environ.get('XDG_RUNTIME_DIR')
     if user_tmpdir is None:
         user_tmpdir = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'metabuild-%s' % (os.getuid(), ))
     else:
         user_tmpdir = os.path.join(user_tmpdir, 'ostree-build') 
+
+    os.environ['OSBUILD_VERSION'] = _get_version()
+
+    if os.path.isdir('_build'):
+        for filename in os.listdir('_build'):
+            path = os.path.join('_build', filename)
+            if filename.startswith('artifact-'):
+                os.unlink(path)
+
     if not os.path.isdir(user_tmpdir):
         os.makedirs(user_tmpdir)
     logfile_path = os.path.join(user_tmpdir, '%s.log' % (os.path.basename(os.getcwd()), ))

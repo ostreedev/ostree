@@ -50,7 +50,7 @@ def run_sync(args, env=None):
     func("pid %d exited with code %d" % (proc.pid, returncode))
 
 basename=os.path.basename(os.getcwd())
-artifact_prefix='artifact-%s' % (basename, )
+artifact_prefix='artifact-%s,%s' % (basename, os.environ['OSBUILD_VERSION'])
 origdir=os.getcwd()
 os.chdir('_build')
 
