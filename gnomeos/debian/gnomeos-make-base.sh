@@ -182,7 +182,9 @@ if ! test -d ${OBJ}; then
 fi
 
 cd ${WORKDIR}
-cp ${SRCDIR}/ostree_switch_root ${WORKDIR}
+(cd ${SRCDIR}/..;
+ make ostree_switch_root;
+ cp ostree_switch_root ${WORKDIR})
 
 kv=`uname -r`
 kernel=/boot/vmlinuz-${kv}
