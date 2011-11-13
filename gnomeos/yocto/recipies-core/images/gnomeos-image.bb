@@ -7,16 +7,7 @@ LICENSE = "LGPL2"
 
 inherit core-image
 
-PACKAGES = "\
-	task-gnomeos-base \
-	"
-
-RDEPENDS_task-gnomeos-base = "\
-	gtk+ \
-	mesa-dri \
-	task-core-x11 \
-	NetworkManager \
-	"
+IMAGE_INSTALL += "ostree-init"
 
 # remove not needed ipkg informations
 ROOTFS_POSTPROCESS_COMMAND += "remove_packaging_data_files ; "
