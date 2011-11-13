@@ -1,0 +1,26 @@
+From 0c2a325a19dc80097bebd86fe77dfc0bfbcdaab6 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 28 Mar 2011 17:17:35 -0400
+Subject: [PATCH] configure: Allow specifying --with-distro=generic
+
+This option is useful if we simply don't need any legacy integration.
+---
+ configure.ac |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 98e2b04..b940d50 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -128,7 +128,7 @@ if test "z$with_distro" = "z"; then
+ 	exit 1
+ else
+ 	case $with_distro in
+-		redhat|suse|gentoo|debian|slackware|arch|paldo|frugalware|mandriva|pardus|linexa|exherbo) ;;
++		generic|redhat|suse|gentoo|debian|slackware|arch|paldo|frugalware|mandriva|pardus|linexa|exherbo) ;;
+ 		*)
+ 			echo "Your distribution (${with_distro}) is not yet supported!  (patches welcome)"
+ 			exit 1
+-- 
+1.7.4
+
