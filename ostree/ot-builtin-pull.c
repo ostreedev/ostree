@@ -173,6 +173,7 @@ store_tree_recurse (OstreeRepo   *repo,
             goto out;
         }
       
+      n = g_variant_n_children (dirs_variant);
       for (i = 0; i < n; i++)
         {
           const char *dirname;
