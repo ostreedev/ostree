@@ -97,7 +97,7 @@ ostree_builtin_remote (int argc, char **argv, const char *repo_path, GError **er
   if (context)
     g_option_context_free (context);
   if (config)
-    g_key_file_unref (config);
+    g_key_file_free (config);
   g_clear_object (&repo);
   g_clear_object (&checkout);
   return ret;
