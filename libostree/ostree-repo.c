@@ -546,7 +546,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
   char *dest_name = NULL;
   int fd = -1;
   GUnixOutputStream *stream = NULL;
-  GChecksum *checksum;
+  GChecksum *checksum = NULL;
 
   serialized = g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
 
