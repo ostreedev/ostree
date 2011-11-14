@@ -28,11 +28,14 @@ ostree_SOURCES = ostree/main.c \
 	ostree/ot-builtin-fsck.c \
 	ostree/ot-builtin-init.c \
 	ostree/ot-builtin-log.c \
-	ostree/ot-builtin-pull.c \
 	ostree/ot-builtin-run-triggers.c \
 	ostree/ot-builtin-remote.c \
 	ostree/ot-builtin-rev-parse.c \
 	ostree/ot-builtin-show.c \
 	$(NULL)
+
+if USE_LIBSOUP_GNOME
+ostree_SOURCES += ostree/ot-builtin-pull.c
+endif
 ostree_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libotutil -I$(srcdir)/libostree -I$(srcdir)/ostree  -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)

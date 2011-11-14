@@ -35,7 +35,9 @@ static OstreeBuiltin builtins[] = {
   { "commit", ostree_builtin_commit, 0 },
   { "compose", ostree_builtin_compose, 0 },
   { "log", ostree_builtin_log, 0 },
+#ifdef HAVE_LIBSOUP_GNOME
   { "pull", ostree_builtin_pull, 0 },
+#endif
   { "fsck", ostree_builtin_fsck, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
