@@ -442,8 +442,10 @@ ostree_repo_write_config (OstreeRepo *self,
   if (!g_file_set_contents (priv->config_path, data, len, error))
     goto out;
   
-  g_key_file_unref (priv->config);
-  priv->config = g_key_file_ref (new_config);
+  g_key_file_free (priv->config);
+  priv->config = g_key_file_new ();
+  if (!g_key_file_load_from_data (priv->config, data, len, 0, error))
+    goto out;
 
   ret = TRUE;
  out:
