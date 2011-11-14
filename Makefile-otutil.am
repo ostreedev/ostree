@@ -20,17 +20,17 @@
 noinst_LTLIBRARIES += libotutil.la
 
 libotutil_la_SOURCES = \
-	libotutil/ot-opt-utils.c \
-	libotutil/ot-opt-utils.h \
-	libotutil/ot-unix-utils.c \
-	libotutil/ot-unix-utils.h \
-	libotutil/ot-variant-utils.c \
-	libotutil/ot-variant-utils.h \
-	libotutil/ot-gio-utils.c \
-	libotutil/ot-gio-utils.h \
-	libotutil/ot-glib-compat.c \
-	libotutil/ot-glib-compat.h \
-	libotutil/otutil.h \
+	src/libotutil/ot-opt-utils.c \
+	src/libotutil/ot-opt-utils.h \
+	src/libotutil/ot-unix-utils.c \
+	src/libotutil/ot-unix-utils.h \
+	src/libotutil/ot-variant-utils.c \
+	src/libotutil/ot-variant-utils.h \
+	src/libotutil/ot-gio-utils.c \
+	src/libotutil/ot-gio-utils.h \
+	src/libotutil/ot-glib-compat.c \
+	src/libotutil/ot-glib-compat.h \
+	src/libotutil/otutil.h \
 	$(NULL)
-libotutil_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
+libotutil_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(GIO_UNIX_CFLAGS)
 libotutil_la_LIBADD = $(GIO_UNIX_LIBS)

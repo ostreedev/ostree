@@ -19,17 +19,17 @@
 
 noinst_LTLIBRARIES += libostree.la
 
-libostree_la_SOURCES = libostree/ostree.h \
-	libostree/ostree-core.c \
-	libostree/ostree-core.h \
-	libostree/ostree-repo.c \
-	libostree/ostree-repo.h \
-	libostree/ostree-repo-file.c \
-	libostree/ostree-repo-file.h \
-	libostree/ostree-repo-file-enumerator.c \
-	libostree/ostree-repo-file-enumerator.h \
-	libostree/ostree-checkout.c \
-	libostree/ostree-checkout.h \
+libostree_la_SOURCES = src/libostree/ostree.h \
+	src/libostree/ostree-core.c \
+	src/libostree/ostree-core.h \
+	src/libostree/ostree-repo.c \
+	src/libostree/ostree-repo.h \
+	src/libostree/ostree-repo-file.c \
+	src/libostree/ostree-repo-file.h \
+	src/libostree/ostree-repo-file-enumerator.c \
+	src/libostree/ostree-repo-file-enumerator.h \
+	src/libostree/ostree-checkout.c \
+	src/libostree/ostree-checkout.h \
 	$(NULL)
-libostree_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libotutil -I$(srcdir)/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+libostree_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 libostree_la_LIBADD = libotutil.la $(OT_COREBIN_DEP_LIBS)

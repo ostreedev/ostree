@@ -19,23 +19,23 @@
 
 bin_PROGRAMS += ostree
 
-ostree_SOURCES = ostree/main.c \
-	ostree/ot-builtins.h \
-	ostree/ot-builtin-checkout.c \
-	ostree/ot-builtin-commit.c \
-	ostree/ot-builtin-compose.c \
-	ostree/ot-builtin-diff.c \
-	ostree/ot-builtin-fsck.c \
-	ostree/ot-builtin-init.c \
-	ostree/ot-builtin-log.c \
-	ostree/ot-builtin-run-triggers.c \
-	ostree/ot-builtin-remote.c \
-	ostree/ot-builtin-rev-parse.c \
-	ostree/ot-builtin-show.c \
+ostree_SOURCES = src/ostree/main.c \
+	src/ostree/ot-builtins.h \
+	src/ostree/ot-builtin-checkout.c \
+	src/ostree/ot-builtin-commit.c \
+	src/ostree/ot-builtin-compose.c \
+	src/ostree/ot-builtin-diff.c \
+	src/ostree/ot-builtin-fsck.c \
+	src/ostree/ot-builtin-init.c \
+	src/ostree/ot-builtin-log.c \
+	src/ostree/ot-builtin-run-triggers.c \
+	src/ostree/ot-builtin-remote.c \
+	src/ostree/ot-builtin-rev-parse.c \
+	src/ostree/ot-builtin-show.c \
 	$(NULL)
 
 if USE_LIBSOUP_GNOME
-ostree_SOURCES += ostree/ot-builtin-pull.c
+ostree_SOURCES += src/ostree/ot-builtin-pull.c
 endif
-ostree_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libotutil -I$(srcdir)/libostree -I$(srcdir)/ostree  -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostree_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree  -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
 ostree_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
