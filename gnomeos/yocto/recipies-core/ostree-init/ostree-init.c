@@ -62,7 +62,7 @@ perrorv (const char *format, ...)
 int main(int argc, char *argv[])
 {
   FILE *cmdline_f = NULL;
-  const char *ostree_root = NULL;
+  char *ostree_root = NULL;
   const char *p = NULL;
   size_t bytes_read;
   size_t buf_size;
@@ -72,12 +72,23 @@ int main(int argc, char *argv[])
   struct stat stbuf;
   char **init_argv = NULL;
   int i;
+  int mounted_proc = 0;
 
   cmdline_f = fopen ("/proc/cmdline", "r");
   if (!cmdline_f)
     {
-      perrorv ("Failed to open /proc/cmdline");
-      return 1;
+      if (mount ("procs", "/proc", "proc", 0, NULL) < 0)
+	{
+	  perrorv ("Failed to mount /proc");
+	  return 1;
+	}
+      mounted_proc = 1;
+      cmdline_f = fopen ("/proc/cmdline", "r");
+      if (!cmdline_f)
+	{
+	  perrorv ("Failed to open /proc/cmdline (after mounting)");
+	  return 1;
+	}
     }
 
   buf_size = 8;
@@ -101,13 +112,22 @@ int main(int argc, char *argv[])
       exit (1);
     }
 
-  for (p = buf; *p; p += strlen (p) + 1)
+  p = buf;
+  while (p != NULL)
     {
-      if (!strcmp (p, "ostree="))
+      if (!strncmp (p, "ostree=", strlen ("ostree=")))
 	{
-	  ostree_root = p + strlen ("ostree=");
+	  const char *start = p + strlen ("ostree=");
+	  const char *end = strchr (start, ' ');
+	  if (end)
+	    ostree_root = strndup (start, end - start);
+	  else
+	    ostree_root = strdup (start);
 	  break;
 	}
+      p = strchr (p, ' ');
+      if (p)
+	p += 1;
     }
 
   if (ostree_root)
@@ -116,6 +136,13 @@ int main(int argc, char *argv[])
       if (stat (destpath, &stbuf) < 0)
 	{
 	  perrorv ("Invalid ostree root '%s'", destpath);
+	  exit (1);
+	}
+
+      snprintf (destpath, sizeof(destpath), "/ostree/%s/var", ostree_root);
+      if (mount ("/ostree/var", destpath, NULL, MS_BIND, NULL) < 0)
+	{
+	  perrorv ("Failed to bind mount /ostree/var to '%s'", destpath);
 	  exit (1);
 	}
 
@@ -138,7 +165,6 @@ int main(int argc, char *argv[])
 	  perrorv ("failed to chdir to subroot");
 	  exit (1);
 	}
-      
     }
   else
     {
@@ -146,12 +172,17 @@ int main(int argc, char *argv[])
       exit (1);
     }
 
+  if (mounted_proc)
+    (void)umount ("/proc");
+
   init_argv = malloc (sizeof (char*)*(argc+1));
   init_argv[0] = INIT_PATH;
   for (i = 1; i < argc; i++)
     init_argv[i] = argv[i];
   init_argv[i] = NULL;
   
+  fprintf (stderr, "ostree-init: Running real init\n");
+  fflush (stderr);
   execv (INIT_PATH, init_argv);
   perrorv ("Failed to exec init '%s'", INIT_PATH);
   exit (1);
