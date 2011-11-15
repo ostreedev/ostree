@@ -112,6 +112,8 @@ int main(int argc, char *argv[])
       exit (1);
     }
 
+  fprintf (stderr, "ostree-init kernel cmdline: %s\n", buf);
+  fflush (stderr);
   p = buf;
   while (p != NULL)
     {
@@ -142,7 +144,7 @@ int main(int argc, char *argv[])
       snprintf (destpath, sizeof(destpath), "/ostree/%s/var", ostree_root);
       if (mount ("/ostree/var", destpath, NULL, MS_BIND, NULL) < 0)
 	{
-	  perrorv ("Failed to bind mount /ostree/var to '%s'", destpath);
+	  perrorv ("Failed to bind mount / to '%s'", destpath);
 	  exit (1);
 	}
 
@@ -181,7 +183,7 @@ int main(int argc, char *argv[])
     init_argv[i] = argv[i];
   init_argv[i] = NULL;
   
-  fprintf (stderr, "ostree-init: Running real init\n");
+  fprintf (stderr, "ostree-init: Running real init (argc=%d)\n", argc);
   fflush (stderr);
   execv (INIT_PATH, init_argv);
   perrorv ("Failed to exec init '%s'", INIT_PATH);

@@ -10,7 +10,7 @@ inherit rootfs_${IMAGE_PKGTYPE}
 PACKAGE_INSTALL = "task-core-boot task-base-extended \
 		   ostree ostree-init"
 RDEPENDS += "${PACKAGE_INSTALL}"
-DEPENDS += "virtual/fakeroot-native"
+DEPENDS += "makedevs-native virtual/fakeroot-native"
 
 EXCLUDE_FROM_WORLD = "1"
 
@@ -19,6 +19,9 @@ do_rootfs[dirs] = "${TOPDIR}"
 do_rootfs[lockfiles] += "${IMAGE_ROOTFS}.lock"
 do_build[nostamp] = "1"
 do_rootfs[umask] = 022
+
+def gnomeos_get_devtable_list(d):
+    return bb.which(d.getVar('BBPATH', 1), 'files/device_table-minimal.txt')
 
 # Must call real_do_rootfs() from inside here, rather than as a separate
 # task, so that we have a single fakeroot context for the whole process.
@@ -30,6 +33,8 @@ fakeroot do_rootfs () {
 	mkdir -p ${DEPLOY_DIR_IMAGE}
 
 	rootfs_${IMAGE_PKGTYPE}_do_rootfs
+
+	makedevs -r ${IMAGE_ROOTFS} -D ${@gnomeos_get_devtable_list(d)}
 
 	echo "GNOME OS Unix login" > ${IMAGE_ROOTFS}/etc/issue
 
@@ -48,6 +53,8 @@ fakeroot do_rootfs () {
 	for d in $READONLY_BIND_MOUNTS; do
             mv ${IMAGE_ROOTFS}/$d .
 	done
+	# Also copy over any static /dev contents for now
+	mv ${IMAGE_ROOTFS}/dev .
 	rm -rf ${IMAGE_ROOTFS}
 	mv ${WORKDIR}/gnomeos-contents ${IMAGE_ROOTFS}
 

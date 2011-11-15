@@ -23,10 +23,12 @@ BUILD_TAR=$1
 test -n "$BUILD_TAR" || usage
 shift
 
+origcwd=`pwd`
 tempdir=`mktemp -d tmp-commit-yocto-build.XXXXXXXXXX`
 cd $tempdir
 mkdir fs
 cd fs
 fakeroot -s ../fakeroot.db tar xf $BUILD_TAR
 fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build (need ostree git version here)" -b gnomeos-base
+cd ${origcwd}
 rm -rf $tempdir

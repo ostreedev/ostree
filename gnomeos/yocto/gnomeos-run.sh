@@ -74,15 +74,19 @@ if (! test -f ${OBJ}); then
     cd ${WORKDIR}
     
     umount fs
+    rmdir fs
     mv ${OBJ}.tmp ${OBJ}
 fi
 
 ARGS="$@"
-if ! [ echo $ARGS | grep -q 'init=']; then
+if ! echo $ARGS | grep -q 'init='; then
     ARGS="init=/ostree-init $ARGS"
 fi
-if ! [ echo $ARGS | grep -q 'root=']; then
+if ! echo $ARGS | grep -q 'root='; then
     ARGS="root=/dev/hda $ARGS"
+fi
+if ! echo $ARGS | grep -q 'ostree='; then
+    ARGS="ostree=current $ARGS"
 fi
 
 exec qemu-kvm -kernel ./tmp/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -append "$ARGS"
