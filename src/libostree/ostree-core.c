@@ -479,7 +479,7 @@ ostree_pack_object (GOutputStream     *output,
         }
       else if (S_ISBLK (mode) || S_ISCHR (mode))
         {
-          device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_DEVICE);
+          device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
           object_size = 4;
         }
       else if (S_ISFIFO (mode))
