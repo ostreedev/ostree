@@ -31,18 +31,50 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+static gboolean
+parse_file_or_commit (OstreeRepo  *repo,
+                      const char  *arg,
+                      GFile      **out_file,
+                      GCancellable *cancellable,
+                      GError     **error)
+{
+  gboolean ret = FALSE;
+  GFile *ret_file = NULL;
+
+  if (g_str_has_prefix (arg, "/")
+      || g_str_has_prefix (arg, "./"))
+    {
+      ret_file = ot_util_new_file_for_path (arg);
+    }
+  else
+    {
+      if (!ostree_repo_read_commit (repo, arg, &ret_file, cancellable, NULL))
+        goto out;
+    }
+
+  ret = TRUE;
+  *out_file = ret_file;
+  ret_file = NULL;
+ out:
+  g_clear_object (&ret_file);
+  return ret;
+}
+
 gboolean
 ostree_builtin_diff (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
+  const char *src;
   const char *target;
-  const char *rev;
+  GFile *srcf = NULL;
   GFile *targetf = NULL;
+  GFile *cwd = NULL;
   GPtrArray *modified = NULL;
   GPtrArray *removed = NULL;
   GPtrArray *added = NULL;
+  int i;
 
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
   g_option_context_add_main_entries (context, options, NULL);
@@ -64,16 +96,47 @@ ostree_builtin_diff (int argc, char **argv, const char *repo_path, GError **erro
       goto out;
     }
 
-  rev = argv[1];
+  src = argv[1];
   target = argv[2];
-  targetf = ot_util_new_file_for_path (target);
-  
-  if (!ostree_repo_diff (repo, rev, targetf, &modified, &removed, &added, NULL, error))
+
+  cwd = ot_util_new_file_for_path (".");
+
+  if (!parse_file_or_commit (repo, src, &srcf, NULL, error))
     goto out;
+  if (!parse_file_or_commit (repo, target, &targetf, NULL, error))
+    goto out;
+  
+  if (!ostree_repo_diff (repo, srcf, targetf, &modified, &removed, &added, NULL, error))
+    goto out;
+
+  for (i = 0; i < modified->len; i++)
+    {
+      OstreeRepoDiffItem *diff = modified->pdata[i];
+      g_print ("M    %s\n", ot_gfile_get_path_cached (diff->src));
+    }
+  for (i = 0; i < removed->len; i++)
+    {
+      g_print ("D    %s\n", ot_gfile_get_path_cached (removed->pdata[i]));
+    }
+  for (i = 0; i < added->len; i++)
+    {
+      GFile *added_f = added->pdata[i];
+      if (g_file_is_native (added_f))
+        {
+          char *relpath = g_file_get_relative_path (cwd, added_f);
+          g_assert (relpath != NULL);
+          g_print ("A    %s\n", relpath);
+          g_free (relpath);
+        }
+      else
+        g_print ("A    %s\n", ot_gfile_get_path_cached (added_f));
+    }
 
   ret = TRUE;
  out:
   g_clear_object (&repo);
+  g_clear_object (&cwd);
+  g_clear_object (&srcf);
   g_clear_object (&targetf);
   if (modified)
     g_ptr_array_free (modified, TRUE);

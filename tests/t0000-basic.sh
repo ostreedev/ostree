@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..12"
+echo "1..13"
 
 . libtest.sh
 
@@ -83,6 +83,7 @@ echo 4 > four
 mkdir -p yet/another/tree
 echo leaf > yet/another/tree/green
 echo helloworld > yet/message
+rm a/5
 $OSTREE commit -b test2 -s "Current directory"
 echo "ok cwd commit"
 
@@ -92,6 +93,22 @@ cd checkout-test2-4
 assert_file_has_content yet/another/tree/green 'leaf'
 assert_file_has_content four '4'
 echo "ok cwd contents"
+
+cd ${test_tmpdir}
+$OSTREE diff test2^ test2 > diff-test2
+assert_file_has_content diff-test2 'D */a/5'
+assert_file_has_content diff-test2 'A */yet$'
+assert_file_has_content diff-test2 'A */yet/message$'
+assert_file_has_content diff-test2 'A */yet/another/tree/green$'
+echo "ok diff revisions"
+
+cd ${test_tmpdir}/checkout-test2-4
+echo afile > oh-look-a-file
+$OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
+rm oh-look-a-file
+cd ${test_tmpdir}
+assert_file_has_content diff-test2-2 'A */oh-look-a-file$'
+echo "ok diff cwd"
 
 cd ${test_tmpdir}/checkout-test2-4
 echo afile > oh-look-a-file
@@ -107,3 +124,4 @@ $OSTREE show test2 > ${test_tmpdir}/show
 assert_file_has_content ${test_tmpdir}/show 'example.com'
 assert_file_has_content ${test_tmpdir}/show 'buildid'
 echo "ok metadata content"
+

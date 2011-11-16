@@ -125,23 +125,30 @@ gboolean      ostree_repo_checkout (OstreeRepo *self,
                                     GCancellable   *cancellable,
                                     GError      **error);
 
+gboolean       ostree_repo_read_commit (OstreeRepo *self,
+                                        const char *rev,
+                                        GFile       **out_root,
+                                        GCancellable *cancellable,
+                                        GError  **error);
+
 typedef struct {
-  guint content_differs : 1;
-  guint xattrs_differs : 1;
-  guint unused : 30;
+  volatile gint refcount;
+
+  GFile *src;
+  GFile *target;
 
   GFileInfo *src_info;
   GFileInfo *target_info;
 
-  char *src_file_checksum;
-  char *target_file_checksum;
-
-  GVariant *src_xattrs;
-  GVariant *target_xattrs;
+  char *src_checksum;
+  char *target_checksum;
 } OstreeRepoDiffItem;
 
+OstreeRepoDiffItem *ostree_repo_diff_item_ref (OstreeRepoDiffItem *diffitem);
+void ostree_repo_diff_item_unref (OstreeRepoDiffItem *diffitem);
+
 gboolean      ostree_repo_diff (OstreeRepo     *self,
-                                const char     *ref,
+                                GFile          *src,
                                 GFile          *target,
                                 GPtrArray     **out_modified, /* OstreeRepoDiffItem */
                                 GPtrArray     **out_removed, /* OstreeRepoDiffItem */
