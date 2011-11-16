@@ -10,8 +10,6 @@ INHIBIT_DEFAULT_DEPS = "1"
 SRC_URI = "file://functions \
            file://halt \
            file://umountfs \
-           file://devpts.sh \
-           file://devpts \
            file://hostname.sh \
            file://mountall.sh \
            file://banner.sh \
@@ -19,17 +17,12 @@ SRC_URI = "file://functions \
            file://bootmisc.sh \
            file://mountnfs.sh \
            file://reboot \
-           file://checkfs.sh \
            file://single \
            file://sendsigs \
            file://urandom \
            file://rmnologin.sh \
-           file://checkroot.sh \
            file://umountnfs.sh \
-           file://sysfs.sh \
            file://device_table.txt \
-           file://populate-volatile.sh \
-           file://volatiles \
            file://save-rtc.sh \
 	   file://GPLv2.patch"
 
@@ -58,11 +51,9 @@ do_install () {
 	install -d ${D}${sysconfdir}/rc5.d
 	install -d ${D}${sysconfdir}/rc6.d
 	install -d ${D}${sysconfdir}/default
-	install -d ${D}${sysconfdir}/default/volatiles
 
 	install -m 0644    ${WORKDIR}/functions		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/bootmisc.sh	${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/checkroot.sh	${D}${sysconfdir}/init.d
 #	install -m 0755    ${WORKDIR}/finish.sh		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/halt		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/hostname.sh	${D}${sysconfdir}/init.d
@@ -74,12 +65,7 @@ do_install () {
 	install -m 0755    ${WORKDIR}/single		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/umountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/urandom		${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/devpts.sh	${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/devpts		${D}${sysconfdir}/default
-	install -m 0755    ${WORKDIR}/sysfs.sh		${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/populate-volatile.sh ${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/save-rtc.sh	${D}${sysconfdir}/init.d
-	install -m 0644    ${WORKDIR}/volatiles		${D}${sysconfdir}/default/volatiles/00_core
 	if [ "${TARGET_ARCH}" = "arm" ]; then
 		install -m 0755 ${WORKDIR}/alignment.sh	${D}${sysconfdir}/init.d
 	fi
@@ -110,18 +96,13 @@ do_install () {
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc0.d/S25save-rtc.sh
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc6.d/S25save-rtc.sh
 	ln -sf		../init.d/banner.sh	${D}${sysconfdir}/rcS.d/S02banner.sh
-	ln -sf		../init.d/checkroot.sh	${D}${sysconfdir}/rcS.d/S10checkroot.sh
-#	ln -sf		../init.d/checkfs.sh	${D}${sysconfdir}/rcS.d/S30checkfs.sh
 	ln -sf		../init.d/mountall.sh	${D}${sysconfdir}/rcS.d/S35mountall.sh
 	ln -sf		../init.d/hostname.sh	${D}${sysconfdir}/rcS.d/S39hostname.sh
 	ln -sf		../init.d/mountnfs.sh	${D}${sysconfdir}/rcS.d/S45mountnfs.sh
 	ln -sf		../init.d/bootmisc.sh	${D}${sysconfdir}/rcS.d/S55bootmisc.sh
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rcS.d/S55urandom
 #	ln -sf		../init.d/finish.sh	${D}${sysconfdir}/rcS.d/S99finish.sh
-	ln -sf		../init.d/sysfs.sh	${D}${sysconfdir}/rcS.d/S02sysfs.sh
 	# udev will run at S03 if installed
-	ln -sf		../init.d/populate-volatile.sh	${D}${sysconfdir}/rcS.d/S37populate-volatile.sh
-	ln -sf		../init.d/devpts.sh	${D}${sysconfdir}/rcS.d/S38devpts.sh
 	if [ "${TARGET_ARCH}" = "arm" ]; then
 		ln -sf	../init.d/alignment.sh	${D}${sysconfdir}/rcS.d/S06alignment.sh
 	fi

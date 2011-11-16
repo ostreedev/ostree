@@ -59,44 +59,70 @@ perrorv (const char *format, ...)
   return 0;
 }
 
-int main(int argc, char *argv[])
+static char *
+parse_arg (const char *cmdline, const char *arg)
 {
-  FILE *cmdline_f = NULL;
-  char *ostree_root = NULL;
-  const char *p = NULL;
+  const char *p;
+  int arglen;
+  char *ret = NULL;
+  int is_eq;
+
+  arglen = strlen (arg);
+  assert (arglen > 0);
+  is_eq = *(arg+arglen-1) == '=';
+
+  p = cmdline;
+  while (p != NULL)
+    {
+      if (!strncmp (p, arg, arglen))
+	{
+	  const char *start = p + arglen;
+	  const char *end = strchr (start, ' ');
+
+	  if (is_eq)
+	    {
+	      if (end)
+		ret = strndup (start, end - start);
+	      else
+		ret = strdup (start);
+	    }
+	  else if (!end || end == start)
+	    {
+	      ret = strdup (arg);
+	    }
+	  break;
+	}
+      p = strchr (p, ' ');
+      if (p)
+	p += 1;
+    }
+  return ret;
+}
+
+static char *
+get_file_contents (const char *path, size_t *len)
+{
+  FILE *f = NULL;
+  char *ret = NULL;
+  int saved_errno;
+  char *buf = NULL;
   size_t bytes_read;
   size_t buf_size;
   size_t buf_used;
-  char destpath[PATH_MAX];
-  char *buf;
-  struct stat stbuf;
-  char **init_argv = NULL;
-  int i;
-  int mounted_proc = 0;
 
-  cmdline_f = fopen ("/proc/cmdline", "r");
-  if (!cmdline_f)
+  f = fopen (path, "r");
+  if (!f)
     {
-      if (mount ("procs", "/proc", "proc", 0, NULL) < 0)
-	{
-	  perrorv ("Failed to mount /proc");
-	  return 1;
-	}
-      mounted_proc = 1;
-      cmdline_f = fopen ("/proc/cmdline", "r");
-      if (!cmdline_f)
-	{
-	  perrorv ("Failed to open /proc/cmdline (after mounting)");
-	  return 1;
-	}
+      saved_errno = errno;
+      goto out;
     }
 
-  buf_size = 8;
+  buf_size = 1024;
   buf_used = 0;
   buf = malloc (buf_size);
   assert (buf);
 
-  while ((bytes_read = fread (buf + buf_used, 1, buf_size - buf_used, cmdline_f)) > 0)
+  while ((bytes_read = fread (buf + buf_used, 1, buf_size - buf_used, f)) > 0)
     {
       buf_used += bytes_read;
       if (buf_size == buf_used)
@@ -108,69 +134,158 @@ int main(int argc, char *argv[])
     }
   if (bytes_read < 0)
     {
-      perrorv ("Failed to read from /proc/cmdline");
+      saved_errno = errno;
+      goto out;
+    }
+
+  ret = buf;
+  buf = NULL;
+  *len = buf_used;
+ out:
+  if (f)
+    fclose (f);
+  free (buf);
+  errno = saved_errno;
+  return ret;
+}
+
+int
+main(int argc, char *argv[])
+{
+  const char *toproot_bind_mounts[] = { "/home", "/root", "/tmp", NULL };
+  const char *ostree_bind_mounts[] = { "/var", NULL };
+  const char *readonly_bind_mounts[] = { "/bin", "/etc", "/lib", "/sbin", "/usr",
+					 NULL };
+  char *ostree_root = NULL;
+  char *ostree_subinit = NULL;
+  char srcpath[PATH_MAX];
+  char destpath[PATH_MAX];
+  struct stat stbuf;
+  char **init_argv = NULL;
+  char *cmdline = NULL;
+  size_t len;
+  int i;
+  int mounted_proc = 0;
+  char *tmp;
+  int readonly;
+
+  cmdline = get_file_contents ("/proc/cmdline", &len);
+  if (!cmdline)
+    {
+      if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
+	{
+	  perrorv ("Failed to mount /proc");
+	  return 1;
+	}
+      cmdline = get_file_contents ("/proc/cmdline", &len);
+      if (!cmdline)
+	{
+	  perrorv ("Failed to read /proc/cmdline");
+	  return 1;
+	}
+    }
+
+  fprintf (stderr, "ostree-init kernel cmdline: %s\n", cmdline);
+  fflush (stderr);
+
+  ostree_root = parse_arg (cmdline, "ostree=");
+  ostree_subinit = parse_arg (cmdline, "ostree-subinit=");
+
+  tmp = parse_arg (cmdline, "ro");
+  readonly = tmp != NULL;
+  free (tmp);
+
+  if (!ostree_root)
+    {
+      fprintf (stderr, "No ostree= argument specified\n");
       exit (1);
     }
 
-  fprintf (stderr, "ostree-init kernel cmdline: %s\n", buf);
-  fflush (stderr);
-  p = buf;
-  while (p != NULL)
+  if (!readonly)
     {
-      if (!strncmp (p, "ostree=", strlen ("ostree=")))
+      if (mount ("/dev/root", "/", NULL, MS_MGC_VAL|MS_REMOUNT, NULL) < 0)
 	{
-	  const char *start = p + strlen ("ostree=");
-	  const char *end = strchr (start, ' ');
-	  if (end)
-	    ostree_root = strndup (start, end - start);
-	  else
-	    ostree_root = strdup (start);
-	  break;
-	}
-      p = strchr (p, ' ');
-      if (p)
-	p += 1;
-    }
-
-  if (ostree_root)
-    {
-      snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_root);
-      if (stat (destpath, &stbuf) < 0)
-	{
-	  perrorv ("Invalid ostree root '%s'", destpath);
-	  exit (1);
-	}
-
-      snprintf (destpath, sizeof(destpath), "/ostree/%s/var", ostree_root);
-      if (mount ("/ostree/var", destpath, NULL, MS_BIND, NULL) < 0)
-	{
-	  perrorv ("Failed to bind mount / to '%s'", destpath);
-	  exit (1);
-	}
-
-      snprintf (destpath, sizeof(destpath), "/ostree/%s/sysroot", ostree_root);
-      if (mount ("/", destpath, NULL, MS_BIND, NULL) < 0)
-	{
-	  perrorv ("Failed to bind mount / to '%s'", destpath);
-	  exit (1);
-	}
-
-      snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_root);
-      if (chroot (destpath) < 0)
-	{
-	  perrorv ("failed to change root to '%s'", destpath);
-	  exit (1);
-	}
-
-      if (chdir ("/") < 0)
-	{
-	  perrorv ("failed to chdir to subroot");
+	  perrorv ("Failed to remount / read/write");
 	  exit (1);
 	}
     }
-  else
+
+  snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_root);
+  if (stat (destpath, &stbuf) < 0)
     {
-      fprintf (stderr, "No ostree= argument specified\n");
+      perrorv ("Invalid ostree root '%s'", destpath);
+      exit (1);
+    }
+  
+  snprintf (destpath, sizeof(destpath), "/ostree/%s/var", ostree_root);
+  if (mount ("/ostree/var", destpath, NULL, MS_BIND, NULL) < 0)
+    {
+      perrorv ("Failed to bind mount / to '%s'", destpath);
+      exit (1);
+    }
+  
+  snprintf (destpath, sizeof(destpath), "/ostree/%s/sysroot", ostree_root);
+  if (mount ("/", destpath, NULL, MS_BIND, NULL) < 0)
+    {
+      perrorv ("Failed to bind mount / to '%s'", destpath);
+      exit (1);
+    }
+
+  snprintf (destpath, sizeof(destpath), "/ostree/%s/dev", ostree_root);
+  if (mount ("udev", destpath, "devtmpfs",
+	     MS_MGC_VAL | MS_NOSUID,
+	     "seclabel,relatime,size=1960040k,nr_inodes=49010,mode=755") < 0)
+    {
+      perrorv ("Failed to mount devtmpfs on '%s'", destpath);
+      exit (1);
+    }
+
+  for (i = 0; toproot_bind_mounts[i] != NULL; i++)
+    {
+      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_root, toproot_bind_mounts[i]);
+      if (mount (toproot_bind_mounts[i], destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
+	  exit (1);
+	}
+    }
+
+  for (i = 0; ostree_bind_mounts[i] != NULL; i++)
+    {
+      snprintf (srcpath, sizeof(srcpath), "/ostree/%s", ostree_bind_mounts[i]);
+      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_root, ostree_bind_mounts[i]);
+      if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
+	  exit (1);
+	}
+    }
+
+  for (i = 0; readonly_bind_mounts[i] != NULL; i++)
+    {
+      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_root, readonly_bind_mounts[i]);
+      if (mount (destpath, destpath, NULL, MS_BIND, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
+	  exit (1);
+	}
+      if (mount (destpath, destpath, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
+	  exit (1);
+	}
+    }
+  
+  snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_root);
+  if (chroot (destpath) < 0)
+    {
+      perrorv ("failed to change root to '%s'", destpath);
+      exit (1);
+    }
+
+  if (chdir ("/") < 0)
+    {
+      perrorv ("failed to chdir to subroot");
       exit (1);
     }
 
@@ -178,14 +293,17 @@ int main(int argc, char *argv[])
     (void)umount ("/proc");
 
   init_argv = malloc (sizeof (char*)*(argc+1));
-  init_argv[0] = INIT_PATH;
+  if (ostree_subinit)
+    init_argv[0] = ostree_subinit;
+  else
+    init_argv[0] = INIT_PATH;
   for (i = 1; i < argc; i++)
     init_argv[i] = argv[i];
   init_argv[i] = NULL;
   
-  fprintf (stderr, "ostree-init: Running real init (argc=%d)\n", argc);
+  fprintf (stderr, "ostree-init: Running real init %s (argc=%d)\n", init_argv[0], argc);
   fflush (stderr);
-  execv (INIT_PATH, init_argv);
+  execv (init_argv[0], init_argv);
   perrorv ("Failed to exec init '%s'", INIT_PATH);
   exit (1);
 }
