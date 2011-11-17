@@ -2072,7 +2072,10 @@ diff_dirs (GFile          *a,
           child_b_type = g_file_info_get_file_type (child_b_info);
           if (child_a_type != child_b_type)
             {
-              g_ptr_array_add (modified, g_object_ref (child_a));
+              OstreeRepoDiffItem *diff_item = diff_item_new (child_a, child_a_info,
+                                                             child_b, child_b_info, NULL, NULL);
+              
+              g_ptr_array_add (modified, diff_item);
             }
           else
             {

@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..14"
+echo "1..15"
 
 . libtest.sh
 
@@ -109,6 +109,15 @@ rm oh-look-a-file
 cd ${test_tmpdir}
 assert_file_has_content diff-test2-2 'A */oh-look-a-file$'
 echo "ok diff cwd"
+
+cd ${test_tmpdir}/checkout-test2-4
+rm four
+mkdir four
+touch four/other
+$OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
+cd ${test_tmpdir}
+assert_file_has_content diff-test2-2 'M */four$'
+echo "ok diff file changing type"
 
 cd ${test_tmpdir}/checkout-test2-4
 echo afile > oh-look-a-file
