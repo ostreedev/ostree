@@ -249,12 +249,12 @@ parse_rev_file (OstreeRepo     *self,
   return ret;
 }
 
-static gboolean
-resolve_rev (OstreeRepo     *self,
-             const char     *rev,
-             gboolean        allow_noent,
-             char          **sha256,
-             GError        **error)
+gboolean
+ostree_repo_resolve_rev (OstreeRepo     *self,
+                         const char     *rev,
+                         gboolean        allow_noent,
+                         char          **sha256,
+                         GError        **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
@@ -262,14 +262,23 @@ resolve_rev (OstreeRepo     *self,
   char *tmp2 = NULL;
   char *ret_rev = NULL;
   GFile *child = NULL;
+  GFile *origindir = NULL;
   char *child_path = NULL;
   GError *temp_error = NULL;
   GVariant *commit = NULL;
+
+  g_return_val_if_fail (rev != NULL, FALSE);
 
   if (strlen (rev) == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid empty rev");
+      goto out;
+    }
+  else if (strstr (rev, "..") != NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid rev %s", rev);
       goto out;
     }
   else if (strlen (rev) == 64)
@@ -281,7 +290,7 @@ resolve_rev (OstreeRepo     *self,
       tmp = g_strdup (rev);
       tmp[strlen(tmp) - 1] = '\0';
 
-      if (!resolve_rev (self, tmp, allow_noent, &tmp2, error))
+      if (!ostree_repo_resolve_rev (self, tmp, allow_noent, &tmp2, error))
         goto out;
 
       if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_COMMIT_VARIANT, tmp2, &commit, error))
@@ -298,8 +307,33 @@ resolve_rev (OstreeRepo     *self,
     }
   else
     {
-      child = g_file_get_child (priv->local_heads_dir, rev);
-      child_path = g_file_get_path (child);
+      const char *slash = strchr (rev, '/');
+      if (slash != NULL && (slash == rev || !*(slash+1)))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid rev %s", rev);
+          goto out;
+        }
+      else if (slash == NULL)
+        {
+          child = g_file_get_child (priv->local_heads_dir, rev);
+          child_path = g_file_get_path (child);
+        }
+      else
+        {
+          const char *rest = slash + 1;
+
+          if (strchr (rest, '/'))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Invalid rev %s", rev);
+              goto out;
+            }
+          
+          child = g_file_get_child (priv->remote_heads_dir, rev);
+          child_path = g_file_get_path (child);
+
+        }
       if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
         {
           if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -333,19 +367,10 @@ resolve_rev (OstreeRepo     *self,
   g_free (tmp);
   g_free (tmp2);
   g_clear_object (&child);
+  g_clear_object (&origindir);
   g_free (child_path);
   g_free (ret_rev);
   return ret;
-}
-
-gboolean
-ostree_repo_resolve_rev (OstreeRepo     *self,
-                         const char     *rev,
-                         char          **sha256,
-                         GError        **error)
-{
-  g_return_val_if_fail (rev != NULL, FALSE);
-  return resolve_rev (self, rev, FALSE, sha256, error);
 }
 
 static gboolean
@@ -1450,7 +1475,7 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   if (!import_root (self, base, &root, error))
     goto out;
 
-  if (!resolve_rev (self, parent, TRUE, &current_head, error))
+  if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
   in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);
@@ -1802,7 +1827,7 @@ ostree_repo_checkout (OstreeRepo *self,
       goto out;
     }
 
-  if (!resolve_rev (self, rev, FALSE, &resolved, error))
+  if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved, error))
     goto out;
 
   root = (OstreeRepoFile*)_ostree_repo_file_new_root (self, resolved);
@@ -2175,7 +2200,7 @@ ostree_repo_read_commit (OstreeRepo *self,
   GFile *ret_root = NULL;
   char *resolved_rev = NULL;
 
-  if (!resolve_rev (self, rev, FALSE, &resolved_rev, error))
+  if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved_rev, error))
     goto out;
 
   ret_root = _ostree_repo_file_new_root (self, resolved_rev);

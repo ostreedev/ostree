@@ -86,6 +86,7 @@ gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *rev,
+                                       gboolean     allow_noent,
                                        char       **out_resolved,
                                        GError     **error);
 

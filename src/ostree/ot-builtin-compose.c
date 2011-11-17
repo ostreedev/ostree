@@ -187,7 +187,7 @@ compose_branch_on_dir (OstreeRepo *repo,
   gboolean ret = FALSE;
   char *branchrev = NULL;
 
-  if (!ostree_repo_resolve_rev (repo, branch, &branchrev, error))
+  if (!ostree_repo_resolve_rev (repo, branch, FALSE, &branchrev, error))
     goto out;
   
   destpath = g_file_get_path (destination);

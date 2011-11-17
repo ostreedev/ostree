@@ -59,7 +59,7 @@ ostree_builtin_rev_parse (int argc, char **argv, const char *repo_path, GError *
     }
   rev = argv[1];
 
-  if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+  if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
     goto out;
 
   g_print ("%s\n", resolved_rev);

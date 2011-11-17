@@ -64,7 +64,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
   if (!ot_util_spawn_pager (&pager, error))
     goto out;
 
-  if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+  if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
     goto out;
 
   while (TRUE)

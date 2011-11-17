@@ -216,7 +216,7 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
     }
   else if (print_compose)
     {
-      if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
 
       if (!do_print_compose (repo, rev, resolved_rev, error))
@@ -229,7 +229,7 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
     }
   else
     {
-      if (!ostree_repo_resolve_rev (repo, rev, &resolved_rev, error))
+      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
 
       if (!show_repo_meta (repo, rev, resolved_rev, error))

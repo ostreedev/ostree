@@ -263,6 +263,8 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
   char *baseurl = NULL;
   char *refpath = NULL;
   char *temppath = NULL;
+  char *remote_ref = NULL;
+  char *original_rev = NULL;
   GKeyFile *config = NULL;
   SoupURI *base_uri = NULL;
   SoupURI *target_uri = NULL;
@@ -287,6 +289,11 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
 
   remote = argv[1];
   branch = argv[2];
+
+  remote_ref = g_strdup_printf ("%s/%s", remote, branch);
+
+  if (!ostree_repo_resolve_rev (repo, remote_ref, TRUE, &original_rev, error))
+    goto out;
 
   config = ostree_repo_get_config (repo);
 
@@ -319,14 +326,23 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
     goto out;
   g_strchomp (rev);
 
-  if (!ostree_validate_checksum_string (rev, error))
-    goto out;
-
-  if (!store_commit_recurse (repo, soup, base_uri, rev, error))
-    goto out;
-
-  if (!ostree_repo_write_ref (repo, FALSE, branch, rev, error))
-    goto out;
+  if (original_rev && strcmp (rev, original_rev) == 0)
+    {
+      g_print ("No changes in %s\n", remote_ref);
+    }
+  else
+    {
+      if (!ostree_validate_checksum_string (rev, error))
+        goto out;
+      
+      if (!store_commit_recurse (repo, soup, base_uri, rev, error))
+        goto out;
+      
+      if (!ostree_repo_write_ref (repo, remote, branch, rev, error))
+        goto out;
+      
+      g_print ("remote %s is now %s\n", remote_ref, rev);
+    }
  
   ret = TRUE;
  out:
@@ -337,6 +353,8 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
   g_free (temppath);
   g_free (key);
   g_free (rev);
+  g_free (remote_ref);
+  g_free (original_rev);
   g_free (baseurl);
   g_free (refpath);
   g_free (remote_branch_ref_path);
