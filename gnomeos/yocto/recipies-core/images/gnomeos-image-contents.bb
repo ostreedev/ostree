@@ -7,8 +7,11 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3
 
 inherit rootfs_${IMAGE_PKGTYPE}
 
-PACKAGE_INSTALL = "task-core-boot task-base-extended \
-		   ostree ostree-init strace"
+PACKAGE_INSTALL = "task-core-boot \
+		   coreutils \
+		   ostree ostree-init \
+		   strace"
+
 RDEPENDS += "${PACKAGE_INSTALL}"
 DEPENDS += "makedevs-native virtual/fakeroot-native"
 
@@ -34,9 +37,6 @@ fakeroot do_rootfs () {
 
 	rootfs_${IMAGE_PKGTYPE}_do_rootfs
 
-	makedevs -r ${IMAGE_ROOTFS} -D ${@gnomeos_get_devtable_list(d)}
-	mkdir ${IMAGE_ROOTFS}/dev/pts
-
 	# We use devtmpfs
 	rm -f ${IMAGE_ROOTFS}/etc/init.d/udev-cache
 	rm -f ${IMAGE_ROOTFS}/etc/rc*.d/*udev-cache*
@@ -49,7 +49,6 @@ sysfs                   /sys                    sysfs   defaults        0 0
 proc                    /proc                   proc    defaults        0 0
 EOF
 
-	echo "GNOME OS Unix login" > ${IMAGE_ROOTFS}/etc/issue
 
 	ln -sf /var/run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
 
@@ -68,8 +67,6 @@ EOF
 	for d in $READONLY_BIND_MOUNTS; do
             mv ${IMAGE_ROOTFS}/$d .
 	done
-	# Also copy over any static /dev contents for now
-	mv ${IMAGE_ROOTFS}/dev .
 	rm -rf ${IMAGE_ROOTFS}
 	mv ${WORKDIR}/gnomeos-contents ${IMAGE_ROOTFS}
 

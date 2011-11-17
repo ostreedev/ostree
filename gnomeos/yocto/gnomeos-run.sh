@@ -89,4 +89,4 @@ if ! echo $ARGS | grep -q 'ostree='; then
     ARGS="ostree=current $ARGS"
 fi
 
-exec qemu-kvm -kernel ./tmp/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -append "$ARGS"
+exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -append "$ARGS"
