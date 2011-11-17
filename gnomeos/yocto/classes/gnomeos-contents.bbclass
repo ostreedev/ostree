@@ -10,7 +10,8 @@ inherit rootfs_${IMAGE_PKGTYPE}
 PACKAGE_INSTALL = "task-core-boot \
 		   coreutils \
 		   ostree ostree-init \
-		   strace"
+		   strace \
+		   python-core python-misc"
 
 RDEPENDS += "${PACKAGE_INSTALL}"
 DEPENDS += "makedevs-native virtual/fakeroot-native"
