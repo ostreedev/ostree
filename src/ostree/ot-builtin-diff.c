@@ -42,13 +42,14 @@ parse_file_or_commit (OstreeRepo  *repo,
   GFile *ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
-      || g_str_has_prefix (arg, "./"))
+      || g_str_has_prefix (arg, "./")
+      )
     {
       ret_file = ot_util_new_file_for_path (arg);
     }
   else
     {
-      if (!ostree_repo_read_commit (repo, arg, &ret_file, cancellable, NULL))
+      if (!ostree_repo_read_commit (repo, arg, &ret_file, cancellable, error))
         goto out;
     }
 
@@ -125,7 +126,7 @@ ostree_builtin_diff (int argc, char **argv, const char *repo_path, GError **erro
         {
           char *relpath = g_file_get_relative_path (cwd, added_f);
           g_assert (relpath != NULL);
-          g_print ("A    %s\n", relpath);
+          g_print ("A    /%s\n", relpath);
           g_free (relpath);
         }
       else

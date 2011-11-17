@@ -75,7 +75,7 @@ const char *_ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self);
 
 gboolean _ostree_repo_file_is_tree (OstreeRepoFile  *self);
 
-const char * _ostree_repo_file_nontree_get_checksum (OstreeRepoFile  *self);
+const char * _ostree_repo_file_get_checksum (OstreeRepoFile  *self);
 
 GFile *_ostree_repo_file_nontree_get_local (OstreeRepoFile  *self);
 
@@ -95,9 +95,6 @@ int     _ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                             const char      *name,
                                             gboolean        *is_dir,
                                             GVariant       **out_container);
-
-const char *_ostree_repo_file_tree_get_child_checksum (OstreeRepoFile  *self,
-                                                       int n);
 
 gboolean _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                              int              n,

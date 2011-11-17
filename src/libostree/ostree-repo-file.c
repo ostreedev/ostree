@@ -392,7 +392,7 @@ _ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 
   g_assert (!ostree_repo_is_archive (self->repo));
 
-  checksum = _ostree_repo_file_nontree_get_checksum (self);
+  checksum = _ostree_repo_file_get_checksum (self);
   path = ostree_repo_get_object_path (self->repo, checksum, OSTREE_OBJECT_TYPE_FILE);
   ret = ot_util_new_file_for_path (path);
   g_free (path);
@@ -417,33 +417,35 @@ _ostree_repo_file_get_root (OstreeRepoFile  *self)
 }
 
 const char *
-_ostree_repo_file_nontree_get_checksum (OstreeRepoFile  *self)
+_ostree_repo_file_get_checksum (OstreeRepoFile  *self)
 {
   int n;
   gboolean is_dir;
+  GVariant *files_variant;
+  GVariant *dirs_variant;
+  const char *checksum;
 
   g_assert (self->parent);
 
   n = _ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, NULL);
-  g_assert (n >= 0 && !is_dir);
-  
-  return _ostree_repo_file_tree_get_child_checksum (self->parent, n);
-}
+  g_assert (n >= 0);
 
-const char *
-_ostree_repo_file_tree_get_child_checksum (OstreeRepoFile  *self,
-                                           int n)
-{
-  GVariant *files_variant;
-  const char *checksum;
+  files_variant = g_variant_get_child_value (self->parent->tree_contents, 2);
+  dirs_variant = g_variant_get_child_value (self->parent->tree_contents, 3);
 
-  g_assert (self->tree_contents);
-
-  files_variant = g_variant_get_child_value (self->tree_contents, 2);
-
-  g_variant_get_child (files_variant, n, "(@s&s)", NULL, &checksum);
+  if (is_dir)
+    {
+      g_variant_get_child (dirs_variant, n,
+                           "(@s@s&s)", NULL, NULL, &checksum);
+    }
+  else
+    {
+      g_variant_get_child (files_variant, n,
+                           "(@s&s)", NULL, &checksum);
+    }
 
   g_variant_unref (files_variant);
+  g_variant_unref (dirs_variant);
 
   return checksum;
 }

@@ -534,10 +534,18 @@ ostree_repo_is_archive (OstreeRepo  *self)
   return priv->archive;
 }
 
+static GVariant *
+pack_metadata_variant (OstreeSerializedVariantType type,
+                       GVariant                   *variant)
+{
+  return g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
+}
+
 static gboolean
 write_gvariant_to_tmp (OstreeRepo  *self,
                        OstreeSerializedVariantType type,
                        GVariant    *variant,
+                       GFile        **out_tmpname,
                        GChecksum    **out_checksum,
                        GError       **error)
 {
@@ -551,7 +559,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
   GUnixOutputStream *stream = NULL;
   GChecksum *checksum = NULL;
 
-  serialized = g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
+  serialized = pack_metadata_variant (type, variant);
 
   tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), "variant-tmp-XXXXXX", NULL);
   fd = g_mkstemp (tmp_name);
@@ -586,6 +594,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
     }
 
   ret = TRUE;
+  *out_tmpname = ot_util_new_file_for_path (dest_name);
   *out_checksum = checksum;
   checksum = NULL;
  out:
@@ -611,18 +620,14 @@ import_gvariant_object (OstreeRepo  *self,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *tmp_name = NULL;
+  GFile *tmp_path = NULL;
   GChecksum *ret_checksum = NULL;
   gboolean did_exist;
   
-  if (!write_gvariant_to_tmp (self, type, variant, &ret_checksum, error))
+  if (!write_gvariant_to_tmp (self, type, variant, &tmp_path, &ret_checksum, error))
     goto out;
 
-  tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir),
-                               g_checksum_get_string (ret_checksum), NULL);
-
-  if (!ostree_repo_store_object_trusted (self, tmp_name,
+  if (!ostree_repo_store_object_trusted (self, ot_gfile_get_path_cached (tmp_path),
                                          g_checksum_get_string (ret_checksum),
                                          OSTREE_OBJECT_TYPE_META,
                                          TRUE, FALSE, &did_exist, error))
@@ -632,8 +637,8 @@ import_gvariant_object (OstreeRepo  *self,
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  (void) unlink (tmp_name);
-  g_free (tmp_name);
+  (void) g_file_delete (tmp_path, NULL, NULL);
+  g_clear_object (&tmp_path);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
   return ret;
@@ -678,56 +683,30 @@ import_directory_meta (OstreeRepo  *self,
                        GError    **error)
 {
   gboolean ret = FALSE;
-  struct stat stbuf;
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
-  GVariant *xattrs = NULL;
+  GFile *f = NULL;
 
-  if (lstat (path, &stbuf) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  
-  if (!S_ISDIR(stbuf.st_mode))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Not a directory: '%s'", path);
-      goto out;
-    }
+  f = ot_util_new_file_for_path (path);
 
-  xattrs = ostree_get_xattrs_for_path (path, error);
-  if (!xattrs)
+  if (!ostree_get_directory_metadata (f, &dirmeta, NULL, error))
     goto out;
-
-  dirmeta = g_variant_new ("(uuuu@a(ayay))",
-                           OSTREE_DIR_META_VERSION,
-                           GUINT32_TO_BE ((guint32)stbuf.st_uid),
-                           GUINT32_TO_BE ((guint32)stbuf.st_gid),
-                           GUINT32_TO_BE ((guint32)stbuf.st_mode),
-                           xattrs);
-  g_variant_ref_sink (dirmeta);
-
+  
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
                                dirmeta, &ret_checksum, error))
-        goto out;
+    goto out;
 
   ret = TRUE;
+  *out_variant = dirmeta;
+  dirmeta = NULL;
+  *out_checksum = ret_checksum;
+  ret_checksum = NULL;
  out:
-  if (!ret)
-    {
-      if (ret_checksum)
-        g_checksum_free (ret_checksum);
-      if (dirmeta != NULL)
-        g_variant_unref (dirmeta);
-    }
-  else
-    {
-      *out_checksum = ret_checksum;
-      *out_variant = dirmeta;
-    }
-  if (xattrs)
-    g_variant_unref (xattrs);
+  g_clear_object (&f);
+  if (ret_checksum)
+    g_checksum_free (ret_checksum);
+  if (dirmeta != NULL)
+    g_variant_unref (dirmeta);
   return ret;
 }
 
@@ -1760,7 +1739,7 @@ checkout_tree (OstreeRepo    *self,
         }
       else
         {
-          const char *checksum = _ostree_repo_file_nontree_get_checksum ((OstreeRepoFile*)child);
+          const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)child);
 
           dest_path = g_build_filename (destination, name, NULL);
           object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
@@ -1849,26 +1828,42 @@ ostree_repo_checkout (OstreeRepo *self,
 
 static gboolean
 get_file_checksum (GFile  *f,
+                   GFileInfo *f_info,
                    char  **out_checksum,
                    GCancellable *cancellable,
                    GError   **error)
 {
   gboolean ret = FALSE;
   GChecksum *tmp_checksum = NULL;
+  GVariant *dirmeta = NULL;
+  GVariant *packed_dirmeta = NULL;
   char *ret_checksum = NULL;
   struct stat stbuf;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
-      ret_checksum = g_strdup (_ostree_repo_file_nontree_get_checksum ((OstreeRepoFile*)f));
+      ret_checksum = g_strdup (_ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
     }
   else
     {
-      if (!ostree_stat_and_checksum_file (-1, ot_gfile_get_path_cached (f),
-                                          OSTREE_OBJECT_TYPE_FILE,
-                                          &tmp_checksum, &stbuf, error))
-        goto out;
-      ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
+      if (g_file_info_get_file_type (f_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          tmp_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+          if (!ostree_get_directory_metadata (f, &dirmeta, cancellable, error))
+            goto out;
+          packed_dirmeta = pack_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
+          g_checksum_update (tmp_checksum, g_variant_get_data (packed_dirmeta),
+                             g_variant_get_size (packed_dirmeta));
+          ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
+        }
+      else
+        {
+          if (!ostree_stat_and_checksum_file (-1, ot_gfile_get_path_cached (f),
+                                              OSTREE_OBJECT_TYPE_FILE,
+                                              &tmp_checksum, &stbuf, error))
+            goto out;
+          ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
+        }
     }
 
   ret = TRUE;
@@ -1878,6 +1873,10 @@ get_file_checksum (GFile  *f,
   g_free (ret_checksum);
   if (tmp_checksum)
     g_checksum_free (tmp_checksum);
+  if (dirmeta)
+    g_variant_unref (dirmeta);
+  if (packed_dirmeta)
+    g_variant_unref (packed_dirmeta);
   return ret;
 }
 
@@ -1937,9 +1936,9 @@ diff_files (GFile          *a,
   char *checksum_b = NULL;
   OstreeRepoDiffItem *ret_item = NULL;
 
-  if (!get_file_checksum (a, &checksum_a, cancellable, error))
+  if (!get_file_checksum (a, a_info, &checksum_a, cancellable, error))
     goto out;
-  if (!get_file_checksum (b, &checksum_b, cancellable, error))
+  if (!get_file_checksum (b, b_info, &checksum_b, cancellable, error))
     goto out;
 
   if (strcmp (checksum_a, checksum_b) != 0)
@@ -2075,12 +2074,6 @@ diff_dirs (GFile          *a,
             {
               g_ptr_array_add (modified, g_object_ref (child_a));
             }
-          else if (child_a_type == G_FILE_TYPE_DIRECTORY)
-            {
-              if (!diff_dirs (child_a, child_b, modified,
-                              removed, added, cancellable, error))
-                goto out;
-            }
           else
             {
               OstreeRepoDiffItem *diff_item = NULL;
@@ -2090,6 +2083,13 @@ diff_dirs (GFile          *a,
               
               if (diff_item)
                 g_ptr_array_add (modified, diff_item); /* Transfer ownership */
+
+              if (child_a_type == G_FILE_TYPE_DIRECTORY)
+                {
+                  if (!diff_dirs (child_a, child_b, modified,
+                                  removed, added, cancellable, error))
+                    goto out;
+                }
             }
         }
       

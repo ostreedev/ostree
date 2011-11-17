@@ -113,6 +113,11 @@ gboolean ostree_stat_and_checksum_file (int dirfd, const char *path,
                                         struct stat *out_stbuf,
                                         GError **error);
 
+gboolean ostree_get_directory_metadata (GFile *dir,
+                                        GVariant  **out_metadata,
+                                        GCancellable *cancellable,
+                                        GError **error);
+
 /* Packed files:
  *
  * guint32 metadata_length [metadata gvariant] [content]

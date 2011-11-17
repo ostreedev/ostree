@@ -301,6 +301,53 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
 }
 
 gboolean
+ostree_get_directory_metadata (GFile        *dir,
+                               GVariant    **out_metadata,
+                               GCancellable *cancellable,
+                               GError      **error)
+{
+  gboolean ret = FALSE;
+  struct stat stbuf;
+  GVariant *xattrs = NULL;
+  GVariant *ret_metadata = NULL;
+
+  if (lstat (ot_gfile_get_path_cached (dir), &stbuf) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  
+  if (!S_ISDIR(stbuf.st_mode))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Not a directory: '%s'", ot_gfile_get_path_cached (dir));
+      goto out;
+    }
+
+  xattrs = ostree_get_xattrs_for_path (ot_gfile_get_path_cached (dir), error);
+  if (!xattrs)
+    goto out;
+
+  ret_metadata = g_variant_new ("(uuuu@a(ayay))",
+                                OSTREE_DIR_META_VERSION,
+                                GUINT32_TO_BE ((guint32)stbuf.st_uid),
+                                GUINT32_TO_BE ((guint32)stbuf.st_gid),
+                                GUINT32_TO_BE ((guint32)stbuf.st_mode),
+                                xattrs);
+  g_variant_ref_sink (ret_metadata);
+
+  ret = TRUE;
+  *out_metadata = ret_metadata;
+  ret_metadata = NULL;
+ out:
+  if (ret_metadata)
+    g_variant_unref (ret_metadata);
+  if (xattrs)
+    g_variant_unref (xattrs);
+  return ret;
+}
+
+gboolean
 ostree_set_xattrs (const char *path, GVariant *xattrs, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
