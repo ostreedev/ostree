@@ -73,6 +73,7 @@ gboolean      ostree_repo_store_packfile (OstreeRepo       *self,
                                            const char       *expected_checksum,
                                            const char       *path,
                                            OstreeObjectType  objtype,
+                                           gboolean         *did_exist,
                                            GError          **error);
 
 gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,

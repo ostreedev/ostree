@@ -29,9 +29,32 @@
 
 #include <libsoup/soup-gnome.h>
 
+gboolean verbose;
+
 static GOptionEntry options[] = {
-  { NULL }
+  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
 };
+
+static void
+log_verbose (const char  *fmt,
+             ...) G_GNUC_PRINTF (1, 2);
+
+static void
+log_verbose (const char  *fmt,
+             ...)
+{
+  va_list args;
+  char *msg;
+
+  if (!verbose)
+    return;
+
+  va_start (args, fmt);
+  
+  msg = g_strdup_vprintf (fmt, args);
+  g_print ("%s\n", msg);
+  g_free (msg);
+}
 
 static gboolean
 fetch_uri (OstreeRepo  *repo,
@@ -47,17 +70,18 @@ fetch_uri (OstreeRepo  *repo,
   int fd;
   SoupBuffer *buf = NULL;
   GFile *tempf = NULL;
+  char *uri_string = NULL;
   
+  uri_string = soup_uri_to_string (uri, FALSE);
+  log_verbose ("Fetching %s", uri_string);
   msg = soup_message_new_from_uri (SOUP_METHOD_GET, uri);
   
   response = soup_session_send_message (soup, msg);
   if (response != 200)
     {
-      char *uri_string = soup_uri_to_string (uri, FALSE);
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Failed to retrieve '%s': %d %s",
                    uri_string, response, msg->reason_phrase);
-      g_free (uri_string);
       goto out;
     }
 
@@ -82,6 +106,7 @@ fetch_uri (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
+  g_free (uri_string);
   g_free (template);
   g_clear_object (&msg);
   g_clear_object (&tempf);
@@ -111,7 +136,7 @@ store_object (OstreeRepo  *repo,
   if (!fetch_uri (repo, soup, obj_uri, &filename, error))
     goto out;
 
-  if (!ostree_repo_store_packfile (repo, object, filename, objtype, error))
+  if (!ostree_repo_store_packfile (repo, object, filename, objtype, did_exist, error))
     goto out;
 
   ret = TRUE;
@@ -144,7 +169,9 @@ store_tree_recurse (OstreeRepo   *repo,
   if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_META, &did_exist, error))
     goto out;
 
-  if (!did_exist)
+  if (did_exist)
+    log_verbose ("Already have tree %s", rev);
+  else
     {
       if (!ostree_repo_load_variant (repo, rev, &metatype, &tree, error))
         goto out;
@@ -158,8 +185,8 @@ store_tree_recurse (OstreeRepo   *repo,
         }
       
       /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
-      g_variant_get_child (tree, 2, "@a(ss)", &files_variant);
-      g_variant_get_child (tree, 3, "@a(sss)", &dirs_variant);
+      files_variant = g_variant_get_child_value (tree, 2);
+      dirs_variant = g_variant_get_child_value (tree, 3);
       
       n = g_variant_n_children (files_variant);
       for (i = 0; i < n; i++)
@@ -167,7 +194,7 @@ store_tree_recurse (OstreeRepo   *repo,
           const char *filename;
           const char *checksum;
 
-          g_variant_get_child (files_variant, i, "(ss)", &filename, &checksum);
+          g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
 
           if (!store_object (repo, soup, base_uri, checksum, OSTREE_OBJECT_TYPE_FILE, &did_exist, error))
             goto out;
@@ -180,13 +207,13 @@ store_tree_recurse (OstreeRepo   *repo,
           const char *tree_checksum;
           const char *meta_checksum;
 
-          g_variant_get_child (dirs_variant, i, "(sss)",
+          g_variant_get_child (dirs_variant, i, "(&s&s&s)",
                                &dirname, &tree_checksum, &meta_checksum);
 
-          if (!store_tree_recurse (repo, soup, base_uri, tree_checksum, error))
+          if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_META, &did_exist, error))
             goto out;
 
-          if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_META, &did_exist, error))
+          if (!store_tree_recurse (repo, soup, base_uri, tree_checksum, error))
             goto out;
         }
     }
@@ -219,7 +246,9 @@ store_commit_recurse (OstreeRepo   *repo,
   if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_META, &did_exist, error))
     goto out;
 
-  if (!did_exist)
+  if (did_exist)
+    log_verbose ("Already have commit %s", rev);
+  else
     {
       if (!ostree_repo_load_variant (repo, rev, &metatype, &commit, error))
         goto out;

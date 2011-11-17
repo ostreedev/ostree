@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..1'
+echo '1..2'
 
 setup_fake_remote_repo1
 cd ${test_tmpdir}
@@ -30,3 +30,10 @@ $OSTREE init
 $OSTREE remote add origin $(cat httpd-address)/ostree/gnomerepo
 $OSTREE pull origin main
 echo "ok pull"
+
+cd ${test_tmpdir}
+$OSTREE checkout origin/main checkout-origin-main
+cd checkout-origin-main
+assert_file_has_content firstfile '^first$'
+assert_file_has_content baz/cow '^moo$'
+echo "ok pull contents"

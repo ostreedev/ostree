@@ -935,13 +935,13 @@ ostree_repo_store_packfile (OstreeRepo       *self,
                             const char       *expected_checksum,
                             const char       *path,
                             OstreeObjectType  objtype,
+                            gboolean         *did_exist,
                             GError          **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GString *tempfile_path = NULL;
   GChecksum *checksum = NULL;
-  gboolean did_exist;
 
   tempfile_path = g_string_new (priv->path);
   g_string_append_printf (tempfile_path, "/tmp-unpack-%s", expected_checksum);
@@ -960,7 +960,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   if (!ostree_repo_store_object_trusted (self, tempfile_path ? tempfile_path->str : path,
                                          expected_checksum,
                                          objtype,
-                                         TRUE, FALSE, &did_exist, error))
+                                         TRUE, FALSE, did_exist, error))
     goto out;
 
   ret = TRUE;
