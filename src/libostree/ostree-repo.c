@@ -304,6 +304,7 @@ resolve_rev (OstreeRepo     *self,
         {
           if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
+              g_clear_error (&temp_error);
               g_free (ret_rev);
               ret_rev = NULL;
             }
