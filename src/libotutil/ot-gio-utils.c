@@ -121,9 +121,9 @@ ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
   GInputStream *ret = NULL;
   int fd;
   int flags = O_RDONLY;
-  char *path = NULL;
+  const char *path = NULL;
 
-  path = g_file_get_path (file);
+  path = ot_gfile_get_path_cached (file);
 #ifdef O_NOATIME
   flags |= O_NOATIME;
 #endif
@@ -137,7 +137,6 @@ ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
   ret = (GInputStream*)g_unix_input_stream_new (fd, TRUE);
   
  out:
-  g_free (path);
   return ret;
 }
 

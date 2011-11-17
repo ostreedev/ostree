@@ -188,7 +188,7 @@ run_trigger (OstreeCheckout *self,
 {
   OstreeCheckoutPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  char *path = NULL;
+  const char *path = NULL;
   char *temp_path = NULL;
   char *rel_temp_path = NULL;
   GFile *temp_copy = NULL;
@@ -196,7 +196,7 @@ run_trigger (OstreeCheckout *self,
   GPtrArray *args = NULL;
   int estatus;
 
-  path = g_file_get_path (trigger);
+  path = ot_gfile_get_path_cached (trigger);
   basename = g_path_get_basename (path);
 
   args = g_ptr_array_new ();
@@ -217,7 +217,7 @@ run_trigger (OstreeCheckout *self,
     }
   else
     {
-      g_ptr_array_add (args, path);
+      g_ptr_array_add (args, (char*)path);
       g_ptr_array_add (args, NULL);
     }
       
@@ -239,7 +239,6 @@ run_trigger (OstreeCheckout *self,
   if (requires_chroot && temp_path)
     (void)unlink (temp_path);
     
-  g_free (path);
   g_free (basename);
   g_free (temp_path);
   g_free (rel_temp_path);

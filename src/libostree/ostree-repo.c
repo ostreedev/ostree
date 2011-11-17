@@ -215,16 +215,15 @@ parse_rev_file (OstreeRepo     *self,
   if (g_str_has_prefix (rev, "ref: "))
     {
       GFile *ref;
-      char *ref_path;
+      const char *ref_path;
       char *ref_sha256;
       gboolean subret;
 
       ref = g_file_resolve_relative_path (priv->local_heads_dir, rev + 5);
-      ref_path = g_file_get_path (ref);
+      ref_path = ot_gfile_get_path_cached (ref);
 
       subret = parse_rev_file (self, ref_path, &ref_sha256, error);
       g_clear_object (&ref);
-      g_free (ref_path);
         
       if (!subret)
         {
@@ -263,7 +262,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   char *ret_rev = NULL;
   GFile *child = NULL;
   GFile *origindir = NULL;
-  char *child_path = NULL;
+  const char *child_path = NULL;
   GError *temp_error = NULL;
   GVariant *commit = NULL;
 
@@ -317,7 +316,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
       else if (slash == NULL)
         {
           child = g_file_get_child (priv->local_heads_dir, rev);
-          child_path = g_file_get_path (child);
+          child_path = ot_gfile_get_path_cached (child);
         }
       else
         {
@@ -331,7 +330,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
             }
           
           child = g_file_get_child (priv->remote_heads_dir, rev);
-          child_path = g_file_get_path (child);
+          child_path = ot_gfile_get_path_cached (child);
 
         }
       if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
@@ -368,7 +367,6 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   g_free (tmp2);
   g_clear_object (&child);
   g_clear_object (&origindir);
-  g_free (child_path);
   g_free (ret_rev);
   return ret;
 }
@@ -1554,9 +1552,9 @@ iter_object_dir (OstreeRepo   *self,
   GError *temp_error = NULL;
   GFileEnumerator *enumerator = NULL;
   GFileInfo *file_info = NULL;
-  char *dirpath = NULL;
+  const char *dirpath = NULL;
 
-  dirpath = g_file_get_path (dir);
+  dirpath = ot_gfile_get_path_cached (dir);
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1603,7 +1601,6 @@ iter_object_dir (OstreeRepo   *self,
 
   ret = TRUE;
  out:
-  g_free (dirpath);
   return ret;
 }
 

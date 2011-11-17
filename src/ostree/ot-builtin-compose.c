@@ -80,8 +80,8 @@ merge_dir (GFile    *destination,
            GError  **error)
 {
   gboolean ret = FALSE;
-  char *dest_path = NULL;
-  char *src_path = NULL;
+  const char *dest_path = NULL;
+  const char *src_path = NULL;
   GError *temp_error = NULL;
   GFileInfo *src_fileinfo = NULL;
   GFileInfo *dest_fileinfo = NULL;
@@ -91,8 +91,8 @@ merge_dir (GFile    *destination,
   const char *name;
   guint32 type;
 
-  dest_path = g_file_get_path (destination);
-  src_path = g_file_get_path (src);
+  dest_path = ot_gfile_get_path_cached (destination);
+  src_path = ot_gfile_get_path_cached (src);
 
   dest_fileinfo = g_file_query_info (destination, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -163,8 +163,6 @@ merge_dir (GFile    *destination,
 
   ret = TRUE;
  out:
-  g_free (dest_path);
-  g_free (src_path);
   g_clear_object (&src_fileinfo);
   g_clear_object (&dest_fileinfo);
   g_clear_object (&src_enum);
@@ -190,7 +188,7 @@ compose_branch_on_dir (OstreeRepo *repo,
   if (!ostree_repo_resolve_rev (repo, branch, FALSE, &branchrev, error))
     goto out;
   
-  destpath = g_file_get_path (destination);
+  destpath = g_strdup (ot_gfile_get_path_cached (destination));
   if (g_str_has_suffix (destpath, "/"))
     destpath[strlen (destpath) - 1] = '\0';
   branchpath = g_strconcat (destpath, "-tmp-checkout-", branchrev, NULL);
@@ -211,10 +209,10 @@ compose_branch_on_dir (OstreeRepo *repo,
  out:
   if (branchf)
     rm_rf (branchf);
+  g_free (destpath);
   g_clear_object (&enumerator);
   g_clear_object (&branchf);
   g_free (branchrev);
-  g_free (destpath);
   g_free (branchpath);
   return ret;
 }

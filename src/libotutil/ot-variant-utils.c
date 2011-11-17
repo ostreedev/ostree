@@ -96,10 +96,10 @@ ot_util_variant_map (GFile *src,
 {
   gboolean ret = FALSE;
   GMappedFile *mfile = NULL;
-  char *path = NULL;
+  const char *path = NULL;
   GVariant *ret_variant = NULL;
 
-  path = g_file_get_path (src);
+  path = ot_gfile_get_path_cached (src);
   mfile = g_mapped_file_new (path, FALSE, error);
   if (!mfile)
     goto out;
@@ -121,6 +121,5 @@ ot_util_variant_map (GFile *src,
     g_variant_unref (ret_variant);
   if (mfile)
     g_mapped_file_unref (mfile);
-  g_free (path);
   return ret;
 }

@@ -462,7 +462,7 @@ ostree_pack_object (GOutputStream     *output,
                     GError          **error)
 {
   gboolean ret = FALSE;
-  char *path = NULL;
+  const char *path = NULL;
   GFileInfo *finfo = NULL;
   GFileInputStream *instream = NULL;
   gboolean pack_builder_initialized = FALSE;
@@ -471,7 +471,7 @@ ostree_pack_object (GOutputStream     *output,
   GVariant *xattrs = NULL;
   gsize bytes_written;
 
-  path = g_file_get_path (file);
+  path = ot_gfile_get_path_cached (file);
 
   finfo = g_file_query_info (file, "standard::type,standard::size,standard::is-symlink,standard::symlink-target,unix::*",
                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
@@ -590,7 +590,6 @@ ostree_pack_object (GOutputStream     *output,
   
   ret = TRUE;
  out:
-  g_free (path);
   g_clear_object (&finfo);
   g_clear_object (&instream);
   if (xattrs)

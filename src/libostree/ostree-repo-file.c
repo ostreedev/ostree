@@ -106,10 +106,9 @@ ostree_repo_file_init (OstreeRepoFile *self)
 static gboolean
 set_error_noent (GFile *self, GError **error)
 {
-  char *path = g_file_get_path (self);
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-               "No such file or directory: %s", path);
-  g_free (path);
+               "No such file or directory: %s",
+               ot_gfile_get_path_cached (self));
   return FALSE;
 }
 
@@ -515,13 +514,12 @@ static char *
 ostree_repo_file_get_uri (GFile *file)
 {
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
-  char *path;
+  const char *path;
   char *uri_path;
   char *ret;
 
-  path = g_file_get_path (file);
+  path = ot_gfile_get_path_cached (file);
   uri_path = g_filename_to_uri (path, NULL, NULL);
-  g_free (path);
   g_assert (g_str_has_prefix (uri_path, "file://"));
   ret = g_strconcat ("ostree://", self->commit, uri_path+strlen("file://"), NULL);
   g_free (uri_path);
@@ -609,14 +607,12 @@ ostree_repo_file_prefix_matches (GFile *parent,
 				 GFile *descendant)
 {
   const char *remainder;
-  char *parent_path;
-  char *descendant_path;
+  const char *parent_path;
+  const char *descendant_path;
 
-  parent_path = g_file_get_path (parent);
-  descendant_path = g_file_get_path (descendant);
+  parent_path = ot_gfile_get_path_cached (parent);
+  descendant_path = ot_gfile_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
-  g_free (parent_path);
-  g_free (descendant_path);
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))
     return TRUE;
   return FALSE;
@@ -627,14 +623,12 @@ ostree_repo_file_get_relative_path (GFile *parent,
 				    GFile *descendant)
 {
   const char *remainder;
-  char *parent_path;
-  char *descendant_path;
+  const char *parent_path;
+  const char *descendant_path;
 
-  parent_path = g_file_get_path (parent);
-  descendant_path = g_file_get_path (descendant);
+  parent_path = ot_gfile_get_path_cached (parent);
+  descendant_path = ot_gfile_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
-  g_free (parent_path);
-  g_free (descendant_path);
   
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))
     return g_strdup (remainder + 1);

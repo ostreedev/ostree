@@ -82,7 +82,7 @@ find_write_child (const char *basepath,
   guint32 type;
   const char *name;
   char buf[1];
-  char *child_path = NULL;
+  const char *child_path = NULL;
   GString *child_trimmed_path = NULL;
   GFile *child = NULL;
   gsize bytes_written;
@@ -98,7 +98,7 @@ find_write_child (const char *basepath,
         goto out;
     }
 
-  child_path = g_file_get_path (child);
+  child_path = ot_gfile_get_path_cached (child);
   child_trimmed_path = g_string_new (child_path + strlen (basepath));
   if (!*(child_trimmed_path->str))
     {
@@ -122,7 +122,6 @@ find_write_child (const char *basepath,
  out:
   g_string_free (child_trimmed_path, TRUE);
   child_trimmed_path = NULL;
-  g_free (child_path);
   child_path = NULL;
   g_clear_object (&child);
   return ret;
@@ -171,16 +170,15 @@ find_thread (gpointer data)
 {
   FindThreadData *tdata = data;
   GError *error = NULL;
-  char *path;
+  const char *path;
   
-  path = g_file_get_path (tdata->dir);
+  path = ot_gfile_get_path_cached (tdata->dir);
   if (!find (path, tdata->dir, tdata->separator, tdata->out,
              tdata->cancellable, &error))
     {
       g_printerr ("%s", error->message);
       g_clear_error (&error);
     }
-  g_free (path);
   g_clear_object (&(tdata->dir));
   g_clear_object (&(tdata->out));
   return NULL;
