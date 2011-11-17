@@ -123,14 +123,17 @@ read_xattr_name_array (const char *path,
 }
 
 GVariant *
-ostree_get_xattrs_for_path (const char *path,
-                              GError    **error)
+ostree_get_xattrs_for_file (GFile      *f,
+                            GError    **error)
 {
+  const char *path;
   GVariant *ret = NULL;
   GVariantBuilder builder;
   char *xattr_names = NULL;
   char *xattr_names_canonical = NULL;
   ssize_t bytes_read;
+
+  path = ot_gfile_get_path_cached (f);
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
 
@@ -175,6 +178,7 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
                                struct stat *out_stbuf,
                                GError **error)
 {
+  GFile *f = NULL;
   GChecksum *content_sha256 = NULL;
   GChecksum *content_and_meta_sha256 = NULL;
   char *stat_string = NULL;
@@ -187,6 +191,8 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
   char *symlink_target = NULL;
   char *device_id = NULL;
   struct stat stbuf;
+
+  f = ot_util_new_file_for_path (path);
 
   basename = g_path_get_basename (path);
 
@@ -221,7 +227,7 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      xattrs = ostree_get_xattrs_for_path (path, error);
+      xattrs = ostree_get_xattrs_for_file (f, error);
       if (!xattrs)
         goto out;
     }
@@ -286,6 +292,7 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
   *out_checksum = content_and_meta_sha256;
   ret = TRUE;
  out:
+  g_clear_object (&f);
   if (fd >= 0)
     close (fd);
   if (temp_dir != NULL)
@@ -324,7 +331,7 @@ ostree_get_directory_metadata (GFile        *dir,
       goto out;
     }
 
-  xattrs = ostree_get_xattrs_for_path (ot_gfile_get_path_cached (dir), error);
+  xattrs = ostree_get_xattrs_for_file (dir, error);
   if (!xattrs)
     goto out;
 
@@ -348,10 +355,16 @@ ostree_get_directory_metadata (GFile        *dir,
 }
 
 gboolean
-ostree_set_xattrs (const char *path, GVariant *xattrs, GCancellable *cancellable, GError **error)
+ostree_set_xattrs (GFile  *f, 
+                   GVariant *xattrs, 
+                   GCancellable *cancellable, 
+                   GError **error)
 {
+  const char *path;
   gboolean ret = FALSE;
   int i, n;
+
+  path = ot_gfile_get_path_cached (f);
 
   n = g_variant_n_children (xattrs);
   for (i = 0; i < n; i++)
@@ -462,7 +475,6 @@ ostree_pack_object (GOutputStream     *output,
                     GError          **error)
 {
   gboolean ret = FALSE;
-  const char *path = NULL;
   GFileInfo *finfo = NULL;
   GFileInputStream *instream = NULL;
   gboolean pack_builder_initialized = FALSE;
@@ -470,8 +482,6 @@ ostree_pack_object (GOutputStream     *output,
   GVariant *pack_variant = NULL;
   GVariant *xattrs = NULL;
   gsize bytes_written;
-
-  path = ot_gfile_get_path_cached (file);
 
   finfo = g_file_query_info (file, "standard::type,standard::size,standard::is-symlink,standard::symlink-target,unix::*",
                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
@@ -510,7 +520,7 @@ ostree_pack_object (GOutputStream     *output,
       g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
       g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
 
-      xattrs = ostree_get_xattrs_for_path (path, error);
+      xattrs = ostree_get_xattrs_for_file (file, error);
       if (!xattrs)
         goto out;
       g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs);
@@ -856,7 +866,7 @@ unpack_file (const char   *path,
         }
     }
 
-  if (!ostree_set_xattrs (dest_path, xattrs, NULL, error))
+  if (!ostree_set_xattrs (file, xattrs, NULL, error))
     goto out;
 
   if (ret_checksum)

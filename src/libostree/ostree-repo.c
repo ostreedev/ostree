@@ -1710,10 +1710,12 @@ checkout_one_directory (OstreeRepo  *self,
                         GError         **error)
 {
   gboolean ret = FALSE;
+  GFile *dest_file = NULL;
   char *dest_path = NULL;
   GVariant *xattr_variant = NULL;
 
   dest_path = g_build_filename (destination, dirname, NULL);
+  dest_file = ot_util_new_file_for_path (dest_path);
 
   if (!_ostree_repo_file_get_xattrs (dir, &xattr_variant, NULL, error))
     goto out;
@@ -1725,7 +1727,7 @@ checkout_one_directory (OstreeRepo  *self,
       goto out;
     }
 
-  if (!ostree_set_xattrs (dest_path, xattr_variant, cancellable, error))
+  if (!ostree_set_xattrs (dest_file, xattr_variant, cancellable, error))
     goto out;
       
   if (!checkout_tree (self, dir, dest_path, cancellable, error))
@@ -1733,6 +1735,7 @@ checkout_one_directory (OstreeRepo  *self,
 
   ret = TRUE;
  out:
+  g_clear_object (&dest_file);
   g_free (dest_path);
   if (xattr_variant)
     g_variant_unref (xattr_variant);

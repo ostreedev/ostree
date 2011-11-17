@@ -96,10 +96,10 @@ char *ostree_get_relative_object_path (const char *checksum,
                                        OstreeObjectType type,
                                        gboolean         archive);
 
-GVariant *ostree_get_xattrs_for_path (const char   *path,
+GVariant *ostree_get_xattrs_for_file (GFile       *f,
                                       GError     **error);
 
-gboolean ostree_set_xattrs (const char *path, GVariant *xattrs,
+gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);
 
 gboolean ostree_parse_metadata_file (const char                  *path,

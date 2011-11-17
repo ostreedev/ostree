@@ -323,7 +323,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   else
     {
       local_file = _ostree_repo_file_nontree_get_local (self);
-      ret_xattrs = ostree_get_xattrs_for_path (ot_gfile_get_path_cached (local_file), error);
+      ret_xattrs = ostree_get_xattrs_for_file (local_file, error);
     }
 
   ret = TRUE;
