@@ -395,19 +395,17 @@ ostree_set_xattrs (GFile  *f,
 }
 
 gboolean
-ostree_parse_metadata_file (const char                  *path,
+ostree_parse_metadata_file (GFile                       *file,
                             OstreeSerializedVariantType *out_type,
                             GVariant                   **out_variant,
                             GError                     **error)
 {
-  GFile *pathf = NULL;
   gboolean ret = FALSE;
   GVariant *ret_variant = NULL;
   GVariant *container = NULL;
   guint32 ret_type;
 
-  pathf = ot_util_new_file_for_path (path);
-  if (!ot_util_variant_map (pathf, G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
+  if (!ot_util_variant_map (file, G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
                             &container, error))
     goto out;
 
@@ -417,7 +415,8 @@ ostree_parse_metadata_file (const char                  *path,
   if (ret_type <= 0 || ret_type > OSTREE_SERIALIZED_VARIANT_LAST)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Corrupted metadata object '%s'; invalid type %d", path, ret_type);
+                   "Corrupted metadata object '%s'; invalid type %d",
+                   ot_gfile_get_path_cached (file), ret_type);
       goto out;
     }
 
@@ -430,7 +429,6 @@ ostree_parse_metadata_file (const char                  *path,
     g_variant_unref (ret_variant);
   if (container != NULL)
     g_variant_unref (container);
-  g_clear_object (&pathf);
   return ret;
 }
 

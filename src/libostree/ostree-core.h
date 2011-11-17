@@ -102,7 +102,7 @@ GVariant *ostree_get_xattrs_for_file (GFile       *f,
 gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);
 
-gboolean ostree_parse_metadata_file (const char                  *path,
+gboolean ostree_parse_metadata_file (GFile                       *file,
                                      OstreeSerializedVariantType *out_type,
                                      GVariant                   **out_variant,
                                      GError                     **error);

@@ -1675,11 +1675,13 @@ ostree_repo_load_variant (OstreeRepo *self,
   OstreeSerializedVariantType ret_type;
   GVariant *ret_variant = NULL;
   char *path = NULL;
+  GFile *f = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   path = ostree_repo_get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
-  if (!ostree_parse_metadata_file (path, &ret_type, &ret_variant, error))
+  f = ot_util_new_file_for_path (path);
+  if (!ostree_parse_metadata_file (f, &ret_type, &ret_variant, error))
     goto out;
 
   ret = TRUE;
@@ -1689,6 +1691,7 @@ ostree_repo_load_variant (OstreeRepo *self,
  out:
   if (ret_variant)
     g_variant_unref (ret_variant);
+  g_clear_object (&f);
   g_free (path);
   return ret;
 }
