@@ -45,6 +45,9 @@ void ot_util_fatal_gerror (GError *error) G_GNUC_NORETURN;
 
 gboolean ot_util_filename_has_dotdot (const char *path);
 
+gboolean ot_util_validate_file_name (const char *name,
+                                     GError    **error);
+
 GPtrArray *ot_util_sort_filenames_by_component_length (GPtrArray *files);
 
 GPtrArray* ot_util_path_split (const char *path);

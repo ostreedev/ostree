@@ -139,6 +139,31 @@ ot_util_filename_has_dotdot (const char *path)
   return last == '\0' || last == '/';
 }
 
+gboolean
+ot_util_validate_file_name (const char *name,
+                            GError    **error)
+{
+  if (strcmp (name, ".") == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid self-reference '.' in filename '%s'", name);
+      return FALSE;
+    }
+  if (ot_util_filename_has_dotdot (name))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid path uplink '..' in filename '%s'", name);
+      return FALSE;
+    }
+  if (strchr (name, '/') != NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid / in filename '%s'", name);
+      return FALSE;
+    }
+  return TRUE;
+}
+
 GPtrArray *
 ot_util_path_split (const char *path)
 {
