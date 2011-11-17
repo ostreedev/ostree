@@ -91,7 +91,7 @@ gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        GError     **error);
 
 gboolean      ostree_repo_write_ref (OstreeRepo  *self,
-                                     gboolean     is_local,
+                                     const char  *remote,
                                      const char  *name,
                                      const char  *rev,
                                      GError     **error);

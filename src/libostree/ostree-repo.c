@@ -1342,14 +1342,32 @@ add_one_path_to_tree_and_import (OstreeRepo     *self,
 
 gboolean      
 ostree_repo_write_ref (OstreeRepo  *self,
-                       gboolean     is_local,
+                       const char  *remote,
                        const char  *name,
                        const char  *rev,
                        GError     **error)
 {
+  gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  return write_checksum_file (is_local ? priv->local_heads_dir : priv->remote_heads_dir, 
-                              name, rev, error);
+  GFile *dir = NULL;
+
+  if (remote == NULL)
+    dir = g_object_ref (priv->local_heads_dir);
+  else
+    {
+      dir = g_file_get_child (priv->remote_heads_dir, remote);
+
+      if (!ot_util_ensure_directory (ot_gfile_get_path_cached (dir), FALSE, error))
+        goto out;
+    }
+
+  if (!write_checksum_file (dir, name, rev, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  g_clear_object (&dir);
+  return ret;
 }
 
 static gboolean
@@ -1389,7 +1407,7 @@ commit_parsed_tree (OstreeRepo *self,
                                commit, &ret_commit, error))
     goto out;
 
-  if (!ostree_repo_write_ref (self, TRUE, branch, g_checksum_get_string (ret_commit), error))
+  if (!ostree_repo_write_ref (self, NULL, branch, g_checksum_get_string (ret_commit), error))
     goto out;
 
   ret = TRUE;
