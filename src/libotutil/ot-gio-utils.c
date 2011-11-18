@@ -36,7 +36,7 @@ ot_util_ensure_directory (const char *path, gboolean with_parents, GError **erro
   GError *temp_error = NULL;
   gboolean ret = FALSE;
 
-  dir = g_file_new_for_path (path);
+  dir = ot_util_new_file_for_path (path);
   if (with_parents)
     ret = g_file_make_directory_with_parents (dir, NULL, &temp_error);
   else
