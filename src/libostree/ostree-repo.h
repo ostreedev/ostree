@@ -80,8 +80,7 @@ gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
                                                 const char   *path,
                                                 const char   *checksum,
                                                 OstreeObjectType objtype,
-                                                gboolean      ignore_exists,
-                                                gboolean      force,
+                                                gboolean      overwrite,
                                                 gboolean     *did_exist,
                                                 GError      **error);
 

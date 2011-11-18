@@ -645,7 +645,7 @@ import_gvariant_object (OstreeRepo  *self,
   if (!ostree_repo_store_object_trusted (self, ot_gfile_get_path_cached (tmp_path),
                                          g_checksum_get_string (ret_checksum),
                                          OSTREE_OBJECT_TYPE_META,
-                                         TRUE, FALSE, &did_exist, error))
+                                         FALSE, &did_exist, error))
     goto out;
 
   ret = TRUE;
@@ -783,88 +783,48 @@ link_object_trusted (OstreeRepo   *self,
                      const char   *path,
                      const char   *checksum,
                      OstreeObjectType objtype,
-                     gboolean      ignore_exists,
-                     gboolean      force,
+                     gboolean      overwrite,
                      gboolean     *did_exist,
                      GError      **error)
 {
-  char *src_basename = NULL;
-  char *src_dirname = NULL;
-  char *dest_basename = NULL;
-  char *tmp_dest_basename = NULL;
-  char *dest_dirname = NULL;
-  DIR *src_dir = NULL;
-  DIR *dest_dir = NULL;
   gboolean ret = FALSE;
+  char *dest_basename = NULL;
+  char *tmp_dest_path = NULL;
   const char *dest_path = NULL;
   GFile *dest_file = NULL;
 
-  src_basename = g_path_get_basename (path);
-  src_dirname = g_path_get_dirname (path);
-
-  src_dir = opendir (src_dirname);
-  if (src_dir == NULL)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
   if (!prepare_dir_for_checksum_get_object_path (self, checksum, objtype, &dest_file, error))
     goto out;
-  dest_path = ot_gfile_get_path_cached (dest_file);
 
-  dest_basename = g_path_get_basename (dest_path);
-  dest_dirname = g_path_get_dirname (dest_path);
-  dest_dir = opendir (dest_dirname);
-  if (dest_dir == NULL)
+  *did_exist = g_file_query_exists (dest_file, NULL);
+  if (!overwrite && *did_exist)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  if (force)
-    {
-      tmp_dest_basename = g_strconcat (dest_basename, ".tmp", NULL);
-      (void) unlinkat (dirfd (dest_dir), tmp_dest_basename, 0);
+      ;
     }
   else
-    tmp_dest_basename = g_strdup (dest_basename);
-  
-  if (linkat (dirfd (src_dir), src_basename, dirfd (dest_dir), tmp_dest_basename, 0) < 0)
     {
-      if (errno != EEXIST || !ignore_exists)
+      dest_path = ot_gfile_get_path_cached (dest_file);
+      dest_basename = g_path_get_basename (dest_path);
+      tmp_dest_path = g_strconcat (dest_path, ".tmp", NULL);
+
+      (void) unlink (tmp_dest_path);
+
+      if (link (path, tmp_dest_path) < 0
+          || rename (tmp_dest_path, dest_path) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-      else
-        *did_exist = TRUE;
-    }
-  else
-    *did_exist = FALSE;
-
-  if (force)
-    {
-      if (renameat (dirfd (dest_dir), tmp_dest_basename, 
-                    dirfd (dest_dir), dest_basename) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-      (void) unlinkat (dirfd (dest_dir), tmp_dest_basename, 0);
+      g_free (tmp_dest_path);
+      tmp_dest_path = NULL;
     }
 
   ret = TRUE;
  out:
-  if (src_dir != NULL)
-    closedir (src_dir);
-  if (dest_dir != NULL)
-    closedir (dest_dir);
-  g_free (src_basename);
-  g_free (src_dirname);
   g_free (dest_basename);
-  g_free (tmp_dest_basename);
-  g_free (dest_dirname);
+  if (tmp_dest_path)
+    (void) unlink (tmp_dest_path);
+  g_free (tmp_dest_path);
   g_clear_object (&dest_file);
   return ret;
 }
@@ -874,50 +834,57 @@ archive_file_trusted (OstreeRepo   *self,
                       const char   *path,
                       const char   *checksum,
                       OstreeObjectType objtype,
-                      gboolean      ignore_exists,
-                      gboolean      force,
+                      gboolean      overwrite,
                       gboolean     *did_exist,
                       GError      **error)
 {
   GFile *infile = NULL;
-  GFile *outfile = NULL;
   GFileOutputStream *out = NULL;
   gboolean ret = FALSE;
-  const char *dest_path = NULL;
   GFile *dest_file = NULL;
-  char *dest_tmp_path = NULL;
+  GError *temp_error = NULL;
 
   infile = ot_gfile_new_for_path (path);
 
   if (!prepare_dir_for_checksum_get_object_path (self, checksum, objtype, &dest_file, error))
     goto out;
-  dest_path = ot_gfile_get_path_cached (dest_file);
 
-  dest_tmp_path = g_strconcat (dest_path, ".tmp", NULL);
-
-  outfile = ot_gfile_new_for_path (dest_tmp_path);
-  out = g_file_replace (outfile, NULL, FALSE, 0, NULL, error);
-  if (!out)
-    goto out;
-
-  if (!ostree_pack_object ((GOutputStream*)out, infile, objtype, NULL, error))
-    goto out;
-  
-  if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
-    goto out;
-
-  if (rename (dest_tmp_path, dest_path) < 0)
+  if (overwrite)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
+      out = g_file_replace (dest_file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, error);
+      if (!out)
+        goto out;
+    }
+  else
+    {
+      out = g_file_create (dest_file, 0, NULL, &temp_error);
+      if (!out)
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+            {
+              g_clear_error (&temp_error);
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+        }
+    }
+
+  if (out)
+    {
+      if (!ostree_pack_object ((GOutputStream*)out, infile, objtype, NULL, error))
+        goto out;
+      
+      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+        goto out;
     }
 
   ret = TRUE;
  out:
   g_clear_object (&dest_file);
-  g_free (dest_tmp_path);
   g_clear_object (&infile);
-  g_clear_object (&outfile);
   g_clear_object (&out);
   return ret;
 }
@@ -927,16 +894,15 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
                                   const char   *path,
                                   const char   *checksum,
                                   OstreeObjectType objtype,
-                                  gboolean      ignore_exists,
-                                  gboolean      force,
+                                  gboolean      overwrite,
                                   gboolean     *did_exist,
                                   GError      **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   if (priv->archive && objtype == OSTREE_OBJECT_TYPE_FILE)
-    return archive_file_trusted (self, path, checksum, objtype, ignore_exists, force, did_exist, error);
+    return archive_file_trusted (self, path, checksum, objtype, overwrite, did_exist, error);
   else
-    return link_object_trusted (self, path, checksum, objtype, ignore_exists, force, did_exist, error);
+    return link_object_trusted (self, path, checksum, objtype, overwrite, did_exist, error);
 }
 
 gboolean
@@ -969,7 +935,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   if (!ostree_repo_store_object_trusted (self, tempfile_path ? tempfile_path->str : path,
                                          expected_checksum,
                                          objtype,
-                                         TRUE, FALSE, did_exist, error))
+                                         FALSE, did_exist, error))
     goto out;
 
   ret = TRUE;
@@ -1234,7 +1200,7 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
     goto out;
 
   if (!ostree_repo_store_object_trusted (self, abspath, g_checksum_get_string (checksum),
-                                         OSTREE_OBJECT_TYPE_FILE, TRUE, FALSE, &did_exist, error))
+                                         OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, error))
     goto out;
 
   g_hash_table_replace (tree->files, g_strdup (basename),
