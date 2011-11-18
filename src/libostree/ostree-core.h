@@ -101,6 +101,9 @@ char *ostree_get_relative_object_path (const char *checksum,
 GVariant *ostree_get_xattrs_for_file (GFile       *f,
                                       GError     **error);
 
+GVariant *ostree_wrap_metadata_variant (OstreeSerializedVariantType type,
+                                        GVariant *metadata);
+
 gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);
 
@@ -116,6 +119,7 @@ gboolean ostree_checksum_file (GFile             *f,
                                GError           **error);
 
 gboolean ostree_get_directory_metadata (GFile *dir,
+                                        GFileInfo *dir_info,
                                         GVariant  **out_metadata,
                                         GCancellable *cancellable,
                                         GError **error);

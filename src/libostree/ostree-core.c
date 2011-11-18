@@ -41,6 +41,12 @@ ostree_validate_checksum_string (const char *sha256,
   return TRUE;
 }
 
+GVariant *
+ostree_wrap_metadata_variant (OstreeSerializedVariantType type,
+                              GVariant *metadata)
+{
+  return g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), metadata);
+}
 
 void
 ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode)
@@ -174,32 +180,58 @@ ostree_get_xattrs_for_file (GFile      *f,
   return ret;
 }
 
-gboolean
-ostree_checksum_file (GFile            *f,
-                      OstreeObjectType objtype,
-                      GChecksum       **out_checksum,
-                      GCancellable     *cancellable,
-                      GError          **error)
+static gboolean
+checksum_directory (GFile          *f,
+                    GFileInfo      *f_info,
+                    GChecksum     **out_checksum,
+                    GCancellable   *cancellable,
+                    GError        **error)
 {
+  gboolean ret = FALSE;
+  GVariant *dirmeta = NULL;
+  GVariant *packed = NULL;
+  GChecksum *ret_checksum = NULL;
+
+  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, cancellable, error))
+    goto out;
+  packed = ostree_wrap_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
+  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  g_checksum_update (ret_checksum, g_variant_get_data (packed),
+                     g_variant_get_size (packed));
+
+  ret = TRUE;
+  *out_checksum = ret_checksum;
+  ret_checksum = NULL;
+ out:
+  if (ret_checksum)
+    g_checksum_free (ret_checksum);
+  if (dirmeta)
+    g_variant_unref (dirmeta);
+  if (packed)
+    g_variant_unref (packed);
+  return ret;
+}
+
+static gboolean
+checksum_nondirectory (GFile            *f,
+                       GFileInfo        *file_info,
+                       OstreeObjectType objtype,
+                       GChecksum       **out_checksum,
+                       GCancellable     *cancellable,
+                       GError          **error)
+{
+  gboolean ret = FALSE;
   const char *path = NULL;
   GChecksum *content_sha256 = NULL;
   GChecksum *content_and_meta_sha256 = NULL;
   ssize_t bytes_read;
   GVariant *xattrs = NULL;
   char *basename = NULL;
-  gboolean ret = FALSE;
-  GFileInfo *file_info = NULL;
   GInputStream *input = NULL;
   guint32 unix_mode;
 
   path = ot_gfile_get_path_cached (f);
   basename = g_path_get_basename (path);
-
-  file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
-  if (!file_info)
-    goto out;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
@@ -272,7 +304,6 @@ ostree_checksum_file (GFile            *f,
   ret = TRUE;
  out:
   g_clear_object (&input);
-  g_clear_object (&file_info);
   g_free (basename);
   if (xattrs)
     g_variant_unref (xattrs);
@@ -282,28 +313,51 @@ ostree_checksum_file (GFile            *f,
 }
 
 gboolean
+ostree_checksum_file (GFile            *f,
+                      OstreeObjectType objtype,
+                      GChecksum       **out_checksum,
+                      GCancellable     *cancellable,
+                      GError          **error)
+{
+  gboolean ret = FALSE;
+  GFileInfo *file_info = NULL;
+  GChecksum *ret_checksum = NULL;
+
+  file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
+                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                 cancellable, error);
+  if (!file_info)
+    goto out;
+
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+    {
+      if (!checksum_directory (f, file_info, &ret_checksum, cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!checksum_nondirectory (f, file_info, objtype, &ret_checksum, cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  *out_checksum = ret_checksum;
+  ret_checksum = NULL;
+ out:
+  g_clear_object (&file_info);
+  return ret;
+}
+
+gboolean
 ostree_get_directory_metadata (GFile        *dir,
+                               GFileInfo    *dir_info,
                                GVariant    **out_metadata,
                                GCancellable *cancellable,
                                GError      **error)
 {
   gboolean ret = FALSE;
-  struct stat stbuf;
   GVariant *xattrs = NULL;
   GVariant *ret_metadata = NULL;
-
-  if (lstat (ot_gfile_get_path_cached (dir), &stbuf) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  
-  if (!S_ISDIR(stbuf.st_mode))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Not a directory: '%s'", ot_gfile_get_path_cached (dir));
-      goto out;
-    }
 
   xattrs = ostree_get_xattrs_for_file (dir, error);
   if (!xattrs)
@@ -311,9 +365,9 @@ ostree_get_directory_metadata (GFile        *dir,
 
   ret_metadata = g_variant_new ("(uuuu@a(ayay))",
                                 OSTREE_DIR_META_VERSION,
-                                GUINT32_TO_BE ((guint32)stbuf.st_uid),
-                                GUINT32_TO_BE ((guint32)stbuf.st_gid),
-                                GUINT32_TO_BE ((guint32)stbuf.st_mode),
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
                                 xattrs);
   g_variant_ref_sink (ret_metadata);
 

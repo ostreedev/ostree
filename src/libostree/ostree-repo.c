@@ -557,13 +557,6 @@ ostree_repo_is_archive (OstreeRepo  *self)
   return priv->archive;
 }
 
-static GVariant *
-pack_metadata_variant (OstreeSerializedVariantType type,
-                       GVariant                   *variant)
-{
-  return g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), variant);
-}
-
 static gboolean
 write_gvariant_to_tmp (OstreeRepo  *self,
                        OstreeSerializedVariantType type,
@@ -582,7 +575,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
   GUnixOutputStream *stream = NULL;
   GChecksum *checksum = NULL;
 
-  serialized = pack_metadata_variant (type, variant);
+  serialized = ostree_wrap_metadata_variant (type, variant);
 
   tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), "variant-tmp-XXXXXX", NULL);
   fd = g_mkstemp (tmp_name);
@@ -709,10 +702,17 @@ import_directory_meta (OstreeRepo  *self,
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
   GFile *f = NULL;
+  GFileInfo *f_info = NULL;
 
   f = ot_util_new_file_for_path (path);
 
-  if (!ostree_get_directory_metadata (f, &dirmeta, NULL, error))
+  f_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
+                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                              NULL, error);
+  if (!f_info)
+    goto out;
+
+  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, NULL, error))
     goto out;
   
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
@@ -726,6 +726,7 @@ import_directory_meta (OstreeRepo  *self,
   ret_checksum = NULL;
  out:
   g_clear_object (&f);
+  g_clear_object (&f_info);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
   if (dirmeta != NULL)
@@ -1884,8 +1885,6 @@ get_file_checksum (GFile  *f,
 {
   gboolean ret = FALSE;
   GChecksum *tmp_checksum = NULL;
-  GVariant *dirmeta = NULL;
-  GVariant *packed_dirmeta = NULL;
   char *ret_checksum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
@@ -1894,36 +1893,18 @@ get_file_checksum (GFile  *f,
     }
   else
     {
-      if (g_file_info_get_file_type (f_info) == G_FILE_TYPE_DIRECTORY)
-        {
-          tmp_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-          if (!ostree_get_directory_metadata (f, &dirmeta, cancellable, error))
-            goto out;
-          packed_dirmeta = pack_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
-          g_checksum_update (tmp_checksum, g_variant_get_data (packed_dirmeta),
-                             g_variant_get_size (packed_dirmeta));
-          ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
-        }
-      else
-        {
-          if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
-                                     &tmp_checksum, cancellable, error))
-            goto out;
-          ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
-        }
+      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
+                                 &tmp_checksum, cancellable, error))
+        goto out;
+      ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
     }
 
   ret = TRUE;
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  g_free (ret_checksum);
   if (tmp_checksum)
     g_checksum_free (tmp_checksum);
-  if (dirmeta)
-    g_variant_unref (dirmeta);
-  if (packed_dirmeta)
-    g_variant_unref (packed_dirmeta);
   return ret;
 }
 
