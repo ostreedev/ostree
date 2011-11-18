@@ -1524,9 +1524,9 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
 }
 
 static gboolean
-iter_object_dir (OstreeRepo   *self,
-                 GFile          *dir,
-                 OstreeRepoObjectIter  callback,
+iter_object_dir (OstreeRepo             *self,
+                 GFile                  *dir,
+                 OstreeRepoObjectIter    callback,
                  gpointer                user_data,
                  GError                **error)
 {
@@ -1534,9 +1534,9 @@ iter_object_dir (OstreeRepo   *self,
   GError *temp_error = NULL;
   GFileEnumerator *enumerator = NULL;
   GFileInfo *file_info = NULL;
-  const char *dirpath = NULL;
+  const char *dirname = NULL;
 
-  dirpath = ot_gfile_get_path_cached (dir);
+  dirname = ot_gfile_get_basename_cached (dir);
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1549,31 +1549,44 @@ iter_object_dir (OstreeRepo   *self,
     {
       const char *name;
       guint32 type;
+      char *dot;
+      GFile *child;
+      GString *checksum = NULL;
+      OstreeObjectType objtype;
+
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
-      
-      if (type != G_FILE_TYPE_DIRECTORY
-          && (g_str_has_suffix (name, ".meta")
-              || g_str_has_suffix (name, ".file")
-              || g_str_has_suffix (name, ".packfile")))
-        {
-          char *dot;
-          char *path;
-          
-          dot = strrchr (name, '.');
-          g_assert (dot);
-          
-          if ((dot - name) == 62)
-            {
-              path = g_build_filename (dirpath, name, NULL);
-              callback (self, path, file_info, user_data);
-              g_free (path);
-            }
-        }
 
-      g_object_unref (file_info);
+      if (type == G_FILE_TYPE_DIRECTORY)
+        goto loop_out;
+      
+      if (g_str_has_suffix (name, ".meta"))
+        objtype = OSTREE_OBJECT_TYPE_META;
+      else if (g_str_has_suffix (name, ".file")
+               || g_str_has_suffix (name, ".packfile"))
+        objtype = OSTREE_OBJECT_TYPE_FILE;
+      else
+        goto loop_out;
+          
+      dot = strrchr (name, '.');
+      g_assert (dot);
+
+      if ((dot - name) != 62)
+        goto loop_out;
+      
+      checksum = g_string_new (dirname);
+      g_string_append_len (checksum, name, 62);
+      
+      child = g_file_get_child (dir, name);
+      callback (self, checksum->str, objtype, child, file_info, user_data);
+      
+    loop_out:
+      if (checksum)
+        g_string_free (checksum, TRUE);
+      g_clear_object (&file_info);
+      g_clear_object (&child);
     }
-  if (file_info == NULL && temp_error != NULL)
+  if (temp_error != NULL)
     {
       g_propagate_error (error, temp_error);
       goto out;
@@ -1583,14 +1596,15 @@ iter_object_dir (OstreeRepo   *self,
 
   ret = TRUE;
  out:
+  g_clear_object (&file_info);
   return ret;
 }
 
 gboolean
 ostree_repo_iter_objects (OstreeRepo  *self,
-                            OstreeRepoObjectIter callback,
-                            gpointer       user_data,
-                            GError        **error)
+                          OstreeRepoObjectIter callback,
+                          gpointer       user_data,
+                          GError        **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   GFile *objectdir = NULL;

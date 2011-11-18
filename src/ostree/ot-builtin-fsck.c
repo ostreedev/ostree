@@ -41,13 +41,12 @@ typedef struct {
 
 static gboolean
 checksum_packed_file (OtFsckData   *data,
-                      const char   *path,
+                      GFile        *file,
                       GChecksum   **out_checksum,
                       GError      **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
-  GFile *file = NULL;
   char *metadata_buf = NULL;
   GVariant *metadata = NULL;
   GVariant *xattrs = NULL;
@@ -57,8 +56,6 @@ checksum_packed_file (OtFsckData   *data,
   guint64 content_len;
   gsize bytes_read;
   char buf[8192];
-
-  file = ot_gfile_new_for_path (path);
 
   in = g_file_read (file, NULL, error);
   if (!in)
@@ -105,7 +102,6 @@ checksum_packed_file (OtFsckData   *data,
   if (ret_checksum)
     g_checksum_free (ret_checksum);
   g_free (metadata_buf);
-  g_clear_object (&file);
   g_clear_object (&in);
   if (metadata)
    g_variant_unref (metadata);
@@ -115,78 +111,55 @@ checksum_packed_file (OtFsckData   *data,
 }
 
 static void
-object_iter_callback (OstreeRepo  *repo,
-                      const char    *path,
+object_iter_callback (OstreeRepo    *repo,
+                      const char    *exp_checksum,
+                      OstreeObjectType objtype,
+                      GFile         *objf,
                       GFileInfo     *file_info,
                       gpointer       user_data)
 {
   OtFsckData *data = user_data;
-  GChecksum *checksum = NULL;
+  const char *path = NULL;
+  GChecksum *real_checksum = NULL;
   GError *error = NULL;
-  char *dirname = NULL;
-  char *checksum_prefix = NULL;
-  char *checksum_string = NULL;
-  char *filename_checksum = NULL;
-  gboolean packed = FALSE;
-  OstreeObjectType objtype;
-  char *dot;
-  GFile *f = NULL;
 
-  f = ot_gfile_new_for_path (path);
+  path = ot_gfile_get_path_cached (objf);
 
   /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
      if (nlinks < 2 && !quiet)
      g_printerr ("note: floating object: %s\n", path); */
 
-  if (g_str_has_suffix (path, ".meta"))
-    objtype = OSTREE_OBJECT_TYPE_META;
-  else if (g_str_has_suffix (path, ".file"))
-    objtype = OSTREE_OBJECT_TYPE_FILE;
-  else if (g_str_has_suffix (path, ".packfile"))
+  if (ostree_repo_is_archive (repo)
+      && objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      objtype = OSTREE_OBJECT_TYPE_FILE;
-     packed = TRUE;
-    }
-  else
-    g_assert_not_reached ();
-
-  if (packed && objtype == OSTREE_OBJECT_TYPE_FILE)
-    {
-      if (!checksum_packed_file (data, path, &checksum, &error))
+      if (!g_str_has_suffix (path, ".packfile"))
+        {
+          g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid unpacked filename '%s'",
+                       path);
+          goto out;
+        }
+      if (!checksum_packed_file (data, objf, &real_checksum, &error))
         goto out;
     }
   else
     {
-      if (!ostree_checksum_file (f, objtype, &checksum, NULL, &error))
+      if (!ostree_checksum_file (objf, objtype, &real_checksum, NULL, &error))
         goto out;
     }
 
-  filename_checksum = g_strdup (g_file_info_get_name (file_info));
-  dot = strrchr (filename_checksum, '.');
-  g_assert (dot != NULL);
-  *dot = '\0';
-  
-  dirname = g_path_get_dirname (path);
-  checksum_prefix = g_path_get_basename (dirname);
-  checksum_string = g_strconcat (checksum_prefix, filename_checksum, NULL);
-  
-  if (strcmp (checksum_string, g_checksum_get_string (checksum)) != 0)
+  if (strcmp (exp_checksum, g_checksum_get_string (real_checksum)) != 0)
     {
       data->had_error = TRUE;
       g_printerr ("ERROR: corrupted object '%s' expected checksum: %s\n",
-                  path, g_checksum_get_string (checksum));
+                  exp_checksum, g_checksum_get_string (real_checksum));
     }
 
   data->n_objects++;
 
  out:
-  g_clear_object (&f);
-  if (checksum != NULL)
-    g_checksum_free (checksum);
-  g_free (dirname);
-  g_free (checksum_prefix);
-  g_free (checksum_string);
-  g_free (filename_checksum);
+  if (real_checksum != NULL)
+    g_checksum_free (real_checksum);
   if (error != NULL)
     {
       g_printerr ("%s\n", error->message);

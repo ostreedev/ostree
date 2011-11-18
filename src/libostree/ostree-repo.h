@@ -157,13 +157,17 @@ gboolean      ostree_repo_diff (OstreeRepo     *self,
                                 GCancellable   *cancellable,
                                 GError        **error);
 
-typedef void (*OstreeRepoObjectIter) (OstreeRepo *self, const char *path,
-                                        GFileInfo *fileinfo, gpointer user_data);
+typedef void (*OstreeRepoObjectIter) (OstreeRepo *self, 
+                                      const char *checksum,
+                                      OstreeObjectType type,
+                                      GFile      *path,
+                                      GFileInfo  *fileinfo,
+                                      gpointer user_data);
 
 gboolean     ostree_repo_iter_objects (OstreeRepo  *self,
-                                         OstreeRepoObjectIter callback,
-                                         gpointer       user_data,
-                                         GError        **error);
+                                       OstreeRepoObjectIter callback,
+                                       gpointer       user_data,
+                                       GError        **error);
 
 G_END_DECLS
 
