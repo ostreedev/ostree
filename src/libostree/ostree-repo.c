@@ -607,21 +607,23 @@ write_gvariant_to_tmp (OstreeRepo  *self,
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
+  g_free (tmp_name);
+  tmp_name = NULL;
 
   ret = TRUE;
   *out_tmpname = ot_gfile_new_for_path (dest_name);
   *out_checksum = checksum;
   checksum = NULL;
  out:
-  /* Unconditionally unlink; if we suceeded, there's a new link, if not, clean up. */
-  (void) unlink (tmp_name);
+  if (tmp_name)
+    (void) unlink (tmp_name);
+  g_free (tmp_name);
   if (fd != -1)
     close (fd);
   if (checksum)
     g_checksum_free (checksum);
   if (serialized != NULL)
     g_variant_unref (serialized);
-  g_free (tmp_name);
   g_free (dest_name);
   g_clear_object (&stream);
   return ret;
