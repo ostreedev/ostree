@@ -57,6 +57,8 @@ const char *  ostree_repo_get_path (OstreeRepo  *self);
 
 gboolean      ostree_repo_is_archive (OstreeRepo  *self);
 
+GFile *       ostree_repo_get_tmpdir (OstreeRepo  *self);
+
 GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
 
 GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);

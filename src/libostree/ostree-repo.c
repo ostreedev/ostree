@@ -546,6 +546,13 @@ ostree_repo_get_path (OstreeRepo  *self)
   return priv->path;
 }
 
+GFile *
+ostree_repo_get_tmpdir (OstreeRepo  *self)
+{
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  return priv->tmp_dir;
+}
+
 gboolean      
 ostree_repo_is_archive (OstreeRepo  *self)
 {
