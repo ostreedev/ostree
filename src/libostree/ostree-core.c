@@ -871,6 +871,12 @@ unpack_file (GFile        *file,
       goto out;
     }
 
+  if (lchown (dest_path, uid, gid) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   if (!S_ISLNK (mode))
     {
       if (chmod (dest_path, mode) < 0)
