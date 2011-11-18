@@ -121,7 +121,6 @@ object_iter_callback (OstreeRepo  *repo,
                       gpointer       user_data)
 {
   OtFsckData *data = user_data;
-  struct stat stbuf;
   GChecksum *checksum = NULL;
   GError *error = NULL;
   char *dirname = NULL;
@@ -131,6 +130,9 @@ object_iter_callback (OstreeRepo  *repo,
   gboolean packed = FALSE;
   OstreeObjectType objtype;
   char *dot;
+  GFile *f = NULL;
+
+  f = ot_util_new_file_for_path (path);
 
   /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
      if (nlinks < 2 && !quiet)
@@ -155,7 +157,7 @@ object_iter_callback (OstreeRepo  *repo,
     }
   else
     {
-      if (!ostree_stat_and_checksum_file (-1, path, objtype, &checksum, &stbuf, &error))
+      if (!ostree_checksum_file (f, objtype, &checksum, NULL, &error))
         goto out;
     }
 
@@ -178,6 +180,7 @@ object_iter_callback (OstreeRepo  *repo,
   data->n_objects++;
 
  out:
+  g_clear_object (&f);
   if (checksum != NULL)
     g_checksum_free (checksum);
   g_free (dirname);

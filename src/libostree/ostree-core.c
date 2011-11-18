@@ -45,7 +45,10 @@ ostree_validate_checksum_string (const char *sha256,
 void
 ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode)
 {
-  guint32 perms = (mode & ~S_IFMT);
+  guint32 perms;
+  perms = GUINT32_TO_BE (mode & ~S_IFMT);
+  uid = GUINT32_TO_BE (uid);
+  gid = GUINT32_TO_BE (gid);
   g_checksum_update (checksum, (guint8*) &uid, 4);
   g_checksum_update (checksum, (guint8*) &gid, 4);
   g_checksum_update (checksum, (guint8*) &perms, 4);
@@ -172,57 +175,37 @@ ostree_get_xattrs_for_file (GFile      *f,
 }
 
 gboolean
-ostree_stat_and_checksum_file (int dir_fd, const char *path,
-                               OstreeObjectType objtype,
-                               GChecksum **out_checksum,
-                               struct stat *out_stbuf,
-                               GError **error)
+ostree_checksum_file (GFile            *f,
+                      OstreeObjectType objtype,
+                      GChecksum       **out_checksum,
+                      GCancellable     *cancellable,
+                      GError          **error)
 {
-  GFile *f = NULL;
+  const char *path = NULL;
   GChecksum *content_sha256 = NULL;
   GChecksum *content_and_meta_sha256 = NULL;
-  char *stat_string = NULL;
   ssize_t bytes_read;
   GVariant *xattrs = NULL;
-  int fd = -1;
-  DIR *temp_dir = NULL;
   char *basename = NULL;
   gboolean ret = FALSE;
-  char *symlink_target = NULL;
-  char *device_id = NULL;
-  struct stat stbuf;
+  GFileInfo *file_info = NULL;
+  GInputStream *input = NULL;
+  guint32 unix_mode;
 
-  f = ot_util_new_file_for_path (path);
-
+  path = ot_gfile_get_path_cached (f);
   basename = g_path_get_basename (path);
 
-  if (dir_fd == -1)
-    {
-      char *dirname = g_path_get_dirname (path);
-      temp_dir = opendir (dirname);
-      if (temp_dir == NULL)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_free (dirname);
-        }
-      g_free (dirname);
-      dir_fd = dirfd (temp_dir);
-    }
+  file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
+                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                 cancellable, error);
+  if (!file_info)
+    goto out;
 
-  if (fstatat (dir_fd, basename, &stbuf, AT_SYMLINK_NOFOLLOW) < 0)
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  if (S_ISREG(stbuf.st_mode))
-    {
-      fd = ot_util_open_file_read_at (dir_fd, basename, error);
-      if (fd < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
+      input = (GInputStream*)g_file_read (f, cancellable, error);
+      if (!input)
+        goto out;
     }
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
@@ -233,40 +216,35 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
     }
 
   content_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
+
+  unix_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
  
-  if (S_ISREG(stbuf.st_mode))
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
       guint8 buf[8192];
 
-      while ((bytes_read = read (fd, buf, sizeof (buf))) > 0)
+      while ((bytes_read = g_input_stream_read (input, buf, sizeof (buf), cancellable, error)) > 0)
         g_checksum_update (content_sha256, buf, bytes_read);
       if (bytes_read < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
+        goto out;
     }
-  else if (S_ISLNK(stbuf.st_mode))
+  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     {
-      symlink_target = g_malloc (PATH_MAX);
+      const char *symlink_target = g_file_info_get_symlink_target (file_info);
 
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      g_assert (symlink_target != NULL);
       
-      bytes_read = readlinkat (dir_fd, basename, symlink_target, PATH_MAX);
-      if (bytes_read < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-      g_checksum_update (content_sha256, (guint8*)symlink_target, bytes_read);
+      g_checksum_update (content_sha256, (guint8*)symlink_target, strlen (symlink_target));
     }
-  else if (S_ISCHR(stbuf.st_mode) || S_ISBLK(stbuf.st_mode))
+  else if (S_ISCHR(unix_mode) || S_ISBLK(unix_mode))
     {
+      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
-      device_id = g_strdup_printf ("%u", (guint)stbuf.st_rdev);
-      g_checksum_update (content_sha256, (guint8*)device_id, strlen (device_id));
+      rdev = GUINT32_TO_BE (rdev);
+      g_checksum_update (content_sha256, (guint8*)&rdev, 4);
     }
-  else if (S_ISFIFO(stbuf.st_mode))
+  else if (S_ISFIFO(unix_mode))
     {
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
     }
@@ -283,23 +261,19 @@ ostree_stat_and_checksum_file (int dir_fd, const char *path,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      ostree_checksum_update_stat (content_and_meta_sha256, stbuf.st_uid,
-                                   stbuf.st_gid, stbuf.st_mode);
+      ostree_checksum_update_stat (content_and_meta_sha256,
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
       g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
 
-  *out_stbuf = stbuf;
   *out_checksum = content_and_meta_sha256;
   ret = TRUE;
  out:
-  g_clear_object (&f);
-  if (fd >= 0)
-    close (fd);
-  if (temp_dir != NULL)
-    closedir (temp_dir);
-  g_free (symlink_target);
+  g_clear_object (&input);
+  g_clear_object (&file_info);
   g_free (basename);
-  g_free (stat_string);
   if (xattrs)
     g_variant_unref (xattrs);
   if (content_sha256)

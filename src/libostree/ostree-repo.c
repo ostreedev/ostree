@@ -1211,13 +1211,15 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
 {
   gboolean ret = FALSE;
   GChecksum *checksum = NULL;
-  struct stat stbuf;
   gboolean did_exist;
+  GFile *f = NULL;
   
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_assert (tree != NULL);
 
-  if (!ostree_stat_and_checksum_file (-1, abspath, OSTREE_OBJECT_TYPE_FILE, &checksum, &stbuf, error))
+  f = ot_util_new_file_for_path (abspath);
+
+  if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE, &checksum, NULL, error))
     goto out;
 
   if (!ostree_repo_store_object_trusted (self, abspath, g_checksum_get_string (checksum),
@@ -1229,6 +1231,7 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
 
   ret = TRUE;
  out:
+  g_clear_object (&f);
   if (checksum)
     g_checksum_free (checksum);
   return ret;
@@ -1884,7 +1887,6 @@ get_file_checksum (GFile  *f,
   GVariant *dirmeta = NULL;
   GVariant *packed_dirmeta = NULL;
   char *ret_checksum = NULL;
-  struct stat stbuf;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
@@ -1904,9 +1906,8 @@ get_file_checksum (GFile  *f,
         }
       else
         {
-          if (!ostree_stat_and_checksum_file (-1, ot_gfile_get_path_cached (f),
-                                              OSTREE_OBJECT_TYPE_FILE,
-                                              &tmp_checksum, &stbuf, error))
+          if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
+                                     &tmp_checksum, cancellable, error))
             goto out;
           ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
         }

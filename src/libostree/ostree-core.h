@@ -92,6 +92,8 @@ typedef enum {
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
 
+void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
+
 char *ostree_get_relative_object_path (const char *checksum,
                                        OstreeObjectType type,
                                        gboolean         archive);
@@ -107,11 +109,11 @@ gboolean ostree_parse_metadata_file (GFile                       *file,
                                      GVariant                   **out_variant,
                                      GError                     **error);
 
-gboolean ostree_stat_and_checksum_file (int dirfd, const char *path,
-                                        OstreeObjectType type,
-                                        GChecksum **out_checksum,
-                                        struct stat *out_stbuf,
-                                        GError **error);
+gboolean ostree_checksum_file (GFile             *f,
+                               OstreeObjectType   type,
+                               GChecksum        **out_checksum,
+                               GCancellable      *cancellable,
+                               GError           **error);
 
 gboolean ostree_get_directory_metadata (GFile *dir,
                                         GVariant  **out_metadata,
@@ -153,8 +155,6 @@ gboolean ostree_unpack_object (const char   *path,
                                const char   *dest_path,    
                                GChecksum   **out_checksum,
                                GError      **error);
-
-void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
 
 
 #endif /* _OSTREE_REPO */

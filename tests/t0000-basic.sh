@@ -26,8 +26,8 @@ echo "1..15"
 setup_test_repository "regular"
 echo "ok setup"
 
-assert_file_has_content ${test_tmpdir}/repo/objects/f2/c7a70e5e252c1cb7a018d98f34cbf01d553185e9adc775e10213f4187fa91a.file moo
-assert_streq "$(readlink ${test_tmpdir}/repo/objects/cf/443bea5eb400bc25b376c07925cc06cd05235d5fb38f20cd5f7ca53b7b3b10.file)" nonexistent
+assert_file_has_content ${test_tmpdir}/repo/objects/3a/9b4a6fb6885c2548e35c9382b316ad073ef7c1872a97cc9661e6403777cbaf.file moo
+assert_streq "$(readlink ${test_tmpdir}/repo/objects/d4/69b152ab4c8ddcfdfd5b15510560bcb76ae4ffea6eace4074435e5a5d05622.file)" nonexistent
 
 echo "ok check"
 
