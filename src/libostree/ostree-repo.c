@@ -651,7 +651,7 @@ import_gvariant_object (OstreeRepo  *self,
   if (!write_gvariant_to_tmp (self, type, variant, &tmp_path, &ret_checksum, error))
     goto out;
 
-  if (!ostree_repo_store_object_trusted (self, ot_gfile_get_path_cached (tmp_path),
+  if (!ostree_repo_store_object_trusted (self, tmp_path,
                                          g_checksum_get_string (ret_checksum),
                                          OSTREE_OBJECT_TYPE_META,
                                          FALSE, &did_exist, error))
@@ -789,7 +789,7 @@ prepare_dir_for_checksum_get_object_path (OstreeRepo *self,
 
 static gboolean
 link_object_trusted (OstreeRepo   *self,
-                     const char   *path,
+                     GFile        *file,
                      const char   *checksum,
                      OstreeObjectType objtype,
                      gboolean      overwrite,
@@ -818,7 +818,7 @@ link_object_trusted (OstreeRepo   *self,
 
       (void) unlink (tmp_dest_path);
 
-      if (link (path, tmp_dest_path) < 0
+      if (link (ot_gfile_get_path_cached (file), tmp_dest_path) < 0
           || rename (tmp_dest_path, dest_path) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -840,20 +840,17 @@ link_object_trusted (OstreeRepo   *self,
 
 static gboolean
 archive_file_trusted (OstreeRepo   *self,
-                      const char   *path,
+                      GFile        *file,
                       const char   *checksum,
                       OstreeObjectType objtype,
                       gboolean      overwrite,
                       gboolean     *did_exist,
                       GError      **error)
 {
-  GFile *infile = NULL;
   GFileOutputStream *out = NULL;
   gboolean ret = FALSE;
   GFile *dest_file = NULL;
   GError *temp_error = NULL;
-
-  infile = ot_gfile_new_for_path (path);
 
   if (!prepare_dir_for_checksum_get_object_path (self, checksum, objtype, &dest_file, error))
     goto out;
@@ -883,7 +880,7 @@ archive_file_trusted (OstreeRepo   *self,
 
   if (out)
     {
-      if (!ostree_pack_object ((GOutputStream*)out, infile, objtype, NULL, error))
+      if (!ostree_pack_object ((GOutputStream*)out, file, objtype, NULL, error))
         goto out;
       
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
@@ -893,14 +890,13 @@ archive_file_trusted (OstreeRepo   *self,
   ret = TRUE;
  out:
   g_clear_object (&dest_file);
-  g_clear_object (&infile);
   g_clear_object (&out);
   return ret;
 }
   
 gboolean      
 ostree_repo_store_object_trusted (OstreeRepo   *self,
-                                  const char   *path,
+                                  GFile        *file,
                                   const char   *checksum,
                                   OstreeObjectType objtype,
                                   gboolean      overwrite,
@@ -909,9 +905,9 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   if (priv->archive && objtype == OSTREE_OBJECT_TYPE_FILE)
-    return archive_file_trusted (self, path, checksum, objtype, overwrite, did_exist, error);
+    return archive_file_trusted (self, file, checksum, objtype, overwrite, did_exist, error);
   else
-    return link_object_trusted (self, path, checksum, objtype, overwrite, did_exist, error);
+    return link_object_trusted (self, file, checksum, objtype, overwrite, did_exist, error);
 }
 
 gboolean
@@ -924,13 +920,14 @@ ostree_repo_store_packfile (OstreeRepo       *self,
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  GString *tempfile_path = NULL;
   GChecksum *checksum = NULL;
+  GFile *src = NULL;
+  GFile *tempfile = NULL;
 
-  tempfile_path = g_string_new (priv->path);
-  g_string_append_printf (tempfile_path, "/tmp-unpack-%s", expected_checksum);
+  src = ot_gfile_new_for_path (path);
+  tempfile = g_file_get_child (priv->tmp_dir, expected_checksum);
   
-  if (!ostree_unpack_object (path, objtype, tempfile_path->str, &checksum, error))
+  if (!ostree_unpack_object (src, objtype, tempfile, &checksum, error))
     goto out;
 
   if (strcmp (g_checksum_get_string (checksum), expected_checksum) != 0)
@@ -941,7 +938,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
       goto out;
     }
 
-  if (!ostree_repo_store_object_trusted (self, tempfile_path ? tempfile_path->str : path,
+  if (!ostree_repo_store_object_trusted (self, tempfile,
                                          expected_checksum,
                                          objtype,
                                          FALSE, did_exist, error))
@@ -949,11 +946,10 @@ ostree_repo_store_packfile (OstreeRepo       *self,
 
   ret = TRUE;
  out:
-  if (tempfile_path)
-    {
-      (void) unlink (tempfile_path->str);
-      g_string_free (tempfile_path, TRUE);
-    }
+  if (tempfile)
+    (void) g_file_delete (tempfile, NULL, NULL);
+  g_clear_object (&tempfile);
+  g_clear_object (&src);
   if (checksum)
     g_checksum_free (checksum);
   return ret;
@@ -1208,7 +1204,7 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
   if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE, &checksum, NULL, error))
     goto out;
 
-  if (!ostree_repo_store_object_trusted (self, abspath, g_checksum_get_string (checksum),
+  if (!ostree_repo_store_object_trusted (self, f, g_checksum_get_string (checksum),
                                          OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, error))
     goto out;
 
@@ -1757,9 +1753,12 @@ checkout_tree (OstreeRepo    *self,
   GError *temp_error = NULL;
   GFileInfo *file_info = NULL;
   GFileEnumerator *dir_enum = NULL;
+  GFile *destination_f = NULL;
   GFile *child = NULL;
   GFile *object_path = NULL;
-  char *dest_path = NULL;
+  GFile *dest_path = NULL;
+
+  destination_f = ot_gfile_new_for_path (destination);
 
   dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1787,17 +1786,17 @@ checkout_tree (OstreeRepo    *self,
         {
           const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)child);
 
-          dest_path = g_build_filename (destination, name, NULL);
+          dest_path = g_file_get_child (destination_f, name);
           object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 
           if (priv->archive)
             {
-              if (!ostree_unpack_object (ot_gfile_get_path_cached (object_path), OSTREE_OBJECT_TYPE_FILE, dest_path, NULL, error))
+              if (!ostree_unpack_object (object_path, OSTREE_OBJECT_TYPE_FILE, dest_path, NULL, error))
                 goto out;
             }
           else
             {
-              if (link (ot_gfile_get_path_cached (object_path), dest_path) < 0)
+              if (link (ot_gfile_get_path_cached (object_path), ot_gfile_get_path_cached (dest_path)) < 0)
                 {
                   ot_util_set_error_from_errno (error, errno);
                   goto out;
@@ -1806,8 +1805,7 @@ checkout_tree (OstreeRepo    *self,
         }
 
       g_clear_object (&object_path);
-      g_free (dest_path);
-      dest_path = NULL;
+      g_clear_object (&dest_path);
       g_clear_object (&file_info);
       g_clear_object (&child);
     }
@@ -1823,6 +1821,8 @@ checkout_tree (OstreeRepo    *self,
   g_clear_object (&file_info);
   g_clear_object (&child);
   g_clear_object (&object_path);
+  g_clear_object (&dest_path);
+  g_clear_object (&destination_f);
   g_free (dest_path);
   return ret;
 }

@@ -154,9 +154,9 @@ gboolean ostree_parse_packed_file (GFile            *file,
                                    GCancellable *cancellable,
                                    GError      **error);
 
-gboolean ostree_unpack_object (const char   *path,
+gboolean ostree_unpack_object (GFile             *file,
                                OstreeObjectType  objtype,
-                               const char   *dest_path,    
+                               GFile             *dest,    
                                GChecksum   **out_checksum,
                                GError      **error);
 

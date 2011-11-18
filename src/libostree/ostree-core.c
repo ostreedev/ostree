@@ -673,20 +673,15 @@ splice_and_checksum (GOutputStream  *out,
 }
 
 static gboolean
-unpack_meta (const char   *path,
-             const char   *dest_path,    
+unpack_meta (GFile        *file,
+             GFile        *dest_file,    
              GChecksum   **out_checksum,
              GError      **error)
 {
   gboolean ret = FALSE;
-  GFile *file = NULL;
-  GFile *dest_file = NULL;
   GFileInputStream *in = NULL;
   GChecksum *ret_checksum = NULL;
   GFileOutputStream *out = NULL;
-
-  file = ot_gfile_new_for_path (path);
-  dest_file = ot_gfile_new_for_path (dest_path);
 
   if (out_checksum)
     ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -710,12 +705,8 @@ unpack_meta (const char   *path,
     *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  if (!ret)
-    (void) unlink (dest_path);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
-  g_clear_object (&file);
-  g_clear_object (&dest_file);
   g_clear_object (&in);
   return ret;
 }
@@ -785,14 +776,12 @@ ostree_parse_packed_file (GFile            *file,
 }
 
 static gboolean
-unpack_file (const char   *path,
-             const char   *dest_path,    
+unpack_file (GFile        *file,
+             GFile        *dest_file,    
              GChecksum   **out_checksum,
              GError      **error)
 {
   gboolean ret = FALSE;
-  GFile *file = NULL;
-  GFile *dest_file = NULL;
   GVariant *metadata = NULL;
   GVariant *xattrs = NULL;
   GInputStream *in = NULL;
@@ -801,8 +790,9 @@ unpack_file (const char   *path,
   guint32 version, uid, gid, mode;
   guint64 content_len;
   gsize bytes_read;
+  const char *dest_path;
 
-  file = ot_gfile_new_for_path (path);
+  dest_path = ot_gfile_get_path_cached (dest_file);
 
   if (!ostree_parse_packed_file (file, &metadata, &in, NULL, error))
     goto out;
@@ -815,8 +805,6 @@ unpack_file (const char   *path,
   mode = GUINT32_FROM_BE (mode);
   content_len = GUINT64_FROM_BE (content_len);
 
-  dest_file = ot_gfile_new_for_path (dest_path);
-      
   if (out_checksum)
     ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
@@ -892,7 +880,7 @@ unpack_file (const char   *path,
         }
     }
 
-  if (!ostree_set_xattrs (file, xattrs, NULL, error))
+  if (!ostree_set_xattrs (dest_file, xattrs, NULL, error))
     goto out;
 
   if (ret_checksum)
@@ -910,8 +898,6 @@ unpack_file (const char   *path,
     (void) unlink (dest_path);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
-  g_clear_object (&file);
-  g_clear_object (&dest_file);
   g_clear_object (&in);
   g_clear_object (&out);
   if (metadata)
@@ -922,16 +908,16 @@ unpack_file (const char   *path,
 }
 
 gboolean
-ostree_unpack_object (const char   *path,
+ostree_unpack_object (GFile            *file,
                       OstreeObjectType  objtype,
-                      const char   *dest_path,    
-                      GChecksum   **out_checksum,
-                      GError      **error)
+                      GFile            *dest,
+                      GChecksum       **out_checksum,
+                      GError          **error)
 {
   if (objtype == OSTREE_OBJECT_TYPE_META)
-    return unpack_meta (path, dest_path, out_checksum, error);
+    return unpack_meta (file, dest, out_checksum, error);
   else
-    return unpack_file (path, dest_path, out_checksum, error);
+    return unpack_file (file, dest, out_checksum, error);
 }
   
 
