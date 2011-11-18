@@ -28,6 +28,7 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-diff.c \
 	src/ostree/ot-builtin-fsck.c \
 	src/ostree/ot-builtin-init.c \
+	src/ostree/ot-builtin-local-clone.c \
 	src/ostree/ot-builtin-log.c \
 	src/ostree/ot-builtin-run-triggers.c \
 	src/ostree/ot-builtin-remote.c \

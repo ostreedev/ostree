@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..3'
+echo '1..5'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -35,3 +35,15 @@ assert_has_file baz/cow
 assert_file_has_content baz/cow moo
 assert_has_file baz/deeper/ohyeah
 echo "ok content"
+
+cd ${test_tmpdir}
+mkdir repo2
+ostree --repo=repo2 init
+$OSTREE local-clone repo2
+echo "ok local clone"
+
+cd ${test_tmpdir}
+ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
+cd test2-checkout-from-local-clone
+assert_file_has_content baz/cow moo
+echo "ok local clone checkout"

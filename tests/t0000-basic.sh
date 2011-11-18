@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..15"
+echo "1..17"
 
 . libtest.sh
 
@@ -137,3 +137,14 @@ assert_file_has_content ${test_tmpdir}/show 'example.com'
 assert_file_has_content ${test_tmpdir}/show 'buildid'
 echo "ok metadata content"
 
+cd ${test_tmpdir}
+mkdir repo2
+ostree --repo=repo2 init
+$OSTREE local-clone repo2
+echo "ok local clone"
+
+cd ${test_tmpdir}
+ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
+cd test2-checkout-from-local-clone
+assert_file_has_content yet/another/tree/green 'leaf'
+echo "ok local clone checkout"
