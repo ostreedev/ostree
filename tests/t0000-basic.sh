@@ -23,6 +23,9 @@ echo "1..15"
 
 . libtest.sh
 
+echo hello > afile
+assert_streq "$(ostree checksum afile)" e56457ac3d60e89083e3492c738588f28311ea44c347f57f12e8b7f35d518fe3
+
 setup_test_repository "regular"
 echo "ok setup"
 

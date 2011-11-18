@@ -29,6 +29,7 @@ G_BEGIN_DECLS
 
 typedef enum {
   OSTREE_BUILTIN_FLAG_NONE = 0,
+  OSTREE_BUILTIN_FLAG_NO_REPO = 1,
 } OstreeBuiltinFlags;
 
 typedef struct {
@@ -38,6 +39,7 @@ typedef struct {
 } OstreeBuiltin;
 
 gboolean ostree_builtin_checkout (int argc, char **argv, const char *repo, GError **error);
+gboolean ostree_builtin_checksum (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_commit (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_compose (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_diff (int argc, char **argv, const char *repo, GError **error);

@@ -30,6 +30,7 @@
 
 static OstreeBuiltin builtins[] = {
   { "checkout", ostree_builtin_checkout, 0 },
+  { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
   { "diff", ostree_builtin_diff, 0 },
   { "init", ostree_builtin_init, 0 },
   { "commit", ostree_builtin_commit, 0 },
@@ -70,14 +71,42 @@ usage (char **argv, gboolean is_error)
   return (is_error ? 1 : 0);
 }
 
+static void
+prep_builtin_argv (const char *builtin,
+                   int argc,
+                   char **argv,
+                   int *out_argc,
+                   char ***out_argv)
+{
+  int i;
+  char **cmd_argv;
+  
+  cmd_argv = g_new0 (char *, argc + 2);
+  
+  cmd_argv[0] = (char*)builtin;
+  for (i = 0; i < argc; i++)
+    cmd_argv[i+1] = argv[i];
+  cmd_argv[i+1] = NULL;
+  *out_argc = argc+1;
+  *out_argv = cmd_argv;
+}
+
+static void
+set_unknown_command (char **argv, GError **error)
+{
+  usage (argv, TRUE);
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+               "Unknown command");
+}
 
 int
 main (int    argc,
       char **argv)
 {
   OstreeBuiltin *builtin;
-  const char *cmd;
-  const char *repo;
+  GError *error = NULL;
+  int cmd_argc;
+  char **cmd_argv = NULL;
 
   g_type_init ();
 
@@ -85,43 +114,66 @@ main (int    argc,
 
   builtin = builtins;
 
-  if (argc < 3)
+  if (argc < 2)
     return usage (argv, 1);
   
   if (!g_str_has_prefix (argv[1], "--repo="))
-    return usage (argv, 1);
-  repo = argv[1] + strlen ("--repo=");
-
-  cmd = argv[2];
-
-  while (builtin->name)
     {
-      GError *error = NULL;
-      if (strcmp (cmd, builtin->name) == 0)
+      const char *cmd = argv[1];
+      gboolean found = FALSE;
+
+      prep_builtin_argv (cmd, argc-2, argv+2, &cmd_argc, &cmd_argv);
+      while (builtin->name)
         {
-          int i;
-          int tmp_argc;
-          char **tmp_argv;
-
-          tmp_argc = argc - 2;
-          tmp_argv = g_new0 (char *, tmp_argc + 1);
-
-          tmp_argv[0] = (char*)builtin->name;
-          for (i = 0; i < tmp_argc; i++)
-            tmp_argv[i+1] = argv[i+3];
-          if (!builtin->fn (tmp_argc, tmp_argv, repo, &error))
+          if (builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO
+              && strcmp (cmd, builtin->name) == 0)
             {
-              g_free (tmp_argv);
-              g_printerr ("%s\n", error->message);
-              g_clear_error (&error);
-              return 1;
+              found = TRUE;
+              if (!builtin->fn (cmd_argc, cmd_argv, NULL, &error))
+                goto out;
+              break;
             }
-          g_free (tmp_argv);
-          return 0;
+          builtin++;
         }
-      builtin++;
+
+      if (!found)
+        set_unknown_command (argv, &error);
     }
-  
-  g_printerr ("Unknown command '%s'\n", cmd);
-  return usage (argv, 1);
+  else
+    {
+      const char *repo = argv[1] + strlen ("--repo=");
+      const char *cmd = argv[2];
+      gboolean found = FALSE;
+
+      if (argc < 3)
+        return usage (argv, 1);
+
+      prep_builtin_argv (cmd, argc-3, argv+3, &cmd_argc, &cmd_argv);
+
+      while (builtin->name)
+        {
+          if (!(builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO)
+              && strcmp (cmd, builtin->name) == 0)
+            {
+              found = TRUE;
+              if (!builtin->fn (cmd_argc, cmd_argv, repo, &error))
+                goto out;
+              break;
+            }
+          builtin++;
+        }
+      
+      if (!found)
+        set_unknown_command (argv, &error);
+    }
+
+ out:
+  g_free (cmd_argv);
+  if (error)
+    {
+      g_printerr ("%s\n", error->message);
+      g_clear_error (&error);
+      return 1;
+    }
+  return 0;
 }
