@@ -30,13 +30,13 @@
 #include "otutil.h"
 
 gboolean
-ot_util_ensure_directory (const char *path, gboolean with_parents, GError **error)
+ot_gfile_ensure_directory (GFile     *dir,
+                           gboolean   with_parents, 
+                           GError   **error)
 {
-  GFile *dir;
   GError *temp_error = NULL;
   gboolean ret = FALSE;
 
-  dir = ot_gfile_new_for_path (path);
   if (with_parents)
     ret = g_file_make_directory_with_parents (dir, NULL, &temp_error);
   else
@@ -54,33 +54,15 @@ ot_util_ensure_directory (const char *path, gboolean with_parents, GError **erro
 
   ret = TRUE;
  out:
-  g_clear_object (&dir);
-  return ret;
-}
-
-
-char *
-ot_util_get_file_contents_utf8 (const char *path,
-                                GError    **error)
-{
-  GFile *file = NULL;
-  char *ret = NULL;
-
-  file = ot_gfile_new_for_path (path);
-  if (!ot_util_gfile_load_contents_utf8 (file, NULL, &ret, NULL, error))
-    goto out;
-
- out:
-  g_clear_object (&file);
   return ret;
 }
 
 gboolean
-ot_util_gfile_load_contents_utf8 (GFile         *file,
-                                  GCancellable  *cancellable,
-                                  char         **contents_out,
-                                  char         **etag_out,
-                                  GError       **error)
+ot_gfile_load_contents_utf8 (GFile         *file,
+                             char         **contents_out,
+                             char         **etag_out,
+                             GCancellable  *cancellable,
+                             GError       **error)
 {
   char *ret_contents = NULL;
   char *ret_etag = NULL;
@@ -112,31 +94,6 @@ ot_util_gfile_load_contents_utf8 (GFile         *file,
  out:
   g_free (ret_contents);
   g_free (ret_etag);
-  return ret;
-}
-
-GInputStream *
-ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **error)
-{
-  GInputStream *ret = NULL;
-  int fd;
-  int flags = O_RDONLY;
-  const char *path = NULL;
-
-  path = ot_gfile_get_path_cached (file);
-#ifdef O_NOATIME
-  flags |= O_NOATIME;
-#endif
-  fd = open (path, flags);
-  if (fd < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  ret = (GInputStream*)g_unix_input_stream_new (fd, TRUE);
-  
- out:
   return ret;
 }
 

@@ -179,13 +179,13 @@ ostree_repo_new (const char *path)
 
 static gboolean
 parse_rev_file (OstreeRepo     *self,
-                const char     *path,
+                GFile          *f,
                 char          **sha256,
                 GError        **error) G_GNUC_UNUSED;
 
 static gboolean
 parse_rev_file (OstreeRepo     *self,
-                const char     *path,
+                GFile          *f,
                 char          **sha256,
                 GError        **error)
 {
@@ -194,7 +194,9 @@ parse_rev_file (OstreeRepo     *self,
   gboolean ret = FALSE;
   char *rev = NULL;
 
-  rev = ot_util_get_file_contents_utf8 (path, &temp_error);
+  if (!ot_gfile_load_contents_utf8 (f, &rev, NULL, NULL, &temp_error))
+    goto out;
+
   if (rev == NULL)
     {
       if (g_error_matches (temp_error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
@@ -215,14 +217,11 @@ parse_rev_file (OstreeRepo     *self,
   if (g_str_has_prefix (rev, "ref: "))
     {
       GFile *ref;
-      const char *ref_path;
       char *ref_sha256;
       gboolean subret;
 
       ref = g_file_resolve_relative_path (priv->local_heads_dir, rev + 5);
-      ref_path = ot_gfile_get_path_cached (ref);
-
-      subret = parse_rev_file (self, ref_path, &ref_sha256, error);
+      subret = parse_rev_file (self, ref, &ref_sha256, error);
       g_clear_object (&ref);
         
       if (!subret)
@@ -333,7 +332,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
           child_path = ot_gfile_get_path_cached (child);
 
         }
-      if (!ot_util_gfile_load_contents_utf8 (child, NULL, &ret_rev, NULL, &temp_error))
+      if (!ot_gfile_load_contents_utf8 (child, &ret_rev, NULL, NULL, &temp_error))
         {
           if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
@@ -756,16 +755,19 @@ prepare_dir_for_checksum_get_object_path (OstreeRepo *self,
                                           OstreeObjectType type,
                                           GError      **error)
 {
+  GFile *f = NULL;
   char *checksum_dir = NULL;
   char *object_path = NULL;
 
   object_path = ostree_repo_get_object_path (self, checksum, type);
   checksum_dir = g_path_get_dirname (object_path);
+  f = ot_gfile_new_for_path (checksum_dir);
 
-  if (!ot_util_ensure_directory (checksum_dir, FALSE, error))
+  if (!ot_gfile_ensure_directory (f, FALSE, error))
     goto out;
   
  out:
+  g_clear_object (&f);
   g_free (checksum_dir);
   return object_path;
 }
@@ -1359,7 +1361,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
     {
       dir = g_file_get_child (priv->remote_heads_dir, remote);
 
-      if (!ot_util_ensure_directory (ot_gfile_get_path_cached (dir), FALSE, error))
+      if (!ot_gfile_ensure_directory (dir, FALSE, error))
         goto out;
     }
 

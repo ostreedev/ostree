@@ -292,6 +292,7 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
   char *baseurl = NULL;
   char *refpath = NULL;
   char *temppath = NULL;
+  GFile *tempf = NULL;
   char *remote_ref = NULL;
   char *original_rev = NULL;
   GKeyFile *config = NULL;
@@ -349,9 +350,9 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
                                              NULL);
   if (!fetch_uri (repo, soup, target_uri, &temppath, error))
     goto out;
+  tempf = ot_gfile_new_for_path (temppath);
 
-  rev = ot_util_get_file_contents_utf8 (temppath, error);
-  if (!rev)
+  if (!ot_gfile_load_contents_utf8 (tempf, &rev, NULL, NULL, error))
     goto out;
   g_strchomp (rev);
 
