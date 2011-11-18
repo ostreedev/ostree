@@ -36,7 +36,7 @@ ot_util_ensure_directory (const char *path, gboolean with_parents, GError **erro
   GError *temp_error = NULL;
   gboolean ret = FALSE;
 
-  dir = ot_util_new_file_for_path (path);
+  dir = ot_gfile_new_for_path (path);
   if (with_parents)
     ret = g_file_make_directory_with_parents (dir, NULL, &temp_error);
   else
@@ -66,7 +66,7 @@ ot_util_get_file_contents_utf8 (const char *path,
   GFile *file = NULL;
   char *ret = NULL;
 
-  file = ot_util_new_file_for_path (path);
+  file = ot_gfile_new_for_path (path);
   if (!ot_util_gfile_load_contents_utf8 (file, NULL, &ret, NULL, error))
     goto out;
 
@@ -142,7 +142,7 @@ ot_util_read_file_noatime (GFile *file, GCancellable *cancellable, GError **erro
 
 /* Like g_file_new_for_path, but only do local stuff, not GVFS */
 GFile *
-ot_util_new_file_for_path (const char *path)
+ot_gfile_new_for_path (const char *path)
 {
   return g_vfs_get_file_for_path (g_vfs_get_local (), path);
 }

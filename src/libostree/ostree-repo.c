@@ -134,7 +134,7 @@ ostree_repo_constructor (GType                  gtype,
 
   g_assert (priv->path != NULL);
   
-  priv->repo_file = ot_util_new_file_for_path (priv->path);
+  priv->repo_file = ot_gfile_new_for_path (priv->path);
   priv->tmp_dir = g_file_resolve_relative_path (priv->repo_file, "tmp");
   priv->local_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/heads");
   priv->remote_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/remotes");
@@ -610,7 +610,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
     }
 
   ret = TRUE;
-  *out_tmpname = ot_util_new_file_for_path (dest_name);
+  *out_tmpname = ot_gfile_new_for_path (dest_name);
   *out_checksum = checksum;
   checksum = NULL;
  out:
@@ -704,7 +704,7 @@ import_directory_meta (OstreeRepo  *self,
   GFile *f = NULL;
   GFileInfo *f_info = NULL;
 
-  f = ot_util_new_file_for_path (path);
+  f = ot_gfile_new_for_path (path);
 
   f_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -877,7 +877,7 @@ archive_file_trusted (OstreeRepo   *self,
   char *dest_path = NULL;
   char *dest_tmp_path = NULL;
 
-  infile = ot_util_new_file_for_path (path);
+  infile = ot_gfile_new_for_path (path);
 
   dest_path = prepare_dir_for_checksum_get_object_path (self, checksum, objtype, error);
   if (!dest_path)
@@ -885,7 +885,7 @@ archive_file_trusted (OstreeRepo   *self,
 
   dest_tmp_path = g_strconcat (dest_path, ".tmp", NULL);
 
-  outfile = ot_util_new_file_for_path (dest_tmp_path);
+  outfile = ot_gfile_new_for_path (dest_tmp_path);
   out = g_file_replace (outfile, NULL, FALSE, 0, NULL, error);
   if (!out)
     goto out;
@@ -1218,7 +1218,7 @@ add_one_file_to_tree_and_import (OstreeRepo   *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_assert (tree != NULL);
 
-  f = ot_util_new_file_for_path (abspath);
+  f = ot_gfile_new_for_path (abspath);
 
   if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE, &checksum, NULL, error))
     goto out;
@@ -1624,7 +1624,7 @@ ostree_repo_iter_objects (OstreeRepo  *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  objectdir = ot_util_new_file_for_path (priv->objects_path);
+  objectdir = ot_gfile_new_for_path (priv->objects_path);
   enumerator = g_file_enumerate_children (objectdir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
@@ -1684,7 +1684,7 @@ ostree_repo_load_variant (OstreeRepo *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   path = ostree_repo_get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
-  f = ot_util_new_file_for_path (path);
+  f = ot_gfile_new_for_path (path);
   if (!ostree_parse_metadata_file (f, &ret_type, &ret_variant, error))
     goto out;
 
@@ -1722,7 +1722,7 @@ checkout_one_directory (OstreeRepo  *self,
   GVariant *xattr_variant = NULL;
 
   dest_path = g_build_filename (destination, dirname, NULL);
-  dest_file = ot_util_new_file_for_path (dest_path);
+  dest_file = ot_gfile_new_for_path (dest_path);
 
   if (!_ostree_repo_file_get_xattrs (dir, &xattr_variant, NULL, error))
     goto out;

@@ -58,7 +58,7 @@ checksum_packed_file (OtFsckData   *data,
   gsize bytes_read;
   char buf[8192];
 
-  file = ot_util_new_file_for_path (path);
+  file = ot_gfile_new_for_path (path);
 
   in = g_file_read (file, NULL, error);
   if (!in)
@@ -132,7 +132,7 @@ object_iter_callback (OstreeRepo  *repo,
   char *dot;
   GFile *f = NULL;
 
-  f = ot_util_new_file_for_path (path);
+  f = ot_gfile_new_for_path (path);
 
   /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
      if (nlinks < 2 && !quiet)

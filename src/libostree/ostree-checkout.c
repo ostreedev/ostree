@@ -205,7 +205,7 @@ run_trigger (OstreeCheckout *self,
     {
       temp_path = g_build_filename (priv->path, basename, NULL);
       rel_temp_path = g_strconcat ("./", basename, NULL);
-      temp_copy = ot_util_new_file_for_path (temp_path);
+      temp_copy = ot_gfile_new_for_path (temp_path);
 
       if (!g_file_copy (trigger, temp_copy, 0, NULL, NULL, NULL, error))
         goto out;
@@ -310,7 +310,7 @@ ostree_checkout_run_triggers (OstreeCheckout *self,
   GFileEnumerator *enumerator = NULL;
 
   triggerdir_path = g_build_filename (LIBEXECDIR, "ostree", "triggers.d", NULL);
-  triggerdir = ot_util_new_file_for_path (triggerdir_path);
+  triggerdir = ot_gfile_new_for_path (triggerdir_path);
 
   enumerator = g_file_enumerate_children (triggerdir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -333,7 +333,7 @@ ostree_checkout_run_triggers (OstreeCheckout *self,
       if (type == G_FILE_TYPE_REGULAR && g_str_has_suffix (name, ".trigger"))
         {
           child_path = g_build_filename (triggerdir_path, name, NULL);
-          child = ot_util_new_file_for_path (child_path);
+          child = ot_gfile_new_for_path (child_path);
 
           success = check_trigger (self, child, error);
         }

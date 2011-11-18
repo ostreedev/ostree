@@ -27,7 +27,7 @@
 
 G_BEGIN_DECLS
 
-GFile *ot_util_new_file_for_path (const char *path);
+GFile *ot_gfile_new_for_path (const char *path);
 
 const char *ot_gfile_get_path_cached (GFile *file);
 

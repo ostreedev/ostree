@@ -95,7 +95,7 @@ open_log (const char *name,
   GFileOutputStream *ret_log = NULL;
 
   path = g_strdup_printf ("%s/%s.log", tmpdir, name);
-  logf = ot_util_new_file_for_path (path);
+  logf = ot_gfile_new_for_path (path);
 
   ret_log = g_file_replace (logf, NULL, FALSE, 0, NULL, error);
   if (!ret_log)

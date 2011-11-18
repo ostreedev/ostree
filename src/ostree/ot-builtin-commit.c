@@ -240,7 +240,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
         }
       else if (metadata_bin_path)
         {
-          metadata_f = ot_util_new_file_for_path (metadata_bin_path);
+          metadata_f = ot_gfile_new_for_path (metadata_bin_path);
           if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), &metadata, error))
             goto out;
         }
@@ -295,7 +295,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       out = (GOutputStream*)g_unix_output_stream_new (pipefd[1], TRUE);
       from_fd = pipefd[0];
 
-      fdata.dir = ot_util_new_file_for_path (dir);
+      fdata.dir = ot_gfile_new_for_path (dir);
       fdata.separator = separator;
       fdata.out = out;
       fdata.cancellable = NULL;

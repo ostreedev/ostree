@@ -69,7 +69,7 @@ do_print_variant_generic (const GVariantType *type,
   GFile *f = NULL;
   GVariant *variant = NULL;
 
-  f = ot_util_new_file_for_path (filename);
+  f = ot_gfile_new_for_path (filename);
 
   if (!ot_util_variant_map (f, type, &variant, error))
     goto out;
@@ -120,7 +120,7 @@ do_print_packfile (OstreeRepo  *repo,
   path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
   if (!path)
     goto out;
-  file = ot_util_new_file_for_path (path);
+  file = ot_gfile_new_for_path (path);
 
   if (!ostree_parse_packed_file (file, &variant, &content, NULL, error))
     goto out;

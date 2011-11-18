@@ -192,7 +192,7 @@ compose_branch_on_dir (OstreeRepo *repo,
   if (g_str_has_suffix (destpath, "/"))
     destpath[strlen (destpath) - 1] = '\0';
   branchpath = g_strconcat (destpath, "-tmp-checkout-", branchrev, NULL);
-  branchf = ot_util_new_file_for_path (branchpath);
+  branchf = ot_gfile_new_for_path (branchpath);
 
   g_print ("Checking out %s (commit %s)...\n", branch, branchrev);
   if (!ostree_repo_checkout (repo, branchrev, branchpath, NULL, error))
@@ -255,7 +255,7 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
     }
 
   destination = argv[1];
-  destf = ot_util_new_file_for_path (destination);
+  destf = ot_gfile_new_for_path (destination);
   
   if (compose_metadata_path)
     {
@@ -280,7 +280,7 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
                              "ostree-compose", g_variant_builder_end (&compose_metadata_builder));
       compose_metadata_builder_initialized = FALSE;
 
-      metadata_f = ot_util_new_file_for_path (compose_metadata_path);
+      metadata_f = ot_gfile_new_for_path (compose_metadata_path);
 
       commit_metadata = g_variant_builder_end (&commit_metadata_builder);
       if (!ot_util_variant_save (metadata_f, commit_metadata, NULL, error))

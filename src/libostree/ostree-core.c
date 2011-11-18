@@ -685,8 +685,8 @@ unpack_meta (const char   *path,
   GChecksum *ret_checksum = NULL;
   GFileOutputStream *out = NULL;
 
-  file = ot_util_new_file_for_path (path);
-  dest_file = ot_util_new_file_for_path (dest_path);
+  file = ot_gfile_new_for_path (path);
+  dest_file = ot_gfile_new_for_path (dest_path);
 
   if (out_checksum)
     ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -802,7 +802,7 @@ unpack_file (const char   *path,
   guint64 content_len;
   gsize bytes_read;
 
-  file = ot_util_new_file_for_path (path);
+  file = ot_gfile_new_for_path (path);
 
   if (!ostree_parse_packed_file (file, &metadata, &in, NULL, error))
     goto out;
@@ -815,7 +815,7 @@ unpack_file (const char   *path,
   mode = GUINT32_FROM_BE (mode);
   content_len = GUINT64_FROM_BE (content_len);
 
-  dest_file = ot_util_new_file_for_path (dest_path);
+  dest_file = ot_gfile_new_for_path (dest_path);
       
   if (out_checksum)
     ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);

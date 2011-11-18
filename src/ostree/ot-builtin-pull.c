@@ -94,7 +94,7 @@ fetch_uri (OstreeRepo  *repo,
       goto out;
     }
   close (fd);
-  tempf = ot_util_new_file_for_path (template);
+  tempf = ot_gfile_new_for_path (template);
 
   buf = soup_message_body_flatten (msg->response_body);
 

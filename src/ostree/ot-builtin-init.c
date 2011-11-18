@@ -54,7 +54,7 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  repodir = ot_util_new_file_for_path (repo_path);
+  repodir = ot_gfile_new_for_path (repo_path);
 
   child = g_file_get_child (repodir, "config");
 

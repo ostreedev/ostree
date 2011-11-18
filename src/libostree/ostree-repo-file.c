@@ -396,7 +396,7 @@ _ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 
   checksum = _ostree_repo_file_get_checksum (self);
   path = ostree_repo_get_object_path (self->repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-  ret = ot_util_new_file_for_path (path);
+  ret = ot_gfile_new_for_path (path);
   g_free (path);
   
   return ret;
@@ -703,7 +703,7 @@ get_child_local_file (OstreeRepo   *repo,
   GFile *ret;
 
   path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-  ret = ot_util_new_file_for_path (path);
+  ret = ot_gfile_new_for_path (path);
   g_free (path);
   
   return ret;
