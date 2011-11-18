@@ -65,7 +65,7 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GKeyFile   *new_config,
                                         GError    **error);
 
-char *        ostree_repo_get_object_path (OstreeRepo   *self,
+GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
                                            const char   *object,
                                            OstreeObjectType type);
 

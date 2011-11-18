@@ -388,18 +388,9 @@ _ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 GFile *
 _ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
-  const char *checksum;
-  char *path;
-  GFile *ret;
-
   g_assert (!ostree_repo_is_archive (self->repo));
 
-  checksum = _ostree_repo_file_get_checksum (self);
-  path = ostree_repo_get_object_path (self->repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-  ret = ot_gfile_new_for_path (path);
-  g_free (path);
-  
-  return ret;
+  return ostree_repo_get_object_path (self->repo, _ostree_repo_file_get_checksum (self), OSTREE_OBJECT_TYPE_FILE);
 }
 
 OstreeRepo *
@@ -699,14 +690,7 @@ static GFile *
 get_child_local_file (OstreeRepo   *repo,
                       const char   *checksum)
 {
-  char *path;
-  GFile *ret;
-
-  path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-  ret = ot_gfile_new_for_path (path);
-  g_free (path);
-  
-  return ret;
+  return ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
 
 static gboolean

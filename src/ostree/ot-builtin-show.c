@@ -113,14 +113,10 @@ do_print_packfile (OstreeRepo  *repo,
 {
   gboolean ret = FALSE;
   GVariant *variant = NULL;
-  char *path = NULL;
   GInputStream *content = NULL;
   GFile *file = NULL;
 
-  path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-  if (!path)
-    goto out;
-  file = ot_gfile_new_for_path (path);
+  file = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
 
   if (!ostree_parse_packed_file (file, &variant, &content, NULL, error))
     goto out;
@@ -129,7 +125,6 @@ do_print_packfile (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  g_free (path);
   g_clear_object (&file);
   g_clear_object (&content);
   if (variant)
