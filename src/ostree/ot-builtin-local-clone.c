@@ -158,6 +158,8 @@ ostree_builtin_local_clone (int argc, char **argv, const char *repo_path, GError
   context = g_option_context_new ("DEST ... - Create new repository DEST");
   g_option_context_add_main_entries (context, options, NULL);
 
+  memset (&data, 0, sizeof (data));
+
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
