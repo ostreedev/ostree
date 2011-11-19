@@ -63,8 +63,10 @@ if (! test -f ${OBJ}); then
     mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
     cd ostree
     mkdir repo
-    rev=$(ostree --repo=${OSTREE_REPO} rev-parse gnomeos-base);
-    ostree --repo=${OSTREE_REPO} checkout ${rev} gnomeos-base-${rev}
+    ostree --repo=repo init
+    ostree --repo=${OSTREE_REPO} local-clone repo
+    rev=$(ostree --repo=repo rev-parse gnomeos-base);
+    ostree --repo=repo checkout ${rev} gnomeos-base-${rev}
     ln -s gnomeos-base-${rev} current
     cd ..
 
