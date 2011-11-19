@@ -22,14 +22,18 @@ BRANCH=$1
 test -n "$BRANCH" || usage
 shift
 
+ARCH=x86
+
 OSTREE_REPO=$WORKDIR/repo
-BUILD_TAR=$WORKDIR/tmp-eglibc/deploy/images/gnomeos-contents-$BRANCH-qemux86.tar.gz
+BUILD_TAR=$WORKDIR/tmp-eglibc/deploy/images/gnomeos-contents-$BRANCH-qemu${ARCH}.tar.gz
+
+BUILD_TIME=$(date -r $BUILD_TAR)
 
 tempdir=`mktemp -d tmp-commit-yocto-build.XXXXXXXXXX`
 cd $tempdir
 mkdir fs
 cd fs
 fakeroot -s ../fakeroot.db tar xf $BUILD_TAR
-fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build (need ostree git version here)" -b "gnomeos-$BRANCH"
+fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build ${BUILD_TIME}" -b "gnomeos-$ARCH-$BRANCH"
 cd "${WORKDIR}"
 rm -rf $tempdir

@@ -41,6 +41,10 @@ OSTREE_REPO=$1
 shift
 test -n "$OSTREE_REPO" || usage
 
+ARCH=x86
+
+BRANCH="gnomeos-${ARCH}-base"
+
 OBJ=gnomeos-fs.img
 if (! test -f ${OBJ}); then
     rm -f ${OBJ}.tmp
@@ -65,9 +69,9 @@ if (! test -f ${OBJ}); then
     mkdir repo
     ostree --repo=repo init
     ostree --repo=${OSTREE_REPO} local-clone repo
-    rev=$(ostree --repo=repo rev-parse gnomeos-base);
-    ostree --repo=repo checkout ${rev} gnomeos-base-${rev}
-    ln -s gnomeos-base-${rev} current
+    rev=$(ostree --repo=repo rev-parse ${BRANCH});
+    ostree --repo=repo checkout ${rev} ${BRANCH}-${rev}
+    ln -s ${BRANCH}-${rev} current
     cd ..
 
     mkdir proc # needed for ostree-init
