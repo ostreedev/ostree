@@ -93,11 +93,10 @@ prep_builtin_argv (const char *builtin,
 }
 
 static void
-set_unknown_command (char **argv, GError **error)
+set_error_print_usage (GError **error, const char *msg, char **argv)
 {
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, msg);
   usage (argv, TRUE);
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-               "Unknown command");
 }
 
 int
@@ -108,65 +107,60 @@ main (int    argc,
   GError *error = NULL;
   int cmd_argc;
   char **cmd_argv = NULL;
+  gboolean am_root;
+  gboolean have_repo_arg;
+  const char *cmd = NULL;
+  const char *repo = NULL;
 
   g_type_init ();
 
   g_set_prgname (argv[0]);
 
-  builtin = builtins;
-
   if (argc < 2)
     return usage (argv, 1);
-  
-  if (!g_str_has_prefix (argv[1], "--repo="))
-    {
-      const char *cmd = argv[1];
-      gboolean found = FALSE;
 
-      prep_builtin_argv (cmd, argc-2, argv+2, &cmd_argc, &cmd_argv);
-      while (builtin->name)
-        {
-          if (builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO
-              && strcmp (cmd, builtin->name) == 0)
-            {
-              found = TRUE;
-              if (!builtin->fn (cmd_argc, cmd_argv, NULL, &error))
-                goto out;
-              break;
-            }
-          builtin++;
-        }
+  am_root = getuid () == 0;
+  have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
 
-      if (!found)
-        set_unknown_command (argv, &error);
-    }
+  if (!have_repo_arg && am_root)
+    repo = "/sysroot/ostree/repo";
+  else if (have_repo_arg)
+    repo = argv[1] + strlen ("--repo=");
   else
+    repo = NULL;
+
+  if (!have_repo_arg)
+    cmd = argv[1];
+  else
+    cmd = argv[2];
+
+  builtin = builtins;
+  while (builtin->name)
     {
-      const char *repo = argv[1] + strlen ("--repo=");
-      const char *cmd = argv[2];
-      gboolean found = FALSE;
-
-      if (argc < 3)
-        return usage (argv, 1);
-
-      prep_builtin_argv (cmd, argc-3, argv+3, &cmd_argc, &cmd_argv);
-
-      while (builtin->name)
-        {
-          if (!(builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO)
-              && strcmp (cmd, builtin->name) == 0)
-            {
-              found = TRUE;
-              if (!builtin->fn (cmd_argc, cmd_argv, repo, &error))
-                goto out;
-              break;
-            }
-          builtin++;
-        }
-      
-      if (!found)
-        set_unknown_command (argv, &error);
+      if (strcmp (cmd, builtin->name) == 0)
+        break;
+      builtin++;
     }
+
+  if (!builtin)
+    {
+      set_error_print_usage (&error, "Unknown command", argv);
+      goto out;
+    }
+
+  if (repo == NULL && !(builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+    {
+      set_error_print_usage (&error, "Command requires a --repo argument", argv);
+      goto out;
+    }
+  
+  if (!have_repo_arg)
+    prep_builtin_argv (cmd, argc-2, argv+2, &cmd_argc, &cmd_argv);
+  else
+    prep_builtin_argv (cmd, argc-3, argv+3, &cmd_argc, &cmd_argv);
+
+  if (!builtin->fn (cmd_argc, cmd_argv, repo, &error))
+    goto out;
 
  out:
   g_free (cmd_argv);
