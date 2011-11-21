@@ -132,3 +132,93 @@ ot_gfile_get_basename_cached (GFile *file)
     }
   return name;
 }
+
+gboolean
+ot_gfile_merge_dirs (GFile    *destination,
+                     GFile    *src,
+                     GCancellable *cancellable,
+                     GError   **error)
+{
+  gboolean ret = FALSE;
+  const char *dest_path = NULL;
+  const char *src_path = NULL;
+  GError *temp_error = NULL;
+  GFileInfo *src_fileinfo = NULL;
+  GFileInfo *dest_fileinfo = NULL;
+  GFileEnumerator *src_enum = NULL;
+  GFile *dest_subfile = NULL;
+  GFile *src_subfile = NULL;
+  const char *name;
+  guint32 type;
+  const int move_flags = G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA;
+
+  dest_path = ot_gfile_get_path_cached (destination);
+  src_path = ot_gfile_get_path_cached (src);
+
+  dest_fileinfo = g_file_query_info (destination, OSTREE_GIO_FAST_QUERYINFO,
+                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                     cancellable, &temp_error);
+  if (dest_fileinfo)
+    {
+      type = g_file_info_get_attribute_uint32 (dest_fileinfo, "standard::type");
+      if (type != G_FILE_TYPE_DIRECTORY)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Attempting to replace non-directory %s with directory %s",
+                       dest_path, src_path);
+          goto out;
+        }
+
+      src_enum = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO, 
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            cancellable, error);
+      if (!src_enum)
+        goto out;
+
+      while ((src_fileinfo = g_file_enumerator_next_file (src_enum, cancellable, &temp_error)) != NULL)
+        {
+          type = g_file_info_get_attribute_uint32 (src_fileinfo, "standard::type");
+          name = g_file_info_get_attribute_byte_string (src_fileinfo, "standard::name");
+      
+          dest_subfile = g_file_get_child (destination, name);
+          src_subfile = g_file_get_child (src, name);
+
+          if (type == G_FILE_TYPE_DIRECTORY)
+            {
+              if (!ot_gfile_merge_dirs (dest_subfile, src_subfile, cancellable, error))
+                goto out;
+            }
+          else
+            {
+              if (!g_file_move (src_subfile, dest_subfile,
+                                move_flags, NULL, NULL, cancellable, error))
+                goto out;
+            }
+          
+          g_clear_object (&dest_subfile);
+          g_clear_object (&src_subfile);
+        }
+      if (temp_error)
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+  else if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    {
+      g_clear_error (&temp_error);
+      if (!g_file_move (src, destination, move_flags, NULL, NULL, cancellable, error))
+        goto out;
+    }
+  else
+    goto out;
+
+  ret = TRUE;
+ out:
+  g_clear_object (&src_fileinfo);
+  g_clear_object (&dest_fileinfo);
+  g_clear_object (&src_enum);
+  g_clear_object (&dest_subfile);
+  g_clear_object (&src_subfile);
+  return ret;
+}

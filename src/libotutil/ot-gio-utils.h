@@ -27,6 +27,8 @@
 
 G_BEGIN_DECLS
 
+#define OSTREE_GIO_FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,standard::is-hidden,unix::*"
+
 GFile *ot_gfile_new_for_path (const char *path);
 
 const char *ot_gfile_get_path_cached (GFile *file);
@@ -40,6 +42,12 @@ gboolean ot_gfile_load_contents_utf8 (GFile         *file,
                                       char         **etag_out,
                                       GCancellable  *cancellable,
                                       GError       **error);
+
+
+gboolean ot_gfile_merge_dirs (GFile    *destination,
+                              GFile    *src,
+                              GCancellable *cancellable,
+                              GError   **error);
 
 G_END_DECLS
 
