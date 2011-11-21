@@ -79,6 +79,9 @@ parse_arg (const char *cmdline, const char *arg)
 	  const char *start = p + arglen;
 	  const char *end = strchr (start, ' ');
 
+	  if (!end)
+	    end = strchr (start, '\n');
+
 	  if (is_eq)
 	    {
 	      if (end)
