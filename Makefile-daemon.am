@@ -1,3 +1,5 @@
+# Makefile for C source code
+#
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -15,23 +17,12 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
-AM_CPPFLAGS = -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"'
-AM_CFLAGS = $(WARN_CFLAGS)
+libexec_PROGRAMS += ostreed
 
-NULL = 
-BUILT_SOURCES =
-CLEANFILES =
-EXTRA_DIST =
-bin_PROGRAMS =
-bin_SCRIPTS =
-libexec_PROGRAMS =
-noinst_LTLIBRARIES =
-noinst_PROGRAMS =
+ostreed_SOURCES = src/daemon/main.c \
+	src/daemon/ot-daemon.h \
+	src/daemon/ot-daemon.c \
+	$(NULL)
 
-include Makefile-daemon.am
-include Makefile-otutil.am
-include Makefile-libostree.am
-include Makefile-ostree.am
-include Makefile-osbuild.am
-include Makefile-triggers.am
+ostreed_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/daemon -DLOCALEDIR=\"$(datadir)/locale\" $(OT_COREBIN_DEP_CFLAGS)
+ostreed_LDADD = libotutil.la libostree.la $(OT_COREBIN_DEP_LIBS)
