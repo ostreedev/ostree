@@ -42,8 +42,7 @@ shift
 test -n "$OSTREE_REPO" || usage
 
 ARCH=x86
-
-BRANCH="gnomeos-${ARCH}-base"
+BRANCH_PREFIX="gnomeos-${ARCH}-"
 
 OBJ=gnomeos-fs.img
 if (! test -f ${OBJ}); then
@@ -69,13 +68,15 @@ if (! test -f ${OBJ}); then
     mkdir repo
     ostree --repo=repo init
     ostree --repo=${OSTREE_REPO} local-clone repo
-    rev=$(ostree --repo=repo rev-parse ${BRANCH});
-    ostree --repo=repo checkout ${rev} ${BRANCH}-${rev}
-    ln -s ${BRANCH}-${rev} current
+    for branch in base dev; do
+        rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
+        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
+        ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
+    done
     cd ..
 
     mkdir proc # needed for ostree-init
-    cp -a ./ostree/current/usr/sbin/ostree-init .
+    cp -a ./ostree/${BRANCH_PREFIX}base-current/usr/sbin/ostree-init .
 
     cd ${WORKDIR}
     
@@ -92,7 +93,7 @@ if ! echo $ARGS | grep -q 'root='; then
     ARGS="root=/dev/hda $ARGS"
 fi
 if ! echo $ARGS | grep -q 'ostree='; then
-    ARGS="ostree=current $ARGS"
+    ARGS="ostree=${BRANCH_PREFIX}base-current $ARGS"
 fi
 
 exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -append "$ARGS"
