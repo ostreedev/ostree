@@ -19,7 +19,7 @@
 
 libexec_PROGRAMS += ostreed
 
-ostreed_SOURCES = src/daemon/main.c \
+ostreed_SOURCES = src/daemon/ostreed.c \
 	src/daemon/ot-daemon.h \
 	src/daemon/ot-daemon.c \
 	$(NULL)

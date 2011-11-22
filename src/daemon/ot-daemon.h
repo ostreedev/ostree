@@ -25,14 +25,31 @@
 
 #include <gio/gio.h>
 
+#define OSTREE_DAEMON_NAME "org.gnome.OSTree"
+#define OSTREE_DAEMON_PATH "/org/gnome/OSTree"
+#define OSTREE_DAEMON_IFACE "org.gnome.OSTree"
+
 G_BEGIN_DECLS
 
 typedef struct {
   GMainLoop *loop;
   OstreeRepo  *repo;
 
+  GDBusConnection *bus;
+
   int name_id;
+
+  guint32 op_id;
+
+  GHashTable *ops;
 } OstreeDaemon;
+
+typedef struct {
+  guint32 id;
+  OstreeDaemon *daemon;
+  char *requestor_dbus_name;
+  GCancellable *cancellable;
+} OstreeDaemonOperation;
 
 OstreeDaemon *ostree_daemon_new (void);
 
