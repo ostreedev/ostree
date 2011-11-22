@@ -11,7 +11,8 @@ PACKAGE_INSTALL = "task-core-boot \
 		   coreutils \
 		   ostree ostree-init \
 		   strace \
-		   python-core python-misc"
+		   bash \
+		   python-modules"
 
 RDEPENDS += "${PACKAGE_INSTALL}"
 DEPENDS += "makedevs-native virtual/fakeroot-native"

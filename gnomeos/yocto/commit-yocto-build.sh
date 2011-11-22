@@ -24,8 +24,10 @@ shift
 
 ARCH=x86
 
+BUILDDIR=$WORKDIR/tmp-eglibc
+
 OSTREE_REPO=$WORKDIR/repo
-BUILD_TAR=$WORKDIR/tmp-eglibc/deploy/images/gnomeos-contents-$BRANCH-qemu${ARCH}.tar.gz
+BUILD_TAR=$BUILDDIR/deploy/images/gnomeos-contents-$BRANCH-qemu${ARCH}.tar.gz
 
 BUILD_TIME=$(date -r $BUILD_TAR)
 
