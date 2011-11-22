@@ -70,8 +70,7 @@ ostree_builtin_rev_parse (int argc, char **argv, const char *repo_path, GError *
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (variant)
-    g_variant_unref (variant);
+  ot_clear_gvariant (&variant);
   g_free (formatted_variant);
   return ret;
 }

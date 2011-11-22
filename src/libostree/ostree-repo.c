@@ -360,8 +360,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   ret_rev = NULL;
   ret = TRUE;
  out:
-  if (commit)
-    g_variant_unref (commit);
+  ot_clear_gvariant (&commit);
   g_free (tmp);
   g_free (tmp2);
   g_clear_object (&child);
@@ -629,8 +628,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
     close (fd);
   if (checksum)
     g_checksum_free (checksum);
-  if (serialized != NULL)
-    g_variant_unref (serialized);
+  ot_clear_gvariant (&serialized);
   g_free (dest_name);
   g_clear_object (&stream);
   return ret;
@@ -694,8 +692,7 @@ ostree_repo_load_variant_checked (OstreeRepo  *self,
   *out_variant = ret_variant;
   ret_variant = NULL;
  out:
-  if (ret_variant)
-    g_variant_unref (ret_variant);
+  ot_clear_gvariant (&ret_variant);
   return ret;
 }
 
@@ -737,8 +734,7 @@ import_directory_meta (OstreeRepo  *self,
   g_clear_object (&f_info);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
-  if (dirmeta != NULL)
-    g_variant_unref (dirmeta);
+  ot_clear_gvariant (&dirmeta);
   return ret;
 }
 
@@ -973,7 +969,7 @@ parsed_directory_data_free (ParsedDirectoryData *pdata)
     return;
   parsed_tree_data_free (pdata->tree_data);
   g_free (pdata->metadata_sha256);
-  g_variant_unref (pdata->meta_data);
+  ot_clear_gvariant (&pdata->meta_data);
   g_free (pdata);
 }
 
@@ -1100,8 +1096,7 @@ import_parsed_tree (OstreeRepo    *self,
       g_variant_builder_clear (&files_builder);
       g_variant_builder_clear (&dirs_builder);
     }
-  if (serialized_tree)
-    g_variant_unref (serialized_tree);
+  ot_clear_gvariant (&serialized_tree);
   return ret;
 }
 
@@ -1164,7 +1159,7 @@ add_one_directory_to_tree_and_import (OstreeRepo   *self,
 
   if (dir_value)
     {
-      g_variant_unref (dir_value->meta_data);
+      ot_clear_gvariant (&dir_value->meta_data);
       dir_value->meta_data = dirmeta;
     }
   else
@@ -1398,8 +1393,7 @@ commit_parsed_tree (OstreeRepo *self,
  out:
   if (root_checksum)
     g_checksum_free (root_checksum);
-  if (commit)
-    g_variant_unref (commit);
+  ot_clear_gvariant (&commit);
   if (now)
     g_date_time_unref (now);
   return ret;
@@ -1429,8 +1423,7 @@ import_root (OstreeRepo           *self,
   *out_root = ret_root;
   ret_root = NULL;
  out:
-  if (root_metadata)
-    g_variant_unref (root_metadata);
+  ot_clear_gvariant (&root_metadata);
   if (root_meta_checksum)
     g_checksum_free (root_meta_checksum);
   parsed_directory_data_free (ret_root);
@@ -1514,8 +1507,7 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   if (ret_commit_checksum)
     g_checksum_free (ret_commit_checksum);
   g_free (current_head);
-  if (root_metadata)
-    g_variant_unref (root_metadata);
+  ot_clear_gvariant (&root_metadata);
   if (root_meta_checksum)
     g_checksum_free (root_meta_checksum);
   g_clear_object (&datain);
@@ -1686,8 +1678,7 @@ ostree_repo_load_variant (OstreeRepo *self,
   *out_variant = ret_variant;
   ret_variant = NULL;
  out:
-  if (ret_variant)
-    g_variant_unref (ret_variant);
+  ot_clear_gvariant (&ret_variant);
   g_clear_object (&f);
   return ret;
 }
@@ -1736,8 +1727,7 @@ checkout_one_directory (OstreeRepo  *self,
  out:
   g_clear_object (&dest_file);
   g_free (dest_path);
-  if (xattr_variant)
-    g_variant_unref (xattr_variant);
+  ot_clear_gvariant (&xattr_variant);
   return ret;
 }
 

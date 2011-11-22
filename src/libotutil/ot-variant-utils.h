@@ -27,6 +27,12 @@
 
 G_BEGIN_DECLS
 
+#define ot_clear_gvariant(a_v) do { \
+  if (*a_v)                         \
+    g_variant_unref (*a_v);         \
+  *a_v = NULL;                      \
+  } while (0);
+
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
 GVariant * ot_util_variant_take_ref (GVariant *variant);

@@ -198,8 +198,7 @@ ostree_builtin_compose (int argc, char **argv, const char *repo_path, GError **e
     g_variant_builder_clear (&commit_metadata_builder);
   if (context)
     g_option_context_free (context);
-  if (commit_metadata)
-    g_variant_unref (commit_metadata);
+  ot_clear_gvariant (&commit_metadata);
   g_clear_object (&repo);
   g_clear_object (&checkout);
   g_clear_object (&destf);

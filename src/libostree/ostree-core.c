@@ -205,10 +205,8 @@ checksum_directory (GFile          *f,
  out:
   if (ret_checksum)
     g_checksum_free (ret_checksum);
-  if (dirmeta)
-    g_variant_unref (dirmeta);
-  if (packed)
-    g_variant_unref (packed);
+  ot_clear_gvariant (&dirmeta);
+  ot_clear_gvariant (&packed);
   return ret;
 }
 
@@ -305,8 +303,7 @@ checksum_nondirectory (GFile            *f,
  out:
   g_clear_object (&input);
   g_free (basename);
-  if (xattrs)
-    g_variant_unref (xattrs);
+  ot_clear_gvariant (&xattrs);
   if (content_sha256)
     g_checksum_free (content_sha256);
   return ret;
@@ -375,10 +372,8 @@ ostree_get_directory_metadata (GFile        *dir,
   *out_metadata = ret_metadata;
   ret_metadata = NULL;
  out:
-  if (ret_metadata)
-    g_variant_unref (ret_metadata);
-  if (xattrs)
-    g_variant_unref (xattrs);
+  ot_clear_gvariant (&ret_metadata);
+  ot_clear_gvariant (&xattrs);
   return ret;
 }
 
@@ -408,8 +403,7 @@ ostree_set_xattrs (GFile  *f,
       value_data = g_variant_get_fixed_array (value, &value_len, 1);
       
       loop_err = lsetxattr (path, (char*)name, (char*)value_data, value_len, XATTR_REPLACE) < 0;
-      
-      g_variant_unref (value);
+      ot_clear_gvariant (&value);
       if (loop_err)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -453,10 +447,8 @@ ostree_parse_metadata_file (GFile                       *file,
   *out_variant = ot_util_variant_take_ref (ret_variant);
   ret_variant = NULL;
  out:
-  if (ret_variant)
-    g_variant_unref (ret_variant);
-  if (container != NULL)
-    g_variant_unref (container);
+  ot_clear_gvariant (&ret_variant);
+  ot_clear_gvariant (&container);
   return ret;
 }
 
@@ -628,12 +620,10 @@ ostree_pack_object (GOutputStream     *output,
  out:
   g_clear_object (&finfo);
   g_clear_object (&instream);
-  if (xattrs)
-    g_variant_unref (xattrs);
+  ot_clear_gvariant (&xattrs);
   if (pack_builder_initialized)
     g_variant_builder_clear (&pack_builder);
-  if (pack_variant)
-    g_variant_unref (pack_variant);
+  ot_clear_gvariant (&pack_variant);
   return ret;
 }
 
@@ -770,8 +760,7 @@ ostree_parse_packed_file (GFile            *file,
   in = NULL;
  out:
   g_clear_object (&in);
-  if (ret_metadata)
-   g_variant_unref (ret_metadata);
+  ot_clear_gvariant (&ret_metadata);
   return ret;
 }
 
@@ -906,10 +895,8 @@ unpack_file (GFile        *file,
     g_checksum_free (ret_checksum);
   g_clear_object (&in);
   g_clear_object (&out);
-  if (metadata)
-   g_variant_unref (metadata);
-  if (xattrs)
-    g_variant_unref (xattrs);
+  ot_clear_gvariant (&metadata);
+  ot_clear_gvariant (&xattrs);
   return ret;
 }
 

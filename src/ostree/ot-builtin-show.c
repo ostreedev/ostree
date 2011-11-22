@@ -56,8 +56,7 @@ print_variant (GVariant *variant)
   g_print ("%s\n", formatted_variant);
 
   g_free (formatted_variant);
-  if (byteswapped)
-    g_variant_unref (byteswapped);
+  ot_clear_gvariant (&byteswapped);
 }
 
 static gboolean
@@ -78,8 +77,7 @@ do_print_variant_generic (const GVariantType *type,
 
   ret = TRUE;
  out:
-  if (variant)
-    g_variant_unref (variant);
+  ot_clear_gvariant (&variant);
   g_clear_object (&f);
   return ret;
 }
@@ -101,8 +99,7 @@ show_repo_meta (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  if (variant)
-    g_variant_unref (variant);
+  ot_clear_gvariant (&variant);
   return ret;
 }
 
@@ -127,8 +124,7 @@ do_print_packfile (OstreeRepo  *repo,
  out:
   g_clear_object (&file);
   g_clear_object (&content);
-  if (variant)
-    g_variant_unref (variant);
+  ot_clear_gvariant (&variant);
   return ret;
 }
 
@@ -171,12 +167,10 @@ do_print_compose (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  if (variant)
-    g_variant_unref (variant);
+  ot_clear_gvariant (&variant);
   if (viter)
     g_variant_iter_free (viter);
-  if (metadata)
-    g_variant_unref (metadata);
+  ot_clear_gvariant (&metadata);
   if (metadata_hash)
     g_hash_table_destroy (metadata_hash);
   return ret;

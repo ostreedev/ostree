@@ -117,8 +117,7 @@ ot_util_variant_map (GFile *src,
   *out_variant = ret_variant;
   ret_variant = NULL;
  out:
-  if (ret_variant)
-    g_variant_unref (ret_variant);
+  ot_clear_gvariant (&ret_variant);
   if (mfile)
     g_mapped_file_unref (mfile);
   return ret;

@@ -103,10 +103,8 @@ checksum_packed_file (OtFsckData   *data,
     g_checksum_free (ret_checksum);
   g_free (metadata_buf);
   g_clear_object (&in);
-  if (metadata)
-   g_variant_unref (metadata);
-  if (xattrs)
-    g_variant_unref (xattrs);
+  ot_clear_gvariant (&metadata);
+  ot_clear_gvariant (&xattrs);
   return ret;
 }
 

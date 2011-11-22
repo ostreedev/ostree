@@ -113,8 +113,7 @@ op_return (OstreeDaemon          *self,
 
   ret = TRUE;
   operation_free (op);
-  if (args)
-    g_variant_unref (args);
+  ot_clear_gvariant (&args);
   return ret;
 }
 

@@ -220,12 +220,9 @@ store_tree_recurse (OstreeRepo   *repo,
 
   ret = TRUE;
  out:
-  if (tree)
-    g_variant_unref (tree);
-  if (files_variant)
-    g_variant_unref (files_variant);
-  if (dirs_variant)
-    g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&tree);
+  ot_clear_gvariant (&files_variant);
+  ot_clear_gvariant (&dirs_variant);
   return ret;
 }
 
@@ -274,8 +271,7 @@ store_commit_recurse (OstreeRepo   *repo,
 
   ret = TRUE;
  out:
-  if (commit)
-    g_variant_unref (commit);
+  ot_clear_gvariant (&commit);
   return ret;
 }
                       

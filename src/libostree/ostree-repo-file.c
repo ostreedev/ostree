@@ -62,10 +62,8 @@ ostree_repo_file_finalize (GObject *object)
 
   self = OSTREE_REPO_FILE (object);
 
-  if (self->tree_contents)
-    g_variant_unref (self->tree_contents);
-  if (self->tree_metadata)
-    g_variant_unref (self->tree_metadata);
+  ot_clear_gvariant (&self->tree_contents);
+  ot_clear_gvariant (&self->tree_metadata);
   g_free (self->tree_contents_checksum);
   g_free (self->tree_metadata_checksum);
   g_free (self->commit);
@@ -194,12 +192,9 @@ do_resolve_commit (OstreeRepoFile  *self,
   root_contents = NULL;
 
  out:
-  if (commit)
-    g_variant_unref (commit);
-  if (root_metadata)
-    g_variant_unref (root_metadata);
-  if (root_contents)
-    g_variant_unref (root_contents);
+  ot_clear_gvariant (&commit);
+  ot_clear_gvariant (&root_metadata);
+  ot_clear_gvariant (&root_contents);
   return ret;
 }
 
@@ -231,7 +226,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
 
       files_variant = g_variant_get_child_value (self->parent->tree_contents, 2);
       self->index = g_variant_n_children (files_variant) + i;
-      g_variant_unref (files_variant);
+      ot_clear_gvariant (&files_variant);
 
       g_variant_get_child (container, i, "(&s&s&s)",
                            &name, &content_checksum, &metadata_checksum);
@@ -259,12 +254,9 @@ do_resolve_nonroot (OstreeRepoFile     *self,
 
   ret = TRUE;
  out:
-  if (container)
-    g_variant_unref (container);
-  if (tree_metadata)
-    g_variant_unref (tree_metadata);
-  if (tree_contents)
-    g_variant_unref (tree_contents);
+  ot_clear_gvariant (&container);
+  ot_clear_gvariant (&tree_metadata);
+  ot_clear_gvariant (&tree_contents);
   return ret;
 }
 
@@ -330,10 +322,8 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   *out_xattrs = ret_xattrs;
   ret_xattrs = NULL;
  out:
-  if (ret_xattrs)
-    g_variant_unref (ret_xattrs);
-  if (metadata)
-    g_variant_unref (metadata);
+  ot_clear_gvariant (&ret_xattrs);
+  ot_clear_gvariant (&metadata);
   g_clear_object (&input);
   g_clear_object (&local_file);
   return ret;
@@ -356,8 +346,7 @@ _ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                      const char     *checksum,
                                      GVariant       *metadata)
 {
-  if (self->tree_metadata)
-    g_variant_unref (self->tree_metadata);
+  ot_clear_gvariant (&self->tree_metadata);
   self->tree_metadata = g_variant_ref (metadata);
   g_free (self->tree_metadata_checksum);
   self->tree_metadata_checksum = g_strdup (checksum);
@@ -436,9 +425,8 @@ _ostree_repo_file_get_checksum (OstreeRepoFile  *self)
       g_variant_get_child (files_variant, n,
                            "(@s&s)", NULL, &checksum);
     }
-
-  g_variant_unref (files_variant);
-  g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&files_variant);
+  ot_clear_gvariant (&dirs_variant);
 
   return checksum;
 }
@@ -854,8 +842,7 @@ query_child_info_file_archive (OstreeRepo       *repo,
   ret = TRUE;
  out:
   g_free (buf);
-  if (metadata)
-    g_variant_unref (metadata);
+  ot_clear_gvariant (&metadata);
   g_clear_object (&local_file);
   g_clear_object (&input);
   return ret;
@@ -909,8 +896,7 @@ query_child_info_dir (OstreeRepo         *repo,
   
   ret = TRUE;
  out:
-  if (metadata)
-    g_variant_unref (metadata);
+  ot_clear_gvariant (&metadata);
   return ret;
 }
 
@@ -944,11 +930,11 @@ bsearch_in_file_variant (GVariant  *variant,
         n = m - 1;
       else
         {
-          g_variant_unref (child);
+          ot_clear_gvariant (&child);
           *out_pos = m;
           return TRUE;
         }
-      g_variant_unref (child);
+      ot_clear_gvariant (&child);
     }
 
   *out_pos = m;
@@ -972,7 +958,7 @@ remove_variant_child (GVariant *variant,
     {
       if (i != n)
         g_variant_builder_add_value (&builder, child);
-      g_variant_unref (child);
+      ot_clear_gvariant (&child);
     }
   g_variant_iter_free (iter);
   
@@ -998,7 +984,7 @@ insert_variant_child (GVariant  *variant,
       if (i == n)
         g_variant_builder_add_value (&builder, item);
       g_variant_builder_add_value (&builder, child);
-      g_variant_unref (child);
+      ot_clear_gvariant (&child);
     }
   g_variant_iter_free (iter);
   
@@ -1034,17 +1020,13 @@ tree_replace_contents (OstreeRepoFile  *self,
         tmp_dirs = g_variant_get_child_value (self->tree_contents, 3);
     }
 
-  if (self->tree_contents)
-    g_variant_unref (self->tree_contents);
+  ot_clear_gvariant (&self->tree_contents);
   self->tree_contents = g_variant_new ("(u@a{sv}@a(ss)@a(sss))", version, metadata,
                                        new_files ? new_files : tmp_files,
                                        new_dirs ? new_dirs : tmp_dirs);
 
-  g_variant_unref (metadata);
-  if (tmp_files)
-    g_variant_unref (tmp_files);
-  if (tmp_dirs)
-    g_variant_unref (tmp_dirs);
+  ot_clear_gvariant (&tmp_files);
+  ot_clear_gvariant (&tmp_dirs);
 }
 
 void
@@ -1074,8 +1056,8 @@ _ostree_repo_file_tree_remove_child (OstreeRepoFile  *self,
 
   tree_replace_contents (self, new_files_variant, new_dirs_variant);
 
-  g_variant_unref (files_variant);
-  g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&files_variant);
+  ot_clear_gvariant (&dirs_variant);
 }
 
 void
@@ -1095,9 +1077,9 @@ _ostree_repo_file_tree_add_file (OstreeRepoFile  *self,
                                                 g_variant_new ("(ss)", name, checksum));
       g_variant_ref_sink (new_files_variant);
       tree_replace_contents (self, new_files_variant, NULL);
-      g_variant_unref (new_files_variant);
+      ot_clear_gvariant (&new_files_variant);
     }
-  g_variant_unref (files_variant);
+  ot_clear_gvariant (&files_variant);
 }
 
 void
@@ -1119,9 +1101,9 @@ _ostree_repo_file_tree_add_dir (OstreeRepoFile  *self,
                                                               metadata_checksum));
       g_variant_ref_sink (new_dirs_variant);
       tree_replace_contents (self, NULL, new_dirs_variant);
-      g_variant_unref (new_dirs_variant);
+      ot_clear_gvariant (&new_dirs_variant);
     }
-  g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&dirs_variant);
 }
 
 int
@@ -1163,12 +1145,9 @@ _ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
       *out_container = ret_container;
       ret_container = NULL;
     }
-  if (ret_container)
-    g_variant_unref (ret_container);
-  if (files_variant)
-    g_variant_unref (files_variant);
-  if (dirs_variant)
-    g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&ret_container);
+  ot_clear_gvariant (&files_variant);
+  ot_clear_gvariant (&dirs_variant);
   return i;
 }
 
@@ -1266,10 +1245,9 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   g_clear_object (&ret_info);
   if (matcher)
     g_file_attribute_matcher_unref (matcher);
-  if (tree_child_metadata)
-    g_variant_unref (tree_child_metadata);
-  g_variant_unref (files_variant);
-  g_variant_unref (dirs_variant);
+  ot_clear_gvariant (&tree_child_metadata);
+  ot_clear_gvariant (&files_variant);
+  ot_clear_gvariant (&dirs_variant);
   return ret;
 }
 

@@ -85,8 +85,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
       GVariant *commit_metadata = NULL;
       char *formatted_metadata = NULL;
       
-      if (commit)
-        g_variant_unref (commit);
+      ot_clear_gvariant (&commit);
       if (!ostree_repo_load_variant (repo, resolved_rev, &type, &commit, error))
         goto out;
 
@@ -101,8 +100,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
       g_date_time_unref (time_obj);
       time_obj = NULL;
 
-      formatted_metadata = g_variant_print (commit_metadata, TRUE);
-      g_variant_unref (commit_metadata);
+      ot_clear_gvariant (&commit_metadata);
       formatted = g_strdup_printf ("commit %s\nSubject: %s\nDate: %s\nMetadata: %s\n\n",
                                    resolved_rev, subject, formatted_date, formatted_metadata);
       g_free (formatted_metadata);
@@ -147,8 +145,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
   g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
-  if (commit)
-    g_variant_unref (commit);
+  ot_clear_gvariant (&commit);
   g_clear_object (&repo);
   return ret;
 }
