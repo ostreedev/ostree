@@ -91,6 +91,7 @@ def make_artifact(name, from_files):
     tempfiles.append(filelist_temp)
     f = open(filelist_temp, 'w')
     for filename in from_files:
+        assert ('\n' not in filename)
         f.write(filename)
         f.write('\n')
     f.close()

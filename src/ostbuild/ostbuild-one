@@ -1,18 +1,11 @@
 #!/usr/bin/python
 #
-# ostree-buildone:
 # Copyright 2010, 2011 Colin Walters <walters@verbum.org>
 # Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
 
 # The build output is automatically logged to $TMPDIR/build-$(PWD).log.
 # For example, invoking metabuild in a directory named "foo" will log
 # to /tmp/build-foo.log
-#
-# You can pass arguments to metabuild; if they start with '--', they're
-# given to configure.  Otherwise, they're passed to make.
-#
-# $ metabuild --enable-libfoo  # passed to configure
-# $ metabuild -j 1             # passed to make
 
 import os,sys,subprocess,tempfile,re
 import select,time,stat,fcntl
@@ -38,7 +31,7 @@ except OSError, e:
     pass
 
 warning_re = re.compile(r'(: ((warning)|(error)|(fatal error)): )|(make(\[[0-9]+\])?: \*\*\*)')
-output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(ostree-build )')
+output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(ostbuild )')
 
 _bold_sequence = None
 _normal_sequence = None
@@ -179,7 +172,7 @@ class OutputFilter(object):
         f = open(logfile_path)
         lines = []
         for line in f:
-            if line.startswith('ostree-build '):
+            if line.startswith('ostbuild '):
                 continue
             lines.append(line)
             if len(lines) > _last_line_limit:
@@ -218,15 +211,15 @@ class OutputFilter(object):
         if not successful:
             self._write_last_log_lines()
             pass
-        self.output.write("ostree-build %s: %d warnings\n" % ('success' if successful else _bold('failed'),
+        self.output.write("ostbuild %s: %d warnings\n" % ('success' if successful else _bold('failed'),
                                                             self._warning_count, ))
-        self.output.write("ostree-build: full log path: %s\n" % (logfile_path, ))
+        self.output.write("ostbuild: full log path: %s\n" % (logfile_path, ))
         
         if successful:
             for f in os.listdir('_build'):
                 path = os.path.join('_build', f)
                 if f.startswith('artifact-'):
-                    self.output.write("ostree-build: created artifact: %s\n" % (f, ))
+                    self.output.write("ostbuild: created artifact: %s\n" % (f, ))
         sys.exit(0 if successful else 1)
 
 def _on_makeinstall_exit(pid, estatus):
@@ -235,7 +228,7 @@ def _on_makeinstall_exit(pid, estatus):
 def _on_make_exit(pid, estatus):
     if estatus == 0:
         args = list(subprocess_nice_args)
-        args.append('ostree-buildone-makeinstall-split-artifacts')
+        args.append('ostbuild-one-makeinstall-split-artifacts')
         _logfile_f.write("Running: %r\n" % (args, ))
         _logfile_f.flush()
         proc = subprocess.Popen(args, stdin=devnull, stdout=logfile_write_fd, stderr=logfile_write_fd)
@@ -245,7 +238,7 @@ def _on_make_exit(pid, estatus):
 
 def _get_version():
     if not os.path.isdir('.git'):
-        sys.stderr.write("ostree-buildone: error: Couldn't find .git directory")
+        sys.stderr.write("ostbuild-one: error: Couldn't find .git directory")
         sys.exit(1)
 
     proc = subprocess.Popen(['git', 'describe'], stdout=subprocess.PIPE)
@@ -253,7 +246,7 @@ def _get_version():
     if proc.wait() != 0:
         proc = subprocess.Popen(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE)
         if proc.wait() != 0:
-            sys.stderr.write("ostree-buildone: error: git rev-parse HEAD failed")
+            sys.stderr.write("ostbuild-one: error: git rev-parse HEAD failed")
             sys.exit(1)
         output = proc.communicate()[0].strip()
     return output
@@ -263,7 +256,7 @@ if __name__ == '__main__':
     if user_tmpdir is None:
         user_tmpdir = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'metabuild-%s' % (os.getuid(), ))
     else:
-        user_tmpdir = os.path.join(user_tmpdir, 'ostree-build') 
+        user_tmpdir = os.path.join(user_tmpdir, 'ostbuild') 
 
     os.environ['OSBUILD_VERSION'] = _get_version()
 
@@ -283,7 +276,7 @@ if __name__ == '__main__':
     logfile_write_fd = os.open(logfile_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
     global _logfile_f
     _logfile_f = os.fdopen(logfile_write_fd, "w")
-    sys.stdout.write('ostree-build: logging to %r\n' % (logfile_path, ))
+    sys.stdout.write('ostbuild: logging to %r\n' % (logfile_path, ))
     sys.stdout.flush()
 
     global _output_filter
@@ -291,7 +284,7 @@ if __name__ == '__main__':
     _output_filter.start()
 
     args = list(subprocess_nice_args)
-    args.append('ostree-buildone-make')
+    args.append('ostbuild-one-make')
     args.extend(sys.argv[1:])
     devnull=open('/dev/null')
     _logfile_f.write("Running: %r\n" % (args, ))
