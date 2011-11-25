@@ -5,6 +5,9 @@ set -e
 set -x
 
 WORKDIR=`pwd`
+cd `dirname $0`
+SCRIPT_SRCDIR=`pwd`
+cd -
 
 if test $(id -u) = 0; then
     cat <<EOF
@@ -24,6 +27,8 @@ shift
 
 ARCH=x86
 
+OSTREE_VER=$(cd $SCRIPT_SRCDIR && git describe)
+
 BUILDDIR=$WORKDIR/tmp-eglibc
 
 OSTREE_REPO=$WORKDIR/repo
@@ -36,6 +41,6 @@ cd $tempdir
 mkdir fs
 cd fs
 fakeroot -s ../fakeroot.db tar xf $BUILD_TAR
-fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build ${BUILD_TIME}" -b "gnomeos-$ARCH-$BRANCH"
+fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build from OSTree ${OSTREE_VER}" -b "gnomeos-yocto-$ARCH-$BRANCH"
 cd "${WORKDIR}"
 rm -rf $tempdir

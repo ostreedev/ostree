@@ -42,7 +42,7 @@ shift
 test -n "$OSTREE_REPO" || usage
 
 ARCH=x86
-BRANCH_PREFIX="gnomeos-${ARCH}-"
+BRANCH_PREFIX="gnomeos-yocto-${ARCH}-"
 
 OBJ=gnomeos-fs.img
 if (! test -f ${OBJ}); then
@@ -96,4 +96,4 @@ if ! echo $ARGS | grep -q 'ostree='; then
     ARGS="ostree=${BRANCH_PREFIX}base-current $ARGS"
 fi
 
-exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -append "$ARGS"
+exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -net user -net nic,model=virtio -append "$ARGS"
