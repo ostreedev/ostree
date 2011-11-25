@@ -81,15 +81,15 @@ ot_gfile_load_contents_utf8 (GFile         *file,
     }
 
   if (contents_out)
-    *contents_out = ret_contents;
-  else
-    g_free (ret_contents);
-  ret_contents = NULL;
+    {
+      *contents_out = ret_contents;
+      ret_contents = NULL;
+    }
   if (etag_out)
-    *etag_out = ret_etag;
-  else
-    g_free (ret_etag);
-  ret_etag = NULL;
+    {
+      *etag_out = ret_etag;
+      ret_etag = NULL;
+    }
   ret = TRUE;
  out:
   g_free (ret_contents);
