@@ -1,0 +1,7 @@
+#!/bin/sh
+#
+# Copyright 2010, 2011 Colin Walters <walters@verbum.org>
+# Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
+
+bn=$(basename $(pwd))
+ostbuild-nice-and-log-output "compile-${bn}.log" ostbuild-compile-one-impl "$@"

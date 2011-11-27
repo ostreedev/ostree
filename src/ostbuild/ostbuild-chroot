@@ -2,12 +2,20 @@
 
 import os,sys,re,subprocess
 
-chroot_path=sys.argv[1]
+i=1
+repo=sys.argv[i]
+i += 1
+chroot_path=sys.argv[i]
+i += 1
+args=sys.argv[i:]
 
-proc_path=os.path.join(chroot_path, 'proc')
-subprocess.check_call(['mount', '-t', 'proc', 'proc', proc_path])
+def run_in_chroot(args):
+    proc_path=os.path.join(chroot_path, 'proc')
+    subprocess.check_call(['mount', '-t', 'proc', 'proc', proc_path])
 
-subprocess.call(['chroot', chroot_path])
+    try:
+        subprocess.check_call(['chroot', chroot_path])
+    finally:
+        subprocess.call(['umount', proc_path])
 
-subprocess.check_call(['umount', proc_path])
-
+run_in_chroot(args)

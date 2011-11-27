@@ -3,12 +3,11 @@
 # Copyright 2010, 2011 Colin Walters <walters@verbum.org>
 # Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
 
-# The build output is automatically logged to $TMPDIR/build-$(PWD).log.
-# For example, invoking metabuild in a directory named "foo" will log
-# to /tmp/build-foo.log
-
 import os,sys,subprocess,tempfile,re
 import select,time,stat,fcntl
+
+log_name = sys.argv[1]
+subprocess_args = sys.argv[2:]
 
 subprocess_nice_args = []
 
@@ -215,50 +214,17 @@ class OutputFilter(object):
                                                             self._warning_count, ))
         self.output.write("ostbuild: full log path: %s\n" % (logfile_path, ))
         
-        if successful:
-            for f in os.listdir('_build'):
-                path = os.path.join('_build', f)
-                if f.startswith('artifact-'):
-                    self.output.write("ostbuild: created artifact: %s\n" % (f, ))
         sys.exit(0 if successful else 1)
 
-def _on_makeinstall_exit(pid, estatus):
+def _on_subprocess_exit(pid, estatus):
     _output_filter.finish(estatus == 0)
-
-def _on_make_exit(pid, estatus):
-    if estatus == 0:
-        args = list(subprocess_nice_args)
-        args.append('ostbuild-one-makeinstall-split-artifacts')
-        _logfile_f.write("Running: %r\n" % (args, ))
-        _logfile_f.flush()
-        proc = subprocess.Popen(args, stdin=devnull, stdout=logfile_write_fd, stderr=logfile_write_fd)
-        _loop.watch_pid(proc.pid, _on_makeinstall_exit)
-    else:
-        _output_filter.finish(False)
-
-def _get_version():
-    if not os.path.isdir('.git'):
-        sys.stderr.write("ostbuild-one: error: Couldn't find .git directory")
-        sys.exit(1)
-
-    proc = subprocess.Popen(['git', 'describe'], stdout=subprocess.PIPE)
-    output = proc.communicate()[0].strip()
-    if proc.wait() != 0:
-        proc = subprocess.Popen(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE)
-        if proc.wait() != 0:
-            sys.stderr.write("ostbuild-one: error: git rev-parse HEAD failed")
-            sys.exit(1)
-        output = proc.communicate()[0].strip()
-    return output
 
 if __name__ == '__main__':
     user_tmpdir = os.environ.get('XDG_RUNTIME_DIR')
     if user_tmpdir is None:
-        user_tmpdir = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'metabuild-%s' % (os.getuid(), ))
+        user_tmpdir = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'ostbuild-%s' % (os.getuid(), ))
     else:
         user_tmpdir = os.path.join(user_tmpdir, 'ostbuild') 
-
-    os.environ['OSBUILD_VERSION'] = _get_version()
 
     if os.path.isdir('_build'):
         for filename in os.listdir('_build'):
@@ -268,7 +234,11 @@ if __name__ == '__main__':
 
     if not os.path.isdir(user_tmpdir):
         os.makedirs(user_tmpdir)
-    logfile_path = os.path.join(user_tmpdir, '%s.log' % (os.path.basename(os.getcwd()), ))
+    stbuf = os.stat(user_tmpdir)
+    if stbuf.st_uid != os.getuid():
+        sys.stderr.write('Directory %s not owned by me!' % (user_tmpdir, ))
+        sys.exit(1)
+    logfile_path = os.path.join(user_tmpdir, log_name)
     try:
         os.unlink(logfile_path)
     except OSError, e:
@@ -284,14 +254,13 @@ if __name__ == '__main__':
     _output_filter.start()
 
     args = list(subprocess_nice_args)
-    args.append('ostbuild-one-make')
-    args.extend(sys.argv[1:])
+    args.extend(subprocess_args)
     devnull=open('/dev/null')
-    _logfile_f.write("Running: %r\n" % (args, ))
+    _logfile_f.write("%s: running: %r\n" % (sys.argv[0], args, ))
     _logfile_f.flush()
     proc = subprocess.Popen(args, stdin=devnull, stdout=logfile_write_fd, stderr=logfile_write_fd)
 
     global _loop
     _loop = Mainloop.get(None)
-    _loop.watch_pid(proc.pid, _on_make_exit)
+    _loop.watch_pid(proc.pid, _on_subprocess_exit)
     _loop.run()

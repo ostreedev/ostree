@@ -1,15 +1,22 @@
 #!/usr/bin/python
 
-# ostree-buildone-raw: Generic build system wrapper
 # Copyright 2010, 2011 Colin Walters <walters@verbum.org>
 # Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
 
-# ostree-buildone-raw wraps systems that implement the GNOME build API:
+# ostbuild-compile-one-make wraps systems that implement the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
 
 import os,sys,subprocess,tempfile,re
 from multiprocessing import cpu_count
 import select,time
+
+tempfiles = []
+
+_devel_regexps = map(re.compile,
+                     [r'/usr/include/',
+                      r'/usr/share/pkgconfig/',
+                      r'/.*lib(?:|(?:32)|(?:64))/pkgconfig/.*\.pc',
+                      r'/.*lib(?:|(?:32)|(?:64))/.*\.so$'])
 
 root = None
 
@@ -44,7 +51,7 @@ for arg in sys.argv[1:]:
         makeargs.append(arg)
 
 def log(msg):
-    fullmsg = 'ostree-buildone: ' + msg + '\n'
+    fullmsg = '%s: %s\n' % (sys.argv[0], msg)
     sys.stdout.write(fullmsg)
     sys.stdout.flush()
 
@@ -52,11 +59,11 @@ def fatal(msg):
     log(msg)
     sys.exit(1)
 
-def run_sync(args, env=None):
-    log("Running: %r" % (args, ))
+def run_sync(args, cwd=None, env=None):
+    log("running: %r" % (args,))
     f = open('/dev/null', 'r')
     proc = subprocess.Popen(args, stdin=f, stdout=sys.stdout, stderr=sys.stderr,
-                            close_fds=True, env=env)
+                            close_fds=True, cwd=cwd, env=env)
     f.close()
     returncode = proc.wait()
     log("pid %d exited with code %d" % (proc.pid, returncode))
@@ -105,13 +112,15 @@ def _search_file(filename, pattern):
     f.close()
     return None
 
-def _find_buildapi_makevariable(name):
+def _find_buildapi_makevariable(name, builddir='.'):
     var = '.%s:' % (name, )
     line = None
-    if os.path.exists('Makefile.in'):
-        line = _search_file('Makefile.in', var)
-    if not line and os.path.exists('Makefile'):
-        line = _search_file('Makefile', var)
+    path = os.path.join(builddir, 'Makefile.in')
+    if os.path.exists(path):
+        line = _search_file(path, var)
+    path = os.path.join(builddir, 'Makefile')
+    if not line and os.path.exists(path):
+        line = _search_file(path, var)
     return line is not None
 
 def phase_bootstrap():        
@@ -165,21 +174,20 @@ def phase_configure():
         log("Using build directory %r" % (builddir, ))
         if not os.path.isdir(builddir):
             os.mkdir(builddir)
-        os.chdir(builddir)
 
     configstatus = 'config.status'
     if not os.path.exists(configstatus):
         args = [os.path.join(configdir, 'configure')]
         args.extend(configargs)
-        run_sync(args)
+        run_sync(args, cwd=builddir)
     else:
         log("Found %s, skipping configure" % (configstatus, ))
-    phase_build()
+    phase_build(builddir=builddir)
 
 build_status = False
 
-def phase_build():
-    if not os.path.exists('Makefile'):
+def phase_build(builddir=None):
+    if not os.path.exists(os.path.join(builddir, 'Makefile')):
         log("No Makefile found")
         sys.exit(1)
     args = makeargs
@@ -189,14 +197,82 @@ def phase_build():
             user_specified_jobs = True
 
     if not user_specified_jobs:
-        notparallel = _find_buildapi_makevariable('NOTPARALLEL')
+        notparallel = _find_buildapi_makevariable('NOTPARALLEL', builddir=builddir)
         if not notparallel:
             log("Didn't find NOTPARALLEL, using parallel make by default")
             args.extend(default_buildapi_jobs)
 
+    run_sync(args, cwd=builddir)
+
+    phase_make_artifacts(builddir=builddir)
+
+def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None):
+    targz_name = name + '.tar.gz'
+    (fd,filelist_temp)=tempfile.mkstemp(prefix='ostree-filelist-%s' % (name, ))
+    os.close(fd)
+    tempfiles.append(filelist_temp)
+    f = open(filelist_temp, 'w')
+    for filename in from_files:
+        assert ('\n' not in filename)
+        f.write(filename)
+        f.write('\n')
+    f.close()
+    args = ['fakeroot', '-i', fakeroot_temp, 'tar', '-c', '-z', '-C', tempdir, '-f', targz_name, '-T', filelist_temp]
     run_sync(args)
+    log("created: %s" % (os.path.abspath (targz_name), ))
+
+def phase_make_artifacts(builddir=None):
+    basename=os.path.basename(os.getcwd())
+    
+    try:
+        version = subprocess.check_output(['git', 'describe'])
+    except subprocess.CalledProcessError, e:
+        version = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    version = version.strip()
+
+    artifact_prefix='artifact-%s,%s' % (basename, version)
+
+    (fd,fakeroot_temp)=tempfile.mkstemp(prefix='ostree-fakeroot-%s-' % (basename,))
+    os.close(fd)
+    tempfiles.append(fakeroot_temp)
+    tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (basename,))
+    tempfiles.append(tempdir)
+    args = ['fakeroot', '-s', fakeroot_temp, 'make', 'install', 'DESTDIR=' + tempdir]
+    run_sync(args, cwd=builddir)
+
+    devel_files = set()
+    runtime_files = set()
+
+    oldpwd=os.getcwd()
+    os.chdir(tempdir)
+    for root, dirs, files in os.walk('.'):
+        for filename in files:
+            path = os.path.join(root, filename)
+            matched = False
+            for r in _devel_regexps:
+                if not r.match(path[1:]):
+                    continue
+                devel_files.add(path)
+                matched = True
+                break
+            if not matched:    
+                runtime_files.add(path)
+    os.chdir(oldpwd)
+
+    if devel_files:
+        make_artifact(artifact_prefix + '-devel', devel_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir)
+    make_artifact(artifact_prefix + '-runtime', runtime_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir)
 
 def phase_complete():
+    for tmpname in tempfiles:
+        if os.path.isdir(tmpname):
+            shutil.rmtree(tmpname)
+        else:
+            try:
+                os.unlink(tmpname)
+                pass
+            except OSError, e:
+                pass
     sys.exit(0)
 
 log("invocation arguments: %r" % (sys.argv, ))
