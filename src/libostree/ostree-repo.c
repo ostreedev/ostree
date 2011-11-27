@@ -698,7 +698,7 @@ ostree_repo_load_variant_checked (OstreeRepo  *self,
 
 static gboolean
 import_directory_meta (OstreeRepo  *self,
-                       const char *path,
+                       GFile       *f,
                        GVariant  **out_variant,
                        GChecksum **out_checksum,
                        GError    **error)
@@ -706,10 +706,7 @@ import_directory_meta (OstreeRepo  *self,
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
-  GFile *f = NULL;
   GFileInfo *f_info = NULL;
-
-  f = ot_gfile_new_for_path (path);
 
   f_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -725,12 +722,17 @@ import_directory_meta (OstreeRepo  *self,
     goto out;
 
   ret = TRUE;
-  *out_variant = dirmeta;
-  dirmeta = NULL;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  if (out_variant)
+    {
+      *out_variant = dirmeta;
+      dirmeta = NULL;
+    }
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
  out:
-  g_clear_object (&f);
   g_clear_object (&f_info);
   if (ret_checksum)
     g_checksum_free (ret_checksum);
@@ -951,371 +953,12 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   return ret;
 }
 
-typedef struct _ParsedTreeData ParsedTreeData;
-typedef struct _ParsedDirectoryData ParsedDirectoryData;
-
-static void parsed_tree_data_free (ParsedTreeData *pdata);
-
-struct _ParsedDirectoryData {
-  ParsedTreeData *tree_data;
-  char *metadata_sha256;
-  GVariant *meta_data;
-};
-
-static void
-parsed_directory_data_free (ParsedDirectoryData *pdata)
-{
-  if (pdata == NULL)
-    return;
-  parsed_tree_data_free (pdata->tree_data);
-  g_free (pdata->metadata_sha256);
-  ot_clear_gvariant (&pdata->meta_data);
-  g_free (pdata);
-}
-
-struct _ParsedTreeData {
-  GHashTable *files;  /* char* filename -> char* checksum */
-  GHashTable *directories;  /* char* dirname -> ParsedDirectoryData* */
-};
-
-static ParsedTreeData *
-parsed_tree_data_new (void)
-{
-  ParsedTreeData *ret = g_new0 (ParsedTreeData, 1);
-  ret->files = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                      (GDestroyNotify)g_free, 
-                                      (GDestroyNotify)g_free);
-  ret->directories = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                            (GDestroyNotify)g_free, 
-                                            (GDestroyNotify)parsed_directory_data_free);
-  return ret;
-}
-
-static void
-parsed_tree_data_free (ParsedTreeData *pdata)
-{
-  if (pdata == NULL)
-    return;
-  g_hash_table_destroy (pdata->files);
-  g_hash_table_destroy (pdata->directories);
-  g_free (pdata);
-}
-
 static GVariant *
 create_empty_gvariant_dict (void)
 {
   GVariantBuilder builder;
   g_variant_builder_init (&builder, G_VARIANT_TYPE("a{sv}"));
   return g_variant_builder_end (&builder);
-}
-
-static gboolean
-import_parsed_tree (OstreeRepo    *self,
-                    ParsedTreeData  *tree,
-                    GChecksum      **out_checksum,
-                    GError         **error)
-{
-  gboolean ret = FALSE;
-  GVariant *serialized_tree = NULL;
-  gboolean builders_initialized = FALSE;
-  GVariantBuilder files_builder;
-  GVariantBuilder dirs_builder;
-  GHashTableIter hash_iter;
-  GSList *sorted_filenames = NULL;
-  GSList *iter;
-  gpointer key, value;
-
-  g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(ss)"));
-  g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sss)"));
-  builders_initialized = TRUE;
-
-  g_hash_table_iter_init (&hash_iter, tree->files);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *name = key;
-      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
-    }
-
-  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
-
-  for (iter = sorted_filenames; iter; iter = iter->next)
-    {
-      const char *name = iter->data;
-      const char *value;
-
-      value = g_hash_table_lookup (tree->files, name);
-      g_variant_builder_add (&files_builder, "(ss)", name, value);
-    }
-
-  g_slist_free (sorted_filenames);
-  sorted_filenames = NULL;
-
-  g_hash_table_iter_init (&hash_iter, tree->directories);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *name = key;
-      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
-    }
-
-  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
-
-  for (iter = sorted_filenames; iter; iter = iter->next)
-    {
-      const char *name = iter->data;
-      GChecksum *dir_checksum = NULL;
-      ParsedDirectoryData *dir;
-
-      dir = g_hash_table_lookup (tree->directories, name);
-
-      if (!import_parsed_tree (self, dir->tree_data, &dir_checksum, error))
-        goto out;
-
-      g_variant_builder_add (&dirs_builder, "(sss)",
-                             name, g_checksum_get_string (dir_checksum), dir->metadata_sha256);
-      g_checksum_free (dir_checksum);
-    }
-
-  g_slist_free (sorted_filenames);
-  sorted_filenames = NULL;
-
-  serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
-                                   GUINT32_TO_BE (0),
-                                   create_empty_gvariant_dict (),
-                                   g_variant_builder_end (&files_builder),
-                                   g_variant_builder_end (&dirs_builder));
-  builders_initialized = FALSE;
-  g_variant_ref_sink (serialized_tree);
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT, serialized_tree, out_checksum, error))
-    goto out;
-  
-  ret = TRUE;
- out:
-  g_slist_free (sorted_filenames);
-  if (builders_initialized)
-    {
-      g_variant_builder_clear (&files_builder);
-      g_variant_builder_clear (&dirs_builder);
-    }
-  ot_clear_gvariant (&serialized_tree);
-  return ret;
-}
-
-static gboolean
-check_path (const char *filename,
-            GError    **error)
-{
-  gboolean ret = FALSE;
-
-  if (!*filename)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid empty filename");
-      goto out;
-    }
-
-  if (strcmp (filename, ".") == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Self-reference '.' in filename '%s' not allowed (yet)", filename);
-      goto out;
-    }
-  
-  if (ot_util_filename_has_dotdot (filename))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Path uplink '..' in filename '%s' not allowed (yet)", filename);
-      goto out;
-    }
-  
-  if (g_path_is_absolute (filename))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Absolute filename '%s' not allowed (yet)", filename);
-      goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
-add_one_directory_to_tree_and_import (OstreeRepo   *self,
-                                      const char     *basename,
-                                      const char     *abspath,
-                                      ParsedTreeData *tree,
-                                      ParsedDirectoryData **dir, /*inout*/
-                                      GError        **error)
-{
-  gboolean ret = FALSE;
-  GVariant *dirmeta = NULL;
-  GChecksum *dir_meta_checksum = NULL;
-  ParsedDirectoryData *dir_value = *dir;
-  
-  g_assert (tree != NULL);
-
-  if (!import_directory_meta (self, abspath, &dirmeta, &dir_meta_checksum, error))
-    goto out;
-
-  if (dir_value)
-    {
-      ot_clear_gvariant (&dir_value->meta_data);
-      dir_value->meta_data = dirmeta;
-    }
-  else
-    {
-      dir_value = g_new0 (ParsedDirectoryData, 1);
-      dir_value->tree_data = parsed_tree_data_new ();
-      dir_value->metadata_sha256 = g_strdup (g_checksum_get_string (dir_meta_checksum));
-      dir_value->meta_data = dirmeta;
-      g_hash_table_insert (tree->directories, g_strdup (basename), dir_value);
-    }
-
-  ret = TRUE;
-  *dir = dir_value;
- out:
-  if (dir_meta_checksum)
-    g_checksum_free (dir_meta_checksum);
-  return ret;
-}
-
-static gboolean
-add_one_file_to_tree_and_import (OstreeRepo   *self,
-                                 const char     *basename,
-                                 const char     *abspath,
-                                 ParsedTreeData *tree,
-                                 GError        **error)
-{
-  gboolean ret = FALSE;
-  GChecksum *checksum = NULL;
-  gboolean did_exist;
-  GFile *f = NULL;
-  
-  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-  g_assert (tree != NULL);
-
-  f = ot_gfile_new_for_path (abspath);
-
-  if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE, &checksum, NULL, error))
-    goto out;
-
-  if (!ostree_repo_store_object_trusted (self, f, g_checksum_get_string (checksum),
-                                         OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, error))
-    goto out;
-
-  g_hash_table_replace (tree->files, g_strdup (basename),
-                        g_strdup (g_checksum_get_string (checksum)));
-
-  ret = TRUE;
- out:
-  g_clear_object (&f);
-  if (checksum)
-    g_checksum_free (checksum);
-  return ret;
-}
-
-static gboolean
-add_one_path_to_tree_and_import (OstreeRepo     *self,
-                                 const char     *base,
-                                 const char     *filename,
-                                 ParsedTreeData *tree,
-                                 GError        **error)
-{
-  gboolean ret = FALSE;
-  GPtrArray *components = NULL;
-  struct stat stbuf;
-  char *component_abspath = NULL;
-  ParsedTreeData *current_tree = tree;
-  const char *component = NULL;
-  const char *file_sha1;
-  char *abspath = NULL;
-  ParsedDirectoryData *dir;
-  int i;
-  gboolean is_directory;
-
-  if (!check_path (filename, error))
-    goto out;
-
-  abspath = g_build_filename (base, filename, NULL);
-
-  if (lstat (abspath, &stbuf) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  is_directory = S_ISDIR(stbuf.st_mode);
-       
-  if (components)
-    g_ptr_array_free (components, TRUE);
-  components = ot_util_path_split (filename);
-  g_assert (components->len > 0);
-
-  current_tree = tree;
-  for (i = 0; i < components->len; i++)
-    {
-      component = components->pdata[i];
-      g_free (component_abspath);
-      component_abspath = ot_util_path_join_n (base, components, i);
-      file_sha1 = g_hash_table_lookup (current_tree->files, component);
-      dir = g_hash_table_lookup (current_tree->directories, component);
-
-      g_assert_cmpstr (component, !=, ".");
-
-      if (i < components->len - 1)
-        {
-          if (file_sha1 != NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Encountered non-directory '%s' in '%s'",
-                           component,
-                           filename);
-              goto out;
-            }
-          /* Implicitly add intermediate directories */
-          if (!add_one_directory_to_tree_and_import (self, component,
-                                                     component_abspath, current_tree, &dir,
-                                                     error))
-            goto out;
-          g_assert (dir != NULL);
-          current_tree = dir->tree_data;
-        }
-      else if (is_directory)
-        {
-          if (file_sha1 != NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "File '%s' can't be overwritten by directory",
-                           filename);
-              goto out;
-            }
-          if (!add_one_directory_to_tree_and_import (self, component,
-                                                     abspath, current_tree, &dir,
-                                                     error))
-            goto out;
-        }
-      else 
-        {
-          g_assert (!is_directory);
-          if (dir != NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "File '%s' can't be overwritten by directory",
-                           filename);
-              goto out;
-            }
-          if (!add_one_file_to_tree_and_import (self, component, abspath,
-                                                current_tree, error))
-            goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  if (components)
-    g_ptr_array_unref (components);
-  g_free (component_abspath);
-  g_free (abspath);
-  return ret;
 }
 
 gboolean      
@@ -1349,27 +992,24 @@ ostree_repo_write_ref (OstreeRepo  *self,
 }
 
 static gboolean
-commit_parsed_tree (OstreeRepo *self,
-                    const char   *branch,
-                    const char   *parent,
-                    const char   *subject,
-                    const char   *body,
-                    GVariant     *metadata,
-                    ParsedDirectoryData *root,
-                    GChecksum   **out_commit,
-                    GError      **error)
+import_commit (OstreeRepo *self,
+               const char   *branch,
+               const char   *parent,
+               const char   *subject,
+               const char   *body,
+               GVariant     *metadata,
+               GChecksum    *root_contents_checksum,
+               GChecksum    *root_metadata_checksum,
+               GChecksum   **out_commit,
+               GError      **error)
 {
   gboolean ret = FALSE;
-  GChecksum *root_checksum = NULL;
   GChecksum *ret_commit = NULL;
   GVariant *commit = NULL;
   GDateTime *now = NULL;
 
   g_assert (branch != NULL);
   g_assert (subject != NULL);
-
-  if (!import_parsed_tree (self, root->tree_data, &root_checksum, error))
-    goto out;
 
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(u@a{sv}ssstss)",
@@ -1378,8 +1018,8 @@ commit_parsed_tree (OstreeRepo *self,
                           parent ? parent : "",
                           subject, body ? body : "",
                           GUINT64_TO_BE (g_date_time_to_unix (now)),
-                          g_checksum_get_string (root_checksum),
-                          root->metadata_sha256);
+                          g_checksum_get_string (root_contents_checksum),
+                          g_checksum_get_string (root_metadata_checksum));
   g_variant_ref_sink (commit);
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
                                commit, &ret_commit, error))
@@ -1389,10 +1029,14 @@ commit_parsed_tree (OstreeRepo *self,
     goto out;
 
   ret = TRUE;
-  *out_commit = ret_commit;
+  if (out_commit)
+    {
+      *out_commit = ret_commit;
+      ret_commit = NULL;
+    }
  out:
-  if (root_checksum)
-    g_checksum_free (root_checksum);
+  if (ret_commit)
+    g_checksum_free (ret_commit);
   ot_clear_gvariant (&commit);
   if (now)
     g_date_time_unref (now);
@@ -1400,60 +1044,201 @@ commit_parsed_tree (OstreeRepo *self,
 }
 
 static gboolean
-import_root (OstreeRepo           *self,
-             const char           *base,
-             ParsedDirectoryData **out_root,
-             GError              **error)
+import_directory_recurse (OstreeRepo           *self,
+                          GFile                *base,
+                          GFile                *dir,
+                          GChecksum           **out_contents_checksum,
+                          GChecksum           **out_metadata_checksum,
+                          GCancellable         *cancellable,
+                          GError              **error)
 {
   gboolean ret = FALSE;
-  ParsedDirectoryData *ret_root = NULL;
-  GVariant *root_metadata = NULL;
-  GChecksum *root_meta_checksum = NULL;
+  GError *temp_error = NULL;
+  GChecksum *ret_metadata_checksum = NULL;
+  GChecksum *ret_contents_checksum = NULL;
+  GFileEnumerator *dir_enum = NULL;
+  GFileInfo *child_info = NULL;
+  GFile *child = NULL;
+  GHashTable *file_checksums = NULL;
+  GHashTable *dir_metadata_checksums = NULL;
+  GHashTable *dir_contents_checksums = NULL;
+  GChecksum *child_file_checksum = NULL;
+  gboolean did_exist;
+  gboolean builders_initialized = FALSE;
+  GVariantBuilder files_builder;
+  GVariantBuilder dirs_builder;
+  GHashTableIter hash_iter;
+  GSList *sorted_filenames = NULL;
+  GSList *iter;
+  GVariant *serialized_tree = NULL;
+  gpointer key, value;
 
-  if (!import_directory_meta (self, base, &root_metadata, &root_meta_checksum, error))
+  if (!import_directory_meta (self, dir, NULL, &ret_metadata_checksum, error))
     goto out;
 
-  ret_root = g_new0 (ParsedDirectoryData, 1);
-  ret_root->tree_data = parsed_tree_data_new ();
-  ret_root->meta_data = root_metadata;
-  root_metadata = NULL;
-  ret_root->metadata_sha256 = g_strdup (g_checksum_get_string (root_meta_checksum));
+  dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable, 
+                                        error);
+  if (!dir_enum)
+    goto out;
+  
+  file_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                          (GDestroyNotify)g_free, (GDestroyNotify)g_free);
+  dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                  (GDestroyNotify)g_free, (GDestroyNotify)g_free);
+  dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                  (GDestroyNotify)g_free, (GDestroyNotify)g_free);
 
+  while ((child_info = g_file_enumerator_next_file (dir_enum, cancellable, &temp_error)) != NULL)
+    {
+      const char *name = g_file_info_get_name (child_info);
+
+      g_clear_object (&child);
+      child = g_file_get_child (dir, name);
+
+      if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          GChecksum *child_dir_metadata_checksum;
+          GChecksum *child_dir_contents_checksum;
+
+          if (!import_directory_recurse (self, base, child, &child_dir_contents_checksum,
+                                         &child_dir_metadata_checksum, cancellable, error))
+            goto out;
+
+          g_hash_table_replace (dir_contents_checksums, g_strdup (name),
+                                g_strdup (g_checksum_get_string (child_dir_contents_checksum)));
+          g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
+                                g_strdup (g_checksum_get_string (child_dir_metadata_checksum)));
+          g_checksum_free (child_dir_contents_checksum);
+          g_checksum_free (child_dir_metadata_checksum);
+        }
+      else
+        {
+          if (child_file_checksum)
+            g_checksum_free (child_file_checksum);
+          if (!ostree_checksum_file (child, OSTREE_OBJECT_TYPE_FILE, &child_file_checksum, cancellable, error))
+            goto out;
+          
+          if (!ostree_repo_store_object_trusted (self, child, g_checksum_get_string (child_file_checksum),
+                                                 OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, error))
+            goto out;
+
+          g_hash_table_replace (file_checksums, g_strdup (name),
+                                g_strdup (g_checksum_get_string (child_file_checksum)));
+        }
+
+      g_clear_object (&child_info);
+    }
+  if (temp_error != NULL)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+
+  g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(ss)"));
+  g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sss)"));
+  builders_initialized = TRUE;
+
+  g_hash_table_iter_init (&hash_iter, file_checksums);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *name = key;
+      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
+    }
+
+  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
+
+  for (iter = sorted_filenames; iter; iter = iter->next)
+    {
+      const char *name = iter->data;
+      const char *value;
+
+      value = g_hash_table_lookup (file_checksums, name);
+      g_variant_builder_add (&files_builder, "(ss)", name, value);
+    }
+  
+  g_slist_free (sorted_filenames);
+  sorted_filenames = NULL;
+
+  g_hash_table_iter_init (&hash_iter, dir_metadata_checksums);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *name = key;
+      sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
+    }
+
+  sorted_filenames = g_slist_sort (sorted_filenames, (GCompareFunc)strcmp);
+
+  for (iter = sorted_filenames; iter; iter = iter->next)
+    {
+      const char *name = iter->data;
+
+      g_variant_builder_add (&dirs_builder, "(sss)",
+                             name,
+                             g_hash_table_lookup (dir_contents_checksums, name),
+                             g_hash_table_lookup (dir_metadata_checksums, name));
+    }
+
+  g_slist_free (sorted_filenames);
+  sorted_filenames = NULL;
+
+  serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
+                                   GUINT32_TO_BE (0),
+                                   create_empty_gvariant_dict (),
+                                   g_variant_builder_end (&files_builder),
+                                   g_variant_builder_end (&dirs_builder));
+  builders_initialized = FALSE;
+  g_variant_ref_sink (serialized_tree);
+
+  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT, serialized_tree, &ret_contents_checksum, error))
+    goto out;
+
+  *out_metadata_checksum = ret_metadata_checksum;
+  ret_metadata_checksum = NULL;
+  *out_contents_checksum = ret_contents_checksum;
+  ret_contents_checksum = NULL;
   ret = TRUE;
-  *out_root = ret_root;
-  ret_root = NULL;
  out:
-  ot_clear_gvariant (&root_metadata);
-  if (root_meta_checksum)
-    g_checksum_free (root_meta_checksum);
-  parsed_directory_data_free (ret_root);
+  g_clear_object (&dir_enum);
+  g_clear_object (&child);
+  g_clear_object (&child_info);
+  g_hash_table_destroy (file_checksums);
+  g_hash_table_destroy (dir_metadata_checksums);
+  g_hash_table_destroy (dir_contents_checksums);
+  if (ret_metadata_checksum)
+    g_checksum_free (ret_metadata_checksum);
+  if (ret_contents_checksum)
+    g_checksum_free (ret_contents_checksum);
+  if (child_file_checksum)
+    g_checksum_free (child_file_checksum);
+  g_slist_free (sorted_filenames);
+  if (builders_initialized)
+    {
+      g_variant_builder_clear (&files_builder);
+      g_variant_builder_clear (&dirs_builder);
+    }
+  ot_clear_gvariant (&serialized_tree);
   return ret;
 }
 
 gboolean      
-ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
-                                     const char   *branch,
-                                     const char   *parent,
-                                     const char   *subject,
-                                     const char   *body,
-                                     GVariant     *metadata,
-                                     const char   *base,
-                                     int           fd,
-                                     char          separator,
-                                     GChecksum   **out_commit,
-                                     GError      **error)
+ostree_repo_commit (OstreeRepo *self,
+                    const char   *branch,
+                    const char   *parent,
+                    const char   *subject,
+                    const char   *body,
+                    GVariant     *metadata,
+                    GFile        *dir,
+                    GChecksum   **out_commit,
+                    GCancellable *cancellable,
+                    GError      **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
-  ParsedDirectoryData *root = NULL;
   GChecksum *ret_commit_checksum = NULL;
-  GUnixInputStream *in = NULL;
-  GDataInputStream *datain = NULL;
-  char *filename = NULL;
-  gsize filename_len;
-  GError *temp_error = NULL;
-  GVariant *root_metadata = NULL;
-  GChecksum *root_meta_checksum = NULL;
+  GChecksum *root_metadata_checksum = NULL;
+  GChecksum *root_contents_checksum = NULL;
   char *current_head = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
@@ -1465,39 +1250,14 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   if (parent == NULL)
     parent = branch;
 
-  /* We're overwriting the tree */
-  if (!import_root (self, base, &root, error))
-    goto out;
-
   if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
-  in = (GUnixInputStream*)g_unix_input_stream_new (fd, FALSE);
-  datain = g_data_input_stream_new ((GInputStream*)in);
+  if (!import_directory_recurse (self, dir, dir, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
+    goto out;
 
-  while ((filename = g_data_input_stream_read_upto (datain, &separator, 1,
-                                                    &filename_len, NULL, &temp_error)) != NULL)
-    {
-      if (!g_data_input_stream_read_byte (datain, NULL, &temp_error))
-        {
-          if (temp_error != NULL)
-            {
-              g_propagate_prefixed_error (error, temp_error, "%s", "While reading filelist: ");
-              goto out;
-            }
-        }
-      if (!add_one_path_to_tree_and_import (self, base, filename, root->tree_data, error))
-        goto out;
-      g_free (filename);
-      filename = NULL;
-    }
-  if (filename == NULL && temp_error != NULL)
-    {
-      g_propagate_prefixed_error (error, temp_error, "%s", "While reading filelist: ");
-      goto out;
-    }
-  if (!commit_parsed_tree (self, branch, current_head, subject, body, metadata,
-                           root, &ret_commit_checksum, error))
+  if (!import_commit (self, branch, current_head, subject, body, metadata,
+                      root_contents_checksum, root_metadata_checksum, &ret_commit_checksum, error))
     goto out;
   
   ret = TRUE;
@@ -1507,13 +1267,10 @@ ostree_repo_commit_from_filelist_fd (OstreeRepo *self,
   if (ret_commit_checksum)
     g_checksum_free (ret_commit_checksum);
   g_free (current_head);
-  ot_clear_gvariant (&root_metadata);
-  if (root_meta_checksum)
-    g_checksum_free (root_meta_checksum);
-  g_clear_object (&datain);
-  g_clear_object (&in);
-  g_free (filename);
-  parsed_directory_data_free (root);
+  if (root_metadata_checksum)
+    g_checksum_free (root_metadata_checksum);
+  if (root_contents_checksum)
+    g_checksum_free (root_contents_checksum);
   return ret;
   
 }

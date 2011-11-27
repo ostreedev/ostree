@@ -71,8 +71,8 @@ mkdir -p another/nested/tree
 echo anotherone > another/nested/tree/1
 echo whee2 > another/whee
 # FIXME - remove grep for .
-find | grep -v '^\.$' | $OSTREE commit -b test2 -s "From find" --from-stdin
-echo "ok stdin commit"
+$OSTREE commit -b test2 -s "Another commit"
+echo "ok commit"
 
 cd ${test_tmpdir}
 $OSTREE checkout test2 $test_tmpdir/checkout-test2-3

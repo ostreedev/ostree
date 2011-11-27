@@ -35,7 +35,7 @@ echo 'an ELF file' > usr/lib/libfoo.so
 mkdir -p usr/share
 echo 'some data' > usr/share/foo.data
 
-find | grep -v '^\.$' | $OSTREE commit -b artifact-libfoo-runtime -s 'Build 12345 of libfoo' --from-stdin
+$OSTREE commit -b artifact-libfoo-runtime -s 'Build 12345 of libfoo'
 
 cd "${test_tmpdir}"
 mkdir artifact-libfoo-devel
@@ -45,7 +45,7 @@ echo 'a header' > usr/include/foo.h
 mkdir -p usr/share/doc
 echo 'some documentation' > usr/share/doc/foo.txt
 
-find | grep -v '^\.$' | $OSTREE commit -b artifact-libfoo-devel -s 'Build 12345 of libfoo' --from-stdin
+$OSTREE commit -b artifact-libfoo-devel -s 'Build 12345 of libfoo'
 
 cd "${test_tmpdir}"
 mkdir artifact-barapp
@@ -53,7 +53,7 @@ cd artifact-barapp
 mkdir -p usr/bin
 echo 'another ELF file' > usr/bin/bar
 
-find | grep -v '^\.$' | $OSTREE commit -b artifact-barapp -s 'Build 42 of barapp' --from-stdin
+$OSTREE commit -b artifact-barapp -s 'Build 42 of barapp'
 
 echo 'ok artifacts committed'
 

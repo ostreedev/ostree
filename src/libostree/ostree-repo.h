@@ -110,17 +110,16 @@ gboolean      ostree_repo_load_variant_checked (OstreeRepo  *self,
                                                 GVariant     **out_variant,
                                                 GError       **error);
 
-gboolean      ostree_repo_commit_from_filelist_fd (OstreeRepo   *self,
-                                                   const char   *branch,
-                                                   const char   *parent,
-                                                   const char   *subject,
-                                                   const char   *body,
-                                                   GVariant     *metadata,
-                                                   const char   *base,
-                                                   int           fd,
-                                                   char          separator,
-                                                   GChecksum   **out_commit,
-                                                   GError      **error);
+gboolean      ostree_repo_commit (OstreeRepo   *self,
+                                  const char   *branch,
+                                  const char   *parent,
+                                  const char   *subject,
+                                  const char   *body,
+                                  GVariant     *metadata,
+                                  GFile        *base,
+                                  GChecksum   **out_commit,
+                                  GCancellable *cancellable,
+                                  GError      **error);
 
 gboolean      ostree_repo_checkout (OstreeRepo *self,
                                     const char   *ref,
