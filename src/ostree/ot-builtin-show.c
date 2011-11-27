@@ -182,10 +182,10 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  const char *rev = "master";
+  const char *rev;
   char *resolved_rev = NULL;
 
-  context = g_option_context_new ("- Output a metadata object");
+  context = g_option_context_new ("OBJECT - Output a metadata object");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -195,8 +195,12 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc > 1)
-    rev = argv[1];
+  if (argc <= 1)
+    {
+      ot_util_usage_error (context, "An object argument is required", error);
+      goto out;
+    }
+  rev = argv[1];
 
   if (print_packfile)
     {
