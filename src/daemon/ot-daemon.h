@@ -32,7 +32,13 @@
 G_BEGIN_DECLS
 
 typedef struct {
+  char *dummy_test_path;
+} OstreeDaemonConfig;
+
+typedef struct {
   GMainLoop *loop;
+  GFile *prefix;
+
   OstreeRepo  *repo;
 
   GDBusConnection *bus;
@@ -52,6 +58,12 @@ typedef struct {
 } OstreeDaemonOperation;
 
 OstreeDaemon *ostree_daemon_new (void);
+
+void ostree_daemon_free (OstreeDaemon  *self);
+
+gboolean ostree_daemon_config (OstreeDaemon *self,
+                               OstreeDaemonConfig *config,
+                               GError        **error);
 
 G_END_DECLS
 

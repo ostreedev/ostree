@@ -29,25 +29,44 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+static OstreeDaemonConfig config;
+
+static GOptionEntry entries[] = {
+  {
+    "dummy-test-path", 0, 0, G_OPTION_ARG_FILENAME, &config.dummy_test_path, "Run against the given tree on the session bus", "path"},
+  { NULL }
+};
+
 int
 main (int    argc,
       char **argv)
 {
   OstreeDaemon *daemon = NULL;
+  GError *error = NULL;
+  GOptionContext *context = NULL;
 
   g_type_init ();
 
-  g_set_prgname (argv[0]);
+  context = g_option_context_new ("- OSTree system daemon");
+  g_option_context_add_main_entries (context, entries, NULL);
 
-  if (getuid () != 0)
-    {
-      g_printerr ("This program must be run as root\n");
-      exit (1);
-    }
+  if (!g_option_context_parse (context, &argc, &argv, &error))
+    goto out;
 
   daemon = ostree_daemon_new ();
 
+  if (!ostree_daemon_config (daemon, &config, &error))
+    goto out;
+
   g_main_loop_run (daemon->loop);
 
+ out:
+  ostree_daemon_free (daemon);
+  if (error)
+    {
+      g_printerr ("%s\n", error->message);
+      g_clear_error (&error);
+      exit (1);
+    }
   return 0;
 }

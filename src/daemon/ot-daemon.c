@@ -233,6 +233,9 @@ on_bus_acquired (GDBusConnection *connection,
 
   self->bus = g_object_ref (connection);
 
+  if (introspection_data == NULL)
+    introspection_data = g_dbus_node_info_new_for_xml (introspection_xml, NULL);
+
   id = g_dbus_connection_register_object (connection,
                                           OSTREE_DAEMON_PATH,
                                           introspection_data->interfaces[0],
@@ -250,8 +253,11 @@ on_name_acquired (GDBusConnection *connection,
 {
   OstreeDaemon *self = user_data;
   GError *error = NULL;
+  char *repo_path;
 
-  self->repo = ostree_repo_new ("/sysroot/ostree/repo");
+  repo_path = g_build_filename (ot_gfile_get_path_cached (self->prefix), "repo", NULL);
+  self->repo = ostree_repo_new (repo_path);
+  g_free (repo_path);
   if (!ostree_repo_check (self->repo, &error))
     {
       g_printerr ("%s\n", error->message);
@@ -271,21 +277,54 @@ on_name_lost (GDBusConnection *connection,
 OstreeDaemon *
 ostree_daemon_new (void)
 {
-  OstreeDaemon *ret = g_new0 (OstreeDaemon, 1);
+  OstreeDaemon *self = g_new0 (OstreeDaemon, 1);
 
-  ret->loop = g_main_loop_new (NULL, TRUE);
+  self->loop = g_main_loop_new (NULL, TRUE);
+  self->ops = g_hash_table_new_full (g_int_hash, g_int_equal, NULL, NULL);
 
-  ret->name_id = g_bus_own_name (G_BUS_TYPE_SYSTEM,
-                                 OSTREE_DAEMON_NAME,
-                                 G_BUS_NAME_OWNER_FLAGS_NONE,
-                                 on_bus_acquired,
-                                 on_name_acquired,
-                                 on_name_lost,
-                                 NULL,
-                                 NULL);
-
-  ret->ops = g_hash_table_new_full (g_int_hash, g_int_equal, NULL, NULL);
-
-  return ret;
+  return self;
 }
 
+void
+ostree_daemon_free (OstreeDaemon  *self)
+{
+  g_main_loop_unref (self->loop);
+  g_hash_table_unref (self->ops);
+  g_free (self);
+}
+
+gboolean
+ostree_daemon_config (OstreeDaemon *self,
+                      OstreeDaemonConfig *config,
+                      GError        **error)
+{
+  gboolean ret = FALSE;
+  gboolean is_dummy = config->dummy_test_path != NULL;
+
+  if (!is_dummy)
+    {
+      if (getuid () != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "This program must be run as root");
+          goto out;
+        }
+    }
+
+  if (is_dummy)
+    self->prefix = ot_gfile_new_for_path (config->dummy_test_path);
+  else
+    self->prefix = ot_gfile_new_for_path ("/sysroot/ostree");
+      
+  self->name_id = g_bus_own_name (is_dummy ? G_BUS_TYPE_SESSION : G_BUS_TYPE_SYSTEM,
+                                  OSTREE_DAEMON_NAME,
+                                  G_BUS_NAME_OWNER_FLAGS_NONE,
+                                  on_bus_acquired,
+                                  on_name_acquired,
+                                  on_name_lost,
+                                  self,
+                                  NULL);
+  ret = TRUE;
+ out:
+  return ret;
+}
