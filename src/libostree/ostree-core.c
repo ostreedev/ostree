@@ -320,6 +320,9 @@ ostree_checksum_file (GFile            *f,
   GFileInfo *file_info = NULL;
   GChecksum *ret_checksum = NULL;
 
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return NULL;
+
   file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
@@ -343,6 +346,82 @@ ostree_checksum_file (GFile            *f,
  out:
   g_clear_object (&file_info);
   return ret;
+}
+
+typedef struct {
+  GFile  *f;
+  OstreeObjectType objtype;
+  GChecksum *checksum;
+} ChecksumFileAsyncData;
+
+static void
+checksum_file_async_thread (GSimpleAsyncResult  *res,
+                            GObject             *object,
+                            GCancellable        *cancellable)
+{
+  GError *error = NULL;
+  ChecksumFileAsyncData *data;
+  GChecksum *checksum = NULL;
+
+  data = g_simple_async_result_get_op_res_gpointer (res);
+  if (!ostree_checksum_file (data->f, data->objtype, &checksum, cancellable, &error))
+    g_simple_async_result_take_error (res, error);
+  else
+    data->checksum = checksum;
+}
+
+static void
+checksum_file_async_data_free (gpointer datap)
+{
+  ChecksumFileAsyncData *data = datap;
+
+  g_object_unref (data->f);
+  if (data->checksum)
+    g_checksum_free (data->checksum);
+  g_free (data);
+}
+  
+void
+ostree_checksum_file_async (GFile                 *f,
+                            OstreeObjectType       objtype,
+                            int                    io_priority,
+                            GCancellable          *cancellable,
+                            GAsyncReadyCallback    callback,
+                            gpointer               user_data)
+{
+  GSimpleAsyncResult  *res;
+  ChecksumFileAsyncData *data;
+
+  data = g_new0 (ChecksumFileAsyncData, 1);
+  data->f = g_object_ref (f);
+  data->objtype = objtype;
+
+  res = g_simple_async_result_new (G_OBJECT (f), callback, user_data, ostree_checksum_file_async);
+  g_simple_async_result_set_op_res_gpointer (res, data, (GDestroyNotify)checksum_file_async_data_free);
+  
+  g_simple_async_result_run_in_thread (res, checksum_file_async_thread, io_priority, cancellable);
+  g_object_unref (res);
+}
+
+gboolean
+ostree_checksum_file_async_finish (GFile          *f,
+                                   GAsyncResult   *result,
+                                   GChecksum     **out_checksum,
+                                   GError        **error)
+{
+  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
+  ChecksumFileAsyncData *data;
+
+  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_checksum_file_async);
+
+  if (g_simple_async_result_propagate_error (simple, error))
+    return FALSE;
+
+  data = g_simple_async_result_get_op_res_gpointer (simple);
+  /* Transfer ownership */
+  *out_checksum = data->checksum;
+  data->checksum = NULL;
+  return TRUE;
 }
 
 gboolean
@@ -912,6 +991,3 @@ ostree_unpack_object (GFile            *file,
   else
     return unpack_file (file, dest, out_checksum, error);
 }
-  
-
-

@@ -116,6 +116,18 @@ gboolean ostree_checksum_file (GFile             *f,
                                GCancellable      *cancellable,
                                GError           **error);
 
+void ostree_checksum_file_async (GFile                 *f,
+                                 OstreeObjectType       objtype,
+                                 int                    io_priority,
+                                 GCancellable          *cancellable,
+                                 GAsyncReadyCallback    callback,
+                                 gpointer               user_data);
+
+gboolean ostree_checksum_file_async_finish (GFile          *f,
+                                            GAsyncResult   *result,
+                                            GChecksum     **out_checksum,
+                                            GError        **error);
+
 gboolean ostree_get_directory_metadata (GFile *dir,
                                         GFileInfo *dir_info,
                                         GVariant  **out_metadata,

@@ -31,13 +31,36 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+typedef struct {
+  GError **error;
+  GMainLoop *loop;
+} AsyncChecksumData;
+
+static void
+on_checksum_received (GObject    *obj,
+                      GAsyncResult  *result,
+                      gpointer       user_data)
+{
+  GChecksum *checksum = NULL;
+  AsyncChecksumData *data = user_data;
+
+  if (!ostree_checksum_file_async_finish ((GFile*)obj, result, &checksum, data->error))
+    return;
+
+  g_print ("%s\n", g_checksum_get_string (checksum));
+ 
+  g_checksum_free (checksum);
+  
+  g_main_loop_quit (data->loop);
+}
+
 gboolean
 ostree_builtin_checksum (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  GChecksum *checksum = NULL;
   GFile *f = NULL;
+  AsyncChecksumData data;
 
   context = g_option_context_new ("FILENAME - Checksum a file or directory");
   g_option_context_add_main_entries (context, options, NULL);
@@ -54,15 +77,16 @@ ostree_builtin_checksum (int argc, char **argv, const char *repo_path, GError **
       goto out;
     }
 
-  if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE, &checksum, NULL, error))
-    goto out;
+  data.loop = g_main_loop_new (NULL, FALSE);
+  data.error = error;
+  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, NULL, on_checksum_received, &data);
+  
+  g_main_loop_run (data.loop);
 
-  g_print ("%s\n", g_checksum_get_string (checksum));
- 
   ret = TRUE;
  out:
-  if (checksum)
-    g_checksum_free (checksum);
+  if (data.loop)
+    g_main_loop_unref (data.loop);
   g_clear_object (&f);
   if (context)
     g_option_context_free (context);
