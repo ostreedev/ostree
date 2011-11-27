@@ -39,6 +39,7 @@ if test x$with_soup_gnome != xno; then
         AC_DEFINE([HAVE_LIBSOUP_GNOME], [1], [Define if we have libsoup-gnome])
     else
 	PKG_CHECK_MODULES(OT_COREBIN_DEP, [$GIO_DEPENDENCY])
+	with_soup_gnome=no
     fi		
 else
     PKG_CHECK_MODULES(OT_COREBIN_DEP, [$GIO_DEPENDENCY])
