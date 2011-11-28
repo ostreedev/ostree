@@ -37,6 +37,7 @@ static OstreeBuiltin builtins[] = {
   { "compose", ostree_builtin_compose, 0 },
   { "local-clone", ostree_builtin_local_clone, 0 },
   { "log", ostree_builtin_log, 0 },
+  { "ls", ostree_builtin_ls, 0 },
 #ifdef HAVE_LIBSOUP_GNOME
   { "pull", ostree_builtin_pull, 0 },
 #endif

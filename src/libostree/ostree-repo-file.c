@@ -133,11 +133,15 @@ _ostree_repo_file_new_child (OstreeRepoFile *parent,
                              const char  *name)
 {
   OstreeRepoFile *self;
+  size_t len;
   
   self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
   self->repo = g_object_ref (parent->repo);
   self->parent = g_object_ref (parent);
   self->name = g_strdup (name);
+  len = strlen(self->name);
+  if (self->name[len-1] == '/')
+    self->name[len-1] = '\0';
 
   return G_FILE (self);
 }
@@ -190,6 +194,7 @@ do_resolve_commit (OstreeRepoFile  *self,
   root_metadata = NULL;
   self->tree_contents = root_contents;
   root_contents = NULL;
+  self->tree_metadata_checksum = g_strdup (tree_meta_checksum);
 
  out:
   ot_clear_gvariant (&commit);
@@ -274,6 +279,8 @@ _ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
     }
   else if (self->index == -1)
     {
+      if (!_ostree_repo_file_ensure_resolved (self->parent, error))
+        goto out;
       (void)do_resolve_nonroot (self, &(self->commit_resolve_error));
     }
   
@@ -377,8 +384,6 @@ _ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 GFile *
 _ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
-  g_assert (!ostree_repo_is_archive (self->repo));
-
   return ostree_repo_get_object_path (self->repo, _ostree_repo_file_get_checksum (self), OSTREE_OBJECT_TYPE_FILE);
 }
 
@@ -407,7 +412,8 @@ _ostree_repo_file_get_checksum (OstreeRepoFile  *self)
   GVariant *dirs_variant;
   const char *checksum;
 
-  g_assert (self->parent);
+  if (!self->parent)
+    return self->tree_metadata_checksum;
 
   n = _ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, NULL);
   g_assert (n >= 0);
@@ -472,7 +478,7 @@ ostree_repo_file_get_path (GFile *file)
   for (parent = self->parent; parent; parent = parent->parent)
     parents = g_slist_prepend (parents, parent);
 
-  if (parents->next)
+  if (parents && parents->next)
     {
       for (iter = parents->next; iter; iter = iter->next)
         {
@@ -482,7 +488,8 @@ ostree_repo_file_get_path (GFile *file)
         }
     }
   g_string_append_c (buf, '/');
-  g_string_append (buf, self->name);
+  if (self->name)
+    g_string_append (buf, self->name);
 
   g_slist_free (parents);
 
@@ -624,11 +631,18 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
   const char *rest;
   GFile *ret;
 
-  if (g_path_is_absolute (relative_path) && self->parent)
+  if (g_path_is_absolute (relative_path))
     {
       g_assert (*relative_path == '/');
-      return ostree_repo_file_resolve_relative_path ((GFile*)_ostree_repo_file_get_root (self),
-                                                     relative_path+1);
+
+      if (strcmp (relative_path, "/") == 0)
+        return g_object_ref (_ostree_repo_file_get_root (self)); 
+
+      if (self->parent)
+        return ostree_repo_file_resolve_relative_path ((GFile*)_ostree_repo_file_get_root (self),
+                                                       relative_path+1);
+      else
+        relative_path = relative_path+1;
     }
 
   rest = strchr (relative_path, '/');
