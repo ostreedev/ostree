@@ -10,4 +10,5 @@ inherit gnomeos-contents
 PACKAGE_INSTALL += "task-core-sdk-dev \
 		bison flex \
 		git \
+		pseudo \
 		"
