@@ -217,7 +217,11 @@ def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None):
         f.write(filename)
         f.write('\n')
     f.close()
-    args = ['fakeroot', '-i', fakeroot_temp, 'tar', '-c', '-z', '-C', tempdir, '-f', targz_name, '-T', filelist_temp]
+    if fakeroot_temp:
+        args = ['fakeroot', '-i', fakeroot_temp]
+    else:
+        args = []
+    args.extend(['tar', '-c', '-z', '-C', tempdir, '-f', targz_name, '-T', filelist_temp])
     run_sync(args)
     log("created: %s" % (os.path.abspath (targz_name), ))
 
@@ -232,12 +236,19 @@ def phase_make_artifacts(builddir=None):
 
     artifact_prefix='artifact-%s,%s' % (basename, version)
 
-    (fd,fakeroot_temp)=tempfile.mkstemp(prefix='ostree-fakeroot-%s-' % (basename,))
-    os.close(fd)
-    tempfiles.append(fakeroot_temp)
+    if os.getuid() != 0:
+        (fd,fakeroot_temp)=tempfile.mkstemp(prefix='ostree-fakeroot-%s-' % (basename,))
+        os.close(fd)
+        tempfiles.append(fakeroot_temp)
+    else:
+        fakeroot_temp = None
     tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (basename,))
     tempfiles.append(tempdir)
-    args = ['fakeroot', '-s', fakeroot_temp, 'make', 'install', 'DESTDIR=' + tempdir]
+    if fakeroot_temp is not None:
+        args = ['fakeroot', '-s', fakeroot_temp]
+    else:
+        args = []
+    args.extend(['make', 'install', 'DESTDIR=' + tempdir])
     run_sync(args, cwd=builddir)
 
     devel_files = set()
