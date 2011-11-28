@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 
@@ -31,6 +32,11 @@ OSTREE_VER=$(cd $SCRIPT_SRCDIR && git describe)
 
 BUILDDIR=$WORKDIR/tmp-eglibc
 
+export PSEUDO_PREFIX=${BUILDDIR}/sysroots/$(uname -m)-linux
+export PSEUDO_BINDIR=${PSEUDO_PREFIX}/usr/bin
+export PSEUDO_LIBDIR=${PSEUDO_BINDIR}/../lib/pseudo/lib
+FAKEROOT=${PSEUDO_BINDIR}/pseudo
+
 OSTREE_REPO=$WORKDIR/repo
 BUILD_TAR=$BUILDDIR/deploy/images/gnomeos-contents-$BRANCH-qemu${ARCH}.tar.gz
 
@@ -40,7 +46,7 @@ tempdir=`mktemp -d tmp-commit-yocto-build.XXXXXXXXXX`
 cd $tempdir
 mkdir fs
 cd fs
-fakeroot -s ../fakeroot.db tar xf $BUILD_TAR
-fakeroot -i ../fakeroot.db ostree --repo=${OSTREE_REPO} commit -s "Build from OSTree ${OSTREE_VER}" -b "gnomeos-yocto-$ARCH-$BRANCH"
+$FAKEROOT tar xf $BUILD_TAR
+$FAKEROOT ostree --repo=${OSTREE_REPO} commit -s "Build from OSTree ${OSTREE_VER}" -b "gnomeos-yocto-$ARCH-$BRANCH"
 cd "${WORKDIR}"
 rm -rf $tempdir
