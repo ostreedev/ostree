@@ -321,7 +321,7 @@ ostree_checksum_file (GFile            *f,
   GChecksum *ret_checksum = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return NULL;
+    return FALSE;
 
   file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
