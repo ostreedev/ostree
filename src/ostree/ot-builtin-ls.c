@@ -45,12 +45,17 @@ print_one_file (GFile     *f,
   GString *buf = NULL;
   char type_c;
   guint32 mode;
+  guint32 type;
+
+  if (!_ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
+    g_assert_not_reached ();
   
   buf = g_string_new ("");
 
   type_c = '?';
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  switch (g_file_info_get_file_type (file_info))
+  type = g_file_info_get_file_type (file_info);
+  switch (type)
     {
     case G_FILE_TYPE_REGULAR:
       type_c = '-';
@@ -74,14 +79,18 @@ print_one_file (GFile     *f,
       break;
     }
   g_string_append_c (buf, type_c);
-  g_string_append_printf (buf, "0%03o %u %u %" G_GUINT64_FORMAT " ",
+  g_string_append_printf (buf, "0%04o %u %u %6" G_GUINT64_FORMAT " ",
                           mode & ~S_IFMT,
                           g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                           g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                           g_file_info_get_attribute_uint64 (file_info, "standard::size"));
   
   if (checksum)
-    g_string_append_printf (buf, "%s ", _ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
+    {
+      if (type == G_FILE_TYPE_DIRECTORY)
+        g_string_append_printf (buf, "%s ", _ostree_repo_file_tree_get_content_checksum ((OstreeRepoFile*)f));
+      g_string_append_printf (buf, "%s ", _ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
+    }
 
   if (xattrs)
     {
@@ -94,14 +103,14 @@ print_one_file (GFile     *f,
       formatted = g_variant_print (xattrs, TRUE);
       g_string_append (buf, "{ ");
       g_string_append (buf, formatted);
-      g_string_append (buf, "} ");
+      g_string_append (buf, " } ");
       g_free (formatted);
       g_variant_unref (xattrs);
     }
 
   g_string_append (buf, ot_gfile_get_path_cached (f));
 
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
+  if (type == G_FILE_TYPE_SYMBOLIC_LINK)
     g_string_append_printf (buf, " -> %s", g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target"));
       
   g_print ("%s\n", buf->str);

@@ -194,8 +194,10 @@ do_resolve_commit (OstreeRepoFile  *self,
   root_metadata = NULL;
   self->tree_contents = root_contents;
   root_contents = NULL;
+  self->tree_contents_checksum = g_strdup (tree_contents_checksum);
   self->tree_metadata_checksum = g_strdup (tree_meta_checksum);
 
+  ret = TRUE;
  out:
   ot_clear_gvariant (&commit);
   ot_clear_gvariant (&root_metadata);
@@ -253,6 +255,8 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       tree_contents = NULL;
       self->tree_metadata = tree_metadata;
       tree_metadata = NULL;
+      self->tree_contents_checksum = g_strdup (content_checksum);
+      self->tree_metadata_checksum = g_strdup (metadata_checksum);
     }
   else
     self->index = i;
@@ -377,7 +381,6 @@ _ostree_repo_file_tree_set_content_checksum (OstreeRepoFile  *self,
 const char *
 _ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 {
-  g_assert (self->parent == NULL);
   return self->tree_contents_checksum;
 }
 
