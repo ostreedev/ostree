@@ -22,6 +22,16 @@
 
 #ifndef __OSTREE_UTIL_H__
 
+#define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
+#define ot_clear_checksum(c) G_STMT_START {     \
+  typeof(c) __tmp_chksum = c;                   \
+  if (__tmp_chksum)                             \
+    {                                           \
+      g_checksum_free (*__tmp_chksum);          \
+      *__tmp_chksum = NULL;                     \
+    }                                           \
+  } G_STMT_END;
+
 #include <ot-gio-utils.h>
 #include <ot-glib-compat.h>
 #include <ot-opt-utils.h>
