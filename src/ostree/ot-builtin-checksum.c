@@ -44,12 +44,12 @@ on_checksum_received (GObject    *obj,
   GChecksum *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
-  if (!ostree_checksum_file_async_finish ((GFile*)obj, result, &checksum, data->error))
-    return;
-
-  g_print ("%s\n", g_checksum_get_string (checksum));
- 
-  g_checksum_free (checksum);
+  if (ostree_checksum_file_async_finish ((GFile*)obj, result, &checksum, data->error))
+    {
+      g_print ("%s\n", g_checksum_get_string (checksum));
+      
+      g_checksum_free (checksum);
+    }
   
   g_main_loop_quit (data->loop);
 }
