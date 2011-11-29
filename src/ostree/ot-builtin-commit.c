@@ -55,7 +55,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   char *dirpath = NULL;
   GFile *dir = NULL;
   GChecksum *commit_checksum = NULL;
-  char separator;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
