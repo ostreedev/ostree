@@ -28,6 +28,8 @@ bin_SCRIPTS =
 libexec_PROGRAMS =
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
+privlibdir = $(pkglibdir)
+privlib_LTLIBRARIES =
 
 include Makefile-daemon.am
 include Makefile-otutil.am

@@ -19,9 +19,8 @@ changequote([,])dnl
 AC_SUBST(WARN_CFLAGS)
 
 # Initialize libtool
-AC_PROG_LIBTOOL
-LT_PREREQ([2.2])
-LT_INIT
+LT_PREREQ([2.2.4])
+LT_INIT([disable-static])
 
 PKG_PROG_PKG_CONFIG
 
