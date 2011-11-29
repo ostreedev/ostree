@@ -48,7 +48,7 @@ on_checksum_received (GObject    *obj,
     {
       g_print ("%s\n", g_checksum_get_string (checksum));
       
-      g_checksum_free (checksum);
+      ot_clear_checksum (&checksum);
     }
   
   g_main_loop_quit (data->loop);

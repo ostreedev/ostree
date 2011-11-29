@@ -138,7 +138,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (commit_checksum)
-    g_checksum_free (commit_checksum);
+  ot_clear_checksum (&commit_checksum);
   return ret;
 }

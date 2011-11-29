@@ -626,8 +626,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
   g_free (tmp_name);
   if (fd != -1)
     close (fd);
-  if (checksum)
-    g_checksum_free (checksum);
+  ot_clear_checksum (&checksum);
   ot_clear_gvariant (&serialized);
   g_free (dest_name);
   g_clear_object (&stream);
@@ -661,8 +660,7 @@ import_gvariant_object (OstreeRepo  *self,
  out:
   (void) g_file_delete (tmp_path, NULL, NULL);
   g_clear_object (&tmp_path);
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 
@@ -734,8 +732,7 @@ import_directory_meta (OstreeRepo  *self,
     }
  out:
   g_clear_object (&f_info);
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   return ret;
 }
@@ -948,8 +945,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
     (void) g_file_delete (tempfile, NULL, NULL);
   g_clear_object (&tempfile);
   g_clear_object (&src);
-  if (checksum)
-    g_checksum_free (checksum);
+  ot_clear_checksum (&checksum);
   return ret;
 }
 
@@ -1035,8 +1031,7 @@ import_commit (OstreeRepo *self,
       ret_commit = NULL;
     }
  out:
-  if (ret_commit)
-    g_checksum_free (ret_commit);
+  ot_clear_checksum (&ret_commit);
   ot_clear_gvariant (&commit);
   if (now)
     g_date_time_unref (now);
@@ -1099,8 +1094,8 @@ import_directory_recurse (OstreeRepo           *self,
 
       if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
         {
-          GChecksum *child_dir_metadata_checksum;
-          GChecksum *child_dir_contents_checksum;
+          GChecksum *child_dir_metadata_checksum = NULL;
+          GChecksum *child_dir_contents_checksum = NULL;
 
           if (!import_directory_recurse (self, base, child, &child_dir_contents_checksum,
                                          &child_dir_metadata_checksum, cancellable, error))
@@ -1110,13 +1105,12 @@ import_directory_recurse (OstreeRepo           *self,
                                 g_strdup (g_checksum_get_string (child_dir_contents_checksum)));
           g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
                                 g_strdup (g_checksum_get_string (child_dir_metadata_checksum)));
-          g_checksum_free (child_dir_contents_checksum);
-          g_checksum_free (child_dir_metadata_checksum);
+          ot_clear_checksum (&child_dir_contents_checksum);
+          ot_clear_checksum (&child_dir_metadata_checksum);
         }
       else
         {
-          if (child_file_checksum)
-            g_checksum_free (child_file_checksum);
+          ot_clear_checksum (&child_file_checksum);
           if (!ostree_checksum_file (child, OSTREE_OBJECT_TYPE_FILE, &child_file_checksum, cancellable, error))
             goto out;
           
@@ -1206,12 +1200,9 @@ import_directory_recurse (OstreeRepo           *self,
   g_hash_table_destroy (file_checksums);
   g_hash_table_destroy (dir_metadata_checksums);
   g_hash_table_destroy (dir_contents_checksums);
-  if (ret_metadata_checksum)
-    g_checksum_free (ret_metadata_checksum);
-  if (ret_contents_checksum)
-    g_checksum_free (ret_contents_checksum);
-  if (child_file_checksum)
-    g_checksum_free (child_file_checksum);
+  ot_clear_checksum (&ret_metadata_checksum);
+  ot_clear_checksum (&ret_contents_checksum);
+  ot_clear_checksum (&child_file_checksum);
   g_slist_free (sorted_filenames);
   if (builders_initialized)
     {
@@ -1264,13 +1255,10 @@ ostree_repo_commit (OstreeRepo *self,
   *out_commit = ret_commit_checksum;
   ret_commit_checksum = NULL;
  out:
-  if (ret_commit_checksum)
-    g_checksum_free (ret_commit_checksum);
+  ot_clear_checksum (&ret_commit_checksum);
   g_free (current_head);
-  if (root_metadata_checksum)
-    g_checksum_free (root_metadata_checksum);
-  if (root_contents_checksum)
-    g_checksum_free (root_contents_checksum);
+  ot_clear_checksum (&root_metadata_checksum);
+  ot_clear_checksum (&root_contents_checksum);
   return ret;
   
 }
@@ -1645,8 +1633,7 @@ get_file_checksum (GFile  *f,
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  if (tmp_checksum)
-    g_checksum_free (tmp_checksum);
+  ot_clear_checksum (&tmp_checksum);
   return ret;
 }
 

@@ -99,8 +99,7 @@ checksum_packed_file (OtFsckData   *data,
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   g_free (metadata_buf);
   g_clear_object (&in);
   ot_clear_gvariant (&metadata);
@@ -156,8 +155,7 @@ object_iter_callback (OstreeRepo    *repo,
   data->n_objects++;
 
  out:
-  if (real_checksum != NULL)
-    g_checksum_free (real_checksum);
+  ot_clear_checksum (&real_checksum);
   if (error != NULL)
     {
       g_printerr ("%s\n", error->message);

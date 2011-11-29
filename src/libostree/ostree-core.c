@@ -203,8 +203,7 @@ checksum_directory (GFile          *f,
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   ot_clear_gvariant (&packed);
   return ret;
@@ -304,8 +303,7 @@ checksum_nondirectory (GFile            *f,
   g_clear_object (&input);
   g_free (basename);
   ot_clear_gvariant (&xattrs);
-  if (content_sha256)
-    g_checksum_free (content_sha256);
+  ot_clear_checksum (&content_sha256);
   return ret;
 }
 
@@ -376,8 +374,7 @@ checksum_file_async_data_free (gpointer datap)
   ChecksumFileAsyncData *data = datap;
 
   g_object_unref (data->f);
-  if (data->checksum)
-    g_checksum_free (data->checksum);
+  ot_clear_checksum (&data->checksum);
   g_free (data);
 }
   
@@ -774,8 +771,7 @@ unpack_meta (GFile        *file,
     *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   g_clear_object (&in);
   return ret;
 }
@@ -970,8 +966,7 @@ unpack_file (GFile        *file,
  out:
   if (!ret)
     (void) unlink (dest_path);
-  if (ret_checksum)
-    g_checksum_free (ret_checksum);
+  ot_clear_checksum (&ret_checksum);
   g_clear_object (&in);
   g_clear_object (&out);
   ot_clear_gvariant (&metadata);
