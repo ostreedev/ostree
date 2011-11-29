@@ -1,7 +1,21 @@
 #!/usr/bin/python
 
-# Copyright 2010, 2011 Colin Walters <walters@verbum.org>
-# Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
+# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
 
 # ostbuild-compile-one-make wraps systems that implement the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
@@ -22,6 +36,12 @@ root = None
 
 prefix = '/usr'
 
+uname=os.uname()
+kernel=uname[0].lower()
+machine=uname[4]
+
+build_target='%s-%s' % (machine, kernel)
+
 # libdir detection
 if os.path.isdir('/lib64'):
     libdir=os.path.join(prefix, 'lib64')
@@ -29,7 +49,8 @@ else:
     libdir=os.path.join(prefix, 'lib')
 
 default_buildapi_jobs = ['-j', '%d' % (cpu_count() * 2, )]
-configargs = ['--prefix=' + prefix,
+configargs = ['--build=' + build_target,
+              '--prefix=' + prefix,
               '--libdir=' + libdir,
               '--sysconfdir=/etc',
               '--localstatedir=/var',
@@ -44,8 +65,12 @@ makeargs = ['make']
 
 top_srcdir=os.getcwd()
 
+ostbuild_resultdir=top_srcdir
+
 for arg in sys.argv[1:]:
-    if arg.startswith('--'):
+    if arg.startswith('OSTBUILD_RESULTDIR='):
+        ostbuild_resultdir=arg[20:]
+    elif arg.startswith('--'):
         configargs.append(arg)
     else:
         makeargs.append(arg)
@@ -206,7 +231,7 @@ def phase_build(builddir=None):
 
     phase_make_artifacts(builddir=builddir)
 
-def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None):
+def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None, resultdir=None):
     targz_name = name + '.tar.gz'
     (fd,filelist_temp)=tempfile.mkstemp(prefix='ostree-filelist-%s' % (name, ))
     os.close(fd)
@@ -221,9 +246,13 @@ def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None):
         args = ['fakeroot', '-i', fakeroot_temp]
     else:
         args = []
-    args.extend(['tar', '-c', '-z', '-C', tempdir, '-f', targz_name, '-T', filelist_temp])
+    if resultdir:
+        result_path = os.path.join(resultdir, targz_name)
+    else:
+        result_path = targz_name
+    args.extend(['tar', '-c', '-z', '-C', tempdir, '-f', result_path, '-T', filelist_temp])
     run_sync(args)
-    log("created: %s" % (os.path.abspath (targz_name), ))
+    log("created: %s" % (os.path.abspath (result_path), ))
 
 def phase_make_artifacts(builddir=None):
     basename=os.path.basename(os.getcwd())
@@ -234,7 +263,9 @@ def phase_make_artifacts(builddir=None):
         version = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
     version = version.strip()
 
-    artifact_prefix='artifact-%s,%s' % (basename, version)
+    version = version.replace(',', '_')
+
+    artifact_prefix='artifact-%s-%s,%s' % (build_target, basename, version)
 
     if os.getuid() != 0:
         (fd,fakeroot_temp)=tempfile.mkstemp(prefix='ostree-fakeroot-%s-' % (basename,))
@@ -271,8 +302,8 @@ def phase_make_artifacts(builddir=None):
     os.chdir(oldpwd)
 
     if devel_files:
-        make_artifact(artifact_prefix + '-devel', devel_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir)
-    make_artifact(artifact_prefix + '-runtime', runtime_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir)
+        make_artifact(artifact_prefix + '-devel', devel_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir, resultdir=ostbuild_resultdir)
+    make_artifact(artifact_prefix + '-runtime', runtime_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir, resultdir=ostbuild_resultdir)
 
 def phase_complete():
     for tmpname in tempfiles:
