@@ -1,4 +1,4 @@
-# Makefile for C source code
+#!/bin/sh
 #
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
@@ -16,13 +16,9 @@
 # License along with this library; if not, write to the
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
+#
+# Author: Colin Walters <walters@verbum.org>
 
-libexec_PROGRAMS += ostreed
 
-ostreed_SOURCES = src/daemon/ostreed.c \
-	src/daemon/ot-daemon.h \
-	src/daemon/ot-daemon.c \
-	$(NULL)
-
-ostreed_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/daemon -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
-ostreed_LDADD = libotutil.la libostree.la $(OT_DEP_GIO_UNIX_LIBS)
+bn=$(basename $(pwd))
+ostbuild-nice-and-log-output "compile-${bn}.log" ostbuild-chroot-compile-one-impl "$@"

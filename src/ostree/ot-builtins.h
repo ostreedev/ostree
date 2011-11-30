@@ -27,17 +27,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
-  OSTREE_BUILTIN_FLAG_NONE = 0,
-  OSTREE_BUILTIN_FLAG_NO_REPO = 1,
-} OstreeBuiltinFlags;
-
-typedef struct {
-  const char *name;
-  gboolean (*fn) (int argc, char **argv, const char *repo, GError **error);
-  int flags; /* OstreeBuiltinFlags */
-} OstreeBuiltin;
-
 gboolean ostree_builtin_checkout (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_checksum (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_commit (int argc, char **argv, const char *repo, GError **error);
@@ -47,7 +36,6 @@ gboolean ostree_builtin_init (int argc, char **argv, const char *repo, GError **
 gboolean ostree_builtin_local_clone (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_log (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_ls (int argc, char **argv, const char *repo, GError **error);
-gboolean ostree_builtin_pull (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_run_triggers (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_fsck (int argc, char **argv, const char *repo, GError **error);
 gboolean ostree_builtin_show (int argc, char **argv, const char *repo, GError **error);

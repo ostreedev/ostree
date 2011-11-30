@@ -20,37 +20,18 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#include "config.h"
-
 #include <gio/gio.h>
 
-#include <string.h>
+typedef enum {
+  OSTREE_BUILTIN_FLAG_NONE = 0,
+  OSTREE_BUILTIN_FLAG_NO_REPO = 1,
+} OstreeBuiltinFlags;
 
-#include "ot-main.h"
-#include "ot-builtins.h"
+typedef struct {
+  const char *name;
+  gboolean (*fn) (int argc, char **argv, const char *repo, GError **error);
+  int flags; /* OstreeBuiltinFlags */
+} OstreeBuiltin;
 
-static OstreeBuiltin builtins[] = {
-  { "checkout", ostree_builtin_checkout, 0 },
-  { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
-  { "diff", ostree_builtin_diff, 0 },
-  { "init", ostree_builtin_init, 0 },
-  { "commit", ostree_builtin_commit, 0 },
-  { "compose", ostree_builtin_compose, 0 },
-  { "local-clone", ostree_builtin_local_clone, 0 },
-  { "log", ostree_builtin_log, 0 },
-  { "ls", ostree_builtin_ls, 0 },
-  { "fsck", ostree_builtin_fsck, 0 },
-  { "remote", ostree_builtin_remote, 0 },
-  { "rev-parse", ostree_builtin_rev_parse, 0 },
-  { "remote", ostree_builtin_remote, 0 },
-  { "run-triggers", ostree_builtin_run_triggers, 0 },
-  { "show", ostree_builtin_show, 0 },
-  { NULL }
-};
+int ostree_main (int    argc, char **argv, OstreeBuiltin  *builtins);
 
-int
-main (int    argc,
-      char **argv)
-{
-  return ostree_main (argc, argv, builtins);
-}

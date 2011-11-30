@@ -25,23 +25,23 @@ LT_INIT([disable-static])
 PKG_PROG_PKG_CONFIG
 
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
-PKG_CHECK_MODULES(GIO_UNIX, [gio-unix-2.0 >= 2.28])
+SOUP_DEPENDENCY="libsoup-gnome-2.4 >= 2.34.0"
+
+PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
+
 AC_ARG_WITH(soup-gnome,
 	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
 	    :, with_soup_gnome=maybe)
 if test x$with_soup_gnome != xno; then
-    PKG_CHECK_MODULES(OT_COREBIN_DEP, [libsoup-gnome-2.4 >= 2.34.0 $GIO_DEPENDENCY], have_soup_gnome=yes, have_soup_gnome=no)
+    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup_gnome=yes, have_soup_gnome=no)
     if test x$have_soup_gnome = xno && test x$with_soup_gnome != xmaybe; then
        AC_MSG_ERROR([libsoup-gnome is enabled but could not be found])
     fi
     if test x$have_soup_gnome = xyes; then
-        AC_DEFINE([HAVE_LIBSOUP_GNOME], [1], [Define if we have libsoup-gnome])
+	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
     else
-	PKG_CHECK_MODULES(OT_COREBIN_DEP, [$GIO_DEPENDENCY])
 	with_soup_gnome=no
     fi		
-else
-    PKG_CHECK_MODULES(OT_COREBIN_DEP, [$GIO_DEPENDENCY])
 fi
 
 AM_CONDITIONAL(USE_LIBSOUP_GNOME, test $with_soup_gnome != no)

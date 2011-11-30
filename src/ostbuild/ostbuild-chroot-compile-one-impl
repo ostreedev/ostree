@@ -1,5 +1,5 @@
-# Makefile for C source code
-#
+#!/usr/bin/python
+
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -17,12 +17,37 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-libexec_PROGRAMS += ostreed
+import os,sys,re,subprocess
 
-ostreed_SOURCES = src/daemon/ostreed.c \
-	src/daemon/ot-daemon.h \
-	src/daemon/ot-daemon.c \
-	$(NULL)
+i=1
+repo=sys.argv[i]
+i += 1
+chroot_path=sys.argv[i]
+i += 1
+args=sys.argv[i:]
 
-ostreed_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/daemon -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
-ostreed_LDADD = libotutil.la libostree.la $(OT_DEP_GIO_UNIX_LIBS)
+if os.getuid() != 0:
+    print "This program must be run as root."
+    sys.exit(1)
+
+rootdir=os.path.join(chroot_path, 'root')
+
+if not os.path.isdir(rootdir):
+    print "Not a directory: %s" % (rootdir, )
+    sys.exit(1)
+
+builddir = os.path.join(rootdir, 'ostree-build')
+if not os.path.isdir(builddir):
+    os.mkdir(builddir)
+
+
+def run_in_chroot(args):
+    proc_path=os.path.join(chroot_path, 'proc')
+    subprocess.check_call(['mount', '-t', 'proc', 'proc', proc_path])
+
+    try:
+        subprocess.check_call(['chroot', chroot_path])
+    finally:
+        subprocess.call(['umount', proc_path])
+
+run_in_chroot(args)

@@ -22,12 +22,10 @@
 
 #include "config.h"
 
-#include "ot-builtins.h"
-#include "ostree.h"
-
-#include <glib/gi18n.h>
-
 #include <libsoup/soup-gnome.h>
+
+#include "ostree.h"
+#include "ot-main.h"
 
 gboolean verbose;
 
@@ -275,7 +273,7 @@ store_commit_recurse (OstreeRepo   *repo,
   return ret;
 }
                       
-gboolean
+static gboolean
 ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **error)
 {
   GOptionContext *context;
@@ -392,4 +390,16 @@ ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **erro
   g_clear_object (&repo);
   g_clear_object (&soup);
   return ret;
+}
+
+static OstreeBuiltin builtins[] = {
+  { "pull", ostree_builtin_pull, 0 },
+  { NULL }
+};
+
+int
+main (int    argc,
+      char **argv)
+{
+  return ostree_main (argc, argv, builtins);
 }
