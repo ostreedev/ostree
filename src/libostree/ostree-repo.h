@@ -84,6 +84,7 @@ gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
                                                 OstreeObjectType objtype,
                                                 gboolean      overwrite,
                                                 gboolean     *did_exist,
+                                                GCancellable *cancellable,
                                                 GError      **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,

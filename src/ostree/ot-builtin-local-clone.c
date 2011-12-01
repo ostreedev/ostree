@@ -115,6 +115,7 @@ object_iter_callback (OstreeRepo   *repo,
                                              objtype,
                                              FALSE,
                                              &did_exist,
+                                             NULL,
                                              &error))
         goto out;
     }
@@ -126,6 +127,7 @@ object_iter_callback (OstreeRepo   *repo,
                                              objtype,
                                              FALSE,
                                              &did_exist,
+                                             NULL,
                                              &error))
         goto out;
     }

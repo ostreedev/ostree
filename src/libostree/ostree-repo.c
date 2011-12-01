@@ -638,6 +638,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
                        GVariant    *variant,
                        GFile        **out_tmpname,
                        GChecksum    **out_checksum,
+                       GCancellable  *cancellable,
                        GError       **error)
 {
   gboolean ret = FALSE;
@@ -651,7 +652,7 @@ write_gvariant_to_tmp (OstreeRepo  *self,
                                              g_variant_get_size (serialized),
                                              NULL);
   if (!stage_and_checksum (self, OSTREE_OBJECT_TYPE_META,
-                           mem, &ret_tmpname, &ret_checksum, NULL, error))
+                           mem, &ret_tmpname, &ret_checksum, cancellable, error))
     goto out;
   
   ret = TRUE;
@@ -676,6 +677,7 @@ import_gvariant_object (OstreeRepo  *self,
                         OstreeSerializedVariantType type,
                         GVariant       *variant,
                         GChecksum    **out_checksum,
+                        GCancellable *cancellable,
                         GError       **error)
 {
   gboolean ret = FALSE;
@@ -683,13 +685,13 @@ import_gvariant_object (OstreeRepo  *self,
   GChecksum *ret_checksum = NULL;
   gboolean did_exist;
   
-  if (!write_gvariant_to_tmp (self, type, variant, &tmp_path, &ret_checksum, error))
+  if (!write_gvariant_to_tmp (self, type, variant, &tmp_path, &ret_checksum, cancellable, error))
     goto out;
 
   if (!ostree_repo_store_object_trusted (self, tmp_path,
                                          g_checksum_get_string (ret_checksum),
                                          OSTREE_OBJECT_TYPE_META,
-                                         FALSE, &did_exist, error))
+                                         FALSE, &did_exist, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -737,6 +739,7 @@ import_directory_meta (OstreeRepo  *self,
                        GFile       *f,
                        GVariant  **out_variant,
                        GChecksum **out_checksum,
+                       GCancellable *cancellable,
                        GError    **error)
 {
   gboolean ret = FALSE;
@@ -746,15 +749,15 @@ import_directory_meta (OstreeRepo  *self,
 
   f_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                              NULL, error);
+                              cancellable, error);
   if (!f_info)
     goto out;
 
-  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, NULL, error))
+  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, cancellable, error))
     goto out;
   
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
-                               dirmeta, &ret_checksum, error))
+                               dirmeta, &ret_checksum, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -827,6 +830,7 @@ link_object_trusted (OstreeRepo   *self,
                      OstreeObjectType objtype,
                      gboolean      overwrite,
                      gboolean     *did_exist,
+                     GCancellable *cancellable,
                      GError      **error)
 {
   gboolean ret = FALSE;
@@ -879,6 +883,7 @@ archive_file_trusted (OstreeRepo   *self,
                       const char   *checksum,
                       gboolean      overwrite,
                       gboolean     *did_exist,
+                      GCancellable *cancellable,
                       GError      **error)
 {
   GFileOutputStream *out = NULL;
@@ -893,13 +898,13 @@ archive_file_trusted (OstreeRepo   *self,
 
   if (overwrite)
     {
-      out = g_file_replace (dest_file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, error);
+      out = g_file_replace (dest_file, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, cancellable, error);
       if (!out)
         goto out;
     }
   else
     {
-      out = g_file_create (dest_file, 0, NULL, &temp_error);
+      out = g_file_create (dest_file, 0, cancellable, &temp_error);
       if (!out)
         {
           if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
@@ -916,10 +921,10 @@ archive_file_trusted (OstreeRepo   *self,
 
   if (out)
     {
-      if (!ostree_pack_file ((GOutputStream*)out, file, NULL, error))
+      if (!ostree_pack_file ((GOutputStream*)out, file, cancellable, error))
         goto out;
       
-      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+      if (!g_output_stream_close ((GOutputStream*)out, cancellable, error))
         goto out;
     }
 
@@ -939,13 +944,14 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
                                   OstreeObjectType objtype,
                                   gboolean      overwrite,
                                   gboolean     *did_exist,
+                                  GCancellable *cancellable,
                                   GError      **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   if (priv->archive && objtype == OSTREE_OBJECT_TYPE_FILE)
-    return archive_file_trusted (self, file, checksum, overwrite, did_exist, error);
+    return archive_file_trusted (self, file, checksum, overwrite, did_exist, cancellable, error);
   else
-    return link_object_trusted (self, file, checksum, objtype, overwrite, did_exist, error);
+    return link_object_trusted (self, file, checksum, objtype, overwrite, did_exist, cancellable, error);
 }
 
 gboolean
@@ -979,7 +985,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   if (!ostree_repo_store_object_trusted (self, tempfile,
                                          expected_checksum,
                                          objtype,
-                                         FALSE, did_exist, error))
+                                         FALSE, did_exist, NULL, error))
     goto out;
 
   ret = TRUE;
@@ -1061,7 +1067,7 @@ import_commit (OstreeRepo *self,
                           g_checksum_get_string (root_metadata_checksum));
   g_variant_ref_sink (commit);
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
-                               commit, &ret_commit, error))
+                               commit, &ret_commit, NULL, error))
     goto out;
 
   if (!ostree_repo_write_ref (self, NULL, branch, g_checksum_get_string (ret_commit), error))
@@ -1111,7 +1117,7 @@ import_directory_recurse (OstreeRepo           *self,
   GVariant *serialized_tree = NULL;
   gpointer key, value;
 
-  if (!import_directory_meta (self, dir, NULL, &ret_metadata_checksum, error))
+  if (!import_directory_meta (self, dir, NULL, &ret_metadata_checksum, cancellable, error))
     goto out;
 
   dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
@@ -1158,7 +1164,7 @@ import_directory_recurse (OstreeRepo           *self,
             goto out;
           
           if (!ostree_repo_store_object_trusted (self, child, g_checksum_get_string (child_file_checksum),
-                                                 OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, error))
+                                                 OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist, cancellable, error))
             goto out;
 
           g_hash_table_replace (file_checksums, g_strdup (name),
@@ -1228,7 +1234,9 @@ import_directory_recurse (OstreeRepo           *self,
   builders_initialized = FALSE;
   g_variant_ref_sink (serialized_tree);
 
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT, serialized_tree, &ret_contents_checksum, error))
+  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT,
+                               serialized_tree, &ret_contents_checksum,
+                               cancellable, error))
     goto out;
 
   *out_metadata_checksum = ret_metadata_checksum;
