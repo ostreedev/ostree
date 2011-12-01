@@ -152,11 +152,17 @@ gboolean ostree_get_directory_metadata (GFile *dir,
  */
 #define OSTREE_PACK_FILE_VARIANT_FORMAT "(uuuua(ayay)t)"
 
-gboolean  ostree_pack_object (GOutputStream     *output,
-                              GFile             *file,
-                              OstreeObjectType  objtype,
-                              GCancellable     *cancellable,
-                              GError          **error);
+gboolean  ostree_pack_file (GOutputStream     *output,
+                            GFile             *file,
+                            GCancellable     *cancellable,
+                            GError          **error);
+
+gboolean  ostree_pack_file_for_input (GOutputStream     *output,
+                                      GFileInfo         *finfo,
+                                      GInputStream      *input,
+                                      GVariant          *xattrs,
+                                      GCancellable     *cancellable,
+                                      GError          **error);
 
 gboolean ostree_parse_packed_file (GFile            *file,
                                    GVariant    **out_metadata,

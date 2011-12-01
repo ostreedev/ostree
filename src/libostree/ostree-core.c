@@ -562,18 +562,123 @@ ostree_get_relative_object_path (const char *checksum,
 }
 
 gboolean
-ostree_pack_object (GOutputStream     *output,
-                    GFile             *file,
-                    OstreeObjectType  objtype,
-                    GCancellable     *cancellable,
-                    GError          **error)
+ostree_pack_file_for_input (GOutputStream     *output,
+                            GFileInfo         *finfo,
+                            GInputStream      *instream,
+                            GVariant          *xattrs,
+                            GCancellable     *cancellable,
+                            GError          **error)
 {
   gboolean ret = FALSE;
-  GFileInfo *finfo = NULL;
-  GFileInputStream *instream = NULL;
+  guint32 uid, gid, mode;
+  guint32 device = 0;
+  guint32 metadata_size_be;
+  const char *target = NULL;
+  guint64 object_size;
   gboolean pack_builder_initialized = FALSE;
   GVariantBuilder pack_builder;
   GVariant *pack_variant = NULL;
+  gsize bytes_written;
+
+  uid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_UID);
+  gid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_GID);
+  mode = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_MODE);
+
+  g_variant_builder_init (&pack_builder, G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT));
+  pack_builder_initialized = TRUE;
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (uid));
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
+
+  g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs);
+
+  if (S_ISREG (mode))
+    {
+      object_size = (guint64)g_file_info_get_size (finfo);
+    }
+  else if (S_ISLNK (mode))
+    {
+      target = g_file_info_get_attribute_byte_string (finfo, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
+      object_size = strlen (target);
+    }
+  else if (S_ISBLK (mode) || S_ISCHR (mode))
+    {
+      device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
+      object_size = 4;
+    }
+  else if (S_ISFIFO (mode))
+    {
+      object_size = 0;
+    }
+  else
+    g_assert_not_reached ();
+
+  g_variant_builder_add (&pack_builder, "t", GUINT64_TO_BE (object_size));
+  pack_variant = g_variant_builder_end (&pack_builder);
+  pack_builder_initialized = FALSE;
+
+  metadata_size_be = GUINT32_TO_BE (g_variant_get_size (pack_variant));
+
+  if (!g_output_stream_write_all (output, &metadata_size_be, 4,
+                                  &bytes_written, cancellable, error))
+    goto out;
+  g_assert (bytes_written == 4);
+
+  if (!g_output_stream_write_all (output, g_variant_get_data (pack_variant), g_variant_get_size (pack_variant),
+                                  &bytes_written, cancellable, error))
+    goto out;
+
+  if (S_ISREG (mode))
+    {
+      bytes_written = g_output_stream_splice (output, (GInputStream*)instream, 0, cancellable, error);
+      if (bytes_written < 0)
+        goto out;
+      if (bytes_written != object_size)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "File size changed unexpectedly");
+          goto out;
+        }
+    }
+  else if (S_ISLNK (mode))
+    {
+      if (!g_output_stream_write_all (output, target, object_size,
+                                      &bytes_written, cancellable, error))
+        goto out;
+    }
+  else if (S_ISBLK (mode) || S_ISCHR (mode))
+    {
+      guint32 device_be = GUINT32_TO_BE (device);
+      g_assert (object_size == 4);
+      if (!g_output_stream_write_all (output, &device_be, object_size,
+                                      &bytes_written, cancellable, error))
+        goto out;
+      g_assert (bytes_written == 4);
+    }
+  else if (S_ISFIFO (mode))
+    {
+    }
+  else
+    g_assert_not_reached ();
+
+  ret = TRUE;
+ out:
+  if (pack_builder_initialized)
+    g_variant_builder_clear (&pack_builder);
+  ot_clear_gvariant (&pack_variant);
+  return ret;
+}
+
+gboolean
+ostree_pack_file (GOutputStream     *output,
+                  GFile             *file,
+                  GCancellable     *cancellable,
+                  GError          **error)
+{
+  gboolean ret = FALSE;
+  GFileInfo *finfo = NULL;
+  GInputStream *instream = NULL;
   GVariant *xattrs = NULL;
   gsize bytes_written;
 
@@ -582,124 +687,25 @@ ostree_pack_object (GOutputStream     *output,
   if (!finfo)
     goto out;
 
-  if (objtype == OSTREE_OBJECT_TYPE_META)
+  if (S_ISREG (g_file_info_get_attribute_uint32 (finfo, "unix::mode")))
     {
-      guint64 object_size_be = GUINT64_TO_BE ((guint64)g_file_info_get_size (finfo));
-      if (!g_output_stream_write_all (output, &object_size_be, 8, &bytes_written, cancellable, error))
-        goto out;
-
-      instream = g_file_read (file, NULL, error);
+      instream = (GInputStream*)g_file_read (file, cancellable, error);
       if (!instream)
         goto out;
-      
-      if (g_output_stream_splice (output, (GInputStream*)instream, 0, cancellable, error) < 0)
-        goto out;
     }
-  else
-    {
-      guint32 uid, gid, mode;
-      guint32 device = 0;
-      guint32 metadata_size_be;
-      const char *target = NULL;
-      guint64 object_size;
-
-      uid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_UID);
-      gid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_GID);
-      mode = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_MODE);
-
-      g_variant_builder_init (&pack_builder, G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT));
-      pack_builder_initialized = TRUE;
-      g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));
-      g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (uid));
-      g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
-      g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
-
-      xattrs = ostree_get_xattrs_for_file (file, error);
-      if (!xattrs)
-        goto out;
-      g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs);
-
-      if (S_ISREG (mode))
-        {
-          object_size = (guint64)g_file_info_get_size (finfo);
-        }
-      else if (S_ISLNK (mode))
-        {
-          target = g_file_info_get_attribute_byte_string (finfo, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
-          object_size = strlen (target);
-        }
-      else if (S_ISBLK (mode) || S_ISCHR (mode))
-        {
-          device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
-          object_size = 4;
-        }
-      else if (S_ISFIFO (mode))
-        {
-          object_size = 0;
-        }
-      else
-        g_assert_not_reached ();
-
-      g_variant_builder_add (&pack_builder, "t", GUINT64_TO_BE (object_size));
-      pack_variant = g_variant_builder_end (&pack_builder);
-      pack_builder_initialized = FALSE;
-
-      metadata_size_be = GUINT32_TO_BE (g_variant_get_size (pack_variant));
-
-      if (!g_output_stream_write_all (output, &metadata_size_be, 4,
-                                      &bytes_written, cancellable, error))
-        goto out;
-      g_assert (bytes_written == 4);
-
-      if (!g_output_stream_write_all (output, g_variant_get_data (pack_variant), g_variant_get_size (pack_variant),
-                                      &bytes_written, cancellable, error))
-        goto out;
-
-      if (S_ISREG (mode))
-        {
-          instream = g_file_read (file, NULL, error);
-          if (!instream)
-            goto out;
-          bytes_written = g_output_stream_splice (output, (GInputStream*)instream, 0, cancellable, error);
-          if (bytes_written < 0)
-            goto out;
-          if (bytes_written != object_size)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "File size changed unexpectedly");
-              goto out;
-            }
-        }
-      else if (S_ISLNK (mode))
-        {
-          if (!g_output_stream_write_all (output, target, object_size,
-                                          &bytes_written, cancellable, error))
-            goto out;
-        }
-      else if (S_ISBLK (mode) || S_ISCHR (mode))
-        {
-          guint32 device_be = GUINT32_TO_BE (device);
-          g_assert (object_size == 4);
-          if (!g_output_stream_write_all (output, &device_be, object_size,
-                                          &bytes_written, cancellable, error))
-            goto out;
-          g_assert (bytes_written == 4);
-        }
-      else if (S_ISFIFO (mode))
-        {
-        }
-      else
-        g_assert_not_reached ();
-    }
+  
+  xattrs = ostree_get_xattrs_for_file (file, error);
+  if (!xattrs)
+    goto out;
+  
+  if (!ostree_pack_file_for_input (output, finfo, instream, xattrs, cancellable, error))
+    goto out;
   
   ret = TRUE;
  out:
   g_clear_object (&finfo);
   g_clear_object (&instream);
   ot_clear_gvariant (&xattrs);
-  if (pack_builder_initialized)
-    g_variant_builder_clear (&pack_builder);
-  ot_clear_gvariant (&pack_variant);
   return ret;
 }
 

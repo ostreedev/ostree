@@ -877,7 +877,6 @@ static gboolean
 archive_file_trusted (OstreeRepo   *self,
                       GFile        *file,
                       const char   *checksum,
-                      OstreeObjectType objtype,
                       gboolean      overwrite,
                       gboolean     *did_exist,
                       GError      **error)
@@ -885,9 +884,11 @@ archive_file_trusted (OstreeRepo   *self,
   GFileOutputStream *out = NULL;
   gboolean ret = FALSE;
   GFile *dest_file = NULL;
+  GFileInfo *finfo = NULL;
+  GInputStream *input = NULL;
   GError *temp_error = NULL;
 
-  if (!prepare_dir_for_checksum_get_object_path (self, checksum, objtype, &dest_file, error))
+  if (!prepare_dir_for_checksum_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE, &dest_file, error))
     goto out;
 
   if (overwrite)
@@ -915,7 +916,7 @@ archive_file_trusted (OstreeRepo   *self,
 
   if (out)
     {
-      if (!ostree_pack_object ((GOutputStream*)out, file, objtype, NULL, error))
+      if (!ostree_pack_file ((GOutputStream*)out, file, NULL, error))
         goto out;
       
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
@@ -926,6 +927,8 @@ archive_file_trusted (OstreeRepo   *self,
  out:
   g_clear_object (&dest_file);
   g_clear_object (&out);
+  g_clear_object (&finfo);
+  g_clear_object (&input);
   return ret;
 }
   
@@ -940,7 +943,7 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   if (priv->archive && objtype == OSTREE_OBJECT_TYPE_FILE)
-    return archive_file_trusted (self, file, checksum, objtype, overwrite, did_exist, error);
+    return archive_file_trusted (self, file, checksum, overwrite, did_exist, error);
   else
     return link_object_trusted (self, file, checksum, objtype, overwrite, did_exist, error);
 }
