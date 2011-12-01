@@ -139,6 +139,52 @@ ot_gfile_get_basename_cached (GFile *file)
 }
 
 gboolean
+ot_gio_splice_and_checksum (GOutputStream  *out,
+                            GInputStream   *in,
+                            GChecksum     **out_checksum,
+                            GCancellable   *cancellable,
+                            GError        **error)
+{
+  gboolean ret = FALSE;
+  GChecksum *ret_checksum = NULL;
+
+  if (out_checksum)
+    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+  
+  if (ret_checksum != NULL)
+    {
+      gsize bytes_read, bytes_written;
+      char buf[4096];
+      do
+        {
+          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
+            goto out;
+          if (ret_checksum)
+            g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
+          if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
+            goto out;
+        }
+      while (bytes_read > 0);
+    }
+  else
+    {
+      if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
+        goto out;
+    }
+
+  ret = TRUE;
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
+ out:
+  ot_clear_checksum (&ret_checksum);
+  return ret;
+}
+
+
+gboolean
 ot_gfile_create_tmp (GFile       *dir,
                      const char  *prefix,
                      const char  *suffix,

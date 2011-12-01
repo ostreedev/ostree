@@ -704,41 +704,6 @@ ostree_pack_object (GOutputStream     *output,
 }
 
 static gboolean
-splice_and_checksum (GOutputStream  *out,
-                     GInputStream   *in,
-                     GChecksum      *checksum,
-                     GCancellable   *cancellable,
-                     GError        **error)
-{
-  gboolean ret = FALSE;
-  
-  if (checksum != NULL)
-    {
-      gsize bytes_read, bytes_written;
-      char buf[4096];
-      do
-        {
-          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
-            goto out;
-          if (checksum)
-            g_checksum_update (checksum, (guint8*)buf, bytes_read);
-          if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
-            goto out;
-        }
-      while (bytes_read > 0);
-    }
-  else
-    {
-      if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
-        goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
 unpack_meta (GFile        *file,
              GFile        *dest_file,    
              GChecksum   **out_checksum,
@@ -749,9 +714,6 @@ unpack_meta (GFile        *file,
   GChecksum *ret_checksum = NULL;
   GFileOutputStream *out = NULL;
 
-  if (out_checksum)
-    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
   in = g_file_read (file, NULL, error);
   if (!in)
     goto out;
@@ -760,7 +722,8 @@ unpack_meta (GFile        *file,
   if (!out)
     goto out;
 
-  if (!splice_and_checksum ((GOutputStream*)out, (GInputStream*)in, ret_checksum, NULL, error))
+  if (!ot_gio_splice_and_checksum ((GOutputStream*)out, (GInputStream*)in,
+                                   out_checksum ? &ret_checksum : NULL, NULL, error))
     goto out;
 
   if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
@@ -768,8 +731,10 @@ unpack_meta (GFile        *file,
 
   ret = TRUE;
   if (out_checksum)
-    *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
  out:
   ot_clear_checksum (&ret_checksum);
   g_clear_object (&in);
@@ -869,16 +834,13 @@ unpack_file (GFile        *file,
   mode = GUINT32_FROM_BE (mode);
   content_len = GUINT64_FROM_BE (content_len);
 
-  if (out_checksum)
-    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
   if (S_ISREG (mode))
     {
       out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
       if (!out)
         goto out;
 
-      if (!splice_and_checksum ((GOutputStream*)out, in, ret_checksum, NULL, error))
+      if (!ot_gio_splice_and_checksum ((GOutputStream*)out, in, out_checksum ? &ret_checksum : NULL, NULL, error))
         goto out;
 
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))

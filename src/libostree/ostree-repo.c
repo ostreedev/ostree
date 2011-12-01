@@ -563,6 +563,76 @@ ostree_repo_is_archive (OstreeRepo  *self)
 }
 
 static gboolean
+stage_and_checksum (OstreeRepo       *self,
+                    OstreeObjectType  objtype,
+                    GInputStream     *input,
+                    GFile           **out_tmpname,
+                    GChecksum       **out_checksum,
+                    GCancellable     *cancellable,
+                    GError          **error)
+{
+  gboolean ret = FALSE;
+  const char *prefix = NULL;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GFile *tmp_f = NULL;
+  GOutputStream *stream = NULL;
+  GFile *ret_tmpname = NULL;
+  GChecksum *ret_checksum = NULL;
+  
+  switch (objtype)
+    {
+    case OSTREE_OBJECT_TYPE_FILE:
+      prefix = "file-tmp-";
+      break;
+    case OSTREE_OBJECT_TYPE_META:
+      prefix = "meta-tmp-";
+      break;
+    default:
+      g_assert_not_reached ();
+      break;
+    }
+
+  if (!ot_gfile_create_tmp (priv->tmp_dir, prefix, NULL, 0666,
+                            &tmp_f, &stream, cancellable, error))
+    goto out;
+
+  if (!ot_gio_splice_and_checksum (stream, input, &ret_checksum, cancellable, error))
+    goto out;
+
+  if (!g_output_stream_close ((GOutputStream*)stream, NULL, error))
+    goto out;
+
+  ret_tmpname = g_file_get_child (priv->tmp_dir, g_checksum_get_string (ret_checksum));
+  if (rename (ot_gfile_get_path_cached (tmp_f), ot_gfile_get_path_cached (ret_tmpname)) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  /* Clear it here, since we know the file is now gone */ 
+  g_clear_object (&tmp_f);
+
+  ret = TRUE;
+  if (out_tmpname)
+    {
+      *out_tmpname = ret_tmpname;
+      ret_tmpname = NULL;
+    }
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
+ out:
+  if (tmp_f)
+    (void) g_file_delete (tmp_f, NULL, NULL);
+  g_clear_object (&tmp_f);
+  g_clear_object (&stream);
+  g_clear_object (&ret_tmpname);
+  ot_clear_checksum (&ret_checksum);
+  return ret;
+}
+
+static gboolean
 write_gvariant_to_tmp (OstreeRepo  *self,
                        OstreeSerializedVariantType type,
                        GVariant    *variant,
@@ -570,58 +640,34 @@ write_gvariant_to_tmp (OstreeRepo  *self,
                        GChecksum    **out_checksum,
                        GError       **error)
 {
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GVariant *serialized = NULL;
   gboolean ret = FALSE;
-  gsize bytes_written;
-  GFile *tmp_f = NULL;
-  GOutputStream *stream = NULL;
-  GChecksum *checksum = NULL;
+  GVariant *serialized = NULL;
+  GInputStream *mem = NULL;
+  GChecksum *ret_checksum = NULL;
   GFile *ret_tmpname = NULL;
 
   serialized = ostree_wrap_metadata_variant (type, variant);
-
-  if (!ot_gfile_create_tmp (priv->tmp_dir, "variant-tmp-", NULL, 0666,
-                            &tmp_f, &stream, NULL, error))
+  mem = g_memory_input_stream_new_from_data (g_variant_get_data (serialized),
+                                             g_variant_get_size (serialized),
+                                             NULL);
+  if (!stage_and_checksum (self, OSTREE_OBJECT_TYPE_META,
+                           mem, &ret_tmpname, &ret_checksum, NULL, error))
     goto out;
-
-  checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
-  if (!g_output_stream_write_all ((GOutputStream*)stream,
-                                  g_variant_get_data (serialized),
-                                  g_variant_get_size (serialized),
-                                  &bytes_written,
-                                  NULL,
-                                  error))
-    goto out;
-
-  g_checksum_update (checksum, (guint8*)g_variant_get_data (serialized), g_variant_get_size (serialized));
-
-  if (!g_output_stream_close ((GOutputStream*)stream,
-                              NULL, error))
-    goto out;
-
-  ret_tmpname = g_file_get_child (priv->tmp_dir, g_checksum_get_string (checksum));
-  if (rename (ot_gfile_get_path_cached (tmp_f), ot_gfile_get_path_cached (ret_tmpname)) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  g_clear_object (&tmp_f);
-
+  
   ret = TRUE;
-  *out_tmpname = ret_tmpname;
-  ret_tmpname = NULL;
-  *out_checksum = checksum;
-  checksum = NULL;
+  if (out_tmpname)
+    {
+      *out_tmpname = ret_tmpname;
+      ret_tmpname = NULL;
+    }
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
  out:
-  if (tmp_f)
-    (void) g_file_delete (tmp_f, NULL, NULL);
-  g_clear_object (&tmp_f);
-  g_clear_object (&stream);
   g_clear_object (&ret_tmpname);
-  ot_clear_checksum (&checksum);
-  ot_clear_gvariant (&serialized);
+  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 

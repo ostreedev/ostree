@@ -43,6 +43,13 @@ gboolean ot_gfile_load_contents_utf8 (GFile         *file,
                                       GCancellable  *cancellable,
                                       GError       **error);
 
+gboolean ot_gio_splice_and_checksum (GOutputStream  *out,
+                                     GInputStream   *in,
+                                     GChecksum     **out_checksum,
+                                     GCancellable   *cancellable,
+                                     GError        **error);
+
+
 gboolean ot_gfile_create_tmp (GFile       *dir,
                               const char  *prefix,
                               const char  *suffix,
