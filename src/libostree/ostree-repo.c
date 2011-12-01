@@ -1197,9 +1197,12 @@ import_directory_recurse (OstreeRepo           *self,
   g_clear_object (&dir_enum);
   g_clear_object (&child);
   g_clear_object (&child_info);
-  g_hash_table_destroy (file_checksums);
-  g_hash_table_destroy (dir_metadata_checksums);
-  g_hash_table_destroy (dir_contents_checksums);
+  if (file_checksums)
+    g_hash_table_destroy (file_checksums);
+  if (dir_metadata_checksums)
+    g_hash_table_destroy (dir_metadata_checksums);
+  if (dir_contents_checksums)
+    g_hash_table_destroy (dir_contents_checksums);
   ot_clear_checksum (&ret_metadata_checksum);
   ot_clear_checksum (&ret_contents_checksum);
   ot_clear_checksum (&child_file_checksum);
