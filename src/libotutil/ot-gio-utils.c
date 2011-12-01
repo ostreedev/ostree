@@ -24,10 +24,15 @@
 
 #include <gio/gio.h>
 #include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
 
 #include <string.h>
 
 #include "otutil.h"
+
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 gboolean
 ot_gfile_ensure_directory (GFile     *dir,
@@ -131,6 +136,64 @@ ot_gfile_get_basename_cached (GFile *file)
       g_object_set_data_full ((GObject*)file, "ostree-file-name", (char*)name, (GDestroyNotify)g_free);
     }
   return name;
+}
+
+gboolean
+ot_gfile_create_tmp (GFile       *dir,
+                     const char  *prefix,
+                     const char  *suffix,
+                     int          mode,
+                     GFile      **out_file,
+                     GOutputStream **out_stream,
+                     GCancellable *cancellable,
+                     GError       **error)
+{
+  gboolean ret = FALSE;
+  GString *tmp_name = NULL;
+  int tmpfd = -1;
+  GFile *ret_file = NULL;
+  GOutputStream *ret_stream = NULL;
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  if (!prefix)
+    prefix = "tmp-";
+  if (!suffix)
+    suffix = ".tmp";
+
+  tmp_name = g_string_new (ot_gfile_get_path_cached (dir));
+  g_string_append_c (tmp_name, '/');
+  g_string_append (tmp_name, prefix);
+  g_string_append (tmp_name, "XXXXXX");
+  g_string_append (tmp_name, suffix);
+  
+  tmpfd = g_mkstemp_full (tmp_name->str, O_WRONLY | O_BINARY, mode);
+  if (tmpfd == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret_file = ot_gfile_new_for_path (tmp_name->str);
+  ret_stream = g_unix_output_stream_new (tmpfd, TRUE);
+  
+  ret = TRUE;
+  if (out_file)
+    {
+      *out_file = ret_file;
+      ret_file = NULL;
+    }
+  if (out_stream)
+    {
+      *out_stream = ret_stream;
+      ret_stream = NULL;
+    }
+ out:
+  g_clear_object (&ret_file);
+  g_clear_object (&ret_stream);
+  g_string_free (tmp_name, TRUE);
+  return ret;
 }
 
 gboolean

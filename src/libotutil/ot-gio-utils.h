@@ -43,6 +43,14 @@ gboolean ot_gfile_load_contents_utf8 (GFile         *file,
                                       GCancellable  *cancellable,
                                       GError       **error);
 
+gboolean ot_gfile_create_tmp (GFile       *dir,
+                              const char  *prefix,
+                              const char  *suffix,
+                              int          mode,
+                              GFile      **out_file,
+                              GOutputStream **out_stream,
+                              GCancellable *cancellable,
+                              GError       **error);
 
 gboolean ot_gfile_merge_dirs (GFile    *destination,
                               GFile    *src,

@@ -574,25 +574,19 @@ write_gvariant_to_tmp (OstreeRepo  *self,
   GVariant *serialized = NULL;
   gboolean ret = FALSE;
   gsize bytes_written;
-  char *tmp_name = NULL;
-  char *dest_name = NULL;
-  int fd = -1;
-  GUnixOutputStream *stream = NULL;
+  GFile *tmp_f = NULL;
+  GOutputStream *stream = NULL;
   GChecksum *checksum = NULL;
+  GFile *ret_tmpname = NULL;
 
   serialized = ostree_wrap_metadata_variant (type, variant);
 
-  tmp_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), "variant-tmp-XXXXXX", NULL);
-  fd = g_mkstemp (tmp_name);
-  if (fd < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+  if (!ot_gfile_create_tmp (priv->tmp_dir, "variant-tmp-", NULL, 0666,
+                            &tmp_f, &stream, NULL, error))
+    goto out;
 
   checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
-  stream = (GUnixOutputStream*)g_unix_output_stream_new (fd, FALSE);
   if (!g_output_stream_write_all ((GOutputStream*)stream,
                                   g_variant_get_data (serialized),
                                   g_variant_get_size (serialized),
@@ -607,29 +601,27 @@ write_gvariant_to_tmp (OstreeRepo  *self,
                               NULL, error))
     goto out;
 
-  dest_name = g_build_filename (ot_gfile_get_path_cached (priv->tmp_dir), g_checksum_get_string (checksum), NULL);
-  if (rename (tmp_name, dest_name) < 0)
+  ret_tmpname = g_file_get_child (priv->tmp_dir, g_checksum_get_string (checksum));
+  if (rename (ot_gfile_get_path_cached (tmp_f), ot_gfile_get_path_cached (ret_tmpname)) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
-  g_free (tmp_name);
-  tmp_name = NULL;
+  g_clear_object (&tmp_f);
 
   ret = TRUE;
-  *out_tmpname = ot_gfile_new_for_path (dest_name);
+  *out_tmpname = ret_tmpname;
+  ret_tmpname = NULL;
   *out_checksum = checksum;
   checksum = NULL;
  out:
-  if (tmp_name)
-    (void) unlink (tmp_name);
-  g_free (tmp_name);
-  if (fd != -1)
-    close (fd);
+  if (tmp_f)
+    (void) g_file_delete (tmp_f, NULL, NULL);
+  g_clear_object (&tmp_f);
+  g_clear_object (&stream);
+  g_clear_object (&ret_tmpname);
   ot_clear_checksum (&checksum);
   ot_clear_gvariant (&serialized);
-  g_free (dest_name);
-  g_clear_object (&stream);
   return ret;
 }
 
@@ -817,6 +809,8 @@ link_object_trusted (OstreeRepo   *self,
           || rename (tmp_dest_path, dest_path) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "Storing file '%s': ",
+                          ot_gfile_get_path_cached (file));
           goto out;
         }
       g_free (tmp_dest_path);
