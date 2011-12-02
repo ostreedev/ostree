@@ -233,7 +233,7 @@ ot_util_set_error_from_errno (GError **error,
 {
   g_set_error_literal (error,
                        G_IO_ERROR,
-                       0,
+                       g_io_error_from_errno (saved_errno),
                        g_strerror (saved_errno));
   errno = saved_errno;
 }
