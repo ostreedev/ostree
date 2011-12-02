@@ -183,6 +183,26 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
   return ret;
 }
 
+static GString *
+create_tmp_string (const char *dirpath,
+                   const char *prefix,
+                   const char *suffix)
+{
+  GString *tmp_name = NULL;
+
+  if (!prefix)
+    prefix = "tmp-";
+  if (!suffix)
+    suffix = ".tmp";
+
+  tmp_name = g_string_new (dirpath);
+  g_string_append_c (tmp_name, '/');
+  g_string_append (tmp_name, prefix);
+  g_string_append (tmp_name, "XXXXXX");
+  g_string_append (tmp_name, suffix);
+
+  return tmp_name;
+}
 
 gboolean
 ot_gfile_create_tmp (GFile       *dir,
@@ -203,16 +223,7 @@ ot_gfile_create_tmp (GFile       *dir,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (!prefix)
-    prefix = "tmp-";
-  if (!suffix)
-    suffix = ".tmp";
-
-  tmp_name = g_string_new (ot_gfile_get_path_cached (dir));
-  g_string_append_c (tmp_name, '/');
-  g_string_append (tmp_name, prefix);
-  g_string_append (tmp_name, "XXXXXX");
-  g_string_append (tmp_name, suffix);
+  tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir), prefix, suffix);
   
   tmpfd = g_mkstemp_full (tmp_name->str, O_WRONLY | O_BINARY, mode);
   if (tmpfd == -1)
@@ -239,6 +250,65 @@ ot_gfile_create_tmp (GFile       *dir,
   g_clear_object (&ret_file);
   g_clear_object (&ret_stream);
   g_string_free (tmp_name, TRUE);
+  return ret;
+}
+
+static char *
+subst_xxxxxx (GRand      *rand,
+              const char *string)
+{
+  char *ret = g_strdup (string);
+  guint8 *xxxxxx = (guint8*)strstr (ret, "XXXXXX");
+
+  g_assert (xxxxxx != NULL);
+
+  while (*xxxxxx == 'X')
+    {
+      *xxxxxx = (guint8)g_random_int_range (0, 255);
+      xxxxxx++;
+    }
+
+  return ret;
+}
+
+gboolean
+ot_gfile_create_tmp_symlink (const char  *target,
+                             GFile       *dir,
+                             const char  *prefix,
+                             const char  *suffix,
+                             GFile      **out_file,
+                             GCancellable *cancellable,
+                             GError       **error)
+{
+  gboolean ret = FALSE;
+  GRand *rand = NULL;
+  GString *tmp_name = NULL;
+  char *possible_name = NULL;
+
+  rand = g_rand_new ();
+  
+  tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
+                                prefix, suffix);
+  
+  while (TRUE)
+    {
+      g_free (possible_name);
+      possible_name = subst_xxxxxx (rand, tmp_name->str);
+      if (symlink (target, possible_name) < 0)
+        {
+          if (errno == EEXIST)
+            continue;
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  *out_file = ot_gfile_new_for_path (possible_name);
+ out:
+  g_string_free (tmp_name, TRUE);
+  g_free (possible_name);
+  if (rand)
+    g_rand_free (rand);
   return ret;
 }
 

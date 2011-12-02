@@ -59,6 +59,14 @@ gboolean ot_gfile_create_tmp (GFile       *dir,
                               GCancellable *cancellable,
                               GError       **error);
 
+gboolean ot_gfile_create_tmp_symlink (const char  *target,
+                                      GFile       *dir,
+                                      const char  *prefix,
+                                      const char  *suffix,
+                                      GFile      **out_file,
+                                      GCancellable *cancellable,
+                                      GError       **error);
+
 gboolean ot_gfile_merge_dirs (GFile    *destination,
                               GFile    *src,
                               GCancellable *cancellable,
