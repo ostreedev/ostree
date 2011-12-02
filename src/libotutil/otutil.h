@@ -32,6 +32,14 @@
     }                                           \
   } G_STMT_END;
 
+#define ot_transfer_out_value(outp, srcp) G_STMT_START {   \
+  if (outp)                                                \
+    {                                                      \
+      *outp = srcp;                                        \
+      srcp = NULL;                                         \
+    }                                                      \
+  } G_STMT_END;
+
 #include <ot-gio-utils.h>
 #include <ot-glib-compat.h>
 #include <ot-opt-utils.h>

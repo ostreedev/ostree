@@ -204,8 +204,7 @@ checksum_directory (GFile          *f,
                      g_variant_get_size (packed));
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
@@ -302,13 +301,14 @@ checksum_nondirectory (GFile            *f,
       g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
 
-  *out_checksum = content_and_meta_sha256;
+  ot_transfer_out_value(out_checksum, content_and_meta_sha256);
   ret = TRUE;
  out:
   g_clear_object (&input);
   g_free (basename);
   ot_clear_gvariant (&xattrs);
   ot_clear_checksum (&content_sha256);
+  ot_clear_checksum (&content_and_meta_sha256);
   return ret;
 }
 
@@ -344,10 +344,10 @@ ostree_checksum_file (GFile            *f,
     }
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   g_clear_object (&file_info);
+  ot_clear_checksum(&ret_checksum);
   return ret;
 }
 
@@ -507,11 +507,12 @@ ostree_parse_metadata_file (GFile                       *file,
                    ot_gfile_get_path_cached (file), ret_type);
       goto out;
     }
+  ot_util_variant_take_ref (ret_variant);
 
   ret = TRUE;
-  *out_type = ret_type;
-  *out_variant = ot_util_variant_take_ref (ret_variant);
-  ret_variant = NULL;
+  if (out_type)
+    *out_type = ret_type;
+  ot_transfer_out_value(out_variant, ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
   ot_clear_gvariant (&container);
@@ -667,11 +668,7 @@ ostree_pack_file_for_input (GOutputStream     *output,
     }
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   if (pack_builder_initialized)
     g_variant_builder_clear (&pack_builder);
@@ -745,11 +742,7 @@ unpack_meta (GFile        *file,
     goto out;
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
   g_clear_object (&in);
@@ -876,21 +869,9 @@ ostree_parse_packed_file (GFile            *file,
     }
 
   ret = TRUE;
-  if (out_file_info)
-    {
-      *out_file_info = ret_file_info;
-      ret_file_info = NULL;
-    }
-  if (out_xattrs)
-    {
-      *out_xattrs = ret_xattrs;
-      ret_xattrs = NULL;
-    }
-  if (out_content)
-    {
-      *out_content = (GInputStream*)in;
-      in = NULL;
-    }
+  ot_transfer_out_value(out_file_info, ret_file_info);
+  ot_transfer_out_value(out_xattrs, ret_xattrs);
+  ot_transfer_out_value(out_content, in);
  out:
   g_clear_object (&ret_file_info);
   ot_clear_gvariant (&ret_xattrs);
@@ -1028,11 +1009,7 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   if (!ret)
     (void) unlink (dest_path);
@@ -1146,16 +1123,8 @@ ostree_create_temp_file_from_input (GFile            *dir,
     }
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
-  if (out_file)
-    {
-      *out_file = possible_file;
-      possible_file = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
+  ot_transfer_out_value(out_file, possible_file);
  out:
   if (rand)
     g_rand_free (rand);
@@ -1190,10 +1159,8 @@ ostree_create_temp_regular_file (GFile            *dir,
     goto out;
   
   ret = TRUE;
-  *out_file = ret_file;
-  ret_file = NULL;
-  *out_stream = ret_stream;
-  ret_stream = NULL;
+  ot_transfer_out_value(out_file, ret_file);
+  ot_transfer_out_value(out_stream, ret_stream);
  out:
   g_clear_object (&ret_file);
   g_clear_object (&ret_stream);
@@ -1224,11 +1191,7 @@ unpack_file (GFile        *file,
     goto out;
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value (out_checksum, ret_checksum);
  out:
   g_clear_object (&finfo);
   ot_clear_gvariant (&xattrs);

@@ -186,11 +186,7 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
     }
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
   return ret;

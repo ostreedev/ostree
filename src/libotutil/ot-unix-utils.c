@@ -22,7 +22,7 @@
 
 #include "config.h"
 
-#include "ot-unix-utils.h"
+#include "otutil.h"
 
 #include <gio/gio.h>
 #include <gio/gunixoutputstream.h>
@@ -67,8 +67,7 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
       ret_stream = (GOutputStream*)g_unix_output_stream_new (stdin_fd, TRUE);
     }
 
-  *out_stream = ret_stream;
-  ret_stream = NULL;
+  ot_transfer_out_value(out_stream, ret_stream);
   ret = TRUE;
  out:
   g_clear_object (&ret_stream);

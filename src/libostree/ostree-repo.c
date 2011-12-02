@@ -239,8 +239,7 @@ parse_rev_file (OstreeRepo     *self,
         goto out;
     }
 
-  *sha256 = rev;
-  rev = NULL;
+  ot_transfer_out_value(sha256, rev);
   ret = TRUE;
  out:
   g_free (rev);
@@ -356,8 +355,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
         }
     }
 
-  *sha256 = ret_rev;
-  ret_rev = NULL;
+  ot_transfer_out_value(sha256, ret_rev);
   ret = TRUE;
  out:
   ot_clear_gvariant (&commit);
@@ -608,16 +606,8 @@ stage_and_checksum (OstreeRepo       *self,
   g_clear_object (&tmp_f);
 
   ret = TRUE;
-  if (out_tmpname)
-    {
-      *out_tmpname = ret_tmpname;
-      ret_tmpname = NULL;
-    }
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_tmpname, ret_tmpname);
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   if (tmp_f)
     (void) unlink (ot_gfile_get_path_cached (tmp_f));
@@ -652,16 +642,8 @@ write_gvariant_to_tmp (OstreeRepo  *self,
     goto out;
   
   ret = TRUE;
-  if (out_tmpname)
-    {
-      *out_tmpname = ret_tmpname;
-      ret_tmpname = NULL;
-    }
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_tmpname, ret_tmpname);
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   g_clear_object (&ret_tmpname);
   ot_clear_checksum (&ret_checksum);
@@ -691,8 +673,7 @@ import_gvariant_object (OstreeRepo  *self,
     goto out;
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   (void) unlink (ot_gfile_get_path_cached (tmp_path));
   g_clear_object (&tmp_path);
@@ -723,8 +704,7 @@ ostree_repo_load_variant_checked (OstreeRepo  *self,
     }
 
   ret = TRUE;
-  *out_variant = ret_variant;
-  ret_variant = NULL;
+  ot_transfer_out_value(out_variant, ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
   return ret;
@@ -749,11 +729,7 @@ import_directory_meta (OstreeRepo   *self,
     goto out;
 
   ret = TRUE;
-  if (out_checksum)
-    {
-      *out_checksum = ret_checksum;
-      ret_checksum = NULL;
-    }
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
@@ -797,8 +773,7 @@ prepare_dir_for_checksum_get_object_path (OstreeRepo *self,
     goto out;
   
   ret = TRUE;
-  *out_file = ret_file;
-  ret_file = NULL;
+  ot_transfer_out_value(out_file, ret_file);
  out:
   g_clear_object (&checksum_dir);
   g_clear_object (&ret_file);
@@ -996,8 +971,7 @@ ostree_repo_store_file (OstreeRepo         *self,
     }
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   if (temp_file)
     (void) unlink (ot_gfile_get_path_cached (temp_file));
@@ -1129,11 +1103,7 @@ import_commit (OstreeRepo *self,
     goto out;
 
   ret = TRUE;
-  if (out_commit)
-    {
-      *out_commit = ret_commit;
-      ret_commit = NULL;
-    }
+  ot_transfer_out_value(out_commit, ret_commit);
  out:
   ot_clear_checksum (&ret_commit);
   ot_clear_gvariant (&commit);
@@ -1304,10 +1274,8 @@ import_directory_recurse (OstreeRepo           *self,
                                cancellable, error))
     goto out;
 
-  *out_metadata_checksum = ret_metadata_checksum;
-  ret_metadata_checksum = NULL;
-  *out_contents_checksum = ret_contents_checksum;
-  ret_contents_checksum = NULL;
+  ot_transfer_out_value(out_metadata_checksum, ret_metadata_checksum);
+  ot_transfer_out_value(out_contents_checksum, ret_contents_checksum);
   ret = TRUE;
  out:
   g_clear_object (&dir_enum);
@@ -1371,8 +1339,7 @@ ostree_repo_commit (OstreeRepo *self,
     goto out;
   
   ret = TRUE;
-  *out_commit = ret_commit_checksum;
-  ret_commit_checksum = NULL;
+  ot_transfer_out_value(out_commit, ret_commit_checksum);
  out:
   ot_clear_checksum (&ret_commit_checksum);
   g_free (current_head);
@@ -1538,9 +1505,9 @@ ostree_repo_load_variant (OstreeRepo *self,
     goto out;
 
   ret = TRUE;
-  *out_type = ret_type;
-  *out_variant = ret_variant;
-  ret_variant = NULL;
+  if (out_type)
+    *out_type = ret_type;
+  ot_transfer_out_value(out_variant, ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
   g_clear_object (&f);
@@ -1749,8 +1716,7 @@ get_file_checksum (GFile  *f,
     }
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   ot_clear_checksum (&tmp_checksum);
   return ret;
@@ -1824,8 +1790,7 @@ diff_files (GFile          *a,
     }
 
   ret = TRUE;
-  *out_item = ret_item;
-  ret_item = NULL;
+  ot_transfer_out_value(out_item, ret_item);
  out:
   if (ret_item)
     ostree_repo_diff_item_unref (ret_item);
@@ -2059,8 +2024,7 @@ ostree_repo_read_commit (OstreeRepo *self,
     goto out;
 
   ret = TRUE;
-  *out_root = ret_root;
-  ret_root = NULL;
+  ot_transfer_out_value(out_root, ret_root);
  out:
   g_free (resolved_rev);
   g_clear_object (&ret_root);
@@ -2090,12 +2054,9 @@ ostree_repo_diff (OstreeRepo     *self,
     goto out;
 
   ret = TRUE;
-  *out_modified = ret_modified;
-  ret_modified = NULL;
-  *out_removed = ret_removed;
-  ret_removed = NULL;
-  *out_added = ret_added;
-  ret_added = NULL;
+  ot_transfer_out_value(out_modified, ret_modified);
+  ot_transfer_out_value(out_removed, ret_removed);
+  ot_transfer_out_value(out_added, ret_added);
  out:
   if (ret_modified)
     g_ptr_array_free (ret_modified, TRUE);

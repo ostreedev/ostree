@@ -114,8 +114,7 @@ ot_util_variant_map (GFile *src,
   g_variant_ref_sink (ret_variant);
   
   ret = TRUE;
-  *out_variant = ret_variant;
-  ret_variant = NULL;
+  ot_transfer_out_value(out_variant, ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
   if (mfile)
