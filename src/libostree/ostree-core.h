@@ -162,11 +162,20 @@ gboolean  ostree_pack_file_for_input (GOutputStream     *output,
                                       GCancellable     *cancellable,
                                       GError          **error);
 
+gboolean ostree_create_file_from_input (GFile          *file,
+                                        GFileInfo      *finfo,
+                                        GVariant       *xattrs,
+                                        GInputStream   *input,
+                                        GChecksum     **out_checksum,
+                                        GCancellable   *cancellable,
+                                        GError        **error);
+
 gboolean ostree_parse_packed_file (GFile            *file,
-                                   GVariant    **out_metadata,
-                                   GInputStream **out_content,
-                                   GCancellable *cancellable,
-                                   GError      **error);
+                                   GFileInfo       **out_file_info,
+                                   GVariant        **out_xattrs,
+                                   GInputStream    **out_content,
+                                   GCancellable     *cancellable,
+                                   GError          **error);
 
 gboolean ostree_unpack_object (GFile             *file,
                                OstreeObjectType  objtype,

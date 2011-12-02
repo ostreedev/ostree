@@ -307,8 +307,6 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
 {
   gboolean ret = FALSE;
   GVariant *ret_xattrs = NULL;
-  GVariant *metadata = NULL;
-  GInputStream *input = NULL;
   GFile *local_file = NULL;
 
   if (!_ostree_repo_file_ensure_resolved (self, error))
@@ -319,9 +317,8 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   else if (ostree_repo_is_archive (self->repo))
     {
       local_file = _ostree_repo_file_nontree_get_local (self);
-      if (!ostree_parse_packed_file (local_file, &metadata, &input, cancellable, error))
+      if (!ostree_parse_packed_file (local_file, NULL, &ret_xattrs, NULL, cancellable, error))
         goto out;
-      ret_xattrs = g_variant_get_child_value (metadata, 4);
     }
   else
     {
@@ -334,8 +331,6 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   ret_xattrs = NULL;
  out:
   ot_clear_gvariant (&ret_xattrs);
-  ot_clear_gvariant (&metadata);
-  g_clear_object (&input);
   g_clear_object (&local_file);
   return ret;
 }
@@ -698,173 +693,6 @@ get_child_local_file (OstreeRepo   *repo,
   return ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
 
-static gboolean
-query_child_info_file_nonarchive (OstreeRepo       *repo,
-                                  const char       *checksum,
-                                  GFileAttributeMatcher *matcher,
-                                  GFileInfo        *info,
-                                  GCancellable     *cancellable,
-                                  GError          **error)
-{
-  gboolean ret = FALSE;
-  GFileInfo *local_info = NULL;
-  GFile *local_file = NULL;
-  int i ;
-  const char *mapped_boolean[] = {
-    "standard::is-symlink"
-  };
-  const char *mapped_string[] = {
-  };
-  const char *mapped_byte_string[] = {
-    "standard::symlink-target"
-  };
-  const char *mapped_uint32[] = {
-    "standard::type",
-    "unix::device",
-    "unix::mode",
-    "unix::nlink",
-    "unix::uid",
-    "unix::gid",
-    "unix::rdev"
-  };
-  const char *mapped_uint64[] = {
-    "standard::size",
-    "standard::allocated-size",
-    "unix::inode"
-  };
-
-  if (!(g_file_attribute_matcher_matches (matcher, "unix::mode")
-        || g_file_attribute_matcher_matches (matcher, "standard::type")))
-    {
-      ret = TRUE;
-      goto out;
-    }
-
-  local_file = get_child_local_file (repo, checksum);
-  local_info = g_file_query_info (local_file,
-				  OSTREE_GIO_FAST_QUERYINFO,
-				  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-				  cancellable,
-				  error);
-  if (!local_info)
-    goto out;
-
-  for (i = 0; i < G_N_ELEMENTS (mapped_boolean); i++)
-    g_file_info_set_attribute_boolean (info, mapped_boolean[i], g_file_info_get_attribute_boolean (local_info, mapped_boolean[i]));
-
-  for (i = 0; i < G_N_ELEMENTS (mapped_string); i++)
-    {
-      const char *string = g_file_info_get_attribute_string (local_info, mapped_string[i]);
-      if (string)
-        g_file_info_set_attribute_string (info, mapped_string[i], string);
-    }
-
-  for (i = 0; i < G_N_ELEMENTS (mapped_byte_string); i++)
-    {
-      const char *byte_string = g_file_info_get_attribute_byte_string (local_info, mapped_byte_string[i]);
-      if (byte_string)
-        g_file_info_set_attribute_byte_string (info, mapped_byte_string[i], byte_string);
-    }
-
-  for (i = 0; i < G_N_ELEMENTS (mapped_uint32); i++)
-    g_file_info_set_attribute_uint32 (info, mapped_uint32[i], g_file_info_get_attribute_uint32 (local_info, mapped_uint32[i]));
-
-  for (i = 0; i < G_N_ELEMENTS (mapped_uint64); i++)
-    g_file_info_set_attribute_uint64 (info, mapped_uint64[i], g_file_info_get_attribute_uint64 (local_info, mapped_uint64[i]));
-  
-  ret = TRUE;
- out:
-  g_clear_object (&local_info);
-  g_clear_object (&local_file);
-  return ret;
-}
-
-static gboolean
-query_child_info_file_archive (OstreeRepo       *repo,
-                               const char       *checksum,
-                               GFileAttributeMatcher *matcher,
-                               GFileInfo        *info,
-                               GCancellable     *cancellable,
-                               GError          **error)
-{
-  gboolean ret = FALSE;
-  GFile *local_file = NULL;
-  GVariant *metadata = NULL;
-  GInputStream *input = NULL;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
-  guint32 file_type;
-  gsize bytes_read;
-  char *buf = NULL;
-
-  local_file = get_child_local_file (repo, checksum);
-
-  if (!ostree_parse_packed_file (local_file, &metadata, &input, cancellable, error))
-    goto out;
-
-  g_variant_get (metadata, "(uuuu@a(ayay)t)",
-                 &version, &uid, &gid, &mode,
-                 NULL, &content_len);
-  uid = GUINT32_FROM_BE (uid);
-  gid = GUINT32_FROM_BE (gid);
-  mode = GUINT32_FROM_BE (mode);
-  content_len = GUINT64_FROM_BE (content_len);
-
-  g_file_info_set_attribute_boolean (info, "standard::is-symlink",
-                                     S_ISLNK (mode));
-  if (S_ISLNK (mode))
-    file_type = G_FILE_TYPE_SYMBOLIC_LINK;
-  else if (S_ISREG (mode))
-    file_type = G_FILE_TYPE_REGULAR;
-  else if (S_ISBLK (mode) || S_ISCHR(mode) || S_ISFIFO(mode))
-    file_type = G_FILE_TYPE_SPECIAL;
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile %s: Invalid mode", checksum);
-      goto out;
-    }
-  g_file_info_set_attribute_uint32 (info, "standard::type", file_type);
-
-  g_file_info_set_attribute_uint32 (info, "unix::uid", uid);
-  g_file_info_set_attribute_uint32 (info, "unix::gid", gid);
-  g_file_info_set_attribute_uint32 (info, "unix::mode", mode);
-
-  if (file_type == G_FILE_TYPE_REGULAR)
-    {
-      g_file_info_set_attribute_uint64 (info, "standard::size", content_len);
-    }
-  else if (file_type == G_FILE_TYPE_SYMBOLIC_LINK)
-    {
-      gsize len = MIN (PATH_MAX, content_len) + 1;
-      buf = g_malloc (len);
-
-      if (!g_input_stream_read_all (input, buf, len, &bytes_read, cancellable, error))
-        goto out;
-      buf[bytes_read] = '\0';
-
-      g_file_info_set_attribute_byte_string (info, "standard::symlink-target", buf);
-    }
-  else if (file_type == G_FILE_TYPE_SPECIAL)
-    {
-      guint32 device;
-
-      if (!g_input_stream_read_all (input, &device, 4, &bytes_read, cancellable, error))
-        goto out;
-
-      device = GUINT32_FROM_BE (device);
-      g_file_info_set_attribute_uint32 (info, "unix::device", device);
-    }
-
-  ret = TRUE;
- out:
-  g_free (buf);
-  ot_clear_gvariant (&metadata);
-  g_clear_object (&local_file);
-  g_clear_object (&input);
-  return ret;
-}
-
 static void
 set_info_from_dirmeta (GFileInfo  *info,
                        GVariant   *metadata)
@@ -888,31 +716,34 @@ set_info_from_dirmeta (GFileInfo  *info,
 }
 
 static gboolean
-query_child_info_dir (OstreeRepo         *repo,
-                      const char         *metadata_checksum,
-                      GFileAttributeMatcher *matcher,
-                      GFileQueryInfoFlags flags,
-                      GFileInfo        *info,
-                      GCancellable    *cancellable,
-                      GError         **error)
+query_child_info_dir (OstreeRepo               *repo,
+                      const char               *metadata_checksum,
+                      GFileAttributeMatcher    *matcher,
+                      GFileQueryInfoFlags       flags,
+                      GFileInfo               **out_info,
+                      GCancellable             *cancellable,
+                      GError                  **error)
 {
   gboolean ret = FALSE;
+  GFileInfo *ret_info = NULL;
   GVariant *metadata = NULL;
 
-  if (!g_file_attribute_matcher_matches (matcher, "unix::mode"))
+  ret_info = g_file_info_new ();
+
+  if (g_file_attribute_matcher_matches (matcher, "unix::mode"))
     {
-      ret = TRUE;
-      goto out;
+      if (!ostree_repo_load_variant_checked (repo, OSTREE_SERIALIZED_DIRMETA_VARIANT,
+                                             metadata_checksum, &metadata, error))
+        goto out;
+
+      set_info_from_dirmeta (ret_info, metadata);
     }
-
-  if (!ostree_repo_load_variant_checked (repo, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                                         metadata_checksum, &metadata, error))
-    goto out;
-
-  set_info_from_dirmeta (info, metadata);
   
   ret = TRUE;
+  *out_info = ret_info;
+  ret_info = NULL;
  out:
+  g_clear_object (&ret_info);
   ot_clear_gvariant (&metadata);
   return ret;
 }
@@ -1183,6 +1014,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
   GVariant *tree_child_metadata = NULL;
+  GFile *local_child = NULL;
   GFileAttributeMatcher *matcher = NULL;
   int c;
 
@@ -1190,8 +1022,6 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
     goto out;
 
   matcher = g_file_attribute_matcher_new (attributes);
-
-  ret_info = g_file_info_new ();
 
   g_assert (self->tree_contents);
 
@@ -1205,17 +1035,20 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
 
       g_variant_get_child (files_variant, n, "(&s&s)", &name, &checksum);
 
+      local_child = get_child_local_file (self->repo, checksum);
+
       if (ostree_repo_is_archive (self->repo))
 	{
-	  if (!query_child_info_file_archive (self->repo, checksum, matcher, ret_info,
-                                              cancellable, error))
-	    goto out;
+          if (!ostree_parse_packed_file (local_child, &ret_info, NULL, NULL, cancellable, error))
+            goto out;
 	}
       else
 	{
-	  if (!query_child_info_file_nonarchive (self->repo, checksum, matcher, ret_info,
-                                                 cancellable, error))
-	    goto out;
+          ret_info = g_file_query_info (local_child,
+                                        OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable,
+                                        error);
 	}
     }
   else
@@ -1233,7 +1066,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                &name, &tree_checksum, &meta_checksum);
 
           if (!query_child_info_dir (self->repo, meta_checksum,
-                                     matcher, flags, ret_info,
+                                     matcher, flags, &ret_info,
                                      cancellable, error))
             goto out;
         }
@@ -1260,6 +1093,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   ret_info = NULL;
  out:
   g_clear_object (&ret_info);
+  g_clear_object (&local_child);
   if (matcher)
     g_file_attribute_matcher_unref (matcher);
   ot_clear_gvariant (&tree_child_metadata);

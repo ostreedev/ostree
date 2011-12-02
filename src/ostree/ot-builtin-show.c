@@ -27,12 +27,10 @@
 
 #include <glib/gi18n.h>
 
-static gboolean print_packfile;
 static gboolean print_compose;
 static char* print_variant_type;
 
 static GOptionEntry options[] = {
-  { "print-packfile", 0, 0, G_OPTION_ARG_NONE, &print_packfile, "If given, argument given is a packfile", NULL },
   { "print-compose", 0, 0, G_OPTION_ARG_NONE, &print_compose, "If given, show the branches which make up the given compose commit", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
   { NULL }
@@ -99,31 +97,6 @@ show_repo_meta (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&variant);
-  return ret;
-}
-
-static gboolean
-do_print_packfile (OstreeRepo  *repo,
-                   const char *checksum,
-                   GError **error)
-{
-  gboolean ret = FALSE;
-  GVariant *variant = NULL;
-  GInputStream *content = NULL;
-  GFile *file = NULL;
-
-  file = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-
-  if (!ostree_parse_packed_file (file, &variant, &content, NULL, error))
-    goto out;
-  
-  print_variant (variant);
-
-  ret = TRUE;
- out:
-  g_clear_object (&file);
-  g_clear_object (&content);
   ot_clear_gvariant (&variant);
   return ret;
 }
@@ -202,12 +175,7 @@ ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **erro
     }
   rev = argv[1];
 
-  if (print_packfile)
-    {
-      if (!do_print_packfile (repo, rev, error))
-        goto out;
-    }
-  else if (print_compose)
+  if (print_compose)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;

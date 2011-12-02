@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 
 #define OSTREE_GIO_FAST_QUERYINFO "standard::name,standard::type,standard::is-symlink,standard::symlink-target,standard::is-hidden,unix::*"
 
+GFileType ot_gfile_type_for_mode (guint32 mode);
+
 GFile *ot_gfile_new_for_path (const char *path);
 
 const char *ot_gfile_get_path_cached (GFile *file);

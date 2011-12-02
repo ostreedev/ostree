@@ -673,7 +673,7 @@ ostree_pack_file (GOutputStream     *output,
   if (!finfo)
     goto out;
 
-  if (S_ISREG (g_file_info_get_attribute_uint32 (finfo, "unix::mode")))
+  if (g_file_info_get_file_type (finfo) == G_FILE_TYPE_REGULAR)
     {
       instream = (GInputStream*)g_file_read (file, cancellable, error);
       if (!instream)
@@ -735,23 +735,28 @@ unpack_meta (GFile        *file,
 
 gboolean
 ostree_parse_packed_file (GFile            *file,
-                          GVariant    **out_metadata,
-                          GInputStream **out_content,
-                          GCancellable *cancellable,
-                          GError      **error)
+                          GFileInfo       **out_file_info,
+                          GVariant        **out_xattrs,
+                          GInputStream    **out_content,
+                          GCancellable     *cancellable,
+                          GError          **error)
 {
   gboolean ret = FALSE;
   char *metadata_buf = NULL;
-  GVariant *ret_metadata = NULL;
-  GFileInputStream *in = NULL;
+  GVariant *metadata = NULL;
+  GFileInfo *ret_file_info = NULL;
+  GVariant *ret_xattrs = NULL;
+  GInputStream *in = NULL;
   guint32 metadata_len;
+  guint32 version, uid, gid, mode;
+  guint64 content_len;
   gsize bytes_read;
 
-  in = g_file_read (file, NULL, error);
+  in = (GInputStream*)g_file_read (file, NULL, error);
   if (!in)
     goto out;
       
-  if (!g_input_stream_read_all ((GInputStream*)in, &metadata_len, 4, &bytes_read, NULL, error))
+  if (!g_input_stream_read_all (in, &metadata_len, 4, &bytes_read, NULL, error))
     goto out;
   if (bytes_read != 4)
     {
@@ -770,7 +775,7 @@ ostree_parse_packed_file (GFile            *file,
     }
   metadata_buf = g_malloc (metadata_len);
 
-  if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
+  if (!g_input_stream_read_all (in, metadata_buf, metadata_len, &bytes_read, NULL, error))
     goto out;
   if (bytes_read != metadata_len)
     {
@@ -779,79 +784,44 @@ ostree_parse_packed_file (GFile            *file,
       goto out;
     }
 
-  ret_metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
-                                          metadata_buf, metadata_len, FALSE,
-                                          (GDestroyNotify)g_free,
-                                          metadata_buf);
+  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
+                                      metadata_buf, metadata_len, FALSE,
+                                      (GDestroyNotify)g_free,
+                                      metadata_buf);
   metadata_buf = NULL;
-
-  ret = TRUE;
-  *out_metadata = ret_metadata;
-  ret_metadata = NULL;
-  *out_content = (GInputStream*)in;
-  in = NULL;
- out:
-  g_clear_object (&in);
-  ot_clear_gvariant (&ret_metadata);
-  return ret;
-}
-
-static gboolean
-unpack_file (GFile        *file,
-             GFile        *dest_file,    
-             GChecksum   **out_checksum,
-             GError      **error)
-{
-  gboolean ret = FALSE;
-  GVariant *metadata = NULL;
-  GVariant *xattrs = NULL;
-  GInputStream *in = NULL;
-  GFileOutputStream *out = NULL;
-  GChecksum *ret_checksum = NULL;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
-  gsize bytes_read;
-  const char *dest_path;
-
-  dest_path = ot_gfile_get_path_cached (dest_file);
-
-  if (!ostree_parse_packed_file (file, &metadata, &in, NULL, error))
-    goto out;
 
   g_variant_get (metadata, "(uuuu@a(ayay)t)",
                  &version, &uid, &gid, &mode,
-                 &xattrs, &content_len);
+                 &ret_xattrs, &content_len);
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
   content_len = GUINT64_FROM_BE (content_len);
 
+  ret_file_info = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
+  g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", S_ISLNK (mode));
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::mode", mode);
+  g_file_info_set_attribute_uint64 (ret_file_info, "standard::size", content_len);
+
   if (S_ISREG (mode))
     {
-      out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
-      if (!out)
-        goto out;
-
-      if (!ot_gio_splice_and_checksum ((GOutputStream*)out, in, out_checksum ? &ret_checksum : NULL, NULL, error))
-        goto out;
-
-      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
-        goto out;
+      g_file_info_set_attribute_uint64 (ret_file_info, "standard::size", content_len);
     }
   else if (S_ISLNK (mode))
     {
       char target[PATH_MAX+1];
-
-      if (!g_input_stream_read_all (in, target, sizeof(target)-1, &bytes_read, NULL, error))
+      if (!g_input_stream_read_all (in, target, sizeof(target)-1, &bytes_read, cancellable, error))
         goto out;
       target[bytes_read] = '\0';
-      if (ret_checksum)
-        g_checksum_update (ret_checksum, (guint8*)target, bytes_read);
-      if (symlink (target, dest_path) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
+
+      g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", TRUE);
+      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", target);
+
+      g_input_stream_close (in, cancellable, error);
+      g_clear_object (&in);
     }
   else if (S_ISCHR (mode) || S_ISBLK (mode))
     {
@@ -866,6 +836,94 @@ unpack_file (GFile        *file,
           goto out;
         }
       dev = GUINT32_FROM_BE (dev);
+      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", dev);
+      g_input_stream_close (in, cancellable, error);
+      g_clear_object (&in);
+    }
+  else if (S_ISFIFO (mode))
+    {
+      g_input_stream_close (in, cancellable, error);
+      g_clear_object (&in);
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted packfile; invalid mode %u", mode);
+      goto out;
+    }
+
+  ret = TRUE;
+  if (out_file_info)
+    {
+      *out_file_info = ret_file_info;
+      ret_file_info = NULL;
+    }
+  if (out_xattrs)
+    {
+      *out_xattrs = ret_xattrs;
+      ret_xattrs = NULL;
+    }
+  if (out_content)
+    {
+      *out_content = (GInputStream*)in;
+      in = NULL;
+    }
+ out:
+  g_clear_object (&ret_file_info);
+  ot_clear_gvariant (&ret_xattrs);
+  g_clear_object (&in);
+  ot_clear_gvariant (&metadata);
+  return ret;
+}
+
+gboolean
+ostree_create_file_from_input (GFile            *dest_file,
+                               GFileInfo        *finfo,
+                               GVariant         *xattrs,
+                               GInputStream     *input,
+                               GChecksum       **out_checksum,
+                               GCancellable     *cancellable,
+                               GError          **error)
+{
+  const char *dest_path;
+  gboolean ret = FALSE;
+  GFileOutputStream *out = NULL;
+  guint32 uid, gid, mode;
+  GChecksum *ret_checksum = NULL;
+
+  uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
+  gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
+  mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+  dest_path = ot_gfile_get_path_cached (dest_file);
+
+  if (S_ISREG (mode))
+    {
+      out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
+      if (!out)
+        goto out;
+
+      if (!ot_gio_splice_and_checksum ((GOutputStream*)out, input,
+                                       out_checksum ? &ret_checksum : NULL,
+                                       cancellable, error))
+        goto out;
+
+      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+        goto out;
+    }
+  else if (S_ISLNK (mode))
+    {
+      const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
+      if (ret_checksum)
+        g_checksum_update (ret_checksum, (guint8*)target, strlen (target));
+      if (symlink (target, dest_path) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISCHR (mode) || S_ISBLK (mode))
+    {
+      guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)&dev, 4);
       if (mknod (dest_path, mode, dev) < 0)
@@ -885,7 +943,7 @@ unpack_file (GFile        *file,
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; invalid mode %u", mode);
+                   "Invalid mode %u", mode);
       goto out;
     }
 
@@ -904,7 +962,7 @@ unpack_file (GFile        *file,
         }
     }
 
-  if (!ostree_set_xattrs (dest_file, xattrs, NULL, error))
+  if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
     goto out;
 
   if (ret_checksum)
@@ -915,16 +973,51 @@ unpack_file (GFile        *file,
 
   ret = TRUE;
   if (out_checksum)
-    *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
  out:
   if (!ret)
     (void) unlink (dest_path);
   ot_clear_checksum (&ret_checksum);
-  g_clear_object (&in);
   g_clear_object (&out);
-  ot_clear_gvariant (&metadata);
+  return ret;
+}
+
+static gboolean
+unpack_file (GFile        *file,
+             GFile        *dest_file,    
+             GChecksum   **out_checksum,
+             GCancellable *cancellable,
+             GError      **error)
+{
+  gboolean ret = FALSE;
+  GFileInfo *finfo;
+  GVariant *metadata = NULL;
+  GVariant *xattrs = NULL;
+  GInputStream *in = NULL;
+  GChecksum *ret_checksum = NULL;
+
+  if (!ostree_parse_packed_file (file, &finfo, &xattrs, &in, cancellable, error))
+    goto out;
+
+  if (!ostree_create_file_from_input (dest_file, finfo, xattrs, in,
+                                      out_checksum ? &ret_checksum : NULL,
+                                      cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
+ out:
+  g_clear_object (&finfo);
   ot_clear_gvariant (&xattrs);
+  ot_clear_gvariant (&metadata);
+  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 
@@ -938,5 +1031,5 @@ ostree_unpack_object (GFile            *file,
   if (objtype == OSTREE_OBJECT_TYPE_META)
     return unpack_meta (file, dest, out_checksum, error);
   else
-    return unpack_file (file, dest, out_checksum, error);
+    return unpack_file (file, dest, out_checksum, NULL, error);
 }
