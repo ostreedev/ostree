@@ -620,7 +620,7 @@ stage_and_checksum (OstreeRepo       *self,
     }
  out:
   if (tmp_f)
-    (void) g_file_delete (tmp_f, NULL, NULL);
+    (void) unlink (ot_gfile_get_path_cached (tmp_f));
   g_clear_object (&tmp_f);
   g_clear_object (&stream);
   g_clear_object (&ret_tmpname);
@@ -694,7 +694,7 @@ import_gvariant_object (OstreeRepo  *self,
   *out_checksum = ret_checksum;
   ret_checksum = NULL;
  out:
-  (void) g_file_delete (tmp_path, NULL, NULL);
+  (void) unlink (ot_gfile_get_path_cached (tmp_path));
   g_clear_object (&tmp_path);
   ot_clear_checksum (&ret_checksum);
   return ret;
@@ -1002,7 +1002,7 @@ ostree_repo_store_file (OstreeRepo         *self,
   ret_checksum = NULL;
  out:
   if (temp_file)
-    (void) g_file_delete (temp_file, NULL, NULL);
+    (void) unlink (ot_gfile_get_path_cached (temp_file));
   g_clear_object (&temp_file);
   g_clear_object (&temp_out);
   g_clear_object (&input);
@@ -1048,7 +1048,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
   ret = TRUE;
  out:
   if (tempfile)
-    (void) g_file_delete (tempfile, NULL, NULL);
+    (void) unlink (ot_gfile_get_path_cached (tempfile));
   g_clear_object (&tempfile);
   g_clear_object (&src);
   ot_clear_checksum (&checksum);

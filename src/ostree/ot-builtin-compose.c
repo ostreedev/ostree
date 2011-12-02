@@ -67,7 +67,7 @@ rm_rf (GFile *path)
         }
     }
 
-  (void) g_file_delete (path, NULL, NULL);
+  (void) unlink (ot_gfile_get_path_cached (path));
 
  out:
   g_clear_object (&finfo);

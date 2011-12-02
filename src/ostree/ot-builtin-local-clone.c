@@ -134,7 +134,7 @@ object_iter_callback (OstreeRepo   *repo,
 
  out:
   if (dest)
-    (void) g_file_delete (dest, NULL, NULL);
+    (void) unlink (ot_gfile_get_path_cached (dest));
   g_clear_object (&dest);
   if (error != NULL)
     {
