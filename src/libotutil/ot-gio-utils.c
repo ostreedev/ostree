@@ -276,6 +276,8 @@ ot_gfile_merge_dirs (GFile    *destination,
   else
     goto out;
 
+  (void) rmdir (ot_gfile_get_path_cached (src));
+
   ret = TRUE;
  out:
   g_clear_object (&src_fileinfo);
