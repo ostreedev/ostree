@@ -881,6 +881,7 @@ ostree_create_file_from_input (GFile            *dest_file,
                                GFileInfo        *finfo,
                                GVariant         *xattrs,
                                GInputStream     *input,
+                               OstreeObjectType objtype,
                                GChecksum       **out_checksum,
                                GCancellable     *cancellable,
                                GError          **error)
@@ -891,14 +892,22 @@ ostree_create_file_from_input (GFile            *dest_file,
   guint32 uid, gid, mode;
   GChecksum *ret_checksum = NULL;
 
-  uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
-  gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
-  mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  if (finfo != NULL)
+    {
+      mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+    }
+  else
+    {
+      mode = S_IFREG | 0666;
+    }
   dest_path = ot_gfile_get_path_cached (dest_file);
 
   if (S_ISREG (mode))
     {
-      out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
+      out = g_file_create (dest_file, 0, cancellable, error);
       if (!out)
         goto out;
 
@@ -913,6 +922,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISLNK (mode))
     {
       const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)target, strlen (target));
       if (symlink (target, dest_path) < 0)
@@ -924,6 +934,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISCHR (mode) || S_ISBLK (mode))
     {
       guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)&dev, 4);
       if (mknod (dest_path, mode, dev) < 0)
@@ -934,6 +945,7 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else if (S_ISFIFO (mode))
     {
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
       if (mkfifo (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -947,10 +959,21 @@ ostree_create_file_from_input (GFile            *dest_file,
       goto out;
     }
 
-  if (lchown (dest_path, uid, gid) < 0)
+  if (finfo != NULL)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
+      uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
+      gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
+      
+      if (lchown (dest_path, uid, gid) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else
+    {
+      uid = geteuid ();
+      gid = getegid ();
     }
 
   if (!S_ISLNK (mode))
@@ -962,13 +985,18 @@ ostree_create_file_from_input (GFile            *dest_file,
         }
     }
 
-  if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
-    goto out;
+  if (xattrs != NULL)
+    {
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
+        goto out;
+    }
 
-  if (ret_checksum)
+  if (ret_checksum && objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
-      g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+      if (xattrs)
+        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
 
   ret = TRUE;
@@ -982,6 +1010,165 @@ ostree_create_file_from_input (GFile            *dest_file,
     (void) unlink (dest_path);
   ot_clear_checksum (&ret_checksum);
   g_clear_object (&out);
+  return ret;
+}
+
+static GString *
+create_tmp_string (const char *dirpath,
+                   const char *prefix,
+                   const char *suffix)
+{
+  GString *tmp_name = NULL;
+
+  if (!prefix)
+    prefix = "tmp-";
+  if (!suffix)
+    suffix = ".tmp";
+
+  tmp_name = g_string_new (dirpath);
+  g_string_append_c (tmp_name, '/');
+  g_string_append (tmp_name, prefix);
+  g_string_append (tmp_name, "XXXXXX");
+  g_string_append (tmp_name, suffix);
+
+  return tmp_name;
+}
+
+static char *
+subst_xxxxxx (GRand      *rand,
+              const char *string)
+{
+  static const char table[] = "ABCEDEFGHIJKLMNOPQRSTUVWXYZabcedefghijklmnopqrstuvwxyz0123456789";
+  char *ret = g_strdup (string);
+  guint8 *xxxxxx = (guint8*)strstr (ret, "XXXXXX");
+
+  g_assert (xxxxxx != NULL);
+
+  while (*xxxxxx == 'X')
+    {
+      int offset = g_random_int_range (0, sizeof (table));
+      *xxxxxx = (guint8)table[offset];
+      xxxxxx++;
+    }
+
+  return ret;
+}
+
+gboolean
+ostree_create_temp_file_from_input (GFile            *dir,
+                                    const char       *prefix,
+                                    const char       *suffix,
+                                    GFileInfo        *finfo,
+                                    GVariant         *xattrs,
+                                    GInputStream     *input,
+                                    OstreeObjectType objtype,
+                                    GFile           **out_file,
+                                    GChecksum       **out_checksum,
+                                    GCancellable     *cancellable,
+                                    GError          **error)
+{
+  gboolean ret = FALSE;
+  GChecksum *ret_checksum = NULL;
+  GRand *rand = NULL;
+  GString *tmp_name = NULL;
+  char *possible_name = NULL;
+  GFile *possible_file = NULL;
+  GError *temp_error = NULL;
+  int i = 0;
+
+  rand = g_rand_new ();
+  
+  tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
+                                prefix, suffix);
+  
+  /* 128 attempts seems reasonable... */
+  for (i = 0; i < 128; i++)
+    {
+      g_free (possible_name);
+      possible_name = subst_xxxxxx (rand, tmp_name->str);
+      g_clear_object (&possible_file);
+      possible_file = ot_gfile_new_for_path (possible_name);
+      
+      if (!ostree_create_file_from_input (possible_file, finfo, xattrs, input,
+                                          objtype,
+                                          out_checksum ? &ret_checksum : NULL,
+                                          cancellable, &temp_error))
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+            {
+              g_clear_error (&temp_error);
+              continue;
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+        }
+      else
+        {
+          break;
+        }
+    }
+  if (i == 128)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Exhausted 128 attempts to create a temporary file");
+      goto out;
+    }
+
+  ret = TRUE;
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
+  if (out_file)
+    {
+      *out_file = possible_file;
+      possible_file = NULL;
+    }
+ out:
+  if (rand)
+    g_rand_free (rand);
+  if (tmp_name)
+    g_string_free (tmp_name, TRUE);
+  g_free (possible_name);
+  g_clear_object (&possible_file);
+  ot_clear_checksum (&ret_checksum);
+  return ret;
+}
+
+gboolean
+ostree_create_temp_regular_file (GFile            *dir,
+                                 const char       *prefix,
+                                 const char       *suffix,
+                                 GFile           **out_file,
+                                 GOutputStream   **out_stream,
+                                 GCancellable     *cancellable,
+                                 GError          **error)
+{
+  gboolean ret = FALSE;
+  GFile *ret_file = NULL;
+  GOutputStream *ret_stream = NULL;
+
+  if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
+                                           OSTREE_OBJECT_TYPE_FILE, &ret_file,
+                                           NULL, cancellable, error))
+    goto out;
+  
+  ret_stream = (GOutputStream*)g_file_append_to (ret_file, 0, cancellable, error);
+  if (ret_stream == NULL)
+    goto out;
+  
+  ret = TRUE;
+  *out_file = ret_file;
+  ret_file = NULL;
+  *out_stream = ret_stream;
+  ret_stream = NULL;
+ out:
+  g_clear_object (&ret_file);
+  g_clear_object (&ret_stream);
   return ret;
 }
 
@@ -1003,6 +1190,7 @@ unpack_file (GFile        *file,
     goto out;
 
   if (!ostree_create_file_from_input (dest_file, finfo, xattrs, in,
+                                      OSTREE_OBJECT_TYPE_FILE,
                                       out_checksum ? &ret_checksum : NULL,
                                       cancellable, error))
     goto out;

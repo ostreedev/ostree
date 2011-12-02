@@ -592,14 +592,10 @@ stage_and_checksum (OstreeRepo       *self,
       break;
     }
 
-  if (!ot_gfile_create_tmp (priv->tmp_dir, prefix, NULL, 0666,
-                            &tmp_f, &stream, cancellable, error))
-    goto out;
-
-  if (!ot_gio_splice_and_checksum (stream, input, &ret_checksum, cancellable, error))
-    goto out;
-
-  if (!g_output_stream_close ((GOutputStream*)stream, NULL, error))
+  if (!ostree_create_temp_file_from_input (priv->tmp_dir, prefix, NULL, NULL,
+                                           NULL, input, OSTREE_OBJECT_TYPE_META,
+                                           &tmp_f, &ret_checksum,
+                                           cancellable, error))
     goto out;
 
   ret_tmpname = g_file_get_child (priv->tmp_dir, g_checksum_get_string (ret_checksum));

@@ -166,9 +166,30 @@ gboolean ostree_create_file_from_input (GFile          *file,
                                         GFileInfo      *finfo,
                                         GVariant       *xattrs,
                                         GInputStream   *input,
+                                        OstreeObjectType objtype,
                                         GChecksum     **out_checksum,
                                         GCancellable   *cancellable,
                                         GError        **error);
+
+gboolean ostree_create_temp_file_from_input (GFile            *dir,
+                                             const char       *prefix,
+                                             const char       *suffix,
+                                             GFileInfo        *finfo,
+                                             GVariant         *xattrs,
+                                             GInputStream     *input,
+                                             OstreeObjectType objtype,
+                                             GFile           **out_file,
+                                             GChecksum       **out_checksum,
+                                             GCancellable     *cancellable,
+                                             GError          **error);
+
+gboolean ostree_create_temp_regular_file (GFile            *dir,
+                                          const char       *prefix,
+                                          const char       *suffix,
+                                          GFile           **out_file,
+                                          GOutputStream   **out_stream,
+                                          GCancellable     *cancellable,
+                                          GError          **error);
 
 gboolean ostree_parse_packed_file (GFile            *file,
                                    GFileInfo       **out_file_info,
