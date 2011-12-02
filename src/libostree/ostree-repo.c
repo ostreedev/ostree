@@ -735,44 +735,30 @@ ostree_repo_load_variant_checked (OstreeRepo  *self,
 }
 
 static gboolean
-import_directory_meta (OstreeRepo  *self,
-                       GFile       *f,
-                       GVariant  **out_variant,
-                       GChecksum **out_checksum,
+import_directory_meta (OstreeRepo   *self,
+                       GFileInfo    *file_info,
+                       GVariant     *xattrs,
+                       GChecksum   **out_checksum,
                        GCancellable *cancellable,
-                       GError    **error)
+                       GError      **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
   GVariant *dirmeta = NULL;
-  GFileInfo *f_info = NULL;
 
-  f_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
-                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                              cancellable, error);
-  if (!f_info)
-    goto out;
-
-  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, cancellable, error))
-    goto out;
+  dirmeta = ostree_create_directory_metadata (file_info, xattrs);
   
   if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
                                dirmeta, &ret_checksum, cancellable, error))
     goto out;
 
   ret = TRUE;
-  if (out_variant)
-    {
-      *out_variant = dirmeta;
-      dirmeta = NULL;
-    }
   if (out_checksum)
     {
       *out_checksum = ret_checksum;
       ret_checksum = NULL;
     }
  out:
-  g_clear_object (&f_info);
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   return ret;
@@ -1114,11 +1100,24 @@ import_directory_recurse (OstreeRepo           *self,
   GHashTableIter hash_iter;
   GSList *sorted_filenames = NULL;
   GSList *iter;
+  GVariant *dir_xattrs = NULL;
   GVariant *serialized_tree = NULL;
   gpointer key, value;
 
-  if (!import_directory_meta (self, dir, NULL, &ret_metadata_checksum, cancellable, error))
+  child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
+                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                  cancellable, error);
+  if (!child_info)
     goto out;
+
+  dir_xattrs = ostree_get_xattrs_for_file (dir, error);
+  if (!dir_xattrs)
+    goto out;
+
+  if (!import_directory_meta (self, child_info, dir_xattrs, &ret_metadata_checksum, cancellable, error))
+    goto out;
+  
+  g_clear_object (&child_info);
 
   dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,

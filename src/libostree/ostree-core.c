@@ -190,10 +190,14 @@ checksum_directory (GFile          *f,
   gboolean ret = FALSE;
   GVariant *dirmeta = NULL;
   GVariant *packed = NULL;
+  GVariant *xattrs = NULL;
   GChecksum *ret_checksum = NULL;
 
-  if (!ostree_get_directory_metadata (f, f_info, &dirmeta, cancellable, error))
+  xattrs = ostree_get_xattrs_for_file (f, error);
+  if (!xattrs)
     goto out;
+
+  dirmeta = ostree_create_directory_metadata (f_info, xattrs);
   packed = ostree_wrap_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
   ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
   g_checksum_update (ret_checksum, g_variant_get_data (packed),
@@ -206,6 +210,7 @@ checksum_directory (GFile          *f,
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   ot_clear_gvariant (&packed);
+  ot_clear_gvariant (&xattrs);
   return ret;
 }
 
@@ -421,20 +426,11 @@ ostree_checksum_file_async_finish (GFile          *f,
   return TRUE;
 }
 
-gboolean
-ostree_get_directory_metadata (GFile        *dir,
-                               GFileInfo    *dir_info,
-                               GVariant    **out_metadata,
-                               GCancellable *cancellable,
-                               GError      **error)
+GVariant *
+ostree_create_directory_metadata (GFileInfo    *dir_info,
+                                  GVariant     *xattrs)
 {
-  gboolean ret = FALSE;
-  GVariant *xattrs = NULL;
   GVariant *ret_metadata = NULL;
-
-  xattrs = ostree_get_xattrs_for_file (dir, error);
-  if (!xattrs)
-    goto out;
 
   ret_metadata = g_variant_new ("(uuuu@a(ayay))",
                                 OSTREE_DIR_META_VERSION,
@@ -444,13 +440,7 @@ ostree_get_directory_metadata (GFile        *dir,
                                 xattrs);
   g_variant_ref_sink (ret_metadata);
 
-  ret = TRUE;
-  *out_metadata = ret_metadata;
-  ret_metadata = NULL;
- out:
-  ot_clear_gvariant (&ret_metadata);
-  ot_clear_gvariant (&xattrs);
-  return ret;
+  return ret_metadata;
 }
 
 gboolean

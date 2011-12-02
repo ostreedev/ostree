@@ -128,11 +128,8 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
                                             GChecksum     **out_checksum,
                                             GError        **error);
 
-gboolean ostree_get_directory_metadata (GFile *dir,
-                                        GFileInfo *dir_info,
-                                        GVariant  **out_metadata,
-                                        GCancellable *cancellable,
-                                        GError **error);
+GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
+                                            GVariant  *xattrs);
 
 /* Packed files:
  *
