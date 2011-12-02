@@ -630,6 +630,11 @@ ostree_pack_file_for_input (GOutputStream     *output,
     }
   else if (S_ISLNK (mode))
     {
+      if (out_checksum)
+        {
+          ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+          g_checksum_update (ret_checksum, (guint8*)target, object_size);
+        }
       if (!g_output_stream_write_all (output, target, object_size,
                                       &bytes_written, cancellable, error))
         goto out;
@@ -638,6 +643,11 @@ ostree_pack_file_for_input (GOutputStream     *output,
     {
       guint32 device_be = GUINT32_TO_BE (device);
       g_assert (object_size == 4);
+      if (out_checksum)
+        {
+          ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+          g_checksum_update (ret_checksum, (guint8*)&device_be, 4);
+        }
       if (!g_output_stream_write_all (output, &device_be, object_size,
                                       &bytes_written, cancellable, error))
         goto out;
@@ -648,6 +658,13 @@ ostree_pack_file_for_input (GOutputStream     *output,
     }
   else
     g_assert_not_reached ();
+
+  if (ret_checksum)
+    {
+      ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
+      if (xattrs)
+        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+    }
 
   ret = TRUE;
   if (out_checksum)
@@ -943,9 +960,11 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISCHR (mode) || S_ISBLK (mode))
     {
       guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
+      guint32 dev_be;
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      dev_be = GUINT32_TO_BE (dev);
       if (ret_checksum)
-        g_checksum_update (ret_checksum, (guint8*)&dev, 4);
+        g_checksum_update (ret_checksum, (guint8*)&dev_be, 4);
       if (mknod (dest_path, mode, dev) < 0)
         {
           ot_util_set_error_from_errno (error, errno);

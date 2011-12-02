@@ -986,14 +986,12 @@ ostree_repo_store_file (OstreeRepo         *self,
     }
   else
     {
-      /* If we're not an archive, we just need to checksum the input,
-         then call link() */
       if (!ostree_checksum_file (file, OSTREE_OBJECT_TYPE_FILE, &ret_checksum, cancellable, error))
         goto out;
       
-      if (!link_object_trusted (self, file, g_checksum_get_string (ret_checksum),
-                                OSTREE_OBJECT_TYPE_FILE, FALSE, did_exist,
-                                cancellable, error))
+      if (!ostree_repo_store_object_trusted (self, file, g_checksum_get_string (ret_checksum),
+                                             OSTREE_OBJECT_TYPE_FILE, FALSE, did_exist,
+                                             cancellable, error))
         goto out;
     }
 
