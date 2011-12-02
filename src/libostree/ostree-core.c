@@ -650,10 +650,16 @@ ostree_pack_file_for_input (GOutputStream     *output,
     g_assert_not_reached ();
 
   ret = TRUE;
+  if (out_checksum)
+    {
+      *out_checksum = ret_checksum;
+      ret_checksum = NULL;
+    }
  out:
   if (pack_builder_initialized)
     g_variant_builder_clear (&pack_builder);
   ot_clear_gvariant (&pack_variant);
+  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 
@@ -911,10 +917,13 @@ ostree_create_file_from_input (GFile            *dest_file,
       if (!out)
         goto out;
 
-      if (!ot_gio_splice_and_checksum ((GOutputStream*)out, input,
-                                       out_checksum ? &ret_checksum : NULL,
-                                       cancellable, error))
-        goto out;
+      if (input)
+        {
+          if (!ot_gio_splice_and_checksum ((GOutputStream*)out, input,
+                                           out_checksum ? &ret_checksum : NULL,
+                                           cancellable, error))
+            goto out;
+        }
 
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
         goto out;
