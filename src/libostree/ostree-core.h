@@ -161,6 +161,7 @@ gboolean  ostree_pack_file_for_input (GOutputStream     *output,
                                       GFileInfo         *finfo,
                                       GInputStream      *input,
                                       GVariant          *xattrs,
+                                      GChecksum        **out_checksum,
                                       GCancellable     *cancellable,
                                       GError          **error);
 

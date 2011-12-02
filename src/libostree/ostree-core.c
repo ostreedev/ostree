@@ -566,8 +566,9 @@ ostree_pack_file_for_input (GOutputStream     *output,
                             GFileInfo         *finfo,
                             GInputStream      *instream,
                             GVariant          *xattrs,
-                            GCancellable     *cancellable,
-                            GError          **error)
+                            GChecksum        **out_checksum,
+                            GCancellable      *cancellable,
+                            GError           **error)
 {
   gboolean ret = FALSE;
   guint32 uid, gid, mode;
@@ -579,6 +580,7 @@ ostree_pack_file_for_input (GOutputStream     *output,
   GVariantBuilder pack_builder;
   GVariant *pack_variant = NULL;
   gsize bytes_written;
+  GChecksum *ret_checksum = NULL;
 
   uid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_UID);
   gid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_GID);
@@ -631,15 +633,10 @@ ostree_pack_file_for_input (GOutputStream     *output,
 
   if (S_ISREG (mode))
     {
-      bytes_written = g_output_stream_splice (output, (GInputStream*)instream, 0, cancellable, error);
-      if (bytes_written < 0)
+      if (!ot_gio_splice_and_checksum (output, (GInputStream*)instream,
+                                       out_checksum ? &ret_checksum : NULL,
+                                       cancellable, error))
         goto out;
-      if (bytes_written != object_size)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "File size changed unexpectedly");
-          goto out;
-        }
     }
   else if (S_ISLNK (mode))
     {
@@ -680,7 +677,6 @@ ostree_pack_file (GOutputStream     *output,
   GFileInfo *finfo = NULL;
   GInputStream *instream = NULL;
   GVariant *xattrs = NULL;
-  gsize bytes_written;
 
   finfo = g_file_query_info (file, "standard::type,standard::size,standard::is-symlink,standard::symlink-target,unix::*",
                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
@@ -698,7 +694,7 @@ ostree_pack_file (GOutputStream     *output,
   if (!xattrs)
     goto out;
   
-  if (!ostree_pack_file_for_input (output, finfo, instream, xattrs, cancellable, error))
+  if (!ostree_pack_file_for_input (output, finfo, instream, xattrs, NULL, cancellable, error))
     goto out;
   
   ret = TRUE;
