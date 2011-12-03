@@ -106,21 +106,6 @@ ot_util_sort_filenames_by_component_length (GPtrArray *files)
   return array;
 }
 
-int
-ot_util_count_filename_components (const char *path)
-{
-  int i = 0;
-
-  while (path)
-    {
-      i++;
-      path = strchr (path, '/');
-      if (path)
-        path++;
-    }
-  return i;
-}
-
 gboolean
 ot_util_filename_has_dotdot (const char *path)
 {
@@ -235,51 +220,6 @@ ot_util_set_error_from_errno (GError **error,
                        g_io_error_from_errno (saved_errno),
                        g_strerror (saved_errno));
   errno = saved_errno;
-}
-
-int
-ot_util_open_file_read (const char *path, GError **error)
-{
-  char *dirname = NULL;
-  char *basename = NULL;
-  DIR *dir = NULL;
-  int fd = -1;
-
-  dirname = g_path_get_dirname (path);
-  basename = g_path_get_basename (path);
-  dir = opendir (dirname);
-  if (dir == NULL)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  fd = ot_util_open_file_read_at (dirfd (dir), basename, error);
-
- out:
-  g_free (basename);
-  g_free (dirname);
-  if (dir != NULL)
-    closedir (dir);
-  return fd;
-}
-
-int
-ot_util_open_file_read_at (int dirfd, const char *name, GError **error)
-{
-  int fd;
-  int flags = O_RDONLY;
-  
-#ifdef O_CLOEXEC
-  flags |= O_CLOEXEC;
-#endif
-#ifdef O_NOATIME
-  flags |= O_NOATIME;
-#endif
-  fd = openat (dirfd, name, flags);
-  if (fd < 0)
-    ot_util_set_error_from_errno (error, errno);
-  return fd;
 }
 
 void

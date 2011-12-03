@@ -54,12 +54,6 @@ GPtrArray* ot_util_path_split (const char *path);
 
 char *ot_util_path_join_n (const char *base, GPtrArray *components, int n);
 
-int ot_util_count_filename_components (const char *path);
-
-int ot_util_open_file_read (const char *path, GError **error);
-
-int ot_util_open_file_read_at (int dirfd, const char *name, GError **error);
-
 void ot_util_set_error_from_errno (GError **error, gint saved_errno);
 
 G_END_DECLS
