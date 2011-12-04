@@ -74,141 +74,86 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
   return ret;
 }
 
-static int
-compare_filenames_by_component_length (const char *a,
-                                       const char *b)
-{
-  char *a_slash, *b_slash;
-
-  a_slash = strchr (a, '/');
-  b_slash = strchr (b, '/');
-  while (a_slash && b_slash)
-    {
-      a = a_slash + 1;
-      b = b_slash + 1;
-      a_slash = strchr (a, '/');
-      b_slash = strchr (b, '/');
-    }
-  if (a_slash)
-    return -1;
-  else if (b_slash)
-    return 1;
-  else
-    return 0;
-}
-
-GPtrArray *
-ot_util_sort_filenames_by_component_length (GPtrArray *files)
-{
-  GPtrArray *array = g_ptr_array_sized_new (files->len);
-  memcpy (array->pdata, files->pdata, sizeof (gpointer) * files->len);
-  g_ptr_array_sort (array, (GCompareFunc) compare_filenames_by_component_length);
-  return array;
-}
-
 gboolean
-ot_util_filename_has_dotdot (const char *path)
-{
-  char *p;
-  char last;
-
-  if (strcmp (path, "..") == 0)
-    return TRUE;
-  if (g_str_has_prefix (path, "../"))
-    return TRUE;
-  p = strstr (path, "/..");
-  if (!p)
-    return FALSE;
-  last = *(p + 1);
-  return last == '\0' || last == '/';
-}
-
-gboolean
-ot_util_validate_file_name (const char *name,
-                            GError    **error)
+ot_util_filename_validate (const char *name,
+                           GError    **error)
 {
   if (strcmp (name, ".") == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid self-reference '.' in filename '%s'", name);
+                   "Invalid self-referential filename '.'");
       return FALSE;
     }
-  if (ot_util_filename_has_dotdot (name))
+  if (strcmp (name, "..") == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid path uplink '..' in filename '%s'", name);
+                   "Invalid path uplink filename '..'");
       return FALSE;
     }
   if (strchr (name, '/') != NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid / in filename '%s'", name);
+                   "Invalid / in filename %s", name);
       return FALSE;
     }
   return TRUE;
 }
 
-GPtrArray *
-ot_util_path_split (const char *path)
+static GPtrArray *
+ot_split_string_ptrarray (const char *str,
+                          char        c)
 {
-  GPtrArray *ret = NULL;
+  GPtrArray *ret = g_ptr_array_new_with_free_func (g_free);
   const char *p;
-  const char *slash;
-  int i;
 
-  g_return_val_if_fail (path[0] != '/', NULL);
-
-  ret = g_ptr_array_new ();
-  g_ptr_array_set_free_func (ret, g_free);
-
-  p = path;
   do {
-    slash = strchr (p, '/');
-    if (!slash)
+    p = strchr (str, '/');
+    if (!p)
       {
-        g_ptr_array_add (ret, g_strdup (p));
-        p = NULL;
+        g_ptr_array_add (ret, g_strdup (str));
+        str = NULL;
       }
     else
       {
-        g_ptr_array_add (ret, g_strndup (p, slash - p));
-        p = slash + 1;
+        g_ptr_array_add (ret, g_strndup (str, p - str));
+        str = p + 1;
       }
-  } while (p && *p);
-
-  /* Canonicalize by removing duplicate '.' */
-  for (i = ret->len-1; i >= 0; i--)
-    {
-      if (strcmp (ret->pdata[i], ".") == 0)
-        g_ptr_array_remove_index (ret, i);
-    }
+  } while (str && *str);
 
   return ret;
 }
 
-char *
-ot_util_path_join_n (const char *base, GPtrArray *components, int n)
+gboolean
+ot_util_path_split_validate (const char *path,
+                             GPtrArray **out_components,
+                             GError    **error)
 {
-  int max = MIN(n+1, components->len);
-  GPtrArray *subcomponents;
-  char *path;
+  gboolean ret = FALSE;
+  GPtrArray *ret_components = NULL;
   int i;
 
-  subcomponents = g_ptr_array_new ();
+  ret_components = ot_split_string_ptrarray (path, '/');
 
-  if (base != NULL)
-    g_ptr_array_add (subcomponents, (char*)base);
-
-  for (i = 0; i < max; i++)
+  /* Canonicalize by removing '.' and '', throw an error on .. */
+  for (i = ret_components->len-1; i >= 0; i--)
     {
-      g_ptr_array_add (subcomponents, components->pdata[i]);
+      const char *name = ret_components->pdata[i];
+      if (strcmp (name, "..") == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid uplink '..' in path %s", path);
+          goto out;
+        }
+      if (strcmp (name, ".") == 0 || name[0] == '\0')
+        g_ptr_array_remove_index (ret_components, i);
     }
-  g_ptr_array_add (subcomponents, NULL);
-  
-  path = g_build_filenamev ((char**)subcomponents->pdata);
-  g_ptr_array_free (subcomponents, TRUE);
-  
-  return path;
+
+  ret = TRUE;
+  ot_transfer_out_value(out_components, ret_components);
+ out:
+  if (ret_components)
+    g_ptr_array_unref (ret_components);
+  return ret;
 }
 
 void

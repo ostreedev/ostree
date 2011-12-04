@@ -238,7 +238,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       g_variant_get_child (container, i, "(&s&s&s)",
                            &name, &content_checksum, &metadata_checksum);
 
-      if (!ot_util_validate_file_name (name, error))
+      if (!ot_util_filename_validate (name, error))
         goto out;
           
       if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_TREE_VARIANT,
