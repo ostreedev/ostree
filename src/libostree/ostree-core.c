@@ -1204,6 +1204,7 @@ unpack_file (GFile        *file,
   ot_transfer_out_value (out_checksum, ret_checksum);
  out:
   g_clear_object (&finfo);
+  g_clear_object (&in);
   ot_clear_gvariant (&xattrs);
   ot_clear_gvariant (&metadata);
   ot_clear_checksum (&ret_checksum);
