@@ -437,7 +437,7 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
-                                xattrs);
+                                xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
   g_variant_ref_sink (ret_metadata);
 
   return ret_metadata;
@@ -930,6 +930,8 @@ ostree_create_file_from_input (GFile            *dest_file,
     {
       const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      if (out_checksum)
+        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)target, strlen (target));
       if (symlink (target, dest_path) < 0)
@@ -944,6 +946,8 @@ ostree_create_file_from_input (GFile            *dest_file,
       guint32 dev_be;
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
       dev_be = GUINT32_TO_BE (dev);
+      if (out_checksum)
+        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (ret_checksum)
         g_checksum_update (ret_checksum, (guint8*)&dev_be, 4);
       if (mknod (dest_path, mode, dev) < 0)
@@ -955,6 +959,8 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISFIFO (mode))
     {
       g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      if (out_checksum)
+        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (mkfifo (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
