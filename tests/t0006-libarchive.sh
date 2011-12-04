@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..1"
+echo "1..4"
 
 . libtest.sh
 
@@ -39,5 +39,36 @@ echo not > subdir/2/notempty
 
 tar -c -z -f ../foo.tar.gz .
 cd ..
-$OSTREE commit -s "from tar" -b test2 --tar foo.tar.gz
+$OSTREE commit -s "from tar" -b test-tar --tar foo.tar.gz
 echo "ok tar commit"
+
+cd ${test_tmpdir}
+$OSTREE checkout test-tar test-tar-checkout
+cd test-tar-checkout
+assert_file_has_content hi hi
+assert_file_has_content hello hi
+assert_file_has_content subdir/more contents
+assert_has_file subdir/1/empty
+assert_has_file subdir/2/empty
+cd ${test_tmpdir}
+rm -rf test-tar-checkout
+echo "ok tar contents"
+
+cd ${test_tmpdir}
+mkdir hardlinktest
+cd hardlinktest
+echo other > otherfile
+echo foo1 > foo
+ln foo bar
+tar czf ${test_tmpdir}/hardlinktest.tar.gz .
+cd ${test_tmpdir}
+$OSTREE commit -s 'hardlinks' -b test-hardlinks --tar hardlinktest.tar.gz
+rm -rf hardlinktest
+echo "ok hardlink commit"
+
+cd ${test_tmpdir}
+$OSTREE checkout test-hardlinks test-hardlinks-checkout
+cd test-hardlinks-checkout
+assert_file_has_content foo foo1
+assert_file_has_content bar foo1
+echo "ok hardlink contents"

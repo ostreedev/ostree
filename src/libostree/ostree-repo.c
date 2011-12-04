@@ -1730,10 +1730,10 @@ import_libarchive (OstreeRepo           *self,
           if (!file_tree_walk (root, hardlink_split_path, 0, &hardlink_parent, error))
             goto out;
 
-          g_assert (parent);
 
           hardlink_basename = hardlink_split_path->pdata[hardlink_split_path->len - 1];
 
+          g_assert (parent);
           hardlink_source_checksum = g_hash_table_lookup (hardlink_parent->file_checksums, hardlink_basename);
           if (!hardlink_source_checksum)
             {
@@ -1743,8 +1743,15 @@ import_libarchive (OstreeRepo           *self,
               goto out;
             }
 
+          if (g_hash_table_lookup (parent->subdirs, basename))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Directory exists: %s", hardlink);
+              goto out;
+            }
+
           g_hash_table_replace (parent->file_checksums,
-                                g_strdup (hardlink_basename),
+                                g_strdup (basename),
                                 g_strdup (hardlink_source_checksum));
           continue;
         }
