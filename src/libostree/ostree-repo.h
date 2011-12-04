@@ -111,16 +111,27 @@ gboolean      ostree_repo_load_variant_checked (OstreeRepo  *self,
                                                 GVariant     **out_variant,
                                                 GError       **error);
 
-gboolean      ostree_repo_commit (OstreeRepo   *self,
-                                  const char   *branch,
-                                  const char   *parent,
-                                  const char   *subject,
-                                  const char   *body,
-                                  GVariant     *metadata,
-                                  GFile        *base,
-                                  GChecksum   **out_commit,
-                                  GCancellable *cancellable,
-                                  GError      **error);
+gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
+                                            const char   *branch,
+                                            const char   *parent,
+                                            const char   *subject,
+                                            const char   *body,
+                                            GVariant     *metadata,
+                                            GFile        *base,
+                                            GChecksum   **out_commit,
+                                            GCancellable *cancellable,
+                                            GError      **error);
+
+gboolean      ostree_repo_commit_tarfile (OstreeRepo   *self,
+                                          const char   *branch,
+                                          const char   *parent,
+                                          const char   *subject,
+                                          const char   *body,
+                                          GVariant     *metadata,
+                                          GFile        *base,
+                                          GChecksum   **out_commit,
+                                          GCancellable *cancellable,
+                                          GError      **error);
 
 gboolean      ostree_repo_checkout (OstreeRepo *self,
                                     const char   *ref,

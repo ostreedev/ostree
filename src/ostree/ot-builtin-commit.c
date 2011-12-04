@@ -35,6 +35,7 @@ static char *subject;
 static char *body;
 static char *parent;
 static char *branch;
+static gboolean tar;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
@@ -43,6 +44,7 @@ static GOptionEntry options[] = {
   { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
+  { "tar", 0, 0, G_OPTION_ARG_NONE, &tar, "Given argument is a tar file", NULL },
   { NULL }
 };
 
@@ -52,35 +54,35 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  char *dirpath = NULL;
-  GFile *dir = NULL;
+  char *argpath = NULL;
+  GFile *arg = NULL;
   GChecksum *commit_checksum = NULL;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
 
-  context = g_option_context_new ("[DIR] - Commit a new revision");
+  context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
   if (argc > 1)
-    dirpath = g_strdup (argv[1]);
+    argpath = g_strdup (argv[1]);
   else
-    dirpath = g_get_current_dir ();
+    argpath = g_get_current_dir ();
 
-  if (g_str_has_suffix (dirpath, "/"))
-    dirpath[strlen (dirpath) - 1] = '\0';
+  if (g_str_has_suffix (argpath, "/"))
+    argpath[strlen (argpath) - 1] = '\0';
 
-  if (!*dirpath)
+  if (!*argpath)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid empty directory");
+                   "Invalid empty argument");
       goto out;
     }
 
-  dir = ot_gfile_new_for_path (dirpath);
+  arg = ot_gfile_new_for_path (argpath);
 
   if (metadata_text_path || metadata_bin_path)
     {
@@ -124,15 +126,24 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       goto out;
     }
 
-  if (!ostree_repo_commit (repo, branch, parent, subject, body, metadata,
-                           dir, &commit_checksum, NULL, error))
-    goto out;
+  if (!tar)
+    {
+      if (!ostree_repo_commit_directory (repo, branch, parent, subject, body, metadata,
+                                         arg, &commit_checksum, NULL, error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_repo_commit_tarfile (repo, branch, parent, subject, body, metadata,
+                                       arg, &commit_checksum, NULL, error))
+        goto out;
+    }
 
   ret = TRUE;
   g_print ("%s\n", g_checksum_get_string (commit_checksum));
  out:
-  g_free (dirpath);
-  g_clear_object (&dir);
+  g_free (argpath);
+  g_clear_object (&arg);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)
