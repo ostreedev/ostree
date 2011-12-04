@@ -37,7 +37,9 @@
 GFileType
 ot_gfile_type_for_mode (guint32 mode)
 {
-  if (S_ISREG (mode))
+  if (S_ISDIR (mode))
+    return G_FILE_TYPE_DIRECTORY;
+  else if (S_ISREG (mode))
     return G_FILE_TYPE_REGULAR;
   else if (S_ISLNK (mode))
     return G_FILE_TYPE_SYMBOLIC_LINK;
