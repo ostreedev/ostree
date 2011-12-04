@@ -49,41 +49,49 @@ if (! test -f ${OBJ}); then
     rm -f ${OBJ}.tmp
     qemu-img create ${OBJ}.tmp 2G
     mkfs.ext3 -q -F ${OBJ}.tmp
-    mkdir -p fs
-    umount fs || true
-    mount -o loop ${OBJ}.tmp fs
-
-    cd fs
-
-    TOPROOT_BIND_MOUNTS="home root tmp"
-    
-    for d in $TOPROOT_BIND_MOUNTS; do
-        mkdir -m 0755 $d
-    done
-    chmod a=rwxt tmp
-
-    mkdir ostree
-    mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
-    cd ostree
-    mkdir repo
-    ostree --repo=repo init
-    ostree --repo=${OSTREE_REPO} local-clone repo
-    for branch in base dev; do
-        rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
-        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
-        ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
-    done
-    cd ..
-
-    mkdir proc # needed for ostree-init
-    cp -a ./ostree/${BRANCH_PREFIX}base-current/usr/sbin/ostree-init .
-
-    cd ${WORKDIR}
-    
-    umount fs
-    rmdir fs
     mv ${OBJ}.tmp ${OBJ}
 fi
+
+mkdir -p fs
+umount fs || true
+sleep 1 # Avoid Linux kernel bug, pretty sure it's the new RCU pathname lookup
+mount -o loop gnomeos-fs.img fs
+
+cd fs
+
+TOPROOT_BIND_MOUNTS="home root tmp"
+
+for d in $TOPROOT_BIND_MOUNTS; do
+    if ! test -d $d; then
+        mkdir -m 0755 $d
+    fi
+done
+chmod a=rwxt tmp
+
+if ! test -d ostree; then
+    mkdir ostree
+    mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
+    mkdir ostree/repo
+    ostree --repo=ostree/repo init
+fi
+cd ostree
+ostree --repo=${OSTREE_REPO} local-clone repo
+for branch in base dev; do
+    rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
+    if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
+        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
+    fi
+    ln -sf ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
+done
+cd ..
+
+test -d proc || mkdir proc # needed for ostree-init
+cp -a ./ostree/${BRANCH_PREFIX}base-current/usr/sbin/ostree-init .
+
+cd ${WORKDIR}
+
+umount fs
+rmdir fs
 
 ARGS="$@"
 if ! echo $ARGS | grep -q 'init='; then
