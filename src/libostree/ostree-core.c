@@ -584,7 +584,7 @@ ostree_pack_file_for_input (GOutputStream     *output,
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
 
-  g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs);
+  g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
   if (S_ISREG (mode))
     {
@@ -605,7 +605,11 @@ ostree_pack_file_for_input (GOutputStream     *output,
       object_size = 0;
     }
   else
-    g_assert_not_reached ();
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid mode %u", mode);
+      goto out;
+    }
 
   g_variant_builder_add (&pack_builder, "t", GUINT64_TO_BE (object_size));
   pack_variant = g_variant_builder_end (&pack_builder);
