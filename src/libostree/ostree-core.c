@@ -663,6 +663,8 @@ ostree_pack_file_for_input (GOutputStream     *output,
     }
   else if (S_ISFIFO (mode))
     {
+      if (out_checksum)
+        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
     }
   else
     g_assert_not_reached ();
