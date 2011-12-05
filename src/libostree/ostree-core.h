@@ -110,6 +110,14 @@ gboolean ostree_parse_metadata_file (GFile                       *file,
                                      GVariant                   **out_variant,
                                      GError                     **error);
 
+gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
+                                          GVariant         *xattrs,
+                                          GInputStream     *in,
+                                          OstreeObjectType objtype,
+                                          GChecksum       **out_checksum,
+                                          GCancellable     *cancellable,
+                                          GError          **error);
+
 gboolean ostree_checksum_file (GFile             *f,
                                OstreeObjectType   type,
                                GChecksum        **out_checksum,

@@ -181,8 +181,8 @@ ostree_get_xattrs_for_file (GFile      *f,
 }
 
 static gboolean
-checksum_directory (GFile          *f,
-                    GFileInfo      *f_info,
+checksum_directory (GFileInfo      *f_info,
+                    GVariant       *xattrs,
                     GChecksum     **out_checksum,
                     GCancellable   *cancellable,
                     GError        **error)
@@ -190,12 +190,7 @@ checksum_directory (GFile          *f,
   gboolean ret = FALSE;
   GVariant *dirmeta = NULL;
   GVariant *packed = NULL;
-  GVariant *xattrs = NULL;
   GChecksum *ret_checksum = NULL;
-
-  xattrs = ostree_get_xattrs_for_file (f, error);
-  if (!xattrs)
-    goto out;
 
   dirmeta = ostree_create_directory_metadata (f_info, xattrs);
   packed = ostree_wrap_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
@@ -205,7 +200,6 @@ checksum_directory (GFile          *f,
 
   ret = TRUE;
   ot_transfer_out_value(out_checksum, ret_checksum);
- out:
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   ot_clear_gvariant (&packed);
@@ -214,39 +208,19 @@ checksum_directory (GFile          *f,
 }
 
 static gboolean
-checksum_nondirectory (GFile            *f,
-                       GFileInfo        *file_info,
+checksum_nondirectory (GFileInfo        *file_info,
+                       GVariant         *xattrs,
+                       GInputStream     *input,
                        OstreeObjectType objtype,
                        GChecksum       **out_checksum,
                        GCancellable     *cancellable,
                        GError          **error)
 {
   gboolean ret = FALSE;
-  const char *path = NULL;
   GChecksum *content_sha256 = NULL;
   GChecksum *content_and_meta_sha256 = NULL;
   ssize_t bytes_read;
-  GVariant *xattrs = NULL;
-  char *basename = NULL;
-  GInputStream *input = NULL;
   guint32 unix_mode;
-
-  path = ot_gfile_get_path_cached (f);
-  basename = g_path_get_basename (path);
-
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    {
-      input = (GInputStream*)g_file_read (f, cancellable, error);
-      if (!input)
-        goto out;
-    }
-
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
-    {
-      xattrs = ostree_get_xattrs_for_file (f, error);
-      if (!xattrs)
-        goto out;
-    }
 
   content_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
 
@@ -285,8 +259,7 @@ checksum_nondirectory (GFile            *f,
     {
       g_set_error (error, G_IO_ERROR,
                    G_IO_ERROR_FAILED,
-                   "Unsupported file '%s' (must be regular, symbolic link, fifo, or character/block device)",
-                   path);
+                   "Unsupported file (must be regular, symbolic link, fifo, or character/block device)");
       goto out;
     }
 
@@ -298,18 +271,37 @@ checksum_nondirectory (GFile            *f,
                                    g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                                    g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                                    g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-      g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+      /* FIXME - ensure empty xattrs are the same as NULL xattrs */
+      if (xattrs)
+        g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
 
   ot_transfer_out_value(out_checksum, content_and_meta_sha256);
   ret = TRUE;
  out:
-  g_clear_object (&input);
-  g_free (basename);
-  ot_clear_gvariant (&xattrs);
   ot_clear_checksum (&content_sha256);
   ot_clear_checksum (&content_and_meta_sha256);
   return ret;
+}
+
+gboolean
+ostree_checksum_file_from_input (GFileInfo        *file_info,
+                                 GVariant         *xattrs,
+                                 GInputStream     *in,
+                                 OstreeObjectType objtype,
+                                 GChecksum       **out_checksum,
+                                 GCancellable     *cancellable,
+                                 GError          **error)
+{
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+    {
+      return checksum_directory (file_info, xattrs, out_checksum, cancellable, error);
+    }
+  else
+    {
+      return checksum_nondirectory (file_info, xattrs, in, objtype,
+                                    out_checksum, cancellable, error);
+    }
 }
 
 gboolean
@@ -322,6 +314,8 @@ ostree_checksum_file (GFile            *f,
   gboolean ret = FALSE;
   GFileInfo *file_info = NULL;
   GChecksum *ret_checksum = NULL;
+  GInputStream *in = NULL;
+  GVariant *xattrs = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -332,22 +326,31 @@ ostree_checksum_file (GFile            *f,
   if (!file_info)
     goto out;
 
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      if (!checksum_directory (f, file_info, &ret_checksum, cancellable, error))
+      in = (GInputStream*)g_file_read (f, cancellable, error);
+      if (!in)
         goto out;
     }
-  else
+
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!checksum_nondirectory (f, file_info, objtype, &ret_checksum, cancellable, error))
+      xattrs = ostree_get_xattrs_for_file (f, error);
+      if (!xattrs)
         goto out;
     }
+
+  if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
+                                        &ret_checksum, cancellable, error))
+    goto out;
 
   ret = TRUE;
   ot_transfer_out_value(out_checksum, ret_checksum);
  out:
   g_clear_object (&file_info);
+  g_clear_object (&in);
   ot_clear_checksum(&ret_checksum);
+  ot_clear_gvariant(&xattrs);
   return ret;
 }
 
