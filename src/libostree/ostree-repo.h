@@ -82,8 +82,6 @@ gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
                                                 GFile        *file,
                                                 const char   *checksum,
                                                 OstreeObjectType objtype,
-                                                gboolean      overwrite,
-                                                gboolean     *did_exist,
                                                 GCancellable *cancellable,
                                                 GError      **error);
 

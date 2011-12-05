@@ -94,29 +94,16 @@ object_iter_callback (OstreeRepo   *repo,
                       gpointer      user_data)
 {
   OtLocalCloneData *data = user_data;
-  GFile *dest = NULL;
   GError *error = NULL;
-  GFile *tmpdir = NULL;
   gboolean did_exist;
 
-  if ((objtype == OSTREE_OBJECT_TYPE_FILE
-       && ostree_repo_is_archive (data->src_repo))
-       || data->uids_differ)
+  if (ostree_repo_is_archive (data->src_repo))
     {
-      tmpdir = ostree_repo_get_tmpdir (data->dest_repo);
-      dest = g_file_get_child (tmpdir, checksum);
-
-      if (!ostree_unpack_object (objfile, objtype,
-                                 dest, NULL, &error))
-        goto out;
-      if (!ostree_repo_store_object_trusted (data->dest_repo,
-                                             dest, 
-                                             checksum,
-                                             objtype,
-                                             FALSE,
-                                             &did_exist,
-                                             NULL,
-                                             &error))
+      if (!ostree_repo_store_packfile (data->dest_repo, checksum,
+                                       ot_gfile_get_path_cached (objfile),
+                                       objtype,
+                                       &did_exist,
+                                       &error))
         goto out;
     }
   else
@@ -125,17 +112,12 @@ object_iter_callback (OstreeRepo   *repo,
                                              objfile, 
                                              checksum,
                                              objtype,
-                                             FALSE,
-                                             &did_exist,
                                              NULL,
                                              &error))
         goto out;
     }
 
  out:
-  if (dest)
-    (void) unlink (ot_gfile_get_path_cached (dest));
-  g_clear_object (&dest);
   if (error != NULL)
     {
       g_printerr ("%s\n", error->message);
