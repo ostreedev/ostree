@@ -921,34 +921,23 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
 }
 
 static gboolean
-ostree_repo_store_file (OstreeRepo         *self,
-                        GFile              *file,
-                        GFileInfo          *file_info,
-                        GChecksum         **out_checksum,
-                        gboolean           *did_exist,
-                        GCancellable       *cancellable,
-                        GError            **error)
+ostree_repo_store_file_from_input (OstreeRepo         *self,
+                                   GFileInfo          *file_info,
+                                   GVariant           *xattrs,
+                                   GInputStream       *input,
+                                   GChecksum         **out_checksum,
+                                   gboolean           *did_exist,
+                                   GCancellable       *cancellable,
+                                   GError            **error)
 {
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GVariant *xattrs = NULL;
-  GInputStream *input = NULL;
   GOutputStream *temp_out = NULL;
   GChecksum *ret_checksum = NULL;
   GFile *temp_file = NULL;
 
-  if (priv->archive && g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+  if (priv->archive)
     {
-       /* Avoid reading the input data twice for regular files in the
-          archive case */
-      input = (GInputStream*)g_file_read (file, cancellable, error);
-      if (input == NULL)
-        goto out;
-
-      xattrs = ostree_get_xattrs_for_file (file, error);
-      if (!xattrs)
-        goto out;
-      
       if (!ostree_create_temp_regular_file (priv->tmp_dir,
                                             "archive-tmp-", NULL,
                                             &temp_file, &temp_out,
@@ -961,23 +950,23 @@ ostree_repo_store_file (OstreeRepo         *self,
 
       if (!g_output_stream_close (temp_out, cancellable, error))
         goto out;
-
-      if (!link_object_trusted (self, temp_file,
-                                g_checksum_get_string (ret_checksum),
-                                OSTREE_OBJECT_TYPE_FILE, FALSE, did_exist,
-                                cancellable, error))
-        goto out;
     }
   else
     {
-      if (!ostree_checksum_file (file, OSTREE_OBJECT_TYPE_FILE, &ret_checksum, cancellable, error))
-        goto out;
-      
-      if (!ostree_repo_store_object_trusted (self, file, g_checksum_get_string (ret_checksum),
-                                             OSTREE_OBJECT_TYPE_FILE, FALSE, did_exist,
-                                             cancellable, error))
+      if (!ostree_create_temp_file_from_input (priv->tmp_dir,
+                                               "store-tmp-", NULL,
+                                               file_info, xattrs, input,
+                                               OSTREE_OBJECT_TYPE_FILE,
+                                               &temp_file, &ret_checksum,
+                                               cancellable, error))
         goto out;
     }
+
+  if (!link_object_trusted (self, temp_file,
+                            g_checksum_get_string (ret_checksum),
+                            OSTREE_OBJECT_TYPE_FILE, FALSE, did_exist,
+                            cancellable, error))
+    goto out;
 
   ret = TRUE;
   ot_transfer_out_value(out_checksum, ret_checksum);
@@ -986,9 +975,7 @@ ostree_repo_store_file (OstreeRepo         *self,
     (void) unlink (ot_gfile_get_path_cached (temp_file));
   g_clear_object (&temp_file);
   g_clear_object (&temp_out);
-  g_clear_object (&input);
   ot_clear_checksum (&ret_checksum);
-  ot_clear_gvariant (&xattrs);
   return ret;
 }
 
@@ -1212,8 +1199,9 @@ import_directory_recurse (OstreeRepo           *self,
   GHashTable *dir_contents_checksums = NULL;
   GChecksum *child_file_checksum = NULL;
   gboolean did_exist;
-  GVariant *dir_xattrs = NULL;
+  GVariant *xattrs = NULL;
   GVariant *serialized_tree = NULL;
+  GInputStream *file_input = NULL;
 
   child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                   G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1221,11 +1209,11 @@ import_directory_recurse (OstreeRepo           *self,
   if (!child_info)
     goto out;
 
-  dir_xattrs = ostree_get_xattrs_for_file (dir, error);
-  if (!dir_xattrs)
+  xattrs = ostree_get_xattrs_for_file (dir, error);
+  if (!xattrs)
     goto out;
 
-  if (!import_directory_meta (self, child_info, dir_xattrs, &ret_metadata_checksum, cancellable, error))
+  if (!import_directory_meta (self, child_info, xattrs, &ret_metadata_checksum, cancellable, error))
     goto out;
   
   g_clear_object (&child_info);
@@ -1270,8 +1258,22 @@ import_directory_recurse (OstreeRepo           *self,
       else
         {
           ot_clear_checksum (&child_file_checksum);
+          ot_clear_gvariant (&xattrs);
+          g_clear_object (&file_input);
 
-          if (!ostree_repo_store_file (self, child, child_info, &child_file_checksum, &did_exist, cancellable, error))
+          if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_REGULAR)
+            {
+              file_input = (GInputStream*)g_file_read (child, cancellable, error);
+              if (!file_input)
+                goto out;
+            }
+
+          xattrs = ostree_get_xattrs_for_file (child, error);
+          if (!xattrs)
+            goto out;
+
+          if (!ostree_repo_store_file_from_input (self, child_info, xattrs, file_input,
+                                                  &child_file_checksum, &did_exist, cancellable, error))
             goto out;
 
           g_hash_table_replace (file_checksums, g_strdup (name),
@@ -1302,6 +1304,7 @@ import_directory_recurse (OstreeRepo           *self,
   g_clear_object (&dir_enum);
   g_clear_object (&child);
   g_clear_object (&child_info);
+  g_clear_object (&file_input);
   if (file_checksums)
     g_hash_table_destroy (file_checksums);
   if (dir_metadata_checksums)
@@ -1312,6 +1315,7 @@ import_directory_recurse (OstreeRepo           *self,
   ot_clear_checksum (&ret_contents_checksum);
   ot_clear_checksum (&child_file_checksum);
   ot_clear_gvariant (&serialized_tree);
+  ot_clear_gvariant (&xattrs);
   return ret;
 }
 
@@ -1408,60 +1412,6 @@ file_info_from_archive_entry (struct archive_entry  *entry)
 }
 
 static gboolean
-import_libarchive_entry_file_to_packed (OstreeRepo           *self,
-                                        struct archive       *a,
-                                        struct archive_entry *entry,
-                                        GFileInfo            *file_info,
-                                        GChecksum           **out_checksum,
-                                        GCancellable         *cancellable,
-                                        GError              **error)
-{
-  gboolean ret = FALSE;
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GFile *temp_file = NULL;
-  GInputStream *archive_stream = NULL;
-  GOutputStream *temp_out = NULL;
-  GChecksum *ret_checksum = NULL;
-  gboolean did_exist;
-  
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return FALSE;
-
-  if (!ostree_create_temp_regular_file (priv->tmp_dir,
-                                        "archive-tmp-", NULL,
-                                        &temp_file, &temp_out,
-                                        cancellable, error))
-        goto out;
-  
-  if (S_ISREG (g_file_info_get_attribute_uint32 (file_info, "unix::mode")))
-    archive_stream = ostree_libarchive_input_stream_new (a);
-      
-  if (!ostree_pack_file_for_input (temp_out, file_info, archive_stream, 
-                                   NULL, &ret_checksum, cancellable, error))
-    goto out;
-
-  if (!g_output_stream_close (temp_out, cancellable, error))
-    goto out;
-  
-  if (!link_object_trusted (self, temp_file, g_checksum_get_string (ret_checksum),
-                            OSTREE_OBJECT_TYPE_FILE,
-                            FALSE, &did_exist, cancellable, error))
-    goto out;
-
-  ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
- out:
-  if (temp_file)
-    (void) unlink (ot_gfile_get_path_cached (temp_file));
-  g_clear_object (&temp_file);
-  g_clear_object (&temp_out);
-  g_clear_object (&archive_stream);
-  ot_clear_checksum (&ret_checksum);
-  return ret;
-}
-
-static gboolean
 import_libarchive_entry_file (OstreeRepo           *self,
                               struct archive       *a,
                               struct archive_entry *entry,
@@ -1471,37 +1421,23 @@ import_libarchive_entry_file (OstreeRepo           *self,
                               GError              **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GFile *temp_file = NULL;
   GInputStream *archive_stream = NULL;
   GChecksum *ret_checksum = NULL;
   gboolean did_exist;
-  guint32 mode;
   
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  if (S_ISREG (mode))
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     archive_stream = ostree_libarchive_input_stream_new (a);
   
-  if (!ostree_create_temp_file_from_input (priv->tmp_dir, "file-", NULL,
-                                           file_info, NULL, archive_stream, 
-                                           OSTREE_OBJECT_TYPE_FILE, &temp_file,
-                                           &ret_checksum, cancellable, error))
-    goto out;
-  
-  if (!link_object_trusted (self, temp_file, g_checksum_get_string (ret_checksum),
-                            OSTREE_OBJECT_TYPE_FILE, FALSE, &did_exist,
-                            cancellable, error))
+  if (!ostree_repo_store_file_from_input (self, file_info, NULL, archive_stream,
+                                          &ret_checksum, &did_exist, cancellable, error))
     goto out;
 
   ret = TRUE;
   ot_transfer_out_value(out_checksum, ret_checksum);
  out:
-  if (temp_file)
-    (void) unlink (ot_gfile_get_path_cached (temp_file));
-  g_clear_object (&temp_file);
   g_clear_object (&archive_stream);
   ot_clear_checksum (&ret_checksum);
   return ret;
@@ -1644,7 +1580,6 @@ import_libarchive (OstreeRepo           *self,
 {
   gboolean ret = FALSE;
   int r;
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
   char *ret_contents_checksum = NULL;
   char *ret_metadata_checksum = NULL;
   struct archive *a;
@@ -1818,16 +1753,8 @@ import_libarchive (OstreeRepo           *self,
               goto out;
             }
 
-          if (priv->archive)
-            {
-              if (!import_libarchive_entry_file_to_packed (self, a, entry, file_info, &tmp_checksum, cancellable, error))
-                goto out;
-            }
-          else
-            {
-              if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_checksum, cancellable, error))
-                goto out;
-            }
+          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_checksum, cancellable, error))
+            goto out;
 
           if (parent == NULL)
             {
