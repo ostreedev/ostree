@@ -2,6 +2,11 @@
  *
  * user-chroot: A setuid program that allows non-root users to safely chroot(2)
  *
+ * "safely": I believe that this program, when deployed as setuid on a
+ * typical "distribution" such as RHEL or Debian, does not, even when
+ * used in combination with typical software installed on that
+ * distribution, allow privilege escalation.
+ *
  * Copyright 2011 Colin Walters <walters@verbum.org>
  *
  * This program is free software; you can redistribute it and/or modify
