@@ -136,8 +136,8 @@ main (int      argc,
    * totally correct because the targets for our bind mounts may still
    * be shared, but really, Fedora's sandbox is broken.
    */
-  if (mount ("/", "/", "none", MS_PRIVATE, NULL) < 0)
-    fatal_errno ("mount(/, MS_PRIVATE)");
+  if (mount ("/", "/", "none", MS_PRIVATE | MS_REC, NULL) < 0)
+    fatal_errno ("mount(/, MS_PRIVATE | MS_REC)");
 
   /* Now let's set up our bind mounts */
   for (i = 0; i < after_bind_arg_index; i += 3)
