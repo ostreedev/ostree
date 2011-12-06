@@ -98,6 +98,9 @@ main (int      argc,
   if (unshare (CLONE_NEWNS) < 0)
     fatal_errno ("unshare (CLONE_NEWNS)");
 
+  if (mount ("/", "/", "none", MS_PRIVATE, NULL) < 0)
+    fatal_errno ("mount(/, MS_PRIVATE)");
+
   initialize_chroot (chroot_dir);
 
   if (chroot (chroot_dir) < 0)
