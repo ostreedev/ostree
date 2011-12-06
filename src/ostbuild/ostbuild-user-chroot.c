@@ -24,10 +24,15 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/prctl.h>
+#include <sys/mount.h>
 #include <linux/securebits.h>
+#include <sched.h>
+
+typedef unsigned int bool;
 
 static void
 fatal_errno (const char *message) __attribute__ ((noreturn));
@@ -37,6 +42,22 @@ fatal_errno (const char *message)
 {
   perror (message);
   exit (1);
+}
+
+static void
+initialize_chroot (const char *path)
+{
+  char *subpath;
+
+  asprintf (&subpath, "%s/proc", path);
+  if (mount ("/proc", subpath, NULL, MS_BIND, NULL) < 0)
+    fatal_errno ("bind mounting proc");
+  free (subpath);
+  
+  asprintf (&subpath, "%s/dev", path);
+  if (mount ("/dev", subpath, NULL, MS_BIND, NULL) < 0)
+    fatal_errno ("bind mounting dev");
+  free (subpath);
 }
 
 int
@@ -73,6 +94,11 @@ main (int      argc,
   if (prctl (PR_SET_SECUREBITS,
 	     SECBIT_NOROOT | SECBIT_NOROOT_LOCKED) < 0)
     fatal_errno ("prctl");
+
+  if (unshare (CLONE_NEWNS) < 0)
+    fatal_errno ("unshare (CLONE_NEWNS)");
+
+  initialize_chroot (chroot_dir);
 
   if (chroot (chroot_dir) < 0)
     fatal_errno ("chroot");
