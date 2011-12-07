@@ -724,40 +724,6 @@ ostree_pack_file (GOutputStream     *output,
   return ret;
 }
 
-static gboolean
-unpack_meta (GFile        *file,
-             GFile        *dest_file,    
-             GChecksum   **out_checksum,
-             GError      **error)
-{
-  gboolean ret = FALSE;
-  GFileInputStream *in = NULL;
-  GChecksum *ret_checksum = NULL;
-  GFileOutputStream *out = NULL;
-
-  in = g_file_read (file, NULL, error);
-  if (!in)
-    goto out;
-
-  out = g_file_replace (dest_file, NULL, FALSE, 0, NULL, error);
-  if (!out)
-    goto out;
-
-  if (!ot_gio_splice_and_checksum ((GOutputStream*)out, (GInputStream*)in,
-                                   out_checksum ? &ret_checksum : NULL, NULL, error))
-    goto out;
-
-  if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
-    goto out;
-
-  ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
- out:
-  ot_clear_checksum (&ret_checksum);
-  g_clear_object (&in);
-  return ret;
-}
-
 gboolean
 ostree_parse_packed_file (GFile            *file,
                           GFileInfo       **out_file_info,
@@ -1180,51 +1146,4 @@ ostree_create_temp_regular_file (GFile            *dir,
   g_clear_object (&ret_file);
   g_clear_object (&ret_stream);
   return ret;
-}
-
-static gboolean
-unpack_file (GFile        *file,
-             GFile        *dest_file,    
-             GChecksum   **out_checksum,
-             GCancellable *cancellable,
-             GError      **error)
-{
-  gboolean ret = FALSE;
-  GFileInfo *finfo;
-  GVariant *metadata = NULL;
-  GVariant *xattrs = NULL;
-  GInputStream *in = NULL;
-  GChecksum *ret_checksum = NULL;
-
-  if (!ostree_parse_packed_file (file, &finfo, &xattrs, &in, cancellable, error))
-    goto out;
-
-  if (!ostree_create_file_from_input (dest_file, finfo, xattrs, in,
-                                      OSTREE_OBJECT_TYPE_FILE,
-                                      out_checksum ? &ret_checksum : NULL,
-                                      cancellable, error))
-    goto out;
-
-  ret = TRUE;
-  ot_transfer_out_value (out_checksum, ret_checksum);
- out:
-  g_clear_object (&finfo);
-  g_clear_object (&in);
-  ot_clear_gvariant (&xattrs);
-  ot_clear_gvariant (&metadata);
-  ot_clear_checksum (&ret_checksum);
-  return ret;
-}
-
-gboolean
-ostree_unpack_object (GFile            *file,
-                      OstreeObjectType  objtype,
-                      GFile            *dest,
-                      GChecksum       **out_checksum,
-                      GError          **error)
-{
-  if (objtype == OSTREE_OBJECT_TYPE_META)
-    return unpack_meta (file, dest, out_checksum, error);
-  else
-    return unpack_file (file, dest, out_checksum, NULL, error);
 }

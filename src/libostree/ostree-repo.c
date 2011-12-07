@@ -2027,6 +2027,8 @@ checkout_tree (OstreeRepo    *self,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   GFileInfo *file_info = NULL;
+  GInputStream *packed_input = NULL;
+  GVariant *packed_xattrs = NULL;
   GFileEnumerator *dir_enum = NULL;
   GFile *destination_f = NULL;
   GFile *child = NULL;
@@ -2066,7 +2068,15 @@ checkout_tree (OstreeRepo    *self,
 
           if (priv->archive)
             {
-              if (!ostree_unpack_object (object_path, OSTREE_OBJECT_TYPE_FILE, dest_path, NULL, error))
+              if (!ostree_parse_packed_file (object_path, NULL, &packed_xattrs, &packed_input,
+                                             cancellable, error))
+                goto out;
+
+              if (!ostree_create_file_from_input (dest_path, file_info, packed_xattrs,
+                                                  packed_input,
+                                                  OSTREE_OBJECT_TYPE_FILE,
+                                                  NULL,
+                                                  cancellable, error))
                 goto out;
             }
           else
@@ -2094,6 +2104,8 @@ checkout_tree (OstreeRepo    *self,
  out:
   g_clear_object (&dir_enum);
   g_clear_object (&file_info);
+  g_clear_object (&packed_input);
+  ot_clear_gvariant (&packed_xattrs);
   g_clear_object (&child);
   g_clear_object (&object_path);
   g_clear_object (&dest_path);
