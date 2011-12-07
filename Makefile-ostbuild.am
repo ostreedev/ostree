@@ -19,3 +19,9 @@ bin_SCRIPTS += src/ostbuild/ostbuild-compile-one \
 	src/ostbuild/ostbuild-compile-one-impl \
 	src/ostbuild/ostbuild-nice-and-log-output \
 	$(NULL)
+
+bin_PROGRAMS += src/ostbuild/ostbuild-user-chroot
+
+ostbuild_user_chroot_SOURCES = src/ostbuild/ostbuild-user-chroot.c
+ostbuild_user_chroot_CFLAGS = $(AM_CFLAGS)
+
