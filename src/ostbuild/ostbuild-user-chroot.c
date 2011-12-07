@@ -106,6 +106,8 @@ main (int      argc,
   char **program_argv;
   BindMount *bind_mounts = NULL;
   BindMount *bind_mount_iter;
+  int unshare_ipc = 0;
+  int unshare_flags = 0;
 
   if (argc <= 0)
     return 1;
@@ -157,6 +159,11 @@ main (int      argc,
           bind_mounts = mount;
           after_mount_arg_index += 2;
         }
+      else if (strcmp (arg, "--unshare-ipc") == 0)
+        {
+          unshare_ipc = 1;
+          after_mount_arg_index += 1;
+        }
       else
         break;
     }
@@ -164,7 +171,7 @@ main (int      argc,
   bind_mounts = reverse_bind_mount_list (bind_mounts);
 
   if ((argc - after_mount_arg_index) < 2)
-    fatal ("usage: %s [--mount-readonly DIR] [--mount-bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
+    fatal ("usage: %s [--unshare-ipc] [--unshare-pid] [--mount-readonly DIR] [--mount-bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
   chroot_dir = argv[after_mount_arg_index];
   program = argv[after_mount_arg_index+1];
   program_argv = argv + after_mount_arg_index + 1;
@@ -196,8 +203,11 @@ main (int      argc,
    * affecting our children, not the entire system.  This way it's
    * harmless to bind mount e.g. /proc over an arbitrary directory.
    */
-  if (unshare (CLONE_NEWNS) < 0)
-    fatal_errno ("unshare (CLONE_NEWNS)");
+  unshare_flags = CLONE_NEWNS;
+  if (unshare_ipc)
+    unshare_flags |= CLONE_NEWIPC | CLONE_NEWUTS;
+  if (unshare (unshare_flags) < 0)
+    fatal_errno ("unshare");
 
   /* This is necessary to undo the damage "sandbox" creates on Fedora
    * by making / a shared mount instead of private.  This isn't
