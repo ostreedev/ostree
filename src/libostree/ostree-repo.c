@@ -1995,16 +1995,14 @@ checkout_one_directory (OstreeRepo  *self,
   if (!_ostree_repo_file_get_xattrs (dir, &xattr_variant, NULL, error))
     goto out;
 
-  if (mkdir (dest_path, (mode_t)g_file_info_get_attribute_uint32 (dir_info, "unix::mode")) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      g_prefix_error (error, "Failed to create directory '%s': ", dest_path);
-      goto out;
-    }
-
-  if (!ostree_set_xattrs (dest_file, xattr_variant, cancellable, error))
+  if (!ostree_create_file_from_input (dest_file, dir_info,
+                                      xattr_variant,
+                                      NULL,
+                                      OSTREE_OBJECT_TYPE_FILE,
+                                      NULL,
+                                      cancellable, error))
     goto out;
-      
+
   if (!checkout_tree (self, dir, dest_path, cancellable, error))
     goto out;
 

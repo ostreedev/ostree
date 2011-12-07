@@ -884,7 +884,16 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   dest_path = ot_gfile_get_path_cached (dest_file);
 
-  if (S_ISREG (mode))
+  if (S_ISDIR (mode))
+    {
+      if (mkdir (ot_gfile_get_path_cached (dest_file),
+                 g_file_info_get_attribute_uint32 (finfo, "unix::mode")) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISREG (mode))
     {
       out = g_file_create (dest_file, 0, cancellable, error);
       if (!out)
