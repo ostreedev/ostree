@@ -65,6 +65,32 @@ fatal_errno (const char *message)
   exit (1);
 }
 
+typedef struct _BindMount BindMount;
+struct _BindMount {
+  const char *source;
+  const char *dest;
+
+  unsigned int readonly;
+
+  BindMount *next;
+};
+
+static BindMount *
+reverse_bind_mount_list (BindMount *mount)
+{
+  BindMount *prev = NULL;
+
+  while (mount)
+    {
+      BindMount *next = mount->next;
+      mount->next = prev;
+      prev = mount;
+      mount = next;
+    }
+
+  return prev;
+}
+
 int
 main (int      argc,
       char   **argv)
@@ -74,10 +100,12 @@ main (int      argc,
   const char *program;
   uid_t ruid, euid, suid;
   gid_t rgid, egid, sgid;
-  int after_bind_arg_index;
-  int i;
+  int after_mount_arg_index;
+  unsigned int n_mounts = 0;
+  const unsigned int max_mounts = 50; /* Totally arbitrary... */
   char **program_argv;
-  char **argv_iter;
+  BindMount *bind_mounts = NULL;
+  BindMount *bind_mount_iter;
 
   if (argc <= 0)
     return 1;
@@ -89,22 +117,57 @@ main (int      argc,
   if (argc < 1)
     fatal ("ROOTDIR argument must be specified");
 
-  after_bind_arg_index = 0;
-  argv_iter = argv;
-  while (after_bind_arg_index < argc
-         && strcmp (argv[after_bind_arg_index], "--bind") == 0)
+  after_mount_arg_index = 0;
+  while (after_mount_arg_index < argc)
     {
-      if ((argc - after_bind_arg_index) < 3)
-        fatal ("--bind takes two arguments");
-      after_bind_arg_index += 3;
-      argv_iter += 3;
-    }
+      const char *arg = argv[after_mount_arg_index];
+      BindMount *mount = NULL;
 
-  if ((argc - after_bind_arg_index) < 2)
-    fatal ("usage: %s [--bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
-  chroot_dir = argv[after_bind_arg_index];
-  program = argv[after_bind_arg_index+1];
-  program_argv = argv + after_bind_arg_index + 1;
+      if (n_mounts >= max_mounts)
+        fatal ("Too many mounts (maximum of %u)", n_mounts);
+      n_mounts++;
+
+      if (strcmp (arg, "--mount-bind") == 0)
+        {
+          if ((argc - after_mount_arg_index) < 3)
+            fatal ("--mount-bind takes two arguments");
+
+          mount = malloc (sizeof (BindMount));
+          mount->source = argv[after_mount_arg_index+1];
+          mount->dest = argv[after_mount_arg_index+2];
+          mount->readonly = 0;
+          mount->next = bind_mounts;
+          
+          bind_mounts = mount;
+          after_mount_arg_index += 3;
+        }
+      else if (strcmp (arg, "--mount-readonly") == 0)
+        {
+          BindMount *mount;
+
+          if ((argc - after_mount_arg_index) < 2)
+            fatal ("--mount-readonly takes one argument");
+
+          mount = malloc (sizeof (BindMount));
+          mount->source = NULL;
+          mount->dest = argv[after_mount_arg_index+1];
+          mount->readonly = 1;
+          mount->next = bind_mounts;
+          
+          bind_mounts = mount;
+          after_mount_arg_index += 2;
+        }
+      else
+        break;
+    }
+        
+  bind_mounts = reverse_bind_mount_list (bind_mounts);
+
+  if ((argc - after_mount_arg_index) < 2)
+    fatal ("usage: %s [--mount-readonly DIR] [--mount-bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
+  chroot_dir = argv[after_mount_arg_index];
+  program = argv[after_mount_arg_index+1];
+  program_argv = argv + after_mount_arg_index + 1;
 
   if (getresgid (&rgid, &egid, &sgid) < 0)
     fatal_errno ("getresgid");
@@ -145,19 +208,29 @@ main (int      argc,
     fatal_errno ("mount(/, MS_PRIVATE | MS_REC)");
 
   /* Now let's set up our bind mounts */
-  for (i = 0; i < after_bind_arg_index; i += 3)
+  for (bind_mount_iter = bind_mounts; bind_mount_iter; bind_mount_iter = bind_mount_iter->next)
     {
-      const char *bind_arg = argv[0]; /* --bind */
-      const char *bind_source = argv[i+1];
-      const char *bind_target = argv[i+2];
-      char *bind_abs_target;
+      char *dest;
 
-      assert (strcmp (bind_arg, "--bind") == 0);
+      asprintf (&dest, "%s%s", chroot_dir, bind_mount_iter->dest);
 
-      asprintf (&bind_abs_target, "%s%s", chroot_dir, bind_target);
-      if (mount (bind_source, bind_abs_target, NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
-        fatal_errno ("mount (MS_BIND)");
-      free (bind_abs_target);
+      if (bind_mount_iter->readonly)
+        {
+          if (mount (dest, dest,
+                     NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
+            fatal_errno ("mount (MS_BIND)");
+          if (mount (dest, dest,
+                     NULL, MS_BIND | MS_PRIVATE | MS_REMOUNT | MS_RDONLY, NULL) < 0)
+            fatal_errno ("mount (MS_BIND | MS_RDONLY)");
+        }
+      else
+        {
+
+          if (mount (bind_mount_iter->source, dest,
+                     NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
+            fatal_errno ("mount (MS_BIND)");
+        }
+      free (dest);
     }
 
   /* Actually perform the chroot. */
