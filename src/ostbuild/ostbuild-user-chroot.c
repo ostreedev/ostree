@@ -37,6 +37,8 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <sys/mount.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
 #include <linux/securebits.h>
 #include <sched.h>
 
@@ -65,24 +67,30 @@ fatal_errno (const char *message)
   exit (1);
 }
 
-typedef struct _BindMount BindMount;
-struct _BindMount {
+typedef enum {
+  MOUNT_SPEC_BIND,
+  MOUNT_SPEC_READONLY,
+  MOUNT_SPEC_PROCFS
+} MountSpecType;
+
+typedef struct _MountSpec MountSpec;
+struct _MountSpec {
+  MountSpecType type;
+
   const char *source;
   const char *dest;
-
-  unsigned int readonly;
-
-  BindMount *next;
+  
+  MountSpec *next;
 };
 
-static BindMount *
-reverse_bind_mount_list (BindMount *mount)
+static MountSpec *
+reverse_mount_list (MountSpec *mount)
 {
-  BindMount *prev = NULL;
+  MountSpec *prev = NULL;
 
   while (mount)
     {
-      BindMount *next = mount->next;
+      MountSpec *next = mount->next;
       mount->next = prev;
       prev = mount;
       mount = next;
@@ -104,10 +112,14 @@ main (int      argc,
   unsigned int n_mounts = 0;
   const unsigned int max_mounts = 50; /* Totally arbitrary... */
   char **program_argv;
-  BindMount *bind_mounts = NULL;
-  BindMount *bind_mount_iter;
+  MountSpec *bind_mounts = NULL;
+  MountSpec *bind_mount_iter;
   int unshare_ipc = 0;
-  int unshare_flags = 0;
+  int unshare_net = 0;
+  int unshare_pid = 0;
+  int clone_flags = 0;
+  int child_status = 0;
+  pid_t child;
 
   if (argc <= 0)
     return 1;
@@ -123,7 +135,7 @@ main (int      argc,
   while (after_mount_arg_index < argc)
     {
       const char *arg = argv[after_mount_arg_index];
-      BindMount *mount = NULL;
+      MountSpec *mount = NULL;
 
       if (n_mounts >= max_mounts)
         fatal ("Too many mounts (maximum of %u)", n_mounts);
@@ -134,10 +146,10 @@ main (int      argc,
           if ((argc - after_mount_arg_index) < 3)
             fatal ("--mount-bind takes two arguments");
 
-          mount = malloc (sizeof (BindMount));
+          mount = malloc (sizeof (MountSpec));
+          mount->type = MOUNT_SPEC_BIND;
           mount->source = argv[after_mount_arg_index+1];
           mount->dest = argv[after_mount_arg_index+2];
-          mount->readonly = 0;
           mount->next = bind_mounts;
           
           bind_mounts = mount;
@@ -145,15 +157,31 @@ main (int      argc,
         }
       else if (strcmp (arg, "--mount-readonly") == 0)
         {
-          BindMount *mount;
+          MountSpec *mount;
 
           if ((argc - after_mount_arg_index) < 2)
             fatal ("--mount-readonly takes one argument");
 
-          mount = malloc (sizeof (BindMount));
+          mount = malloc (sizeof (MountSpec));
+          mount->type = MOUNT_SPEC_READONLY;
           mount->source = NULL;
           mount->dest = argv[after_mount_arg_index+1];
-          mount->readonly = 1;
+          mount->next = bind_mounts;
+          
+          bind_mounts = mount;
+          after_mount_arg_index += 2;
+        }
+      else if (strcmp (arg, "--mount-proc") == 0)
+        {
+          MountSpec *mount;
+
+          if ((argc - after_mount_arg_index) < 2)
+            fatal ("--mount-proc takes one argument");
+
+          mount = malloc (sizeof (MountSpec));
+          mount->type = MOUNT_SPEC_PROCFS;
+          mount->source = NULL;
+          mount->dest = argv[after_mount_arg_index+1];
           mount->next = bind_mounts;
           
           bind_mounts = mount;
@@ -164,14 +192,24 @@ main (int      argc,
           unshare_ipc = 1;
           after_mount_arg_index += 1;
         }
+      else if (strcmp (arg, "--unshare-pid") == 0)
+        {
+          unshare_pid = 1;
+          after_mount_arg_index += 1;
+        }
+      else if (strcmp (arg, "--unshare-net") == 0)
+        {
+          unshare_net = 1;
+          after_mount_arg_index += 1;
+        }
       else
         break;
     }
         
-  bind_mounts = reverse_bind_mount_list (bind_mounts);
+  bind_mounts = reverse_mount_list (bind_mounts);
 
   if ((argc - after_mount_arg_index) < 2)
-    fatal ("usage: %s [--unshare-ipc] [--unshare-pid] [--mount-readonly DIR] [--mount-bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
+    fatal ("usage: %s [--unshare-ipc] [--unshare-pid] [--unshare-net] [--mount-proc DIR] [--mount-readonly DIR] [--mount-bind SOURCE DEST] ROOTDIR PROGRAM ARGS...", argv0);
   chroot_dir = argv[after_mount_arg_index];
   program = argv[after_mount_arg_index+1];
   program_argv = argv + after_mount_arg_index + 1;
@@ -186,79 +224,117 @@ main (int      argc,
   if (rgid == 0)
     rgid = ruid;
 
-  /* Ensure we can't execute setuid programs.  See prctl(2) and
-   * capabilities(7).
-   *
-   * This closes the main historical reason why only uid 0 can
-   * chroot(2) - because unprivileged users can create hard links to
-   * setuid binaries, and possibly confuse them into looking at data
-   * (or loading libraries) that they don't expect, and thus elevating
-   * privileges.
+  /* CLONE_NEWNS makes it so that when we create bind mounts below,
+   * we're only affecting our children, not the entire system.  This
+   * way it's harmless to bind mount e.g. /proc over an arbitrary
+   * directory.
    */
-  if (prctl (PR_SET_SECUREBITS,
-	     SECBIT_NOROOT | SECBIT_NOROOT_LOCKED) < 0)
-    fatal_errno ("prctl (SECBIT_NOROOT)");
-
-  /* This call makes it so that when we create bind mounts, we're only
-   * affecting our children, not the entire system.  This way it's
-   * harmless to bind mount e.g. /proc over an arbitrary directory.
+  clone_flags = SIGCHLD | CLONE_NEWNS;
+  /* CLONE_NEWIPC and CLONE_NEWUTS are avenues of communication that
+   * might leak outside the container; any IPC can be done by setting
+   * up a bind mount and using files or sockets there, if desired.
    */
-  unshare_flags = CLONE_NEWNS;
   if (unshare_ipc)
-    unshare_flags |= CLONE_NEWIPC | CLONE_NEWUTS;
-  if (unshare (unshare_flags) < 0)
-    fatal_errno ("unshare");
-
-  /* This is necessary to undo the damage "sandbox" creates on Fedora
-   * by making / a shared mount instead of private.  This isn't
-   * totally correct because the targets for our bind mounts may still
-   * be shared, but really, Fedora's sandbox is broken.
+    clone_flags |= (CLONE_NEWIPC | CLONE_NEWUTS);
+  /* CLONE_NEWPID helps ensure random build or test scripts don't kill
+   * processes outside of the container.
    */
-  if (mount ("/", "/", "none", MS_PRIVATE | MS_REC, NULL) < 0)
-    fatal_errno ("mount(/, MS_PRIVATE | MS_REC)");
+  if (unshare_pid)
+    clone_flags |= CLONE_NEWPID;
 
-  /* Now let's set up our bind mounts */
-  for (bind_mount_iter = bind_mounts; bind_mount_iter; bind_mount_iter = bind_mount_iter->next)
+  /* Isolated networking */
+  if (unshare_net)
+    clone_flags |= CLONE_NEWNET;
+
+  if ((child = syscall (__NR_clone, clone_flags, NULL)) < 0)
+    perror ("clone");
+
+  if (child == 0)
     {
-      char *dest;
+      /* Ensure we can't execute setuid programs.  See prctl(2) and
+       * capabilities(7).
+       *
+       * This closes the main historical reason why only uid 0 can
+       * chroot(2) - because unprivileged users can create hard links to
+       * setuid binaries, and possibly confuse them into looking at data
+       * (or loading libraries) that they don't expect, and thus elevating
+       * privileges.
+       */
+      if (prctl (PR_SET_SECUREBITS,
+                 SECBIT_NOROOT | SECBIT_NOROOT_LOCKED) < 0)
+        fatal_errno ("prctl (SECBIT_NOROOT)");
 
-      asprintf (&dest, "%s%s", chroot_dir, bind_mount_iter->dest);
+      /* This is necessary to undo the damage "sandbox" creates on Fedora
+       * by making / a shared mount instead of private.  This isn't
+       * totally correct because the targets for our bind mounts may still
+       * be shared, but really, Fedora's sandbox is broken.
+       */
+      if (mount ("/", "/", "none", MS_PRIVATE | MS_REC, NULL) < 0)
+        fatal_errno ("mount(/, MS_PRIVATE | MS_REC)");
 
-      if (bind_mount_iter->readonly)
+      /* Now let's set up our bind mounts */
+      for (bind_mount_iter = bind_mounts; bind_mount_iter; bind_mount_iter = bind_mount_iter->next)
         {
-          if (mount (dest, dest,
-                     NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
-            fatal_errno ("mount (MS_BIND)");
-          if (mount (dest, dest,
-                     NULL, MS_BIND | MS_PRIVATE | MS_REMOUNT | MS_RDONLY, NULL) < 0)
-            fatal_errno ("mount (MS_BIND | MS_RDONLY)");
+          char *dest;
+          
+          asprintf (&dest, "%s%s", chroot_dir, bind_mount_iter->dest);
+          
+          if (bind_mount_iter->type == MOUNT_SPEC_READONLY)
+            {
+              if (mount (dest, dest,
+                         NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
+                fatal_errno ("mount (MS_BIND)");
+              if (mount (dest, dest,
+                         NULL, MS_BIND | MS_PRIVATE | MS_REMOUNT | MS_RDONLY, NULL) < 0)
+                fatal_errno ("mount (MS_BIND | MS_RDONLY)");
+            }
+          else if (bind_mount_iter->type == MOUNT_SPEC_BIND)
+            {
+              if (mount (bind_mount_iter->source, dest,
+                         NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
+                fatal_errno ("mount (MS_BIND)");
+            }
+          else if (bind_mount_iter->type == MOUNT_SPEC_PROCFS)
+            {
+              if (mount ("proc", dest,
+                         "proc", MS_MGC_VAL | MS_PRIVATE, NULL) < 0)
+                fatal_errno ("mount (\"proc\")");
+            }
+          else
+            assert (0);
+          free (dest);
         }
-      else
-        {
+      
+      /* Actually perform the chroot. */
+      if (chroot (chroot_dir) < 0)
+        fatal_errno ("chroot");
+      if (chdir ("/") < 0)
+        fatal_errno ("chdir");
 
-          if (mount (bind_mount_iter->source, dest,
-                     NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
-            fatal_errno ("mount (MS_BIND)");
-        }
-      free (dest);
+      /* Switch back to the uid of our invoking process.  These calls are
+       * irrevocable - see setuid(2) */
+      if (setgid (rgid) < 0)
+        fatal_errno ("setgid");
+      if (setuid (ruid) < 0)
+        fatal_errno ("setuid");
+
+      if (execv (program, program_argv) < 0)
+        fatal_errno ("execv");
     }
 
-  /* Actually perform the chroot. */
-  if (chroot (chroot_dir) < 0)
-    fatal_errno ("chroot");
-  if (chdir ("/") < 0)
-    fatal_errno ("chdir");
-
-  /* Switch back to the uid of our invoking process.  These calls are
-   * irrevocable - see setuid(2) */
+  /* Let's also setuid back in the parent - there's no reason to stay uid 0, and
+   * it's just better to drop privileges. */
   if (setgid (rgid) < 0)
     fatal_errno ("setgid");
   if (setuid (ruid) < 0)
     fatal_errno ("setuid");
 
-  /* Finally, run the given child program. */
-  if (execv (program, program_argv) < 0)
-    fatal_errno ("execv");
+  /* Kind of lame to sit around blocked in waitpid, but oh well. */
+  if (waitpid (child, &child_status, 0) < 0)
+    fatal_errno ("waitpid");
   
-  return 1;
+  if (WIFEXITED (child_status))
+    return WEXITSTATUS (child_status);
+  else
+    return 1;
 }
