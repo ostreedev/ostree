@@ -98,7 +98,8 @@ compose_branch_on_dir (OstreeRepo *repo,
   branchf = ot_gfile_new_for_path (branchpath);
 
   g_print ("Checking out %s (commit %s)...\n", branch, branchrev);
-  if (!ostree_repo_checkout (repo, branchrev, branchpath, NULL, error))
+  if (!ostree_repo_checkout (repo, OSTREE_REPO_CHECKOUT_MODE_NONE,
+                             branchrev, branchpath, NULL, error))
     goto out;
   g_print ("...done\n");
   g_print ("Merging over destination...\n");

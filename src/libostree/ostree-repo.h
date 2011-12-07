@@ -131,7 +131,13 @@ gboolean      ostree_repo_commit_tarfile (OstreeRepo   *self,
                                           GCancellable *cancellable,
                                           GError      **error);
 
+typedef enum {
+  OSTREE_REPO_CHECKOUT_MODE_NONE,
+  OSTREE_REPO_CHECKOUT_MODE_USER
+} OstreeRepoCheckoutMode;
+
 gboolean      ostree_repo_checkout (OstreeRepo *self,
+                                    OstreeRepoCheckoutMode mode,
                                     const char   *ref,
                                     const char   *destination,
                                     GCancellable   *cancellable,

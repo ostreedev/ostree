@@ -27,7 +27,10 @@
 
 #include <glib/gi18n.h>
 
+static gboolean user_mode;
+
 static GOptionEntry options[] = {
+  { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &user_mode, "Do not change file ownership or initialze extended attributes", NULL },
   { NULL }
 };
 
@@ -65,7 +68,8 @@ ostree_builtin_checkout (int argc, char **argv, const char *repo_path, GError **
   commit = argv[1];
   destination = argv[2];
   
-  if (!ostree_repo_checkout (repo, commit, destination, NULL, error))
+  if (!ostree_repo_checkout (repo, user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
+                             commit, destination, NULL, error))
     goto out;
 
   ret = TRUE;
