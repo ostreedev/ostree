@@ -671,8 +671,8 @@ ostree_repo_stage_object (OstreeRepo         *self,
                                             cancellable, error))
         goto out;
       
-      if (!ostree_pack_file_for_input (temp_out, file_info, input, xattrs,
-                                       &ret_checksum, cancellable, error))
+      if (!ostree_archive_file_for_input (temp_out, file_info, input, xattrs,
+                                          &ret_checksum, cancellable, error))
         goto out;
 
       if (!g_output_stream_close (temp_out, cancellable, error))
@@ -995,12 +995,12 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
 }
 
 gboolean
-ostree_repo_store_packfile (OstreeRepo       *self,
-                            const char       *expected_checksum,
-                            const char       *path,
-                            OstreeObjectType  objtype,
-                            gboolean         *did_exist,
-                            GError          **error)
+ostree_repo_store_archived_file (OstreeRepo       *self,
+                                 const char       *expected_checksum,
+                                 const char       *path,
+                                 OstreeObjectType  objtype,
+                                 gboolean         *did_exist,
+                                 GError          **error)
 {
   gboolean ret = FALSE;
   GChecksum *checksum = NULL;
@@ -1020,7 +1020,7 @@ ostree_repo_store_packfile (OstreeRepo       *self,
     }
   else
     {
-      if (!ostree_parse_packed_file (src, &file_info, &xattrs, &input, NULL, error))
+      if (!ostree_parse_archived_file (src, &file_info, &xattrs, &input, NULL, error))
         goto out;
     }
 
@@ -2141,8 +2141,8 @@ checkout_tree (OstreeRepo               *self,
 
           if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
-              if (!ostree_parse_packed_file (object_path, NULL, &xattrs, &packed_input,
-                                             cancellable, error))
+              if (!ostree_parse_archived_file (object_path, NULL, &xattrs, &packed_input,
+                                               cancellable, error))
                 goto out;
 
               if (!checkout_file_from_input (dest_path, mode, file_info, xattrs, 

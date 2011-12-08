@@ -40,10 +40,10 @@ typedef struct {
 } OtFsckData;
 
 static gboolean
-checksum_packed_file (OtFsckData   *data,
-                      GFile        *file,
-                      GChecksum   **out_checksum,
-                      GError      **error)
+checksum_archived_file (OtFsckData   *data,
+                        GFile        *file,
+                        GChecksum   **out_checksum,
+                        GError      **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
@@ -71,7 +71,7 @@ checksum_packed_file (OtFsckData   *data,
   if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
     goto out;
 
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
+  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT),
                                       metadata_buf, metadata_len, FALSE, NULL, NULL);
       
   g_variant_get (metadata, "(uuuu@a(ayay)t)",
@@ -136,7 +136,7 @@ object_iter_callback (OstreeRepo    *repo,
                        path);
           goto out;
         }
-      if (!checksum_packed_file (data, objf, &real_checksum, &error))
+      if (!checksum_archived_file (data, objf, &real_checksum, &error))
         goto out;
     }
   else

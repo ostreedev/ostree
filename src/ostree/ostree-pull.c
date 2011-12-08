@@ -134,7 +134,7 @@ store_object (OstreeRepo  *repo,
   if (!fetch_uri (repo, soup, obj_uri, &filename, error))
     goto out;
 
-  if (!ostree_repo_store_packfile (repo, object, filename, objtype, did_exist, error))
+  if (!ostree_repo_store_archived_file (repo, object, filename, objtype, did_exist, error))
     goto out;
 
   ret = TRUE;

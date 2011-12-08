@@ -99,11 +99,11 @@ object_iter_callback (OstreeRepo   *repo,
 
   if (ostree_repo_get_mode (data->src_repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
-      if (!ostree_repo_store_packfile (data->dest_repo, checksum,
-                                       ot_gfile_get_path_cached (objfile),
-                                       objtype,
-                                       &did_exist,
-                                       &error))
+      if (!ostree_repo_store_archived_file (data->dest_repo, checksum,
+                                            ot_gfile_get_path_cached (objfile),
+                                            objtype,
+                                            &did_exist,
+                                            &error))
         goto out;
     }
   else

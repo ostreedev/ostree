@@ -139,7 +139,7 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
-/* Packed files:
+/* Archived files:
  *
  * guint32 metadata_length [metadata gvariant] [content]
  *
@@ -155,20 +155,15 @@ GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
  * symlink, then this is the target; if device, then device ID as
  * network byte order uint32.
  */
-#define OSTREE_PACK_FILE_VARIANT_FORMAT "(uuuua(ayay)t)"
+#define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT "(uuuua(ayay)t)"
 
-gboolean  ostree_pack_file (GOutputStream     *output,
-                            GFile             *file,
-                            GCancellable     *cancellable,
-                            GError          **error);
-
-gboolean  ostree_pack_file_for_input (GOutputStream     *output,
-                                      GFileInfo         *finfo,
-                                      GInputStream      *input,
-                                      GVariant          *xattrs,
-                                      GChecksum        **out_checksum,
-                                      GCancellable     *cancellable,
-                                      GError          **error);
+gboolean  ostree_archive_file_for_input (GOutputStream     *output,
+                                         GFileInfo         *finfo,
+                                         GInputStream      *input,
+                                         GVariant          *xattrs,
+                                         GChecksum        **out_checksum,
+                                         GCancellable     *cancellable,
+                                         GError          **error);
 
 gboolean ostree_create_file_from_input (GFile          *file,
                                         GFileInfo      *finfo,
@@ -199,12 +194,12 @@ gboolean ostree_create_temp_regular_file (GFile            *dir,
                                           GCancellable     *cancellable,
                                           GError          **error);
 
-gboolean ostree_parse_packed_file (GFile            *file,
-                                   GFileInfo       **out_file_info,
-                                   GVariant        **out_xattrs,
-                                   GInputStream    **out_content,
-                                   GCancellable     *cancellable,
-                                   GError          **error);
+gboolean ostree_parse_archived_file (GFile            *file,
+                                     GFileInfo       **out_file_info,
+                                     GVariant        **out_xattrs,
+                                     GInputStream    **out_content,
+                                     GCancellable     *cancellable,
+                                     GError          **error);
 
 gboolean ostree_unpack_object (GFile             *file,
                                OstreeObjectType  objtype,

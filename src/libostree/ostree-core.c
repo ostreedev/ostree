@@ -556,13 +556,13 @@ ostree_get_relative_object_path (const char *checksum,
 }
 
 gboolean
-ostree_pack_file_for_input (GOutputStream     *output,
-                            GFileInfo         *finfo,
-                            GInputStream      *instream,
-                            GVariant          *xattrs,
-                            GChecksum        **out_checksum,
-                            GCancellable      *cancellable,
-                            GError           **error)
+ostree_archive_file_for_input (GOutputStream     *output,
+                               GFileInfo         *finfo,
+                               GInputStream      *instream,
+                               GVariant          *xattrs,
+                               GChecksum        **out_checksum,
+                               GCancellable      *cancellable,
+                               GError           **error)
 {
   gboolean ret = FALSE;
   guint32 uid, gid, mode;
@@ -580,7 +580,7 @@ ostree_pack_file_for_input (GOutputStream     *output,
   gid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_GID);
   mode = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_MODE);
 
-  g_variant_builder_init (&pack_builder, G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT));
+  g_variant_builder_init (&pack_builder, G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT));
   pack_builder_initialized = TRUE;
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (uid));
@@ -687,12 +687,12 @@ ostree_pack_file_for_input (GOutputStream     *output,
 }
 
 gboolean
-ostree_parse_packed_file (GFile            *file,
-                          GFileInfo       **out_file_info,
-                          GVariant        **out_xattrs,
-                          GInputStream    **out_content,
-                          GCancellable     *cancellable,
-                          GError          **error)
+ostree_parse_archived_file (GFile            *file,
+                            GFileInfo       **out_file_info,
+                            GVariant        **out_xattrs,
+                            GInputStream    **out_content,
+                            GCancellable     *cancellable,
+                            GError          **error)
 {
   gboolean ret = FALSE;
   char *metadata_buf = NULL;
@@ -737,7 +737,7 @@ ostree_parse_packed_file (GFile            *file,
       goto out;
     }
 
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_PACK_FILE_VARIANT_FORMAT),
+  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT),
                                       metadata_buf, metadata_len, FALSE,
                                       (GDestroyNotify)g_free,
                                       metadata_buf);
