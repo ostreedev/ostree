@@ -687,44 +687,6 @@ ostree_pack_file_for_input (GOutputStream     *output,
 }
 
 gboolean
-ostree_pack_file (GOutputStream     *output,
-                  GFile             *file,
-                  GCancellable     *cancellable,
-                  GError          **error)
-{
-  gboolean ret = FALSE;
-  GFileInfo *finfo = NULL;
-  GInputStream *instream = NULL;
-  GVariant *xattrs = NULL;
-
-  finfo = g_file_query_info (file, "standard::type,standard::size,standard::is-symlink,standard::symlink-target,unix::*",
-                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
-  if (!finfo)
-    goto out;
-
-  if (g_file_info_get_file_type (finfo) == G_FILE_TYPE_REGULAR)
-    {
-      instream = (GInputStream*)g_file_read (file, cancellable, error);
-      if (!instream)
-        goto out;
-    }
-  
-  xattrs = ostree_get_xattrs_for_file (file, error);
-  if (!xattrs)
-    goto out;
-  
-  if (!ostree_pack_file_for_input (output, finfo, instream, xattrs, NULL, cancellable, error))
-    goto out;
-  
-  ret = TRUE;
- out:
-  g_clear_object (&finfo);
-  g_clear_object (&instream);
-  ot_clear_gvariant (&xattrs);
-  return ret;
-}
-
-gboolean
 ostree_parse_packed_file (GFile            *file,
                           GFileInfo       **out_file_info,
                           GVariant        **out_xattrs,
