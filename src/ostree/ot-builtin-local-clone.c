@@ -97,7 +97,7 @@ object_iter_callback (OstreeRepo   *repo,
   GError *error = NULL;
   gboolean did_exist;
 
-  if (ostree_repo_is_archive (data->src_repo))
+  if (ostree_repo_get_mode (data->src_repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!ostree_repo_store_packfile (data->dest_repo, checksum,
                                        ot_gfile_get_path_cached (objfile),

@@ -55,7 +55,12 @@ gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
 const char *  ostree_repo_get_path (OstreeRepo  *self);
 
-gboolean      ostree_repo_is_archive (OstreeRepo  *self);
+typedef enum {
+  OSTREE_REPO_MODE_BARE,
+  OSTREE_REPO_MODE_ARCHIVE
+} OstreeRepoMode;
+
+OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
 GFile *       ostree_repo_get_tmpdir (OstreeRepo  *self);
 

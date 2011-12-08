@@ -126,7 +126,7 @@ object_iter_callback (OstreeRepo    *repo,
      if (nlinks < 2 && !quiet)
      g_printerr ("note: floating object: %s\n", path); */
 
-  if (ostree_repo_is_archive (repo)
+  if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_ARCHIVE
       && objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       if (!g_str_has_suffix (path, ".packfile"))

@@ -314,7 +314,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
 
   if (self->tree_metadata)
     ret_xattrs = g_variant_get_child_value (self->tree_metadata, 4);
-  else if (ostree_repo_is_archive (self->repo))
+  else if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
       local_file = _ostree_repo_file_nontree_get_local (self);
       if (!ostree_parse_packed_file (local_file, NULL, &ret_xattrs, NULL, cancellable, error))
@@ -1035,7 +1035,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
 
       local_child = get_child_local_file (self->repo, checksum);
 
-      if (ostree_repo_is_archive (self->repo))
+      if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
 	{
           if (!ostree_parse_packed_file (local_child, &ret_info, NULL, NULL, cancellable, error))
             goto out;
@@ -1167,7 +1167,7 @@ ostree_repo_file_read (GFile         *file,
       goto out;
     }
 
-  if (ostree_repo_is_archive (self->repo))
+  if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
       g_set_error_literal (error, G_IO_ERROR,
 			   G_IO_ERROR_NOT_SUPPORTED,

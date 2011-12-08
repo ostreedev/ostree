@@ -62,7 +62,7 @@ struct _OstreeRepoPrivate {
   gboolean inited;
 
   GKeyFile *config;
-  gboolean archive;
+  OstreeRepoMode mode;
 };
 
 static void
@@ -479,13 +479,81 @@ ostree_repo_write_config (OstreeRepo *self,
   return ret;
 }
 
+static gboolean
+keyfile_get_boolean_with_default (GKeyFile      *keyfile,
+                                  const char    *section,
+                                  const char    *value,
+                                  gboolean       default_value,
+                                  gboolean      *out_bool,
+                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  gboolean ret_bool;
+
+  ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
+  if (temp_error)
+    {
+      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          ret_bool = default_value;
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  *out_bool = ret_bool;
+ out:
+  return ret;
+}
+
+static gboolean
+keyfile_get_value_with_default (GKeyFile      *keyfile,
+                                const char    *section,
+                                const char    *value,
+                                const char    *default_value,
+                                char         **out_value,
+                                GError       **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  char *ret_value;
+
+  ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
+  if (temp_error)
+    {
+      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          ret_value = g_strdup (default_value);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value(out_value, ret_value);
+ out:
+  g_free (ret_value);
+  return ret;
+}
+                                
 gboolean
 ostree_repo_check (OstreeRepo *self, GError **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   char *version = NULL;;
-  GError *temp_error = NULL;
+  char *mode = NULL;;
+  gboolean is_archive;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -506,12 +574,9 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
 
-  version = g_key_file_get_value (priv->config, "core", "repo_version", &temp_error);
-  if (temp_error)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
+  version = g_key_file_get_value (priv->config, "core", "repo_version", error);
+  if (!version)
+    goto out;
 
   if (strcmp (version, "0") != 0)
     {
@@ -520,16 +585,26 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
 
-  priv->archive = g_key_file_get_boolean (priv->config, "core", "archive", &temp_error);
-  if (temp_error)
+  if (!keyfile_get_boolean_with_default (priv->config, "core", "archive",
+                                         FALSE, &is_archive, error))
+    goto out;
+  
+  if (is_archive)
+    priv->mode = OSTREE_REPO_MODE_ARCHIVE;
+  else
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
+      if (!keyfile_get_value_with_default (priv->config, "core", "mode",
+                                           "bare", &mode, error))
+        goto out;
+
+      if (strcmp (mode, "bare") == 0)
+        priv->mode = OSTREE_REPO_MODE_BARE;
+      else if (strcmp (mode, "archive") == 0)
+        priv->mode = OSTREE_REPO_MODE_ARCHIVE;
       else
         {
-          g_propagate_error (error, temp_error);
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid mode '%s' in repository configuration", mode);
           goto out;
         }
     }
@@ -538,6 +613,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   
   ret = TRUE;
  out:
+  g_free (mode);
   g_free (version);
   return ret;
 }
@@ -556,14 +632,14 @@ ostree_repo_get_tmpdir (OstreeRepo  *self)
   return priv->tmp_dir;
 }
 
-gboolean      
-ostree_repo_is_archive (OstreeRepo  *self)
+OstreeRepoMode
+ostree_repo_get_mode (OstreeRepo  *self)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   g_return_val_if_fail (priv->inited, FALSE);
 
-  return priv->archive;
+  return priv->mode;
 }
 
 static gboolean
@@ -587,7 +663,7 @@ ostree_repo_stage_object (OstreeRepo         *self,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE && priv->archive)
+  if (objtype == OSTREE_OBJECT_TYPE_FILE && priv->mode == OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!ostree_create_temp_regular_file (priv->tmp_dir,
                                             "archive-tmp-", NULL,
@@ -868,7 +944,7 @@ ostree_repo_get_object_path (OstreeRepo  *self,
   char *relpath;
   GFile *ret;
 
-  relpath = ostree_get_relative_object_path (checksum, type, priv->archive);
+  relpath = ostree_get_relative_object_path (checksum, type, priv->mode == OSTREE_REPO_MODE_ARCHIVE);
   path = g_build_filename (priv->path, relpath, NULL);
   g_free (relpath);
   ret = ot_gfile_new_for_path (path);
@@ -2063,7 +2139,7 @@ checkout_tree (OstreeRepo               *self,
 
           object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 
-          if (priv->archive)
+          if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
               if (!ostree_parse_packed_file (object_path, NULL, &xattrs, &packed_input,
                                              cancellable, error))
