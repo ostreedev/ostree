@@ -47,62 +47,58 @@ checksum_archived_file (OtFsckData   *data,
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
-  char *metadata_buf = NULL;
-  GVariant *metadata = NULL;
+  GInputStream *in = NULL;
   GVariant *xattrs = NULL;
-  GFileInputStream *in = NULL;
-  guint32 metadata_len;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
-  gsize bytes_read;
+  GFileInfo *file_info = NULL;
   char buf[8192];
+  gsize bytes_read;
+  guint32 mode;
 
-  in = g_file_read (file, NULL, error);
-  if (!in)
+  if (!ostree_parse_archived_file (file, &file_info, &xattrs, &in, NULL, error))
     goto out;
-      
-  if (!g_input_stream_read_all ((GInputStream*)in, &metadata_len, 4, &bytes_read, NULL, error))
-    goto out;
-      
-  metadata_len = GUINT32_FROM_BE (metadata_len);
-      
-  metadata_buf = g_malloc (metadata_len);
-      
-  if (!g_input_stream_read_all ((GInputStream*)in, metadata_buf, metadata_len, &bytes_read, NULL, error))
-    goto out;
-
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT),
-                                      metadata_buf, metadata_len, FALSE, NULL, NULL);
-      
-  g_variant_get (metadata, "(uuuu@a(ayay)t)",
-                 &version, &uid, &gid, &mode,
-                 &xattrs, &content_len);
-  uid = GUINT32_FROM_BE (uid);
-  gid = GUINT32_FROM_BE (gid);
-  mode = GUINT32_FROM_BE (mode);
-  content_len = GUINT64_FROM_BE (content_len);
 
   ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
-  do
+  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  if (S_ISREG (mode))
     {
-      if (!g_input_stream_read_all ((GInputStream*)in, buf, sizeof(buf), &bytes_read, NULL, error))
-        goto out;
-      g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
+      g_assert (in != NULL);
+      do
+        {
+          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, NULL, error))
+            goto out;
+          g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
+        }
+      while (bytes_read > 0);
     }
-  while (bytes_read > 0);
+  else if (S_ISLNK (mode))
+    {
+      const char *target = g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target");
+      g_checksum_update (ret_checksum, (guint8*) target, strlen (target));
+    }
+  else if (S_ISBLK (mode) || S_ISCHR (mode))
+    {
+      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
+      guint32 rdev_be;
+      
+      rdev_be = GUINT32_TO_BE (rdev);
 
-  ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
-  g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+      g_checksum_update (ret_checksum, (guint8*)&rdev_be, 4);
+    }
+
+  ostree_checksum_update_stat (ret_checksum,
+                               g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                               g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                               mode);
+  if (xattrs)
+    g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
 
   ret = TRUE;
-  *out_checksum = ret_checksum;
-  ret_checksum = NULL;
+  ot_transfer_out_value (out_checksum, &ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
-  g_free (metadata_buf);
   g_clear_object (&in);
-  ot_clear_gvariant (&metadata);
+  g_clear_object (&file_info);
   ot_clear_gvariant (&xattrs);
   return ret;
 }
