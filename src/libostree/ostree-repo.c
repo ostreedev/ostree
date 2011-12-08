@@ -2005,83 +2005,36 @@ checkout_file_from_input (GFile          *file,
 }
 
 static gboolean
-checkout_tree (OstreeRepo    *self,
-               OstreeRepoCheckoutMode mode,
-               OstreeRepoFile *dir,
-               const char      *destination,
-               GCancellable    *cancellable,
-               GError         **error);
-
-static gboolean
-checkout_one_directory (OstreeRepo  *self,
-                        OstreeRepoCheckoutMode mode,
-                        const char *destination,
-                        const char *dirname,
-                        OstreeRepoFile *dir,
-                        GFileInfo      *dir_info,
-                        GCancellable    *cancellable,
-                        GError         **error)
-{
-  gboolean ret = FALSE;
-  GFile *dest_file = NULL;
-  char *dest_path = NULL;
-  GVariant *xattr_variant = NULL;
-
-  dest_path = g_build_filename (destination, dirname, NULL);
-  dest_file = ot_gfile_new_for_path (dest_path);
-
-  if (!_ostree_repo_file_get_xattrs (dir, &xattr_variant, NULL, error))
-    goto out;
-
-  if (!checkout_file_from_input (dest_file, mode, dir_info,
-                                 xattr_variant,
-                                 NULL,
-                                 cancellable, error))
-    goto out;
-
-  if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
-    {
-      if (!_ostree_repo_file_get_xattrs (dir, &xattr_variant, NULL, error))
-        goto out;
-      
-      if (!ostree_set_xattrs (dest_file, xattr_variant, cancellable, error))
-        goto out;
-    }
-      
-  if (!checkout_tree (self, mode, dir, dest_path, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  g_clear_object (&dest_file);
-  g_free (dest_path);
-  ot_clear_gvariant (&xattr_variant);
-  return ret;
-}
-
-static gboolean
-checkout_tree (OstreeRepo    *self,
-               OstreeRepoCheckoutMode mode,
-               OstreeRepoFile *dir,
-               const char      *destination,
-               GCancellable    *cancellable,
-               GError         **error)
+checkout_tree (OstreeRepo               *self,
+               OstreeRepoCheckoutMode    mode,
+               GFile                    *destination,
+               OstreeRepoFile           *source,
+               GFileInfo                *source_info,
+               GCancellable             *cancellable,
+               GError                  **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   GFileInfo *file_info = NULL;
   GInputStream *packed_input = NULL;
-  GVariant *packed_xattrs = NULL;
+  GVariant *xattrs = NULL;
   GFileEnumerator *dir_enum = NULL;
-  GFile *destination_f = NULL;
-  GFile *child = NULL;
-  GFile *object_path = NULL;
+  GFile *src_child = NULL;
   GFile *dest_path = NULL;
+  GFile *object_path = NULL;
 
-  destination_f = ot_gfile_new_for_path (destination);
+  if (!_ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
+    goto out;
 
-  dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
+  if (!checkout_file_from_input (destination, mode, source_info,
+                                 xattrs, NULL,
+                                 cancellable, error))
+    goto out;
+
+  ot_clear_gvariant (&xattrs);
+
+  dir_enum = g_file_enumerate_children ((GFile*)source, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         cancellable, 
                                         error);
@@ -2096,27 +2049,27 @@ checkout_tree (OstreeRepo    *self,
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
 
-      child = g_file_get_child ((GFile*)dir, name);
+      dest_path = g_file_get_child (destination, name);
+      src_child = g_file_get_child ((GFile*)source, name);
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!checkout_one_directory (self, mode, destination, name, (OstreeRepoFile*)child, file_info, cancellable, error))
+          if (!checkout_tree (self, mode, dest_path, (OstreeRepoFile*)src_child, file_info, cancellable, error))
             goto out;
         }
       else
         {
-          const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)child);
+          const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
 
-          dest_path = g_file_get_child (destination_f, name);
           object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 
           if (priv->archive)
             {
-              if (!ostree_parse_packed_file (object_path, NULL, &packed_xattrs, &packed_input,
+              if (!ostree_parse_packed_file (object_path, NULL, &xattrs, &packed_input,
                                              cancellable, error))
                 goto out;
 
-              if (!checkout_file_from_input (dest_path, mode, file_info, packed_xattrs,
+              if (!checkout_file_from_input (dest_path, mode, file_info, xattrs, 
                                              packed_input, cancellable, error))
                 goto out;
             }
@@ -2133,9 +2086,9 @@ checkout_tree (OstreeRepo    *self,
       g_clear_object (&object_path);
       g_clear_object (&dest_path);
       g_clear_object (&file_info);
-      g_clear_object (&child);
+      g_clear_object (&src_child);
       g_clear_object (&packed_input);
-      ot_clear_gvariant (&packed_xattrs);
+      ot_clear_gvariant (&xattrs);
     }
   if (file_info == NULL && temp_error != NULL)
     {
@@ -2148,37 +2101,28 @@ checkout_tree (OstreeRepo    *self,
   g_clear_object (&dir_enum);
   g_clear_object (&file_info);
   g_clear_object (&packed_input);
-  ot_clear_gvariant (&packed_xattrs);
-  g_clear_object (&child);
+  ot_clear_gvariant (&xattrs);
+  g_clear_object (&src_child);
   g_clear_object (&object_path);
   g_clear_object (&dest_path);
-  g_clear_object (&destination_f);
   g_free (dest_path);
   return ret;
 }
 
 gboolean
-ostree_repo_checkout (OstreeRepo *self,
-                      OstreeRepoCheckoutMode mode,
-                      const char   *rev,
-                      const char   *destination,
-                      GCancellable *cancellable,
-                      GError      **error)
+ostree_repo_checkout (OstreeRepo              *self,
+                      OstreeRepoCheckoutMode   mode,
+                      const char              *ref,
+                      GFile                   *destination,
+                      GCancellable            *cancellable,
+                      GError                 **error)
 {
   gboolean ret = FALSE;
   char *resolved = NULL;
   OstreeRepoFile *root = NULL;
   GFileInfo *root_info = NULL;
 
-  if (g_file_test (destination, G_FILE_TEST_EXISTS))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Destination path '%s' already exists",
-                   destination);
-      goto out;
-    }
-
-  if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved, error))
+  if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved, error))
     goto out;
 
   root = (OstreeRepoFile*)_ostree_repo_file_new_root (self, resolved);
@@ -2191,7 +2135,7 @@ ostree_repo_checkout (OstreeRepo *self,
   if (!root_info)
     goto out;
 
-  if (!checkout_one_directory (self, mode, destination, NULL, root, root_info, cancellable, error))
+  if (!checkout_tree (self, mode, destination, root, root_info, cancellable, error))
     goto out;
 
   ret = TRUE;

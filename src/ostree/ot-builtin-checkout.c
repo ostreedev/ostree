@@ -67,9 +67,11 @@ ostree_builtin_checkout (int argc, char **argv, const char *repo_path, GError **
   
   commit = argv[1];
   destination = argv[2];
+
+  destf = ot_gfile_new_for_path (destination);
   
   if (!ostree_repo_checkout (repo, user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
-                             commit, destination, NULL, error))
+                             commit, destf, NULL, error))
     goto out;
 
   ret = TRUE;

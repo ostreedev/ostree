@@ -136,12 +136,12 @@ typedef enum {
   OSTREE_REPO_CHECKOUT_MODE_USER
 } OstreeRepoCheckoutMode;
 
-gboolean      ostree_repo_checkout (OstreeRepo *self,
-                                    OstreeRepoCheckoutMode mode,
-                                    const char   *ref,
-                                    const char   *destination,
-                                    GCancellable   *cancellable,
-                                    GError      **error);
+gboolean      ostree_repo_checkout (OstreeRepo              *self,
+                                    OstreeRepoCheckoutMode   mode,
+                                    const char              *ref,
+                                    GFile                   *destination,
+                                    GCancellable            *cancellable,
+                                    GError                 **error);
 
 gboolean       ostree_repo_read_commit (OstreeRepo *self,
                                         const char *rev,
