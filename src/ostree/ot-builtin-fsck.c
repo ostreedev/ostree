@@ -129,10 +129,10 @@ object_iter_callback (OstreeRepo    *repo,
   if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_ARCHIVE
       && objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!g_str_has_suffix (path, ".packfile"))
+      if (!g_str_has_suffix (path, ".archive"))
         {
           g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid unpacked filename '%s'",
+                       "Invalid archive filename '%s'",
                        path);
           goto out;
         }

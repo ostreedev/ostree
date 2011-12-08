@@ -1919,7 +1919,7 @@ iter_object_dir (OstreeRepo             *self,
       if (g_str_has_suffix (name, ".meta"))
         objtype = OSTREE_OBJECT_TYPE_META;
       else if (g_str_has_suffix (name, ".file")
-               || g_str_has_suffix (name, ".packfile"))
+               || g_str_has_suffix (name, ".archive"))
         objtype = OSTREE_OBJECT_TYPE_FILE;
       else
         goto loop_out;

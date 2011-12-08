@@ -541,7 +541,7 @@ ostree_get_relative_object_path (const char *checksum,
     {
     case OSTREE_OBJECT_TYPE_FILE:
       if (archive)
-        type_string = ".packfile";
+        type_string = ".archive";
       else
         type_string = ".file";
       break;
@@ -714,7 +714,7 @@ ostree_parse_packed_file (GFile            *file,
   if (bytes_read != 4)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; too short while reading metadata length");
+                   "Corrupted archive file; too short while reading metadata length");
       goto out;
     }
       
@@ -722,7 +722,7 @@ ostree_parse_packed_file (GFile            *file,
   if (metadata_len > OSTREE_MAX_METADATA_SIZE)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; metadata length %u is larger than maximum %u",
+                   "Corrupted archive file; metadata length %u is larger than maximum %u",
                    metadata_len, OSTREE_MAX_METADATA_SIZE);
       goto out;
     }
@@ -733,7 +733,7 @@ ostree_parse_packed_file (GFile            *file,
   if (bytes_read != metadata_len)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; too short while reading metadata");
+                   "Corrupted archive file; too short while reading metadata");
       goto out;
     }
 
@@ -785,7 +785,7 @@ ostree_parse_packed_file (GFile            *file,
       if (bytes_read != 4)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Corrupted packfile; too short while reading device id");
+                       "Corrupted archive file; too short while reading device id");
           goto out;
         }
       dev = GUINT32_FROM_BE (dev);
@@ -801,7 +801,7 @@ ostree_parse_packed_file (GFile            *file,
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted packfile; invalid mode %u", mode);
+                   "Corrupted archive file; invalid mode %u", mode);
       goto out;
     }
 
