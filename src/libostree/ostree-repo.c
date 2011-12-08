@@ -1905,8 +1905,8 @@ iter_object_dir (OstreeRepo             *self,
     {
       const char *name;
       guint32 type;
-      char *dot;
-      GFile *child;
+      char *dot = NULL;
+      GFile *child = NULL;
       GString *checksum = NULL;
       OstreeObjectType objtype;
 
