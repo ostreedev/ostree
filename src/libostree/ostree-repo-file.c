@@ -327,7 +327,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_xattrs, ret_xattrs);
+  ot_transfer_out_value(out_xattrs, &ret_xattrs);
  out:
   ot_clear_gvariant (&ret_xattrs);
   g_clear_object (&local_file);
@@ -739,7 +739,7 @@ query_child_info_dir (OstreeRepo               *repo,
     }
   
   ret = TRUE;
-  ot_transfer_out_value(out_info, ret_info);
+  ot_transfer_out_value(out_info, &ret_info);
  out:
   g_clear_object (&ret_info);
   ot_clear_gvariant (&metadata);
@@ -1087,7 +1087,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_info, ret_info);
+  ot_transfer_out_value(out_info, &ret_info);
  out:
   g_clear_object (&ret_info);
   g_clear_object (&local_child);

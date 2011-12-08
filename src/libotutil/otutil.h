@@ -35,8 +35,8 @@
 #define ot_transfer_out_value(outp, srcp) G_STMT_START {   \
   if (outp)                                                \
     {                                                      \
-      *outp = srcp;                                        \
-      srcp = NULL;                                         \
+      *outp = *srcp;                                       \
+      *(srcp) = NULL;                                      \
     }                                                      \
   } G_STMT_END;
 

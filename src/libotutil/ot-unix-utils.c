@@ -67,7 +67,7 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
       ret_stream = (GOutputStream*)g_unix_output_stream_new (stdin_fd, TRUE);
     }
 
-  ot_transfer_out_value(out_stream, ret_stream);
+  ot_transfer_out_value(out_stream, &ret_stream);
   ret = TRUE;
  out:
   g_clear_object (&ret_stream);
@@ -149,7 +149,7 @@ ot_util_path_split_validate (const char *path,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_components, ret_components);
+  ot_transfer_out_value(out_components, &ret_components);
  out:
   if (ret_components)
     g_ptr_array_unref (ret_components);

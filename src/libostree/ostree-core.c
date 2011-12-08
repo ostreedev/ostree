@@ -199,7 +199,7 @@ checksum_directory (GFileInfo      *f_info,
                      g_variant_get_size (packed));
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
+  ot_transfer_out_value(out_checksum, &ret_checksum);
   ot_clear_checksum (&ret_checksum);
   ot_clear_gvariant (&dirmeta);
   ot_clear_gvariant (&packed);
@@ -276,7 +276,7 @@ checksum_nondirectory (GFileInfo        *file_info,
         g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
 
-  ot_transfer_out_value(out_checksum, content_and_meta_sha256);
+  ot_transfer_out_value(out_checksum, &content_and_meta_sha256);
   ret = TRUE;
  out:
   ot_clear_checksum (&content_sha256);
@@ -345,7 +345,7 @@ ostree_checksum_file (GFile            *f,
     goto out;
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
+  ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
   g_clear_object (&file_info);
   g_clear_object (&in);
@@ -515,7 +515,7 @@ ostree_parse_metadata_file (GFile                       *file,
   ret = TRUE;
   if (out_type)
     *out_type = ret_type;
-  ot_transfer_out_value(out_variant, ret_variant);
+  ot_transfer_out_value(out_variant, &ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
   ot_clear_gvariant (&container);
@@ -677,7 +677,7 @@ ostree_pack_file_for_input (GOutputStream     *output,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
+  ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
   if (pack_builder_initialized)
     g_variant_builder_clear (&pack_builder);
@@ -806,9 +806,9 @@ ostree_parse_packed_file (GFile            *file,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_file_info, ret_file_info);
-  ot_transfer_out_value(out_xattrs, ret_xattrs);
-  ot_transfer_out_value(out_content, in);
+  ot_transfer_out_value(out_file_info, &ret_file_info);
+  ot_transfer_out_value(out_xattrs, &ret_xattrs);
+  ot_transfer_out_value(out_content, &in);
  out:
   g_clear_object (&ret_file_info);
   ot_clear_gvariant (&ret_xattrs);
@@ -961,7 +961,7 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
+  ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
   if (!ret)
     (void) unlink (dest_path);
@@ -1075,8 +1075,8 @@ ostree_create_temp_file_from_input (GFile            *dir,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, ret_checksum);
-  ot_transfer_out_value(out_file, possible_file);
+  ot_transfer_out_value(out_checksum, &ret_checksum);
+  ot_transfer_out_value(out_file, &possible_file);
  out:
   if (rand)
     g_rand_free (rand);
@@ -1111,8 +1111,8 @@ ostree_create_temp_regular_file (GFile            *dir,
     goto out;
   
   ret = TRUE;
-  ot_transfer_out_value(out_file, ret_file);
-  ot_transfer_out_value(out_stream, ret_stream);
+  ot_transfer_out_value(out_file, &ret_file);
+  ot_transfer_out_value(out_stream, &ret_stream);
  out:
   g_clear_object (&ret_file);
   g_clear_object (&ret_stream);
