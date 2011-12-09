@@ -86,18 +86,60 @@ show_repo_meta (OstreeRepo  *repo,
                 const char *resolved_rev,
                 GError **error)
 {
-  OstreeSerializedVariantType type;
   gboolean ret = FALSE;
   GVariant *variant = NULL;
+  GFile *object_path = NULL;
+  GInputStream *in = NULL;
+  char buf[8192];
+  gsize bytes_read;
+  OstreeObjectType objtype;
 
-  if (!ostree_repo_load_variant (repo, resolved_rev, &type, &variant, error))
-    goto out;
-  g_print ("Object: %s\nType: %d\n", resolved_rev, type);
-  print_variant (variant);
+  for (objtype = OSTREE_OBJECT_TYPE_RAW_FILE; objtype <= OSTREE_OBJECT_TYPE_COMMIT; objtype++)
+    {
+      g_clear_object (&object_path);
+      
+      object_path = ostree_repo_get_object_path (repo, resolved_rev, objtype);
+      
+      if (!g_file_query_exists (object_path, NULL))
+        continue;
+      
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        {
+          if (!ostree_repo_load_variant (repo, objtype, resolved_rev, &variant, error))
+            continue;
+
+          g_print ("Object: %s\nType: %d\n", resolved_rev, objtype);
+          print_variant (variant);
+          break;
+        }
+      else if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
+        {
+          in = (GInputStream*)g_file_read (object_path, NULL, error);
+          if (!in)
+            continue;
+
+          do {
+            if (!g_input_stream_read_all (in, buf, sizeof (buf), &bytes_read, NULL, error))
+              goto out;
+            g_print ("%s", buf);
+          } while (bytes_read > 0);
+        }
+      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "Can't show archived files yet");
+          goto out;
+        }
+      else
+        g_assert_not_reached ();
+    }
+
 
   ret = TRUE;
  out:
   ot_clear_gvariant (&variant);
+  g_clear_object (&in);
+  g_clear_object (&object_path);
   return ret;
 }
 
@@ -116,8 +158,8 @@ do_print_compose (OstreeRepo  *repo,
   const char *branch;
   const char *branchrev;
 
-  if (!ostree_repo_load_variant_checked (repo, OSTREE_SERIALIZED_COMMIT_VARIANT,
-                                         resolved_rev, &variant, error))
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 resolved_rev, &variant, error))
     goto out;
       
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */

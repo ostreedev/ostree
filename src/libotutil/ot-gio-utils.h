@@ -51,6 +51,11 @@ gboolean ot_gio_splice_and_checksum (GOutputStream  *out,
                                      GCancellable   *cancellable,
                                      GError        **error);
 
+gboolean ot_gio_checksum_stream (GInputStream   *in,
+                                 GChecksum     **out_checksum,
+                                 GCancellable   *cancellable,
+                                 GError        **error);
+
 gboolean ot_gfile_merge_dirs (GFile    *destination,
                               GFile    *src,
                               GCancellable *cancellable,

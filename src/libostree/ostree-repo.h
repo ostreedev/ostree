@@ -76,6 +76,9 @@ GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
                                            const char   *object,
                                            OstreeObjectType type);
 
+GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
+                                                const char   *object);
+
 gboolean      ostree_repo_store_archived_file (OstreeRepo       *self,
                                                const char       *expected_checksum,
                                                const char       *path,
@@ -102,17 +105,11 @@ gboolean      ostree_repo_write_ref (OstreeRepo  *self,
                                      const char  *rev,
                                      GError     **error);
 
-gboolean      ostree_repo_load_variant (OstreeRepo *self,
-                                          const char   *sha256,
-                                          OstreeSerializedVariantType *out_type,
-                                          GVariant    **out_variant,
-                                          GError      **error);
-
-gboolean      ostree_repo_load_variant_checked (OstreeRepo  *self,
-                                                OstreeSerializedVariantType expected_type,
-                                                const char    *sha256, 
-                                                GVariant     **out_variant,
-                                                GError       **error);
+gboolean      ostree_repo_load_variant (OstreeRepo  *self,
+                                        OstreeObjectType expected_type,
+                                        const char    *sha256, 
+                                        GVariant     **out_variant,
+                                        GError       **error);
 
 gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
                                             const char   *branch,

@@ -172,22 +172,22 @@ do_resolve_commit (OstreeRepoFile  *self,
 
   g_assert (self->parent == NULL);
 
-  if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_COMMIT_VARIANT,
-                                         self->commit, &commit, error))
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 self->commit, &commit, error))
     goto out;
 
-  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+  /* PARSE OSTREE_OBJECT_TYPE_COMMIT */
   g_variant_get_child (commit, 6, "&s", &tree_contents_checksum);
   g_variant_get_child (commit, 7, "&s", &tree_meta_checksum);
 
-  if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_TREE_VARIANT,
-                                         tree_contents_checksum, &root_contents,
-					 error))
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                 tree_contents_checksum, &root_contents,
+                                 error))
     goto out;
 
-  if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                                         tree_meta_checksum, &root_metadata,
-					 error))
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
+                                 tree_meta_checksum, &root_metadata,
+                                 error))
     goto out;
   
   self->tree_metadata = root_metadata;
@@ -241,14 +241,14 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       if (!ot_util_filename_validate (name, error))
         goto out;
           
-      if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_TREE_VARIANT,
-                                             content_checksum, &tree_contents,
-                                             error))
+      if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                     content_checksum, &tree_contents,
+                                     error))
         goto out;
           
-      if (!ostree_repo_load_variant_checked (self->repo, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                                             metadata_checksum, &tree_metadata,
-                                             error))
+      if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
+                                     metadata_checksum, &tree_metadata,
+                                     error))
         goto out;
 
       self->tree_contents = tree_contents;
@@ -381,7 +381,7 @@ _ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 GFile *
 _ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
-  return ostree_repo_get_object_path (self->repo, _ostree_repo_file_get_checksum (self), OSTREE_OBJECT_TYPE_FILE);
+  return ostree_repo_get_file_object_path (self->repo, _ostree_repo_file_get_checksum (self));
 }
 
 OstreeRepo *
@@ -685,13 +685,6 @@ ostree_repo_file_get_child_for_display_name (GFile        *file,
   return g_file_get_child (file, display_name);
 }
 
-static GFile *
-get_child_local_file (OstreeRepo   *repo,
-                      const char   *checksum)
-{
-  return ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_FILE);
-}
-
 static void
 set_info_from_dirmeta (GFileInfo  *info,
                        GVariant   *metadata)
@@ -700,7 +693,7 @@ set_info_from_dirmeta (GFileInfo  *info,
 
   g_file_info_set_attribute_uint32 (info, "standard::type", G_FILE_TYPE_DIRECTORY);
 
-  /* PARSE OSTREE_SERIALIZED_DIRMETA_VARIANT */
+  /* PARSE OSTREE_OBJECT_TYPE_DIR_META */
   g_variant_get (metadata, "(uuuu@a(ayay))",
                  &version, &uid, &gid, &mode,
                  NULL);
@@ -731,8 +724,8 @@ query_child_info_dir (OstreeRepo               *repo,
 
   if (g_file_attribute_matcher_matches (matcher, "unix::mode"))
     {
-      if (!ostree_repo_load_variant_checked (repo, OSTREE_SERIALIZED_DIRMETA_VARIANT,
-                                             metadata_checksum, &metadata, error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_META,
+                                     metadata_checksum, &metadata, error))
         goto out;
 
       set_info_from_dirmeta (ret_info, metadata);
@@ -1033,7 +1026,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
 
       g_variant_get_child (files_variant, n, "(&s&s)", &name, &checksum);
 
-      local_child = get_child_local_file (self->repo, checksum);
+      local_child = ostree_repo_get_file_object_path (self->repo, checksum);
 
       if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
 	{
@@ -1047,6 +1040,8 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         cancellable,
                                         error);
+          if (!ret_info)
+            goto out;
 	}
     }
   else
@@ -1068,8 +1063,6 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                      cancellable, error))
             goto out;
         }
-      else
-        n -= c;
     }
 
   if (name)
@@ -1124,6 +1117,7 @@ ostree_repo_file_query_info (GFile                *file,
                                                attributes, flags, 
                                                &info, cancellable, error))
         goto out;
+      g_assert (info != NULL);
     }
       
   ret = TRUE;

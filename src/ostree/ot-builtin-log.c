@@ -69,7 +69,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
 
   while (TRUE)
     {
-      OstreeSerializedVariantType type;
+      OstreeObjectType type;
       char *formatted = NULL;
       guint32 version;
       const char *parent;
@@ -86,7 +86,7 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
       char *formatted_metadata = NULL;
       
       ot_clear_gvariant (&commit);
-      if (!ostree_repo_load_variant (repo, resolved_rev, &type, &commit, error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, &commit, error))
         goto out;
 
       /* Ignore commit metadata for now */

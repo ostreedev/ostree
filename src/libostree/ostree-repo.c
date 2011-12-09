@@ -296,7 +296,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
       if (!ostree_repo_resolve_rev (self, tmp, allow_noent, &tmp2, error))
         goto out;
 
-      if (!ostree_repo_load_variant_checked (self, OSTREE_SERIALIZED_COMMIT_VARIANT, tmp2, &commit, error))
+      if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, tmp2, &commit, error))
         goto out;
       
       g_variant_get_child (commit, 2, "s", &ret_rev);
@@ -642,6 +642,23 @@ ostree_repo_get_mode (OstreeRepo  *self)
   return priv->mode;
 }
 
+static OstreeObjectType
+get_objtype_for_repo_file (OstreeRepo *self)
+{
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
+    return OSTREE_OBJECT_TYPE_ARCHIVED_FILE;
+  else
+    return OSTREE_OBJECT_TYPE_RAW_FILE;
+}
+
+GFile *
+ostree_repo_get_file_object_path (OstreeRepo   *self,
+                                  const char   *checksum)
+{
+  return ostree_repo_get_object_path (self, checksum, get_objtype_for_repo_file (self));
+}
+
 static gboolean
 ostree_repo_stage_object (OstreeRepo         *self,
                           OstreeObjectType    objtype,
@@ -663,7 +680,7 @@ ostree_repo_stage_object (OstreeRepo         *self,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE && priv->mode == OSTREE_REPO_MODE_ARCHIVE)
+  if (!OSTREE_OBJECT_TYPE_IS_META(objtype) && priv->mode == OSTREE_REPO_MODE_ARCHIVE)
     {
       if (!ostree_create_temp_regular_file (priv->tmp_dir,
                                             "archive-tmp-", NULL,
@@ -796,6 +813,7 @@ commit_file (OstreeRepo      *self,
   GFile *tmp_file = NULL;
   GChecksum *ret_checksum = NULL;
   gboolean did_exist;
+  OstreeObjectType objtype;
 
   g_assert (expected_checksum || out_checksum);
 
@@ -816,7 +834,9 @@ commit_file (OstreeRepo      *self,
         goto out;
     }
 
-  if (!ostree_repo_stage_object (self, OSTREE_OBJECT_TYPE_FILE,
+  objtype = get_objtype_for_repo_file (self);
+
+  if (!ostree_repo_stage_object (self, objtype,
                                  file_info, xattrs, input,
                                  &tmp_file, out_checksum ? &ret_checksum : NULL,
                                  cancellable, error))
@@ -825,7 +845,7 @@ commit_file (OstreeRepo      *self,
   if (expected_checksum == NULL)
     expected_checksum = g_checksum_get_string (ret_checksum);
 
-  if (!commit_staged_file (self, tmp_file, expected_checksum, OSTREE_OBJECT_TYPE_FILE, 
+  if (!commit_staged_file (self, tmp_file, expected_checksum, objtype, 
                            &did_exist, cancellable, error))
     goto out;
   g_clear_object (&tmp_file);
@@ -844,12 +864,12 @@ commit_file (OstreeRepo      *self,
 }
 
 static gboolean
-import_gvariant_object (OstreeRepo  *self,
-                        OstreeSerializedVariantType type,
-                        GVariant       *variant,
-                        GChecksum    **out_checksum,
-                        GCancellable *cancellable,
-                        GError       **error)
+import_gvariant_object (OstreeRepo         *self,
+                        OstreeObjectType    type,
+                        GVariant           *variant,
+                        GChecksum         **out_checksum,
+                        GCancellable       *cancellable,
+                        GError            **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
@@ -861,7 +881,7 @@ import_gvariant_object (OstreeRepo  *self,
                                              g_variant_get_size (serialized),
                                              NULL);
   
-  if (!stage_and_commit_from_input (self, OSTREE_OBJECT_TYPE_META,
+  if (!stage_and_commit_from_input (self, type,
                                     NULL, NULL, mem,
                                     &ret_checksum,
                                     cancellable, error))
@@ -877,17 +897,22 @@ import_gvariant_object (OstreeRepo  *self,
 }
 
 gboolean
-ostree_repo_load_variant_checked (OstreeRepo  *self,
-                                  OstreeSerializedVariantType expected_type,
-                                  const char    *sha256, 
-                                  GVariant     **out_variant,
-                                  GError       **error)
+ostree_repo_load_variant (OstreeRepo  *self,
+                          OstreeObjectType  expected_type,
+                          const char    *sha256, 
+                          GVariant     **out_variant,
+                          GError       **error)
 {
   gboolean ret = FALSE;
-  OstreeSerializedVariantType type;
+  OstreeObjectType type;
+  GFile *object_path = NULL;
   GVariant *ret_variant = NULL;
 
-  if (!ostree_repo_load_variant (self, sha256, &type, &ret_variant, error))
+  g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (expected_type), FALSE);
+
+  object_path = ostree_repo_get_object_path (self, sha256, expected_type);
+
+  if (!ostree_parse_metadata_file (object_path, &type, &ret_variant, error))
     goto out;
 
   if (type != expected_type)
@@ -901,6 +926,7 @@ ostree_repo_load_variant_checked (OstreeRepo  *self,
   ret = TRUE;
   ot_transfer_out_value(out_variant, &ret_variant);
  out:
+  g_clear_object (&object_path);
   ot_clear_gvariant (&ret_variant);
   return ret;
 }
@@ -922,7 +948,7 @@ import_directory_meta (OstreeRepo   *self,
 
   dirmeta = ostree_create_directory_metadata (file_info, xattrs);
   
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_DIRMETA_VARIANT, 
+  if (!import_gvariant_object (self, OSTREE_OBJECT_TYPE_DIR_META, 
                                dirmeta, &ret_checksum, cancellable, error))
     goto out;
 
@@ -944,7 +970,7 @@ ostree_repo_get_object_path (OstreeRepo  *self,
   char *relpath;
   GFile *ret;
 
-  relpath = ostree_get_relative_object_path (checksum, type, priv->mode == OSTREE_REPO_MODE_ARCHIVE);
+  relpath = ostree_get_relative_object_path (checksum, type);
   path = g_build_filename (priv->path, relpath, NULL);
   g_free (relpath);
   ret = ot_gfile_new_for_path (path);
@@ -969,7 +995,7 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
 
   if (!g_file_query_exists (local_object, cancellable))
     { 
-      if (objtype == OSTREE_OBJECT_TYPE_FILE)
+      if (!OSTREE_OBJECT_TYPE_IS_META (objtype))
         {
           if (!commit_file (self, file, checksum, NULL, cancellable, error))
             goto out;
@@ -980,7 +1006,7 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
           if (!input)
             goto out;
 
-          if (!stage_and_commit_from_input (self, OSTREE_OBJECT_TYPE_META,
+          if (!stage_and_commit_from_input (self, objtype,
                                             NULL, NULL, input,
                                             NULL, cancellable, error))
             goto out;
@@ -1009,22 +1035,26 @@ ostree_repo_store_archived_file (OstreeRepo       *self,
   GFile *src = NULL;
   GInputStream *input = NULL;
   GVariant *xattrs = NULL;
+  OstreeObjectType dest_objtype;
 
   src = ot_gfile_new_for_path (path);
 
-  if (objtype == OSTREE_OBJECT_TYPE_META)
+  if (OSTREE_OBJECT_TYPE_IS_META(objtype))
     {
+      dest_objtype = objtype;
       input = (GInputStream*)g_file_read (src, NULL, error);
       if (!input)
         goto out;
     }
   else
     {
+      /* Ensure we convert archived files to bare, or vice versa */
+      dest_objtype = get_objtype_for_repo_file (self);
       if (!ostree_parse_archived_file (src, &file_info, &xattrs, &input, NULL, error))
         goto out;
     }
 
-  if (!ostree_repo_stage_object (self, objtype,
+  if (!ostree_repo_stage_object (self, dest_objtype,
                                  file_info, xattrs, input,
                                  &tmp_file, &checksum, NULL, error))
     goto out;
@@ -1038,7 +1068,7 @@ ostree_repo_store_archived_file (OstreeRepo       *self,
     }
 
   if (!commit_staged_file (self, tmp_file, g_checksum_get_string (checksum),
-                           objtype, did_exist, NULL, error))
+                           dest_objtype, did_exist, NULL, error))
     goto out;
   g_clear_object (&tmp_file);
 
@@ -1123,7 +1153,7 @@ import_commit (OstreeRepo *self,
                           root_contents_checksum,
                           root_metadata_checksum);
   g_variant_ref_sink (commit);
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_COMMIT_VARIANT,
+  if (!import_gvariant_object (self, OSTREE_OBJECT_TYPE_COMMIT,
                                commit, &ret_commit, NULL, error))
     goto out;
 
@@ -1208,7 +1238,6 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
 
   return serialized_tree;
 }
-                                 
 
 static gboolean
 import_directory_recurse (OstreeRepo           *self,
@@ -1303,7 +1332,7 @@ import_directory_recurse (OstreeRepo           *self,
           if (!xattrs)
             goto out;
 
-          if (!stage_and_commit_from_input (self, OSTREE_OBJECT_TYPE_FILE,
+          if (!stage_and_commit_from_input (self, get_objtype_for_repo_file (self),
                                             child_info, xattrs, file_input,
                                             &child_file_checksum, cancellable, error))
             goto out;
@@ -1324,7 +1353,7 @@ import_directory_recurse (OstreeRepo           *self,
                                                      dir_contents_checksums,
                                                      dir_metadata_checksums);
 
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT,
+  if (!import_gvariant_object (self, OSTREE_OBJECT_TYPE_DIR_TREE,
                                serialized_tree, &ret_contents_checksum,
                                cancellable, error))
     goto out;
@@ -1462,7 +1491,7 @@ import_libarchive_entry_file (OstreeRepo           *self,
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     archive_stream = ostree_libarchive_input_stream_new (a);
   
-  if (!stage_and_commit_from_input (self, OSTREE_OBJECT_TYPE_FILE,
+  if (!stage_and_commit_from_input (self, get_objtype_for_repo_file (self),
                                     file_info, NULL, archive_stream,
                                     &ret_checksum, cancellable, error))
     goto out;
@@ -1582,7 +1611,7 @@ file_tree_import_recurse (OstreeRepo           *self,
                                                      dir_contents_checksums,
                                                      dir_metadata_checksums);
       
-  if (!import_gvariant_object (self, OSTREE_SERIALIZED_TREE_VARIANT,
+  if (!import_gvariant_object (self, OSTREE_OBJECT_TYPE_DIR_TREE,
                                serialized_tree, &ret_contents_checksum_obj,
                                cancellable, error))
     goto out;
@@ -1916,11 +1945,16 @@ iter_object_dir (OstreeRepo             *self,
       if (type == G_FILE_TYPE_DIRECTORY)
         goto loop_out;
       
-      if (g_str_has_suffix (name, ".meta"))
-        objtype = OSTREE_OBJECT_TYPE_META;
-      else if (g_str_has_suffix (name, ".file")
-               || g_str_has_suffix (name, ".archive"))
-        objtype = OSTREE_OBJECT_TYPE_FILE;
+      if (g_str_has_suffix (name, ".file"))
+        objtype = OSTREE_OBJECT_TYPE_RAW_FILE;
+      else if (g_str_has_suffix (name, ".archive"))
+        objtype = OSTREE_OBJECT_TYPE_ARCHIVED_FILE;
+      else if (g_str_has_suffix (name, ".dirtree"))
+        objtype = OSTREE_OBJECT_TYPE_DIR_TREE;
+      else if (g_str_has_suffix (name, ".dirmeta"))
+        objtype = OSTREE_OBJECT_TYPE_DIR_META;
+      else if (g_str_has_suffix (name, ".commit"))
+        objtype = OSTREE_OBJECT_TYPE_COMMIT;
       else
         goto loop_out;
           
@@ -2016,34 +2050,6 @@ ostree_repo_iter_objects (OstreeRepo  *self,
   return ret;
 }
 
-gboolean
-ostree_repo_load_variant (OstreeRepo *self,
-                          const char   *sha256,
-                          OstreeSerializedVariantType *out_type,
-                          GVariant    **out_variant,
-                          GError      **error)
-{
-  gboolean ret = FALSE;
-  OstreeSerializedVariantType ret_type;
-  GVariant *ret_variant = NULL;
-  GFile *f = NULL;
-
-  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
-
-  f = ostree_repo_get_object_path (self, sha256, OSTREE_OBJECT_TYPE_META);
-  if (!ostree_parse_metadata_file (f, &ret_type, &ret_variant, error))
-    goto out;
-
-  ret = TRUE;
-  if (out_type)
-    *out_type = ret_type;
-  ot_transfer_out_value(out_variant, &ret_variant);
- out:
-  ot_clear_gvariant (&ret_variant);
-  g_clear_object (&f);
-  return ret;
-}
-
 static gboolean
 checkout_file_from_input (GFile          *file,
                           OstreeRepoCheckoutMode mode,
@@ -2070,7 +2076,7 @@ checkout_file_from_input (GFile          *file,
     }
 
   if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
-                                      xattrs, input, OSTREE_OBJECT_TYPE_FILE,
+                                      xattrs, input, OSTREE_OBJECT_TYPE_RAW_FILE,
                                       NULL, cancellable, error))
     goto out;
 
@@ -2137,7 +2143,7 @@ checkout_tree (OstreeRepo               *self,
         {
           const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
 
-          object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+          object_path = ostree_repo_get_object_path (self, checksum, get_objtype_for_repo_file (self));
 
           if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
@@ -2239,7 +2245,7 @@ get_file_checksum (GFile  *f,
     }
   else
     {
-      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
+      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_RAW_FILE,
                                  &tmp_checksum, cancellable, error))
         goto out;
       ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));

@@ -59,8 +59,7 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
   child = g_file_get_child (repodir, "config");
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
-  if (archive)
-    g_string_append_printf (config_data, "mode=%s\n", archive ? "archive" : "bare");
+  g_string_append_printf (config_data, "mode=%s\n", archive ? "archive" : "bare");
   if (!g_file_replace_contents (child,
                                 config_data->str,
                                 config_data->len,

@@ -126,7 +126,9 @@ store_object (OstreeRepo  *repo,
   char *relpath = NULL;
   SoupURI *obj_uri = NULL;
 
-  objpath = ostree_get_relative_object_path (object, objtype, TRUE);
+  g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
+
+  objpath = ostree_get_relative_object_path (object, objtype);
   obj_uri = soup_uri_copy (baseuri);
   relpath = g_build_filename (soup_uri_get_path (obj_uri), objpath, NULL);
   soup_uri_set_path (obj_uri, relpath);
@@ -160,27 +162,18 @@ store_tree_recurse (OstreeRepo   *repo,
   GVariant *tree = NULL;
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
-  OstreeSerializedVariantType metatype;
   gboolean did_exist;
   int i, n;
 
-  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_META, &did_exist, error))
+  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_DIR_TREE, &did_exist, error))
     goto out;
 
   if (did_exist)
     log_verbose ("Already have tree %s", rev);
   else
     {
-      if (!ostree_repo_load_variant (repo, rev, &metatype, &tree, error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, rev, &tree, error))
         goto out;
-      
-      if (metatype != OSTREE_SERIALIZED_TREE_VARIANT)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Tree metadata '%s' has wrong type %d, expected %d",
-                       rev, metatype, OSTREE_SERIALIZED_TREE_VARIANT);
-          goto out;
-        }
       
       /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
       files_variant = g_variant_get_child_value (tree, 2);
@@ -194,7 +187,7 @@ store_tree_recurse (OstreeRepo   *repo,
 
           g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
 
-          if (!store_object (repo, soup, base_uri, checksum, OSTREE_OBJECT_TYPE_FILE, &did_exist, error))
+          if (!store_object (repo, soup, base_uri, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE, &did_exist, error))
             goto out;
         }
       
@@ -208,7 +201,7 @@ store_tree_recurse (OstreeRepo   *repo,
           g_variant_get_child (dirs_variant, i, "(&s&s&s)",
                                &dirname, &tree_checksum, &meta_checksum);
 
-          if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_META, &did_exist, error))
+          if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, &did_exist, error))
             goto out;
 
           if (!store_tree_recurse (repo, soup, base_uri, tree_checksum, error))
@@ -233,34 +226,25 @@ store_commit_recurse (OstreeRepo   *repo,
 {
   gboolean ret = FALSE;
   GVariant *commit = NULL;
-  OstreeSerializedVariantType metatype;
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
   gboolean did_exist;
 
-  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_META, &did_exist, error))
+  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_COMMIT, &did_exist, error))
     goto out;
 
   if (did_exist)
     log_verbose ("Already have commit %s", rev);
   else
     {
-      if (!ostree_repo_load_variant (repo, rev, &metatype, &commit, error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, rev, &commit, error))
         goto out;
-      
-      if (metatype != OSTREE_SERIALIZED_COMMIT_VARIANT)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Commit '%s' has wrong type %d, expected %d",
-                       rev, metatype, OSTREE_SERIALIZED_COMMIT_VARIANT);
-          goto out;
-        }
       
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
       g_variant_get_child (commit, 6, "&s", &tree_contents_checksum);
       g_variant_get_child (commit, 7, "&s", &tree_meta_checksum);
       
-      if (!store_object (repo, soup, base_uri, tree_meta_checksum, OSTREE_OBJECT_TYPE_META, &did_exist, error))
+      if (!store_object (repo, soup, base_uri, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, &did_exist, error))
         goto out;
       
       if (!store_tree_recurse (repo, soup, base_uri, tree_contents_checksum, error))

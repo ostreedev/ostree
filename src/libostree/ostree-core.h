@@ -32,17 +32,15 @@ G_BEGIN_DECLS
 #define OSTREE_EMPTY_STRING_SHA256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 typedef enum {
-  OSTREE_OBJECT_TYPE_FILE = 1,
-  OSTREE_OBJECT_TYPE_META = 2,
+  OSTREE_OBJECT_TYPE_RAW_FILE = 1,   /* .raw */
+  OSTREE_OBJECT_TYPE_ARCHIVED_FILE = 2,  /* .archive */
+  OSTREE_OBJECT_TYPE_DIR_TREE = 3,  /* .dirtree */
+  OSTREE_OBJECT_TYPE_DIR_META = 4,  /* .dirmeta */
+  OSTREE_OBJECT_TYPE_COMMIT = 5     /* .commit */
 } OstreeObjectType;
 
-typedef enum {
-  OSTREE_SERIALIZED_TREE_VARIANT = 1,
-  OSTREE_SERIALIZED_COMMIT_VARIANT = 2,
-  OSTREE_SERIALIZED_DIRMETA_VARIANT = 3,
-  OSTREE_SERIALIZED_XATTR_VARIANT = 4
-} OstreeSerializedVariantType;
-#define OSTREE_SERIALIZED_VARIANT_LAST 4
+#define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 3 && t <= 5)
+#define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
 
 #define OSTREE_SERIALIZED_VARIANT_FORMAT "(uv)"
 
@@ -92,28 +90,26 @@ gboolean ostree_validate_checksum_string (const char *sha256,
 
 void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
 
-char *ostree_get_relative_object_path (const char *checksum,
-                                       OstreeObjectType type,
-                                       gboolean         archive);
+char *ostree_get_relative_object_path (const char        *checksum,
+                                       OstreeObjectType   type);
 
 GVariant *ostree_get_xattrs_for_file (GFile       *f,
                                       GError     **error);
 
-GVariant *ostree_wrap_metadata_variant (OstreeSerializedVariantType type,
-                                        GVariant *metadata);
+GVariant *ostree_wrap_metadata_variant (OstreeObjectType type, GVariant *metadata);
 
 gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);
 
 gboolean ostree_parse_metadata_file (GFile                       *file,
-                                     OstreeSerializedVariantType *out_type,
+                                     OstreeObjectType            *out_type,
                                      GVariant                   **out_variant,
                                      GError                     **error);
 
 gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GVariant         *xattrs,
                                           GInputStream     *in,
-                                          OstreeObjectType objtype,
+                                          OstreeObjectType  objtype,
                                           GChecksum       **out_checksum,
                                           GCancellable     *cancellable,
                                           GError          **error);

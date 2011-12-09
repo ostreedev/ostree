@@ -123,7 +123,7 @@ object_iter_callback (OstreeRepo    *repo,
      g_printerr ("note: floating object: %s\n", path); */
 
   if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_ARCHIVE
-      && objtype == OSTREE_OBJECT_TYPE_FILE)
+      && !OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       if (!g_str_has_suffix (path, ".archive"))
         {

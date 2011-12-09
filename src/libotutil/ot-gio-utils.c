@@ -163,6 +163,8 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
 
+  g_return_val_if_fail (out != NULL || out_checksum != NULL, FALSE);
+
   if (out_checksum)
     ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
   
@@ -176,8 +178,11 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
             goto out;
           if (ret_checksum)
             g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
-          if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
-            goto out;
+          if (out)
+            {
+              if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
+                goto out;
+            }
         }
       while (bytes_read > 0);
     }
@@ -192,6 +197,17 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
  out:
   ot_clear_checksum (&ret_checksum);
   return ret;
+}
+
+gboolean
+ot_gio_checksum_stream (GInputStream   *in,
+                        GChecksum     **out_checksum,
+                        GCancellable   *cancellable,
+                        GError        **error)
+{
+  if (!out_checksum)
+    return TRUE;
+  return ot_gio_splice_and_checksum (NULL, in, out_checksum, cancellable, error);
 }
 
 gboolean

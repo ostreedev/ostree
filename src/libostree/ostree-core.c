@@ -42,8 +42,8 @@ ostree_validate_checksum_string (const char *sha256,
 }
 
 GVariant *
-ostree_wrap_metadata_variant (OstreeSerializedVariantType type,
-                              GVariant *metadata)
+ostree_wrap_metadata_variant (OstreeObjectType  type,
+                              GVariant         *metadata)
 {
   return g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), metadata);
 }
@@ -180,110 +180,6 @@ ostree_get_xattrs_for_file (GFile      *f,
   return ret;
 }
 
-static gboolean
-checksum_directory (GFileInfo      *f_info,
-                    GVariant       *xattrs,
-                    GChecksum     **out_checksum,
-                    GCancellable   *cancellable,
-                    GError        **error)
-{
-  gboolean ret = FALSE;
-  GVariant *dirmeta = NULL;
-  GVariant *packed = NULL;
-  GChecksum *ret_checksum = NULL;
-
-  dirmeta = ostree_create_directory_metadata (f_info, xattrs);
-  packed = ostree_wrap_metadata_variant (OSTREE_SERIALIZED_DIRMETA_VARIANT, dirmeta);
-  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-  g_checksum_update (ret_checksum, g_variant_get_data (packed),
-                     g_variant_get_size (packed));
-
-  ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
-  ot_clear_checksum (&ret_checksum);
-  ot_clear_gvariant (&dirmeta);
-  ot_clear_gvariant (&packed);
-  ot_clear_gvariant (&xattrs);
-  return ret;
-}
-
-static gboolean
-checksum_nondirectory (GFileInfo        *file_info,
-                       GVariant         *xattrs,
-                       GInputStream     *input,
-                       OstreeObjectType objtype,
-                       GChecksum       **out_checksum,
-                       GCancellable     *cancellable,
-                       GError          **error)
-{
-  gboolean ret = FALSE;
-  GChecksum *content_sha256 = NULL;
-  GChecksum *content_and_meta_sha256 = NULL;
-  ssize_t bytes_read;
-  guint32 unix_mode;
-
-  content_sha256 = g_checksum_new (G_CHECKSUM_SHA256);
-
-  unix_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
- 
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    {
-      guint8 buf[8192];
-
-      while ((bytes_read = g_input_stream_read (input, buf, sizeof (buf), cancellable, error)) > 0)
-        g_checksum_update (content_sha256, buf, bytes_read);
-      if (bytes_read < 0)
-        goto out;
-    }
-  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
-    {
-      const char *symlink_target = g_file_info_get_symlink_target (file_info);
-
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
-      g_assert (symlink_target != NULL);
-      
-      g_checksum_update (content_sha256, (guint8*)symlink_target, strlen (symlink_target));
-    }
-  else if (S_ISCHR(unix_mode) || S_ISBLK(unix_mode))
-    {
-      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
-      rdev = GUINT32_TO_BE (rdev);
-      g_checksum_update (content_sha256, (guint8*)&rdev, 4);
-    }
-  else if (S_ISFIFO(unix_mode))
-    {
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
-    }
-  else
-    {
-      g_set_error (error, G_IO_ERROR,
-                   G_IO_ERROR_FAILED,
-                   "Unsupported file (must be regular, symbolic link, fifo, or character/block device)");
-      goto out;
-    }
-
-  content_and_meta_sha256 = g_checksum_copy (content_sha256);
-
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
-    {
-      ostree_checksum_update_stat (content_and_meta_sha256,
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-      /* FIXME - ensure empty xattrs are the same as NULL xattrs */
-      if (xattrs)
-        g_checksum_update (content_and_meta_sha256, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-    }
-
-  ot_transfer_out_value(out_checksum, &content_and_meta_sha256);
-  ret = TRUE;
- out:
-  ot_clear_checksum (&content_sha256);
-  ot_clear_checksum (&content_and_meta_sha256);
-  return ret;
-}
-
 gboolean
 ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GVariant         *xattrs,
@@ -293,15 +189,77 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GCancellable     *cancellable,
                                  GError          **error)
 {
+  gboolean ret = FALSE;
+  GChecksum *ret_checksum = NULL;
+  GVariant *dirmeta = NULL;
+  GVariant *packed = NULL;
+  guint8 buf[8192];
+  gsize bytes_read;
+  guint32 mode;
+
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    return ot_gio_checksum_stream (in, out_checksum, cancellable, error);
+
+  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
-      return checksum_directory (file_info, xattrs, out_checksum, cancellable, error);
+      dirmeta = ostree_create_directory_metadata (file_info, xattrs);
+      packed = ostree_wrap_metadata_variant (OSTREE_OBJECT_TYPE_DIR_META, dirmeta);
+      g_checksum_update (ret_checksum, g_variant_get_data (packed),
+                         g_variant_get_size (packed));
+
+    }
+  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+    {
+      while ((bytes_read = g_input_stream_read (in, buf, sizeof (buf), cancellable, error)) > 0)
+        g_checksum_update (ret_checksum, buf, bytes_read);
+      if (bytes_read < 0)
+        goto out;
+    }
+  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
+    {
+      const char *symlink_target = g_file_info_get_symlink_target (file_info);
+
+      g_assert (symlink_target != NULL);
+      
+      g_checksum_update (ret_checksum, (guint8*)symlink_target, strlen (symlink_target));
+    }
+  else if (S_ISCHR(mode) || S_ISBLK(mode))
+    {
+      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
+      rdev = GUINT32_TO_BE (rdev);
+      g_checksum_update (ret_checksum, (guint8*)&rdev, 4);
+    }
+  else if (S_ISFIFO(mode))
+    {
+      ;
     }
   else
     {
-      return checksum_nondirectory (file_info, xattrs, in, objtype,
-                                    out_checksum, cancellable, error);
+      g_set_error (error, G_IO_ERROR,
+                   G_IO_ERROR_FAILED,
+                   "Unsupported file (must be regular, symbolic link, fifo, or character/block device)");
+      goto out;
     }
+
+  ostree_checksum_update_stat (ret_checksum,
+                               g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                               g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                               g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
+  /* FIXME - ensure empty xattrs are the same as NULL xattrs */
+  if (xattrs)
+    g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+
+  ret = TRUE;
+  ot_transfer_out_value (out_checksum, &ret_checksum);
+ out:
+  ot_clear_checksum (&ret_checksum);
+  ot_clear_gvariant (&dirmeta);
+  ot_clear_gvariant (&packed);
+  return ret;
 }
 
 gboolean
@@ -333,7 +291,7 @@ ostree_checksum_file (GFile            *f,
         goto out;
     }
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
+  if (!OSTREE_OBJECT_TYPE_IS_META(objtype))
     {
       xattrs = ostree_get_xattrs_for_file (f, error);
       if (!xattrs)
@@ -487,7 +445,7 @@ ostree_set_xattrs (GFile  *f,
 
 gboolean
 ostree_parse_metadata_file (GFile                       *file,
-                            OstreeSerializedVariantType *out_type,
+                            OstreeObjectType            *out_type,
                             GVariant                   **out_variant,
                             GError                     **error)
 {
@@ -503,7 +461,7 @@ ostree_parse_metadata_file (GFile                       *file,
   g_variant_get (container, "(uv)",
                  &ret_type, &ret_variant);
   ret_type = GUINT32_FROM_BE (ret_type);
-  if (ret_type <= 0 || ret_type > OSTREE_SERIALIZED_VARIANT_LAST)
+  if (!OSTREE_OBJECT_TYPE_IS_META (ret_type))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Corrupted metadata object '%s'; invalid type %d",
@@ -524,8 +482,7 @@ ostree_parse_metadata_file (GFile                       *file,
 
 char *
 ostree_get_relative_object_path (const char *checksum,
-                                 OstreeObjectType type,
-                                 gboolean         archive)
+                                 OstreeObjectType type)
 {
   GString *path;
   const char *type_string;
@@ -539,14 +496,20 @@ ostree_get_relative_object_path (const char *checksum,
   g_string_append (path, checksum + 2);
   switch (type)
     {
-    case OSTREE_OBJECT_TYPE_FILE:
-      if (archive)
-        type_string = ".archive";
-      else
-        type_string = ".file";
+    case OSTREE_OBJECT_TYPE_RAW_FILE:
+      type_string = ".file";
       break;
-    case OSTREE_OBJECT_TYPE_META:
-      type_string = ".meta";
+    case OSTREE_OBJECT_TYPE_ARCHIVED_FILE:
+      type_string = ".archive";
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_TREE:
+      type_string = ".dirtree";
+      break;
+    case OSTREE_OBJECT_TYPE_DIR_META:
+      type_string = ".dirmeta";
+      break;
+    case OSTREE_OBJECT_TYPE_COMMIT:
+      type_string = ".commit";
       break;
     default:
       g_assert_not_reached ();
@@ -822,7 +785,7 @@ ostree_create_file_from_input (GFile            *dest_file,
                                GFileInfo        *finfo,
                                GVariant         *xattrs,
                                GInputStream     *input,
-                               OstreeObjectType objtype,
+                               OstreeObjectType  objtype,
                                GChecksum       **out_checksum,
                                GCancellable     *cancellable,
                                GError          **error)
@@ -832,6 +795,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   GFileOutputStream *out = NULL;
   guint32 uid, gid, mode;
   GChecksum *ret_checksum = NULL;
+  gboolean is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -875,7 +839,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISLNK (mode))
     {
       const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      g_assert (!is_meta);
       if (out_checksum)
         ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (ret_checksum)
@@ -890,7 +854,7 @@ ostree_create_file_from_input (GFile            *dest_file,
     {
       guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
       guint32 dev_be;
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      g_assert (!is_meta);
       dev_be = GUINT32_TO_BE (dev);
       if (out_checksum)
         ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -904,7 +868,7 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else if (S_ISFIFO (mode))
     {
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      g_assert (!is_meta);
       if (out_checksum)
         ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (mkfifo (dest_path, mode) < 0)
@@ -948,12 +912,12 @@ ostree_create_file_from_input (GFile            *dest_file,
 
   if (xattrs != NULL)
     {
-      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      g_assert (!is_meta);
       if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
         goto out;
     }
 
-  if (ret_checksum && objtype == OSTREE_OBJECT_TYPE_FILE)
+  if (ret_checksum && !is_meta)
     {
       ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
       if (xattrs)
@@ -1102,7 +1066,7 @@ ostree_create_temp_regular_file (GFile            *dir,
   GOutputStream *ret_stream = NULL;
 
   if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
-                                           OSTREE_OBJECT_TYPE_FILE, &ret_file,
+                                           OSTREE_OBJECT_TYPE_RAW_FILE, &ret_file,
                                            NULL, cancellable, error))
     goto out;
   
