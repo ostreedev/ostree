@@ -251,14 +251,15 @@ main (int      argc,
 
   if (child == 0)
     {
-      /* Ensure we can't execute setuid programs.  See prctl(2) and
-       * capabilities(7).
-       *
-       * This closes the main historical reason why only uid 0 can
-       * chroot(2) - because unprivileged users can create hard links to
-       * setuid binaries, and possibly confuse them into looking at data
-       * (or loading libraries) that they don't expect, and thus elevating
-       * privileges.
+      /*
+       * SECBIT_NOROOT helps close the main historical reason why only
+       * uid 0 can chroot(2) - because unprivileged users can create
+       * hard links to setuid binaries, and possibly confuse them into
+       * looking at data (or loading libraries) that they don't
+       * expect, and thus elevating privileges.  With this, executing
+       * a setuid program doesn't gain us any new Linux capabilities
+       * (but it still changes uid).  See below for where we create a
+       * MS_NOSUID bind mount.
        */
       if (prctl (PR_SET_SECUREBITS,
                  SECBIT_NOROOT | SECBIT_NOROOT_LOCKED) < 0)
@@ -269,8 +270,15 @@ main (int      argc,
        * totally correct because the targets for our bind mounts may still
        * be shared, but really, Fedora's sandbox is broken.
        */
-      if (mount ("/", "/", "none", MS_PRIVATE | MS_REC, NULL) < 0)
+      if (mount (NULL, "/", "none", MS_PRIVATE | MS_REC, NULL) < 0)
         fatal_errno ("mount(/, MS_PRIVATE | MS_REC)");
+
+      /* I had thought that SECBIT_NOROOT was enough to be safe, but Serge E. Hallyn
+       * pointed out that setuid binaries still change uid to 0.  So let's just
+       * disallow them at the rootfs level.
+       */
+      if (mount (NULL, "/", "none", MS_PRIVATE | MS_REMOUNT | MS_NOSUID, NULL) < 0)
+        fatal_errno ("mount(/, MS_PRIVATE | MS_REC | MS_NOSUID)");
 
       /* Now let's set up our bind mounts */
       for (bind_mount_iter = bind_mounts; bind_mount_iter; bind_mount_iter = bind_mount_iter->next)
