@@ -68,15 +68,6 @@ EOF
 	done
 	chmod a=rwxt tmp
 
-	# Populate /dev/ with a bare minimum of devices, so that
-	# the tree is usable for building software inside a chroot
-	# without devtmpfs mounted
-	mknod -m 0666 ./dev/null c 1 3
-	mknod -m 0666 ./dev/zero c 1 5
-	mknod -m 0666 ./dev/full c 1 7
-	mknod -m 0666 ./dev/random c 1 8
-	mknod -m 0666 ./dev/urandom c 1 9
-
 	for d in $READONLY_BIND_MOUNTS; do
             mv ${IMAGE_ROOTFS}/$d .
 	done
