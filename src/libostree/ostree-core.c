@@ -990,7 +990,7 @@ subst_xxxxxx (GRand      *rand,
 
   while (*xxxxxx == 'X')
     {
-      int offset = g_random_int_range (0, sizeof (table));
+      int offset = g_random_int_range (0, sizeof (table) - 1);
       *xxxxxx = (guint8)table[offset];
       xxxxxx++;
     }
