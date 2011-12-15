@@ -35,37 +35,53 @@ static GOptionEntry options[] = {
 };
 
 typedef struct {
+  OstreeRepo *repo;
   guint n_objects;
   gboolean had_error;
 } OtFsckData;
 
 static gboolean
 checksum_archived_file (OtFsckData   *data,
+                        const char   *exp_checksum,
                         GFile        *file,
                         GChecksum   **out_checksum,
                         GError      **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
-  GInputStream *in = NULL;
+  GVariant *archive_metadata = NULL;
   GVariant *xattrs = NULL;
+  GFile *content_path = NULL;
+  GInputStream *content_input = NULL;
   GFileInfo *file_info = NULL;
   char buf[8192];
   gsize bytes_read;
   guint32 mode;
 
-  if (!ostree_parse_archived_file (file, &file_info, &xattrs, &in, NULL, error))
+  if (!ostree_map_metadata_file (file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, &archive_metadata, error))
     goto out;
+
+  if (!ostree_parse_archived_file_meta (archive_metadata, &file_info, &xattrs, error))
+    goto out;
+
+  content_path = ostree_repo_get_object_path (data->repo, exp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+    {
+      content_input = (GInputStream*)g_file_read (content_path, NULL, error);
+      if (!content_input)
+        goto out;
+    }
 
   ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
   if (S_ISREG (mode))
     {
-      g_assert (in != NULL);
+      g_assert (content_input != NULL);
       do
         {
-          if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, NULL, error))
+          if (!g_input_stream_read_all (content_input, buf, sizeof(buf), &bytes_read, NULL, error))
             goto out;
           g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
         }
@@ -97,9 +113,11 @@ checksum_archived_file (OtFsckData   *data,
   ot_transfer_out_value (out_checksum, &ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
-  g_clear_object (&in);
   g_clear_object (&file_info);
   ot_clear_gvariant (&xattrs);
+  ot_clear_gvariant (&archive_metadata);
+  g_clear_object (&content_path);
+  g_clear_object (&content_input);
   return ret;
 }
 
@@ -112,40 +130,38 @@ object_iter_callback (OstreeRepo    *repo,
                       gpointer       user_data)
 {
   OtFsckData *data = user_data;
-  const char *path = NULL;
   GChecksum *real_checksum = NULL;
   GError *error = NULL;
-
-  path = ot_gfile_get_path_cached (objf);
 
   /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
      if (nlinks < 2 && !quiet)
      g_printerr ("note: floating object: %s\n", path); */
 
-  if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_ARCHIVE
-      && !OSTREE_OBJECT_TYPE_IS_META (objtype))
+  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
     {
-      if (!g_str_has_suffix (path, ".archive"))
+      if (!g_str_has_suffix (ot_gfile_get_path_cached (objf), ".archive-meta"))
         {
           g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Invalid archive filename '%s'",
-                       path);
+                       ot_gfile_get_path_cached (objf));
           goto out;
         }
-      if (!checksum_archived_file (data, objf, &real_checksum, &error))
+      if (!checksum_archived_file (data, exp_checksum, objf, &real_checksum, &error))
         goto out;
     }
+  else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
+    ; /* Handled above */
   else
     {
       if (!ostree_checksum_file (objf, objtype, &real_checksum, NULL, &error))
         goto out;
     }
 
-  if (strcmp (exp_checksum, g_checksum_get_string (real_checksum)) != 0)
+  if (real_checksum && strcmp (exp_checksum, g_checksum_get_string (real_checksum)) != 0)
     {
       data->had_error = TRUE;
-      g_printerr ("ERROR: corrupted object '%s' expected checksum: %s\n",
-                  exp_checksum, g_checksum_get_string (real_checksum));
+      g_printerr ("ERROR: corrupted object '%s'; actual checksum: %s\n",
+                  ot_gfile_get_path_cached (objf), g_checksum_get_string (real_checksum));
     }
 
   data->n_objects++;
@@ -173,12 +189,13 @@ ostree_builtin_fsck (int argc, char **argv, const char *repo_path, GError **erro
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  data.n_objects = 0;
-  data.had_error = FALSE;
-
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
+
+  data.repo = repo;
+  data.n_objects = 0;
+  data.had_error = FALSE;
 
   if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
     goto out;

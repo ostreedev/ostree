@@ -307,6 +307,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
 {
   gboolean ret = FALSE;
   GVariant *ret_xattrs = NULL;
+  GVariant *metadata = NULL;
   GFile *local_file = NULL;
 
   if (!_ostree_repo_file_ensure_resolved (self, error))
@@ -317,7 +318,12 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   else if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
       local_file = _ostree_repo_file_nontree_get_local (self);
-      if (!ostree_parse_archived_file (local_file, NULL, &ret_xattrs, NULL, cancellable, error))
+      
+      if (!ostree_map_metadata_file (local_file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                     &metadata, error))
+        goto out;
+
+      if (!ostree_parse_archived_file_meta (metadata, NULL, &ret_xattrs, error))
         goto out;
     }
   else
@@ -330,6 +336,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
  out:
   ot_clear_gvariant (&ret_xattrs);
+  ot_clear_gvariant (&metadata);
   g_clear_object (&local_file);
   return ret;
 }
@@ -1002,6 +1009,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   const char *name = NULL;
   gboolean ret = FALSE;
   GFileInfo *ret_info = NULL;
+  GVariant *archive_metadata = NULL;
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
   GVariant *tree_child_metadata = NULL;
@@ -1030,7 +1038,10 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
 
       if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
 	{
-          if (!ostree_parse_archived_file (local_child, &ret_info, NULL, NULL, cancellable, error))
+          if (!ostree_map_metadata_file (local_child, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                         &archive_metadata, error))
+            goto out;
+          if (!ostree_parse_archived_file_meta (archive_metadata, &ret_info, NULL, error))
             goto out;
 	}
       else
@@ -1086,6 +1097,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   g_clear_object (&local_child);
   if (matcher)
     g_file_attribute_matcher_unref (matcher);
+  ot_clear_gvariant (&archive_metadata);
   ot_clear_gvariant (&tree_child_metadata);
   ot_clear_gvariant (&files_variant);
   ot_clear_gvariant (&dirs_variant);

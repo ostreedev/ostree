@@ -69,7 +69,6 @@ ostree_builtin_log (int argc, char **argv, const char *repo_path, GError **error
 
   while (TRUE)
     {
-      OstreeObjectType type;
       char *formatted = NULL;
       guint32 version;
       const char *parent;

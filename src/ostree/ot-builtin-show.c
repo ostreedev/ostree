@@ -124,7 +124,7 @@ show_repo_meta (OstreeRepo  *repo,
             g_print ("%s", buf);
           } while (bytes_read > 0);
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE)
+      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                        "Can't show archived files yet");

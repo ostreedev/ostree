@@ -79,17 +79,36 @@ GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
 GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
                                                 const char   *object);
 
-gboolean      ostree_repo_store_archived_file (OstreeRepo       *self,
-                                               const char       *expected_checksum,
-                                               const char       *path,
-                                               OstreeObjectType  objtype,
-                                               gboolean         *did_exist,
-                                               GError          **error);
+gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
+                                               GCancellable   *cancellable,
+                                               GError        **error);
+
+gboolean      ostree_repo_commit_transaction (OstreeRepo     *self,
+                                              GCancellable   *cancellable,
+                                              GError        **error);
+
+gboolean      ostree_repo_has_object (OstreeRepo           *self,
+                                      OstreeObjectType      objtype,
+                                      const char           *checksum,
+                                      gboolean             *out_have_object,
+                                      GCancellable         *cancellable,
+                                      GError             **error);
+
+gboolean      ostree_repo_store_object (OstreeRepo       *self,
+                                        OstreeObjectType  objtype,
+                                        const char       *expected_checksum,
+                                        GFileInfo        *file_info,
+                                        GVariant         *xattrs,
+                                        GInputStream     *content,
+                                        GCancellable     *cancellable,
+                                        GError          **error);
 
 gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
-                                                GFile        *file,
-                                                const char   *checksum,
                                                 OstreeObjectType objtype,
+                                                const char   *checksum,
+                                                GFileInfo        *file_info,
+                                                GVariant         *xattrs,
+                                                GInputStream     *content,
                                                 GCancellable *cancellable,
                                                 GError      **error);
 

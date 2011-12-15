@@ -245,13 +245,16 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
       goto out;
     }
 
-  ostree_checksum_update_stat (ret_checksum,
-                               g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                               g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                               g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-  /* FIXME - ensure empty xattrs are the same as NULL xattrs */
-  if (xattrs)
-    g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+  if (objtype != OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
+    {
+      ostree_checksum_update_stat (ret_checksum,
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                   g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
+      /* FIXME - ensure empty xattrs are the same as NULL xattrs */
+      if (xattrs)
+        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
+    }
 
   ret = TRUE;
   ot_transfer_out_value (out_checksum, &ret_checksum);
@@ -291,7 +294,7 @@ ostree_checksum_file (GFile            *f,
         goto out;
     }
 
-  if (!OSTREE_OBJECT_TYPE_IS_META(objtype))
+  if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
     {
       xattrs = ostree_get_xattrs_for_file (f, error);
       if (!xattrs)
@@ -444,35 +447,34 @@ ostree_set_xattrs (GFile  *f,
 }
 
 gboolean
-ostree_parse_metadata_file (GFile                       *file,
-                            OstreeObjectType            *out_type,
-                            GVariant                   **out_variant,
-                            GError                     **error)
+ostree_map_metadata_file (GFile                       *file,
+                          OstreeObjectType             expected_type,
+                          GVariant                   **out_variant,
+                          GError                     **error)
 {
   gboolean ret = FALSE;
   GVariant *ret_variant = NULL;
   GVariant *container = NULL;
-  guint32 ret_type;
+  guint32 actual_type;
 
-  if (!ot_util_variant_map (file, G_VARIANT_TYPE (OSTREE_SERIALIZED_VARIANT_FORMAT),
+  if (!ot_util_variant_map (file, OSTREE_SERIALIZED_VARIANT_FORMAT,
                             &container, error))
     goto out;
 
   g_variant_get (container, "(uv)",
-                 &ret_type, &ret_variant);
-  ret_type = GUINT32_FROM_BE (ret_type);
-  if (!OSTREE_OBJECT_TYPE_IS_META (ret_type))
+                 &actual_type, &ret_variant);
+  ot_util_variant_take_ref (ret_variant);
+  actual_type = GUINT32_FROM_BE (actual_type);
+  if (actual_type != expected_type)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted metadata object '%s'; invalid type %d",
-                   ot_gfile_get_path_cached (file), ret_type);
+                   "Corrupted metadata object '%s'; found type %u, expected %u",
+                   ot_gfile_get_path_cached (file), 
+                   actual_type, (guint32)expected_type);
       goto out;
     }
-  ot_util_variant_take_ref (ret_variant);
 
   ret = TRUE;
-  if (out_type)
-    *out_type = ret_type;
   ot_transfer_out_value(out_variant, &ret_variant);
  out:
   ot_clear_gvariant (&ret_variant);
@@ -541,201 +543,66 @@ ostree_get_relative_object_path (const char *checksum,
   return g_string_free (path, FALSE);
 }
 
-gboolean
-ostree_archive_file_for_input (GOutputStream     *output,
-                               GFileInfo         *finfo,
-                               GInputStream      *instream,
-                               GVariant          *xattrs,
-                               GChecksum        **out_checksum,
-                               GCancellable      *cancellable,
-                               GError           **error)
+GVariant *
+ostree_create_archive_file_metadata (GFileInfo         *finfo,
+                                     GVariant          *xattrs)
 {
-  gboolean ret = FALSE;
-  guint32 uid, gid, mode;
-  guint32 device = 0;
-  guint32 metadata_size_be;
-  const char *target = NULL;
-  guint64 object_size;
-  gboolean pack_builder_initialized = FALSE;
+  guint32 uid, gid, mode, rdev;
   GVariantBuilder pack_builder;
-  GVariant *pack_variant = NULL;
-  gsize bytes_written;
-  GChecksum *ret_checksum = NULL;
+  GVariant *ret = NULL;
 
   uid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_UID);
   gid = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_GID);
   mode = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_MODE);
+  rdev = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
 
-  g_variant_builder_init (&pack_builder, G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT));
-  pack_builder_initialized = TRUE;
-  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));
+  g_variant_builder_init (&pack_builder, OSTREE_ARCHIVED_FILE_VARIANT_FORMAT);
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));   /* Version */ 
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (uid));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
+  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (rdev));
+  if (S_ISLNK (mode))
+    g_variant_builder_add (&pack_builder, "s", g_file_info_get_symlink_target (finfo));
+  else
+    g_variant_builder_add (&pack_builder, "s", "");
 
   g_variant_builder_add (&pack_builder, "@a(ayay)", xattrs ? xattrs : g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
-  if (S_ISREG (mode))
-    {
-      object_size = (guint64)g_file_info_get_size (finfo);
-    }
-  else if (S_ISLNK (mode))
-    {
-      target = g_file_info_get_attribute_byte_string (finfo, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
-      object_size = strlen (target);
-    }
-  else if (S_ISBLK (mode) || S_ISCHR (mode))
-    {
-      device = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
-      object_size = 4;
-    }
-  else if (S_ISFIFO (mode))
-    {
-      object_size = 0;
-    }
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid mode %u", mode);
-      goto out;
-    }
-
-  g_variant_builder_add (&pack_builder, "t", GUINT64_TO_BE (object_size));
-  pack_variant = g_variant_builder_end (&pack_builder);
-  pack_builder_initialized = FALSE;
-
-  metadata_size_be = GUINT32_TO_BE (g_variant_get_size (pack_variant));
-
-  if (!g_output_stream_write_all (output, &metadata_size_be, 4,
-                                  &bytes_written, cancellable, error))
-    goto out;
-  g_assert (bytes_written == 4);
-
-  if (!g_output_stream_write_all (output, g_variant_get_data (pack_variant), g_variant_get_size (pack_variant),
-                                  &bytes_written, cancellable, error))
-    goto out;
-
-  if (S_ISREG (mode))
-    {
-      if (!ot_gio_splice_and_checksum (output, (GInputStream*)instream,
-                                       out_checksum ? &ret_checksum : NULL,
-                                       cancellable, error))
-        goto out;
-    }
-  else if (S_ISLNK (mode))
-    {
-      if (out_checksum)
-        {
-          ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-          g_checksum_update (ret_checksum, (guint8*)target, object_size);
-        }
-      if (!g_output_stream_write_all (output, target, object_size,
-                                      &bytes_written, cancellable, error))
-        goto out;
-    }
-  else if (S_ISBLK (mode) || S_ISCHR (mode))
-    {
-      guint32 device_be = GUINT32_TO_BE (device);
-      g_assert (object_size == 4);
-      if (out_checksum)
-        {
-          ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-          g_checksum_update (ret_checksum, (guint8*)&device_be, 4);
-        }
-      if (!g_output_stream_write_all (output, &device_be, object_size,
-                                      &bytes_written, cancellable, error))
-        goto out;
-      g_assert (bytes_written == 4);
-    }
-  else if (S_ISFIFO (mode))
-    {
-      if (out_checksum)
-        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-    }
-  else
-    g_assert_not_reached ();
-
-  if (ret_checksum)
-    {
-      ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
-      if (xattrs)
-        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
- out:
-  if (pack_builder_initialized)
-    g_variant_builder_clear (&pack_builder);
-  ot_clear_gvariant (&pack_variant);
-  ot_clear_checksum (&ret_checksum);
+  ret = g_variant_builder_end (&pack_builder);
+  g_variant_ref_sink (ret);
+  
   return ret;
 }
 
 gboolean
-ostree_parse_archived_file (GFile            *file,
-                            GFileInfo       **out_file_info,
-                            GVariant        **out_xattrs,
-                            GInputStream    **out_content,
-                            GCancellable     *cancellable,
-                            GError          **error)
+ostree_parse_archived_file_meta (GVariant         *metadata,
+                                 GFileInfo       **out_file_info,
+                                 GVariant        **out_xattrs,
+                                 GError          **error)
 {
   gboolean ret = FALSE;
-  char *metadata_buf = NULL;
-  GVariant *metadata = NULL;
   GFileInfo *ret_file_info = NULL;
   GVariant *ret_xattrs = NULL;
-  GInputStream *in = NULL;
-  guint32 metadata_len;
-  guint32 version, uid, gid, mode;
-  guint64 content_len;
-  gsize bytes_read;
+  guint32 version, uid, gid, mode, rdev;
+  const char *symlink_target;
 
-  in = (GInputStream*)g_file_read (file, NULL, error);
-  if (!in)
-    goto out;
-      
-  if (!g_input_stream_read_all (in, &metadata_len, 4, &bytes_read, NULL, error))
-    goto out;
-  if (bytes_read != 4)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; too short while reading metadata length");
-      goto out;
-    }
-      
-  metadata_len = GUINT32_FROM_BE (metadata_len);
-  if (metadata_len > OSTREE_MAX_METADATA_SIZE)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; metadata length %u is larger than maximum %u",
-                   metadata_len, OSTREE_MAX_METADATA_SIZE);
-      goto out;
-    }
-  metadata_buf = g_malloc (metadata_len);
+  g_variant_get (metadata, "(uuuuu&s@a(ayay))",
+                 &version, &uid, &gid, &mode, &rdev,
+                 &symlink_target, &ret_xattrs);
+  version = GUINT32_FROM_BE (version);
 
-  if (!g_input_stream_read_all (in, metadata_buf, metadata_len, &bytes_read, NULL, error))
-    goto out;
-  if (bytes_read != metadata_len)
+  if (version != 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted archive file; too short while reading metadata");
+                   "Invalid version %d in archived file metadata", version);
       goto out;
     }
 
-  metadata = g_variant_new_from_data (G_VARIANT_TYPE (OSTREE_ARCHIVED_FILE_VARIANT_FORMAT),
-                                      metadata_buf, metadata_len, FALSE,
-                                      (GDestroyNotify)g_free,
-                                      metadata_buf);
-  metadata_buf = NULL;
-
-  g_variant_get (metadata, "(uuuu@a(ayay)t)",
-                 &version, &uid, &gid, &mode,
-                 &ret_xattrs, &content_len);
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  content_len = GUINT64_FROM_BE (content_len);
+  rdev = GUINT32_FROM_BE (rdev);
 
   ret_file_info = g_file_info_new ();
   g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
@@ -743,46 +610,22 @@ ostree_parse_archived_file (GFile            *file,
   g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);
   g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", gid);
   g_file_info_set_attribute_uint32 (ret_file_info, "unix::mode", mode);
-  g_file_info_set_attribute_uint64 (ret_file_info, "standard::size", content_len);
 
   if (S_ISREG (mode))
     {
-      g_file_info_set_attribute_uint64 (ret_file_info, "standard::size", content_len);
+      ;
     }
   else if (S_ISLNK (mode))
     {
-      char target[PATH_MAX+1];
-      if (!g_input_stream_read_all (in, target, sizeof(target)-1, &bytes_read, cancellable, error))
-        goto out;
-      target[bytes_read] = '\0';
-
-      g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", TRUE);
-      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", target);
-
-      g_input_stream_close (in, cancellable, error);
-      g_clear_object (&in);
+      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
     }
   else if (S_ISCHR (mode) || S_ISBLK (mode))
     {
-      guint32 dev;
-
-      if (!g_input_stream_read_all (in, &dev, 4, &bytes_read, NULL, error))
-        goto out;
-      if (bytes_read != 4)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Corrupted archive file; too short while reading device id");
-          goto out;
-        }
-      dev = GUINT32_FROM_BE (dev);
-      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", dev);
-      g_input_stream_close (in, cancellable, error);
-      g_clear_object (&in);
+      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", rdev);
     }
   else if (S_ISFIFO (mode))
     {
-      g_input_stream_close (in, cancellable, error);
-      g_clear_object (&in);
+      ;
     }
   else
     {
@@ -794,12 +637,9 @@ ostree_parse_archived_file (GFile            *file,
   ret = TRUE;
   ot_transfer_out_value(out_file_info, &ret_file_info);
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
-  ot_transfer_out_value(out_content, &in);
  out:
   g_clear_object (&ret_file_info);
   ot_clear_gvariant (&ret_xattrs);
-  g_clear_object (&in);
-  ot_clear_gvariant (&metadata);
   return ret;
 }
 
@@ -818,7 +658,11 @@ ostree_create_file_from_input (GFile            *dest_file,
   GFileOutputStream *out = NULL;
   guint32 uid, gid, mode;
   GChecksum *ret_checksum = NULL;
-  gboolean is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
+  gboolean is_meta;
+  gboolean is_archived_content;
+
+  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
+  is_archived_content = objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -829,14 +673,13 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else
     {
-      mode = S_IFREG | 0666;
+      mode = S_IFREG | 0664;
     }
   dest_path = ot_gfile_get_path_cached (dest_file);
 
   if (S_ISDIR (mode))
     {
-      if (mkdir (ot_gfile_get_path_cached (dest_file),
-                 g_file_info_get_attribute_uint32 (finfo, "unix::mode")) < 0)
+      if (mkdir (ot_gfile_get_path_cached (dest_file), mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -907,7 +750,7 @@ ostree_create_file_from_input (GFile            *dest_file,
       goto out;
     }
 
-  if (finfo != NULL)
+  if (finfo != NULL && !is_meta && !is_archived_content)
     {
       uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
       gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
@@ -917,11 +760,6 @@ ostree_create_file_from_input (GFile            *dest_file,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-    }
-  else
-    {
-      uid = geteuid ();
-      gid = getegid ();
     }
 
   if (!S_ISLNK (mode))
@@ -940,9 +778,14 @@ ostree_create_file_from_input (GFile            *dest_file,
         goto out;
     }
 
-  if (ret_checksum && !is_meta)
+  if (ret_checksum && !is_meta && !is_archived_content)
     {
-      ostree_checksum_update_stat (ret_checksum, uid, gid, mode);
+      g_assert (finfo != NULL);
+
+      ostree_checksum_update_stat (ret_checksum,
+                                   g_file_info_get_attribute_uint32 (finfo, "unix::uid"),
+                                   g_file_info_get_attribute_uint32 (finfo, "unix::gid"),
+                                   mode);
       if (xattrs)
         g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
     }
@@ -965,14 +808,14 @@ create_tmp_string (const char *dirpath,
   GString *tmp_name = NULL;
 
   if (!prefix)
-    prefix = "tmp-";
+    prefix = "tmp";
   if (!suffix)
-    suffix = ".tmp";
+    suffix = "tmp";
 
   tmp_name = g_string_new (dirpath);
   g_string_append_c (tmp_name, '/');
   g_string_append (tmp_name, prefix);
-  g_string_append (tmp_name, "XXXXXX");
+  g_string_append (tmp_name, "-XXXXXXXXXXXX.");
   g_string_append (tmp_name, suffix);
 
   return tmp_name;

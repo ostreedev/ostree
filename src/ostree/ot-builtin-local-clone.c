@@ -25,7 +25,8 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-#include <glib/gi18n.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 static GOptionEntry options[] = {
   { NULL }
@@ -94,34 +95,67 @@ object_iter_callback (OstreeRepo   *repo,
                       gpointer      user_data)
 {
   OtLocalCloneData *data = user_data;
-  GError *error = NULL;
-  gboolean did_exist;
+  GError *real_error = NULL;
+  GError **error = &real_error;
+  GFile *content_path = NULL;
+  GFileInfo *archive_info = NULL;
+  GVariant *archive_metadata = NULL;
+  GVariant *xattrs = NULL;
+  GInputStream *input = NULL;
 
-  if (ostree_repo_get_mode (data->src_repo) == OSTREE_REPO_MODE_ARCHIVE)
+  if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
+    xattrs = ostree_get_xattrs_for_file (objfile, error);
+  
+  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
+    ;
+  else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
     {
-      if (!ostree_repo_store_archived_file (data->dest_repo, checksum,
-                                            ot_gfile_get_path_cached (objfile),
-                                            objtype,
-                                            &did_exist,
-                                            &error))
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
+        goto out;
+
+      if (!ostree_parse_archived_file_meta (archive_metadata, &archive_info, &xattrs, error))
+        goto out;
+
+      content_path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+
+      if (g_file_info_get_file_type (archive_info) == G_FILE_TYPE_REGULAR)
+        {
+          input = (GInputStream*)g_file_read (content_path, NULL, error);
+          if (!input)
+            goto out;
+        }
+      
+      if (!ostree_repo_store_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
+                                             archive_info, xattrs, input,
+                                             NULL, error))
         goto out;
     }
   else
     {
-      if (!ostree_repo_store_object_trusted (data->dest_repo,
-                                             objfile, 
-                                             checksum,
-                                             objtype,
-                                             NULL,
-                                             &error))
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          input = (GInputStream*)g_file_read (objfile, NULL, error);
+          if (!input)
+            goto out;
+        }
+
+      if (!ostree_repo_store_object_trusted (data->dest_repo, objtype, checksum,
+                                             file_info, xattrs, input,
+                                             NULL, error))
         goto out;
     }
 
  out:
-  if (error != NULL)
+  ot_clear_gvariant (&archive_metadata);
+  ot_clear_gvariant (&xattrs);
+  g_clear_object (&archive_info);
+  g_clear_object (&input);
+  g_clear_object (&content_path);
+  if (real_error != NULL)
     {
-      g_printerr ("%s\n", error->message);
-      g_clear_error (&error);
+      g_printerr ("%s\n", real_error->message);
+      g_clear_error (error);
+      exit (1);
     }
 }
 
@@ -183,7 +217,13 @@ ostree_builtin_local_clone (int argc, char **argv, const char *repo_path, GError
 
   data.uids_differ = g_file_info_get_attribute_uint32 (src_info, "unix::uid") != g_file_info_get_attribute_uint32 (dest_info, "unix::uid");
 
+  if (!ostree_repo_prepare_transaction (data.dest_repo, NULL, error))
+    goto out;
+
   if (!ostree_repo_iter_objects (data.src_repo, object_iter_callback, &data, error))
+    goto out;
+
+  if (!ostree_repo_commit_transaction (data.dest_repo, NULL, error))
     goto out;
   
   src_dir = g_file_resolve_relative_path (src_repo_dir, "refs/heads");
