@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..17"
+echo "1..18"
 
 . libtest.sh
 
@@ -148,3 +148,6 @@ ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
 cd test2-checkout-from-local-clone
 assert_file_has_content yet/another/tree/green 'leaf'
 echo "ok local clone checkout"
+
+$OSTREE checkout -U test2 checkout-user-test2
+echo "ok user checkout"

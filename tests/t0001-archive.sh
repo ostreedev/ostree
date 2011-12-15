@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..5'
+echo '1..6'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -47,3 +47,6 @@ ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
 cd test2-checkout-from-local-clone
 assert_file_has_content baz/cow moo
 echo "ok local clone checkout"
+
+$OSTREE checkout -U test2 checkout-user-test2
+echo "ok user checkout"

@@ -2262,7 +2262,18 @@ checkout_tree (OstreeRepo               *self,
         {
           const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
 
-          if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
+          if (priv->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+            {
+              g_clear_object (&object_path);
+              object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+
+              if (link (ot_gfile_get_path_cached (object_path), ot_gfile_get_path_cached (dest_path)) < 0)
+                {
+                  ot_util_set_error_from_errno (error, errno);
+                  goto out;
+                }
+            }
+          else if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
               ot_clear_gvariant (&archive_metadata);
               if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
