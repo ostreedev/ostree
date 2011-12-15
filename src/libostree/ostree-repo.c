@@ -960,6 +960,7 @@ commit_staged_file (OstreeRepo         *self,
   ret = TRUE;
  out:
   g_clear_object (&dest_file);
+  g_clear_object (&checksum_dir);
   return ret;
 }
 
@@ -2261,10 +2262,9 @@ checkout_tree (OstreeRepo               *self,
         {
           const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
 
-          g_clear_object (&object_path);
-
           if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
+              ot_clear_gvariant (&archive_metadata);
               if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
                 goto out;
               
@@ -2289,6 +2289,7 @@ checkout_tree (OstreeRepo               *self,
             }
           else
             {
+              g_clear_object (&object_path);
               object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
 
               if (link (ot_gfile_get_path_cached (object_path), ot_gfile_get_path_cached (dest_path)) < 0)
