@@ -480,12 +480,53 @@ ostree_parse_metadata_file (GFile                       *file,
   return ret;
 }
 
+const char *
+ostree_object_type_to_string (OstreeObjectType objtype)
+{
+  switch (objtype)
+    {
+    case OSTREE_OBJECT_TYPE_RAW_FILE:
+      return "file";
+    case OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT:
+      return "archive-content";
+    case OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META:
+      return "archive-meta";
+    case OSTREE_OBJECT_TYPE_DIR_TREE:
+      return "dirtree";
+    case OSTREE_OBJECT_TYPE_DIR_META:
+      return "dirmeta";
+    case OSTREE_OBJECT_TYPE_COMMIT:
+      return "commit";
+    default:
+      g_assert_not_reached ();
+      return NULL;
+    }
+}
+
+OstreeObjectType
+ostree_object_type_from_string (const char *str)
+{
+  if (!strcmp (str, "file"))
+    return OSTREE_OBJECT_TYPE_RAW_FILE;
+  else if (!strcmp (str, "archive-content"))
+    return OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT;
+  else if (!strcmp (str, "archive-meta"))
+    return OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META;
+  else if (!strcmp (str, "dirtree"))
+    return OSTREE_OBJECT_TYPE_DIR_TREE;
+  else if (!strcmp (str, "dirmeta"))
+    return OSTREE_OBJECT_TYPE_DIR_META;
+  else if (!strcmp (str, "commit"))
+    return OSTREE_OBJECT_TYPE_COMMIT;
+  g_assert_not_reached ();
+  return 0;
+}
+
 char *
 ostree_get_relative_object_path (const char *checksum,
                                  OstreeObjectType type)
 {
   GString *path;
-  const char *type_string;
 
   g_assert (strlen (checksum) == 64);
 
@@ -494,27 +535,9 @@ ostree_get_relative_object_path (const char *checksum,
   g_string_append_len (path, checksum, 2);
   g_string_append_c (path, '/');
   g_string_append (path, checksum + 2);
-  switch (type)
-    {
-    case OSTREE_OBJECT_TYPE_RAW_FILE:
-      type_string = ".file";
-      break;
-    case OSTREE_OBJECT_TYPE_ARCHIVED_FILE:
-      type_string = ".archive";
-      break;
-    case OSTREE_OBJECT_TYPE_DIR_TREE:
-      type_string = ".dirtree";
-      break;
-    case OSTREE_OBJECT_TYPE_DIR_META:
-      type_string = ".dirmeta";
-      break;
-    case OSTREE_OBJECT_TYPE_COMMIT:
-      type_string = ".commit";
-      break;
-    default:
-      g_assert_not_reached ();
-    }
-  g_string_append (path, type_string);
+  g_string_append_c (path, '.');
+  g_string_append (path, ostree_object_type_to_string (type));
+
   return g_string_free (path, FALSE);
 }
 

@@ -85,10 +85,25 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}ssstss)"
 
+/* Archive file objects:
+ * u - Version
+ * u - uid
+ * u - gid
+ * u - mode
+ * u - rdev
+ * s - symlink target
+ * a(ayay) - xattrs
+ */
+#define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(uuuuusa(ayay))")
+
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
 
 void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
+
+const char * ostree_object_type_to_string (OstreeObjectType objtype);
+
+OstreeObjectType ostree_object_type_from_string (const char *str);
 
 char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
