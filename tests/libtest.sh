@@ -55,7 +55,7 @@ assert_not_has_file () {
 }
 
 assert_file_has_content () {
-    if ! grep -q "$2" "$1"; then
+    if ! grep -q -e "$2" "$1"; then
 	echo 1>&2 "File '$1' doesn't match regexp '$2'"; exit 1
     fi
 }
