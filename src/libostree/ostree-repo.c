@@ -1342,10 +1342,30 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return serialized_tree;
 }
 
+static GFileInfo *
+create_modified_file_info (GFileInfo               *info,
+                           OstreeRepoCommitModifier *modifier)
+{
+  GFileInfo *ret;
+
+  if (!modifier)
+    return (GFileInfo*)g_object_ref (info);
+
+  ret = g_file_info_dup (info);
+  
+  if (modifier->uid >= 0)
+    g_file_info_set_attribute_uint32 (ret, "unix::uid", modifier->uid);
+  if (modifier->gid >= 0)
+    g_file_info_set_attribute_uint32 (ret, "unix::gid", modifier->gid);
+
+  return ret;
+}
+
 static gboolean
 stage_directory_recurse (OstreeRepo           *self,
                          GFile                *base,
                          GFile                *dir,
+                         OstreeRepoCommitModifier *modifier,
                          GChecksum           **out_contents_checksum,
                          GChecksum           **out_metadata_checksum,
                          GCancellable         *cancellable,
@@ -1357,6 +1377,7 @@ stage_directory_recurse (OstreeRepo           *self,
   GChecksum *ret_contents_checksum = NULL;
   GFileEnumerator *dir_enum = NULL;
   GFileInfo *child_info = NULL;
+  GFileInfo *modified_info = NULL;
   GFile *child = NULL;
   GHashTable *file_checksums = NULL;
   GHashTable *dir_metadata_checksums = NULL;
@@ -1372,15 +1393,18 @@ stage_directory_recurse (OstreeRepo           *self,
   if (!child_info)
     goto out;
 
+  modified_info = create_modified_file_info (child_info, modifier);
+
   xattrs = ostree_get_xattrs_for_file (dir, error);
   if (!xattrs)
     goto out;
 
-  if (!stage_directory_meta (self, child_info, xattrs, &ret_metadata_checksum,
+  if (!stage_directory_meta (self, modified_info, xattrs, &ret_metadata_checksum,
                              cancellable, error))
     goto out;
   
   g_clear_object (&child_info);
+  g_clear_object (&modified_info);
 
   dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1400,6 +1424,9 @@ stage_directory_recurse (OstreeRepo           *self,
     {
       const char *name = g_file_info_get_name (child_info);
 
+      g_clear_object (&modified_info);
+      modified_info = create_modified_file_info (child_info, modifier);
+
       g_clear_object (&child);
       child = g_file_get_child (dir, name);
 
@@ -1408,7 +1435,7 @@ stage_directory_recurse (OstreeRepo           *self,
           GChecksum *child_dir_metadata_checksum = NULL;
           GChecksum *child_dir_contents_checksum = NULL;
 
-          if (!stage_directory_recurse (self, base, child, &child_dir_contents_checksum,
+          if (!stage_directory_recurse (self, base, child, modifier, &child_dir_contents_checksum,
                                         &child_dir_metadata_checksum, cancellable, error))
             goto out;
 
@@ -1425,7 +1452,7 @@ stage_directory_recurse (OstreeRepo           *self,
           ot_clear_gvariant (&xattrs);
           g_clear_object (&file_input);
 
-          if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_REGULAR)
+          if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
             {
               file_input = (GInputStream*)g_file_read (child, cancellable, error);
               if (!file_input)
@@ -1437,7 +1464,7 @@ stage_directory_recurse (OstreeRepo           *self,
             goto out;
 
           if (!stage_object (self, OSTREE_OBJECT_TYPE_RAW_FILE,
-                             child_info, xattrs, file_input, NULL,
+                             modified_info, xattrs, file_input, NULL,
                              &child_file_checksum, cancellable, error))
             goto out;
 
@@ -1468,6 +1495,7 @@ stage_directory_recurse (OstreeRepo           *self,
  out:
   g_clear_object (&dir_enum);
   g_clear_object (&child);
+  g_clear_object (&modified_info);
   g_clear_object (&child_info);
   g_clear_object (&file_input);
   if (file_checksums)
@@ -1492,6 +1520,7 @@ ostree_repo_commit_directory (OstreeRepo *self,
                               const char   *body,
                               GVariant     *metadata,
                               GFile        *dir,
+                              OstreeRepoCommitModifier *modifier,
                               GChecksum   **out_commit,
                               GCancellable *cancellable,
                               GError      **error)
@@ -1518,7 +1547,7 @@ ostree_repo_commit_directory (OstreeRepo *self,
   if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
-  if (!stage_directory_recurse (self, dir, dir, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
+  if (!stage_directory_recurse (self, dir, dir, modifier, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
     goto out;
 
   if (!do_commit_write_ref (self, branch, current_head, subject, body, metadata,
@@ -1548,9 +1577,11 @@ propagate_libarchive_error (GError      **error,
 }
 
 static GFileInfo *
-file_info_from_archive_entry (struct archive_entry  *entry)
+file_info_from_archive_entry_and_modifier (struct archive_entry  *entry,
+                                           OstreeRepoCommitModifier *modifier)
 {
   GFileInfo *info = g_file_info_new ();
+  GFileInfo *modified_info = NULL;
   const struct stat *st;
   guint32 file_type;
 
@@ -1576,7 +1607,11 @@ file_info_from_archive_entry (struct archive_entry  *entry)
       g_file_info_set_attribute_uint32 (info, "unix::rdev", st->st_rdev);
     }
 
-  return info;
+  modified_info = create_modified_file_info (info, modifier);
+
+  g_object_unref (info);
+  
+  return modified_info;
 }
 
 static gboolean
@@ -1742,6 +1777,7 @@ file_tree_import_recurse (OstreeRepo           *self,
 static gboolean
 import_libarchive (OstreeRepo           *self,
                    GFile                *archive_f,
+                   OstreeRepoCommitModifier *modifier,
                    char                **out_contents_checksum,
                    char                **out_metadata_checksum,
                    GCancellable         *cancellable,
@@ -1861,7 +1897,7 @@ import_libarchive (OstreeRepo           *self,
         }
 
       g_clear_object (&file_info);
-      file_info = file_info_from_archive_entry (entry);
+      file_info = file_info_from_archive_entry_and_modifier (entry, modifier);
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_UNKNOWN)
         {
@@ -1969,6 +2005,7 @@ ostree_repo_commit_tarfile (OstreeRepo *self,
                             const char   *body,
                             GVariant     *metadata,
                             GFile        *path,
+                            OstreeRepoCommitModifier *modifier,
                             GChecksum   **out_commit,
                             GCancellable *cancellable,
                             GError      **error)
@@ -1996,7 +2033,7 @@ ostree_repo_commit_tarfile (OstreeRepo *self,
   if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
-  if (!import_libarchive (self, path, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
+  if (!import_libarchive (self, path, modifier, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
     goto out;
 
   if (!do_commit_write_ref (self, branch, current_head, subject, body, metadata,
@@ -2019,6 +2056,31 @@ ostree_repo_commit_tarfile (OstreeRepo *self,
   return FALSE;
 #endif
 }
+
+OstreeRepoCommitModifier *
+ostree_repo_commit_modifier_new (void)
+{
+  OstreeRepoCommitModifier *modifier = g_new0 (OstreeRepoCommitModifier, 1);
+  modifier->uid = -1;
+  modifier->gid = -1;
+
+  modifier->refcount = 1;
+
+  return modifier;
+}
+
+void
+ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
+{
+  if (!modifier)
+    return;
+  if (!g_atomic_int_dec_and_test (&modifier->refcount))
+    return;
+
+  g_free (modifier);
+  return;
+}
+
 
 static gboolean
 iter_object_dir (OstreeRepo             *self,

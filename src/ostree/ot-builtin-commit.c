@@ -36,6 +36,8 @@ static char *body;
 static char *parent;
 static char *branch;
 static gboolean tar;
+static gint owner_uid = -1;
+static gint owner_gid = -1;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
@@ -45,6 +47,8 @@ static GOptionEntry options[] = {
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
   { "tar", 0, 0, G_OPTION_ARG_NONE, &tar, "Given argument is a tar file", NULL },
+  { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
+  { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
   { NULL }
 };
 
@@ -60,6 +64,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
+  OstreeRepoCommitModifier *modifier = NULL;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -126,16 +131,23 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       goto out;
     }
 
+  if (owner_uid >= 0 || owner_gid >= 0)
+    {
+      modifier = ostree_repo_commit_modifier_new ();
+      modifier->uid = owner_uid;
+      modifier->gid = owner_gid;
+    }
+
   if (!tar)
     {
       if (!ostree_repo_commit_directory (repo, branch, parent, subject, body, metadata,
-                                         arg, &commit_checksum, NULL, error))
+                                         arg, modifier, &commit_checksum, NULL, error))
         goto out;
     }
   else
     {
       if (!ostree_repo_commit_tarfile (repo, branch, parent, subject, body, metadata,
-                                       arg, &commit_checksum, NULL, error))
+                                       arg, modifier, &commit_checksum, NULL, error))
         goto out;
     }
 
@@ -148,6 +160,8 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
     g_mapped_file_unref (metadata_mappedf);
   if (context)
     g_option_context_free (context);
+  if (modifier)
+    ostree_repo_commit_modifier_unref (modifier);
   g_clear_object (&repo);
   ot_clear_checksum (&commit_checksum);
   return ret;

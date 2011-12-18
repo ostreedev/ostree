@@ -130,6 +130,18 @@ gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         GVariant     **out_variant,
                                         GError       **error);
 
+typedef struct {
+  volatile gint refcount;
+  gpointer reserved[3];
+
+  gint uid;
+  gint gid;
+} OstreeRepoCommitModifier;
+
+OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);
+
+void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
+
 gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
                                             const char   *branch,
                                             const char   *parent,
@@ -137,6 +149,7 @@ gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
                                             const char   *body,
                                             GVariant     *metadata,
                                             GFile        *base,
+                                            OstreeRepoCommitModifier *modifier,
                                             GChecksum   **out_commit,
                                             GCancellable *cancellable,
                                             GError      **error);
@@ -148,6 +161,7 @@ gboolean      ostree_repo_commit_tarfile (OstreeRepo   *self,
                                           const char   *body,
                                           GVariant     *metadata,
                                           GFile        *base,
+                                          OstreeRepoCommitModifier *modifier,
                                           GChecksum   **out_commit,
                                           GCancellable *cancellable,
                                           GError      **error);

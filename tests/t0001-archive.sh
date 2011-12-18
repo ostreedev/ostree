@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..6'
+echo '1..9'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -50,3 +50,15 @@ echo "ok local clone checkout"
 
 $OSTREE checkout -U test2 checkout-user-test2
 echo "ok user checkout"
+
+cd ${test_tmpdir}/checkout-test2
+$OSTREE commit -b test2-uid0 -s 'UID 0 test' --owner-uid=0 --owner-gid=0
+echo "ok uid0 commit"
+
+cd ${test_tmpdir}
+$OSTREE ls test2-uid0 /firstfile > uid0-ls-output.txt
+assert_file_has_content uid0-ls-output.txt "-00664 0 0      0 /firstfile" 
+echo "ok uid0 ls"
+
+$OSTREE checkout -U test2-uid0 checkout-user-test2-uid0
+echo "ok user checkout from uid 0"
