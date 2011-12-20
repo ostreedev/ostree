@@ -76,7 +76,7 @@ if ! test -d ostree; then
 fi
 cd ostree
 ostree --repo=${OSTREE_REPO} local-clone repo
-for branch in base dev; do
+for branch in runtime devel; do
     rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
@@ -101,7 +101,7 @@ if ! echo $ARGS | grep -q 'root='; then
     ARGS="root=/dev/hda $ARGS"
 fi
 if ! echo $ARGS | grep -q 'ostree='; then
-    ARGS="ostree=${BRANCH_PREFIX}base-current $ARGS"
+    ARGS="ostree=${BRANCH_PREFIX}runtime-current $ARGS"
 fi
 
 exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -net user -net nic,model=virtio -append "$ARGS"
