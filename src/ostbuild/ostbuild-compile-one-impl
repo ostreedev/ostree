@@ -26,11 +26,16 @@ import select,time
 
 tempfiles = []
 
+_blacklist_regexps = map(re.compile, 
+                         [r'.*\.la$',
+                          ])
+
 _devel_regexps = map(re.compile,
                      [r'/usr/include/',
                       r'/usr/share/pkgconfig/',
-                      r'/.*lib(?:|(?:32)|(?:64))/pkgconfig/.*\.pc',
-                      r'/.*lib(?:|(?:32)|(?:64))/.*\.so$'])
+                      r'/(?:usr/)lib(?:|(?:32)|(?:64))/pkgconfig/.*\.pc$',
+                      r'/(?:usr/)lib(?:|(?:32)|(?:64))/[^/]+\.so$'
+                      ])
 
 root = None
 
@@ -289,6 +294,16 @@ def phase_make_artifacts(builddir=None):
     for root, dirs, files in os.walk('.'):
         for filename in files:
             path = os.path.join(root, filename)
+
+            blacklisted = False
+            for r in _blacklist_regexps:
+                if r.match(path):
+                    blacklisted = True
+                    break
+
+            if blacklisted:
+                continue
+
             matched = False
             for r in _devel_regexps:
                 if not r.match(path[1:]):
