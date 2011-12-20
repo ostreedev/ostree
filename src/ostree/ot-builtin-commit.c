@@ -46,7 +46,7 @@ static GOptionEntry options[] = {
   { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
-  { "tar", 0, 0, G_OPTION_ARG_NONE, &tar, "Given argument is a tar file", NULL },
+  { "tar", 0, 0, G_OPTION_ARG_NONE, &tar, "Given arguments are tar files", NULL },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
   { NULL }
@@ -60,11 +60,13 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   OstreeRepo *repo = NULL;
   char *argpath = NULL;
   GFile *arg = NULL;
+  GPtrArray *tar_files = NULL;
   GChecksum *commit_checksum = NULL;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
+  int i;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -146,8 +148,13 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
     }
   else
     {
-      if (!ostree_repo_commit_tarfile (repo, branch, parent, subject, body, metadata,
-                                       arg, modifier, &commit_checksum, NULL, error))
+      tar_files = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+      g_ptr_array_add (tar_files, g_object_ref (arg));
+      for (i = 2; i < argc; i++)
+        g_ptr_array_add (tar_files, ot_gfile_new_for_path (argv[i]));
+
+      if (!ostree_repo_commit_tarfiles (repo, branch, parent, subject, body, metadata,
+                                        tar_files, modifier, &commit_checksum, NULL, error))
         goto out;
     }
 
@@ -156,6 +163,8 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
  out:
   g_free (argpath);
   g_clear_object (&arg);
+  if (tar_files)
+    g_ptr_array_unref (tar_files);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)

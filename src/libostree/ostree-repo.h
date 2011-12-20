@@ -154,17 +154,17 @@ gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
                                             GCancellable *cancellable,
                                             GError      **error);
 
-gboolean      ostree_repo_commit_tarfile (OstreeRepo   *self,
-                                          const char   *branch,
-                                          const char   *parent,
-                                          const char   *subject,
-                                          const char   *body,
-                                          GVariant     *metadata,
-                                          GFile        *base,
-                                          OstreeRepoCommitModifier *modifier,
-                                          GChecksum   **out_commit,
-                                          GCancellable *cancellable,
-                                          GError      **error);
+gboolean      ostree_repo_commit_tarfiles (OstreeRepo   *self,
+                                           const char   *branch,
+                                           const char   *parent,
+                                           const char   *subject,
+                                           const char   *body,
+                                           GVariant     *metadata,
+                                           GPtrArray    *tarfiles,
+                                           OstreeRepoCommitModifier *modifier,
+                                           GChecksum   **out_commit,
+                                           GCancellable *cancellable,
+                                           GError      **error);
 
 typedef enum {
   OSTREE_REPO_CHECKOUT_MODE_NONE,

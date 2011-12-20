@@ -1773,24 +1773,19 @@ file_tree_import_recurse (OstreeRepo           *self,
   return ret;
 }
                           
-
 static gboolean
-import_libarchive (OstreeRepo           *self,
-                   GFile                *archive_f,
-                   OstreeRepoCommitModifier *modifier,
-                   char                **out_contents_checksum,
-                   char                **out_metadata_checksum,
-                   GCancellable         *cancellable,
-                   GError              **error)
+stage_libarchive_into_root (OstreeRepo           *self,
+                            FileTree             *root,
+                            GFile                *archive_f,
+                            OstreeRepoCommitModifier *modifier,
+                            GCancellable         *cancellable,
+                            GError              **error)
 {
   gboolean ret = FALSE;
   int r;
-  char *ret_contents_checksum = NULL;
-  char *ret_metadata_checksum = NULL;
   struct archive *a;
   struct archive_entry *entry;
   GFileInfo *file_info = NULL;
-  FileTree *root = NULL;
   GChecksum *tmp_checksum = NULL;
   GPtrArray *split_path = NULL;
   GPtrArray *hardlink_split_path = NULL;
@@ -1803,8 +1798,6 @@ import_libarchive (OstreeRepo           *self,
       propagate_libarchive_error (error, a);
       goto out;
     }
-
-  root = file_tree_new ();
 
   while (TRUE)
     {
@@ -1922,31 +1915,24 @@ import_libarchive (OstreeRepo           *self,
           if (parent == NULL)
             {
               dir = root;
-              if (root->metadata_checksum)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Directory exists: %s", pathname);
-                  goto out;
-                }
             }
           else
             {
-              if (g_hash_table_lookup (parent->subdirs, basename))
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Directory exists: %s", pathname);
-                  goto out;
-                }
               if (g_hash_table_lookup (parent->file_checksums, basename))
                 {
                   g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "Can't replace file with directory: %s", pathname);
                   goto out;
                 }
-              dir = file_tree_new ();
-              g_assert (basename);
-              g_hash_table_insert (parent->subdirs, g_strdup (basename), dir);
+              /* Allow duplicate directories */
+              if (!g_hash_table_lookup (parent->subdirs, basename))
+                {
+                  dir = file_tree_new ();
+                  g_assert (basename);
+                  g_hash_table_replace (parent->subdirs, g_strdup (basename), dir);
+                }
             }
+          g_free (dir->metadata_checksum);
           dir->metadata_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
         }
       else 
@@ -1979,44 +1965,35 @@ import_libarchive (OstreeRepo           *self,
       goto out;
     }
 
-  if (!file_tree_import_recurse (self, root, &ret_contents_checksum, cancellable, error))
-    goto out;
-  ret_metadata_checksum = g_strdup (root->metadata_checksum);
-
   ret = TRUE;
-  ot_transfer_out_value(out_contents_checksum, &ret_contents_checksum);
-  ot_transfer_out_value(out_metadata_checksum, &ret_metadata_checksum);
  out:
-  if (root)
-    file_tree_free (root);
   g_clear_object (&file_info);
-  g_free (ret_contents_checksum);
-  g_free (ret_metadata_checksum);
   ot_clear_checksum (&tmp_checksum);
   return ret;
 }
 #endif
   
 gboolean      
-ostree_repo_commit_tarfile (OstreeRepo *self,
-                            const char   *branch,
-                            const char   *parent,
-                            const char   *subject,
-                            const char   *body,
-                            GVariant     *metadata,
-                            GFile        *path,
-                            OstreeRepoCommitModifier *modifier,
-                            GChecksum   **out_commit,
-                            GCancellable *cancellable,
-                            GError      **error)
+ostree_repo_commit_tarfiles (OstreeRepo *self,
+                             const char   *branch,
+                             const char   *parent,
+                             const char   *subject,
+                             const char   *body,
+                             GVariant     *metadata,
+                             GPtrArray    *tarfiles,
+                             OstreeRepoCommitModifier *modifier,
+                             GChecksum   **out_commit,
+                             GCancellable *cancellable,
+                             GError      **error)
 {
 #ifdef HAVE_LIBARCHIVE
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GChecksum *ret_commit_checksum = NULL;
+  FileTree *root = NULL;
   char *root_contents_checksum = NULL;
-  char *root_metadata_checksum = NULL;
   char *current_head = NULL;
+  int i;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
@@ -2033,11 +2010,21 @@ ostree_repo_commit_tarfile (OstreeRepo *self,
   if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
-  if (!import_libarchive (self, path, modifier, &root_contents_checksum, &root_metadata_checksum, cancellable, error))
+  root = file_tree_new ();
+
+  for (i = 0; i < tarfiles->len; i++)
+    {
+      GFile *archive_f = tarfiles->pdata[i];
+
+      if (!stage_libarchive_into_root (self, root, archive_f, modifier, cancellable, error))
+        goto out;
+    }
+
+  if (!file_tree_import_recurse (self, root, &root_contents_checksum, cancellable, error))
     goto out;
 
   if (!do_commit_write_ref (self, branch, current_head, subject, body, metadata,
-                            root_contents_checksum, root_metadata_checksum, &ret_commit_checksum,
+                            root_contents_checksum, root->metadata_checksum, &ret_commit_checksum,
                             cancellable, error))
     goto out;
   
@@ -2047,8 +2034,9 @@ ostree_repo_commit_tarfile (OstreeRepo *self,
  out:
   ot_clear_checksum (&ret_commit_checksum);
   g_free (current_head);
-  g_free (root_metadata_checksum);
   g_free (root_contents_checksum);
+  if (root)
+    file_tree_free (root);
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

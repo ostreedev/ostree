@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..4"
+echo "1..6"
 
 . libtest.sh
 
@@ -72,3 +72,31 @@ cd test-hardlinks-checkout
 assert_file_has_content foo foo1
 assert_file_has_content bar foo1
 echo "ok hardlink contents"
+
+cd ${test_tmpdir}
+mkdir multicommit-files
+cd multicommit-files
+mkdir -p files1/subdir files2/subdir
+echo "to be overwritten file" > files1/testfile
+echo "not overwritten" > files1/otherfile
+echo "overwriting file" > files2/testfile
+ln -s "to-be-overwritten-symlink" files1/testsymlink
+ln -s "overwriting-symlink" files2/testsymlink
+ln -s "not overwriting symlink" files2/ohersymlink
+echo "original" > files1/subdir/original
+echo "new" > files2/subdir/new
+
+tar -c -C files1 -z -f files1.tar.gz .
+tar -c -C files2 -z -f files2.tar.gz .
+
+$OSTREE commit -s 'multi tar' -b multicommit --tar files1.tar.gz files2.tar.gz
+echo "ok tar multicommit"
+
+cd ${test_tmpdir}
+$OSTREE checkout multicommit multicommit-checkout
+cd multicommit-checkout
+assert_file_has_content testfile "overwriting file"
+assert_file_has_content otherfile "not overwritten"
+assert_file_has_content subdir/original "original"
+assert_file_has_content subdir/new "new"
+echo "ok tar multicommit contents"
