@@ -45,6 +45,8 @@ def log(m):
     sys.stdout.write('\n')
     sys.stdout.flush()
 
+basename = os.path.basename(os.getcwd())
+
 tmpdir = tempfile.mkdtemp(prefix='ostree-chroot-compile-')
 log("Using temporary directory: %s" % (tmpdir, ))
 
@@ -61,7 +63,10 @@ log("Checked out root: %s" % (rootdir, ))
 builddir = os.path.join(rootdir, 'ostbuild');
 os.mkdir(builddir)
 os.mkdir(os.path.join(builddir, 'source'))
+os.mkdir(os.path.join(builddir, 'source', basename))
 os.mkdir(os.path.join(builddir, 'results'))
+
+chroot_sourcedir = os.path.join('/ostbuild', 'source', basename)
 
 # We need to search PATH here manually so we correctly pick up an
 # ostree install in e.g. ~/bin even though we're going to set PATH
@@ -80,13 +85,13 @@ child_args = [ostbuild_user_chroot_path, '--unshare-pid', '--unshare-net', '--un
               '--mount-proc', '/proc', 
               '--mount-bind', '/dev', '/dev',
               '--mount-bind', child_tmpdir, '/tmp',
-              '--mount-bind', os.getcwd(), '/ostbuild/source',
+              '--mount-bind', os.getcwd(), chroot_sourcedir,
               '--mount-bind', args.resultdir, '/ostbuild/results',
               rootdir,
               '/bin/sh']
 if not args.debug_shell:
     child_args += ['-c',
-             'cd /ostbuild/source && ostbuild-compile-one-impl OSTBUILD_RESULTDIR=/ostbuild/results'
+             'cd "%s" && ostbuild-compile-one-impl OSTBUILD_RESULTDIR=/ostbuild/results' % (chroot_sourcedir, )
              ]
 log("Running: %r" % (child_args, ))
 subprocess.check_call(child_args, env=get_build_env())
