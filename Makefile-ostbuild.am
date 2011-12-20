@@ -17,6 +17,8 @@
 
 bin_SCRIPTS += src/ostbuild/ostbuild-compile-one \
 	src/ostbuild/ostbuild-compile-one-impl \
+	src/ostbuild/ostbuild-chroot-compile-one \
+	src/ostbuild/ostbuild-chroot-compile-one-impl \
 	src/ostbuild/ostbuild-nice-and-log-output \
 	$(NULL)
 

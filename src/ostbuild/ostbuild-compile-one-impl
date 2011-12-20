@@ -69,7 +69,7 @@ ostbuild_resultdir=top_srcdir
 
 for arg in sys.argv[1:]:
     if arg.startswith('OSTBUILD_RESULTDIR='):
-        ostbuild_resultdir=arg[20:]
+        ostbuild_resultdir=arg[len('OSTBUILD_RESULTDIR='):]
     elif arg.startswith('--'):
         configargs.append(arg)
     else:
@@ -87,8 +87,22 @@ def fatal(msg):
 def run_sync(args, cwd=None, env=None):
     log("running: %r" % (args,))
     f = open('/dev/null', 'r')
+    # This dance is necessary because we want to keep the PWD
+    # environment variable up to date.  Not doing so is a recipie
+    # for triggering edge conditions in pwd lookup.
+    if (cwd is not None) and (env is None or ('PWD' in env)):
+        if env is None:
+            env_copy = os.environ.copy()
+        else:
+            env_copy = env.copy()
+        if ('PWD' in env_copy) and (not cwd.startswith('/')):
+            env_copy['PWD'] = os.path.join(env_copy['PWD'], cwd)
+        else:
+            env_copy['PWD'] = cwd
+    else:
+        env_copy = env
     proc = subprocess.Popen(args, stdin=f, stdout=sys.stdout, stderr=sys.stderr,
-                            close_fds=True, cwd=cwd, env=env)
+                            close_fds=True, cwd=cwd, env=env_copy)
     f.close()
     returncode = proc.wait()
     log("pid %d exited with code %d" % (proc.pid, returncode))
@@ -167,7 +181,6 @@ def phase_bootstrap():
         if bootstrap:
             log("Detected bootstrap script: %s, using it" % (bootstrap, ))
             args = [bootstrap]
-            args.extend(configargs)
             # Add NOCONFIGURE; GNOME style scripts use this
             env = dict(os.environ)
             env['NOCONFIGURE'] = '1'
@@ -187,24 +200,24 @@ def phase_configure():
         shutil.copytree('.', '_build', symlinks=True,
                         ignore=shutil.ignore_patterns('_build'))
         use_builddir = False
-        builddir = '.'
-    else:
-        builddir = '_build'
 
-    if not use_builddir:
-        configdir = './'
-    else:
-        configdir = os.getcwd()
-        builddir = builddir
+    if use_builddir:
+        builddir = '_build'
         log("Using build directory %r" % (builddir, ))
         if not os.path.isdir(builddir):
             os.mkdir(builddir)
 
     configstatus = 'config.status'
     if not os.path.exists(configstatus):
-        args = [os.path.join(configdir, 'configure')]
+        if use_builddir:
+            args = ['../configure']
+        else:
+            args = ['./configure']
         args.extend(configargs)
-        run_sync(args, cwd=builddir)
+        if use_builddir:
+            run_sync(args, cwd=builddir)
+        else:
+            run_sync(args)
     else:
         log("Found %s, skipping configure" % (configstatus, ))
     phase_build(builddir=builddir)
@@ -231,7 +244,7 @@ def phase_build(builddir=None):
 
     phase_make_artifacts(builddir=builddir)
 
-def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None, resultdir=None):
+def make_artifact(name, from_files, tempdir=None, resultdir=None):
     targz_name = name + '.tar.gz'
     (fd,filelist_temp)=tempfile.mkstemp(prefix='ostree-filelist-%s' % (name, ))
     os.close(fd)
@@ -242,15 +255,11 @@ def make_artifact(name, from_files, fakeroot_temp=None, tempdir=None, resultdir=
         f.write(filename)
         f.write('\n')
     f.close()
-    if fakeroot_temp:
-        args = ['fakeroot', '-i', fakeroot_temp]
-    else:
-        args = []
     if resultdir:
         result_path = os.path.join(resultdir, targz_name)
     else:
         result_path = targz_name
-    args.extend(['tar', '-c', '-z', '-C', tempdir, '-f', result_path, '-T', filelist_temp])
+    args = ['tar', '-c', '-z', '-C', tempdir, '-f', result_path, '-T', filelist_temp]
     run_sync(args)
     log("created: %s" % (os.path.abspath (result_path), ))
 
@@ -267,19 +276,9 @@ def phase_make_artifacts(builddir=None):
 
     artifact_prefix='artifact-%s-%s,%s' % (build_target, basename, version)
 
-    if os.getuid() != 0:
-        (fd,fakeroot_temp)=tempfile.mkstemp(prefix='ostree-fakeroot-%s-' % (basename,))
-        os.close(fd)
-        tempfiles.append(fakeroot_temp)
-    else:
-        fakeroot_temp = None
     tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (basename,))
     tempfiles.append(tempdir)
-    if fakeroot_temp is not None:
-        args = ['fakeroot', '-s', fakeroot_temp]
-    else:
-        args = []
-    args.extend(['make', 'install', 'DESTDIR=' + tempdir])
+    args = ['make', 'install', 'DESTDIR=' + tempdir]
     run_sync(args, cwd=builddir)
 
     devel_files = set()
@@ -302,8 +301,8 @@ def phase_make_artifacts(builddir=None):
     os.chdir(oldpwd)
 
     if devel_files:
-        make_artifact(artifact_prefix + '-devel', devel_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir, resultdir=ostbuild_resultdir)
-    make_artifact(artifact_prefix + '-runtime', runtime_files, fakeroot_temp=fakeroot_temp, tempdir=tempdir, resultdir=ostbuild_resultdir)
+        make_artifact(artifact_prefix + '-devel', devel_files, tempdir=tempdir, resultdir=ostbuild_resultdir)
+    make_artifact(artifact_prefix + '-runtime', runtime_files, tempdir=tempdir, resultdir=ostbuild_resultdir)
 
 def phase_complete():
     for tmpname in tempfiles:
