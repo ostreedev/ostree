@@ -1647,79 +1647,12 @@ import_libarchive_entry_file (OstreeRepo           *self,
   return ret;
 }
 
-typedef struct {
-  char *metadata_checksum;
-  char *contents_checksum;
-
-  GHashTable *file_checksums;
-  GHashTable *subdirs;
-} FileTree;
-
-static void
-file_tree_free (FileTree  *tree)
-{
-  g_free (tree->metadata_checksum);
-  g_free (tree->contents_checksum);
-
-  g_hash_table_destroy (tree->file_checksums);
-  g_hash_table_destroy (tree->subdirs);
-
-  g_free (tree);
-}
-
-static FileTree *
-file_tree_new (void)
-{
-  FileTree *ret = g_new0 (FileTree, 1);
-
-  ret->file_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                               g_free, g_free);
-  ret->subdirs = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                        g_free, (GDestroyNotify)file_tree_free);
-  return ret;
-}
-
 static gboolean
-file_tree_walk (FileTree     *dir,
-                GPtrArray    *split_path,
-                guint         start,
-                FileTree    **out_parent,
-                GError      **error)
-{
-  if (start >= split_path->len)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No such file or directory: %s",
-                   (char*)split_path->pdata[start]);
-      return FALSE;
-    }
-  else if (start == split_path->len - 1)
-    {
-      *out_parent = dir;
-      return TRUE;
-    }
-  else
-    {
-      FileTree *subdir = g_hash_table_lookup (dir->subdirs, split_path->pdata[start]);
-
-      if (!subdir)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "No such file or directory: %s",
-                       (char*)split_path->pdata[start]);
-          return FALSE;
-        }
-
-      return file_tree_walk (subdir, split_path, start + 1, out_parent, error);
-    }
-}
-
-static gboolean
-file_tree_import_recurse (OstreeRepo           *self,
-                          FileTree             *tree,
-                          char                **out_contents_checksum,
-                          GCancellable         *cancellable,
-                          GError              **error)
+stage_mutable_tree_recurse (OstreeRepo           *self,
+                            OstreeMutableTree    *tree,
+                            char                **out_contents_checksum,
+                            GCancellable         *cancellable,
+                            GError              **error)
 {
   gboolean ret = FALSE;
   GChecksum *ret_contents_checksum_obj = NULL;
@@ -1735,22 +1668,22 @@ file_tree_import_recurse (OstreeRepo           *self,
   dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                   (GDestroyNotify)g_free, (GDestroyNotify)g_free);
 
-  g_hash_table_iter_init (&hash_iter, tree->subdirs);
+  g_hash_table_iter_init (&hash_iter, ostree_mutable_tree_get_subdirs (tree));
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *name = key;
-      FileTree *child_dir = value;
+      OstreeMutableTree *child_dir = value;
       char *child_dir_contents_checksum;
 
-      if (!file_tree_import_recurse (self, child_dir, &child_dir_contents_checksum, cancellable, error))
+      if (!stage_mutable_tree_recurse (self, child_dir, &child_dir_contents_checksum, cancellable, error))
         goto out;
       
       g_hash_table_replace (dir_contents_checksums, g_strdup (name), child_dir_contents_checksum);
       g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
-                            g_strdup (child_dir->metadata_checksum));
+                            g_strdup (ostree_mutable_tree_get_metadata_checksum (child_dir)));
     }
     
-  serialized_tree = create_tree_variant_from_hashes (tree->file_checksums,
+  serialized_tree = create_tree_variant_from_hashes (ostree_mutable_tree_get_files (tree),
                                                      dir_contents_checksums,
                                                      dir_metadata_checksums);
       
@@ -1772,23 +1705,168 @@ file_tree_import_recurse (OstreeRepo           *self,
   ot_clear_gvariant (&serialized_tree);
   return ret;
 }
+
+static gboolean
+stage_libarchive_entry_into_root (OstreeRepo           *self,
+                                  OstreeMutableTree    *root,
+                                  struct archive       *a,
+                                  struct archive_entry *entry,
+                                  OstreeRepoCommitModifier *modifier,
+                                  GCancellable         *cancellable,
+                                  GError              **error)
+{
+  gboolean ret = FALSE;
+  const char *pathname;
+  const char *hardlink;
+  const char *basename;
+  GFileInfo *file_info = NULL;
+  GChecksum *tmp_checksum = NULL;
+  GPtrArray *split_path = NULL;
+  GPtrArray *hardlink_split_path = NULL;
+  OstreeMutableTree *subdir = NULL;
+  OstreeMutableTree *parent = NULL;
+  OstreeMutableTree *hardlink_source_parent = NULL;
+  char *hardlink_source_checksum = NULL;
+  OstreeMutableTree *hardlink_source_subdir = NULL;
+
+  pathname = archive_entry_pathname (entry); 
+      
+  if (!ot_util_path_split_validate (pathname, &split_path, error))
+    goto out;
+
+  if (split_path->len == 0)
+    {
+      parent = NULL;
+      basename = NULL;
+    }
+  else
+    {
+      if (!ostree_mutable_tree_walk (root, split_path, 0, &parent, error))
+        goto out;
+      basename = (char*)split_path->pdata[split_path->len-1];
+    }
+
+  hardlink = archive_entry_hardlink (entry);
+  if (hardlink)
+    {
+      const char *hardlink_basename;
+      
+      g_assert (parent != NULL);
+
+      if (!ot_util_path_split_validate (hardlink, &hardlink_split_path, error))
+        goto out;
+      if (hardlink_split_path->len == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid hardlink path %s", hardlink);
+          goto out;
+        }
+      
+      hardlink_basename = hardlink_split_path->pdata[hardlink_split_path->len - 1];
+      
+      if (!ostree_mutable_tree_walk (root, hardlink_split_path, 0, &hardlink_source_parent, error))
+        goto out;
+      
+      if (!ostree_mutable_tree_lookup (hardlink_source_parent, hardlink_basename,
+                                       &hardlink_source_checksum,
+                                       &hardlink_source_subdir,
+                                       error))
+        {
+              g_prefix_error (error, "While resolving hardlink target: ");
+              goto out;
+        }
+      
+      if (hardlink_source_subdir)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Hardlink %s refers to directory %s",
+                       pathname, hardlink);
+          goto out;
+        }
+      g_assert (hardlink_source_checksum);
+      
+      if (!ostree_mutable_tree_replace_file (parent,
+                                             basename,
+                                             hardlink_source_checksum,
+                                             error))
+        goto out;
+    }
+  else
+    {
+      file_info = file_info_from_archive_entry_and_modifier (entry, modifier);
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_UNKNOWN)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unsupported file for import: %s", pathname);
+          goto out;
+        }
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+
+          if (!stage_directory_meta (self, file_info, NULL, &tmp_checksum, cancellable, error))
+            goto out;
+
+          if (parent == NULL)
+            {
+              subdir = g_object_ref (root);
+            }
+          else
+            {
+              if (!ostree_mutable_tree_ensure_dir (parent, basename, &subdir, error))
+                goto out;
+            }
+
+          ostree_mutable_tree_set_metadata_checksum (subdir, g_checksum_get_string (tmp_checksum));
+        }
+      else 
+        {
+          if (parent == NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Can't import file as root");
+              goto out;
+            }
+
+          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_checksum, cancellable, error))
+            goto out;
+          
+          if (!ostree_mutable_tree_replace_file (parent, basename,
+                                                 g_checksum_get_string (tmp_checksum),
+                                                 error))
+            goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  g_clear_object (&file_info);
+  ot_clear_checksum (&tmp_checksum);
+  g_clear_object (&parent);
+  g_clear_object (&subdir);
+  g_clear_object (&hardlink_source_parent);
+  g_free (hardlink_source_checksum);
+  g_clear_object (&hardlink_source_subdir);
+  if (hardlink_split_path)
+    g_ptr_array_unref (hardlink_split_path);
+  if (split_path)
+    g_ptr_array_unref (split_path);
+  return ret;
+}
                           
 static gboolean
 stage_libarchive_into_root (OstreeRepo           *self,
-                            FileTree             *root,
+                            OstreeMutableTree    *root,
                             GFile                *archive_f,
                             OstreeRepoCommitModifier *modifier,
                             GCancellable         *cancellable,
                             GError              **error)
 {
   gboolean ret = FALSE;
-  int r;
   struct archive *a;
   struct archive_entry *entry;
-  GFileInfo *file_info = NULL;
-  GChecksum *tmp_checksum = NULL;
-  GPtrArray *split_path = NULL;
-  GPtrArray *hardlink_split_path = NULL;
+  int r;
 
   a = archive_read_new ();
   archive_read_support_compression_all (a);
@@ -1801,11 +1879,6 @@ stage_libarchive_into_root (OstreeRepo           *self,
 
   while (TRUE)
     {
-      const char *pathname;
-      const char *hardlink;
-      const char *basename;
-      FileTree *parent;
-
       r = archive_read_next_header (a, &entry);
       if (r == ARCHIVE_EOF)
         break;
@@ -1815,149 +1888,8 @@ stage_libarchive_into_root (OstreeRepo           *self,
           goto out;
         }
 
-      pathname = archive_entry_pathname (entry); 
-      
-      if (split_path)
-        g_ptr_array_unref (split_path);
-      if (!ot_util_path_split_validate (pathname, &split_path, error))
+      if (!stage_libarchive_entry_into_root (self, root, a, entry, modifier, cancellable, error))
         goto out;
-
-      if (split_path->len == 0)
-        {
-          parent = NULL;
-          basename = NULL;
-        }
-      else
-        {
-          if (!file_tree_walk (root, split_path, 0, &parent, error))
-            goto out;
-          basename = (char*)split_path->pdata[split_path->len-1];
-        }
-
-      if (parent)
-        {
-          if (!parent->metadata_checksum)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
-                           "No such file or directory: %s", pathname);
-              goto out;
-            }
-        }
-
-      hardlink = archive_entry_hardlink (entry);
-      if (hardlink)
-        {
-          FileTree *hardlink_parent;
-          const char *hardlink_basename;
-          const char *hardlink_source_checksum;
-
-          if (!ot_util_path_split_validate (hardlink, &hardlink_split_path, error))
-            goto out;
-          if (hardlink_split_path->len == 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid hardlink path %s", hardlink);
-              goto out;
-            }
-
-          if (!file_tree_walk (root, hardlink_split_path, 0, &hardlink_parent, error))
-            goto out;
-
-
-          hardlink_basename = hardlink_split_path->pdata[hardlink_split_path->len - 1];
-
-          g_assert (parent);
-          hardlink_source_checksum = g_hash_table_lookup (hardlink_parent->file_checksums, hardlink_basename);
-          if (!hardlink_source_checksum)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Hardlink %s refers to nonexistent path %s",
-                           pathname, hardlink);
-              goto out;
-            }
-
-          if (g_hash_table_lookup (parent->subdirs, basename))
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Directory exists: %s", hardlink);
-              goto out;
-            }
-
-          g_hash_table_replace (parent->file_checksums,
-                                g_strdup (basename),
-                                g_strdup (hardlink_source_checksum));
-          continue;
-        }
-
-      g_clear_object (&file_info);
-      file_info = file_info_from_archive_entry_and_modifier (entry, modifier);
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_UNKNOWN)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unsupported file for import: %s", pathname);
-          goto out;
-        }
-
-      ot_clear_checksum (&tmp_checksum);
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
-        {
-          FileTree *dir;
-
-          if (parent)
-            {
-            }
-
-          if (!stage_directory_meta (self, file_info, NULL, &tmp_checksum, cancellable, error))
-            goto out;
-
-          if (parent == NULL)
-            {
-              dir = root;
-            }
-          else
-            {
-              if (g_hash_table_lookup (parent->file_checksums, basename))
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Can't replace file with directory: %s", pathname);
-                  goto out;
-                }
-              /* Allow duplicate directories */
-              if (!g_hash_table_lookup (parent->subdirs, basename))
-                {
-                  dir = file_tree_new ();
-                  g_assert (basename);
-                  g_hash_table_replace (parent->subdirs, g_strdup (basename), dir);
-                }
-            }
-          g_free (dir->metadata_checksum);
-          dir->metadata_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
-        }
-      else 
-        {
-          if (g_hash_table_lookup (parent->subdirs, basename))
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Can't replace directory with file: %s", pathname);
-              goto out;
-            }
-
-          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_checksum, cancellable, error))
-            goto out;
-
-          if (parent == NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Can't import file as root");
-              goto out;
-            }
-
-          g_hash_table_replace (parent->file_checksums,
-                                g_strdup (basename),
-                                g_strdup (g_checksum_get_string (tmp_checksum)));
-        }
     }
   if (archive_read_close (a) != ARCHIVE_OK)
     {
@@ -1967,8 +1899,7 @@ stage_libarchive_into_root (OstreeRepo           *self,
 
   ret = TRUE;
  out:
-  g_clear_object (&file_info);
-  ot_clear_checksum (&tmp_checksum);
+  (void)archive_read_close (a);
   return ret;
 }
 #endif
@@ -1990,7 +1921,7 @@ ostree_repo_commit_tarfiles (OstreeRepo *self,
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
   GChecksum *ret_commit_checksum = NULL;
-  FileTree *root = NULL;
+  OstreeMutableTree *root = NULL;
   char *root_contents_checksum = NULL;
   char *current_head = NULL;
   int i;
@@ -2010,7 +1941,7 @@ ostree_repo_commit_tarfiles (OstreeRepo *self,
   if (!ostree_repo_resolve_rev (self, parent, TRUE, &current_head, error))
     goto out;
 
-  root = file_tree_new ();
+  root = ostree_mutable_tree_new ();
 
   for (i = 0; i < tarfiles->len; i++)
     {
@@ -2020,11 +1951,11 @@ ostree_repo_commit_tarfiles (OstreeRepo *self,
         goto out;
     }
 
-  if (!file_tree_import_recurse (self, root, &root_contents_checksum, cancellable, error))
+  if (!stage_mutable_tree_recurse (self, root, &root_contents_checksum, cancellable, error))
     goto out;
 
   if (!do_commit_write_ref (self, branch, current_head, subject, body, metadata,
-                            root_contents_checksum, root->metadata_checksum, &ret_commit_checksum,
+                            root_contents_checksum, ostree_mutable_tree_get_metadata_checksum (root), &ret_commit_checksum,
                             cancellable, error))
     goto out;
   
@@ -2035,8 +1966,7 @@ ostree_repo_commit_tarfiles (OstreeRepo *self,
   ot_clear_checksum (&ret_commit_checksum);
   g_free (current_head);
   g_free (root_contents_checksum);
-  if (root)
-    file_tree_free (root);
+  g_clear_object (&root);
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
