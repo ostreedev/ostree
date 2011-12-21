@@ -26,11 +26,6 @@
 
 static void ostree_repo_file_file_iface_init (GFileIface *iface);
 
-static void
-tree_replace_contents (OstreeRepoFile  *self,
-                       GVariant        *new_files,
-                       GVariant        *new_dirs);
-
 struct _OstreeRepoFile
 {
   GObject parent_instance;
@@ -144,19 +139,6 @@ _ostree_repo_file_new_child (OstreeRepoFile *parent,
     self->name[len-1] = '\0';
 
   return G_FILE (self);
-}
-
-OstreeRepoFile *
-_ostree_repo_file_new_empty_tree (OstreeRepo  *repo)
-{
-  OstreeRepoFile *self;
-  
-  self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
-  self->repo = g_object_ref (repo);
-
-  tree_replace_contents (self, NULL, NULL);
-
-  return self;
 }
 
 static gboolean
@@ -362,21 +344,6 @@ _ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
   self->tree_metadata = g_variant_ref (metadata);
   g_free (self->tree_metadata_checksum);
   self->tree_metadata_checksum = g_strdup (checksum);
-}
-
-void
-_ostree_repo_file_make_empty_tree (OstreeRepoFile  *self)
-{
-  tree_replace_contents (self, NULL, NULL);
-}
-
-void
-_ostree_repo_file_tree_set_content_checksum (OstreeRepoFile  *self,
-                                             const char      *checksum)
-{
-  g_assert (self->parent == NULL);
-  g_free (self->tree_contents_checksum);
-  self->tree_contents_checksum = g_strdup (checksum);
 }
 
 const char *
@@ -785,171 +752,6 @@ bsearch_in_file_variant (GVariant  *variant,
 
   *out_pos = m;
   return FALSE;
-}
-
-static GVariant *
-remove_variant_child (GVariant *variant,
-                      int       n)
-{
-  GVariantBuilder builder;
-  GVariantIter *iter;
-  int i;
-  GVariant *child;
-
-  g_variant_builder_init (&builder, g_variant_get_type (variant));
-  iter = g_variant_iter_new (variant);
-
-  i = 0;
-  while ((child = g_variant_iter_next_value (iter)) != NULL)
-    {
-      if (i != n)
-        g_variant_builder_add_value (&builder, child);
-      ot_clear_gvariant (&child);
-    }
-  g_variant_iter_free (iter);
-  
-  return g_variant_builder_end (&builder);
-}
-
-static GVariant *
-insert_variant_child (GVariant  *variant,
-                      int        n,
-                      GVariant  *item)
-{
-  GVariantBuilder builder;
-  GVariantIter *iter;
-  int i;
-  GVariant *child;
-
-  g_variant_builder_init (&builder, g_variant_get_type (variant));
-  iter = g_variant_iter_new (variant);
-
-  i = 0;
-  while ((child = g_variant_iter_next_value (iter)) != NULL)
-    {
-      if (i == n)
-        g_variant_builder_add_value (&builder, item);
-      g_variant_builder_add_value (&builder, child);
-      ot_clear_gvariant (&child);
-    }
-  g_variant_iter_free (iter);
-  
-  return g_variant_builder_end (&builder);
-}
-
-static void
-tree_replace_contents (OstreeRepoFile  *self,
-                       GVariant        *new_files,
-                       GVariant        *new_dirs)
-{
-  guint version;
-  GVariant *metadata;
-  GVariant *tmp_files = NULL;
-  GVariant *tmp_dirs = NULL;
-  
-  if (!(new_files || new_dirs) && self->tree_contents)
-    return;
-  else if (!self->tree_contents)
-    {
-      version = GUINT32_TO_BE (0);
-      metadata = g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0);
-      tmp_dirs = g_variant_new_array (G_VARIANT_TYPE ("(ss)"), NULL, 0);
-      tmp_files = g_variant_new_array (G_VARIANT_TYPE ("(ss)"), NULL, 0);
-    }
-  else
-    {
-      g_variant_get_child (self->tree_contents, 0, "u", &version);
-      metadata = g_variant_get_child_value (self->tree_contents, 1);
-      if (!new_files)
-        tmp_files = g_variant_get_child_value (self->tree_contents, 2);
-      if (!new_dirs)
-        tmp_dirs = g_variant_get_child_value (self->tree_contents, 3);
-    }
-
-  ot_clear_gvariant (&self->tree_contents);
-  self->tree_contents = g_variant_new ("(u@a{sv}@a(ss)@a(sss))", version, metadata,
-                                       new_files ? new_files : tmp_files,
-                                       new_dirs ? new_dirs : tmp_dirs);
-
-  ot_clear_gvariant (&tmp_files);
-  ot_clear_gvariant (&tmp_dirs);
-}
-
-void
-_ostree_repo_file_tree_remove_child (OstreeRepoFile  *self,
-                                     const char      *name)
-{
-  int i;
-  GVariant *files_variant;
-  GVariant *new_files_variant = NULL;
-  GVariant *dirs_variant;
-  GVariant *new_dirs_variant = NULL;
-
-  files_variant = g_variant_get_child_value (self->tree_contents, 2);
-  dirs_variant = g_variant_get_child_value (self->tree_contents, 3);
-
-  if (bsearch_in_file_variant (files_variant, name, &i))
-    {
-      new_files_variant = remove_variant_child (files_variant, i);
-    }
-  else
-    {
-      if (bsearch_in_file_variant (dirs_variant, name, &i))
-        {
-          new_dirs_variant = remove_variant_child (dirs_variant, i);
-        }
-    }
-
-  tree_replace_contents (self, new_files_variant, new_dirs_variant);
-
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
-}
-
-void
-_ostree_repo_file_tree_add_file (OstreeRepoFile  *self,
-                                 const char      *name,
-                                 const char      *checksum)
-{
-  int n;
-  GVariant *files_variant;
-  GVariant *new_files_variant;
-
-  files_variant = g_variant_get_child_value (self->tree_contents, 2);
-
-  if (!bsearch_in_file_variant (files_variant, name, &n))
-    {
-      new_files_variant = insert_variant_child (files_variant, n,
-                                                g_variant_new ("(ss)", name, checksum));
-      g_variant_ref_sink (new_files_variant);
-      tree_replace_contents (self, new_files_variant, NULL);
-      ot_clear_gvariant (&new_files_variant);
-    }
-  ot_clear_gvariant (&files_variant);
-}
-
-void
-_ostree_repo_file_tree_add_dir (OstreeRepoFile  *self,
-                                const char      *name,
-                                const char      *content_checksum,
-                                const char      *metadata_checksum)
-{
-  int n;
-  GVariant *dirs_variant;
-  GVariant *new_dirs_variant;
-
-  dirs_variant = g_variant_get_child_value (self->tree_contents, 3);
-
-  if (!bsearch_in_file_variant (dirs_variant, name, &n))
-    {
-      new_dirs_variant = insert_variant_child (dirs_variant, n,
-                                               g_variant_new ("(sss)", name, content_checksum,
-                                                              metadata_checksum));
-      g_variant_ref_sink (new_dirs_variant);
-      tree_replace_contents (self, NULL, new_dirs_variant);
-      ot_clear_gvariant (&new_dirs_variant);
-    }
-  ot_clear_gvariant (&dirs_variant);
 }
 
 int

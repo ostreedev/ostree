@@ -47,8 +47,6 @@ GType   _ostree_repo_file_get_type (void) G_GNUC_CONST;
 GFile * _ostree_repo_file_new_root (OstreeRepo  *repo,
                                     const char  *commit);
 
-OstreeRepoFile * _ostree_repo_file_new_empty_tree (OstreeRepo  *repo);
-
 GFile * _ostree_repo_file_new_child (OstreeRepoFile *parent,
                                      const char  *name);
 
@@ -78,18 +76,6 @@ gboolean _ostree_repo_file_is_tree (OstreeRepoFile  *self);
 const char * _ostree_repo_file_get_checksum (OstreeRepoFile  *self);
 
 GFile *_ostree_repo_file_nontree_get_local (OstreeRepoFile  *self);
-
-void    _ostree_repo_file_tree_remove_child (OstreeRepoFile  *self,
-                                             const char      *name);
-
-void    _ostree_repo_file_tree_add_file (OstreeRepoFile  *self,
-                                         const char      *name,
-                                         const char      *checksum);
-
-void    _ostree_repo_file_tree_add_dir (OstreeRepoFile  *self,
-                                        const char      *name,
-                                        const char      *content_checksum,
-                                        const char      *metadata_checksum);
 
 int     _ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                             const char      *name,
