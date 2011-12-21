@@ -125,7 +125,7 @@ object_iter_callback (OstreeRepo   *repo,
             goto out;
         }
       
-      if (!ostree_repo_store_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
+      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
                                              archive_info, xattrs, input,
                                              NULL, error))
         goto out;
@@ -139,7 +139,7 @@ object_iter_callback (OstreeRepo   *repo,
             goto out;
         }
 
-      if (!ostree_repo_store_object_trusted (data->dest_repo, objtype, checksum,
+      if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype, checksum,
                                              file_info, xattrs, input,
                                              NULL, error))
         goto out;

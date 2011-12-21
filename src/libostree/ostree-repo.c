@@ -720,15 +720,15 @@ dup_file_info_owned_by_me (GFileInfo  *file_info)
 }
 
 static gboolean
-stage_object (OstreeRepo         *self,
-              OstreeObjectType    objtype,
-              GFileInfo          *file_info,
-              GVariant           *xattrs,
-              GInputStream       *input,
-              const char         *expected_checksum,
-              GChecksum         **out_checksum,
-              GCancellable       *cancellable,
-              GError            **error);
+stage_object_impl (OstreeRepo         *self,
+                   OstreeObjectType    objtype,
+                   GFileInfo          *file_info,
+                   GVariant           *xattrs,
+                   GInputStream       *input,
+                   const char         *expected_checksum,
+                   GChecksum         **out_checksum,
+                   GCancellable       *cancellable,
+                   GError            **error);
 
 static gboolean
 impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
@@ -824,15 +824,15 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
 }
 
 static gboolean
-stage_object (OstreeRepo         *self,
-              OstreeObjectType    objtype,
-              GFileInfo          *file_info,
-              GVariant           *xattrs,
-              GInputStream       *input,
-              const char         *expected_checksum,
-              GChecksum         **out_checksum,
-              GCancellable       *cancellable,
-              GError            **error)
+stage_object_impl (OstreeRepo         *self,
+                   OstreeObjectType    objtype,
+                   GFileInfo          *file_info,
+                   GVariant           *xattrs,
+                   GInputStream       *input,
+                   const char         *expected_checksum,
+                   GChecksum         **out_checksum,
+                   GCancellable       *cancellable,
+                   GError            **error)
 {
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
@@ -1042,9 +1042,9 @@ stage_gvariant_object (OstreeRepo         *self,
                                              g_variant_get_size (serialized),
                                              NULL);
   
-  if (!stage_object (self, type,
-                     NULL, NULL, mem,
-                     NULL, &ret_checksum, cancellable, error))
+  if (!stage_object_impl (self, type,
+                          NULL, NULL, mem,
+                          NULL, &ret_checksum, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -1146,7 +1146,7 @@ ostree_repo_get_object_path (OstreeRepo  *self,
 }
 
 gboolean      
-ostree_repo_store_object_trusted (OstreeRepo   *self,
+ostree_repo_stage_object_trusted (OstreeRepo   *self,
                                   OstreeObjectType objtype,
                                   const char   *checksum,
                                   GFileInfo        *file_info,
@@ -1155,13 +1155,13 @@ ostree_repo_store_object_trusted (OstreeRepo   *self,
                                   GCancellable *cancellable,
                                   GError      **error)
 {
-  return stage_object (self, objtype,
-                       file_info, xattrs, input,
-                       checksum, NULL, cancellable, error);
+  return stage_object_impl (self, objtype,
+                            file_info, xattrs, input,
+                            checksum, NULL, cancellable, error);
 }
 
 gboolean
-ostree_repo_store_object (OstreeRepo       *self,
+ostree_repo_stage_object (OstreeRepo       *self,
                           OstreeObjectType  objtype,
                           const char       *expected_checksum,
                           GFileInfo        *file_info,
@@ -1173,9 +1173,9 @@ ostree_repo_store_object (OstreeRepo       *self,
   gboolean ret = FALSE;
   GChecksum *actual_checksum = NULL;
   
-  if (!stage_object (self, objtype,
-                     file_info, xattrs, input,
-                     expected_checksum, &actual_checksum, cancellable, error))
+  if (!stage_object_impl (self, objtype,
+                          file_info, xattrs, input,
+                          expected_checksum, &actual_checksum, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -1463,9 +1463,9 @@ stage_directory_recurse (OstreeRepo           *self,
           if (!xattrs)
             goto out;
 
-          if (!stage_object (self, OSTREE_OBJECT_TYPE_RAW_FILE,
-                             modified_info, xattrs, file_input, NULL,
-                             &child_file_checksum, cancellable, error))
+          if (!stage_object_impl (self, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                  modified_info, xattrs, file_input, NULL,
+                                  &child_file_checksum, cancellable, error))
             goto out;
 
           g_hash_table_replace (file_checksums, g_strdup (name),
@@ -1633,10 +1633,10 @@ import_libarchive_entry_file (OstreeRepo           *self,
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     archive_stream = ostree_libarchive_input_stream_new (a);
   
-  if (!stage_object (self, OSTREE_OBJECT_TYPE_RAW_FILE,
-                     file_info, NULL, archive_stream,
-                     NULL, &ret_checksum,
-                     cancellable, error))
+  if (!stage_object_impl (self, OSTREE_OBJECT_TYPE_RAW_FILE,
+                          file_info, NULL, archive_stream,
+                          NULL, &ret_checksum,
+                          cancellable, error))
     goto out;
 
   ret = TRUE;

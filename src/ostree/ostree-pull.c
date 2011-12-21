@@ -187,7 +187,7 @@ store_object (OstreeRepo  *repo,
       if (!input)
         goto out;
   
-      if (!ostree_repo_store_object (repo, objtype, checksum, file_info, NULL, input, NULL, error))
+      if (!ostree_repo_stage_object (repo, objtype, checksum, file_info, NULL, input, NULL, error))
         goto out;
     }
 
@@ -273,7 +273,7 @@ store_tree_recurse (OstreeRepo   *repo,
                 goto out;
             }
 
-          if (!ostree_repo_store_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+          if (!ostree_repo_stage_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
                                          checksum,
                                          archive_file_info, archive_xattrs, input,
                                          NULL, error))

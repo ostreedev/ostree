@@ -94,7 +94,7 @@ gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       GCancellable         *cancellable,
                                       GError             **error);
 
-gboolean      ostree_repo_store_object (OstreeRepo       *self,
+gboolean      ostree_repo_stage_object (OstreeRepo       *self,
                                         OstreeObjectType  objtype,
                                         const char       *expected_checksum,
                                         GFileInfo        *file_info,
@@ -103,7 +103,7 @@ gboolean      ostree_repo_store_object (OstreeRepo       *self,
                                         GCancellable     *cancellable,
                                         GError          **error);
 
-gboolean      ostree_repo_store_object_trusted (OstreeRepo   *self,
+gboolean      ostree_repo_stage_object_trusted (OstreeRepo   *self,
                                                 OstreeObjectType objtype,
                                                 const char   *checksum,
                                                 GFileInfo        *file_info,
