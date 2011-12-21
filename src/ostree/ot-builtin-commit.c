@@ -58,14 +58,16 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  char *argpath = NULL;
   GFile *arg = NULL;
-  GPtrArray *tar_files = NULL;
-  GChecksum *commit_checksum = NULL;
+  char *parent = NULL;
+  char *commit_checksum = NULL;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
+  char *contents_checksum = NULL;
+  GCancellable *cancellable = NULL;
+  OstreeMutableTree *mtree = NULL;
   int i;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
@@ -73,23 +75,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
-
-  if (argc > 1)
-    argpath = g_strdup (argv[1]);
-  else
-    argpath = g_get_current_dir ();
-
-  if (g_str_has_suffix (argpath, "/"))
-    argpath[strlen (argpath) - 1] = '\0';
-
-  if (!*argpath)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid empty argument");
-      goto out;
-    }
-
-  arg = ot_gfile_new_for_path (argpath);
 
   if (metadata_text_path || metadata_bin_path)
     {
@@ -140,31 +125,66 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
       modifier->gid = owner_gid;
     }
 
-  if (!tar)
+  if (!ostree_repo_resolve_rev (repo, branch, TRUE, &parent, error))
+    goto out;
+
+  if (!ostree_repo_prepare_transaction (repo, cancellable, error))
+    goto out;
+
+  mtree = ostree_mutable_tree_new ();
+
+  if (argc == 1)
     {
-      if (!ostree_repo_commit_directory (repo, branch, parent, subject, body, metadata,
-                                         arg, modifier, &commit_checksum, NULL, error))
+      char *current_dir = g_get_current_dir ();
+      arg = ot_gfile_new_for_path (current_dir);
+      g_free (current_dir);
+
+      if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+                                                 cancellable, error))
         goto out;
     }
   else
     {
-      tar_files = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-      g_ptr_array_add (tar_files, g_object_ref (arg));
-      for (i = 2; i < argc; i++)
-        g_ptr_array_add (tar_files, ot_gfile_new_for_path (argv[i]));
-
-      if (!ostree_repo_commit_tarfiles (repo, branch, parent, subject, body, metadata,
-                                        tar_files, modifier, &commit_checksum, NULL, error))
-        goto out;
+      for (i = 1; i < argc; i++)
+        {
+          g_clear_object (&arg);
+          arg = ot_gfile_new_for_path (argv[i]);
+          if (tar)
+            {
+              if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
+                                                       cancellable, error))
+                goto out;
+            }
+          else
+            {
+              if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+                                                         cancellable, error))
+                goto out;
+            }
+        }
     }
+          
+  if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
+                                 contents_checksum, ostree_mutable_tree_get_metadata_checksum (mtree),
+                                 &commit_checksum, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_commit_transaction (repo, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
+    goto out;
 
   ret = TRUE;
-  g_print ("%s\n", g_checksum_get_string (commit_checksum));
+  g_print ("%s\n", commit_checksum);
  out:
-  g_free (argpath);
   g_clear_object (&arg);
-  if (tar_files)
-    g_ptr_array_unref (tar_files);
+  g_clear_object (&mtree);
+  g_free (contents_checksum);
+  g_free (parent);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)
@@ -172,6 +192,6 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
   g_clear_object (&repo);
-  ot_clear_checksum (&commit_checksum);
+  g_free (commit_checksum);
   return ret;
 }

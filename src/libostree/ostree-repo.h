@@ -24,6 +24,7 @@
 #define _OSTREE_REPO
 
 #include "ostree-core.h"
+#include "ostree-mutable-tree.h"
 
 G_BEGIN_DECLS
 
@@ -142,29 +143,37 @@ OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);
 
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
-gboolean      ostree_repo_commit_directory (OstreeRepo   *self,
-                                            const char   *branch,
-                                            const char   *parent,
-                                            const char   *subject,
-                                            const char   *body,
-                                            GVariant     *metadata,
-                                            GFile        *base,
-                                            OstreeRepoCommitModifier *modifier,
-                                            GChecksum   **out_commit,
-                                            GCancellable *cancellable,
-                                            GError      **error);
+gboolean      ostree_repo_stage_directory_to_mtree (OstreeRepo         *self,
+                                                    GFile              *dir,
+                                                    OstreeMutableTree  *mtree,
+                                                    OstreeRepoCommitModifier *modifier,
+                                                    GCancellable *cancellable,
+                                                    GError      **error);
 
-gboolean      ostree_repo_commit_tarfiles (OstreeRepo   *self,
-                                           const char   *branch,
-                                           const char   *parent,
-                                           const char   *subject,
-                                           const char   *body,
-                                           GVariant     *metadata,
-                                           GPtrArray    *tarfiles,
-                                           OstreeRepoCommitModifier *modifier,
-                                           GChecksum   **out_commit,
-                                           GCancellable *cancellable,
-                                           GError      **error);
+gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo         *self,
+                                                  GFile              *archive,
+                                                  OstreeMutableTree  *tree,
+                                                  OstreeRepoCommitModifier *modifier,
+                                                  GCancellable *cancellable,
+                                                  GError      **error);
+
+gboolean      ostree_repo_stage_mtree (OstreeRepo         *self,
+                                       OstreeMutableTree  *tree,
+                                       char              **out_contents_checksum,
+                                       GCancellable       *cancellable,
+                                       GError            **error);
+
+gboolean      ostree_repo_stage_commit (OstreeRepo   *self,
+                                        const char   *branch,
+                                        const char   *parent,
+                                        const char   *subject,
+                                        const char   *body,
+                                        GVariant     *metadata,
+                                        const char   *content_checksum,
+                                        const char   *metadata_checksum,
+                                        char        **out_commit,
+                                        GCancellable *cancellable,
+                                        GError      **error);
 
 typedef enum {
   OSTREE_REPO_CHECKOUT_MODE_NONE,
