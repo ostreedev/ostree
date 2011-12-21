@@ -21,6 +21,7 @@
 # http://people.gnome.org/~walters/docs/build-api.txt
 
 import os,sys,subprocess,tempfile,re
+from StringIO import StringIO
 from multiprocessing import cpu_count
 import select,time
 
@@ -71,14 +72,34 @@ makeargs = ['make']
 top_srcdir=os.getcwd()
 
 ostbuild_resultdir=top_srcdir
+ostbuild_meta=None
 
 for arg in sys.argv[1:]:
     if arg.startswith('OSTBUILD_RESULTDIR='):
         ostbuild_resultdir=arg[len('OSTBUILD_RESULTDIR='):]
+    elif arg.startswith('OSTBUILD_META='):
+        ostbuild_meta=arg[len('OSTBUILD_META='):]
     elif arg.startswith('--'):
         configargs.append(arg)
     else:
         makeargs.append(arg)
+
+metadata = {}
+
+if ostbuild_meta is None:
+    output = subprocess.check_output(['ostbuild-autodiscover-meta'])
+    ostbuild_meta_f = StringIO(output)
+else:
+    ostbuild_meta_f = open(ostbuild_meta)
+
+for line in ostbuild_meta_f:
+    (k,v) = line.split('=', 1)
+    metadata[k.strip()] = v.strip()
+
+for k in ['NAME', 'VERSION']:
+    if k not in metadata:
+        sys.stderr.write('Missing required key "%s" in metadata' % (k, ))
+        sys.exit(1)
 
 def log(msg):
     fullmsg = '%s: %s\n' % (sys.argv[0], msg)
@@ -269,19 +290,13 @@ def make_artifact(name, from_files, tempdir=None, resultdir=None):
     log("created: %s" % (os.path.abspath (result_path), ))
 
 def phase_make_artifacts(builddir=None):
-    basename=os.path.basename(os.getcwd())
-    
-    try:
-        version = subprocess.check_output(['git', 'describe'])
-    except subprocess.CalledProcessError, e:
-        version = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-    version = version.strip()
+    name = metadata['NAME']
+    version = metadata['VERSION']
+    assert ',' not in version
 
-    version = version.replace(',', '_')
+    artifact_prefix='artifact-%s-%s,%s' % (build_target, name, version)
 
-    artifact_prefix='artifact-%s-%s,%s' % (build_target, basename, version)
-
-    tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (basename,))
+    tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (name,))
     tempfiles.append(tempdir)
     args = ['make', 'install', 'DESTDIR=' + tempdir]
     run_sync(args, cwd=builddir)

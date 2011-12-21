@@ -20,6 +20,8 @@
 import os,sys,re,subprocess,tempfile,shutil
 import argparse
 
+sys.path
+
 def get_build_env():
     return {'HOME' : '/', 
             'HOSTNAME' : 'ostbuild',
@@ -36,6 +38,7 @@ parser = argparse.ArgumentParser(description="Build a module in a given root")
 parser.add_argument('--repo')
 parser.add_argument('--resultdir')
 parser.add_argument('--branch')
+parser.add_argument('--meta')
 parser.add_argument('--debug-shell', type=bool)
 
 args = parser.parse_args()
