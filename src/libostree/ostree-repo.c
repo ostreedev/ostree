@@ -2202,7 +2202,7 @@ checkout_tree (OstreeRepo               *self,
   GFile *content_object_path = NULL;
   GInputStream *content_input = NULL;
 
-  if (!_ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
+  if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
     goto out;
 
   if (!checkout_file_from_input (destination, mode, source_info,
@@ -2240,7 +2240,7 @@ checkout_tree (OstreeRepo               *self,
         }
       else
         {
-          const char *checksum = _ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
+          const char *checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)src_child);
 
           if (priv->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER)
             {
@@ -2330,8 +2330,8 @@ ostree_repo_checkout (OstreeRepo              *self,
   if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved, error))
     goto out;
 
-  root = (OstreeRepoFile*)_ostree_repo_file_new_root (self, resolved);
-  if (!_ostree_repo_file_ensure_resolved (root, error))
+  root = (OstreeRepoFile*)ostree_repo_file_new_root (self, resolved);
+  if (!ostree_repo_file_ensure_resolved (root, error))
     goto out;
 
   root_info = g_file_query_info ((GFile*)root, OSTREE_GIO_FAST_QUERYINFO,
@@ -2364,7 +2364,7 @@ get_file_checksum (GFile  *f,
 
   if (OSTREE_IS_REPO_FILE (f))
     {
-      ret_checksum = g_strdup (_ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
+      ret_checksum = g_strdup (ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
     }
   else
     {
@@ -2678,8 +2678,8 @@ ostree_repo_read_commit (OstreeRepo *self,
   if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved_rev, error))
     goto out;
 
-  ret_root = _ostree_repo_file_new_root (self, resolved_rev);
-  if (!_ostree_repo_file_ensure_resolved ((OstreeRepoFile*)ret_root, error))
+  ret_root = ostree_repo_file_new_root (self, resolved_rev);
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)ret_root, error))
     goto out;
 
   ret = TRUE;

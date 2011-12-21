@@ -42,8 +42,10 @@ struct _OstreeRepoFileEnumeratorClass
   GFileEnumeratorClass parent_class;
 };
 
+G_GNUC_INTERNAL
 GType   _ostree_repo_file_enumerator_get_type (void) G_GNUC_CONST;
 
+G_GNUC_INTERNAL
 GFileEnumerator * _ostree_repo_file_enumerator_new      (OstreeRepoFile       *dir,
 							 const char           *attributes,
 							 GFileQueryInfoFlags   flags,

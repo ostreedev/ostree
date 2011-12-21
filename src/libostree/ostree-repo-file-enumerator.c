@@ -120,9 +120,9 @@ ostree_repo_file_enumerator_next_file (GFileEnumerator  *enumerator,
   gboolean ret = FALSE;
   GFileInfo *info = NULL;
 
-  if (!_ostree_repo_file_tree_query_child (self->dir, self->index,
-                                           self->attributes, self->flags,
-                                           &info, cancellable, error))
+  if (!ostree_repo_file_tree_query_child (self->dir, self->index,
+                                          self->attributes, self->flags,
+                                          &info, cancellable, error))
     goto out;
 
   self->index++;

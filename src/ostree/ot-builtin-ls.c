@@ -47,7 +47,7 @@ print_one_file (GFile     *f,
   guint32 mode;
   guint32 type;
 
-  if (!_ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
     g_assert_not_reached ();
   
   buf = g_string_new ("");
@@ -88,8 +88,8 @@ print_one_file (GFile     *f,
   if (checksum)
     {
       if (type == G_FILE_TYPE_DIRECTORY)
-        g_string_append_printf (buf, "%s ", _ostree_repo_file_tree_get_content_checksum ((OstreeRepoFile*)f));
-      g_string_append_printf (buf, "%s ", _ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
+        g_string_append_printf (buf, "%s ", ostree_repo_file_tree_get_content_checksum ((OstreeRepoFile*)f));
+      g_string_append_printf (buf, "%s ", ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
     }
 
   if (xattrs)
@@ -97,7 +97,7 @@ print_one_file (GFile     *f,
       GVariant *xattrs;
       char *formatted;
 
-      if (!_ostree_repo_file_get_xattrs ((OstreeRepoFile*)f, &xattrs, NULL, NULL))
+      if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)f, &xattrs, NULL, NULL))
         g_assert_not_reached ();
       
       formatted = g_variant_print (xattrs, TRUE);

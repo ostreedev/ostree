@@ -45,7 +45,6 @@ struct _OstreeRepoFile
   GVariant *tree_metadata;
 };
 
-#define ostree_repo_file_get_type _ostree_repo_file_get_type
 G_DEFINE_TYPE_WITH_CODE (OstreeRepoFile, ostree_repo_file, G_TYPE_OBJECT,
 			 G_IMPLEMENT_INTERFACE (G_TYPE_FILE,
 						ostree_repo_file_file_iface_init))
@@ -106,7 +105,7 @@ set_error_noent (GFile *self, GError **error)
 }
 
 GFile * 
-_ostree_repo_file_new_root (OstreeRepo  *repo,
+ostree_repo_file_new_root (OstreeRepo  *repo,
                             const char  *commit)
 {
   OstreeRepoFile *self;
@@ -124,7 +123,7 @@ _ostree_repo_file_new_root (OstreeRepo  *repo,
 
 
 GFile *
-_ostree_repo_file_new_child (OstreeRepoFile *parent,
+ostree_repo_file_new_child (OstreeRepoFile *parent,
                              const char  *name)
 {
   OstreeRepoFile *self;
@@ -198,7 +197,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   gboolean is_dir;
   int i;
 
-  i = _ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
+  i = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
   
   if (i < 0)
     {
@@ -252,7 +251,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
 }
 
 gboolean
-_ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
+ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                    GError         **error)
 {
   if (self->commit_resolve_error != NULL)
@@ -265,7 +264,7 @@ _ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
     }
   else if (self->index == -1)
     {
-      if (!_ostree_repo_file_ensure_resolved (self->parent, error))
+      if (!ostree_repo_file_ensure_resolved (self->parent, error))
         goto out;
       (void)do_resolve_nonroot (self, &(self->commit_resolve_error));
     }
@@ -282,7 +281,7 @@ _ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
 }
 
 gboolean
-_ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
+ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                               GVariant       **out_xattrs,
                               GCancellable    *cancellable,
                               GError         **error)
@@ -292,14 +291,14 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   GVariant *metadata = NULL;
   GFile *local_file = NULL;
 
-  if (!_ostree_repo_file_ensure_resolved (self, error))
+  if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
 
   if (self->tree_metadata)
     ret_xattrs = g_variant_get_child_value (self->tree_metadata, 4);
   else if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
-      local_file = _ostree_repo_file_nontree_get_local (self);
+      local_file = ostree_repo_file_nontree_get_local (self);
       
       if (!ostree_map_metadata_file (local_file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
                                      &metadata, error))
@@ -310,7 +309,7 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
     }
   else
     {
-      local_file = _ostree_repo_file_nontree_get_local (self);
+      local_file = ostree_repo_file_nontree_get_local (self);
       ret_xattrs = ostree_get_xattrs_for_file (local_file, error);
     }
 
@@ -324,19 +323,19 @@ _ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
 }
 
 GVariant *
-_ostree_repo_file_tree_get_contents (OstreeRepoFile  *self)
+ostree_repo_file_tree_get_contents (OstreeRepoFile  *self)
 {
   return self->tree_contents;
 }
 
 GVariant *
-_ostree_repo_file_tree_get_metadata (OstreeRepoFile  *self)
+ostree_repo_file_tree_get_metadata (OstreeRepoFile  *self)
 {
   return self->tree_metadata;
 }
 
 void
-_ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
+ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                      const char     *checksum,
                                      GVariant       *metadata)
 {
@@ -347,25 +346,25 @@ _ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
 }
 
 const char *
-_ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
+ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 {
   return self->tree_contents_checksum;
 }
 
 GFile *
-_ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
+ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
-  return ostree_repo_get_file_object_path (self->repo, _ostree_repo_file_get_checksum (self));
+  return ostree_repo_get_file_object_path (self->repo, ostree_repo_file_get_checksum (self));
 }
 
 OstreeRepo *
-_ostree_repo_file_get_repo (OstreeRepoFile  *self)
+ostree_repo_file_get_repo (OstreeRepoFile  *self)
 {
   return self->repo;
 }
 
 OstreeRepoFile *
-_ostree_repo_file_get_root (OstreeRepoFile  *self)
+ostree_repo_file_get_root (OstreeRepoFile  *self)
 {
   OstreeRepoFile *parent = self;
 
@@ -375,7 +374,7 @@ _ostree_repo_file_get_root (OstreeRepoFile  *self)
 }
 
 const char *
-_ostree_repo_file_get_checksum (OstreeRepoFile  *self)
+ostree_repo_file_get_checksum (OstreeRepoFile  *self)
 {
   int n;
   gboolean is_dir;
@@ -386,7 +385,7 @@ _ostree_repo_file_get_checksum (OstreeRepoFile  *self)
   if (!self->parent)
     return self->tree_metadata_checksum;
 
-  n = _ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, NULL);
+  n = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, NULL);
   g_assert (n >= 0);
 
   files_variant = g_variant_get_child_value (self->parent->tree_contents, 2);
@@ -504,9 +503,9 @@ ostree_repo_file_dup (GFile *file)
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
 
   if (self->parent)
-    return _ostree_repo_file_new_child (self->parent, self->name);
+    return ostree_repo_file_new_child (self->parent, self->name);
   else
-    return _ostree_repo_file_new_root (self->repo, self->commit);
+    return ostree_repo_file_new_root (self->repo, self->commit);
 }
 
 static guint
@@ -607,10 +606,10 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
       g_assert (*relative_path == '/');
 
       if (strcmp (relative_path, "/") == 0)
-        return g_object_ref (_ostree_repo_file_get_root (self)); 
+        return g_object_ref (ostree_repo_file_get_root (self)); 
 
       if (self->parent)
-        return ostree_repo_file_resolve_relative_path ((GFile*)_ostree_repo_file_get_root (self),
+        return ostree_repo_file_resolve_relative_path ((GFile*)ostree_repo_file_get_root (self),
                                                        relative_path+1);
       else
         relative_path = relative_path+1;
@@ -625,7 +624,7 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
   else
     filename = g_strdup (relative_path);
 
-  parent = (OstreeRepoFile*)_ostree_repo_file_new_child (self, filename);
+  parent = (OstreeRepoFile*)ostree_repo_file_new_child (self, filename);
   g_free (filename);
     
   if (!rest)
@@ -755,7 +754,7 @@ bsearch_in_file_variant (GVariant  *variant,
 }
 
 int
-_ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
+ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                     const char      *name,
                                     gboolean        *is_dir,
                                     GVariant       **out_container)
@@ -800,7 +799,7 @@ _ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
 }
 
 gboolean
-_ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
+ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                     int              n,
                                     const char      *attributes,
                                     GFileQueryInfoFlags flags,
@@ -819,7 +818,7 @@ _ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   GFileAttributeMatcher *matcher = NULL;
   int c;
 
-  if (!_ostree_repo_file_ensure_resolved (self, error))
+  if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
 
   matcher = g_file_attribute_matcher_new (attributes);
@@ -917,7 +916,7 @@ ostree_repo_file_query_info (GFile                *file,
   gboolean ret = FALSE;
   GFileInfo *info = NULL;
 
-  if (!_ostree_repo_file_ensure_resolved (self, error))
+  if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
 
   if (!self->parent)
@@ -927,7 +926,7 @@ ostree_repo_file_query_info (GFile                *file,
     }
   else
     {
-      if (!_ostree_repo_file_tree_query_child (self->parent, self->index, 
+      if (!ostree_repo_file_tree_query_child (self->parent, self->index, 
                                                attributes, flags, 
                                                &info, cancellable, error))
         goto out;
@@ -984,7 +983,7 @@ ostree_repo_file_read (GFile         *file,
     }
   else
     {
-      local_file = _ostree_repo_file_nontree_get_local (self);
+      local_file = ostree_repo_file_nontree_get_local (self);
       ret_stream = g_file_read (local_file, cancellable, error);
       if (!ret_stream)
 	goto out;
