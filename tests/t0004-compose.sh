@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..5"
+echo "1..6"
 
 . libtest.sh
 
@@ -83,3 +83,11 @@ $OSTREE checkout some-compose some-compose-checkout
 cd some-compose-checkout
 assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
 echo 'ok compose update contents'
+
+cd "${test_tmpdir}"
+$OSTREE compose --recompose -b some-compose -s 'Recompose'
+rm -rf some-compose-checkout
+$OSTREE checkout some-compose some-compose-checkout
+cd some-compose-checkout
+assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
+echo 'ok recompose'
