@@ -132,6 +132,13 @@ ot_util_path_split_validate (const char *path,
   GPtrArray *ret_components = NULL;
   int i;
 
+  if (strlen (path) > PATH_MAX)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Path '%s' is too long", path);
+      goto out;
+    }
+
   ret_components = ot_split_string_ptrarray (path, '/');
 
   /* Canonicalize by removing '.' and '', throw an error on .. */
