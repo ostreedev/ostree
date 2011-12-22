@@ -822,8 +822,7 @@ create_tmp_string (const char *dirpath,
 }
 
 static char *
-subst_xxxxxx (GRand      *rand,
-              const char *string)
+subst_xxxxxx (const char *string)
 {
   static const char table[] = "ABCEDEFGHIJKLMNOPQRSTUVWXYZabcedefghijklmnopqrstuvwxyz0123456789";
   char *ret = g_strdup (string);
@@ -856,15 +855,12 @@ ostree_create_temp_file_from_input (GFile            *dir,
 {
   gboolean ret = FALSE;
   GChecksum *ret_checksum = NULL;
-  GRand *rand = NULL;
   GString *tmp_name = NULL;
   char *possible_name = NULL;
   GFile *possible_file = NULL;
   GError *temp_error = NULL;
   int i = 0;
 
-  rand = g_rand_new ();
-  
   tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
                                 prefix, suffix);
   
@@ -872,7 +868,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
   for (i = 0; i < 128; i++)
     {
       g_free (possible_name);
-      possible_name = subst_xxxxxx (rand, tmp_name->str);
+      possible_name = subst_xxxxxx (tmp_name->str);
       g_clear_object (&possible_file);
       possible_file = ot_gfile_new_for_path (possible_name);
       
@@ -908,8 +904,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
   ot_transfer_out_value(out_checksum, &ret_checksum);
   ot_transfer_out_value(out_file, &possible_file);
  out:
-  if (rand)
-    g_rand_free (rand);
   if (tmp_name)
     g_string_free (tmp_name, TRUE);
   g_free (possible_name);
