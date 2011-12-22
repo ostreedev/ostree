@@ -39,7 +39,7 @@ echo not > subdir/2/notempty
 
 tar -c -z -f ../foo.tar.gz .
 cd ..
-$OSTREE commit -s "from tar" -b test-tar --tar foo.tar.gz
+$OSTREE commit -s "from tar" -b test-tar --tree=tar=foo.tar.gz
 echo "ok tar commit"
 
 cd ${test_tmpdir}
@@ -62,7 +62,7 @@ echo foo1 > foo
 ln foo bar
 tar czf ${test_tmpdir}/hardlinktest.tar.gz .
 cd ${test_tmpdir}
-$OSTREE commit -s 'hardlinks' -b test-hardlinks --tar hardlinktest.tar.gz
+$OSTREE commit -s 'hardlinks' -b test-hardlinks --tree=tar=hardlinktest.tar.gz
 rm -rf hardlinktest
 echo "ok hardlink commit"
 
@@ -89,7 +89,7 @@ echo "new" > files2/subdir/new
 tar -c -C files1 -z -f files1.tar.gz .
 tar -c -C files2 -z -f files2.tar.gz .
 
-$OSTREE commit -s 'multi tar' -b multicommit --tar files1.tar.gz files2.tar.gz
+$OSTREE commit -s 'multi tar' -b multicommit --tree=tar=files1.tar.gz --tree=tar=files2.tar.gz
 echo "ok tar multicommit"
 
 cd ${test_tmpdir}

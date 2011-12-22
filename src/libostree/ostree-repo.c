@@ -1370,6 +1370,7 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
                                       GError              **error)
 {
   gboolean ret = FALSE;
+  OstreeRepoFile *repo_dir = NULL;
   GError *temp_error = NULL;
   GFileInfo *child_info = NULL;
   OstreeMutableTree *child_mtree = NULL;
@@ -1380,26 +1381,38 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
   GVariant *xattrs = NULL;
   GInputStream *file_input = NULL;
 
-  child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
-                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                  cancellable, error);
-  if (!child_info)
-    goto out;
+  /* We can only reuse checksums directly if there's no modifier */
+  if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
+    repo_dir = (OstreeRepoFile*)dir;
 
-  modified_info = create_modified_file_info (child_info, modifier);
+  if (repo_dir)
+    {
+      ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_get_checksum (repo_dir));
+      ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_content_checksum (repo_dir));
+    }
+  else
+    {
+      child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
+                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                      cancellable, error);
+      if (!child_info)
+        goto out;
+      
+      modified_info = create_modified_file_info (child_info, modifier);
+      
+      xattrs = ostree_get_xattrs_for_file (dir, error);
+      if (!xattrs)
+        goto out;
+      
+      if (!stage_directory_meta (self, modified_info, xattrs, &child_file_checksum,
+                                 cancellable, error))
+        goto out;
+      
+      ostree_mutable_tree_set_metadata_checksum (mtree, g_checksum_get_string (child_file_checksum));
 
-  xattrs = ostree_get_xattrs_for_file (dir, error);
-  if (!xattrs)
-    goto out;
-
-  if (!stage_directory_meta (self, modified_info, xattrs, &child_file_checksum,
-                             cancellable, error))
-    goto out;
-
-  ostree_mutable_tree_set_metadata_checksum (mtree, g_checksum_get_string (child_file_checksum));
-  
-  g_clear_object (&child_info);
-  g_clear_object (&modified_info);
+      g_clear_object (&child_info);
+      g_clear_object (&modified_info);
+    }
 
   dir_enum = g_file_enumerate_children ((GFile*)dir, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1426,6 +1439,13 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
 
           if (!ostree_repo_stage_directory_to_mtree (self, child, child_mtree,
                                                      modifier, cancellable, error))
+            goto out;
+        }
+      else if (repo_dir)
+        {
+          if (!ostree_mutable_tree_replace_file (mtree, name, 
+                                                 ostree_repo_file_get_checksum ((OstreeRepoFile*) child),
+                                                 error))
             goto out;
         }
       else
@@ -1568,43 +1588,50 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
   gboolean ret = FALSE;
   GChecksum *ret_contents_checksum_obj = NULL;
   char *ret_contents_checksum = NULL;
-  GHashTable *dir_metadata_checksums;
-  GHashTable *dir_contents_checksums;
+  GHashTable *dir_metadata_checksums = NULL;
+  GHashTable *dir_contents_checksums = NULL;
   GVariant *serialized_tree = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
 
-  dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                  (GDestroyNotify)g_free, (GDestroyNotify)g_free);
-  dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                  (GDestroyNotify)g_free, (GDestroyNotify)g_free);
-
-  g_hash_table_iter_init (&hash_iter, ostree_mutable_tree_get_subdirs (mtree));
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  if (ostree_mutable_tree_get_contents_checksum (mtree))
     {
-      const char *name = key;
-      OstreeMutableTree *child_dir = value;
-      char *child_dir_contents_checksum;
-
-      if (!ostree_repo_stage_mtree (self, child_dir, &child_dir_contents_checksum,
-                                    cancellable, error))
-        goto out;
-      
-      g_hash_table_replace (dir_contents_checksums, g_strdup (name),
-                            child_dir_contents_checksum); /* Transfer ownership */
-      g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
-                            g_strdup (ostree_mutable_tree_get_metadata_checksum (child_dir)));
+      ret_contents_checksum = g_strdup (ostree_mutable_tree_get_contents_checksum (mtree));
     }
-    
-  serialized_tree = create_tree_variant_from_hashes (ostree_mutable_tree_get_files (mtree),
-                                                     dir_contents_checksums,
-                                                     dir_metadata_checksums);
+  else
+    {
+      dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                      (GDestroyNotify)g_free, (GDestroyNotify)g_free);
+      dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                      (GDestroyNotify)g_free, (GDestroyNotify)g_free);
       
-  if (!stage_gvariant_object (self, OSTREE_OBJECT_TYPE_DIR_TREE,
-                              serialized_tree, &ret_contents_checksum_obj,
-                              cancellable, error))
-    goto out;
-  ret_contents_checksum = g_strdup (g_checksum_get_string (ret_contents_checksum_obj));
+      g_hash_table_iter_init (&hash_iter, ostree_mutable_tree_get_subdirs (mtree));
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *name = key;
+          OstreeMutableTree *child_dir = value;
+          char *child_dir_contents_checksum;
+
+          if (!ostree_repo_stage_mtree (self, child_dir, &child_dir_contents_checksum,
+                                        cancellable, error))
+            goto out;
+      
+          g_hash_table_replace (dir_contents_checksums, g_strdup (name),
+                                child_dir_contents_checksum); /* Transfer ownership */
+          g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
+                                g_strdup (ostree_mutable_tree_get_metadata_checksum (child_dir)));
+        }
+    
+      serialized_tree = create_tree_variant_from_hashes (ostree_mutable_tree_get_files (mtree),
+                                                         dir_contents_checksums,
+                                                         dir_metadata_checksums);
+      
+      if (!stage_gvariant_object (self, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                  serialized_tree, &ret_contents_checksum_obj,
+                                  cancellable, error))
+        goto out;
+      ret_contents_checksum = g_strdup (g_checksum_get_string (ret_contents_checksum_obj));
+    }
 
   ret = TRUE;
   ot_transfer_out_value(out_contents_checksum, &ret_contents_checksum);

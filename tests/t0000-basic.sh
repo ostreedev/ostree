@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..18"
+echo "1..19"
 
 . libtest.sh
 
@@ -151,3 +151,6 @@ echo "ok local clone checkout"
 
 $OSTREE checkout -U test2 checkout-user-test2
 echo "ok user checkout"
+
+$OSTREE commit -b test2 -s "Another commit" --tree=ref=test2
+echo "ok commit from ref"

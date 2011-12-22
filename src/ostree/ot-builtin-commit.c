@@ -35,7 +35,7 @@ static char *subject;
 static char *body;
 static char *parent;
 static char *branch;
-static gboolean tar;
+static char **trees;
 static gint owner_uid = -1;
 static gint owner_gid = -1;
 
@@ -46,7 +46,7 @@ static GOptionEntry options[] = {
   { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
-  { "tar", 0, 0, G_OPTION_ARG_NONE, &tar, "Given arguments are tar files", NULL },
+  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
   { NULL }
@@ -68,7 +68,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   char *contents_checksum = NULL;
   GCancellable *cancellable = NULL;
   OstreeMutableTree *mtree = NULL;
-  int i;
+  char *tree_type = NULL;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -133,7 +133,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
 
   mtree = ostree_mutable_tree_new ();
 
-  if (argc == 1)
+  if (argc == 1 && (trees == NULL || trees[0] == NULL))
     {
       char *current_dir = g_get_current_dir ();
       arg = ot_gfile_new_for_path (current_dir);
@@ -145,21 +145,54 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
     }
   else
     {
-      for (i = 1; i < argc; i++)
+      const char *const*tree_iter;
+      const char *tree;
+      const char *eq;
+
+      for (tree_iter = (const char *const*)trees; *tree_iter; tree_iter++)
         {
-          g_clear_object (&arg);
-          arg = ot_gfile_new_for_path (argv[i]);
-          if (tar)
+          tree = *tree_iter;
+
+          eq = strchr (tree, '=');
+          if (!eq)
             {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Missing type in tree specification '%s'", tree);
+              goto out;
+            }
+          g_free (tree_type);
+          tree_type = g_strndup (tree, eq - tree);
+          tree = eq + 1;
+
+          g_clear_object (&arg);
+          if (strcmp (tree_type, "dir") == 0)
+            {
+              arg = ot_gfile_new_for_path (tree);
+              if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+                                                         cancellable, error))
+                goto out;
+            }
+          else if (strcmp (tree_type, "tar") == 0)
+            {
+              arg = ot_gfile_new_for_path (tree);
               if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
                                                        cancellable, error))
                 goto out;
             }
-          else
+          else if (strcmp (tree_type, "ref") == 0)
             {
+              if (!ostree_repo_read_commit (repo, tree, &arg, cancellable, error))
+                goto out;
+
               if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
                                                          cancellable, error))
                 goto out;
+            }
+          else
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Invalid tree type specification '%s'", tree_type);
+              goto out;
             }
         }
     }
@@ -185,6 +218,7 @@ ostree_builtin_commit (int argc, char **argv, const char *repo_path, GError **er
   g_clear_object (&mtree);
   g_free (contents_checksum);
   g_free (parent);
+  g_free (tree_type);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)

@@ -56,6 +56,11 @@ void ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
 
 const char *ostree_mutable_tree_get_metadata_checksum (OstreeMutableTree *self);
 
+void ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
+                                                const char        *checksum);
+
+const char *ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self);
+
 gboolean ostree_mutable_tree_replace_file (OstreeMutableTree *self,
                                            const char        *name,
                                            const char        *checksum,

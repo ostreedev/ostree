@@ -28,6 +28,7 @@ struct _OstreeMutableTree
 {
   GObject parent_instance;
 
+  char *contents_checksum;
   char *metadata_checksum;
 
   GHashTable *files;
@@ -43,6 +44,7 @@ ostree_mutable_tree_finalize (GObject *object)
 
   self = OSTREE_MUTABLE_TREE (object);
 
+  g_free (self->contents_checksum);
   g_free (self->metadata_checksum);
 
   g_hash_table_destroy (self->files);
@@ -80,6 +82,20 @@ const char *
 ostree_mutable_tree_get_metadata_checksum (OstreeMutableTree *self)
 {
   return self->metadata_checksum;
+}
+
+void
+ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
+                                           const char        *checksum)
+{
+  g_free (self->contents_checksum);
+  self->contents_checksum = g_strdup (checksum);
+}
+
+const char *
+ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
+{
+  return self->contents_checksum;
 }
 
 static gboolean
