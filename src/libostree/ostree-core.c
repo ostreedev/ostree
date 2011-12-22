@@ -32,11 +32,28 @@ gboolean
 ostree_validate_checksum_string (const char *sha256,
                                  GError    **error)
 {
-  if (strlen (sha256) != 64)
+  int i = 0;
+  size_t len = strlen (sha256);
+
+  if (len != 64)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid rev '%s'", sha256);
       return FALSE;
+    }
+
+  for (i = 0; i < len; i++)
+    {
+      guint8 c = ((guint8*) sha256)[i];
+
+      if (!((c >= 48 && c <= 57)
+            || (c >= 97 && c <= 102)))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid character '%d' in rev '%s'",
+                       c, sha256);
+          return FALSE;
+        }
     }
   return TRUE;
 }

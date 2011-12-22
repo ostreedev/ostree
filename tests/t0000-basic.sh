@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..19"
+echo "1..20"
 
 . libtest.sh
 
@@ -154,3 +154,7 @@ echo "ok user checkout"
 
 $OSTREE commit -b test2 -s "Another commit" --tree=ref=test2
 echo "ok commit from ref"
+
+$OSTREE commit -b trees/test2 -s 'ref with / in it' --tree=ref=test2
+echo "ok commit ref with /"
+

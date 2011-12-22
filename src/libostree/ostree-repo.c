@@ -273,25 +273,26 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   char *ret_rev = NULL;
   GFile *child = NULL;
   GFile *origindir = NULL;
-  const char *child_path = NULL;
   GError *temp_error = NULL;
   GVariant *commit = NULL;
-
+  GPtrArray *components = NULL;
+  
   g_return_val_if_fail (rev != NULL, FALSE);
 
-  if (strlen (rev) == 0)
+  /* This checks for .. and such, but we don't actually walk
+   * the parsed bits below.
+   */
+  if (!ot_util_path_split_validate (rev, &components, error))
+    goto out;
+
+  if (components->len == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid empty rev");
       goto out;
     }
-  else if (strstr (rev, "..") != NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid rev %s", rev);
-      goto out;
-    }
-  else if (strlen (rev) == 64)
+  /* We intentionally don't allow a ref that looks like a checksum */
+  else if (ostree_validate_checksum_string (rev, NULL))
     {
       ret_rev = g_strdup (rev);
     }
@@ -317,52 +318,35 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
     }
   else
     {
-      const char *slash = strchr (rev, '/');
-      if (slash != NULL && (slash == rev || !*(slash+1)))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid rev %s", rev);
-          goto out;
-        }
-      else if (slash == NULL)
-        {
-          child = g_file_get_child (priv->local_heads_dir, rev);
-          child_path = ot_gfile_get_path_cached (child);
-        }
-      else
-        {
-          const char *rest = slash + 1;
+      child = g_file_resolve_relative_path (priv->local_heads_dir, rev);
 
-          if (strchr (rest, '/'))
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid rev %s", rev);
-              goto out;
-            }
-          
+      if (!g_file_query_exists (child, NULL))
+        {
+          g_clear_object (&child);
           child = g_file_get_child (priv->remote_heads_dir, rev);
-          child_path = ot_gfile_get_path_cached (child);
-
-        }
-      if (!ot_gfile_load_contents_utf8 (child, &ret_rev, NULL, NULL, &temp_error))
-        {
-          if (allow_noent && g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+          if (!g_file_query_exists (child, NULL))
             {
-              g_clear_error (&temp_error);
-              g_free (ret_rev);
-              ret_rev = NULL;
+              if (!allow_noent)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Rev '%s' not found", rev);
+                  goto out;
+                }
+              else
+                g_clear_object (&child);
             }
-          else
+        }
+
+      if (child)
+        {
+          if (!ot_gfile_load_contents_utf8 (child, &ret_rev, NULL, NULL, &temp_error))
             {
               g_propagate_error (error, temp_error);
-              g_prefix_error (error, "Couldn't open ref '%s': ", child_path);
+              g_prefix_error (error, "Couldn't open ref '%s': ", ot_gfile_get_path_cached (child));
               goto out;
             }
-        }
-      else
-        {
+
           g_strchomp (ret_rev);
-         
           if (!ostree_validate_checksum_string (ret_rev, error))
             goto out;
         }
@@ -387,12 +371,47 @@ write_checksum_file (GFile *parentdir,
                      GError **error)
 {
   gboolean ret = FALSE;
+  GFile *parent = NULL;
   GFile *child = NULL;
   GOutputStream *out = NULL;
   gsize bytes_written;
+  GPtrArray *components = NULL;
+  int i;
 
-  child = g_file_get_child (parentdir, name);
+  if (!ostree_validate_checksum_string (sha256, error))
+    goto out;
 
+  if (ostree_validate_checksum_string (name, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Rev name '%s' looks like a checksum", name);
+      goto out;
+    }
+
+  if (!ot_util_path_split_validate (name, &components, error))
+    goto out;
+
+  if (components->len == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid empty ref name");
+      goto out;
+    }
+
+  parent = g_object_ref (parentdir);
+  for (i = 0; i+1 < components->len; i++)
+    {
+      child = g_file_get_child (parent, (char*)components->pdata[i]);
+
+      if (!ot_gfile_ensure_directory (child, FALSE, error))
+        goto out;
+
+      g_clear_object (&parent);
+      parent = child;
+      child = NULL;
+    }
+
+  child = g_file_get_child (parent, components->pdata[components->len - 1]);
   if ((out = (GOutputStream*)g_file_replace (child, NULL, FALSE, 0, NULL, error)) == NULL)
     goto out;
   if (!g_output_stream_write_all (out, sha256, strlen (sha256), &bytes_written, NULL, error))
@@ -404,6 +423,7 @@ write_checksum_file (GFile *parentdir,
 
   ret = TRUE;
  out:
+  g_clear_object (&parent);
   g_clear_object (&child);
   g_clear_object (&out);
   return ret;
