@@ -95,6 +95,31 @@ ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
 const char *
 ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self)
 {
+  GHashTableIter iter;
+  gpointer key, value;
+
+  if (!self->contents_checksum)
+    return NULL;
+
+  /* Ensure the cache is valid; this implementation is a bit
+   * lame in that we walk the whole tree every time this
+   * getter is called; a better approach would be to invalidate
+   * all of the parents whenever a child is modified.
+   *
+   * However, we only call this function once right now.
+   */
+  g_hash_table_iter_init (&iter, self->subdirs);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      OstreeMutableTree *subdir = value;
+      if (!ostree_mutable_tree_get_contents_checksum (subdir))
+        {
+          g_free (self->contents_checksum);
+          self->contents_checksum = NULL;
+          return NULL;
+        }
+    }
+
   return self->contents_checksum;
 }
 
@@ -122,6 +147,7 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
       goto out;
     }
 
+  ostree_mutable_tree_set_contents_checksum (self, NULL);
   g_hash_table_replace (self->files,
                         g_strdup (name),
                         g_strdup (checksum));
@@ -153,6 +179,7 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   if (!ret_dir)
     {
       ret_dir = ostree_mutable_tree_new ();
+      ostree_mutable_tree_set_contents_checksum (self, NULL);
       g_hash_table_insert (self->subdirs, g_strdup (name), g_object_ref (ret_dir));
     }
   

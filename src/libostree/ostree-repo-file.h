@@ -75,6 +75,8 @@ gboolean ostree_repo_file_is_tree (OstreeRepoFile  *self);
 
 const char * ostree_repo_file_get_checksum (OstreeRepoFile  *self);
 
+const char * ostree_repo_file_get_commit (OstreeRepoFile  *self);
+
 GFile *ostree_repo_file_nontree_get_local (OstreeRepoFile  *self);
 
 int     ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,

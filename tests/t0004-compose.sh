@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..8"
+echo "1..5"
 
 . libtest.sh
 
@@ -58,10 +58,11 @@ $OSTREE commit -b artifact-barapp -s 'Build 42 of barapp'
 echo 'ok artifacts committed'
 
 cd "${test_tmpdir}"
-$OSTREE compose some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
-echo 'ok compose command'
+$OSTREE compose -s "compose 1" -b some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+echo 'ok compose'
 
-cd some-compose
+$OSTREE checkout some-compose some-compose-checkout
+cd some-compose-checkout
 assert_file_has_content ./usr/bin/bar 'another ELF file'
 assert_file_has_content ./usr/share/doc/foo.txt 'some documentation'
 find | md5sum > ../some-compose-md5
@@ -70,36 +71,15 @@ assert_file_has_content ../some-compose-md5 9038703e43d2ff2745fb7dd844de65c8
 echo 'ok compose content'
 
 cd "${test_tmpdir}"
-rm -rf some-compose
-$OSTREE compose --out-metadata=./some-compose-metadata some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
-echo 'ok compose output metadata'
-
-cd some-compose
-$OSTREE commit --metadata-variant=${test_tmpdir}/some-compose-metadata -b some-compose -s 'Initial commit of some-compose'
-echo 'ok compose commit with metadata'
-
-$OSTREE show --print-compose some-compose > ${test_tmpdir}/some-compose-contents
-assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-runtime
-assert_file_has_content ${test_tmpdir}/some-compose-contents artifact-libfoo-devel
-echo 'ok compose verify metadata'
-
-cd "${test_tmpdir}"
-rm -rf some-compose some-compose-metadata
+rm -rf some-compose-checkout some-compose-metadata
 cd "${test_tmpdir}"/artifact-barapp
 echo 'updated bar ELF file' > usr/bin/bar
 $OSTREE commit -b artifact-barapp -s 'Build 43 of barapp'
+$OSTREE compose -s "compose 2" -b some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+echo 'ok compose update commit'
 
 cd "${test_tmpdir}"
-$OSTREE compose --out-metadata=./some-compose-metadata some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
-cd some-compose
-assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
-
-echo 'ok updated artifact barapp'
-$OSTREE commit --metadata-variant=${test_tmpdir}/some-compose-metadata -b some-compose -s 'Updated some-compose'
-cd ${test_tmpdir}
-rm -rf some-compose
-
 $OSTREE checkout some-compose some-compose-checkout
 cd some-compose-checkout
 assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
-echo 'ok updated compose commit'
+echo 'ok compose update contents'

@@ -1380,6 +1380,7 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
   GChecksum *child_file_checksum = NULL;
   GVariant *xattrs = NULL;
   GInputStream *file_input = NULL;
+  gboolean repo_dir_was_empty = FALSE;
 
   /* We can only reuse checksums directly if there's no modifier */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
@@ -1388,7 +1389,9 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
   if (repo_dir)
     {
       ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_get_checksum (repo_dir));
-      ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_content_checksum (repo_dir));
+      repo_dir_was_empty = 
+        g_hash_table_size (ostree_mutable_tree_get_files (mtree)) == 0
+        && g_hash_table_size (ostree_mutable_tree_get_subdirs (mtree)) == 0;
     }
   else
     {
@@ -1483,6 +1486,9 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
       g_propagate_error (error, temp_error);
       goto out;
     }
+
+  if (repo_dir && repo_dir_was_empty)
+    ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_content_checksum (repo_dir));
 
   ret = TRUE;
  out:
@@ -1593,10 +1599,12 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
   GVariant *serialized_tree = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
+  const char *existing_checksum;
 
-  if (ostree_mutable_tree_get_contents_checksum (mtree))
+  existing_checksum = ostree_mutable_tree_get_contents_checksum (mtree);
+  if (existing_checksum)
     {
-      ret_contents_checksum = g_strdup (ostree_mutable_tree_get_contents_checksum (mtree));
+      ret_contents_checksum = g_strdup (existing_checksum);
     }
   else
     {

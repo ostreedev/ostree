@@ -280,6 +280,12 @@ ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
     return TRUE;
 }
 
+const char *
+ostree_repo_file_get_commit (OstreeRepoFile  *self)
+{
+  return ostree_repo_file_get_root (self)->commit;
+}
+
 gboolean
 ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                               GVariant       **out_xattrs,
