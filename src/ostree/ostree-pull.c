@@ -242,6 +242,11 @@ store_tree_recurse (OstreeRepo   *repo,
 
           g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
 
+          if (!ot_util_filename_validate (filename, error))
+            goto out;
+          if (!ostree_validate_checksum_string (checksum, error))
+            goto out;
+
           g_clear_object (&meta_file);
 
           if (!fetch_object (repo, soup, base_uri, checksum,
@@ -289,6 +294,13 @@ store_tree_recurse (OstreeRepo   *repo,
 
           g_variant_get_child (dirs_variant, i, "(&s&s&s)",
                                &dirname, &tree_checksum, &meta_checksum);
+
+          if (!ot_util_filename_validate (dirname, error))
+            goto out;
+          if (!ostree_validate_checksum_string (tree_checksum, error))
+            goto out;
+          if (!ostree_validate_checksum_string (meta_checksum, error))
+            goto out;
 
           if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, &did_exist, error))
             goto out;
