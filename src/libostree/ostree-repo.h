@@ -88,6 +88,10 @@ gboolean      ostree_repo_commit_transaction (OstreeRepo     *self,
                                               GCancellable   *cancellable,
                                               GError        **error);
 
+gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
+                                             GCancellable   *cancellable,
+                                             GError        **error);
+
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       OstreeObjectType      objtype,
                                       const char           *checksum,

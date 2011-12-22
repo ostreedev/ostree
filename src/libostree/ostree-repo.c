@@ -1044,6 +1044,39 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
   return ret;
 }
 
+gboolean
+ostree_repo_abort_transaction (OstreeRepo     *self,
+                               GCancellable   *cancellable,
+                               GError        **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GFile *f = NULL;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_return_val_if_fail (priv->in_transaction == TRUE, FALSE);
+
+  priv->in_transaction = FALSE;
+
+  g_hash_table_iter_init (&iter, priv->pending_transaction_tmpfiles);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const char *filename = value;
+
+      g_clear_object (&f);
+      f = g_file_get_child (priv->tmp_dir, filename);
+      
+      (void) unlink (ot_gfile_get_path_cached (f));
+    }
+
+  ret = TRUE;
+ out:
+  g_hash_table_remove_all (priv->pending_transaction_tmpfiles);
+  g_clear_object (&f);
+  return ret;
+}
+
 static gboolean
 stage_gvariant_object (OstreeRepo         *self,
                        OstreeObjectType    type,

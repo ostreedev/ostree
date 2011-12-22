@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..20"
+echo "1..21"
 
 . libtest.sh
 
@@ -157,4 +157,10 @@ echo "ok commit from ref"
 
 $OSTREE commit -b trees/test2 -s 'ref with / in it' --tree=ref=test2
 echo "ok commit ref with /"
+
+old_rev=$($OSTREE rev-parse test2)
+$OSTREE commit --skip-if-unchanged -b test2 -s 'should not be committed' --tree=ref=test2
+new_rev=$($OSTREE rev-parse test2)
+assert_streq "${old_rev}" "${new_rev}"
+echo "ok commit --skip-if-unchanged"
 

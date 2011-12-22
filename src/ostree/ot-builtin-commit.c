@@ -35,6 +35,7 @@ static char *subject;
 static char *body;
 static char *parent;
 static char *branch;
+static gboolean skip_if_unchanged;
 static char **trees;
 static gint owner_uid = -1;
 static gint owner_gid = -1;
@@ -49,6 +50,7 @@ static GOptionEntry options[] = {
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
+  { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { NULL }
 };
 
@@ -61,6 +63,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   GFile *arg = NULL;
   char *parent = NULL;
   char *commit_checksum = NULL;
+  GVariant *parent_commit = NULL;
   GVariant *metadata = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GFile *metadata_f = NULL;
@@ -69,6 +72,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   OstreeMutableTree *mtree = NULL;
   char *tree_type = NULL;
+  gboolean skip_commit = FALSE;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -127,6 +131,13 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
 
   if (!ostree_repo_resolve_rev (repo, branch, TRUE, &parent, error))
     goto out;
+
+  if (skip_if_unchanged && parent)
+    {
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     parent, &parent_commit, error))
+        goto out;
+    }
 
   if (!ostree_repo_prepare_transaction (repo, cancellable, error))
     goto out;
@@ -200,24 +211,50 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
 
-  if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
-                                 contents_checksum, ostree_mutable_tree_get_metadata_checksum (mtree),
-                                 &commit_checksum, cancellable, error))
-    goto out;
+  if (skip_if_unchanged && parent_commit)
+    {
+      const char *parent_contents_checksum;
+      const char *parent_metadata_checksum;
 
-  if (!ostree_repo_commit_transaction (repo, cancellable, error))
-    goto out;
+      g_variant_get_child (parent_commit, 6, "&s", &parent_contents_checksum);
+      g_variant_get_child (parent_commit, 7, "&s", &parent_metadata_checksum);
 
-  if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
-    goto out;
+      if (strcmp (contents_checksum, parent_contents_checksum) == 0
+          && strcmp (ostree_mutable_tree_get_metadata_checksum (mtree),
+                     parent_metadata_checksum) == 0)
+        skip_commit = TRUE;
+    }
+
+  if (!skip_commit)
+    {
+      if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
+                                     contents_checksum, ostree_mutable_tree_get_metadata_checksum (mtree),
+                                     &commit_checksum, cancellable, error))
+        goto out;
+
+      if (!ostree_repo_commit_transaction (repo, cancellable, error))
+        goto out;
+      
+      if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
+        goto out;
+
+      g_print ("%s\n", commit_checksum);
+    }
+  else
+    {
+      if (!ostree_repo_abort_transaction (repo, cancellable, error))
+        goto out;
+
+      g_print ("%s\n", parent);
+    }
 
   ret = TRUE;
-  g_print ("%s\n", commit_checksum);
  out:
   g_clear_object (&arg);
   g_clear_object (&mtree);
   g_free (contents_checksum);
   g_free (parent);
+  ot_clear_gvariant(&parent_commit);
   g_free (tree_type);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
