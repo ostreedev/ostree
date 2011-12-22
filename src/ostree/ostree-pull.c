@@ -351,7 +351,7 @@ store_commit_recurse (OstreeRepo   *repo,
 }
                       
 static gboolean
-ostree_builtin_pull (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

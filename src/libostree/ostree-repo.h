@@ -50,11 +50,11 @@ typedef struct {
 
 GType ostree_repo_get_type (void);
 
-OstreeRepo* ostree_repo_new (const char *path);
+OstreeRepo* ostree_repo_new (GFile *path);
 
 gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
-const char *  ostree_repo_get_path (OstreeRepo  *self);
+GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
 typedef enum {
   OSTREE_REPO_MODE_BARE,

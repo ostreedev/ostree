@@ -253,11 +253,11 @@ on_name_acquired (GDBusConnection *connection,
 {
   OstreeDaemon *self = user_data;
   GError *error = NULL;
-  char *repo_path;
+  GFile *repo_file = NULL;
 
-  repo_path = g_build_filename (ot_gfile_get_path_cached (self->prefix), "repo", NULL);
-  self->repo = ostree_repo_new (repo_path);
-  g_free (repo_path);
+  repo_file = g_file_get_child (self->prefix, "repo");
+  self->repo = ostree_repo_new (repo_file);
+  g_clear_object (&repo_file);
   if (!ostree_repo_check (self->repo, &error))
     {
       g_printerr ("%s\n", error->message);

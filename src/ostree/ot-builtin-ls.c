@@ -165,7 +165,7 @@ print_directory_recurse (GFile    *f,
 }
 
 gboolean
-ostree_builtin_ls (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

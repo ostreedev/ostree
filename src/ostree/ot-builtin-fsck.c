@@ -176,7 +176,7 @@ object_iter_callback (OstreeRepo    *repo,
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   OtFsckData data;

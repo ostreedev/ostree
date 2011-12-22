@@ -51,13 +51,12 @@ G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 typedef struct _OstreeRepoPrivate OstreeRepoPrivate;
 
 struct _OstreeRepoPrivate {
-  char *path;
-  GFile *repo_file;
+  GFile *repodir;
   GFile *tmp_dir;
   GFile *local_heads_dir;
   GFile *remote_heads_dir;
-  char *objects_path;
-  char *config_path;
+  GFile *objects_dir;
+  GFile *config_file;
 
   gboolean inited;
   gboolean in_transaction;
@@ -74,13 +73,12 @@ ostree_repo_finalize (GObject *object)
   OstreeRepo *self = OSTREE_REPO (object);
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
-  g_free (priv->path);
-  g_clear_object (&priv->repo_file);
+  g_clear_object (&priv->repodir);
   g_clear_object (&priv->tmp_dir);
   g_clear_object (&priv->local_heads_dir);
   g_clear_object (&priv->remote_heads_dir);
-  g_free (priv->objects_path);
-  g_free (priv->config_path);
+  g_clear_object (&priv->objects_dir);
+  g_clear_object (&priv->config_file);
   g_hash_table_destroy (priv->pending_transaction_tmpfiles);
   if (priv->config)
     g_key_file_free (priv->config);
@@ -100,7 +98,8 @@ ostree_repo_set_property(GObject         *object,
   switch (prop_id)
     {
     case PROP_PATH:
-      priv->path = g_value_dup_string (value);
+      /* Canonicalize */
+      priv->repodir = ot_gfile_new_for_path (g_file_get_path (g_value_get_object (value)));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -120,7 +119,7 @@ ostree_repo_get_property(GObject         *object,
   switch (prop_id)
     {
     case PROP_PATH:
-      g_value_set_string (value, priv->path);
+      g_value_set_object (value, priv->repodir);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -142,15 +141,14 @@ ostree_repo_constructor (GType                  gtype,
 
   priv = GET_PRIVATE (object);
 
-  g_assert (priv->path != NULL);
+  g_assert (priv->repodir != NULL);
   
-  priv->repo_file = ot_gfile_new_for_path (priv->path);
-  priv->tmp_dir = g_file_resolve_relative_path (priv->repo_file, "tmp");
-  priv->local_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/heads");
-  priv->remote_heads_dir = g_file_resolve_relative_path (priv->repo_file, "refs/remotes");
+  priv->tmp_dir = g_file_resolve_relative_path (priv->repodir, "tmp");
+  priv->local_heads_dir = g_file_resolve_relative_path (priv->repodir, "refs/heads");
+  priv->remote_heads_dir = g_file_resolve_relative_path (priv->repodir, "refs/remotes");
   
-  priv->objects_path = g_build_filename (priv->path, "objects", NULL);
-  priv->config_path = g_build_filename (priv->path, "config", NULL);
+  priv->objects_dir = g_file_get_child (priv->repodir, "objects");
+  priv->config_file = g_file_get_child (priv->repodir, "config");
 
   return object;
 }
@@ -169,10 +167,10 @@ ostree_repo_class_init (OstreeRepoClass *klass)
 
   g_object_class_install_property (object_class,
                                    PROP_PATH,
-                                   g_param_spec_string ("path",
+                                   g_param_spec_object ("path",
                                                         "",
                                                         "",
-                                                        NULL,
+                                                        G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
@@ -187,7 +185,7 @@ ostree_repo_init (OstreeRepo *self)
 }
 
 OstreeRepo*
-ostree_repo_new (const char *path)
+ostree_repo_new (GFile *path)
 {
   return g_object_new (OSTREE_TYPE_REPO, "path", path, NULL);
 }
@@ -474,7 +472,8 @@ ostree_repo_write_config (OstreeRepo *self,
   g_return_val_if_fail (priv->inited, FALSE);
 
   data = g_key_file_to_data (new_config, &len, error);
-  if (!g_file_set_contents (priv->config_path, data, len, error))
+  if (!g_file_replace_contents (priv->config_file, data, len, NULL, FALSE, 0, NULL,
+                                NULL, error))
     goto out;
   
   g_key_file_free (priv->config);
@@ -569,15 +568,16 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   if (priv->inited)
     return TRUE;
 
-  if (!g_file_test (priv->objects_path, G_FILE_TEST_IS_DIR))
+  if (!g_file_test (ot_gfile_get_path_cached (priv->objects_dir), G_FILE_TEST_IS_DIR))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Couldn't find objects directory '%s'", priv->objects_path);
+                   "Couldn't find objects directory '%s'",
+                   ot_gfile_get_path_cached (priv->objects_dir));
       goto out;
     }
   
   priv->config = g_key_file_new ();
-  if (!g_key_file_load_from_file (priv->config, priv->config_path, 0, error))
+  if (!g_key_file_load_from_file (priv->config, ot_gfile_get_path_cached (priv->config_file), 0, error))
     {
       g_prefix_error (error, "Couldn't parse config file: ");
       goto out;
@@ -627,11 +627,11 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   return ret;
 }
 
-const char *
+GFile *
 ostree_repo_get_path (OstreeRepo  *self)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  return priv->path;
+  return priv->repodir;
 }
 
 GFile *
@@ -1132,15 +1132,12 @@ ostree_repo_get_object_path (OstreeRepo  *self,
                              OstreeObjectType type)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *path;
   char *relpath;
   GFile *ret;
 
   relpath = ostree_get_relative_object_path (checksum, type);
-  path = g_build_filename (priv->path, relpath, NULL);
+  ret = g_file_resolve_relative_path (priv->repodir, relpath);
   g_free (relpath);
-  ret = ot_gfile_new_for_path (path);
-  g_free (path);
  
   return ret;
 }
@@ -1974,7 +1971,6 @@ ostree_repo_iter_objects (OstreeRepo  *self,
                           GError        **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GFile *objectdir = NULL;
   GFileEnumerator *enumerator = NULL;
   gboolean ret = FALSE;
   GFileInfo *file_info = NULL;
@@ -1983,8 +1979,7 @@ ostree_repo_iter_objects (OstreeRepo  *self,
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (priv->inited, FALSE);
 
-  objectdir = ot_gfile_new_for_path (priv->objects_path);
-  enumerator = g_file_enumerate_children (objectdir, OSTREE_GIO_FAST_QUERYINFO, 
+  enumerator = g_file_enumerate_children (priv->objects_dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           NULL, 
                                           error);
@@ -2001,7 +1996,7 @@ ostree_repo_iter_objects (OstreeRepo  *self,
       
       if (strlen (name) == 2 && type == G_FILE_TYPE_DIRECTORY)
         {
-          GFile *objdir = g_file_get_child (objectdir, name);
+          GFile *objdir = g_file_get_child (priv->objects_dir, name);
           if (!iter_object_dir (self, objdir, callback, user_data, error))
             {
               g_object_unref (objdir);
@@ -2023,7 +2018,6 @@ ostree_repo_iter_objects (OstreeRepo  *self,
  out:
   g_clear_object (&file_info);
   g_clear_object (&enumerator);
-  g_clear_object (&objectdir);
   return ret;
 }
 

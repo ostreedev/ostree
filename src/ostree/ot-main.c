@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "ot-main.h"
+#include "otutil.h"
 
 static int
 usage (char **argv, OstreeBuiltin *builtins, gboolean is_error)
@@ -91,6 +92,7 @@ ostree_main (int    argc,
   gboolean have_repo_arg;
   const char *cmd = NULL;
   const char *repo = NULL;
+  GFile *repo_file = NULL;
   int arg_off;
 
   g_type_init ();
@@ -109,6 +111,9 @@ ostree_main (int    argc,
     repo = argv[1] + strlen ("--repo=");
   else
     repo = NULL;
+
+  if (repo)
+    repo_file = ot_gfile_new_for_path (repo);
 
   cmd = strchr (argv[0], '-');
   if (cmd)
@@ -151,11 +156,12 @@ ostree_main (int    argc,
   
   prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
 
-  if (!builtin->fn (cmd_argc, cmd_argv, repo, &error))
+  if (!builtin->fn (cmd_argc, cmd_argv, repo_file, &error))
     goto out;
 
  out:
   g_free (cmd_argv);
+  g_clear_object (&repo_file);
   if (error)
     {
       g_printerr ("%s\n", error->message);

@@ -192,7 +192,7 @@ do_print_compose (OstreeRepo  *repo,
 }
 
 gboolean
-ostree_builtin_show (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

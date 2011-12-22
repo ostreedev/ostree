@@ -160,11 +160,12 @@ object_iter_callback (OstreeRepo   *repo,
 }
 
 gboolean
-ostree_builtin_local_clone (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
   const char *destination;
+  GFile *dest_f = NULL;
   OtLocalCloneData data;
   GFile *src_repo_dir = NULL;
   GFile *dest_repo_dir = NULL;
@@ -196,13 +197,14 @@ ostree_builtin_local_clone (int argc, char **argv, const char *repo_path, GError
     }
 
   destination = argv[1];
+  dest_f = ot_gfile_new_for_path (destination);
 
-  data.dest_repo = ostree_repo_new (destination);
+  data.dest_repo = ostree_repo_new (dest_f);
   if (!ostree_repo_check (data.dest_repo, error))
     goto out;
 
-  src_repo_dir = ot_gfile_new_for_path (ostree_repo_get_path (data.src_repo));
-  dest_repo_dir = ot_gfile_new_for_path (ostree_repo_get_path (data.dest_repo));
+  src_repo_dir = g_object_ref (ostree_repo_get_path (data.src_repo));
+  dest_repo_dir = g_object_ref (ostree_repo_get_path (data.dest_repo));
 
   src_info = g_file_query_info (src_repo_dir, OSTREE_GIO_FAST_QUERYINFO,
                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -242,6 +244,7 @@ ostree_builtin_local_clone (int argc, char **argv, const char *repo_path, GError
  out:
   if (context)
     g_option_context_free (context);
+  g_clear_object (&dest_f);
   g_clear_object (&src_repo_dir);
   g_clear_object (&dest_repo_dir);
   g_clear_object (&src_info);

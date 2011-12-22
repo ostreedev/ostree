@@ -62,7 +62,7 @@ parse_file_or_commit (OstreeRepo  *repo,
 }
 
 gboolean
-ostree_builtin_diff (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

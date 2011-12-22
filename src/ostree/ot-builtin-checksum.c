@@ -55,7 +55,7 @@ on_checksum_received (GObject    *obj,
 }
 
 gboolean
-ostree_builtin_checksum (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

@@ -39,11 +39,10 @@ static GOptionEntry options[] = {
 
 
 gboolean
-ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **error)
+ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  GFile *repodir = NULL;
   GFile *child = NULL;
   GFile *grandchild = NULL;
   GString *config_data = NULL;
@@ -54,9 +53,7 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  repodir = ot_gfile_new_for_path (repo_path);
-
-  child = g_file_get_child (repodir, "config");
+  child = g_file_get_child (repo_path, "config");
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
   g_string_append_printf (config_data, "mode=%s\n", archive ? "archive" : "bare");
@@ -68,17 +65,17 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
     goto out;
   g_clear_object (&child);
 
-  child = g_file_get_child (repodir, "objects");
+  child = g_file_get_child (repo_path, "objects");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
   g_clear_object (&child);
 
-  child = g_file_get_child (repodir, "tmp");
+  child = g_file_get_child (repo_path, "tmp");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
   g_clear_object (&child);
 
-  child = g_file_get_child (repodir, "refs");
+  child = g_file_get_child (repo_path, "refs");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
 
@@ -94,7 +91,7 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
 
   g_clear_object (&child);
 
-  child = g_file_get_child (repodir, "tags");
+  child = g_file_get_child (repo_path, "tags");
   if (!g_file_make_directory (child, NULL, error))
     goto out;
   g_clear_object (&child);
@@ -105,7 +102,6 @@ ostree_builtin_init (int argc, char **argv, const char *repo_path, GError **erro
     g_option_context_free (context);
   if (config_data)
     g_string_free (config_data, TRUE);
-  g_clear_object (&repodir);
   g_clear_object (&child);
   g_clear_object (&grandchild);
   return ret;
