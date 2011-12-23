@@ -37,4 +37,5 @@ BUILD_TAR=$BUILDDIR/deploy/images/gnomeos-contents-$BRANCH-qemu${ARCH}.tar.gz
 
 BUILD_TIME=$(date -r $BUILD_TAR)
 
-ostree --repo=${OSTREE_REPO} commit -s "Build from OSTree ${OSTREE_VER}" -b "gnomeos-yocto-$ARCH-$BRANCH" --tree=tar=${BUILD_TAR}
+ostree --repo=${OSTREE_REPO} commit --skip-if-unchanged -s "Build from OSTree ${OSTREE_VER}" -b "gnomeos-yocto-$ARCH-$BRANCH" --tree=tar=${BUILD_TAR}
+ostree --repo=${OSTREE_REPO} diff "gnomeos-yocto-$ARCH-$BRANCH"^ "gnomeos-yocto-$ARCH-$BRANCH"
