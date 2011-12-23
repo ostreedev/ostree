@@ -23,6 +23,7 @@ import argparse
 
 from . import builtins
 from . import builtin_compile_one
+from . import builtin_autodiscover_meta
 
 def usage(ecode):
     print "Builtins:"
