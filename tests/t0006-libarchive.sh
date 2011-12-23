@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..6"
+echo "1..7"
 
 . libtest.sh
 
