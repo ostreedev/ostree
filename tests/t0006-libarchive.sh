@@ -100,3 +100,13 @@ assert_file_has_content otherfile "not overwritten"
 assert_file_has_content subdir/original "original"
 assert_file_has_content subdir/new "new"
 echo "ok tar multicommit contents"
+
+cd ${test_tmpdir}/multicommit-files
+tar -c -C files1 -z -f partial.tar.gz subdir/original
+$OSTREE commit -s 'partial' -b partial --tar-autocreate-parents --tree=tar=partial.tar.gz
+echo "ok tar partial commit"
+
+cd ${test_tmpdir}
+$OSTREE checkout partial partial-checkout
+cd partial-checkout
+assert_file_has_content subdir/original "original"

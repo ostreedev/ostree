@@ -158,6 +158,7 @@ gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo         *self,
                                                   GFile              *archive,
                                                   OstreeMutableTree  *tree,
                                                   OstreeRepoCommitModifier *modifier,
+                                                  gboolean            autocreate_parents,
                                                   GCancellable *cancellable,
                                                   GError      **error);
 

@@ -36,6 +36,7 @@ static char *body;
 static char *parent;
 static char *branch;
 static gboolean skip_if_unchanged;
+static gboolean tar_autocreate_parents;
 static char **trees;
 static gint owner_uid = -1;
 static gint owner_gid = -1;
@@ -50,6 +51,7 @@ static GOptionEntry options[] = {
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
+  { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { NULL }
 };
@@ -187,6 +189,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
             {
               arg = ot_gfile_new_for_path (tree);
               if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
+                                                       tar_autocreate_parents,
                                                        cancellable, error))
                 goto out;
             }

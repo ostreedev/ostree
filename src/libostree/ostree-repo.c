@@ -1585,6 +1585,7 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *name = key;
+          const char *metadata_checksum;
           OstreeMutableTree *child_dir = value;
           char *child_dir_contents_checksum;
 
@@ -1592,10 +1593,13 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
                                         cancellable, error))
             goto out;
       
+          g_assert (child_dir_contents_checksum);
           g_hash_table_replace (dir_contents_checksums, g_strdup (name),
                                 child_dir_contents_checksum); /* Transfer ownership */
+          metadata_checksum = ostree_mutable_tree_get_metadata_checksum (child_dir);
+          g_assert (metadata_checksum);
           g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
-                                g_strdup (ostree_mutable_tree_get_metadata_checksum (child_dir)));
+                                g_strdup (metadata_checksum));
         }
     
       serialized_tree = create_tree_variant_from_hashes (ostree_mutable_tree_get_files (mtree),
@@ -1709,6 +1713,7 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
                                  struct archive       *a,
                                  struct archive_entry *entry,
                                  OstreeRepoCommitModifier *modifier,
+                                 const char               *tmp_dir_checksum,
                                  GCancellable         *cancellable,
                                  GError              **error)
 {
@@ -1738,8 +1743,19 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
     }
   else
     {
-      if (!ostree_mutable_tree_walk (root, split_path, 0, &parent, error))
-        goto out;
+      if (tmp_dir_checksum)
+        {
+          if (!ostree_mutable_tree_ensure_parent_dirs (root, split_path,
+                                                       tmp_dir_checksum,
+                                                       &parent,
+                                                       error))
+            goto out;
+        }
+      else
+        {
+          if (!ostree_mutable_tree_walk (root, split_path, 0, &parent, error))
+            goto out;
+        }
       basename = (char*)split_path->pdata[split_path->len-1];
     }
 
@@ -1854,18 +1870,21 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
 #endif
                           
 gboolean
-ostree_repo_stage_archive_to_mtree (OstreeRepo           *self,
-                                    GFile                *archive_f,
-                                    OstreeMutableTree    *root,
-                                    OstreeRepoCommitModifier *modifier,
-                                    GCancellable         *cancellable,
-                                    GError              **error)
+ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
+                                    GFile                     *archive_f,
+                                    OstreeMutableTree         *root,
+                                    OstreeRepoCommitModifier  *modifier,
+                                    gboolean                   autocreate_parents,
+                                    GCancellable             *cancellable,
+                                    GError                  **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
-  struct archive *a;
+  struct archive *a = NULL;
   struct archive_entry *entry;
   int r;
+  GFileInfo *tmp_dir_info = NULL;
+  GChecksum *tmp_dir_checksum = NULL;
 
   a = archive_read_new ();
   archive_read_support_compression_all (a);
@@ -1887,7 +1906,22 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo           *self,
           goto out;
         }
 
-      if (!stage_libarchive_entry_to_mtree (self, root, a, entry, modifier, cancellable, error))
+      if (autocreate_parents && !tmp_dir_checksum)
+        {
+          tmp_dir_info = g_file_info_new ();
+          
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", archive_entry_uid (entry));
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
+          
+          if (!stage_directory_meta (self, tmp_dir_info, NULL, &tmp_dir_checksum, cancellable, error))
+            goto out;
+        }
+
+      if (!stage_libarchive_entry_to_mtree (self, root, a,
+                                            entry, modifier,
+                                            autocreate_parents ? g_checksum_get_string (tmp_dir_checksum) : NULL,
+                                            cancellable, error))
         goto out;
     }
   if (archive_read_close (a) != ARCHIVE_OK)
@@ -1898,7 +1932,10 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo           *self,
 
   ret = TRUE;
  out:
-  (void)archive_read_close (a);
+  g_clear_object (&tmp_dir_info);
+  ot_clear_checksum (&tmp_dir_checksum);
+  if (a)
+    (void)archive_read_close (a);
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

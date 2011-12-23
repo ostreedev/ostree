@@ -222,6 +222,55 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
 }
 
 gboolean
+ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
+                                        GPtrArray          *split_path,
+                                        const char         *metadata_checksum,
+                                        OstreeMutableTree **out_parent,
+                                        GError            **error)
+{
+  gboolean ret = FALSE;
+  int i;
+  OstreeMutableTree *ret_parent = NULL;
+  OstreeMutableTree *subdir = self;
+
+  g_assert (metadata_checksum != NULL);
+
+  if (!self->metadata_checksum)
+    ostree_mutable_tree_set_metadata_checksum (self, metadata_checksum);
+
+  for (i = 0; i+1 < split_path->len; i++)
+    {
+      OstreeMutableTree *next;
+      const char *name = split_path->pdata[i];
+
+      if (g_hash_table_lookup (subdir->files, name))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Can't replace file with directory: %s", name);
+          goto out;
+        }
+
+      next = g_hash_table_lookup (subdir->subdirs, name);
+      if (!next) 
+        {
+          next = ostree_mutable_tree_new ();
+          ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
+          g_hash_table_insert (subdir->subdirs, g_strdup (name), next);
+        }
+      
+      subdir = next;
+    }
+
+  ret_parent = g_object_ref (subdir);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_parent, &ret_parent);
+ out:
+  g_clear_object (&ret_parent);
+  return ret;
+}
+
+gboolean
 ostree_mutable_tree_walk (OstreeMutableTree     *self,
                           GPtrArray             *split_path,
                           guint                  start,
