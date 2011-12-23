@@ -54,3 +54,5 @@ ostree_pull_SOURCES = src/ostree/ot-main.h \
 ostree_pull_CFLAGS = $(ostree_bin_shared_cflags) $(OT_DEP_SOUP_CFLAGS)
 ostree_pull_LDADD = $(ostree_bin_shared_ldadd) $(OT_DEP_SOUP_LIBS)
 endif
+
+MANPAGES += doc/ostree.1

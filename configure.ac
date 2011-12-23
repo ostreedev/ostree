@@ -65,6 +65,9 @@ AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 AM_PATH_PYTHON([2.7])
 
+AC_PATH_PROG([XSLTPROC], [xsltproc])
+AM_CONDITIONAL(HAVE_XSLTPROC, test x"$XSLTPROC" != x)
+
 AC_CONFIG_FILES([
 Makefile
 ])

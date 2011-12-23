@@ -1,0 +1,210 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+  Copyright 2011 Colin Walters <walters@verbum.org>
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2 of the License, or (at your option) any later version.
+ 
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+ 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the
+  Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+  Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+        <refentryinfo>
+                <title>ostree</title>
+                <productname>OSTree</productname>
+
+                <authorgroup>
+                        <author>
+                                <contrib>Developer</contrib>
+                                <firstname>Colin</firstname>
+                                <surname>Walters</surname>
+                                <email>walters@verbum.org</email>
+                        </author>
+                </authorgroup>
+        </refentryinfo>
+
+        <refmeta>
+                <refentrytitle>ostree</refentrytitle>
+                <manvolnum>1</manvolnum>
+        </refmeta>
+
+        <refnamediv>
+                <refname>ostree</refname>
+                <refpurpose>Operating system build, deployment, and development tool</refpurpose>
+        </refnamediv>
+
+        <refsynopsisdiv>
+                <cmdsynopsis>
+                        <command>ostree <arg choice="req">--repo=REPO</arg> <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                </cmdsynopsis>
+        </refsynopsisdiv>
+
+        <refsect1>
+                <title>Description</title>
+
+                <para>OSTree is a system for building, deploying, and
+                developing Linux-based operating systems.  For many
+                cases, it can fill the role of "package managers" such
+                as RPM and .deb.</para>
+		<para>At its heart, OSTree is very similar to git -
+		but it is designed explicitly for managing files like
+		ELF binaries.  Unlike a typical version control
+		system, OSTree is capable of tracking file UID and
+		GIDs, as well as all extended attributes such as ACLs
+		and SELinux security contexts. You should think of
+		OSTree as a flexible but specialized userspace
+		filesystem.</para>
+        </refsect1>
+
+        <refsect1>
+                <title>Options</title>
+
+                <para>The following options are understood:</para>
+
+                <variablelist>
+                        <varlistentry>
+                                <term><option>--repo</option></term>
+
+                                <listitem><para>For most commands,
+                                when run as non-root, repository is
+                                required.  If
+                                <command>ostree</command> is run as
+                                root, it is assumed operations will be
+                                performed on the
+                                <filename>/sysroot/ostree/repo</filename>
+                                repository.
+                                </para></listitem>
+                        </varlistentry>
+
+		</variablelist>
+
+                <para>The following commands are understood:</para>
+
+                <variablelist>
+                        <varlistentry>
+                                <term><command>checkout</command></term>
+
+                                <listitem><para>Extract a given branch into the filesystem.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>checksum</command></term>
+
+                                <listitem><para>Compute the OSTree checksum of the given files.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>diff</command></term>
+
+                                <listitem><para>Concisely list differences between the given branch revisions,
+				without checking them out into the filesystem.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>init</command></term>
+
+                                <listitem><para>Initialize a repository.</para></listitem>
+
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>commit</command></term>
+
+                                <listitem><para>Given one or more
+                                trees (from the local filesystem, a
+                                tarball, or a specified revision for
+                                example), create a new commit using those contents.
+                                </para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>compose</command></term>
+
+                                <listitem><para>A specialized type of
+                                commit, intended for merging together
+                                many separate filesystem trees such as
+                                build artifacts.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>local-clone</command></term>
+
+                                <listitem><para>Efficiently copy
+                                objects and references from one local
+                                repository into another.
+                                </para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>log</command></term>
+
+                                <listitem><para>Show revision log.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>ls</command></term>
+
+                                <listitem><para>List the contents of a given commit.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>fsck</command></term>
+
+                                <listitem><para>Check a repository for consistency.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>remote</command></term>
+
+                                <listitem><para>Manipulate remote archive configuration.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>rev-parse</command></term>
+
+                                <listitem><para>Show the SHA256 corresponding to a given rev.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>run-triggers</command></term>
+
+                                <listitem><para>Regenerate cache files in the given operating system tree.</para></listitem>
+                        </varlistentry>
+
+                        <varlistentry>
+                                <term><command>show</command></term>
+
+                                <listitem><para>Given an OSTree SHA256 checksum, display its contents.</para></listitem>
+                        </varlistentry>
+                </variablelist>
+
+        </refsect1>
+
+        <refsect1>
+                <title>Exit status</title>
+
+                <para>On success 0 is returned, a non-zero failure
+                code otherwise.</para>
+        </refsect1>
+
+        <refsect1>
+                <title>Environment</title>
+
+                <variablelist>
+                        <varlistentry>
+                                <term><varname>$PAGER</varname></term>
+				<listitem><para><command>ostree</command> respects the traditional pager envrionment variable.</para></listitem>
+                        </varlistentry>
+                </variablelist>
+        </refsect1>
+
+        <refsect1>
+                <title>See Also</title>
+                <para>
+                        <citerefentry><refentrytitle>ostbuild</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                </para>
+        </refsect1>
+
+</refentry>
