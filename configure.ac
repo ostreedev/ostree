@@ -63,7 +63,7 @@ if test x$with_libarchive != xno; then
 fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
-AM_PATH_PYTHON
+AM_PATH_PYTHON([2.7])
 
 AC_CONFIG_FILES([
 Makefile

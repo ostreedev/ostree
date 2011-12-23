@@ -15,12 +15,25 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+ostbuild: src/ostbuild/ostbuild.in Makefile
+	sed -e s,@libdir\@,$(libdir), -e s,@datarootdir\@,$(datarootdir), -e s,@PYTHON\@,$(PYTHON), $< > $@.tmp && mv $@.tmp $@
+bin_SCRIPTS += ostbuild 
+
 bin_SCRIPTS += \
 	src/ostbuild/ostbuild-autodiscover-meta \
 	src/ostbuild/ostbuild-commit-artifacts \
-	src/ostbuild/ostbuild-compile-one-impl \
 	src/ostbuild/ostbuild-chroot-compile-one-impl \
 	src/ostbuild/ostbuild-nice-and-log-output \
+	$(NULL)
+
+pyostbuilddir=$(libdir)/ostbuild/pyostbuild
+pyostbuild_PYTHON =					\
+	src/ostbuild/pyostbuild/__init__.py		\
+	src/ostbuild/pyostbuild/builtins.py		\
+	src/ostbuild/pyostbuild/main.py			\
+	src/ostbuild/pyostbuild/ostbuildlog.py		\
+	src/ostbuild/pyostbuild/subprocess_helpers.py	\
+	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	$(NULL)
 
 bin_PROGRAMS += src/ostbuild/ostbuild-user-chroot
