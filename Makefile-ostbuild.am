@@ -20,7 +20,6 @@ ostbuild: src/ostbuild/ostbuild.in Makefile
 bin_SCRIPTS += ostbuild 
 
 bin_SCRIPTS += \
-	src/ostbuild/ostbuild-chroot-compile-one-impl \
 	src/ostbuild/ostbuild-nice-and-log-output \
 	$(NULL)
 
@@ -32,6 +31,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/ostbuildlog.py		\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
 	src/ostbuild/pyostbuild/builtin_autodiscover_meta.py	\
+	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_commit_artifacts.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	$(NULL)
