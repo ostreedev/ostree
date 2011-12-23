@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..21"
+echo "1..22"
 
 . libtest.sh
 
@@ -164,3 +164,8 @@ new_rev=$($OSTREE rev-parse test2)
 assert_streq "${old_rev}" "${new_rev}"
 echo "ok commit --skip-if-unchanged"
 
+$OSTREE commit -b test2 -s "Metadata string" --add-metadata-string=FOO=BAR --add-metadata-string=KITTENS=CUTE --tree=ref=test2
+$OSTREE show test2 > test2-commit-text
+assert_file_has_content test2-commit-text "FOO=.*BAR"
+assert_file_has_content test2-commit-text "KITTENS=.*CUTE"
+echo "ok metadata commit with strings"

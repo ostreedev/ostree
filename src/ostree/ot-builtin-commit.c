@@ -35,6 +35,7 @@ static char *subject;
 static char *body;
 static char *parent;
 static char *branch;
+static char **metadata_strings;
 static gboolean skip_if_unchanged;
 static gboolean tar_autocreate_parents;
 static char **trees;
@@ -46,6 +47,7 @@ static GOptionEntry options[] = {
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
   { "metadata-variant-text", 0, 0, G_OPTION_ARG_FILENAME, &metadata_text_path, "File containing g_variant_print() output", "path" },
   { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
+  { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
@@ -74,6 +76,8 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   OstreeMutableTree *mtree = NULL;
   char *tree_type = NULL;
+  GVariantBuilder metadata_builder;
+  gboolean metadata_builder_initialized = FALSE;
   gboolean skip_commit = FALSE;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
@@ -104,6 +108,36 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         }
       else
         g_assert_not_reached ();
+    }
+  else if (metadata_strings)
+    {
+      char **iter;
+
+      metadata_builder_initialized = TRUE;
+      g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
+
+      for (iter = metadata_strings; *iter; iter++)
+        {
+          const char *s;
+          const char *eq;
+          char *key;
+
+          s = *iter;
+
+          eq = strchr (s, '=');
+          if (!eq)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Missing '=' in KEY=VALUE metadata '%s'", s);
+              goto out;
+            }
+          
+          key = g_strndup (s, eq - s);
+          g_variant_builder_add (&metadata_builder, "{sv}", key,
+                                 g_variant_new_string (eq + 1));
+        }
+      metadata = g_variant_builder_end (&metadata_builder);
+      metadata_builder_initialized = FALSE;
     }
 
   repo = ostree_repo_new (repo_path);
@@ -253,6 +287,8 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
+  if (metadata_builder_initialized)
+    g_variant_builder_clear (&metadata_builder);
   g_clear_object (&arg);
   g_clear_object (&mtree);
   g_free (contents_checksum);
