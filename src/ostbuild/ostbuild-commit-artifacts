@@ -25,25 +25,27 @@ import os,sys,subprocess,tempfile,re
 i=1
 repo=sys.argv[i]
 
-artifact_re = re.compile(r'^artifact-([^,]+)-([^,]+),(.+).tar.gz$')
-
-if os.getuid() != 0:
-    print "This program must be run as root."
-    sys.exit(1)
+artifact_re = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),([^.]+)\.tar\.gz$')
 
 def call_ostree_sync(*args):
-    subprocess.check_call(['ostree', '--repo=' + repo] + args)
+    subprocess.check_call(['ostree', '--repo=' + repo] + list(args))
 
-for arg in sys.argv[1:]:
-    match = artifact_re.match(arg)
-    if match is None
+for arg in sys.argv[2:]:
+    basename = os.path.basename(arg)
+    match = artifact_re.match(basename)
+    if match is None:
         print "Invalid artifact name: %s" % (arg, )
         sys.exit(1)
-    arch = match.group(1)
-    name = match.group(2)
-    version = match.group(3)
+    buildroot = match.group(1)
+    buildroot_version = match.group(2)
+    name = match.group(3)
+    branch = match.group(4)
+    version = match.group(5)
     
-    branch_name = 'artifact-%s-%s' % (arch, name)
+    branch_name = 'artifacts/%s/%s/%s' % (buildroot, name, branch)
 
-    call_ostree_sync('commit', '-b', branch_name, '-s', version, 
+    call_ostree_sync('commit', '-b', branch_name, '-s', 'Build ' + version,
+                     '--add-metadata-string=ostree-buildroot-version=' + buildroot_version,
+                     '--add-metadata-string=ostree-artifact-version=' + version,
+                     '--skip-if-unchanged', '--tar-autocreate-parents', '--tree=tar=' + arg)
                      

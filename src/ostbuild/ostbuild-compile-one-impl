@@ -20,7 +20,7 @@
 # ostbuild-compile-one-make wraps systems that implement the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
 
-import os,sys,subprocess,tempfile,re
+import os,sys,subprocess,tempfile,re,shutil
 from StringIO import StringIO
 from multiprocessing import cpu_count
 import select,time
@@ -291,10 +291,21 @@ def make_artifact(name, from_files, tempdir=None, resultdir=None):
 
 def phase_make_artifacts(builddir=None):
     name = metadata['NAME']
+    assert ',' not in name
+    branch = metadata['BRANCH']
+    assert ',' not in name
     version = metadata['VERSION']
     assert ',' not in version
 
-    artifact_prefix='artifact-%s-%s,%s' % (build_target, name, version)
+    root_name = metadata.get('BUILDROOT', None)
+    # TODO - pick up current sysroot version from ostree
+    if root_name is None:
+        root_name = 'unknown-' + build_target
+        root_version = 'UNKNOWN'
+    else:
+        root_version = metadata.get('BUILDROOT_VERSION')
+
+    artifact_prefix='artifact-%s,%s,%s,%s,%s' % (root_name, root_version, name, branch, version)
 
     tempdir = tempfile.mkdtemp(prefix='ostree-build-%s-' % (name,))
     tempfiles.append(tempdir)
@@ -333,6 +344,8 @@ def phase_make_artifacts(builddir=None):
     if devel_files:
         make_artifact(artifact_prefix + '-devel', devel_files, tempdir=tempdir, resultdir=ostbuild_resultdir)
     make_artifact(artifact_prefix + '-runtime', runtime_files, tempdir=tempdir, resultdir=ostbuild_resultdir)
+
+    phase_complete()
 
 def phase_complete():
     for tmpname in tempfiles:

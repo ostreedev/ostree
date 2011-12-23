@@ -47,6 +47,16 @@ def _discover_version_from_git():
     return None
 _register_discover_func('VERSION', _discover_version_from_git)
 
+def _discover_branch_from_git():
+    if os.path.isdir('.git'):
+        try:
+            ref = subprocess.check_output(['git', 'symbolic-ref', 'HEAD'])
+            return ref.replace('refs/heads/', '').strip()
+        except subprocess.CalledProcessError, e:
+            return None
+    return None
+_register_discover_func('BRANCH', _discover_branch_from_git)
+
 if args.meta:
     f = open(args.meta)
     for line in f.readlines():

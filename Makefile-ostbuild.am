@@ -17,6 +17,7 @@
 
 bin_SCRIPTS += \
 	src/ostbuild/ostbuild-autodiscover-meta \
+	src/ostbuild/ostbuild-commit-artifacts \
 	src/ostbuild/ostbuild-compile-one-impl \
 	src/ostbuild/ostbuild-chroot-compile-one-impl \
 	src/ostbuild/ostbuild-nice-and-log-output \
