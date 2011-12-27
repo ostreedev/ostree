@@ -92,6 +92,7 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   GFile *metadata_f = NULL;
   OstreeMutableTree *mtree = NULL;
+  gboolean skip_commit = FALSE;
   int i;
 
   context = g_option_context_new ("BRANCH1 BRANCH2 ... - Merge multiple commits into a single commit tree");
@@ -124,6 +125,13 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_resolve_rev (repo, branch, recompose ? FALSE : TRUE, &parent, error))
     goto out;
 
+  if (parent)
+    {
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     parent, &parent_commit, error))
+        goto out;
+    }
+
   if (!ostree_repo_prepare_transaction (repo, cancellable, error))
     goto out;
 
@@ -135,11 +143,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
       const char *branch_rev;
 
       g_assert (parent);
+      g_assert (parent_commit);
       
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, parent,
-                                     &parent_commit, error))
-        goto out;
-
       g_variant_get_child (parent_commit, 1, "@a{sv}", &parent_commit_metadata);
 
       parent_commit_compose = g_variant_lookup_value (parent_commit_metadata,
@@ -186,17 +191,41 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
 
-  if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, commit_metadata,
-                                 contents_checksum,
-                                 ostree_mutable_tree_get_metadata_checksum (mtree),
-                                 &commit_checksum, cancellable, error))
-    goto out;
+  if (parent_commit)
+    {
+      const char *parent_contents_checksum;
+      const char *parent_metadata_checksum;
+      
+      g_variant_get_child (parent_commit, 6, "&s", &parent_contents_checksum);
+      g_variant_get_child (parent_commit, 7, "&s", &parent_metadata_checksum);
+      
+      if (strcmp (contents_checksum, parent_contents_checksum) == 0
+          && strcmp (ostree_mutable_tree_get_metadata_checksum (mtree),
+                     parent_metadata_checksum) == 0)
+        skip_commit = TRUE;
+    }
 
-  if (!ostree_repo_commit_transaction (repo, cancellable, error))
-    goto out;
+  if (!skip_commit)
+    {
+      if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, commit_metadata,
+                                     contents_checksum,
+                                     ostree_mutable_tree_get_metadata_checksum (mtree),
+                                     &commit_checksum, cancellable, error))
+        goto out;
+      
+      if (!ostree_repo_commit_transaction (repo, cancellable, error))
+        goto out;
 
-  if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
-    goto out;
+      if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_repo_abort_transaction (repo, cancellable, error))
+        goto out;
+      
+      g_print ("%s\n", parent);
+    }
 
   ret = TRUE;
   g_print ("%s\n", commit_checksum);
