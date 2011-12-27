@@ -29,10 +29,12 @@
 
 static gboolean print_compose;
 static char* print_variant_type;
+static char* print_metadata_key;
 
 static GOptionEntry options[] = {
   { "print-compose", 0, 0, G_OPTION_ARG_NONE, &print_compose, "If given, show the branches which make up the given compose commit", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
+  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
   { NULL }
 };
 
@@ -191,6 +193,36 @@ do_print_compose (OstreeRepo  *repo,
   return ret;
 }
 
+static gboolean
+do_print_metadata_key (OstreeRepo  *repo,
+                       const char *resolved_rev,
+                       const char *key,
+                       GError **error)
+{
+  gboolean ret = FALSE;
+  GVariant *commit = NULL;
+  GVariant *metadata = NULL;
+  const char *value;
+
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 resolved_rev, &commit, error))
+    goto out;
+
+  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+  metadata = g_variant_get_child_value (commit, 1);
+  
+  if (!g_variant_lookup (metadata, key, "&s", &value))
+    goto out;
+
+  g_print ("%s\n", value);
+
+  ret = TRUE;
+ out:
+  ot_clear_gvariant (&metadata);
+  ot_clear_gvariant (&commit);
+  return ret;
+}
+
 gboolean
 ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
 {
@@ -217,7 +249,15 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
     }
   rev = argv[1];
 
-  if (print_compose)
+  if (print_metadata_key)
+    {
+      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
+        goto out;
+
+      if (!do_print_metadata_key (repo, resolved_rev, print_metadata_key, error))
+        goto out;
+    }
+  else if (print_compose)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
