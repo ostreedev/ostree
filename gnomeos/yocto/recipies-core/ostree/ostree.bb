@@ -9,5 +9,7 @@ inherit autotools
 
 EXTRA_OECONF = "--without-soup-gnome"
 
+FILES_${PN} += "${libdir}/ostree/ ${libdir}/ostbuild"
+
 BBCLASSEXTEND = "native"
 
