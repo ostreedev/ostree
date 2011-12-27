@@ -166,6 +166,6 @@ echo "ok commit --skip-if-unchanged"
 
 $OSTREE commit -b test2 -s "Metadata string" --add-metadata-string=FOO=BAR --add-metadata-string=KITTENS=CUTE --tree=ref=test2
 $OSTREE show test2 > test2-commit-text
-assert_file_has_content test2-commit-text "FOO=.*BAR"
-assert_file_has_content test2-commit-text "KITTENS=.*CUTE"
+assert_file_has_content test2-commit-text "'FOO'.*'BAR'"
+assert_file_has_content test2-commit-text "'KITTENS'.*'CUTE'"
 echo "ok metadata commit with strings"
