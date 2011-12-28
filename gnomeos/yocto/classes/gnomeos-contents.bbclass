@@ -13,7 +13,8 @@ PACKAGE_INSTALL = "task-core-boot \
 		   strace \
 		   bash \
 		   ncurses \
-		   python-modules"
+		   python-modules \
+		   python-misc"
 
 RDEPENDS += "${PACKAGE_INSTALL}"
 DEPENDS += "makedevs-native virtual/fakeroot-native"
