@@ -21,11 +21,23 @@ import os
 import sys
 import argparse
 
+from . import ostbuildrc
+from .ostbuildlog import log, fatal
+
 _all_builtins = {}
 
 class Builtin(object):
     name = None
     short_description = None
+
+    def parse_config(self):
+        self.repo = ostbuildrc.get_key('repo')
+        self.srcdir = ostbuildrc.get_key('srcdir')
+        if not os.path.isdir(self.srcdir):
+            fatal("Specified srcdir '%s' is not a directory" % (self.srcdir, ))
+        self.workdir = ostbuildrc.get_key('workdir')
+        if not os.path.isdir(self.workdir):
+            fatal("Specified workdir '%s' is not a directory", (self.workdir, ))
 
     def execute(self, args):
         raise NotImplementedError()

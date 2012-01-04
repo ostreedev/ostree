@@ -39,13 +39,13 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     short_description = "Build artifacts from the current source directory in a chroot"
 
     def execute(self, argv):
-        parser = argparse.ArgumentParser(description="Build a module in a given root")
+        parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--workdir')
-        parser.add_argument('--repo')
+        parser.add_argument('--repo', required=True)
         parser.add_argument('--resultdir')
-        parser.add_argument('--branch')
+        parser.add_argument('--buildroot', required=True)
         parser.add_argument('--meta')
-        parser.add_argument('--debug-shell', type=bool)
+        parser.add_argument('--debug-shell', action='store_true')
         
         args = parser.parse_args(argv)
 
@@ -67,7 +67,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         
         workdir_is_tmp = (args.workdir is None)
         if workdir_is_tmp:
-            workdir = tempfile.mkdtemp(prefix='ostree-chroot-compile-')
+            workdir = tempfile.mkdtemp(prefix='ostbuild-chroot-compile-')
         else:
             workdir = args.workdir
             
@@ -79,10 +79,10 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(child_tmpdir)
         os.mkdir(child_tmpdir)
         
-        rev = subprocess.check_output(['ostree', '--repo=' + args.repo, 'rev-parse', args.branch])
+        rev = subprocess.check_output(['ostree', '--repo=' + args.repo, 'rev-parse', args.buildroot])
         rev=rev.strip()
         
-        metadata['BUILDROOT'] = args.branch
+        metadata['BUILDROOT'] = args.buildroot
         metadata['BUILDROOT_VERSION'] = rev
         
         rootdir = os.path.join(workdir, 'root-' + rev)
@@ -130,14 +130,14 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                       '--mount-proc', '/proc', 
                       '--mount-bind', '/dev', '/dev',
                       '--mount-bind', child_tmpdir, '/tmp',
-                      '--mount-bind', os.getcwd(), chroot_sourcedir,
-                      '--mount-bind', args.resultdir, '/ostbuild/results',
-                      rootdir,
-                      '/bin/sh']
+                      '--mount-bind', os.getcwd(), chroot_sourcedir]
+        if args.resultdir:
+            child_args.extend(['--mount-bind', args.resultdir, '/ostbuild/results'])
+        child_args.extend([rootdir, '/bin/sh'])
         if not args.debug_shell:
-            child_args += ['-c',
-                     'cd "%s" && ostbuild-compile-one-impl OSTBUILD_RESULTDIR=/ostbuild/results OSTBUILD_META=_ostbuild-meta' % (chroot_sourcedir, )
-                     ]
+            child_args.extend(['-c',
+                               'cd "%s" && ostbuild compile-one --ostbuild-resultdir=/ostbuild/results --ostbuild-meta=_ostbuild-meta' % (chroot_sourcedir, )
+                               ])
         run_sync(child_args, env=BUILD_ENV)
         
         if workdir_is_tmp:

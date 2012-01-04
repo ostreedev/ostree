@@ -72,10 +72,7 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
         
     def _discover_version_from_git(self):
         if os.path.isdir('.git'):
-            try:
-                version = subprocess.check_output(['git', 'describe'])
-            except subprocess.CalledProcessError, e:
-                version = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+            version = subprocess.check_output(['git', 'describe', '--long', '--abbrev=42', '--always'])
             return version.strip()
         return None
         

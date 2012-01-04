@@ -19,25 +19,27 @@ ostbuild: src/ostbuild/ostbuild.in Makefile
 	sed -e s,@libdir\@,$(libdir), -e s,@datarootdir\@,$(datarootdir), -e s,@PYTHON\@,$(PYTHON), $< > $@.tmp && mv $@.tmp $@
 bin_SCRIPTS += ostbuild 
 
-bin_SCRIPTS += \
-	src/ostbuild/ostbuild-nice-and-log-output \
-	$(NULL)
-
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
-	src/ostbuild/pyostbuild/__init__.py		\
-	src/ostbuild/pyostbuild/builtins.py		\
-	src/ostbuild/pyostbuild/main.py			\
-	src/ostbuild/pyostbuild/ostbuildlog.py		\
-	src/ostbuild/pyostbuild/subprocess_helpers.py	\
+	src/ostbuild/pyostbuild/buildutil.py		\
 	src/ostbuild/pyostbuild/builtin_autodiscover_meta.py	\
+	src/ostbuild/pyostbuild/builtin_build.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_commit_artifacts.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
+	src/ostbuild/pyostbuild/builtins.py		\
+	src/ostbuild/pyostbuild/__init__.py		\
+	src/ostbuild/pyostbuild/kvfile.py		\
+	src/ostbuild/pyostbuild/main.py			\
+	src/ostbuild/pyostbuild/ostbuildlog.py		\
+	src/ostbuild/pyostbuild/ostbuildrc.py		\
+	src/ostbuild/pyostbuild/subprocess_helpers.py	\
 	$(NULL)
 
 bin_PROGRAMS += src/ostbuild/ostbuild-user-chroot
 
 ostbuild_user_chroot_SOURCES = src/ostbuild/ostbuild-user-chroot.c
 ostbuild_user_chroot_CFLAGS = $(AM_CFLAGS)
+
+bin_SCRIPTS += src/ostbuild/ostbuild-nice-and-log-output
 

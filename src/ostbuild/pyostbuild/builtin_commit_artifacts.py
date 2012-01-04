@@ -26,13 +26,13 @@ import argparse
 from . import builtins
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync
+from . import buildutil
 
 class OstbuildCommitArtifacts(builtins.Builtin):
     name = "commit-artifacts"
     short_description = "Commit artifacts to their corresponding repository branches"
 
     def execute(self, argv):
-        artifact_re = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),([^.]+)\.tar\.gz$')
 
         parser = argparse.ArgumentParser(self.short_description)
         parser.add_argument('--repo')
@@ -45,21 +45,14 @@ class OstbuildCommitArtifacts(builtins.Builtin):
 
         for arg in args.artifacts:
             basename = os.path.basename(arg)
-            match = artifact_re.match(basename)
-            if match is None:
-                fatal("Invalid artifact name: %s" % (arg, ))
-            buildroot = match.group(1)
-            buildroot_version = match.group(2)
-            name = match.group(3)
-            branch = match.group(4)
-            version = match.group(5)
+            parsed = buildutil.parse_artifact_name(basename)
     
-            branch_name = 'artifacts/%s/%s/%s' % (buildroot, name, branch)
+            branch_name = buildutil.branch_name_for_artifact(parsed)
 
             run_sync(['ostree', '--repo=' + args.repo,
-                      'commit', '-b', branch_name, '-s', 'Build ' + version,
-                     '--add-metadata-string=ostree-buildroot-version=' + buildroot_version,
-                     '--add-metadata-string=ostree-artifact-version=' + version,
+                      'commit', '-b', branch_name, '-s', 'Build ' + parsed['version'],
+                     '--add-metadata-string=ostbuild-buildroot-version=' + parsed['buildroot_version'],
+                     '--add-metadata-string=ostbuild-artifact-version=' + parsed['version'],
                      '--skip-if-unchanged', '--tar-autocreate-parents', '--tree=tar=' + arg])
                      
 builtins.register(OstbuildCommitArtifacts)

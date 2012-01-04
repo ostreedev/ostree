@@ -1,0 +1,1 @@
+SRC=git:git://git.gnome.org/gobject-introspection

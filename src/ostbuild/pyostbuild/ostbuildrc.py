@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -17,33 +15,27 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import sys
-import argparse
+import os,sys,ConfigParser
 
-from . import builtins
-from . import builtin_autodiscover_meta
-from . import builtin_build
-from . import builtin_chroot_compile_one
-from . import builtin_commit_artifacts
-from . import builtin_compile_one
+_config = None
 
-def usage(ecode):
-    print "Builtins:"
-    for builtin in builtins.get_all():
-        print "    %s - %s" % (builtin.name, builtin.short_description)
-    return ecode
+def get():
+    global _config
+    if _config is None:
+        configpath = os.path.expanduser('~/.config/ostbuild.cfg')
+        parser = ConfigParser.RawConfigParser()
+        parser.read([configpath])
 
-def main(args):
-    if len(args) < 1:
-        return usage(1)
-    elif args[0] in ('-h', '--help'):
-        return usage(0)
-    else:
-        builtin = builtins.get(args[0])
-        if builtin is None:
-            print "error: Unknown builtin '%s'" % (args[1], )
-            return usage(1)
-        return builtin.execute(args[1:])
-    
-    
+        _config = {}
+        for (k, v) in parser.items('global'):
+            _config[k.strip()] = v.strip()
+    return _config
+
+def get_key(name, provided_args=None):
+    config = get()
+    if provided_args:
+        v = provided_args.get(name)
+        if v is not None:
+            return v
+    return config[name]
+                                        

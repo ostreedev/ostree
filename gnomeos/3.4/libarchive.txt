@@ -1,0 +1,2 @@
+SRC=svn:http://libarchive.googlecode.com/svn/trunk/libarchive-read-only
+CONFIGURE_OPTS=--disable-bsdtar --disable-bsdcpio

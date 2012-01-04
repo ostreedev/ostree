@@ -1,0 +1,2 @@
+SRC=git:git://git.gnome.org/libxslt
+EXTRA_OECONF = "--disable-static"

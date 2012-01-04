@@ -1,8 +1,0 @@
-#!/usr/bin/python
-#
-# Copyright 2011 Colin Walters <walters@verbum.org>
-# Licensed under the new-BSD license (http://www.opensource.org/licenses/bsd-license.php)
-
-import os,sys,subprocess,tempfile,re
-
-for 

@@ -1,0 +1,2 @@
+SRC=git:git://git.gnome.org/gtk-doc-stub
+COMPONENT=devel

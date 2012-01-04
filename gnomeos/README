@@ -1,0 +1,56 @@
+Overview
+--------
+
+The build process is divided into two levels:
+
+1) Yocto
+2) ostbuild
+
+Yocto is used as a reliable, well-maintained bootstrapping tool.  It
+provides the basic filesystem layout as well as binaries for core
+build utilities like gcc and bash.  This gets us out of circular
+dependency problems.
+
+At the end, the Yocto build process generates two tarballs: one for a
+base "runtime", and one "devel" with all of the development tools like
+gcc.  We then import that into an OSTree branch
+e.g. "bases/gnomeos-3.4-yocto-i686-devel".
+
+Now we also assume that you have ostree installed on the host build
+system via e.g. jhbuild or RPM if doing a cross build.  The core
+ostbuild tool can then chroot into a checkout of the Yocto base, and
+start generating artifacts.
+
+Each generated artifact is committed to an OSTree branch like
+"artifacts/gnomeos-3.4-i686-devel/libxslt/master/runtime".  Then, a
+"compose" process merges together the individual filesystem trees into
+the final branches (e.g. gnomeos-3.4-i686-devel), and the process
+repeats.
+
+ostbuild details
+-------------------
+
+The simple goal of ostbuild is that it only takes as input a
+"manifest" which is basically just a list of components to build.  A
+component is a pure metadata file which includes the git repository
+URL and branch name, as well as ./configure flags (--enable-foo).
+
+There is no support for building from "tarballs" - I want the ability
+to review all of the code that goes in, and to efficiently store
+source code updates.
+
+For GNOME, tarballs are mostly pointless - it's easy enough to just
+run autogen.sh.  However there are two challenges:
+
+1) Tarballs for modules which self-build-depend may include
+   pre-generated files.  For example - flex's tarball includes a
+   generated .c file for the parser.  For these, we can either move
+   the module build to the Yocto level (thus giving a convenient way
+   to pull in host files), or possibly add the ability to
+   hardlink/copy in host binaries to ostbuild.
+
+2) Tarballs which include translations pulled from a different
+   location.  For example - bison.  For these, we basically have to
+   maintain our own git repositories.
+
+
