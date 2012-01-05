@@ -1452,9 +1452,12 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
       
       modified_info = create_modified_file_info (child_info, modifier);
       
-      xattrs = ostree_get_xattrs_for_file (dir, error);
-      if (!xattrs)
-        goto out;
+      if (!(modifier && modifier->skip_xattrs))
+        {
+          xattrs = ostree_get_xattrs_for_file (dir, error);
+          if (!xattrs)
+            goto out;
+        }
       
       if (!stage_directory_meta (self, modified_info, xattrs, &child_file_checksum,
                                  cancellable, error))
@@ -1513,9 +1516,12 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
                 goto out;
             }
 
-          xattrs = ostree_get_xattrs_for_file (child, error);
-          if (!xattrs)
-            goto out;
+          if (!(modifier && modifier->skip_xattrs))
+            {
+              xattrs = ostree_get_xattrs_for_file (child, error);
+              if (!xattrs)
+                goto out;
+            }
 
           if (!stage_object_impl (self, OSTREE_OBJECT_TYPE_RAW_FILE,
                                   modified_info, xattrs, file_input, NULL,

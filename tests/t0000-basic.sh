@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..22"
+echo "1..23"
 
 . libtest.sh
 
@@ -169,3 +169,7 @@ $OSTREE show test2 > test2-commit-text
 assert_file_has_content test2-commit-text "'FOO'.*'BAR'"
 assert_file_has_content test2-commit-text "'KITTENS'.*'CUTE'"
 echo "ok metadata commit with strings"
+
+cd ${test_tmpdir}/checkout-test2-4
+$OSTREE commit -b test2 -s "no xattrs" --no-xattrs
+echo "ok commit with no xattrs"

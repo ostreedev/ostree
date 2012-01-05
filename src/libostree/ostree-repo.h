@@ -137,10 +137,14 @@ gboolean      ostree_repo_load_variant (OstreeRepo  *self,
 
 typedef struct {
   volatile gint refcount;
-  gpointer reserved[3];
 
   gint uid;
   gint gid;
+
+  guint reserved_flags : 31;
+  guint skip_xattrs : 1;
+
+  gpointer reserved[3];
 } OstreeRepoCommitModifier;
 
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);

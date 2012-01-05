@@ -38,6 +38,7 @@ static char *branch;
 static char **metadata_strings;
 static gboolean skip_if_unchanged;
 static gboolean tar_autocreate_parents;
+static gboolean no_xattrs;
 static char **trees;
 static gint owner_uid = -1;
 static gint owner_gid = -1;
@@ -53,6 +54,7 @@ static GOptionEntry options[] = {
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
+  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &no_xattrs, "Do not import extended attributes", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { NULL }
