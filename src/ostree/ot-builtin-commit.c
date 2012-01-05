@@ -264,8 +264,17 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
 
   if (!skip_commit)
     {
+      const char *root_metadata = ostree_mutable_tree_get_metadata_checksum (mtree);
+      
+      if (!root_metadata)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Can't commit an empty tree");
+          goto out;
+        }
+
       if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
-                                     contents_checksum, ostree_mutable_tree_get_metadata_checksum (mtree),
+                                     contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
 
