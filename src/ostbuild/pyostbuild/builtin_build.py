@@ -237,11 +237,9 @@ class OstbuildBuild(builtins.Builtin):
         return artifacts
 
     def _compose(self, suffix, artifacts):
-        compose_contents = ['bases/' + self.manifest['base'] + '-' + suffix]
-        compose_contents.extend(artifacts)
-        child_args = ['ostree', '--repo=' + self.repo, 'compose',
+        child_args = ['ostree', '--repo=' + self.repo, 'compose', '--recompose',
                       '-b', self.manifest['name'] + '-' + suffix, '-s', 'Compose']
-        child_args.extend(compose_contents)
+        child_args.extend(artifacts)
         run_sync(child_args)
     
     def execute(self, argv):
@@ -267,30 +265,18 @@ class OstbuildBuild(builtins.Builtin):
             self._launch_debug_shell(debug_shell_arch, debug_shell_buildroot)
 
         self.manifestdir = os.path.dirname(args.manifest)
-        runtime_components = []
-        devel_components = []
-        runtime_artifacts = []
-        devel_artifacts = []
             
         for component in self.manifest['components']:
             for architecture in self.manifest['architectures']:
                 component_meta = self._resolve_component_meta(component)
     
-                artifact_branches = self._build_one_component(component_meta, architecture)
+                (runtime_artifact,devel_artifact) = self._build_one_component(component_meta, architecture)
+                runtime_branch = buildutil.branch_name_for_artifact(runtime_artifact)
+                devel_branch = buildutil.branch_name_for_artifact(devel_artifact)
     
                 target_component = component_meta.get('component')
-                if target_component == 'devel':
-                    devel_components.append(component_meta['name'])
-                else:
-                    runtime_components.append(component_meta['name'])
-                    for branch in artifact_branches:
-                        if branch['type'] == 'runtime':
-                            runtime_artifacts.append(branch)
-                devel_artifacts.extend(artifact_branches)
-
-                devel_branches = map(buildutil.branch_name_for_artifact, devel_artifacts)
-                self._compose(architecture + '-devel', devel_branches)
-                runtime_branches = map(buildutil.branch_name_for_artifact, runtime_artifacts)
-                self._compose(architecture + '-runtime', runtime_branches)
+                if target_component != 'devel':
+                    self._compose(architecture + '-runtime', [runtime_branch])
+                self._compose(architecture + '-devel', [runtime_branch, devel_branch])
         
 builtins.register(OstbuildBuild)
