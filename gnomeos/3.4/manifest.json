@@ -137,6 +137,9 @@
 		{"src": "fd:xorg/lib/libxtrans",
 		 "patches": ["xorg-autogen.patch"]},
 
+		{"src": "fd:xorg/lib/libXau",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd:xcb/proto",
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
