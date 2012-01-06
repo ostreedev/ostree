@@ -18,7 +18,7 @@
 # ostbuild-compile-one-make wraps systems that implement the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
 
-import os,sys,subprocess,tempfile,re,shutil
+import os,sys,stat,subprocess,tempfile,re,shutil
 from StringIO import StringIO
 from multiprocessing import cpu_count
 import select,time
@@ -256,6 +256,18 @@ class OstbuildCompileOne(builtins.Builtin):
                     os.unlink(tmpname)
                 except OSError, e:
                     pass
+
+    def _rename_or_copy(self, src, dest):
+        statsrc = os.lstat(src)
+        statdest = os.lstat(os.path.dirname(dest))
+        try:
+            os.rename(src, dest)
+        except OSError, e:
+            if stat.S_ISLNK(statsrc.st_mode):
+                linkto = os.readlink(src)
+                os.symlink(linkto, dest)
+            else:
+                shutil.copy2(src, dest)
     
     def make_artifact(self, prefix, dirtype, from_files, tempdir):
         resultdir = os.path.join(self.ostbuild_resultdir, prefix, dirtype)
@@ -264,12 +276,17 @@ class OstbuildCompileOne(builtins.Builtin):
         os.makedirs(resultdir)
                                  
         for filename in from_files:
+            if filename.startswith('./'):
+                filename = filename[2:]
             src_path = os.path.join(tempdir, filename)
             dest_path = os.path.join(resultdir, filename)
             dest_dir = os.path.dirname(dest_path)
             if not os.path.isdir(dest_dir):
                 os.makedirs(dest_dir)
-            shutil.move(src_path, dest_path)
+            try:
+                self._rename_or_copy(src_path, dest_path)
+            except OSError, e:
+                fatal("Failed to copy %r to %r: %d %s" % (src_path, dest_path, e.errno, e.strerror))
         log("created: %s" % (os.path.abspath (resultdir), ))
     
 builtins.register(OstbuildCompileOne)
