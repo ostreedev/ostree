@@ -12,6 +12,7 @@ PACKAGE_INSTALL = "task-core-boot \
 		   ostree ostree-init \
 		   strace \
 		   bash \
+		   tar \
 		   ncurses \
 		   python-modules \
 		   python-misc"
