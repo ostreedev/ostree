@@ -118,12 +118,12 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         # below for our children inside the chroot.
         ostbuild_user_chroot_path = None
         for dirname in os.environ['PATH'].split(':'):
-            path = os.path.join(dirname, 'ostbuild-user-chroot')
+            path = os.path.join(dirname, 'linux-user-chroot')
             if os.access(path, os.X_OK):
                 ostbuild_user_chroot_path = path
                 break
         if ostbuild_user_chroot_path is None:
-            ostbuild_user_chroot_path = 'ostbuild-user-chroot'
+            ostbuild_user_chroot_path = 'linux-user-chroot'
         
         child_args = [ostbuild_user_chroot_path, '--unshare-pid', '--unshare-net', '--unshare-ipc',
                       '--mount-readonly', '/',
