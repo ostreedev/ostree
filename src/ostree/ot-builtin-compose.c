@@ -78,6 +78,7 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   OstreeCheckout *checkout = NULL;
   char *parent = NULL;
   GFile *destf = NULL;
+  GHashTable *seen_branches = NULL;
   gboolean compose_metadata_builder_initialized = FALSE;
   GVariantBuilder compose_metadata_builder;
   gboolean commit_metadata_builder_initialized = FALSE;
@@ -144,6 +145,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
 
       g_assert (parent);
       g_assert (parent_commit);
+
+      seen_branches = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
       
       g_variant_get_child (parent_commit, 1, "@a{sv}", &parent_commit_metadata);
 
@@ -167,12 +170,17 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
                            &compose_metadata_builder,
                            error))
             goto out;
+
+          g_hash_table_insert (seen_branches, g_strdup (branch_name), (char*)branch_name);
         }
     }
   
   for (i = 1; i < argc; i++)
     {
       const char *src_branch = argv[i];
+
+      if (seen_branches && g_hash_table_lookup (seen_branches, src_branch))
+        continue;
       
       if (!add_branch (repo, mtree, src_branch,
                        &compose_metadata_builder,
@@ -239,6 +247,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   g_free (parent);
   g_free (contents_checksum);
   g_free (commit_checksum);
+  if (seen_branches)
+    g_hash_table_destroy (seen_branches);
   ot_clear_gvariant (&commit_metadata);
   ot_clear_gvariant (&parent_commit);
   ot_clear_gvariant (&parent_commit_metadata);
