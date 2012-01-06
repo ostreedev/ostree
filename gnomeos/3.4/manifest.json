@@ -3,9 +3,157 @@
   "architectures": ["i686"],
   "base": "yocto/gnomeos-3.4",
 
+  "config-opts": ["--disable-static"],
+
+  "vcsconfig": {"gnome": "git:git://git.gnome.org/",
+                "fd": "git:git://anongit.freedesktop.org/git/"},
+
   "components": [
-   		"gtk-doc-stub",
-   		"gobject-introspection",
-   		"glib"
+   		{"src": "gnome:gtk-doc-stub",
+		 "component": "devel"},
+
+		{"src": "gnome:libxml2"},
+
+		{"src": "gnome:libxslt"},
+
+		{"src": "git:git://github.com/atgreen/libffi.git"},
+
+		{"src": "gnome:glib"},
+
+   		{"src": "fd:pixman"},
+
+		{"src": "fd:xorg/util/macros",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/bigreqsproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/compositeproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/damageproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/dmxproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/dri2proto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/evieproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/fixesproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/fontsproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/glproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/inputproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/kbproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/randrproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/recordproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/renderproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/resourceproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/scrnsaverproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/videoproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xcmiscproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xextproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xf86bigfontproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xf86dgaproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xf86driproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xf86miscproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xf86vidmodeproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xineramaproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/fixesproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/proto/xproto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libxtrans",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xcb/proto",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xcb/pthread-stubs",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xcb/libxcb",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libX11",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:cairo"},
+
+		{"src": "gnome:gobject-introspection"}
 		]
 }

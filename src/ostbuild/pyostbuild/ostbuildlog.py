@@ -21,7 +21,7 @@ import os
 import sys
 
 def log(msg):
-    fullmsg = '%s: %s\n' % (sys.argv[0], msg)
+    fullmsg = '%s: %s\n' % (os.path.basename(sys.argv[0]), msg)
     sys.stdout.write(fullmsg)
     sys.stdout.flush()
 

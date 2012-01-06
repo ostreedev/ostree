@@ -17,7 +17,9 @@
 
 import re
 
-ARTIFACT_RE = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),(.+)-((?:runtime)|(?:devel))\.tar\.gz$')
+from .subprocess_helpers import run_sync_get_output
+
+ARTIFACT_RE = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),(.+)-((?:runtime)|(?:devel))\.tar$')
 
 def parse_artifact_name(artifact_basename):
     match = ARTIFACT_RE.match(artifact_basename)
@@ -36,3 +38,7 @@ def branch_name_for_artifact(a):
                                       a['branch'],
                                       a['type'])
 
+def get_git_version_describe(dirpath):
+    version = run_sync_get_output(['git', 'describe', '--long', '--abbrev=42', '--always'],
+                                  cwd=dirpath)
+    return version.strip()

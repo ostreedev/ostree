@@ -47,10 +47,10 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         parser.add_argument('--meta')
         parser.add_argument('--debug-shell', action='store_true')
         
-        args = parser.parse_args(argv)
+        (args, rest_args) = parser.parse_known_args(argv)
 
         if args.meta is None:
-            output = subprocess.check_output(['ostbuild-autodiscover-meta'])
+            output = subprocess.check_output(['ostbuild', 'autodiscover-meta'])
             ostbuild_meta_f = StringIO(output)
         else:
             ostbuild_meta_f = open(args.meta)
@@ -133,12 +133,18 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                       '--mount-bind', os.getcwd(), chroot_sourcedir]
         if args.resultdir:
             child_args.extend(['--mount-bind', args.resultdir, '/ostbuild/results'])
-        child_args.extend([rootdir, '/bin/sh'])
-        if not args.debug_shell:
-            child_args.extend(['-c',
-                               'cd "%s" && ostbuild compile-one --ostbuild-resultdir=/ostbuild/results --ostbuild-meta=_ostbuild-meta' % (chroot_sourcedir, )
-                               ])
-        run_sync(child_args, env=BUILD_ENV)
+        if args.debug_shell:
+            child_args.extend([rootdir, '/bin/sh'])
+        else:
+            child_args.extend([rootdir, '/usr/bin/ostbuild',
+                               'compile-one',
+                               '--chdir=' + chroot_sourcedir,
+                               '--ostbuild-resultdir=/ostbuild/results',
+                               '--ostbuild-meta=_ostbuild-meta'])
+            child_args.extend(rest_args)
+        env_copy = dict(BUILD_ENV)
+        env_copy['PWD'] = chroot_sourcedir
+        run_sync(child_args, env=env_copy)
         
         if workdir_is_tmp:
             shutil.rmtree(workdir)

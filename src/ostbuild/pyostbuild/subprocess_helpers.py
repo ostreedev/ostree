@@ -40,8 +40,8 @@ def _get_env_for_cwd(cwd=None, env=None):
         env_copy = env
     return env_copy
 
-def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=False):
-    log("running: %s" % (subprocess.list2cmdline(args),))
+def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=False,
+                        log_success=False):
     env_copy = _get_env_for_cwd(cwd, env)
     f = open('/dev/null', 'r')
     if stderr is None:
@@ -54,14 +54,18 @@ def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=Fal
     output = proc.communicate()[0].strip()
     if proc.returncode != 0 and not none_on_error:
         logfn = fatal
-    else:
+    elif log_success:
         logfn = log
-    logfn("pid %d exited with code %d, %d bytes of output" % (proc.pid, proc.returncode, len(output)))
+    else:
+        logfn = None
+    if logfn is not None:
+        logfn("cmd '%s' exited with code %d, %d bytes of output" % (subprocess.list2cmdline(args), proc.returncode, len(output)))
     if proc.returncode == 0:
         return output
     return None
 
-def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False):
+def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
+             log_success=True):
     log("running: %s" % (subprocess.list2cmdline(args),))
     # This dance is necessary because we want to keep the PWD
     # environment variable up to date.  Not doing so is a recipie
@@ -88,7 +92,10 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False):
     returncode = proc.wait()
     if fatal_on_error and returncode != 0:
         logfn = fatal
-    else:
+    elif log_success:
         logfn = log
-    logfn("pid %d exited with code %d" % (proc.pid, returncode))
+    else:
+        logfn = None
+    if logfn is not None:
+        logfn("pid %d exited with code %d" % (proc.pid, returncode))
     return returncode

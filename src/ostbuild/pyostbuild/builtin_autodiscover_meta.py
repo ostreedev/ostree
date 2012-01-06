@@ -21,6 +21,7 @@ import os,sys,re,subprocess,tempfile,shutil
 import argparse
 
 from . import builtins
+from . import buildutil
 from .ostbuildlog import log, fatal
 
 class OstbuildAutodiscoverMeta(builtins.Builtin):
@@ -72,8 +73,7 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
         
     def _discover_version_from_git(self):
         if os.path.isdir('.git'):
-            version = subprocess.check_output(['git', 'describe', '--long', '--abbrev=42', '--always'])
-            return version.strip()
+            return buildutil.get_git_version_describe(os.getcwd())
         return None
         
     def _discover_branch_from_git(self):

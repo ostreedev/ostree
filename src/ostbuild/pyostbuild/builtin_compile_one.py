@@ -85,18 +85,25 @@ class OstbuildCompileOne(builtins.Builtin):
                       '--infodir=' + os.path.join(PREFIX, 'share', 'info')]
         self.makeargs = ['make']
 
-        self.ostbuild_resultdir=os.getcwd()
+        self.ostbuild_resultdir=None
         self.ostbuild_meta=None
+
+        chdir = None
 
         for arg in args:
             if arg.startswith('--ostbuild-resultdir='):
                 self.ostbuild_resultdir=arg[len('--ostbuild-resultdir='):]
             elif arg.startswith('--ostbuild-meta='):
                 self.ostbuild_meta=arg[len('--ostbuild-meta='):]
+            elif arg.startswith('--chdir='):
+                os.chdir(arg[len('--chdir='):])
             elif arg.startswith('--'):
                 self.configargs.append(arg)
             else:
                 self.makeargs.append(arg)
+        
+        if self.ostbuild_resultdir is None:
+            fatal("Must specify --ostbuild-resultdir=")
 
         self.metadata = {}
 
@@ -107,6 +114,8 @@ class OstbuildCompileOne(builtins.Builtin):
             ostbuild_meta_f = open(self.ostbuild_meta)
 
         for line in ostbuild_meta_f:
+            if line == '':
+                continue
             (k,v) = line.split('=', 1)
             self.metadata[k.strip()] = v.strip()
 
@@ -198,7 +207,7 @@ class OstbuildCompileOne(builtins.Builtin):
         else:
             root_version = self.metadata.get('BUILDROOT_VERSION')
     
-        artifact_prefix='artifact-%s,%s,%s,%s,%s' % (root_name, root_version, name, branch, version)
+        artifact_prefix=os.path.join('artifacts', root_name, name, branch)
 
         tempdir = tempfile.mkdtemp(prefix='ostbuild-%s-' % (name,))
         self.tempfiles.append(tempdir)
@@ -206,6 +215,7 @@ class OstbuildCompileOne(builtins.Builtin):
         run_sync(args, cwd=builddir)
     
         devel_files = set()
+        dbg_files = set()
         runtime_files = set()
     
         oldpwd=os.getcwd()
@@ -234,9 +244,8 @@ class OstbuildCompileOne(builtins.Builtin):
                     runtime_files.add(path)
         os.chdir(oldpwd)
     
-        if devel_files:
-            self.make_artifact(artifact_prefix + '-devel', devel_files, tempdir=tempdir, resultdir=self.ostbuild_resultdir)
-        self.make_artifact(artifact_prefix + '-runtime', runtime_files, tempdir=tempdir, resultdir=self.ostbuild_resultdir)
+        self.make_artifact(artifact_prefix, 'devel', devel_files, tempdir=tempdir)
+        self.make_artifact(artifact_prefix, 'runtime', runtime_files, tempdir=tempdir)
 
         for tmpname in self.tempfiles:
             assert os.path.isabs(tmpname)
@@ -245,27 +254,22 @@ class OstbuildCompileOne(builtins.Builtin):
             else:
                 try:
                     os.unlink(tmpname)
-                    pass
                 except OSError, e:
                     pass
     
-    def make_artifact(self, name, from_files, tempdir=None, resultdir=None):
-        targz_name = name + '.tar.gz'
-        (fd,filelist_temp)=tempfile.mkstemp(prefix='ostbuild-filelist-%s' % (name, ))
-        os.close(fd)
-        self.tempfiles.append(filelist_temp)
-        f = open(filelist_temp, 'w')
+    def make_artifact(self, prefix, dirtype, from_files, tempdir):
+        resultdir = os.path.join(self.ostbuild_resultdir, prefix, dirtype)
+        if os.path.isdir(resultdir):
+            shutil.rmtree(resultdir)
+        os.makedirs(resultdir)
+                                 
         for filename in from_files:
-            assert ('\n' not in filename)
-            f.write(filename)
-            f.write('\n')
-        f.close()
-        if resultdir:
-            result_path = os.path.join(resultdir, targz_name)
-        else:
-            result_path = targz_name
-        args = ['tar', '-c', '-z', '-C', tempdir, '-f', result_path, '-T', filelist_temp]
-        run_sync(args)
-        log("created: %s" % (os.path.abspath (result_path), ))
+            src_path = os.path.join(tempdir, filename)
+            dest_path = os.path.join(resultdir, filename)
+            dest_dir = os.path.dirname(dest_path)
+            if not os.path.isdir(dest_dir):
+                os.makedirs(dest_dir)
+            shutil.move(src_path, dest_path)
+        log("created: %s" % (os.path.abspath (resultdir), ))
     
 builtins.register(OstbuildCompileOne)

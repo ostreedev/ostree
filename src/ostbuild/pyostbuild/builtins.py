@@ -32,9 +32,9 @@ class Builtin(object):
 
     def parse_config(self):
         self.repo = ostbuildrc.get_key('repo')
-        self.srcdir = ostbuildrc.get_key('srcdir')
-        if not os.path.isdir(self.srcdir):
-            fatal("Specified srcdir '%s' is not a directory" % (self.srcdir, ))
+        self.mirrordir = ostbuildrc.get_key('mirrordir')
+        if not os.path.isdir(self.mirrordir):
+            fatal("Specified mirrordir '%s' is not a directory" % (self.mirrordir, ))
         self.workdir = ostbuildrc.get_key('workdir')
         if not os.path.isdir(self.workdir):
             fatal("Specified workdir '%s' is not a directory", (self.workdir, ))
