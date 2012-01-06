@@ -13,6 +13,7 @@ PACKAGE_INSTALL = "task-core-boot \
 		   strace \
 		   bash \
 		   tar \
+		   gawk \
 		   ncurses \
 		   python-modules \
 		   python-misc"
