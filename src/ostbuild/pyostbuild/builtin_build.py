@@ -68,16 +68,10 @@ class OstbuildBuild(builtins.Builtin):
         if idx < 0:
             raise ValueError("Invalid SRC uri=%s" % (srckey, ))
         keytype = srckey[:idx]
-        if keytype not in ('git'):
+        if keytype not in ['git']:
             raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
         uri = srckey[idx+1:]
-        idx = uri.rfind('#')
-        if idx < 0:
-            branch = "master"
-        else:
-            branch = uri[idx+1:]
-            uri = uri[0:idx]
-        return (keytype, uri, branch)
+        return (keytype, uri)
 
     def _get_ostbuild_chroot_args(self, architecture):
         current_machine = os.uname()[4]
@@ -128,7 +122,8 @@ class OstbuildBuild(builtins.Builtin):
     def _build_one_component(self, meta, architecture):
         name = meta['name']
 
-        (keytype, uri, branch) = self._parse_src_key(meta['src'])
+        (keytype, uri) = self._parse_src_key(meta['src'])
+        branch = meta.get('branch', 'master')
 
         buildroot = '%s-%s-devel' % (self.manifest['name'], architecture)
         runtime_branchname = 'artifacts/%s/%s/%s/runtime' % (buildroot, name, branch)
@@ -137,7 +132,7 @@ class OstbuildBuild(builtins.Builtin):
         current_buildroot_version = current_buildroot_version.strip()
 
         artifact_base = {'buildroot': buildroot,
-                         'buildroot_version': current_buildroot_version,
+                         'buildroot-version': current_buildroot_version,
                          'name': name,
                          'branch': branch,
                          }
@@ -147,6 +142,14 @@ class OstbuildBuild(builtins.Builtin):
 
         current_vcs_version = buildutil.get_git_version_describe(component_src)
         artifact_base['version'] = current_vcs_version
+
+        metadata_dir = os.path.join(self.workdir, 'meta')
+        if not os.path.isdir(metadata_dir):
+            os.makedirs(metadata_dir)
+        metadata_path = os.path.join(metadata_dir, '%s-meta.json' % (name, ))
+        f = open(metadata_path, 'w')
+        json.dump(artifact_base, f)
+        f.close()
 
         previous_commit_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                        'rev-parse', runtime_branchname],
@@ -164,7 +167,7 @@ class OstbuildBuild(builtins.Builtin):
 
             previous_artifact_base = dict(artifact_base)
             previous_artifact_base['version'] = previous_artifact_version
-            previous_artifact_base['buildroot_version'] = previous_buildroot_version
+            previous_artifact_base['buildroot-version'] = previous_buildroot_version
 
             previous_artifact_runtime = dict(previous_artifact_base)
             previous_artifact_runtime['type'] = 'runtime'
@@ -198,7 +201,7 @@ class OstbuildBuild(builtins.Builtin):
                 patch_path = os.path.join(self.manifestdir, patch)
                 run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=component_src)
         
-        component_resultdir = os.path.join(self.workdir, name, 'results')
+        component_resultdir = os.path.join(self.workdir, 'results', name)
         if os.path.isdir(component_resultdir):
             shutil.rmtree(component_resultdir)
         os.makedirs(component_resultdir)
@@ -206,10 +209,14 @@ class OstbuildBuild(builtins.Builtin):
         chroot_args = self._get_ostbuild_chroot_args(architecture)
         chroot_args.extend(['--buildroot=' + buildroot,
                             '--workdir=' + self.workdir,
-                            '--resultdir=' + component_resultdir])
+                            '--resultdir=' + component_resultdir,
+                            '--meta=' + metadata_path])
         global_config_opts = self.manifest.get('config-opts')
         if global_config_opts is not None:
             chroot_args.extend(global_config_opts)
+        component_config_opts = meta.get('config-opts')
+        if component_config_opts is not None:
+            chroot_args.extend(component_config_opts)
         if self.buildopts.shell_on_failure:
             ecode = run_sync(chroot_args, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
@@ -246,6 +253,7 @@ class OstbuildBuild(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
         parser.add_argument('--skip-built', action='store_true')
+        parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
 
@@ -265,16 +273,27 @@ class OstbuildBuild(builtins.Builtin):
             self._launch_debug_shell(debug_shell_arch, debug_shell_buildroot)
 
         self.manifestdir = os.path.dirname(args.manifest)
+
+        self.resolved_components = map(self._resolve_component_meta, self.manifest['components'])
+
+        start_at_index = -1
+        if args.start_at is not None:
+            for i,component in enumerate(self.resolved_components):
+                if component['name'] == args.start_at:
+                    start_at_index = i
+                    break
+            if start_at_index == -1:
+                fatal("Unknown component %r specified for --start-at" % (args.start_at, ))
+        else:
+            start_at_index = 0
             
-        for component in self.manifest['components']:
+        for component in self.resolved_components[start_at_index:]:
             for architecture in self.manifest['architectures']:
-                component_meta = self._resolve_component_meta(component)
-    
-                (runtime_artifact,devel_artifact) = self._build_one_component(component_meta, architecture)
+                (runtime_artifact,devel_artifact) = self._build_one_component(component, architecture)
                 runtime_branch = buildutil.branch_name_for_artifact(runtime_artifact)
                 devel_branch = buildutil.branch_name_for_artifact(devel_artifact)
     
-                target_component = component_meta.get('component')
+                target_component = component.get('component')
                 if target_component != 'devel':
                     self._compose(architecture + '-runtime', [runtime_branch])
                 self._compose(architecture + '-devel', [runtime_branch, devel_branch])

@@ -20,6 +20,7 @@
 
 import os,sys,stat,subprocess,tempfile,re,shutil
 from StringIO import StringIO
+import json
 from multiprocessing import cpu_count
 import select,time
 
@@ -109,19 +110,13 @@ class OstbuildCompileOne(builtins.Builtin):
 
         if self.ostbuild_meta is None:
             output = subprocess.check_output(['ostbuild', 'autodiscover-meta'])
-            ostbuild_meta_f = StringIO(output)
+            self.metadata = json.loads(output)
         else:
-            ostbuild_meta_f = open(self.ostbuild_meta)
+            f = open(self.ostbuild_meta)
+            self.metadata = json.load(f)
+            f.close()
 
-        for line in ostbuild_meta_f:
-            if line == '':
-                continue
-            (k,v) = line.split('=', 1)
-            self.metadata[k.strip()] = v.strip()
-
-        ostbuild_meta_f.close()
-
-        for k in ['NAME', 'VERSION']:
+        for k in ['name', 'version']:
             if k not in self.metadata:
                 fatal('Missing required key "%s" in metadata' % (k, ))
 
@@ -192,20 +187,20 @@ class OstbuildCompileOne(builtins.Builtin):
     
         run_sync(args, cwd=builddir)
 
-        name = self.metadata['NAME']
+        name = self.metadata['name']
         assert ',' not in name
-        branch = self.metadata['BRANCH']
+        branch = self.metadata['branch']
         assert ',' not in name
-        version = self.metadata['VERSION']
+        version = self.metadata['version']
         assert ',' not in version
     
-        root_name = self.metadata.get('BUILDROOT', None)
+        root_name = self.metadata.get('buildroot', None)
         # TODO - pick up current sysroot version from ostree
         if root_name is None:
             root_name = 'unknown-' + self.build_target
             root_version = 'UNKNOWN'
         else:
-            root_version = self.metadata.get('BUILDROOT_VERSION')
+            root_version = self.metadata.get('buildroot-version')
     
         artifact_prefix=os.path.join('artifacts', root_name, name, branch)
 

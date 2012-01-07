@@ -19,6 +19,7 @@
 
 import os,sys,re,subprocess,tempfile,shutil
 import argparse
+import json
 
 from . import builtins
 from . import buildutil
@@ -42,15 +43,13 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
                 AUTODISCOVERED_KEYS[key] = []
             AUTODISCOVERED_KEYS[key].append(func)
 
-        _register_discover_func('NAME', self._discover_name_from_cwd)
-        _register_discover_func('VERSION', self._discover_version_from_git)
-        _register_discover_func('BRANCH', self._discover_branch_from_git)
+        _register_discover_func('name', self._discover_name_from_cwd)
+        _register_discover_func('version', self._discover_version_from_git)
+        _register_discover_func('branch', self._discover_branch_from_git)
 
         if args.meta:
             f = open(args.meta)
-            for line in f.readlines():
-                (k,v) = line.split('=', 1)
-                KEYS[k.strip()] = v.strip()
+            KEYS = json.load(f)
             f.close()
             
         for (key,hooks) in AUTODISCOVERED_KEYS.iteritems():
@@ -65,8 +64,7 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
                     KEYS[key] = value
                     break
             
-        for (key,value) in KEYS.iteritems():
-            print "%s=%s" % (key, value)
+        json.dump(KEYS, sys.stdout, indent=2)
         
     def _discover_name_from_cwd(self):
         return os.path.basename(os.getcwd())
@@ -79,8 +77,11 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
     def _discover_branch_from_git(self):
         if os.path.isdir('.git'):
             try:
-                ref = subprocess.check_output(['git', 'symbolic-ref', 'HEAD'])
-                return ref.replace('refs/heads/', '').strip()
+                try:
+                    ref = subprocess.check_output(['git', 'symbolic-ref', 'HEAD'], stderr=open('/dev/null', 'w'))
+                    return ref.replace('refs/heads/', '').strip()
+                except subprocess.CalledProcessError, e:
+                    return subprocess.check_output(['git', 'describe', '--tags', '--exact-match', 'HEAD']).strip()
             except subprocess.CalledProcessError, e:
                 return None
         return None

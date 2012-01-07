@@ -26,7 +26,7 @@ def parse_artifact_name(artifact_basename):
     if match is None:
         raise ValueError("Invalid artifact basename %s" % (artifact_basename))
     return {'buildroot': match.group(1),
-            'buildroot_version': match.group(2),
+            'buildroot-version': match.group(2),
             'name': match.group(3),
             'branch': match.group(4),
             'version': match.group(5),

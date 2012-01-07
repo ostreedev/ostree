@@ -18,6 +18,7 @@
 import os,sys,re,subprocess,tempfile,shutil
 from StringIO import StringIO
 import argparse
+import json
 
 from . import builtins
 from .ostbuildlog import log, fatal
@@ -51,17 +52,14 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
         if args.meta is None:
             output = subprocess.check_output(['ostbuild', 'autodiscover-meta'])
-            ostbuild_meta_f = StringIO(output)
+            self.metadata = json.loads(output)
         else:
-            ostbuild_meta_f = open(args.meta)
+            f = open(args.meta)
+            self.metadata = json.load(f)
+            f.close()
 
-        metadata = {}
-        for line in ostbuild_meta_f:
-            (k,v) = line.split('=', 1)
-            metadata[k.strip()] = v.strip()
-        
-        for k in ['NAME']:
-            if k not in metadata:
+        for k in ['name']:
+            if k not in self.metadata:
                 sys.stderr.write('Missing required key "%s" in metadata' % (k, ))
                 sys.exit(1)
         
@@ -82,10 +80,14 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         rev = subprocess.check_output(['ostree', '--repo=' + args.repo, 'rev-parse', args.buildroot])
         rev=rev.strip()
         
-        metadata['BUILDROOT'] = args.buildroot
-        metadata['BUILDROOT_VERSION'] = rev
+        self.metadata['buildroot'] = args.buildroot
+        self.metadata['buildroot-version'] = rev
         
-        rootdir = os.path.join(workdir, 'root-' + rev)
+        rootdir_prefix = os.path.join(workdir, 'roots')
+        if not os.path.isdir(rootdir_prefix):
+            os.makedirs(rootdir_prefix)
+        rootdir = os.path.join(rootdir_prefix, rev)
+        
         rootdir_tmp = rootdir + '.tmp'
         builddir = os.path.join(rootdir, 'ostbuild');
         if not os.path.isdir(rootdir):
@@ -102,16 +104,15 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         else:
             log("Using existing root: %s" % (rootdir, ))
         
-        sourcedir=os.path.join(builddir, 'source', metadata['NAME'])
+        sourcedir=os.path.join(builddir, 'source', self.metadata['name'])
         if not os.path.isdir(sourcedir):
             os.mkdir(sourcedir)
         
         output_metadata = open('_ostbuild-meta', 'w')
-        for (k,v) in metadata.iteritems():
-            output_metadata.write('%s=%s\n' % (k, v))
+        json.dump(self.metadata, output_metadata)
         output_metadata.close()
         
-        chroot_sourcedir = os.path.join('/ostbuild', 'source', metadata['NAME'])
+        chroot_sourcedir = os.path.join('/ostbuild', 'source', self.metadata['name'])
         
         # We need to search PATH here manually so we correctly pick up an
         # ostree install in e.g. ~/bin even though we're going to set PATH
