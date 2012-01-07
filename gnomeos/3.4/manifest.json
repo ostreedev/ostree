@@ -3,7 +3,7 @@
   "architectures": ["i686"],
   "base": "yocto/gnomeos-3.4",
 
-  "config-opts": ["--disable-static"],
+  "config-opts": ["--disable-static", "--disable-silent-rules"],
 
   "vcsconfig": {"gnome": "git:git://git.gnome.org/",
                 "fd": "git:git://anongit.freedesktop.org/git/"},
