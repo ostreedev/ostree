@@ -245,6 +245,10 @@
 		 "branch": "1.10.2",
 		 "config-opts": ["--disable-interpreter"]},
 
+		{"src": "gnome:gnome-common",
+		 "component": "devel"},
+
 		{"src": "gnome:gobject-introspection"}
+
 		]
 }
