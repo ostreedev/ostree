@@ -243,7 +243,7 @@
 
 		{"src": "fd:cairo",
 		 "branch": "1.10.2",
-		 "config-opts": ["--disable-cairo-script-interpreter"]},
+		 "config-opts": ["--disable-interpreter"]},
 
 		{"src": "gnome:gobject-introspection"}
 		]
