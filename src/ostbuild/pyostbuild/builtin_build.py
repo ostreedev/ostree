@@ -256,6 +256,7 @@ class OstbuildBuild(builtins.Builtin):
         parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
+        parser.add_argument('components', nargs='+')
 
         args = parser.parse_args(argv)
         
@@ -276,9 +277,23 @@ class OstbuildBuild(builtins.Builtin):
 
         self.resolved_components = map(self._resolve_component_meta, self.manifest['components'])
 
+        if len(args.components) == 0:
+            build_components = self.resolved_components
+        else:
+            build_components = []
+            for name in args.components:
+                found = False
+                for child in self.resolved_components:
+                    if child['name'] == name:
+                        found = True
+                        build_components.append(child)
+                        break
+                if not found:
+                    fatal("Unknown component %r" % (name, ))
+
         start_at_index = -1
         if args.start_at is not None:
-            for i,component in enumerate(self.resolved_components):
+            for i,component in enumerate(build_components):
                 if component['name'] == args.start_at:
                     start_at_index = i
                     break
@@ -287,7 +302,7 @@ class OstbuildBuild(builtins.Builtin):
         else:
             start_at_index = 0
             
-        for component in self.resolved_components[start_at_index:]:
+        for component in build_components[start_at_index:]:
             for architecture in self.manifest['architectures']:
                 (runtime_artifact,devel_artifact) = self._build_one_component(component, architecture)
                 runtime_branch = buildutil.branch_name_for_artifact(runtime_artifact)
