@@ -2,7 +2,7 @@
 # -*- indent-tabs-mode: nil; -*-
 # Run built image in QEMU 
 #
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -41,8 +41,8 @@ OSTREE_REPO=$1
 shift
 test -n "$OSTREE_REPO" || usage
 
-ARCH=x86
-BRANCH_PREFIX="gnomeos-yocto-${ARCH}-"
+ARCH=i686
+BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 
 OBJ=gnomeos-fs.img
 if (! test -f ${OBJ}); then
@@ -86,7 +86,7 @@ done
 cd ..
 
 test -d proc || mkdir proc # needed for ostree-init
-cp -a ./ostree/${BRANCH_PREFIX}base-current/usr/sbin/ostree-init .
+cp -a ./ostree/${BRANCH_PREFIX}${branch}-current/usr/sbin/ostree-init .
 
 cd ${WORKDIR}
 
