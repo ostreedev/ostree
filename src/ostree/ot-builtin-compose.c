@@ -94,6 +94,7 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   GFile *metadata_f = NULL;
   OstreeMutableTree *mtree = NULL;
   gboolean skip_commit = FALSE;
+  gboolean in_transaction = FALSE;
   int i;
 
   context = g_option_context_new ("BRANCH1 BRANCH2 ... - Merge multiple commits into a single commit tree");
@@ -135,6 +136,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
 
   if (!ostree_repo_prepare_transaction (repo, cancellable, error))
     goto out;
+
+  in_transaction = TRUE;
 
   mtree = ostree_mutable_tree_new ();
 
@@ -224,6 +227,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
       if (!ostree_repo_commit_transaction (repo, cancellable, error))
         goto out;
 
+      in_transaction = FALSE;
+
       if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
         goto out;
     }
@@ -231,6 +236,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
     {
       if (!ostree_repo_abort_transaction (repo, cancellable, error))
         goto out;
+
+      in_transaction = FALSE;
       
       g_print ("%s\n", parent);
     }
@@ -238,6 +245,11 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   ret = TRUE;
   g_print ("%s\n", commit_checksum);
  out:
+  if (in_transaction)
+    {
+      (void) ostree_repo_abort_transaction (repo, cancellable, NULL);
+    }
+
   if (compose_metadata_builder_initialized)
     g_variant_builder_clear (&compose_metadata_builder);
   if (commit_metadata_builder_initialized)
