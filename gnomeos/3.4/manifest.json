@@ -22,6 +22,14 @@
 
    		{"src": "fd:pixman"},
 
+   		{"src": "git:git://git.sv.nongnu.org/freetype/freetype2.git",
+		 "branch": "VER-2-4-8",
+		 "patches": ["freetype-autogen.patch"]},
+
+   		{"src": "fd:fontconfig",
+		 "branch": "2.8.0",
+		 "patches": ["fontconfig-autogen.patch"]},
+
 		{"src": "fd:xorg/util/macros",
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
@@ -144,6 +152,13 @@
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
 
+		{"src": "fd:xorg/font/util",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libfontenc",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd:xcb/pthread-stubs",
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
@@ -152,10 +167,83 @@
 		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/lib/libX11",
-		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
 
-		{"src": "fd:cairo"},
+		{"src": "fd:xorg/lib/libXrender",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXfixes",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXext",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXfont",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXft",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXi",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXinerama",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libICE",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libSM",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXt",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXmu",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXpm",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXrandr",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXrender",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXRes",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXtst",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXv",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXvMC",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXxf86dga",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libXxf86vm",
+		 "patches": ["xorg-libXxf86vm-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libxkbfile",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libxkbui",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libFS",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "git:git://libpng.git.sourceforge.net/gitroot/libpng/libpng",
+		 "branch": "v1.5.7"},
+
+		{"src": "fd:cairo",
+		 "branch": "1.10.2",
+		 "config-opts": ["--disable-cairo-script-interpreter"]},
 
 		{"src": "gnome:gobject-introspection"}
 		]

@@ -1,0 +1,26 @@
+From 3582884f5b6246c06d60bd4abd986713b4c4c05d Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 6 Jan 2012 19:42:12 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE environment variable
+
+http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 820c457..f534bdd 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -114,7 +114,7 @@ echo Running $AUTOCONF
+ $AUTOCONF
+ cd $ORIGDIR
+ 
+-if test -z "$AUTOGEN_SUBDIR_MODE"; then
++if test -z "$AUTOGEN_SUBDIR_MODE" && test -z "$NOCONFIGURE"; then
+ 	echo Running $srcdir/configure --enable-maintainer-mode "$@"
+         $srcdir/configure --enable-maintainer-mode "$@"
+ 
+-- 
+1.7.6.4
+
