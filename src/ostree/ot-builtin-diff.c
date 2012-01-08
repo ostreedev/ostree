@@ -67,6 +67,7 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
+  char *src_prev = NULL;
   const char *src;
   const char *target;
   GFile *srcf = NULL;
@@ -87,18 +88,27 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc < 3)
+  if (argc < 2)
     {
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s\n", help);
       g_free (help);
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "REV and TARGETDIR must be specified");
+                               "REV must be specified");
       goto out;
     }
 
-  src = argv[1];
-  target = argv[2];
+  if (argc == 2)
+    {
+      src_prev = g_strconcat (argv[1], "^", NULL);
+      src = src_prev;
+      target = argv[1];
+    }
+  else
+    {
+      src = argv[1];
+      target = argv[2];
+    }
 
   cwd = ot_gfile_new_for_path (".");
 
@@ -135,6 +145,7 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
+  g_free (src_prev);
   g_clear_object (&repo);
   g_clear_object (&cwd);
   g_clear_object (&srcf);
