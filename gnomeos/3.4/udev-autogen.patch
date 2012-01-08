@@ -1,0 +1,25 @@
+From e87b015ab1f2ff755bd669891d9c37b7e112b7e2 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 8 Jan 2012 15:32:49 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE envrionment variable
+
+http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index b6ffee7..af056a1 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -31,4 +31,6 @@ args="--prefix=/usr \
+ --with-selinux \
+ --enable-gtk-doc"
+ 
+-./configure $args CFLAGS="${CFLAGS} ${MYCFLAGS}" $@
++if test -z "$NOCONFIGURE"; then
++    ./configure $args CFLAGS="${CFLAGS} ${MYCFLAGS}" $@
++fi
+-- 
+1.7.6.4
+

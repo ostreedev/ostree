@@ -9,6 +9,7 @@
                 "fd": "git:git://anongit.freedesktop.org/git/",
                 "fd-dbus": "git:git://anongit.freedesktop.org/git/dbus/",
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
+                "fedora": "git:git://git.fedorahosted.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
@@ -255,6 +256,21 @@
 		 "component": "devel"},
 
 		{"src": "gnome:gobject-introspection"},
+		
+		{"src": "git:git://git.libusb.org/libusb.git",
+		 "branch": "v1.0.8",
+		 "patches": ["libusb-autogen.patch"]},
+
+		{"src": "git:git://github.com/gregkh/usbutils.git",
+		 "branch": "v005",
+		 "patches": ["usbutils-autogen.patch"]},
+
+		{"src": "fedora:hwdata.git",
+		 "patches": ["hwdata-buildapi.patch"]},
+
+		{"src": "git:git://git.kernel.org/pub/scm/linux/hotplug/udev.git",
+		 "branch": "175",
+		 "patches": ["udev-autogen.patch"]},
 
 		{"src": "cgwalters:expat-git-mirror.git",
 		 "patches": ["expat-autogen.patch"]},
@@ -271,7 +287,7 @@
 
 		{"src": "git:git://git.infradead.org/users/tgr/libnl.git",
 		 "name": "libnl3",
-		 		 "branch": "libnl3_1"},
+		 "branch": "libnl3_1"},
 
 		{"src": "fd-NM:NetworkManager",
 		 "config-opts": ["--with-distro=generic"],
