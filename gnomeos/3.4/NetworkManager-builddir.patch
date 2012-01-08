@@ -1,0 +1,395 @@
+From 0210fedce2e6c84821556d9c91fd868dad2577a9 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 8 Jan 2012 12:30:02 -0500
+Subject: [PATCH] build: Fix srcdir != builddir
+
+nm-version.h is in ${top_builddir}/include.
+---
+ callouts/Makefile.am                            |    2 ++
+ callouts/tests/Makefile.am                      |    1 +
+ cli/src/Makefile.am                             |    1 +
+ examples/C/glib/Makefile.am                     |    3 ++-
+ examples/C/qt/Makefile.am                       |    3 ++-
+ libnm-glib/Makefile.am                          |    1 +
+ libnm-glib/tests/Makefile.am                    |    1 +
+ libnm-util/Makefile.am                          |    2 +-
+ libnm-util/tests/Makefile.am                    |    1 +
+ src/Makefile.am                                 |    1 +
+ src/backends/Makefile.am                        |    1 +
+ src/bluez-manager/Makefile.am                   |    1 +
+ src/dhcp-manager/Makefile.am                    |    1 +
+ src/dhcp-manager/tests/Makefile.am              |    1 +
+ src/dns-manager/Makefile.am                     |    3 ++-
+ src/ip6-manager/Makefile.am                     |    1 +
+ src/modem-manager/Makefile.am                   |    1 +
+ src/ppp-manager/Makefile.am                     |    1 +
+ src/settings/Makefile.am                        |    1 +
+ src/settings/plugins/ifcfg-rh/Makefile.am       |    1 +
+ src/settings/plugins/ifcfg-rh/tests/Makefile.am |    1 +
+ src/settings/plugins/keyfile/Makefile.am        |    1 +
+ src/settings/plugins/keyfile/tests/Makefile.am  |    1 +
+ src/settings/tests/Makefile.am                  |    1 +
+ src/supplicant-manager/Makefile.am              |    1 +
+ src/supplicant-manager/tests/Makefile.am        |    1 +
+ src/tests/Makefile.am                           |    1 +
+ src/vpn-manager/Makefile.am                     |    1 +
+ test/Makefile.am                                |    3 ++-
+ 29 files changed, 34 insertions(+), 5 deletions(-)
+
+diff --git a/callouts/Makefile.am b/callouts/Makefile.am
+index 4a1ea7c..a3a2d26 100644
+--- a/callouts/Makefile.am
++++ b/callouts/Makefile.am
+@@ -58,6 +58,7 @@ nm_dispatcher_action_SOURCES = \
+ nm_dispatcher_action_CPPFLAGS = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	$(DBUS_CFLAGS) \
+ 	$(GLIB_CFLAGS) \
+@@ -83,6 +84,7 @@ libtest_dispatcher_envp_la_SOURCES = \
+ 
+ libtest_dispatcher_envp_la_CPPFLAGS = \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	$(GLIB_CFLAGS) \
+ 	$(DBUS_CFLAGS)
+diff --git a/callouts/tests/Makefile.am b/callouts/tests/Makefile.am
+index 6a46b62..7121b92 100644
+--- a/callouts/tests/Makefile.am
++++ b/callouts/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I${top_builddir}/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/callouts
+ 
+diff --git a/cli/src/Makefile.am b/cli/src/Makefile.am
+index 9b1babe..742bf0f 100644
+--- a/cli/src/Makefile.am
++++ b/cli/src/Makefile.am
+@@ -4,6 +4,7 @@ bin_PROGRAMS = \
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/libnm-glib
+ 
+diff --git a/examples/C/glib/Makefile.am b/examples/C/glib/Makefile.am
+index 1063d52..332a3b3 100644
+--- a/examples/C/glib/Makefile.am
++++ b/examples/C/glib/Makefile.am
+@@ -1,6 +1,7 @@
+ INCLUDES = -I${top_srcdir}/libnm-util         \
+            -I${top_srcdir}/libnm-glib         \
+-           -I${top_srcdir}/include
++           -I${top_srcdir}/include	      \
++           -I${top_builddir}/include
+ 
+ AM_CPPFLAGS = \
+ 	$(DBUS_CFLAGS) \
+diff --git a/examples/C/qt/Makefile.am b/examples/C/qt/Makefile.am
+index 5f0c6a1..cde7371 100644
+--- a/examples/C/qt/Makefile.am
++++ b/examples/C/qt/Makefile.am
+@@ -1,4 +1,5 @@
+-INCLUDES = -I${top_srcdir}/include
++INCLUDES = -I${top_srcdir}/include \
++	   -I${top_builddir}/include
+ 
+ AM_CPPFLAGS = \
+ 	$(DBUS_CFLAGS) \
+diff --git a/libnm-glib/Makefile.am b/libnm-glib/Makefile.am
+index abee1f8..df98fa1 100644
+--- a/libnm-glib/Makefile.am
++++ b/libnm-glib/Makefile.am
+@@ -2,6 +2,7 @@ SUBDIRS=. tests
+ 
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_builddir)/marshallers
+ 
+diff --git a/libnm-glib/tests/Makefile.am b/libnm-glib/tests/Makefile.am
+index 06aee71..1564c59 100644
+--- a/libnm-glib/tests/Makefile.am
++++ b/libnm-glib/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/libnm-glib
+ 
+diff --git a/libnm-util/Makefile.am b/libnm-util/Makefile.am
+index d0bf73a..1ccb5a6 100644
+--- a/libnm-util/Makefile.am
++++ b/libnm-util/Makefile.am
+@@ -1,6 +1,6 @@
+ SUBDIRS=. tests
+ 
+-INCLUDES = -I${top_srcdir} -I${top_srcdir}/include
++INCLUDES = -I${top_srcdir} -I${top_srcdir}/include -I${top_builddir}/include
+ 
+ lib_LTLIBRARIES=libnm-util.la
+ 
+diff --git a/libnm-util/tests/Makefile.am b/libnm-util/tests/Makefile.am
+index 1d737d1..a3e12c3 100644
+--- a/libnm-util/tests/Makefile.am
++++ b/libnm-util/tests/Makefile.am
+@@ -2,6 +2,7 @@ SUBDIRS=certs
+ 
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util
+ 
+ noinst_PROGRAMS = \
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 2318166..37e6b9c 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -21,6 +21,7 @@ SUBDIRS += . tests
+ 
+ INCLUDES = -I${top_srcdir} \
+            -I${top_srcdir}/include \
++           -I${top_builddir}/include \
+            -I${top_builddir}/marshallers \
+            -I${top_srcdir}/src/logging \
+            -I${top_srcdir}/src/dns-manager \
+diff --git a/src/backends/Makefile.am b/src/backends/Makefile.am
+index e9260f6..11a154a 100644
+--- a/src/backends/Makefile.am
++++ b/src/backends/Makefile.am
+@@ -2,6 +2,7 @@ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/src \
+ 	-I${top_srcdir}/libnm-util
+ 
+diff --git a/src/bluez-manager/Makefile.am b/src/bluez-manager/Makefile.am
+index 623c106..c720b01 100644
+--- a/src/bluez-manager/Makefile.am
++++ b/src/bluez-manager/Makefile.am
+@@ -1,6 +1,7 @@
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/src \
+ 	-I${top_srcdir}/src/logging \
+diff --git a/src/dhcp-manager/Makefile.am b/src/dhcp-manager/Makefile.am
+index 14ddde0..849b8ef 100644
+--- a/src/dhcp-manager/Makefile.am
++++ b/src/dhcp-manager/Makefile.am
+@@ -3,6 +3,7 @@ SUBDIRS=. tests
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_builddir}/marshallers \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/libnm-util \
+diff --git a/src/dhcp-manager/tests/Makefile.am b/src/dhcp-manager/tests/Makefile.am
+index b075fd6..d1b3c84 100644
+--- a/src/dhcp-manager/tests/Makefile.am
++++ b/src/dhcp-manager/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I$(top_srcdir)/src/dhcp-manager
+ 
+diff --git a/src/dns-manager/Makefile.am b/src/dns-manager/Makefile.am
+index b51f667..def8fe6 100644
+--- a/src/dns-manager/Makefile.am
++++ b/src/dns-manager/Makefile.am
+@@ -2,7 +2,8 @@ INCLUDES = \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/src \
+-	-I${top_srcdir}/include
++	-I${top_srcdir}/include \
++	-I${top_builddir}/include
+ 
+ noinst_LTLIBRARIES = libdns-manager.la
+ 
+diff --git a/src/ip6-manager/Makefile.am b/src/ip6-manager/Makefile.am
+index b98d6de..c88a9cc 100644
+--- a/src/ip6-manager/Makefile.am
++++ b/src/ip6-manager/Makefile.am
+@@ -1,6 +1,7 @@
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_builddir}/marshallers \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/src/logging \
+diff --git a/src/modem-manager/Makefile.am b/src/modem-manager/Makefile.am
+index 3c3af16..2060866 100644
+--- a/src/modem-manager/Makefile.am
++++ b/src/modem-manager/Makefile.am
+@@ -2,6 +2,7 @@ INCLUDES = \
+ 	-I${top_srcdir}/src \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_builddir}/marshallers
+ 
+diff --git a/src/ppp-manager/Makefile.am b/src/ppp-manager/Makefile.am
+index 540e585..22deb41 100644
+--- a/src/ppp-manager/Makefile.am
++++ b/src/ppp-manager/Makefile.am
+@@ -1,6 +1,7 @@
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/src \
+ 	-I${top_srcdir}/src/logging \
+diff --git a/src/settings/Makefile.am b/src/settings/Makefile.am
+index 21dc5bb..d87f713 100644
+--- a/src/settings/Makefile.am
++++ b/src/settings/Makefile.am
+@@ -2,6 +2,7 @@ SUBDIRS=plugins . tests
+ 
+ INCLUDES = -I${top_srcdir} \
+            -I${top_srcdir}/include \
++           -I${top_builddir}/include \
+            -I${top_srcdir}/libnm-util \
+            -I${top_srcdir}/src/logging \
+            -I${top_srcdir}/src \
+diff --git a/src/settings/plugins/ifcfg-rh/Makefile.am b/src/settings/plugins/ifcfg-rh/Makefile.am
+index 9874d35..0bf8d19 100644
+--- a/src/settings/plugins/ifcfg-rh/Makefile.am
++++ b/src/settings/plugins/ifcfg-rh/Makefile.am
+@@ -25,6 +25,7 @@ libifcfg_rh_io_la_SOURCES = \
+ INCLUDES = \
+ 	-I$(top_srcdir)/src/settings \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-glib \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_builddir)/marshallers
+diff --git a/src/settings/plugins/ifcfg-rh/tests/Makefile.am b/src/settings/plugins/ifcfg-rh/tests/Makefile.am
+index 1b76a47..6b99561 100644
+--- a/src/settings/plugins/ifcfg-rh/tests/Makefile.am
++++ b/src/settings/plugins/ifcfg-rh/tests/Makefile.am
+@@ -2,6 +2,7 @@ SUBDIRS=network-scripts
+ 
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/libnm-glib \
+ 	-I$(srcdir)/../
+diff --git a/src/settings/plugins/keyfile/Makefile.am b/src/settings/plugins/keyfile/Makefile.am
+index 3b24214..e941e9b 100644
+--- a/src/settings/plugins/keyfile/Makefile.am
++++ b/src/settings/plugins/keyfile/Makefile.am
+@@ -3,6 +3,7 @@ SUBDIRS=. tests
+ INCLUDES = \
+ 	-I$(top_srcdir)/src/settings \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util
+ 
+ noinst_LTLIBRARIES = \
+diff --git a/src/settings/plugins/keyfile/tests/Makefile.am b/src/settings/plugins/keyfile/tests/Makefile.am
+index affe8dc..90bc233 100644
+--- a/src/settings/plugins/keyfile/tests/Makefile.am
++++ b/src/settings/plugins/keyfile/tests/Makefile.am
+@@ -2,6 +2,7 @@ SUBDIRS=keyfiles
+ 
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/libnm-glib \
+ 	-I$(srcdir)/../
+diff --git a/src/settings/tests/Makefile.am b/src/settings/tests/Makefile.am
+index 4a45139..57d56fc 100644
+--- a/src/settings/tests/Makefile.am
++++ b/src/settings/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/src/settings
+ 
+diff --git a/src/supplicant-manager/Makefile.am b/src/supplicant-manager/Makefile.am
+index 359fc70..58c174d 100644
+--- a/src/supplicant-manager/Makefile.am
++++ b/src/supplicant-manager/Makefile.am
+@@ -4,6 +4,7 @@ INCLUDES = \
+ 	-I${top_srcdir}/src \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_builddir}/marshallers
+ 
+diff --git a/src/supplicant-manager/tests/Makefile.am b/src/supplicant-manager/tests/Makefile.am
+index b5e4db6..b236025 100644
+--- a/src/supplicant-manager/tests/Makefile.am
++++ b/src/supplicant-manager/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/src \
+ 	-I$(top_srcdir)/src/supplicant-manager
+diff --git a/src/tests/Makefile.am b/src/tests/Makefile.am
+index 296668a..38a8d22 100644
+--- a/src/tests/Makefile.am
++++ b/src/tests/Makefile.am
+@@ -1,5 +1,6 @@
+ INCLUDES = \
+ 	-I$(top_srcdir)/include \
++	-I$(top_builddir)/include \
+ 	-I$(top_srcdir)/libnm-util \
+ 	-I$(top_srcdir)/src/dhcp-manager \
+ 	-I$(top_builddir)/marshallers \
+diff --git a/src/vpn-manager/Makefile.am b/src/vpn-manager/Makefile.am
+index ce99728..c4c7b3e 100644
+--- a/src/vpn-manager/Makefile.am
++++ b/src/vpn-manager/Makefile.am
+@@ -1,6 +1,7 @@
+ INCLUDES = \
+ 	-I${top_srcdir} \
+ 	-I${top_srcdir}/include \
++	-I${top_builddir}/include \
+ 	-I${top_srcdir}/libnm-util \
+ 	-I${top_srcdir}/src/logging \
+ 	-I${top_srcdir}/src \
+diff --git a/test/Makefile.am b/test/Makefile.am
+index 7bdaf0d..952f8e7 100644
+--- a/test/Makefile.am
++++ b/test/Makefile.am
+@@ -1,7 +1,8 @@
+ INCLUDES = -I${top_srcdir}                    \
+            -I${top_srcdir}/libnm-util         \
+            -I${top_srcdir}/libnm-glib         \
+-           -I${top_srcdir}/include
++           -I${top_srcdir}/include            \
++	   -I${top_builddir}/include
+ 
+ AM_CPPFLAGS = \
+ 	$(DBUS_CFLAGS) \
+-- 
+1.7.6.4
+

@@ -6,7 +6,10 @@
   "config-opts": ["--disable-static", "--disable-silent-rules"],
 
   "vcsconfig": {"gnome": "git:git://git.gnome.org/",
-                "fd": "git:git://anongit.freedesktop.org/git/"},
+                "fd": "git:git://anongit.freedesktop.org/git/",
+                "fd-dbus": "git:git://anongit.freedesktop.org/git/dbus/",
+                "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
+		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
    		{"src": "gnome:gtk-doc-stub",
@@ -248,7 +251,30 @@
 		{"src": "gnome:gnome-common",
 		 "component": "devel"},
 
-		{"src": "gnome:gobject-introspection"}
+		{"src": "cgwalters:intltool-git-mirror",
+		 "component": "devel"},
 
-		]
+		{"src": "gnome:gobject-introspection"},
+
+		{"src": "cgwalters:expat-git-mirror.git",
+		 "patches": ["expat-autogen.patch"]},
+
+		{"src": "fd-dbus:dbus",
+		 "config-opts": ["--enable-inotify",
+				 "--disable-xml-docs",
+				 "--disable-doxygen-docs",
+				 "--disable-tests"],
+                 "patches": ["dbus-xmlto-docs.patch"]},
+
+		{"src": "fd-dbus:dbus-glib",
+		 "config-opts": ["--disable-gtk-doc"]},
+
+		{"src": "git:git://git.infradead.org/users/tgr/libnl.git",
+		 "name": "libnl3",
+		 		 "branch": "libnl3_1"},
+
+		{"src": "fd-NM:NetworkManager",
+		 "config-opts": ["--with-distro=generic"],
+		 "patches": ["NetworkManager-builddir.patch", "NetworkManager-distro.patch"]}
+	]
 }
