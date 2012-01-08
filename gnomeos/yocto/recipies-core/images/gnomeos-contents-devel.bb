@@ -11,4 +11,5 @@ PACKAGE_INSTALL += "task-core-sdk \
 		python-dev \
 		bison flex \
 		git \
+		libxml-parser-perl \
 		"
