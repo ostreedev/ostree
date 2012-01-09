@@ -145,7 +145,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             child_args.extend(rest_args)
         env_copy = dict(BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
-        run_sync(child_args, env=env_copy)
+        run_sync(child_args, env=env_copy, keep_stdin=args.debug_shell)
         
         if workdir_is_tmp:
             shutil.rmtree(workdir)
