@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..7"
+echo "1..8"
 
 . libtest.sh
 
@@ -99,3 +99,14 @@ $OSTREE checkout some-compose some-compose-checkout
 cd some-compose-checkout
 assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
 echo 'ok recompose with args'
+
+cd "${test_tmpdir}"
+echo artifact-libfoo-runtime > compose-contents.txt
+echo artifact-libfoo-devel >> compose-contents.txt
+echo artifact-barapp >> compose-contents.txt
+$OSTREE compose -b some-compose-from-file -s 'from file' -F compose-contents.txt
+rm -rf some-compose-checkout
+$OSTREE checkout some-compose-from-file some-compose-checkout
+cd some-compose-checkout
+assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
+echo 'ok recompose from file'

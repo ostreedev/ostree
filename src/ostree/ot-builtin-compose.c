@@ -30,12 +30,14 @@
 static char *subject;
 static char *body;
 static char *branch;
+static char *from_file_path;
 static gboolean recompose;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
+  { "from-file", 'F', 0, G_OPTION_ARG_STRING, &from_file_path, "Take list of branches to compose from FILE", "FILE" },
   { "recompose", 0, 0, G_OPTION_ARG_NONE, &recompose, "Regenerate compose from existing branches", NULL },
   { NULL }
 };
@@ -92,6 +94,9 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   char *commit_checksum = NULL;
   GCancellable *cancellable = NULL;
   GFile *metadata_f = NULL;
+  GFile *from_file = NULL;
+  char *from_file_contents = NULL;
+  char **from_file_args = NULL;
   OstreeMutableTree *mtree = NULL;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
@@ -175,6 +180,31 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
             goto out;
 
           g_hash_table_insert (seen_branches, g_strdup (branch_name), (char*)branch_name);
+        }
+    }
+
+  if (from_file_path)
+    {
+      char **iter;
+
+      from_file = ot_gfile_new_for_path (from_file_path);
+      if (!ot_gfile_load_contents_utf8 (from_file,
+                                        &from_file_contents, NULL, NULL, error))
+        goto out;
+      
+      from_file_args = g_strsplit_set (from_file_contents, "\n", -1);
+
+      for (iter = from_file_args; *iter && **iter; iter++)
+        {
+          const char *src_branch = *iter;
+
+          if (seen_branches && g_hash_table_lookup (seen_branches, src_branch))
+            continue;
+          
+          if (!add_branch (repo, mtree, src_branch,
+                           &compose_metadata_builder,
+                           error))
+            goto out;
         }
     }
   
@@ -272,5 +302,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   g_clear_object (&destf);
   g_clear_object (&metadata_f);
   g_clear_object (&mtree);
+  g_clear_object (&from_file);
+  g_free (from_file_contents);
+  g_strfreev (from_file_args);
   return ret;
 }
