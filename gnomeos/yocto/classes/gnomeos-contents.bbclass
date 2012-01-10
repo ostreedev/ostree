@@ -7,18 +7,23 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3
 
 inherit rootfs_${IMAGE_PKGTYPE}
 
-PACKAGE_INSTALL = "task-core-boot \
+IMAGE_INSTALL = ""
+
+RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
 		   ostree ostree-init \
 		   strace \
 		   bash \
 		   tar \
+		   grep \
 		   gawk \
 		   ncurses \
 		   python-modules \
 		   python-misc"
 
-RDEPENDS += "${PACKAGE_INSTALL}"
+PACKAGE_INSTALL = "${RECIPE_PACKAGES} ${IMAGE_INSTALL}"
+
+RDEPENDS += "${RECIPE_PACKAGES}"
 DEPENDS += "makedevs-native virtual/fakeroot-native"
 
 EXCLUDE_FROM_WORLD = "1"
