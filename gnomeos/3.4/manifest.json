@@ -11,6 +11,7 @@
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fedora": "git:git://git.fedorahosted.org/",
                 "savannah": "git:git://git.savannah.gnu.org/",
+		"netfilter": "git:git://git.netfilter.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
@@ -302,6 +303,13 @@
 		{"src": "cgwalters:nspr-tarballs-as-git"},
 
 		{"src": "cgwalters:sqlite-tarballs-as-git"},
+
+		{"src": "git:file:///src/nss-tarballs-as-git"},
+
+		{"src": "git:git://ozlabs.org/~paulus/ppp.git",
+		 "patches": ["ppp-srcdir-builddir.patch", "ppp-destdir.patch"]},
+
+		{"src": "netfilter:iptables.git"},
 
 		{"src": "fd-NM:NetworkManager",
 		 "config-opts": ["--with-distro=generic"],

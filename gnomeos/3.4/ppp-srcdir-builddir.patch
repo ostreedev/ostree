@@ -1,0 +1,27 @@
+From 6bcfe378302a4a798c1201904e43411db3c122b0 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Tue, 10 Jan 2012 10:02:17 -0500
+Subject: [PATCH] build: Flag this module as not supporting srcdir != builddir
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ configure |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure b/configure
+index 56816b8..37a6643 100755
+--- a/configure
++++ b/configure
+@@ -1,6 +1,9 @@
+ #!/bin/sh
+ # $Id: configure,v 1.38 2008/06/15 07:08:49 paulus Exp $
+ 
++# http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ # Where to install stuff by default
+ DESTDIR=/usr/local
+ SYSCONF=/etc
+-- 
+1.7.6.4
+

@@ -1,0 +1,406 @@
+From bab87875538aaf096804b598d8759c22f09d362f Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Tue, 10 Jan 2012 10:33:16 -0500
+Subject: [PATCH] build: Use DESTDIR= like automake, not like --prefix
+
+This patch makes the build system comply with the GNOME Build API:
+http://people.gnome.org/~walters/docs/build-api.txt
+
+Previously ppp was using DESTDIR in to hold what was given as --prefix
+for ./configure, and INSTDIR as DESTDIR.  Now INSTDIR is replaced by
+DESTDIR, and ./configure --prefix replaces what was formerly DESTDIR.
+---
+ chat/Makefile.linux                  |   12 ++++++------
+ configure                            |    6 +++---
+ linux/Makefile.top                   |   22 +++++++++++-----------
+ pppd/Makefile.linux                  |   20 ++++++++++----------
+ pppd/pathnames.h                     |    2 +-
+ pppd/plugins/Makefile.linux          |   12 ++++++------
+ pppd/plugins/pppoatm/Makefile.linux  |    8 ++++----
+ pppd/plugins/pppol2tp/Makefile.linux |    8 ++++----
+ pppd/plugins/radius/Makefile.linux   |   18 +++++++++---------
+ pppd/plugins/rp-pppoe/Makefile.linux |   14 +++++++-------
+ pppdump/Makefile.linux               |   12 ++++++------
+ pppstats/Makefile.linux              |   12 ++++++------
+ 12 files changed, 73 insertions(+), 73 deletions(-)
+
+diff --git a/chat/Makefile.linux b/chat/Makefile.linux
+index 1065ac5..5104908 100644
+--- a/chat/Makefile.linux
++++ b/chat/Makefile.linux
+@@ -1,8 +1,8 @@
+ #	$Id: Makefile.linux,v 1.15 2006/06/04 05:07:46 paulus Exp $
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++MANDIR = $(PREFIX)/share/man/man8
+ 
+ CDEF1=	-DTERMIOS			# Use the termios structure
+ CDEF2=	-DSIGTYPE=void			# Standard definition
+@@ -24,9 +24,9 @@ chat.o:	chat.c
+ 	$(CC) -c $(CFLAGS) -o chat.o chat.c
+ 
+ install: chat
+-	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c chat $(BINDIR)
+-	$(INSTALL) -c -m 644 chat.8 $(MANDIR)
++	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
++	$(INSTALL) -s -c chat $(DESTDIR)$(BINDIR)
++	$(INSTALL) -c -m 644 chat.8 $(DESTDIR)$(MANDIR)
+ 
+ clean:
+ 	rm -f chat.o chat *~
+diff --git a/configure b/configure
+index 37a6643..ef7b852 100755
+--- a/configure
++++ b/configure
+@@ -5,7 +5,7 @@
+ echo \#buildapi-variable-no-builddir >/dev/null
+ 
+ # Where to install stuff by default
+-DESTDIR=/usr/local
++PREFIX=/usr/local
+ SYSCONF=/etc
+ 
+ #  if [ -d /NextApps ]; then
+@@ -179,7 +179,7 @@ while [ $# -gt 0 ]; do
+ 	    ;;
+     esac
+     case $arg in
+-	--prefix)	DESTDIR=$val ;;
++	--prefix)	PREFIX=$val ;;
+ 	--sysconfdir)	SYSCONF=$val ;;
+     esac
+ done
+@@ -188,7 +188,7 @@ mkmkf() {
+     rm -f $2
+     if [ -f $1 ]; then
+ 	echo "  $2 <= $1"
+-	sed -e "s,@DESTDIR@,$DESTDIR,g" -e "s,@SYSCONF@,$SYSCONF,g" $1 >$2
++	sed -e "s,@PREFIX@,$PREFIX,g" -e "s,@SYSCONF@,$SYSCONF,g" $1 >$2
+     fi
+ }
+ 
+diff --git a/linux/Makefile.top b/linux/Makefile.top
+index f63d45e..d64426a 100644
+--- a/linux/Makefile.top
++++ b/linux/Makefile.top
+@@ -1,10 +1,10 @@
+ # PPP top-level Makefile for Linux.
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-INCDIR = $(DESTDIR)/include
+-MANDIR = $(DESTDIR)/share/man
+-ETCDIR = $(INSTROOT)@SYSCONF@/ppp
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++INCDIR = $(PREFIX)/include
++MANDIR = $(PREFIX)/share/man
++ETCDIR = @SYSCONF@/ppp
+ 
+ # uid 0 = root
+ INSTALL= install
+@@ -32,18 +32,18 @@ install-devel:
+ 	cd pppd; $(MAKE) $(MFLAGS) install-devel
+ 
+ $(ETCDIR)/options:
+-	$(INSTALL) -c -m 644 etc.ppp/options $@
++	$(INSTALL) -c -m 644 etc.ppp/options $(DESTDIR)$@
+ $(ETCDIR)/pap-secrets:
+-	$(INSTALL) -c -m 600 etc.ppp/pap-secrets $@
++	$(INSTALL) -c -m 600 etc.ppp/pap-secrets $(DESTDIR)$@
+ $(ETCDIR)/chap-secrets:
+-	$(INSTALL) -c -m 600 etc.ppp/chap-secrets $@
++	$(INSTALL) -c -m 600 etc.ppp/chap-secrets $(DESTDIR)$@
+ 
+ $(BINDIR):
+-	$(INSTALL) -d -m 755 $@
++	$(INSTALL) -d -m 755 $(DESTDIR)$@
+ $(MANDIR)/man8:
+-	$(INSTALL) -d -m 755 $@
++	$(INSTALL) -d -m 755 $(DESTDIR)$@
+ $(ETCDIR):
+-	$(INSTALL) -d -m 755 $@
++	$(INSTALL) -d -m 755 $(DESTDIR)$@
+ 
+ clean:
+ 	rm -f `find . -name '*.[oas]' -print`
+diff --git a/pppd/Makefile.linux b/pppd/Makefile.linux
+index 060db6a..661a343 100644
+--- a/pppd/Makefile.linux
++++ b/pppd/Makefile.linux
+@@ -4,10 +4,10 @@
+ #
+ 
+ # Default installation locations
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
+-INCDIR = $(DESTDIR)/include
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++MANDIR = $(PREFIX)/share/man/man8
++INCDIR = $(PREFIX)/include
+ 
+ TARGETS = pppd
+ 
+@@ -79,7 +79,7 @@ INCLUDE_DIRS= -I../include
+ 
+ COMPILE_FLAGS= -DHAVE_PATHS_H -DIPX_CHANGE -DHAVE_MMAP
+ 
+-CFLAGS= $(COPTS) $(COMPILE_FLAGS) $(INCLUDE_DIRS) '-DDESTDIR="@DESTDIR@"'
++CFLAGS= $(COPTS) $(COMPILE_FLAGS) $(INCLUDE_DIRS) '-DPREFIX="@PREFIX@"'
+ 
+ ifdef CHAPMS
+ CFLAGS   += -DCHAPMS=1
+@@ -198,12 +198,12 @@ INSTALL= install
+ all: $(TARGETS)
+ 
+ install: pppd
+-	mkdir -p $(BINDIR) $(MANDIR)
++	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
+ 	$(EXTRAINSTALL)
+-	$(INSTALL) -s -c -m 555 pppd $(BINDIR)/pppd
++	$(INSTALL) -s -c -m 555 pppd $(DESTDIR)$(BINDIR)/pppd
+ 	if chgrp pppusers $(BINDIR)/pppd 2>/dev/null; then \
+ 	  chmod o-rx,u+s $(BINDIR)/pppd; fi
+-	$(INSTALL) -c -m 444 pppd.8 $(MANDIR)
++	$(INSTALL) -c -m 444 pppd.8 $(DESTDIR)$(MANDIR)
+ 
+ pppd: $(PPPDOBJS)
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o pppd $(PPPDOBJS) $(LIBS)
+@@ -212,8 +212,8 @@ srp-entry:	srp-entry.c
+ 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ srp-entry.c $(LIBS)
+ 
+ install-devel:
+-	mkdir -p $(INCDIR)/pppd
+-	$(INSTALL) -c -m 644 $(HEADERS) $(INCDIR)/pppd
++	mkdir -p $(DESTDIR)$(INCDIR)/pppd
++	$(INSTALL) -c -m 644 $(HEADERS) $(DESTDIR)$(INCDIR)/pppd
+ 
+ clean:
+ 	rm -f $(PPPDOBJS) $(EXTRACLEAN) $(TARGETS) *~ #* core
+diff --git a/pppd/pathnames.h b/pppd/pathnames.h
+index a33f046..abb8d76 100644
+--- a/pppd/pathnames.h
++++ b/pppd/pathnames.h
+@@ -57,7 +57,7 @@
+ 
+ #ifdef PLUGIN
+ #ifdef __STDC__
+-#define _PATH_PLUGIN	DESTDIR "/lib/pppd/" VERSION
++#define _PATH_PLUGIN	PREFIX "/lib/pppd/" VERSION
+ #else /* __STDC__ */
+ #define _PATH_PLUGIN	"/usr/lib/pppd"
+ #endif /* __STDC__ */
+diff --git a/pppd/plugins/Makefile.linux b/pppd/plugins/Makefile.linux
+index 0a7ec7b..b806e2b 100644
+--- a/pppd/plugins/Makefile.linux
++++ b/pppd/plugins/Makefile.linux
+@@ -4,10 +4,10 @@ CFLAGS	= $(COPTS) -I.. -I../../include -fPIC
+ LDFLAGS	= -shared
+ INSTALL	= install
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++MANDIR = $(PREFIX)/share/man/man8
++LIBDIR = $(PREFIX)/lib/pppd/$(VERSION)
+ 
+ SUBDIRS := rp-pppoe pppoatm pppol2tp
+ # Uncomment the next line to include the radius authentication plugin
+@@ -28,8 +28,8 @@ all:	$(PLUGINS)
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../patchlevel.h)
+ 
+ install: $(PLUGINS)
+-	$(INSTALL) -d $(LIBDIR)
+-	$(INSTALL) $? $(LIBDIR)
++	$(INSTALL) -d $(DESTDIR)$(LIBDIR)
++	$(INSTALL) $? $(DESTDIR)$(LIBDIR)
+ 	for d in $(SUBDIRS); do $(MAKE) $(MFLAGS) -C $$d install; done
+ 
+ clean:
+diff --git a/pppd/plugins/pppoatm/Makefile.linux b/pppd/plugins/pppoatm/Makefile.linux
+index 20f62e6..1cb91dd 100644
+--- a/pppd/plugins/pppoatm/Makefile.linux
++++ b/pppd/plugins/pppoatm/Makefile.linux
+@@ -6,8 +6,8 @@ INSTALL	= install
+ 
+ #***********************************************************************
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++PREFIX = @PREFIX@
++LIBDIR = $(PREFIX)/lib/pppd/$(VERSION)
+ 
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -36,8 +36,8 @@ $(PLUGIN): $(PLUGIN_OBJS)
+ 	$(CC) $(CFLAGS) -o $@ -shared $^ $(LIBS)
+ 
+ install: all
+-	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -c -m 4550 $(PLUGIN) $(LIBDIR)
++	$(INSTALL) -d -m 755 $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -c -m 4550 $(DESTDIR)$(PLUGIN) $(DESTDIR)$(LIBDIR)
+ 
+ clean:
+ 	rm -f *.o *.so
+diff --git a/pppd/plugins/pppol2tp/Makefile.linux b/pppd/plugins/pppol2tp/Makefile.linux
+index ea3538e..664dcfa 100644
+--- a/pppd/plugins/pppol2tp/Makefile.linux
++++ b/pppd/plugins/pppol2tp/Makefile.linux
+@@ -6,8 +6,8 @@ INSTALL	= install
+ 
+ #***********************************************************************
+ 
+-DESTDIR = @DESTDIR@
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++PREFIX = @PREFIX@
++LIBDIR = $(PREFIX)/lib/pppd/$(VERSION)
+ 
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -19,8 +19,8 @@ all: $(PLUGINS)
+ 	$(CC) $(CFLAGS) -o $@ -shared $^ $(LIBS)
+ 
+ install: all
+-	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -c -m 755 $(PLUGINS) $(LIBDIR)
++	$(INSTALL) -d -m 755 $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -c -m 755 $(PLUGINS) $(DESTDIR)$(LIBDIR)
+ 
+ clean:
+ 	rm -f *.o *.so
+diff --git a/pppd/plugins/radius/Makefile.linux b/pppd/plugins/radius/Makefile.linux
+index 24ed3e5..a3dfd31 100644
+--- a/pppd/plugins/radius/Makefile.linux
++++ b/pppd/plugins/radius/Makefile.linux
+@@ -3,9 +3,9 @@
+ # Copyright 2002 Roaring Penguin Software Inc.
+ #
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-MANDIR = $(DESTDIR)/share/man/man8
+-LIBDIR = $(DESTDIR)/lib/pppd/$(VERSION)
++PREFIX = @PREFIX@
++MANDIR = $(PREFIX)/share/man/man8
++LIBDIR = $(PREFIX)/lib/pppd/$(VERSION)
+ 
+ VERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -35,12 +35,12 @@ endif
+ all: $(PLUGIN)
+ 
+ install: all
+-	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radius.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radattr.so $(LIBDIR)
+-	$(INSTALL) -s -c -m 755 radrealms.so $(LIBDIR)
+-	$(INSTALL) -c -m 444 pppd-radius.8 $(MANDIR)
+-	$(INSTALL) -c -m 444 pppd-radattr.8 $(MANDIR)
++	$(INSTALL) -d -m 755 $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -s -c -m 755 radius.so $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -s -c -m 755 radattr.so $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -s -c -m 755 radrealms.so $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -c -m 444 pppd-radius.8 $(DESTDIR)$(MANDIR)
++	$(INSTALL) -c -m 444 pppd-radattr.8 $(DESTDIR)$(MANDIR)
+ 
+ radius.so: radius.o libradiusclient.a
+ 	$(CC) -o radius.so -shared radius.o libradiusclient.a
+diff --git a/pppd/plugins/rp-pppoe/Makefile.linux b/pppd/plugins/rp-pppoe/Makefile.linux
+index 5d7a271..f805d2d 100644
+--- a/pppd/plugins/rp-pppoe/Makefile.linux
++++ b/pppd/plugins/rp-pppoe/Makefile.linux
+@@ -14,9 +14,9 @@
+ # $Id: Makefile.linux,v 1.8 2008/06/09 08:34:23 paulus Exp $
+ #***********************************************************************
+ 
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-LIBDIR = $(DESTDIR)/lib/pppd/$(PPPDVERSION)
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++LIBDIR = $(PREFIX)/lib/pppd/$(PPPDVERSION)
+ 
+ PPPDVERSION = $(shell awk -F '"' '/VERSION/ { print $$2; }' ../../patchlevel.h)
+ 
+@@ -42,10 +42,10 @@ rp-pppoe.so: plugin.o discovery.o if.o common.o
+ 	$(CC) -o rp-pppoe.so -shared plugin.o discovery.o if.o common.o
+ 
+ install: all
+-	$(INSTALL) -d -m 755 $(LIBDIR)
+-	$(INSTALL) -s -c -m 4550 rp-pppoe.so $(LIBDIR)
+-	$(INSTALL) -d -m 755 $(BINDIR)
+-	$(INSTALL) -s -c -m 555 pppoe-discovery $(BINDIR)
++	$(INSTALL) -d -m 755 $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -s -c -m 4550 rp-pppoe.so $(DESTDIR)$(LIBDIR)
++	$(INSTALL) -d -m 755 $(DESTDIR)$(BINDIR)
++	$(INSTALL) -s -c -m 555 pppoe-discovery $(DESTDIR)$(BINDIR)
+ 
+ clean:
+ 	rm -f *.o *.so pppoe-discovery
+diff --git a/pppdump/Makefile.linux b/pppdump/Makefile.linux
+index ac028f6..426653d 100644
+--- a/pppdump/Makefile.linux
++++ b/pppdump/Makefile.linux
+@@ -1,6 +1,6 @@
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++MANDIR = $(PREFIX)/share/man/man8
+ 
+ CFLAGS= -O -I../include/net
+ OBJS = pppdump.o bsd-comp.o deflate.o zlib.o
+@@ -16,6 +16,6 @@ clean:
+ 	rm -f pppdump $(OBJS) *~
+ 
+ install:
+-	mkdir -p $(BINDIR) $(MANDIR)
+-	$(INSTALL) -s -c pppdump $(BINDIR)
+-	$(INSTALL) -c -m 444 pppdump.8 $(MANDIR)
++	mkdir -p $(DESTDIR)$(BINDIR) $(DESTDIR)$(MANDIR)
++	$(INSTALL) -s -c pppdump $(DESTDIR)$(BINDIR)
++	$(INSTALL) -c -m 444 pppdump.8 $(DESTDIR)$(MANDIR)
+diff --git a/pppstats/Makefile.linux b/pppstats/Makefile.linux
+index cca6f0f..eca014d 100644
+--- a/pppstats/Makefile.linux
++++ b/pppstats/Makefile.linux
+@@ -2,9 +2,9 @@
+ # pppstats makefile
+ # $Id: Makefile.linux,v 1.9 2006/06/04 05:07:46 paulus Exp $
+ #
+-DESTDIR = $(INSTROOT)@DESTDIR@
+-BINDIR = $(DESTDIR)/sbin
+-MANDIR = $(DESTDIR)/share/man/man8
++PREFIX = @PREFIX@
++BINDIR = $(PREFIX)/sbin
++MANDIR = $(PREFIX)/share/man/man8
+ 
+ PPPSTATSRCS = pppstats.c
+ PPPSTATOBJS = pppstats.o
+@@ -21,9 +21,9 @@ CFLAGS = $(COPTS) $(COMPILE_FLAGS)
+ all: pppstats
+ 
+ install: pppstats
+-	-mkdir -p $(MANDIR)
+-	$(INSTALL) -s -c pppstats $(BINDIR)
+-	$(INSTALL) -c -m 444 pppstats.8 $(MANDIR)
++	-mkdir -p $(DESTDIR)$(MANDIR)
++	$(INSTALL) -s -c pppstats $(DESTDIR)$(BINDIR)
++	$(INSTALL) -c -m 444 pppstats.8 $(DESTDIR)$(MANDIR)
+ 
+ pppstats: $(PPPSTATSRCS)
+ 	$(CC) $(CFLAGS) -o pppstats pppstats.c $(LIBS)
+-- 
+1.7.6.4
+
