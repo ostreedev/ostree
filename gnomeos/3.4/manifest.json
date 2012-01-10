@@ -10,6 +10,7 @@
                 "fd-dbus": "git:git://anongit.freedesktop.org/git/dbus/",
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fedora": "git:git://git.fedorahosted.org/",
+                "savannah": "git:git://git.savannah.gnu.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
@@ -268,9 +269,19 @@
 		{"src": "fedora:hwdata.git",
 		 "patches": ["hwdata-buildapi.patch"]},
 
+		{"src": "cgwalters:texinfo-git-mirror",
+		 "branch": "TEXI2HTML_1_82",
+		 "config-opts": ["--disable-man-pages"],
+		 "patches": ["texinfo-disable-man.patch"]},
+
+		{"src": "savannah:gperf.git",
+		 "branch": "v3.0.4",
+		 "patches": ["gperf-autotools.patch"]},
+
 		{"src": "git:git://git.kernel.org/pub/scm/linux/hotplug/udev.git",
 		 "branch": "175",
-		 "patches": ["udev-autogen.patch"]},
+		 "config-opts": ["--disable-documentation"],
+		 "patches": ["udev-autogen.patch", "udev-docs.patch"]},
 
 		{"src": "cgwalters:expat-git-mirror.git",
 		 "patches": ["expat-autogen.patch"]},
@@ -286,8 +297,11 @@
 		 "config-opts": ["--disable-gtk-doc"]},
 
 		{"src": "git:git://git.infradead.org/users/tgr/libnl.git",
-		 "name": "libnl3",
-		 "branch": "libnl3_1"},
+		 "name": "libnl3"},
+
+		{"src": "cgwalters:nspr-tarballs-as-git"},
+
+		{"src": "cgwalters:sqlite-tarballs-as-git"},
 
 		{"src": "fd-NM:NetworkManager",
 		 "config-opts": ["--with-distro=generic"],
