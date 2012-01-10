@@ -136,7 +136,9 @@ class OstbuildCompileOne(builtins.Builtin):
             run_sync(['./' + autogen_script], env=env)
         else:
             log("Using existing 'configure' script")
-    
+            
+        builddir = '_build'
+
         use_builddir = True
         doesnot_support_builddir = self._has_buildapi_configure_variable('no-builddir')
         if doesnot_support_builddir:
@@ -146,10 +148,8 @@ class OstbuildCompileOne(builtins.Builtin):
             shutil.copytree('.', '_build', symlinks=True,
                             ignore=shutil.ignore_patterns('_build'))
             use_builddir = False
-            builddir = '.'
     
         if use_builddir:
-            builddir = '_build'
             log("Using build directory %r" % (builddir, ))
             if not os.path.isdir(builddir):
                 os.mkdir(builddir)
@@ -159,10 +159,7 @@ class OstbuildCompileOne(builtins.Builtin):
         else:
             args = ['./configure']
         args.extend(self.configargs)
-        if use_builddir:
-            run_sync(args, cwd=builddir)
-        else:
-            run_sync(args)
+        run_sync(args, cwd=builddir)
 
         makefile_path = os.path.join(builddir, 'Makefile')
         if not os.path.exists(makefile_path):
