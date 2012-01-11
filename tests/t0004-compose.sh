@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..8"
+echo "1..6"
 
 . libtest.sh
 
@@ -28,37 +28,35 @@ setup_test_repository "regular"
 $OSTREE checkout test2 checkout-test2
 
 cd "${test_tmpdir}"
-mkdir artifact-libfoo-runtime
-cd artifact-libfoo-runtime
+mkdir -p artifact-libfoo/runtime
+cd artifact-libfoo/runtime
 mkdir -p usr/lib/
 echo 'an ELF file' > usr/lib/libfoo.so
 mkdir -p usr/share
 echo 'some data' > usr/share/foo.data
-
-$OSTREE commit -b artifact-libfoo-runtime -s 'Build 12345 of libfoo'
-
-cd "${test_tmpdir}"
-mkdir artifact-libfoo-devel
-cd artifact-libfoo-devel
+cd ..
+mkdir devel
+cd devel
 mkdir -p usr/include
 echo 'a header' > usr/include/foo.h
 mkdir -p usr/share/doc
 echo 'some documentation' > usr/share/doc/foo.txt
 
-$OSTREE commit -b artifact-libfoo-devel -s 'Build 12345 of libfoo'
+cd ..
+$OSTREE commit -b artifact-libfoo -s 'Build 12345 of libfoo'
 
 cd "${test_tmpdir}"
-mkdir artifact-barapp
-cd artifact-barapp
+mkdir -p artifact-barapp/runtime
+cd artifact-barapp/runtime
 mkdir -p usr/bin
 echo 'another ELF file' > usr/bin/bar
-
+cd ..
 $OSTREE commit -b artifact-barapp -s 'Build 42 of barapp'
 
 echo 'ok artifacts committed'
 
 cd "${test_tmpdir}"
-$OSTREE compose -s "compose 1" -b some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+$OSTREE compose -s "compose 1" -b some-compose artifact-libfoo:/runtime artifact-libfoo:/devel artifact-barapp:/runtime
 echo 'ok compose'
 
 $OSTREE checkout some-compose some-compose-checkout
@@ -72,10 +70,11 @@ echo 'ok compose content'
 
 cd "${test_tmpdir}"
 rm -rf some-compose-checkout some-compose-metadata
-cd "${test_tmpdir}"/artifact-barapp
+cd "${test_tmpdir}"/artifact-barapp/runtime
 echo 'updated bar ELF file' > usr/bin/bar
+cd ..
 $OSTREE commit -b artifact-barapp -s 'Build 43 of barapp'
-$OSTREE compose -s "compose 2" -b some-compose artifact-libfoo-runtime artifact-libfoo-devel artifact-barapp
+$OSTREE compose -s "compose 2" -b some-compose artifact-libfoo:/runtime artifact-libfoo:/devel artifact-barapp:/runtime
 echo 'ok compose update commit'
 
 cd "${test_tmpdir}"
@@ -85,25 +84,9 @@ assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
 echo 'ok compose update contents'
 
 cd "${test_tmpdir}"
-$OSTREE compose --recompose -b some-compose -s 'Recompose'
-rm -rf some-compose-checkout
-$OSTREE checkout some-compose some-compose-checkout
-cd some-compose-checkout
-assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
-echo 'ok recompose'
-
-cd "${test_tmpdir}"
-$OSTREE compose --recompose -b some-compose -s 'Recompose' artifact-barapp
-rm -rf some-compose-checkout
-$OSTREE checkout some-compose some-compose-checkout
-cd some-compose-checkout
-assert_file_has_content ./usr/bin/bar 'updated bar ELF file'
-echo 'ok recompose with args'
-
-cd "${test_tmpdir}"
-echo artifact-libfoo-runtime > compose-contents.txt
-echo artifact-libfoo-devel >> compose-contents.txt
-echo artifact-barapp >> compose-contents.txt
+echo artifact-libfoo:/runtime > compose-contents.txt
+echo artifact-libfoo:/devel >> compose-contents.txt
+echo artifact-barapp:/runtime >> compose-contents.txt
 $OSTREE compose -b some-compose-from-file -s 'from file' -F compose-contents.txt
 rm -rf some-compose-checkout
 $OSTREE checkout some-compose-from-file some-compose-checkout
