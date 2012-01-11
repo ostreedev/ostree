@@ -31,6 +31,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/__init__.py		\
 	src/ostbuild/pyostbuild/kvfile.py		\
 	src/ostbuild/pyostbuild/main.py			\
+	src/ostbuild/pyostbuild/odict.py		\
 	src/ostbuild/pyostbuild/ostbuildlog.py		\
 	src/ostbuild/pyostbuild/ostbuildrc.py		\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
