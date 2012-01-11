@@ -1437,6 +1437,9 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
 
   if (repo_dir)
     {
+      if (!ostree_repo_file_ensure_resolved (repo_dir, error))
+        goto out;
+
       ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_get_checksum (repo_dir));
       repo_dir_was_empty = 
         g_hash_table_size (ostree_mutable_tree_get_files (mtree)) == 0
