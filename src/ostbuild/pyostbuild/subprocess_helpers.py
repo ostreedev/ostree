@@ -41,7 +41,9 @@ def _get_env_for_cwd(cwd=None, env=None):
     return env_copy
 
 def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=False,
-                        log_success=False):
+                        log_success=False, log_initiation=False):
+    if log_initiation:
+        log("running: %s" % (subprocess.list2cmdline(args),))
     env_copy = _get_env_for_cwd(cwd, env)
     f = open('/dev/null', 'r')
     if stderr is None:
