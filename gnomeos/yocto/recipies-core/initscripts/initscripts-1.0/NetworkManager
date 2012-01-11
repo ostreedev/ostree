@@ -1,0 +1,31 @@
+#!/bin/sh
+
+start()
+{
+	echo -n $"Starting NetworkManager daemon: "
+	/usr/sbin/NetworkManager --pid-file=/var/run/NetworkManager.pid &
+}
+
+stop()
+{
+	echo -n $"Stopping NetworkManager daemon: "
+	kill -TERM `cat /var/run/NetworkManager.pid`
+}
+
+# See how we were called.
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	restart)
+		stop
+		start
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+		;;
+esac
+exit $RETVAL

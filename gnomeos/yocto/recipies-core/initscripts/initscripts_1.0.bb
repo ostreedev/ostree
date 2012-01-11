@@ -16,6 +16,8 @@ SRC_URI = "file://functions \
            file://finish.sh \
            file://bootmisc.sh \
            file://mountnfs.sh \
+           file://NetworkManager \
+           file://dbus \
            file://reboot \
            file://single \
            file://sendsigs \
@@ -58,6 +60,8 @@ do_install () {
 	install -m 0755    ${WORKDIR}/halt		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/hostname.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountall.sh	${D}${sysconfdir}/init.d
+	install -m 0755    ${WORKDIR}/NetworkManager	${D}${sysconfdir}/init.d
+	install -m 0755    ${WORKDIR}/dbus              ${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/reboot		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/rmnologin.sh	${D}${sysconfdir}/init.d
@@ -66,9 +70,6 @@ do_install () {
 	install -m 0755    ${WORKDIR}/umountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/urandom		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/save-rtc.sh	${D}${sysconfdir}/init.d
-	if [ "${TARGET_ARCH}" = "arm" ]; then
-		install -m 0755 ${WORKDIR}/alignment.sh	${D}${sysconfdir}/init.d
-	fi
 #
 # Install device dependent scripts
 #
@@ -98,14 +99,13 @@ do_install () {
 	ln -sf		../init.d/banner.sh	${D}${sysconfdir}/rcS.d/S02banner.sh
 	ln -sf		../init.d/mountall.sh	${D}${sysconfdir}/rcS.d/S35mountall.sh
 	ln -sf		../init.d/hostname.sh	${D}${sysconfdir}/rcS.d/S39hostname.sh
+	ln -sf		../init.d/dbus	        ${D}${sysconfdir}/rcS.d/S40dbus
+	ln -sf		../init.d/NetworkManager	${D}${sysconfdir}/rcS.d/S41NetworkManager
 	ln -sf		../init.d/mountnfs.sh	${D}${sysconfdir}/rcS.d/S45mountnfs.sh
 	ln -sf		../init.d/bootmisc.sh	${D}${sysconfdir}/rcS.d/S55bootmisc.sh
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rcS.d/S55urandom
 #	ln -sf		../init.d/finish.sh	${D}${sysconfdir}/rcS.d/S99finish.sh
 	# udev will run at S03 if installed
-	if [ "${TARGET_ARCH}" = "arm" ]; then
-		ln -sf	../init.d/alignment.sh	${D}${sysconfdir}/rcS.d/S06alignment.sh
-	fi
 
 	install -m 0755		${WORKDIR}/device_table.txt		${D}${sysconfdir}/device_table
 }
