@@ -31,42 +31,58 @@ static char *subject;
 static char *body;
 static char *branch;
 static char *from_file_path;
-static gboolean recompose;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
   { "from-file", 'F', 0, G_OPTION_ARG_STRING, &from_file_path, "Take list of branches to compose from FILE", "FILE" },
-  { "recompose", 0, 0, G_OPTION_ARG_NONE, &recompose, "Regenerate compose from existing branches", NULL },
   { NULL }
 };
 
 static gboolean
 add_branch (OstreeRepo          *repo,
             OstreeMutableTree   *mtree,
-            const char          *branch,
+            const char          *branch_path,
             GVariantBuilder     *metadata_builder,
             GError             **error)
 {
   gboolean ret = FALSE;
   GFile *branchf = NULL;
+  GFile *subdir = NULL;
   const char *branch_rev;
+  char **components = NULL;
+  const char *branch_name;
+  const char *path;
 
-  if (!ostree_repo_read_commit (repo, branch, &branchf, NULL, error))
+  components = g_strsplit (branch_path, ":", 2);
+
+  if (g_strv_length (components) != 2)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid compose specification '%s'; missing ':'",
+                   branch_path);
+      goto out;
+    }
+  branch_name = components[0];
+  path = components[1];
+
+  if (!ostree_repo_read_commit (repo, branch_name, &branchf, NULL, error))
     goto out;
 
   branch_rev = ostree_repo_file_get_commit ((OstreeRepoFile*)branchf);
+  subdir = g_file_resolve_relative_path (branchf, path);
 
-  if (!ostree_repo_stage_directory_to_mtree (repo, branchf, mtree, NULL,
+  if (!ostree_repo_stage_directory_to_mtree (repo, subdir, mtree, NULL,
                                              NULL, error))
     goto out;
   
   if (metadata_builder)
-    g_variant_builder_add (metadata_builder, "(ss)", branch, branch_rev);
+    g_variant_builder_add (metadata_builder, "(ss)", branch_path, branch_rev);
 
   ret = TRUE;
  out:
+  g_strfreev (components);
   g_clear_object (&branchf);
   return ret;
 }
@@ -129,7 +145,7 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   compose_metadata_builder_initialized = TRUE;
   g_variant_builder_init (&compose_metadata_builder, G_VARIANT_TYPE ("a(ss)"));
 
-  if (!ostree_repo_resolve_rev (repo, branch, recompose ? FALSE : TRUE, &parent, error))
+  if (!ostree_repo_resolve_rev (repo, branch, TRUE, &parent, error))
     goto out;
 
   if (parent)
@@ -145,43 +161,6 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   in_transaction = TRUE;
 
   mtree = ostree_mutable_tree_new ();
-
-  if (recompose)
-    {
-      const char *branch_name;
-      const char *branch_rev;
-
-      g_assert (parent);
-      g_assert (parent_commit);
-
-      seen_branches = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      
-      g_variant_get_child (parent_commit, 1, "@a{sv}", &parent_commit_metadata);
-
-      parent_commit_compose = g_variant_lookup_value (parent_commit_metadata,
-                                                      "ostree-compose", G_VARIANT_TYPE ("a(ss)"));
-
-      if (!parent_commit_compose)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Commit '%s' doesn't have ostree-compose metadata",
-                       parent);
-          goto out;
-        }
-
-      parent_commit_compose_iter = g_variant_iter_new (parent_commit_compose);
-
-      while (g_variant_iter_loop (parent_commit_compose_iter, "(&s&s)",
-                                  &branch_name, &branch_rev))
-        {
-          if (!add_branch (repo, mtree, branch_name,
-                           &compose_metadata_builder,
-                           error))
-            goto out;
-
-          g_hash_table_insert (seen_branches, g_strdup (branch_name), (char*)branch_name);
-        }
-    }
 
   if (from_file_path)
     {
@@ -248,9 +227,18 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
 
   if (!skip_commit)
     {
+      const char *root_metadata = ostree_mutable_tree_get_metadata_checksum (mtree);
+
+      if (!root_metadata)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Can't commit an empty tree");
+          goto out;
+        }
+
       if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, commit_metadata,
                                      contents_checksum,
-                                     ostree_mutable_tree_get_metadata_checksum (mtree),
+                                     root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
       
