@@ -81,7 +81,8 @@ for branch in runtime devel; do
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
     fi
-    ln -sf ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
+    rm -f ${BRANCH_PREFIX}${branch}-current
+    ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
 done
 cd ..
 
@@ -90,6 +91,7 @@ cp -a ./ostree/${BRANCH_PREFIX}${branch}-current/usr/sbin/ostree-init .
 
 cd ${WORKDIR}
 
+sync
 umount fs
 rmdir fs
 
