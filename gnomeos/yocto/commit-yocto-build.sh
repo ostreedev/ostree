@@ -43,4 +43,4 @@ BUILD_TIME=$(date -r $BUILD_TAR)
 
 ostree --repo=${OSTREE_REPO} commit --skip-if-unchanged -s "Build from OSTree ${OSTREE_VER}" -b "${BASE}" --tree=tar=${BUILD_TAR}
 ostree --repo=${OSTREE_REPO} diff "${BASE}"^ "${BASE}" || true
-ostree --repo=${OSTREE_REPO} compose -s "Initial compose" -b ${BUILDROOT} ${BASE} 
+ostree --repo=${OSTREE_REPO} compose -s "Initial compose" -b ${BUILDROOT} ${BASE}:/

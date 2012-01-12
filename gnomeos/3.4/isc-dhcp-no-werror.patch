@@ -1,0 +1,26 @@
+From 9d72f599de73d47196106737ad73527b911840fb Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Wed, 11 Jan 2012 16:58:04 -0500
+Subject: [PATCH] configure: Don't make warnings into errors by default
+
+That only works if you also check the gcc version.
+---
+ configure.ac |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 8df75d9..cf30197 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -21,7 +21,7 @@ AC_DEFUN([AC_DATAROOTDIR_CHECKED])
+ # user did not specify any flags. Add warnings in this case.
+ if test "$GCC" = "yes"; then
+ 	if test "$CFLAGS" != "$SAVE_CFLAGS"; then
+-		STD_CWARNINGS="$STD_CWARNINGS -Wall -Werror -fno-strict-aliasing"
++		STD_CWARNINGS="$STD_CWARNINGS -Wall -fno-strict-aliasing"
+ 	fi
+ fi
+ 
+-- 
+1.7.6.4
+

@@ -11,6 +11,7 @@
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fedora": "git:git://git.fedorahosted.org/",
                 "savannah": "git:git://git.savannah.gnu.org/",
+                "debian": "git:git://anonscm.debian.org/",
 		"netfilter": "git:git://git.netfilter.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
@@ -25,6 +26,8 @@
 		{"src": "git:git://github.com/atgreen/libffi.git"},
 
 		{"src": "gnome:glib"},
+
+   		{"src": "gnome:linux-user-chroot"},
 
    		{"src": "fd:pixman"},
 
@@ -288,7 +291,8 @@
 		 "patches": ["expat-autogen.patch"]},
 
 		{"src": "fd-dbus:dbus",
-		 "config-opts": ["--enable-inotify",
+		 "config-opts": ["--with-dbus-user=dbus",
+		                 "--enable-inotify",
 				 "--disable-xml-docs",
 				 "--disable-doxygen-docs",
 				 "--disable-tests"],
@@ -311,8 +315,19 @@
 
 		{"src": "netfilter:iptables.git"},
 
+		{"src": "debian:pkg-dhcp/isc-dhcp.git",
+		 "name": "isc-dhcp",
+		 "branch": "upstream/4.2.2",
+		 "patches": ["isc-dhcp-autogen.patch",
+		             "isc-dhcp-delete-configure.patch",
+			     "isc-dhcp-no-builddir.patch",
+		             "isc-dhcp-no-werror.patch"]},
+
 		{"src": "fd-NM:NetworkManager",
-		 "config-opts": ["--with-distro=generic"],
-		 "patches": ["NetworkManager-builddir.patch", "NetworkManager-distro.patch"]}
+		 "config-opts": ["--with-distro=generic",
+		                 "--with-dhclient=yes",
+				 "--with-crypto=nss",
+				 "--with-docs=no"],
+		 "patches": ["NetworkManager-config.patch"]}
 	]
 }
