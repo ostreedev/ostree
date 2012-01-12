@@ -7,7 +7,7 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3
 
 inherit rootfs_${IMAGE_PKGTYPE}
 
-IMAGE_INSTALL = ""
+IMAGE_INSTALL = "libuuid1 libblkid1"
 
 RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
@@ -60,8 +60,18 @@ sysfs                   /sys                    sysfs   defaults        0 0
 proc                    /proc                   proc    defaults        0 0
 EOF
 
+	# Kill the Debian netbase stuff - we use NetworkManager
+	rm -rf ${IMAGE_ROOTFS}/etc/network
+	rm -f ${IMAGE_ROOTFS}/etc/init.d/networking
 
 	ln -sf /var/run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
+
+	# Override base-passwd...it has lots of crap in it we don't
+	# want, and we do want dbus.
+	cat >${IMAGE_ROOTFS}/var/passwd << EOF
+root::0:0:root:/:/bin/sh
+dbus:*:1:1:dbus:/:/bin/false
+EOF
 
 	TOPROOT_BIND_MOUNTS="home root tmp"
 	OSTREE_BIND_MOUNTS="var"
