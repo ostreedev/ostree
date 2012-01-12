@@ -21,22 +21,10 @@ from .subprocess_helpers import run_sync_get_output
 
 ARTIFACT_RE = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),(.+)-((?:runtime)|(?:devel))\.tar$')
 
-def parse_artifact_name(artifact_basename):
-    match = ARTIFACT_RE.match(artifact_basename)
-    if match is None:
-        raise ValueError("Invalid artifact basename %s" % (artifact_basename))
-    return {'buildroot': match.group(1),
-            'buildroot-version': match.group(2),
-            'name': match.group(3),
-            'branch': match.group(4),
-            'version': match.group(5),
-            'type': match.group(6)}
-
 def branch_name_for_artifact(a):
-    return 'artifacts/%s/%s/%s/%s' % (a['buildroot'],
-                                      a['name'],
-                                      a['branch'],
-                                      a['type'])
+    return 'artifacts/%s/%s/%s' % (a['buildroot'],
+                                   a['name'],
+                                   a['branch'])
 
 def get_git_version_describe(dirpath):
     version = run_sync_get_output(['git', 'describe', '--long', '--abbrev=42', '--always'],

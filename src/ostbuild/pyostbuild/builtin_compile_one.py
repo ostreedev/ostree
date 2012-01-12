@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -34,14 +34,20 @@ _BLACKLIST_REGEXPS = map(re.compile,
                          [r'.*\.la$',
                           ])
 
+_RUNTIME_DIRS = ['/etc']
+
+_DOC_DIRS = ['/usr/share/doc',
+             '/usr/share/gtk-doc',
+             '/usr/share/man',
+             '/usr/share/info']
+
+_DEVEL_DIRS = ['/usr/include',
+               '/usr/share/aclocal',
+               '/usr/share/pkgconfig',
+               '/usr/lib/pkgconfig']
+
 _DEVEL_REGEXPS = map(re.compile,
-                     [r'/usr/include/',
-                      r'/usr/share/pkgconfig/',
-                      r'/usr/share/aclocal/',
-                      r'/(?:usr/)lib(?:|(?:32)|(?:64))/pkgconfig/.*\.pc$',
-                      r'/(?:usr/)lib(?:|(?:32)|(?:64))/[^/]+\.so$'
-                      r'/(?:usr/)lib(?:|(?:32)|(?:64))/[^/]+\.a$'
-                      ])
+                     [r'/(?:usr/)lib/[^/]+\.(?:so|a)$'])
 
 class OstbuildCompileOne(builtins.Builtin):
     name = "compile-one"
@@ -66,15 +72,9 @@ class OstbuildCompileOne(builtins.Builtin):
         machine=uname[4]
         self.build_target='%s-%s' % (machine, kernel)
 
-        # libdir detection
-        if os.path.isdir('/lib64'):
-            libdir=os.path.join(PREFIX, 'lib64')
-        else:
-            libdir=os.path.join(PREFIX, 'lib')
-
         self.configargs = ['--build=' + self.build_target,
                       '--prefix=' + PREFIX,
-                      '--libdir=' + libdir,
+                      '--libdir=' + os.path.join(PREFIX, 'lib'),
                       '--sysconfdir=/etc',
                       '--localstatedir=/var',
                       '--bindir=' + os.path.join(PREFIX, 'bin'),
@@ -199,20 +199,45 @@ class OstbuildCompileOne(builtins.Builtin):
         else:
             root_version = self.metadata.get('buildroot-version')
     
-        artifact_prefix=os.path.join('artifacts', root_name, name, branch)
-
         tempdir = tempfile.mkdtemp(prefix='ostbuild-%s-' % (name,))
         self.tempfiles.append(tempdir)
         args = ['make', 'install', 'DESTDIR=' + tempdir]
         run_sync(args, cwd=builddir)
     
         devel_files = set()
-        dbg_files = set()
+        doc_files = set()
         runtime_files = set()
     
         oldpwd=os.getcwd()
         os.chdir(tempdir)
         for root, dirs, files in os.walk('.'):
+            deleted_dirs = set() 
+            for dirname in dirs:
+                path = os.path.join(root, dirname)
+                subpath = path[1:]
+                matched = False
+                for runtime_name in _RUNTIME_DIRS:
+                    if subpath.startswith(runtime_name):
+                        runtime_files.add(path)
+                        matched = True
+                        break
+                if not matched:
+                    for devel_name in _DEVEL_DIRS:
+                        if subpath.startswith(devel_name):
+                            devel_files.add(path)
+                            matched = True
+                            break
+                if not matched:
+                    for doc_name in _DOC_DIRS:
+                        if subpath.startswith(doc_name):
+                            doc_files.add(path)
+                            matched = True
+                            break
+                if matched:
+                    deleted_dirs.add(dirname)
+            for dirname in deleted_dirs:
+                dirs.remove(dirname)
+    
             for filename in files:
                 path = os.path.join(root, filename)
     
@@ -224,7 +249,7 @@ class OstbuildCompileOne(builtins.Builtin):
     
                 if blacklisted:
                     continue
-    
+
                 matched = False
                 for r in _DEVEL_REGEXPS:
                     if not r.match(path[1:]):
@@ -236,8 +261,9 @@ class OstbuildCompileOne(builtins.Builtin):
                     runtime_files.add(path)
         os.chdir(oldpwd)
     
-        self.make_artifact(artifact_prefix, 'devel', devel_files, tempdir=tempdir)
-        self.make_artifact(artifact_prefix, 'runtime', runtime_files, tempdir=tempdir)
+        self.make_artifact('devel', devel_files, tempdir=tempdir)
+        self.make_artifact('doc', doc_files, tempdir=tempdir)
+        self.make_artifact('runtime', runtime_files, tempdir=tempdir)
 
         for tmpname in self.tempfiles:
             assert os.path.isabs(tmpname)
@@ -252,17 +278,27 @@ class OstbuildCompileOne(builtins.Builtin):
     def _rename_or_copy(self, src, dest):
         statsrc = os.lstat(src)
         statdest = os.lstat(os.path.dirname(dest))
-        try:
-            os.rename(src, dest)
-        except OSError, e:
-            if stat.S_ISLNK(statsrc.st_mode):
-                linkto = os.readlink(src)
-                os.symlink(linkto, dest)
-            else:
-                shutil.copy2(src, dest)
+
+        if stat.S_ISDIR(statsrc.st_mode):
+            if not os.path.isdir(dest):
+                os.mkdir(dest)
+            for filename in os.listdir(src):
+                src_child = os.path.join(src, filename)
+                dest_child = os.path.join(dest, filename)
+
+                self._rename_or_copy(src_child, dest_child)
+        else:
+            try:
+                os.rename(src, dest)
+            except OSError, e:
+                if stat.S_ISLNK(statsrc.st_mode):
+                    linkto = os.readlink(src)
+                    os.symlink(linkto, dest)
+                else:
+                    shutil.copy2(src, dest)
     
-    def make_artifact(self, prefix, dirtype, from_files, tempdir):
-        resultdir = os.path.join(self.ostbuild_resultdir, prefix, dirtype)
+    def make_artifact(self, dirtype, from_files, tempdir):
+        resultdir = os.path.join(self.ostbuild_resultdir, dirtype)
         if os.path.isdir(resultdir):
             shutil.rmtree(resultdir)
         os.makedirs(resultdir)

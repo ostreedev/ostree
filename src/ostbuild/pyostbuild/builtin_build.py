@@ -18,6 +18,7 @@
 import os,sys,subprocess,tempfile,re,shutil
 import argparse
 import json
+from StringIO import StringIO
 
 from . import builtins
 from .ostbuildlog import log, fatal
@@ -25,6 +26,7 @@ from .subprocess_helpers import run_sync, run_sync_get_output
 from . import ostbuildrc
 from . import buildutil
 from . import kvfile
+from . import odict
 
 class BuildOptions(object):
     pass
@@ -57,7 +59,7 @@ class OstbuildBuild(builtins.Builtin):
             shutil.rmtree(dest)
         if os.path.isdir(tmp_dest):
             shutil.rmtree(tmp_dest)
-        subprocess.check_call(['git', 'clone', '-q', mirrordir, tmp_dest])
+        subprocess.check_call(['git', 'clone', '-q', '--recursive', mirrordir, tmp_dest])
         subprocess.check_call(['git', 'checkout', '-q', branch], cwd=tmp_dest)
         subprocess.check_call(['git', 'submodule', 'update', '--init'], cwd=tmp_dest)
         os.rename(tmp_dest, dest)
@@ -117,83 +119,93 @@ class OstbuildBuild(builtins.Builtin):
                 name = name[:-4]
             name = name.replace('/', '-')
             result['name'] = name
+
+        if 'branch' not in result:
+            result['branch'] = 'master'
+
         return result
 
-    def _build_one_component(self, meta, architecture):
+    def _get_target(self, architecture):
+        return '%s-%s-devel' % (self.manifest['name'], architecture)
+
+    def _get_base(self, roottype, architecture):
+        return 'bases/%s-%s-%s' % (self.manifest['base'],
+                                   architecture, roottype)
+
+    def _get_buildname(self, component, architecture):
+        return 'artifacts/%s/%s/%s' % (self._get_target (architecture),
+                                       component['name'],
+                                       component['branch'])
+
+    def _get_buildroot_name(self, component, architecture):
+        return 'buildroots/%s/%s/%s' % (self._get_target (architecture),
+                                        component['name'],
+                                        component['branch'])
+
+    def _compose_buildroot(self, buildroot_name, component, dependencies, architecture):
+        base = self._get_base('devel', architecture)
+        buildroot_contents = [base + ':/']
+        for dep in dependencies:
+            dep_buildname = self._get_buildname(dep, architecture)
+            buildroot_contents.append(dep_buildname + ':/runtime')
+            buildroot_contents.append(dep_buildname + ':/devel')
+
+        return self._compose(buildroot_name, buildroot_contents)
+
+    def _build_one_component(self, meta, dependencies, architecture):
         name = meta['name']
+        branch = meta['branch']
+
+        target = self._get_target(architecture)
+        buildname = self._get_buildname(meta, architecture)
+        buildroot_name = self._get_buildroot_name(meta, architecture)
 
         (keytype, uri) = self._parse_src_key(meta['src'])
-        branch = meta.get('branch', 'master')
-
-        buildroot = '%s-%s-devel' % (self.manifest['name'], architecture)
-        runtime_branchname = 'artifacts/%s/%s/%s/runtime' % (buildroot, name, branch)
-        current_buildroot_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                         'rev-parse', buildroot])
-        current_buildroot_version = current_buildroot_version.strip()
-
-        artifact_base = {'buildroot': buildroot,
-                         'buildroot-version': current_buildroot_version,
-                         'name': name,
-                         'branch': branch,
-                         }
 
         component_vcs_mirror = self._ensure_vcs_mirror(name, keytype, uri, branch)
         component_src = self._get_vcs_checkout(name, keytype, component_vcs_mirror, branch)
 
         current_vcs_version = buildutil.get_git_version_describe(component_src)
-        artifact_base['version'] = current_vcs_version
+
+        previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                      'rev-parse', buildname],
+                                                     stderr=open('/dev/null', 'w'),
+                                                     none_on_error=True)
+        if previous_build_version is not None:
+            log("Previous build of '%s' is %s" % (buildname, previous_build_version))
+
+            previous_vcs_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                        'show', '--print-metadata-key=ostbuild-artifact-version',
+                                                        previous_build_version])
+            previous_vcs_version = previous_vcs_version.strip()
+
+            vcs_version_matches = False
+            if previous_vcs_version == current_vcs_version:
+                vcs_version_matches = True
+                log("VCS version is unchanged from '%s'" % (previous_vcs_version, ))
+                if self.buildopts.skip_built:
+                    return False
+            else:
+                log("VCS version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
+        else:
+            log("No previous build for '%s' found" % (buildname, ))
+
+        buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
+
+        artifact_meta = {'buildroot': buildroot_name,
+                         'buildroot-version': buildroot_version,
+                         'name': name,
+                         'branch': branch,
+                         'version': current_vcs_version
+                         }
 
         metadata_dir = os.path.join(self.workdir, 'meta')
         if not os.path.isdir(metadata_dir):
             os.makedirs(metadata_dir)
         metadata_path = os.path.join(metadata_dir, '%s-meta.json' % (name, ))
         f = open(metadata_path, 'w')
-        json.dump(artifact_base, f)
+        json.dump(artifact_meta, f)
         f.close()
-
-        previous_commit_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                       'rev-parse', runtime_branchname],
-                                                      stderr=open('/dev/null', 'w'),
-                                                      none_on_error=True)
-        if previous_commit_version is not None:
-            log("Previous build of '%s' is %s" % (runtime_branchname, previous_commit_version))
-
-            previous_artifact_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                             'show', '--print-metadata-key=ostbuild-artifact-version', previous_commit_version])
-            previous_artifact_version = previous_artifact_version.strip()
-            previous_buildroot_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                              'show', '--print-metadata-key=ostbuild-buildroot-version', previous_commit_version])
-            previous_buildroot_version = previous_buildroot_version.strip()
-
-            previous_artifact_base = dict(artifact_base)
-            previous_artifact_base['version'] = previous_artifact_version
-            previous_artifact_base['buildroot-version'] = previous_buildroot_version
-
-            previous_artifact_runtime = dict(previous_artifact_base)
-            previous_artifact_runtime['type'] = 'runtime'
-            previous_artifact_devel = dict(previous_artifact_base)
-            previous_artifact_devel['type'] = 'devel'
-            previous_artifacts = [previous_artifact_runtime,
-                                  previous_artifact_devel]
-                
-            vcs_version_matches = False
-            if previous_artifact_version == current_vcs_version:
-                vcs_version_matches = True
-                log("VCS version is unchanged from '%s'" % (previous_artifact_version, ))
-                if self.buildopts.skip_built:
-                    return previous_artifacts
-            else:
-                log("VCS version is now '%s', was '%s'" % (current_vcs_version, previous_artifact_version))
-            buildroot_version_matches = False
-            if vcs_version_matches:    
-                buildroot_version_matches = (current_buildroot_version == previous_buildroot_version)
-                if buildroot_version_matches:
-                    log("Already have build '%s' of src commit '%s' for '%s' in buildroot '%s'" % (previous_commit_version, previous_artifact_version, runtime_branchname, buildroot))
-                    return previous_artifacts
-                else:
-                    log("Buildroot is now '%s'" % (current_buildroot_version, ))
-        else:
-            log("No previous build for '%s' found" % (runtime_branchname, ))
 
         patches = meta.get('patches')
         if patches is not None:
@@ -206,48 +218,68 @@ class OstbuildBuild(builtins.Builtin):
             shutil.rmtree(component_resultdir)
         os.makedirs(component_resultdir)
 
-        chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--buildroot=' + buildroot,
-                            '--workdir=' + self.workdir,
-                            '--resultdir=' + component_resultdir,
-                            '--meta=' + metadata_path])
-        global_config_opts = self.manifest.get('config-opts')
-        if global_config_opts is not None:
-            chroot_args.extend(global_config_opts)
-        component_config_opts = meta.get('config-opts')
-        if component_config_opts is not None:
-            chroot_args.extend(component_config_opts)
-        if self.buildopts.shell_on_failure:
-            ecode = run_sync(chroot_args, cwd=component_src, fatal_on_error=False)
-            if ecode != 0:
-                self._launch_debug_shell(architecture, buildroot, cwd=component_src)
+        if self.args.debug_shell:
+            self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
         else:
-            run_sync(chroot_args, cwd=component_src, fatal_on_error=True)
+            chroot_args = self._get_ostbuild_chroot_args(architecture)
+            chroot_args.extend(['--buildroot=' + buildroot_name,
+                                '--workdir=' + self.workdir,
+                                '--resultdir=' + component_resultdir,
+                                '--meta=' + metadata_path])
+            global_config_opts = self.manifest.get('config-opts')
+            if global_config_opts is not None:
+                chroot_args.extend(global_config_opts)
+            component_config_opts = meta.get('config-opts')
+            if component_config_opts is not None:
+                chroot_args.extend(component_config_opts)
+            if self.buildopts.shell_on_failure:
+                ecode = run_sync(chroot_args, cwd=component_src, fatal_on_error=False)
+                if ecode != 0:
+                    self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
+            else:
+                run_sync(chroot_args, cwd=component_src, fatal_on_error=True)
 
-        artifacts = []
-        for artifact_type in ['runtime', 'devel']:
-            artifact = dict(artifact_base)
-            artifacts.append(artifact)
-            artifact['type'] = artifact_type
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],
+                  '--add-metadata-string=ostbuild-buildroot-version=' + buildroot_version,
+                  '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['version'],
+                  '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                  '--skip-if-unchanged'],
+                 cwd=component_resultdir)
+        return True
 
-            artifact_branch = buildutil.branch_name_for_artifact(artifact)
+    def _compose(self, target, artifacts):
+        child_args = ['ostree', '--repo=' + self.repo, 'compose',
+                      '-b', target, '-s', 'Compose']
+        (fd, path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        f = os.fdopen(fd, 'w')
+        for artifact in artifacts:
+            f.write(artifact)
+            f.write('\n')
+        f.close()
+        child_args.extend(['-F', path])
+        revision = run_sync_get_output(child_args, log_initiation=True).strip()
+        os.unlink(path)
+        return revision
 
-            artifact_resultdir = os.path.join(component_resultdir, artifact_branch)
-                                              
-            run_sync(['ostree', '--repo=' + self.repo,
-                      'commit', '-b', artifact_branch, '-s', 'Build ' + artifact_base['version'],
-                     '--add-metadata-string=ostbuild-buildroot-version=' + current_buildroot_version,
-                     '--add-metadata-string=ostbuild-artifact-version=' + artifact_base['version'],
-                     '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
-                     '--skip-if-unchanged'],
-                     cwd=artifact_resultdir)
-        return artifacts
+    def _compose_arch(self, architecture, components):
+        runtime_base = self._get_base('runtime', architecture)
+        devel_base = self._get_base('runtime', architecture)
+        runtime_contents = [runtime_base + ':/']
+        devel_contents = [devel_base + ':/']
 
-    def _compose(self, suffix, artifacts):
-        child_args = ['ostree', '--repo=' + self.repo, 'compose', '--recompose',
-                      '-b', self.manifest['name'] + '-' + suffix, '-s', 'Compose']
-        child_args.extend(artifacts)
-        run_sync(child_args)
+        for component in components:
+            branch = self._get_buildname(component, architecture)
+            runtime_contents.append(branch + ':/runtime')
+            devel_contents.append(branch + ':/runtime')
+            # For now just hardcode docs going in devel
+            devel_contents.append(branch + ':/doc')
+            devel_contents.append(branch + ':/devel')
+
+        self._compose('%s-%s-%s' % (self.manifest['name'], architecture, 'runtime'),
+                      runtime_contents)
+        self._compose('%s-%s-%s' % (self.manifest['name'], architecture, 'devel'),
+                      devel_contents)
     
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
@@ -259,6 +291,7 @@ class OstbuildBuild(builtins.Builtin):
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
+        self.args = args
         
         self.parse_config()
 
@@ -267,11 +300,6 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.skip_built = args.skip_built
 
         self.manifest = json.load(open(args.manifest))
-
-        if args.debug_shell:
-            debug_shell_arch = self.manifest['architectures'][0]
-            debug_shell_buildroot = '%s-%s-devel' % (self.manifest['name'], debug_shell_arch)
-            self._launch_debug_shell(debug_shell_arch, debug_shell_buildroot)
 
         self.manifestdir = os.path.dirname(args.manifest)
 
@@ -293,6 +321,8 @@ class OstbuildBuild(builtins.Builtin):
 
         start_at_index = -1
         if args.start_at is not None:
+            if build_components != self.resolved_components:
+                fatal("Can't specify --start-at with component list")
             for i,component in enumerate(build_components):
                 if component['name'] == args.start_at:
                     start_at_index = i
@@ -301,16 +331,14 @@ class OstbuildBuild(builtins.Builtin):
                 fatal("Unknown component %r specified for --start-at" % (args.start_at, ))
         else:
             start_at_index = 0
-            
+
         for component in build_components[start_at_index:]:
+            index = self.resolved_components.index(component)
+            dependencies = self.resolved_components[:index]
             for architecture in self.manifest['architectures']:
-                (runtime_artifact,devel_artifact) = self._build_one_component(component, architecture)
-                runtime_branch = buildutil.branch_name_for_artifact(runtime_artifact)
-                devel_branch = buildutil.branch_name_for_artifact(devel_artifact)
-    
-                target_component = component.get('component')
-                if target_component != 'devel':
-                    self._compose(architecture + '-runtime', [runtime_branch])
-                self._compose(architecture + '-devel', [runtime_branch, devel_branch])
+                self._build_one_component(component, dependencies, architecture)
+
+        for architecture in self.manifest['architectures']:
+            self._compose_arch(architecture, self.resolved_components)
         
 builtins.register(OstbuildBuild)
