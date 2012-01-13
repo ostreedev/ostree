@@ -17,6 +17,7 @@ RECIPE_PACKAGES = "task-core-boot \
 		   tar \
 		   grep \
 		   gawk \
+		   gzip \
 		   ncurses \
 		   python-modules \
 		   python-misc"
