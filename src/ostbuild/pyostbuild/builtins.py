@@ -31,6 +31,7 @@ class Builtin(object):
     short_description = None
 
     def parse_config(self):
+        self.ostbuildrc = ostbuildrc
         self.repo = ostbuildrc.get_key('repo')
         self.mirrordir = ostbuildrc.get_key('mirrordir')
         if not os.path.isdir(self.mirrordir):

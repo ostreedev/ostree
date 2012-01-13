@@ -67,8 +67,9 @@ def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=Fal
     return None
 
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
-             log_success=True):
-    log("running: %s" % (subprocess.list2cmdline(args),))
+             log_success=True, log_initiation=True):
+    if log_initiation:
+        log("running: %s" % (subprocess.list2cmdline(args),))
     # This dance is necessary because we want to keep the PWD
     # environment variable up to date.  Not doing so is a recipie
     # for triggering edge conditions in pwd lookup.

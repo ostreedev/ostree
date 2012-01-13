@@ -27,6 +27,7 @@ from . import builtin_build
 from . import builtin_chroot_compile_one
 from . import builtin_commit_artifacts
 from . import builtin_compile_one
+from . import builtin_resolve
 
 def usage(ecode):
     print "Builtins:"

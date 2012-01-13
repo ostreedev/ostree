@@ -26,7 +26,9 @@ def branch_name_for_artifact(a):
                                    a['name'],
                                    a['branch'])
 
-def get_git_version_describe(dirpath):
-    version = run_sync_get_output(['git', 'describe', '--long', '--abbrev=42', '--always'],
-                                  cwd=dirpath)
+def get_git_version_describe(dirpath, commit=None):
+    args = ['git', 'describe', '--long', '--abbrev=42', '--always']
+    if commit is not None:
+        args.append(commit)
+    version = run_sync_get_output(args, cwd=dirpath)
     return version.strip()

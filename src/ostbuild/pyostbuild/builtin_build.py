@@ -162,10 +162,7 @@ class OstbuildBuild(builtins.Builtin):
 
         (keytype, uri) = self._parse_src_key(meta['src'])
 
-        component_vcs_mirror = self._ensure_vcs_mirror(name, keytype, uri, branch)
-        component_src = self._get_vcs_checkout(name, keytype, component_vcs_mirror, branch)
-
-        current_vcs_version = buildutil.get_git_version_describe(component_src)
+        current_vcs_version = meta['revision']
 
         previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                       'rev-parse', buildname],
@@ -190,6 +187,9 @@ class OstbuildBuild(builtins.Builtin):
         else:
             log("No previous build for '%s' found" % (buildname, ))
 
+        mirror = os.path.join(self.mirrordir, name)
+        component_src = self._get_vcs_checkout(name, keytype, mirror, branch)
+
         buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
 
         artifact_meta = {'buildroot': buildroot_name,
@@ -210,7 +210,7 @@ class OstbuildBuild(builtins.Builtin):
         patches = meta.get('patches')
         if patches is not None:
             for patch in patches:
-                patch_path = os.path.join(self.manifestdir, patch)
+                patch_path = os.path.join(self.patchdir, patch)
                 run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=component_src)
         
         component_resultdir = os.path.join(self.workdir, 'results', name)
@@ -283,7 +283,6 @@ class OstbuildBuild(builtins.Builtin):
     
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--manifest', required=True)
         parser.add_argument('--skip-built', action='store_true')
         parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
@@ -299,19 +298,19 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.shell_on_failure = args.shell_on_failure
         self.buildopts.skip_built = args.skip_built
 
-        self.manifest = json.load(open(args.manifest))
+        build_manifest_path = os.path.join(self.workdir, 'manifest.json')
+        self.manifest = json.load(open(build_manifest_path))
 
-        self.manifestdir = os.path.dirname(args.manifest)
+        self.patchdir = os.path.join(self.workdir, 'patches')
 
-        self.resolved_components = map(self._resolve_component_meta, self.manifest['components'])
-
+        components = self.manifest['components']
         if len(args.components) == 0:
-            build_components = self.resolved_components
+            build_components = components
         else:
             build_components = []
             for name in args.components:
                 found = False
-                for child in self.resolved_components:
+                for child in components:
                     if child['name'] == name:
                         found = True
                         build_components.append(child)
@@ -321,7 +320,7 @@ class OstbuildBuild(builtins.Builtin):
 
         start_at_index = -1
         if args.start_at is not None:
-            if build_components != self.resolved_components:
+            if build_components != components:
                 fatal("Can't specify --start-at with component list")
             for i,component in enumerate(build_components):
                 if component['name'] == args.start_at:
@@ -333,12 +332,12 @@ class OstbuildBuild(builtins.Builtin):
             start_at_index = 0
 
         for component in build_components[start_at_index:]:
-            index = self.resolved_components.index(component)
-            dependencies = self.resolved_components[:index]
+            index = components.index(component)
+            dependencies = components[:index]
             for architecture in self.manifest['architectures']:
                 self._build_one_component(component, dependencies, architecture)
 
         for architecture in self.manifest['architectures']:
-            self._compose_arch(architecture, self.resolved_components)
+            self._compose_arch(architecture, components)
         
 builtins.register(OstbuildBuild)
