@@ -308,7 +308,7 @@
 
 		{"src": "cgwalters:sqlite-tarballs-as-git"},
 
-		{"src": "git:file:///src/nss-tarballs-as-git"},
+		{"src": "cgwalters:nss-tarballs-as-git"},
 
 		{"src": "git:git://ozlabs.org/~paulus/ppp.git",
 		 "patches": ["ppp-srcdir-builddir.patch", "ppp-destdir.patch"]},
