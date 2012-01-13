@@ -60,7 +60,7 @@ XML_FILES = \
 	${patsubst %.1,%.xml,${patsubst %.3,%.xml,${patsubst %.5,%.xml,${patsubst %.7,%.xml,${patsubst %.8,%.xml,$(MANPAGES)}}}}}
 EXTRA_DIST += $(XML_FILES)
 
-if HAVE_XSLTPROC
+if BUILD_DOCUMENTATION
 
 dist_man_MANS = $(MANPAGES)
 

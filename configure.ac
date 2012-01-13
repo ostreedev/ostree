@@ -30,6 +30,19 @@ LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
+AC_ARG_ENABLE(documentation,
+              AC_HELP_STRING([--enable-documentation],
+                             [build documentation]),,
+              enable_documentation=yes)
+if test x$enable_documentation = xyes; then
+   AC_PATH_PROG([XSLTPROC], [xsltproc])
+   if test x$XSLTPROC = x; then
+      AC_MSG_ERROR([xsltproc is required to build documentation])
+   fi
+fi
+AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
+
+
 AC_ARG_WITH(soup-gnome,
 	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
 	    :, with_soup_gnome=maybe)
@@ -64,9 +77,6 @@ fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 AM_PATH_PYTHON([2.7])
-
-AC_PATH_PROG([XSLTPROC], [xsltproc])
-AM_CONDITIONAL(HAVE_XSLTPROC, test x"$XSLTPROC" != x)
 
 AC_CONFIG_FILES([
 Makefile
