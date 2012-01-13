@@ -22,6 +22,5 @@
 # IfExecutable: pango-querymodules
 # REMatch: /lib.*/pango/.*/modules/.*\.so
 
-OSTREE_ROOT=`pwd`
-DEST=./usr/etc/pango/pango.modules
+DEST=/etc/pango/pango.modules
 pango-querymodules > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}

@@ -93,7 +93,6 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  OstreeCheckout *checkout = NULL;
   char *parent = NULL;
   GFile *destf = NULL;
   GHashTable *seen_branches = NULL;
@@ -286,7 +285,6 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
   if (parent_commit_compose_iter)
     g_variant_iter_free (parent_commit_compose_iter);
   g_clear_object (&repo);
-  g_clear_object (&checkout);
   g_clear_object (&destf);
   g_clear_object (&metadata_f);
   g_clear_object (&mtree);

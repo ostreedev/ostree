@@ -31,7 +31,6 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-local-clone.c \
 	src/ostree/ot-builtin-log.c \
 	src/ostree/ot-builtin-ls.c \
-	src/ostree/ot-builtin-run-triggers.c \
 	src/ostree/ot-builtin-remote.c \
 	src/ostree/ot-builtin-rev-parse.c \
 	src/ostree/ot-builtin-show.c \

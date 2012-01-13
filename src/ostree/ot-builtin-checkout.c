@@ -40,7 +40,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  OstreeCheckout *checkout = NULL;
   const char *commit;
   const char *destination;
   GFile *destf = NULL;
@@ -79,7 +78,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  g_clear_object (&checkout);
   g_clear_object (&destf);
   return ret;
 }

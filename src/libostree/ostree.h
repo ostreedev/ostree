@@ -24,7 +24,6 @@
 
 #include <ostree-core.h>
 #include <ostree-repo.h>
-#include <ostree-checkout.h>
 #include <ostree-mutable-tree.h>
 #include <ostree-repo-file.h>
 

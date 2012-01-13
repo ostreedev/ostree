@@ -47,7 +47,6 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
-  OstreeCheckout *checkout = NULL;
   const char *op;
   GKeyFile *config = NULL;
 
@@ -99,6 +98,5 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
   if (config)
     g_key_file_free (config);
   g_clear_object (&repo);
-  g_clear_object (&checkout);
   return ret;
 }
