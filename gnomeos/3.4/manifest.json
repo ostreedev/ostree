@@ -16,6 +16,25 @@
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
+		{"src": "savannah:attr",
+		 "branch": "v2.4.46",
+		 "patches": ["attr-add-autogen.patch",
+		             "attr-no-builddir.patch",
+			     "attr-2.4.32-build.patch",
+			     "attr-makeinstall.patch"]},
+
+		{"src": "savannah:acl",
+		 "branch": "v2.2.51",
+		 "patches": ["acl-add-autogen.patch",
+			     "acl-no-builddir.patch",
+			     "acl-2.2.39-build.patch",
+		 	     "attr-makeinstall.patch"]},
+
+   		{"src": "gnome:linux-user-chroot"},
+
+		{"src": "gnome:ostree",
+		 "config-opts": ["--disable-documentation"]},
+
    		{"src": "gnome:gtk-doc-stub",
 		 "component": "devel"},
 
@@ -26,8 +45,6 @@
 		{"src": "git:git://github.com/atgreen/libffi.git"},
 
 		{"src": "gnome:glib"},
-
-   		{"src": "gnome:linux-user-chroot"},
 
    		{"src": "fd:pixman"},
 

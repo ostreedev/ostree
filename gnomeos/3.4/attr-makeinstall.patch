@@ -1,0 +1,28 @@
+From eaea8d256aecd395a46594b291dbfc2172e0ac45 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 13 Jan 2012 15:35:00 -0500
+Subject: [PATCH] build: make install install everything
+
+The make install-dev target is nice, but it'd be better eventually to
+convert this to Automake after we land patches to do
+buildapi-install-devel.
+---
+ Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 8a9e777..6bf2365 100644
+--- a/Makefile
++++ b/Makefile
+@@ -81,7 +81,7 @@ include/config.h: include/builddefs
+ 		$(MAKE) $(AM_MAKEFLAGS) include/builddefs; \
+ 	fi
+ 
+-install: default $(addsuffix -install,$(SUBDIRS))
++install: default install-dev install-lib $(addsuffix -install,$(SUBDIRS))
+ 	$(INSTALL) -m 755 -d $(PKG_DOC_DIR)
+ 	$(INSTALL) -m 644 README $(PKG_DOC_DIR)
+ 
+-- 
+1.7.6.4
+

@@ -1,0 +1,55 @@
+From 8ef45b305b45ed22d7508046344bce53a84323ea Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 13 Jan 2012 11:04:34 -0500
+Subject: [PATCH] autogen.sh: Add developer bootstrap script
+
+This gives us a standard way to build from git.  Move the relevant
+code out of the Makefile.
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ Makefile   |   10 +---------
+ autogen.sh |    9 +++++++++
+ 2 files changed, 10 insertions(+), 9 deletions(-)
+ create mode 100755 autogen.sh
+
+diff --git a/Makefile b/Makefile
+index 080daba..8a9e777 100644
+--- a/Makefile
++++ b/Makefile
+@@ -58,16 +58,8 @@ else
+ clean:	# if configure hasn't run, nothing to clean
+ endif
+ 
+-# Recent versions of libtool require the -i option for copying auxiliary
+-# files (config.sub, config.guess, install-sh, ltmain.sh), while older
+-# versions will copy those files anyway, and don't understand -i.
+-LIBTOOLIZE_INSTALL = `libtoolize -n -i >/dev/null 2>/dev/null && echo -i`
+-
+ configure include/builddefs:
+-	libtoolize -c $(LIBTOOLIZE_INSTALL) -f
+-	cp include/install-sh .
+-	aclocal -I m4
+-	autoconf
++	./autogen.sh
+ 	./configure \
+ 		--prefix=/ \
+ 		--exec-prefix=/ \
+diff --git a/autogen.sh b/autogen.sh
+new file mode 100755
+index 0000000..58fa0d6
+--- /dev/null
++++ b/autogen.sh
+@@ -0,0 +1,9 @@
++#!/bin/sh
++# Recent versions of libtool require the -i option for copying auxiliary
++# files (config.sub, config.guess, install-sh, ltmain.sh), while older
++# versions will copy those files anyway, and don't understand -i.
++libtoolize_install=`libtoolize -n -i >/dev/null 2>/dev/null && echo -i`
++libtoolize -c ${libtoolize_install}
++cp include/install-sh .
++aclocal -I m4
++autoconf
+-- 
+1.7.6.4
+
