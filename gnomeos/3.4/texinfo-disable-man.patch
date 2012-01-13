@@ -1,3 +1,21 @@
+Upstream-Status: Rejected
+
+From: karl@freefriends.org (Karl Berry)
+To: walters@verbum.org
+Cc: bug-texinfo@gnu.org
+Subject: Re: [PATCH] build: Add --disable-man-pages option
+In-Reply-To: <1326151868.18105.29.camel@lenny>
+X-Truedomain-Domain: freefriends.org
+X-Truedomain-SPF: No Record
+X-Truedomain-DKIM: No Signature
+X-Truedomain-ID: 879931C0FCAE2AC999DC38484F93ACA5
+X-Truedomain: Neutral
+Mime-Version: 1.0
+
+Sorry, I'm not inclined to complicate my configure script with an option
+that I can't plausibly document in order to placate your build system.
+Presumably you can install the patch as part of your build.
+
 From 2fc37f3c696d7ffa9a3dbf6c6f5e1b10f81753a8 Mon Sep 17 00:00:00 2001
 From: Colin Walters <walters@verbum.org>
 Date: Mon, 9 Jan 2012 13:13:57 -0500
