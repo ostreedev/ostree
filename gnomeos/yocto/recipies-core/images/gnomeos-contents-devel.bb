@@ -12,8 +12,10 @@ RECIPE_PACKAGES += "task-core-sdk \
 		bison flex \
 		git \
 		libxml-parser-perl \
+		gettext-dev \
 		"
 
 IMAGE_INSTALL += "libuuid-dev \
 		  libblkid-dev \
+		  libpam-dev \
 		  "
