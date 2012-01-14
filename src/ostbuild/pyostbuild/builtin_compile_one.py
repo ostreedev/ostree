@@ -161,7 +161,10 @@ class OstbuildCompileOne(builtins.Builtin):
         args.extend(self.configargs)
         run_sync(args, cwd=builddir)
 
-        makefile_path = os.path.join(builddir, 'Makefile')
+        if use_builddir:
+            makefile_path = os.path.join(builddir, 'Makefile')
+        else:
+            makefile_path = 'Makefile'
         if not os.path.exists(makefile_path):
             fatal("No Makefile found")
 
