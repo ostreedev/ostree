@@ -9,6 +9,7 @@
                 "fd": "git:git://anongit.freedesktop.org/git/",
                 "fd-dbus": "git:git://anongit.freedesktop.org/git/dbus/",
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
+                "fd-mesa": "git:git://anongit.freedesktop.org/git/mesa/",
                 "fedora": "git:git://git.fedorahosted.org/",
                 "savannah": "git:git://git.savannah.gnu.org/",
                 "debian": "git:git://anonscm.debian.org/",
@@ -255,6 +256,9 @@
 		{"src": "fd:xorg/lib/libXxf86vm",
 		 "patches": ["xorg-libXxf86vm-autogen.patch"]},
 
+		{"src": "fd:xorg/lib/libXdamage",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd:xorg/lib/libxkbfile",
 		 "patches": ["xorg-autogen.patch"]},
 
@@ -315,6 +319,36 @@
 				 "--disable-tests"],
                  "patches": ["dbus-xmlto-docs.patch"]},
 
+		{"src": "fd:xorg/util/makedepend",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/lib/libpciaccess",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd-mesa:drm",
+		 "config-opts": ["--enable-nouveau-experimental-api"]},
+
+		{"src": "fd-mesa:mesa",
+		 "config-opts": ["--disable-asm",
+		 		 "--disable-glw",
+		                 "--disable-glut",
+				 "--enable-gl-osmesa",
+				 "--with-driver=dri",
+				 "--with-osmesa-bits=8",
+				 "--with-dri-driverdir=/usr/lib/dri",
+				 "--enable-egl",
+				 "--enable-gles1",
+				 "--enable-gles2",
+				 "--disable-gallium-egl",
+				 "--disable-gallium-llvm",
+                                 "--with-gallium-drivers=swrast"],
+	         "patches": ["mesa-no-builddir.patch",
+		             "mesa-minstall-pwd.patch"]},
+
+		{"src": "fd:xorg/xserver",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd-dbus:dbus-glib",
 		 "config-opts": ["--disable-gtk-doc"]},
 
@@ -345,6 +379,25 @@
 		                 "--with-dhclient=yes",
 				 "--with-crypto=nss",
 				 "--with-docs=no"],
-		 "patches": ["NetworkManager-config.patch"]}
+		 "patches": ["NetworkManager-config.patch"]},
+		 
+		{"src": "fd:ConsoleKit",
+		 "patches": ["ConsoleKit-builddir.patch"]},
+
+		{"src": "fd:PolicyKit",
+		 "config-opts": ["--disable-man-pages"]},
+
+		{"src": "git:git://git.0pointer.de/libatasmart.git",
+		 "patches": ["libatasmart-autogen.patch"]},
+
+		{"src": "fd:udisks",
+		 "config-opts": ["--disable-documentation"],
+		 "patches": ["udisks-autogen-no-gtk-doc.patch",
+		             "udisks-no-builddir.patch",
+			     "udisks-build-without-docs.patch"]},
+
+	        {"src": "fd:upower",
+		 "config-opts": ["--disable-man-pages"],
+		 "patches": ["upower-no-builddir.patch"]}
 	]
 }

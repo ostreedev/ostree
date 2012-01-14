@@ -1,0 +1,26 @@
+From 66f7851e8864f12409a1b1c22759c74773dde432 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sat, 14 Jan 2012 15:25:27 -0500
+Subject: [PATCH] autogen.sh: Don't pass --enable-gtk-doc automatically
+
+This conflicts with jhbuild where we do want to disable gtk-doc
+for speed, and it conflicts with the GNOME Build API because
+we want the meta-build configuration to set this, not the autogen.sh
+script.
+---
+ autogen.sh |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 7688f86..7fddf46 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -17,4 +17,4 @@ which gnome-autogen.sh || {
+     exit 1
+ }
+ 
+-. gnome-autogen.sh --enable-gtk-doc $*
++. gnome-autogen.sh "$*"
+-- 
+1.7.6.4
+

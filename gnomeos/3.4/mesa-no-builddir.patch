@@ -1,0 +1,26 @@
+From 2a51740f99f9c0e97abab461154203fc22931b3c Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sat, 14 Jan 2012 09:16:20 -0500
+Subject: [PATCH] build: Note that we don't support srcdir != builddir
+
+---
+ configure.ac |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 7c50e3c..8a47911 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -18,6 +18,9 @@ AC_CONFIG_AUX_DIR([bin])
+ AC_CANONICAL_HOST
+ AM_INIT_AUTOMAKE([foreign])
+ 
++dnl http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ dnl Save user CFLAGS and CXXFLAGS so one can override the default ones
+ USER_CFLAGS="$CFLAGS"
+ USER_CXXFLAGS="$CXXFLAGS"
+-- 
+1.7.6.4
+
