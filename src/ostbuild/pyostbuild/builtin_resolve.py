@@ -44,9 +44,6 @@ class OstbuildResolve(builtins.Builtin):
         if not os.path.isdir(mirror):
             run_sync(['git', 'clone', '--mirror', uri, tmp_mirror])
             os.rename(tmp_mirror, mirror)
-        elif self.args.fetch:
-            log("Running git fetch for %s" % (name, ))
-            run_sync(['git', 'fetch'], cwd=mirror, log_initiation=False)
         return mirror
 
     def _parse_src_key(self, srckey):
@@ -94,6 +91,7 @@ class OstbuildResolve(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--fetch', action='store_true')
+        parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
         self.args = args
@@ -104,7 +102,6 @@ class OstbuildResolve(builtins.Builtin):
         self.manifest = json.load(open(manifest_path))
 
         self.resolved_components = map(self._resolve_component_meta, self.manifest['components'])
-
         for component in self.resolved_components:
             (keytype, uri) = self._parse_src_key(component['src'])
             mirrordir = self._ensure_vcs_mirror(component['name'],
@@ -113,6 +110,25 @@ class OstbuildResolve(builtins.Builtin):
             revision = buildutil.get_git_version_describe(mirrordir,
                                                           component['branch'])
             component['revision'] = revision
+
+        if args.fetch:
+            if len(args.components) == 0:
+                fetch_components = map(lambda x: x['name'], self.resolved_components)
+            else:
+                fetch_components = args.components
+            for component_name in fetch_components:
+                found = False
+                for component in self.resolved_components:
+                    if component['name'] == component_name:
+                        found = True
+                        break
+                if not found:
+                    fatal("Unknown component %r" % (component_name, ))
+                mirrordir = self._ensure_vcs_mirror(component['name'],
+                                                    keytype, uri,
+                                                    component['branch'])
+                log("Running git fetch for %s" % (component['name'], ))
+                run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
 
         self.manifest['components'] = self.resolved_components
 
