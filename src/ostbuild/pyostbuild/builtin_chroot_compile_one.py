@@ -21,19 +21,9 @@ import argparse
 import json
 
 from . import builtins
+from . import buildutil
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync
-
-BUILD_ENV = {
-    'HOME' : '/', 
-    'HOSTNAME' : 'ostbuild',
-    'LANG': 'C',
-    'PATH' : '/usr/bin:/bin:/usr/sbin:/sbin',
-    'SHELL' : '/bin/bash',
-    'TERM' : 'vt100',
-    'TMPDIR' : '/tmp',
-    'TZ': 'EST5EDT'
-    }
 
 class OstbuildChrootCompileOne(builtins.Builtin):
     name = "chroot-compile-one"
@@ -95,6 +85,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                 shutil.rmtree(rootdir_tmp)
             child_args = ['ostree', '--repo=' + args.repo, 'checkout', '-U', rev, rootdir_tmp]
             run_sync(child_args)
+            child_args = ['ostbuild', 'chroot-run-triggers', rootdir_tmp]
+            run_sync(child_args)
             builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
             os.mkdir(builddir_tmp)
             os.mkdir(os.path.join(builddir_tmp, 'source'))
@@ -113,18 +105,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         output_metadata.close()
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', self.metadata['name'])
-        
-        # We need to search PATH here manually so we correctly pick up an
-        # ostree install in e.g. ~/bin even though we're going to set PATH
-        # below for our children inside the chroot.
-        ostbuild_user_chroot_path = None
-        for dirname in os.environ['PATH'].split(':'):
-            path = os.path.join(dirname, 'linux-user-chroot')
-            if os.access(path, os.X_OK):
-                ostbuild_user_chroot_path = path
-                break
-        if ostbuild_user_chroot_path is None:
-            ostbuild_user_chroot_path = 'linux-user-chroot'
+
+        ostbuild_user_chroot_path = buildutil.find_user_chroot_path()
         
         child_args = [ostbuild_user_chroot_path, '--unshare-pid', '--unshare-net', '--unshare-ipc',
                       '--mount-readonly', '/',
@@ -143,7 +125,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                                '--ostbuild-resultdir=/ostbuild/results',
                                '--ostbuild-meta=_ostbuild-meta'])
             child_args.extend(rest_args)
-        env_copy = dict(BUILD_ENV)
+        env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
         run_sync(child_args, env=env_copy, keep_stdin=args.debug_shell)
         

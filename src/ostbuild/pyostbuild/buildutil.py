@@ -15,11 +15,35 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+import os
 import re
 
 from .subprocess_helpers import run_sync_get_output
 
-ARTIFACT_RE = re.compile(r'^artifact-([^,]+),([^,]+),([^,]+),([^,]+),(.+)-((?:runtime)|(?:devel))\.tar$')
+BUILD_ENV = {
+    'HOME' : '/', 
+    'HOSTNAME' : 'ostbuild',
+    'LANG': 'C',
+    'PATH' : '/usr/bin:/bin:/usr/sbin:/sbin',
+    'SHELL' : '/bin/bash',
+    'TERM' : 'vt100',
+    'TMPDIR' : '/tmp',
+    'TZ': 'EST5EDT'
+    }
+
+def find_user_chroot_path():
+    # We need to search PATH here manually so we correctly pick up an
+    # ostree install in e.g. ~/bin even though we're going to set PATH
+    # below for our children inside the chroot.
+    ostbuild_user_chroot_path = None
+    for dirname in os.environ['PATH'].split(':'):
+        path = os.path.join(dirname, 'linux-user-chroot')
+        if os.access(path, os.X_OK):
+            ostbuild_user_chroot_path = path
+            break
+    if ostbuild_user_chroot_path is None:
+        ostbuild_user_chroot_path = 'linux-user-chroot'
+    return ostbuild_user_chroot_path
 
 def branch_name_for_artifact(a):
     return 'artifacts/%s/%s/%s' % (a['buildroot'],

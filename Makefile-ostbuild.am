@@ -25,6 +25,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_autodiscover_meta.py	\
 	src/ostbuild/pyostbuild/builtin_build.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
+	src/ostbuild/pyostbuild/builtin_chroot_run_triggers.py	\
 	src/ostbuild/pyostbuild/builtin_commit_artifacts.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
