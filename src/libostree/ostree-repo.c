@@ -756,6 +756,39 @@ stage_object_impl (OstreeRepo         *self,
                    GError            **error);
 
 static gboolean
+insert_into_transaction (OstreeRepo        *self,
+                         const char        *checksum,
+                         OstreeObjectType   objtype,
+                         GFile             *tempfile_path,
+                         GError           **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  char *key;
+
+  key = create_checksum_and_objtype (checksum, objtype);
+
+  if (g_hash_table_lookup (priv->pending_transaction_tmpfiles, key))
+    {
+      if (unlink (ot_gfile_get_path_cached (tempfile_path)) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      g_free (key);
+    }
+  else
+    {
+      g_hash_table_insert (priv->pending_transaction_tmpfiles,
+                           key, g_strdup (ot_gfile_get_basename_cached (tempfile_path)));
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
                                          GFileInfo          *file_info,
                                          GVariant           *xattrs,
@@ -828,12 +861,13 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
   else
     actual_checksum = g_checksum_get_string (ret_checksum);
 
-  g_hash_table_insert (priv->pending_transaction_tmpfiles,
-                       create_checksum_and_objtype (actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT),
-                       g_strdup (ot_gfile_get_basename_cached (content_temp_file)));
-  g_hash_table_insert (priv->pending_transaction_tmpfiles,
-                       create_checksum_and_objtype (actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META),
-                       g_strdup (ot_gfile_get_basename_cached (meta_temp_file)));
+  if (!insert_into_transaction (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
+                                content_temp_file, error))
+    goto out;
+
+  if (!insert_into_transaction (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                meta_temp_file, error))
+    goto out;
 
   ret = TRUE;
   ot_transfer_out_value (out_checksum, &ret_checksum);
@@ -910,7 +944,7 @@ stage_object_impl (OstreeRepo         *self,
       else 
         {
           if (!ostree_create_temp_file_from_input (priv->transaction_dir,
-                                                   "store-tmp-", NULL,
+                                                   ostree_object_type_to_string (objtype), NULL,
                                                    file_info, xattrs, input,
                                                    objtype,
                                                    &temp_file,
@@ -933,9 +967,9 @@ stage_object_impl (OstreeRepo         *self,
                 }
             }
           
-          g_hash_table_insert (priv->pending_transaction_tmpfiles,
-                               create_checksum_and_objtype (actual_checksum, objtype),
-                               g_strdup (ot_gfile_get_basename_cached (temp_file)));
+          if (!insert_into_transaction (self, actual_checksum, objtype, 
+                                        temp_file, error))
+            goto out;
           g_clear_object (&temp_file);
         }
     }

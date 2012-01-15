@@ -887,7 +887,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
       g_free (possible_name);
       possible_name = subst_xxxxxx (tmp_name->str);
       g_clear_object (&possible_file);
-      possible_file = ot_gfile_new_for_path (possible_name);
+      possible_file = g_file_get_child (dir, possible_name);
       
       if (!ostree_create_file_from_input (possible_file, finfo, xattrs, input,
                                           objtype,
