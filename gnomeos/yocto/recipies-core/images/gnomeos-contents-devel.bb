@@ -18,4 +18,12 @@ RECIPE_PACKAGES += "task-core-sdk \
 IMAGE_INSTALL += "libuuid-dev \
 		  libblkid-dev \
 		  libpam-dev \
+		  libtiff-dev \
+		  libjpeg-dev \
+		  libltdl-dev \
+		  libsndfile-dev \
+		  libatomics-ops-dev \
+		  libogg-dev \
+		  speex-dev \
+		  libvorbis-dev \
 		  "

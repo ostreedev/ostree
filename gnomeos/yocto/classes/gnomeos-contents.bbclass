@@ -7,7 +7,16 @@ LIC_FILES_CHKSUM = "file://${COREBASE}/LICENSE;md5=3f40d7994397109285ec7b81fdeb3
 
 inherit rootfs_${IMAGE_PKGTYPE}
 
-IMAGE_INSTALL = "libuuid1 libblkid1"
+IMAGE_INSTALL = "libuuid1 \
+	         libblkid1 \
+		 libtiff3 \
+		 libjpeg8 \
+		 libltdl7 \
+		 libsndfile1 \
+		 libogg0 \
+		 speex \
+		 libvorbis \
+		 "
 
 RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
