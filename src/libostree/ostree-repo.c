@@ -31,6 +31,9 @@
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #ifdef HAVE_LIBARCHIVE
 #include <archive.h>
 #include <archive_entry.h>
@@ -60,6 +63,7 @@ struct _OstreeRepoPrivate {
 
   gboolean inited;
   gboolean in_transaction;
+  GFile *transaction_dir;
 
   GKeyFile *config;
   OstreeRepoMode mode;
@@ -79,6 +83,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&priv->remote_heads_dir);
   g_clear_object (&priv->objects_dir);
   g_clear_object (&priv->config_file);
+  g_clear_object (&priv->transaction_dir);
   g_hash_table_destroy (priv->pending_transaction_tmpfiles);
   if (priv->config)
     g_key_file_free (priv->config);
@@ -778,7 +783,7 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
                                              g_variant_get_size (serialized),
                                              NULL);
 
-  if (!ostree_create_temp_file_from_input (priv->tmp_dir,
+  if (!ostree_create_temp_file_from_input (priv->transaction_dir,
                                            "archive-tmp-", NULL,
                                            NULL, NULL, mem,
                                            OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
@@ -788,7 +793,7 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
     goto out;
 
   temp_info = dup_file_info_owned_by_me (file_info);
-  if (!ostree_create_temp_file_from_input (priv->tmp_dir,
+  if (!ostree_create_temp_file_from_input (priv->transaction_dir,
                                            "archive-tmp-", NULL,
                                            temp_info, NULL, input,
                                            OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
@@ -904,7 +909,7 @@ stage_object_impl (OstreeRepo         *self,
         }
       else 
         {
-          if (!ostree_create_temp_file_from_input (priv->tmp_dir,
+          if (!ostree_create_temp_file_from_input (priv->transaction_dir,
                                                    "store-tmp-", NULL,
                                                    file_info, xattrs, input,
                                                    objtype,
@@ -989,13 +994,33 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  GCancellable   *cancellable,
                                  GError        **error)
 {
+  gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GString *tmpdir = NULL;
+
+  tmpdir = g_string_new ("");
   
   g_return_val_if_fail (priv->in_transaction == FALSE, FALSE);
 
   priv->in_transaction = TRUE;
+  g_clear_object (&priv->transaction_dir);
+  g_string_append (tmpdir, ot_gfile_get_path_cached (priv->tmp_dir));
+  g_string_append_c (tmpdir, '/');
+  g_string_append_printf (tmpdir, "trans-%lu.XXXXXX",
+                          (gulong)getpid ());
+  if (!mkdtemp (tmpdir->str))
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
 
-  return TRUE;
+  priv->transaction_dir = ot_gfile_new_for_path (tmpdir->str);
+
+  ret = TRUE;
+ out:
+  if (tmpdir)
+    g_string_free (tmpdir, TRUE);
+  return ret;
 }
 
 gboolean      
@@ -1011,8 +1036,6 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
   char *checksum = NULL;
 
   g_return_val_if_fail (priv->in_transaction == TRUE, FALSE);
-
-  priv->in_transaction = FALSE;
 
   g_hash_table_iter_init (&iter, priv->pending_transaction_tmpfiles);
   while (g_hash_table_iter_next (&iter, &key, &value))
@@ -1030,7 +1053,7 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
       objtype = ostree_object_type_from_string (type_str + 1);
 
       g_clear_object (&f);
-      f = g_file_get_child (priv->tmp_dir, filename);
+      f = g_file_get_child (priv->transaction_dir, filename);
       
       if (!commit_staged_file (self, f, checksum, objtype, cancellable, error))
         goto out;
@@ -1038,6 +1061,10 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
 
   ret = TRUE;
  out:
+  (void) rmdir (ot_gfile_get_path_cached (priv->transaction_dir));
+  priv->in_transaction = FALSE;
+  g_clear_object (&priv->transaction_dir);
+
   g_free (checksum);
   g_hash_table_remove_all (priv->pending_transaction_tmpfiles);
   g_clear_object (&f);
@@ -1057,18 +1084,20 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 
   g_return_val_if_fail (priv->in_transaction == TRUE, FALSE);
 
-  priv->in_transaction = FALSE;
-
   g_hash_table_iter_init (&iter, priv->pending_transaction_tmpfiles);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
       const char *filename = value;
 
       g_clear_object (&f);
-      f = g_file_get_child (priv->tmp_dir, filename);
+      f = g_file_get_child (priv->transaction_dir, filename);
       
       (void) unlink (ot_gfile_get_path_cached (f));
     }
+
+  priv->in_transaction = FALSE;
+  (void) rmdir (ot_gfile_get_path_cached (priv->transaction_dir));
+  g_clear_object (&priv->transaction_dir);
 
   ret = TRUE;
   g_hash_table_remove_all (priv->pending_transaction_tmpfiles);
@@ -1128,7 +1157,7 @@ ostree_repo_load_variant (OstreeRepo  *self,
   pending_key = create_checksum_and_objtype (sha256, expected_type);
   if ((pending_tmpfile = g_hash_table_lookup (priv->pending_transaction_tmpfiles, pending_key)) != NULL)
     {
-      tmpfile = g_file_get_child (priv->tmp_dir, pending_tmpfile);
+      tmpfile = g_file_get_child (priv->transaction_dir, pending_tmpfile);
       if (!ostree_map_metadata_file (tmpfile, expected_type, &ret_variant, error))
         goto out;
     }
