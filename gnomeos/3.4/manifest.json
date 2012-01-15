@@ -10,6 +10,8 @@
                 "fd-dbus": "git:git://anongit.freedesktop.org/git/dbus/",
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fd-mesa": "git:git://anongit.freedesktop.org/git/mesa/",
+                "fd-pulse": "git:git://anongit.freedesktop.org/git/pulseaudio/",
+                "0pointer": "git:git://git.0pointer.de/",
                 "fedora": "git:git://git.fedorahosted.org/",
                 "savannah": "git:git://git.savannah.gnu.org/",
                 "debian": "git:git://anonscm.debian.org/",
@@ -17,6 +19,13 @@
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
+   		{"src": "gnome:gtk-doc-stub",
+		 "component": "devel"},
+
+		{"src": "git:git://github.com/atgreen/libffi.git"},
+
+		{"src": "gnome:glib"},
+
 		{"src": "savannah:attr",
 		 "branch": "v2.4.46",
 		 "patches": ["attr-add-autogen.patch",
@@ -36,16 +45,9 @@
 		{"src": "gnome:ostree",
 		 "config-opts": ["--disable-documentation"]},
 
-   		{"src": "gnome:gtk-doc-stub",
-		 "component": "devel"},
-
 		{"src": "gnome:libxml2"},
 
 		{"src": "gnome:libxslt"},
-
-		{"src": "git:git://github.com/atgreen/libffi.git"},
-
-		{"src": "gnome:glib"},
 
    		{"src": "fd:pixman"},
 
@@ -387,7 +389,7 @@
 		{"src": "fd:PolicyKit",
 		 "config-opts": ["--disable-man-pages"]},
 
-		{"src": "git:git://git.0pointer.de/libatasmart.git",
+		{"src": "0pointer:libatasmart.git",
 		 "patches": ["libatasmart-autogen.patch"]},
 
 		{"src": "fd:udisks",
@@ -398,6 +400,47 @@
 
 	        {"src": "fd:upower",
 		 "config-opts": ["--disable-man-pages"],
-		 "patches": ["upower-no-builddir.patch"]}
+		 "patches": ["upower-no-builddir.patch"]},
+
+		{"src": "gnome:gnome-doc-utils",
+		 "config-opts": ["--disable-scrollkeeper",
+		                 "--disable-documentation"],
+                 "patches": ["gnome-doc-utils-no-docs.patch"]},
+
+		{"src": "gnome:gconf",
+		 "config-opts": ["--disable-orbit",
+		                 "--disable-gtk",
+				 "--disable-documentation"]},
+
+		{"src": "gnome:pango",
+		 "patches": ["pango-querymodules-system.patch"]},
+
+		{"src": "gnome:atk"},
+
+		{"src": "gnome:gdk-pixbuf"},
+
+		{"src": "gnome:gtk+",
+		 "name": "gtk2",
+		 "branch": "gtk-2-24"},
+
+		{"src": "gnome:gtk+",
+		 "name": "gtk3",
+		 "branch": "3b6665aad2c895fc8bc308fc47628001bbc0b401"},
+
+		{"src": "fd:accountsservice"},
+
+		{"src": "fd-pulse:pulseaudio",
+		 "branch": "v0.9.23",
+		 "config-opts": ["--disable-openssl"],
+		 "patches": ["pulseaudio-autogen.patch"]},
+
+		{"src": "0pointer:libcanberra",
+		 "patches": ["libcanberra-autogen.patch",
+		             "libcanberra-no-lynx.patch"]},
+
+		{"src": "gnome:gdm",
+		 "config-opts": ["--disable-documentation"],
+		 "patches": ["gdm-disable-documentation.patch"]}
+
 	]
 }

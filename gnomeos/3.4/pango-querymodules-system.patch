@@ -1,0 +1,149 @@
+From 54798de50d8dca0f6834ffb9796fe47c5e04f31e Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 15 Jan 2012 09:43:59 -0500
+Subject: [PATCH] querymodules: Add --system argument
+
+When run as a system trigger, we really don't want to be consulting
+e.g. /root/.pangorc.  Also, the OSTree build system can run as
+non-root, but we don't in this case want to look at /home/user since
+the user may not even exist in the password database inside the
+chroot.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=667960
+---
+ pango/pango-utils.c  |   67 +++++++++++++++++++++++++++++++++++++++----------
+ pango/querymodules.c |    9 ++++++-
+ 2 files changed, 61 insertions(+), 15 deletions(-)
+
+diff --git a/pango/pango-utils.c b/pango/pango-utils.c
+index 44ec353..8177dab 100644
+--- a/pango/pango-utils.c
++++ b/pango/pango-utils.c
+@@ -532,6 +532,7 @@ pango_scan_int (const char **pos, int *out)
+ }
+ 
+ static GHashTable *config_hash = NULL;
++static gboolean did_read_user_config = FALSE;
+ 
+ static void
+ read_config_file (const char *filename, gboolean enoent_error)
+@@ -604,23 +605,41 @@ read_config_file (const char *filename, gboolean enoent_error)
+ }
+ 
+ static void
+-read_config (void)
++ensure_config_hash (void)
+ {
+   if (!config_hash)
+-    {
+-      char *filename;
+-      const char *home;
+-      const char *envvar;
+-
+-      config_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
+-					   (GDestroyNotify)g_free,
+-					   (GDestroyNotify)g_free);
+-      filename = g_build_filename (pango_get_sysconf_subdirectory (),
+-				   "pangorc",
+-				   NULL);
+-      read_config_file (filename, FALSE);
+-      g_free (filename);
++    config_hash = g_hash_table_new_full (g_str_hash, g_str_equal,
++					 (GDestroyNotify)g_free,
++					 (GDestroyNotify)g_free);
++}
++
++static void
++read_config_system (void)
++{
++  char *filename;
++
++  ensure_config_hash ();
++
++  filename = g_build_filename (pango_get_sysconf_subdirectory (),
++			       "pangorc",
++			       NULL);
++  read_config_file (filename, FALSE);
++  g_free (filename);
++}
++
++static void
++read_config (void)
++{
++  char *filename;
++  const char *home;
++  const char *envvar;
+ 
++  read_config_system ();
++
++  if (!did_read_user_config)
++    {
++      did_read_user_config = TRUE;
++  
+       home = g_get_home_dir ();
+       if (home && *home)
+ 	{
+@@ -636,6 +655,26 @@ read_config (void)
+ }
+ 
+ /**
++ * pango_config_key_get_system:
++ * @key: Key to look up, in the form "SECTION/KEY".
++ *
++ * Looks up a key, consulting only the Pango system config database
++ * in $sysconfdir/pango/pangorc.
++ *
++ * Return value: the value, if found, otherwise %NULL. The value is a
++ * newly-allocated string and must be freed with g_free().
++ **/
++char *
++pango_config_key_get_system (const char *key)
++{
++  g_return_val_if_fail (key != NULL, NULL);
++
++  read_config_system ();
++
++  return g_strdup (g_hash_table_lookup (config_hash, key));
++}
++
++/**
+  * pango_config_key_get:
+  * @key: Key to look up, in the form "SECTION/KEY".
+  *
+diff --git a/pango/querymodules.c b/pango/querymodules.c
+index ef2d09a..a1eec70 100644
+--- a/pango/querymodules.c
++++ b/pango/querymodules.c
+@@ -44,6 +44,8 @@
+ #endif
+ #define SOEXT_LEN ((int) strlen (SOEXT))
+ 
++static gboolean system_mode;
++
+ static gboolean
+ string_needs_escape (const char *str)
+ {
+@@ -205,6 +207,8 @@ main (int argc, char **argv)
+     {
+       {"version",	0, G_OPTION_FLAG_NO_ARG, G_OPTION_ARG_CALLBACK, &show_version,
+        "Show version numbers",                                             NULL},
++      {"system",	0, 0, G_OPTION_ARG_NONE, &system_mode,
++       "Do not load configuration from home directory", NULL},
+       {NULL}
+     };
+ 
+@@ -237,7 +241,10 @@ main (int argc, char **argv)
+       char **dirs;
+       int i;
+ 
+-      path = pango_config_key_get ("Pango/ModulesPath");
++      if (system_mode)
++	path = pango_config_key_get_system ("Pango/ModulesPath");
++      else
++	path = pango_config_key_get ("Pango/ModulesPath");
+       if (!path)
+ 	path = g_build_filename (pango_get_lib_subdirectory (),
+ 				 MODULE_VERSION,
+-- 
+1.7.6.4
+

@@ -23,4 +23,4 @@
 # REMatch: /lib.*/pango/.*/modules/.*\.so
 
 DEST=/etc/pango/pango.modules
-pango-querymodules > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}
+pango-querymodules --system > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}

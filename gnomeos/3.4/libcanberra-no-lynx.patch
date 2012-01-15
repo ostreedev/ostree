@@ -1,0 +1,61 @@
+From eea817d6dc89b1dfcf144c3a247a62da6be97a1c Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 15 Jan 2012 16:35:43 -0500
+Subject: [PATCH] build: Fix build with no lynx installed
+
+---
+ Makefile.am     |    8 +++++++-
+ doc/Makefile.am |    3 ++-
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index ffa7265..794fe10 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -16,7 +16,11 @@
+ # License along with libcanberra. If not, see
+ # <http://www.gnu.org/licenses/>.
+ 
+-dist_doc_DATA = README
++dist_doc_DATA =
++
++if USE_LYNX
++dist_doc_DATA += README
++endif
+ 
+ EXTRA_DIST = \
+ 	bootstrap.sh \
+@@ -29,7 +33,9 @@ EXTRA_DIST = \
+ SUBDIRS = src gtkdoc doc
+ 
+ MAINTAINERCLEANFILES = README
++if USE_LYNX
+ noinst_DATA = README
++endif
+ 
+ pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = libcanberra.pc
+diff --git a/doc/Makefile.am b/doc/Makefile.am
+index fae9958..cb27f22 100644
+--- a/doc/Makefile.am
++++ b/doc/Makefile.am
+@@ -16,7 +16,7 @@
+ # License along with libcanberra. If not, see
+ # <http://www.gnu.org/licenses/>.
+ 
+-noinst_DATA = README.html README
++noinst_DATA = README.html
+ EXTRA_DIST = $(noinst_DATA) style.css README.html.in
+ 
+ MAINTAINERCLEANFILES = README.html
+@@ -26,6 +26,7 @@ if USE_LYNX
+ README: README.html
+ 	$(AM_V_GEN)lynx --dump $^ | sed 's,file://localhost/.*/doc/README.html,README,' > $@
+ 
++noinst_DATA += README
+ CLEANFILES += README
+ endif
+ 
+-- 
+1.7.6.4
+

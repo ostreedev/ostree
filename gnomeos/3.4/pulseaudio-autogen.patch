@@ -1,0 +1,25 @@
+From 2be8c8bd092a0ee0f0354547f250c2ffd1edcae2 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 15 Jan 2012 15:14:18 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE=1
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 4051a22..2fff570 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -20,4 +20,6 @@
+ 
+ NOCONFIGURE=1 ./bootstrap.sh
+ 
+-exec ./configure  "$@"
++if test -z "$NOCONFIGURE"; then
++    exec ./configure  "$@"
++fi
+-- 
+1.7.6.4
+
