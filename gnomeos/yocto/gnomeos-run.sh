@@ -47,7 +47,7 @@ BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 OBJ=gnomeos-fs.img
 if (! test -f ${OBJ}); then
     rm -f ${OBJ}.tmp
-    qemu-img create ${OBJ}.tmp 2G
+    qemu-img create ${OBJ}.tmp 6G
     mkfs.ext3 -q -F ${OBJ}.tmp
     mv ${OBJ}.tmp ${OBJ}
 fi
