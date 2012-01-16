@@ -197,8 +197,8 @@ class OstbuildCompileOne(builtins.Builtin):
     
         runtime_path = os.path.join(self.ostbuild_resultdir, 'runtime')
         devel_path = os.path.join(self.ostbuild_resultdir, 'devel')
-        docs_path = os.path.join(self.ostbuild_resultdir, 'docs')
-        for artifact_type in ['runtime', 'devel', 'docs']:
+        doc_path = os.path.join(self.ostbuild_resultdir, 'doc')
+        for artifact_type in ['runtime', 'devel', 'doc']:
             resultdir = os.path.join(self.ostbuild_resultdir, artifact_type)
             if os.path.isdir(resultdir):
                 shutil.rmtree(resultdir)
@@ -231,7 +231,7 @@ class OstbuildCompileOne(builtins.Builtin):
         for dirname in _DOC_DIRS:
             dirpath = os.path.join(tempdir, dirname)
             if os.path.isdir(dirpath):
-                dest = os.path.join(docs_path, dirname)
+                dest = os.path.join(doc_path, dirname)
                 self._install_and_unlink(dirpath, dest)
     
         for filename in os.listdir(tempdir):
