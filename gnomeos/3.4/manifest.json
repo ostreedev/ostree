@@ -351,6 +351,14 @@
 		{"src": "fd:xorg/xserver",
 		 "patches": ["xorg-autogen.patch"]},
 
+		{"src": "fd:xorg/driver/xf86-video-cirrus",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/driver/xf86-video-intel"},
+
+		{"src": "fd:xorg/driver/xf86-video-vesa",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd-dbus:dbus-glib",
 		 "config-opts": ["--disable-gtk-doc"]},
 
