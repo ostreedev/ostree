@@ -75,8 +75,11 @@ add_branch (OstreeRepo          *repo,
 
   if (!ostree_repo_stage_directory_to_mtree (repo, subdir, mtree, NULL,
                                              NULL, error))
-    goto out;
-  
+    {
+      g_prefix_error (error, "Error composing %s: ", branch_path);
+      goto out;
+    }  
+
   if (metadata_builder)
     g_variant_builder_add (metadata_builder, "(ss)", branch_path, branch_rev);
 
