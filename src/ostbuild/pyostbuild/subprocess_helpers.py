@@ -132,7 +132,7 @@ def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
             logfn = fatal
         else:
             logfn = log
-        log("pid %d exited with code %d" % (pid, estatus))
+        logfn("pid %d exited with code %d" % (pid, estatus))
         loop.quit()
     loop.watch_pid(proc.pid, _on_pid_exited)
     loop.run()
