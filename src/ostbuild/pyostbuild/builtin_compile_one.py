@@ -30,24 +30,15 @@ from .subprocess_helpers import run_sync
 
 PREFIX = '/usr'
 
-_BLACKLIST_REGEXPS = map(re.compile, 
-                         [r'.*\.la$',
-                          ])
+_DOC_DIRS = ['usr/share/doc',
+             'usr/share/gtk-doc',
+             'usr/share/man',
+             'usr/share/info']
 
-_RUNTIME_DIRS = ['/etc']
-
-_DOC_DIRS = ['/usr/share/doc',
-             '/usr/share/gtk-doc',
-             '/usr/share/man',
-             '/usr/share/info']
-
-_DEVEL_DIRS = ['/usr/include',
-               '/usr/share/aclocal',
-               '/usr/share/pkgconfig',
-               '/usr/lib/pkgconfig']
-
-_DEVEL_REGEXPS = map(re.compile,
-                     [r'/(?:usr/)lib/[^/]+\.(?:so|a)$'])
+_DEVEL_DIRS = ['usr/include',
+               'usr/share/aclocal',
+               'usr/share/pkgconfig',
+               'usr/lib/pkgconfig']
 
 class OstbuildCompileOne(builtins.Builtin):
     name = "compile-one"
@@ -207,66 +198,49 @@ class OstbuildCompileOne(builtins.Builtin):
         args = ['make', 'install', 'DESTDIR=' + tempdir]
         run_sync(args, cwd=builddir)
     
-        devel_files = set()
-        doc_files = set()
-        runtime_files = set()
-    
-        oldpwd=os.getcwd()
-        os.chdir(tempdir)
-        for root, dirs, files in os.walk('.'):
-            deleted_dirs = set() 
-            for dirname in dirs:
-                path = os.path.join(root, dirname)
-                subpath = path[1:]
-                matched = False
-                for runtime_name in _RUNTIME_DIRS:
-                    if subpath.startswith(runtime_name):
-                        runtime_files.add(path)
-                        matched = True
-                        break
-                if not matched:
-                    for devel_name in _DEVEL_DIRS:
-                        if subpath.startswith(devel_name):
-                            devel_files.add(path)
-                            matched = True
-                            break
-                if not matched:
-                    for doc_name in _DOC_DIRS:
-                        if subpath.startswith(doc_name):
-                            doc_files.add(path)
-                            matched = True
-                            break
-                if matched:
-                    deleted_dirs.add(dirname)
-            for dirname in deleted_dirs:
-                dirs.remove(dirname)
-    
-            for filename in files:
-                path = os.path.join(root, filename)
-    
-                blacklisted = False
-                for r in _BLACKLIST_REGEXPS:
-                    if r.match(path):
-                        blacklisted = True
-                        break
-    
-                if blacklisted:
-                    continue
+        runtime_path = os.path.join(self.ostbuild_resultdir, 'runtime')
+        devel_path = os.path.join(self.ostbuild_resultdir, 'devel')
+        docs_path = os.path.join(self.ostbuild_resultdir, 'docs')
+        for artifact_type in ['runtime', 'devel', 'docs']:
+            resultdir = os.path.join(self.ostbuild_resultdir, artifact_type)
+            if os.path.isdir(resultdir):
+                shutil.rmtree(resultdir)
+            os.makedirs(resultdir)
 
-                matched = False
-                for r in _DEVEL_REGEXPS:
-                    if not r.match(path[1:]):
-                        continue
-                    devel_files.add(path)
-                    matched = True
-                    break
-                if not matched:    
-                    runtime_files.add(path)
-        os.chdir(oldpwd)
+        # Move symbolic links for shared libraries as well
+        # as static libraries.  And delete all .la files.
+        for libdirname in ['lib', 'usr/lib']:
+            path = os.path.join(tempdir, libdirname)
+            if not os.path.isdir(path):
+                continue
+            for filename in os.listdir(path):
+                subpath = os.path.join(path, filename)
+                if filename.endswith('.la'):
+                    os.unlink(subpath)
+                    continue
+                if not ((filename.endswith('.so')
+                         and os.path.islink(filename))
+                        or filename.endswith('.a')):
+                    continue
+                dest = os.path.join(devel_path, libdirname, filename)
+                self._install_and_unlink(subpath, dest)
+
+        for dirname in _DEVEL_DIRS:
+            dirpath = os.path.join(tempdir, dirname)
+            if os.path.isdir(dirpath):
+                dest = os.path.join(devel_path, dirname)
+                self._install_and_unlink(dirpath, dest)
+
+        for dirname in _DOC_DIRS:
+            dirpath = os.path.join(tempdir, dirname)
+            if os.path.isdir(dirpath):
+                dest = os.path.join(docs_path, dirname)
+                self._install_and_unlink(dirpath, dest)
     
-        self.make_artifact('devel', devel_files, tempdir=tempdir)
-        self.make_artifact('doc', doc_files, tempdir=tempdir)
-        self.make_artifact('runtime', runtime_files, tempdir=tempdir)
+        for filename in os.listdir(tempdir):
+            src_path = os.path.join(tempdir, filename)
+            dest_path = os.path.join(runtime_path, filename)
+            self._install_and_unlink(src_path, dest_path)
 
         for tmpname in self.tempfiles:
             assert os.path.isabs(tmpname)
@@ -278,9 +252,11 @@ class OstbuildCompileOne(builtins.Builtin):
                 except OSError, e:
                     pass
 
-    def _rename_or_copy(self, src, dest):
+    def _install_and_unlink(self, src, dest):
         statsrc = os.lstat(src)
-        statdest = os.lstat(os.path.dirname(dest))
+        dirname = os.path.dirname(dest)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
 
         if stat.S_ISDIR(statsrc.st_mode):
             if not os.path.isdir(dest):
@@ -289,7 +265,8 @@ class OstbuildCompileOne(builtins.Builtin):
                 src_child = os.path.join(src, filename)
                 dest_child = os.path.join(dest, filename)
 
-                self._rename_or_copy(src_child, dest_child)
+                self._install_and_unlink(src_child, dest_child)
+            os.rmdir(src)
         else:
             try:
                 os.rename(src, dest)
@@ -299,25 +276,6 @@ class OstbuildCompileOne(builtins.Builtin):
                     os.symlink(linkto, dest)
                 else:
                     shutil.copy2(src, dest)
-    
-    def make_artifact(self, dirtype, from_files, tempdir):
-        resultdir = os.path.join(self.ostbuild_resultdir, dirtype)
-        if os.path.isdir(resultdir):
-            shutil.rmtree(resultdir)
-        os.makedirs(resultdir)
-                                 
-        for filename in from_files:
-            if filename.startswith('./'):
-                filename = filename[2:]
-            src_path = os.path.join(tempdir, filename)
-            dest_path = os.path.join(resultdir, filename)
-            dest_dir = os.path.dirname(dest_path)
-            if not os.path.isdir(dest_dir):
-                os.makedirs(dest_dir)
-            try:
-                self._rename_or_copy(src_path, dest_path)
-            except OSError, e:
-                fatal("Failed to copy %r to %r: %d %s" % (src_path, dest_path, e.errno, e.strerror))
-        log("created: %s" % (os.path.abspath (resultdir), ))
+                os.unlink(src)
     
 builtins.register(OstbuildCompileOne)
