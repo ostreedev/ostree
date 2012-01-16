@@ -94,7 +94,7 @@ EOF
 
 	TOPROOT_BIND_MOUNTS="home root tmp"
 	OSTREE_BIND_MOUNTS="var"
-	OSDIRS="dev proc mnt media sys sysroot"
+	OSDIRS="dev proc mnt media run sys sysroot"
 	READONLY_BIND_MOUNTS="bin etc lib sbin usr"
 	
 	rm -rf ${WORKDIR}/gnomeos-contents
