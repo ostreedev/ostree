@@ -102,14 +102,6 @@ class OstbuildResolve(builtins.Builtin):
         self.manifest = json.load(open(manifest_path))
 
         self.resolved_components = map(self._resolve_component_meta, self.manifest['components'])
-        for component in self.resolved_components:
-            (keytype, uri) = self._parse_src_key(component['src'])
-            mirrordir = self._ensure_vcs_mirror(component['name'],
-                                                keytype, uri,
-                                                component['branch'])
-            revision = buildutil.get_git_version_describe(mirrordir,
-                                                          component['branch'])
-            component['revision'] = revision
 
         if args.fetch:
             if len(args.components) == 0:
@@ -124,11 +116,21 @@ class OstbuildResolve(builtins.Builtin):
                         break
                 if not found:
                     fatal("Unknown component %r" % (component_name, ))
+                (keytype, uri) = self._parse_src_key(component['src'])
                 mirrordir = self._ensure_vcs_mirror(component['name'],
                                                     keytype, uri,
                                                     component['branch'])
                 log("Running git fetch for %s" % (component['name'], ))
                 run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
+
+        for component in self.resolved_components:
+            (keytype, uri) = self._parse_src_key(component['src'])
+            mirrordir = self._ensure_vcs_mirror(component['name'],
+                                                keytype, uri,
+                                                component['branch'])
+            revision = buildutil.get_git_version_describe(mirrordir,
+                                                          component['branch'])
+            component['revision'] = revision
 
         self.manifest['components'] = self.resolved_components
 
