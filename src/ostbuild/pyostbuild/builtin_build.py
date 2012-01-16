@@ -17,12 +17,14 @@
 
 import os,sys,subprocess,tempfile,re,shutil
 import argparse
+import time
 import json
 from StringIO import StringIO
 
 from . import builtins
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
+from .subprocess_helpers import run_sync_monitor_log_file
 from . import ostbuildrc
 from . import buildutil
 from . import kvfile
@@ -37,17 +39,6 @@ class OstbuildBuild(builtins.Builtin):
 
     def __init__(self):
         builtins.Builtin.__init__(self)
-
-    def _ensure_vcs_mirror(self, name, keytype, uri, branch):
-        assert keytype == 'git'
-        mirror = os.path.join(self.mirrordir, name)
-        tmp_mirror = mirror + '.tmp'
-        if os.path.isdir(tmp_mirror):
-            shutil.rmtree(tmp_mirror)
-        if not os.path.isdir(mirror):
-            run_sync(['git', 'clone', '--mirror', uri, tmp_mirror])
-            os.rename(tmp_mirror, mirror)
-        return mirror
 
     def _get_vcs_checkout(self, name, keytype, mirrordir, branch):
         checkoutdir = os.path.join(self.workdir, 'src')
@@ -218,9 +209,23 @@ class OstbuildBuild(builtins.Builtin):
             shutil.rmtree(component_resultdir)
         os.makedirs(component_resultdir)
 
+        logdir = os.path.join(self.workdir, 'logs', 'compile', name)
+        old_logdir = os.path.join(self.workdir, 'old-logs', 'compile', name)
+        if not os.path.isdir(logdir):
+            os.makedirs(logdir)
+        if not os.path.isdir(old_logdir):
+            os.makedirs(old_logdir)
+        log_path = os.path.join(logdir, '%s.log' % (name, ))
+        if os.path.isfile(log_path):
+            curtime = int(time.time())
+            saved_name = '%s-%d.log' % (name, int(time.time()),)
+            os.rename(log_path, os.path.join(old_logdir, saved_name))
+
         if self.args.debug_shell:
             self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
         else:
+            log("Logging to %s" % (log_path, ))
+            f = open(log_path, 'w')
             chroot_args = self._get_ostbuild_chroot_args(architecture)
             chroot_args.extend(['--buildroot=' + buildroot_name,
                                 '--workdir=' + self.workdir,
@@ -233,11 +238,11 @@ class OstbuildBuild(builtins.Builtin):
             if component_config_opts is not None:
                 chroot_args.extend(component_config_opts)
             if self.buildopts.shell_on_failure:
-                ecode = run_sync(chroot_args, cwd=component_src, fatal_on_error=False)
+                ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
                 if ecode != 0:
                     self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
             else:
-                run_sync(chroot_args, cwd=component_src, fatal_on_error=True)
+                run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
         run_sync(['ostree', '--repo=' + self.repo,
                   'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],

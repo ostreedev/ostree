@@ -22,6 +22,8 @@ import sys
 import subprocess
 
 from .ostbuildlog import log, fatal
+from .warningfilter import WarningFilter
+from .mainloop import Mainloop
 
 def _get_env_for_cwd(cwd=None, env=None):
     # This dance is necessary because we want to keep the PWD
@@ -40,7 +42,7 @@ def _get_env_for_cwd(cwd=None, env=None):
         env_copy = env
     return env_copy
 
-def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=False,
+def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none_on_error=False,
                         log_success=False, log_initiation=False):
     if log_initiation:
         log("running: %s" % (subprocess.list2cmdline(args),))
@@ -67,31 +69,32 @@ def run_sync_get_output(args, cwd=None, env=None, stderr=None, none_on_error=Fal
     return None
 
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
-             log_success=True, log_initiation=True):
+             log_success=True, log_initiation=True, stdout=None,
+             stderr=None):
     if log_initiation:
         log("running: %s" % (subprocess.list2cmdline(args),))
-    # This dance is necessary because we want to keep the PWD
-    # environment variable up to date.  Not doing so is a recipie
-    # for triggering edge conditions in pwd lookup.
-    if (cwd is not None) and (env is None or ('PWD' in env)):
-        if env is None:
-            env_copy = os.environ.copy()
-        else:
-            env_copy = env.copy()
-        if ('PWD' in env_copy) and (not cwd.startswith('/')):
-            env_copy['PWD'] = os.path.join(env_copy['PWD'], cwd)
-        else:
-            env_copy['PWD'] = cwd
-    else:
-        env_copy = env
+
+    env_copy = _get_env_for_cwd(cwd, env)
+
     if keep_stdin:
-        target_stdin = sys.stdin
+        stdin_target = sys.stdin
     else:
-        target_stdin = open('/dev/null', 'r')
-    proc = subprocess.Popen(args, stdin=target_stdin, stdout=sys.stdout, stderr=sys.stderr,
+        stdin_target = open('/dev/null', 'r')
+
+    if stdout is None:
+        stdout_target = sys.stdout
+    else:
+        stdout_target = stdout
+
+    if stderr is None:
+        stderr_target = sys.stderr
+    else:
+        stderr_target = stderr
+
+    proc = subprocess.Popen(args, stdin=stdin_target, stdout=stdout_target, stderr=stderr_target,
                             close_fds=True, cwd=cwd, env=env_copy)
     if not keep_stdin:
-        target_stdin.close()
+        stdin_target.close()
     returncode = proc.wait()
     if fatal_on_error and returncode != 0:
         logfn = fatal
@@ -102,3 +105,35 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
     if logfn is not None:
         logfn("pid %d exited with code %d" % (proc.pid, returncode))
     return returncode
+
+def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
+                              fatal_on_error=True, log_initiation=True):
+    if log_initiation:
+        log("running: %s" % (subprocess.list2cmdline(args),))
+
+    env_copy = _get_env_for_cwd(cwd, env)
+
+    logfile_f = open(logfile, 'w')
+
+    proc = subprocess.Popen(args, stdin=open('/dev/null', 'r'),
+                            stdout=logfile_f,
+                            stderr=subprocess.STDOUT,
+                            close_fds=True, cwd=cwd, env=env_copy)
+    warnfilter = WarningFilter(logfile, sys.stdout)
+
+    warnfilter.start()
+    
+    loop = Mainloop.get(None)
+
+    def _on_pid_exited(pid, estatus):
+        failed = estatus != 0
+        warnfilter.finish(not failed)
+        if fatal_on_error and failed:
+            logfn = fatal
+        else:
+            logfn = log
+        log("pid %d exited with code %d" % (pid, estatus))
+        loop.quit()
+    loop.watch_pid(proc.pid, _on_pid_exited)
+    loop.run()
+    return proc.returncode
