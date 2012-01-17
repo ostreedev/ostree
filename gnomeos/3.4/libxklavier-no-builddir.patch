@@ -1,0 +1,26 @@
+From cba6ce13bead45ab2df5012da584a26b5a58a563 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 16 Jan 2012 19:16:19 -0500
+Subject: [PATCH] build: Note that we don't support srcdir != builddir
+
+---
+ configure.ac |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 4beff28..a903256 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -13,6 +13,9 @@ AC_CONFIG_AUX_DIR([build-aux])
+ AM_INIT_AUTOMAKE([1.10 dist-bzip2 -Wno-portability])
+ AM_MAINTAINER_MODE([enable])
+ 
++dnl http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ # Support silent build rules, requires at least automake-1.11. Disable
+ # by either passing --disable-silent-rules to configure or passing V=1
+ # to make
+-- 
+1.7.6.4
+

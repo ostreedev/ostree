@@ -1,0 +1,27 @@
+From 7f4b51e6900c65771b335ee3d713523dfebb5a6d Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 16 Jan 2012 19:04:39 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE=1
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 1733313..ad12d9c 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -8,5 +8,7 @@ cd $srcdir
+ aclocal
+ autoconf
+ automake --add-missing --foreign --copy
+-cd $topdir
+-$srcdir/configure $@
++if test -z "$NOCONFIGURE"; then
++    cd $topdir
++    $srcdir/configure "$@"
++fi
+-- 
+1.7.6.4
+

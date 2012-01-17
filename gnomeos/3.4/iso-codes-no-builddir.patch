@@ -1,0 +1,26 @@
+From 813b8a0e83be08491d2ca6231cfefe976d942107 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 16 Jan 2012 19:13:36 -0500
+Subject: [PATCH] configure: Specify no build directory
+
+---
+ configure.ac |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 05a44a6..75a0c64 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -19,6 +19,9 @@ AC_INIT([iso-codes],[3.26])
+ AM_INIT_AUTOMAKE([dist-bzip2 no-dist-gzip foreign])
+ AM_MAINTAINER_MODE
+ 
++dnl http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ AC_SUBST([ACLOCAL_AMFLAGS], ["\${ACLOCAL_FLAGS}"])
+ 
+ AC_PROG_INSTALL
+-- 
+1.7.6.4
+

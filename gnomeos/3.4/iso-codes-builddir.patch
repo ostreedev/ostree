@@ -1,0 +1,81 @@
+From aa3a12c9d88e97f579f749f9f2f941d344399c7f Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 16 Jan 2012 19:08:29 -0500
+Subject: [PATCH] build: Fix srcdir != builddir
+
+---
+ iso_15924/Makefile.am  |    2 +-
+ iso_3166/Makefile.am   |    2 +-
+ iso_3166_2/Makefile.am |    2 +-
+ iso_4217/Makefile.am   |    2 +-
+ iso_639_3/Makefile.am  |    2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/iso_15924/Makefile.am b/iso_15924/Makefile.am
+index ae40422..da56abf 100644
+--- a/iso_15924/Makefile.am
++++ b/iso_15924/Makefile.am
+@@ -9,7 +9,7 @@ mofiles = $(patsubst $(srcdir)/%.po,%.mo, $(pofiles))
+ noinst_DATA = $(mofiles) $(xml_DATA:.xml=.pot) 
+ 
+ iso_15924.pot: iso_15924.xml
+-	../iso2pot.py --is-version ${VERSION}  --comments alpha_4_code \
++	$(top_srcdir)/iso2pot.py --is-version ${VERSION}  --comments alpha_4_code \
+ 		--fields name  --outfile $@ $<
+ 
+ EXTRA_DIST = \
+diff --git a/iso_3166/Makefile.am b/iso_3166/Makefile.am
+index 6ffe6cb..a623090 100644
+--- a/iso_3166/Makefile.am
++++ b/iso_3166/Makefile.am
+@@ -9,7 +9,7 @@ mofiles = $(patsubst $(srcdir)/%.po,%.mo, $(pofiles))
+ noinst_DATA = $(mofiles) $(xml_DATA:.xml=.pot)
+ 
+ iso_3166.pot: iso_3166.xml
+-	../iso2pot.py --is-version $(VERSION) --comments alpha_3_code \
++	$(top_srcdir)/iso2pot.py --is-version $(VERSION) --comments alpha_3_code \
+ 		--fields name,names,official_name,common_name --outfile $@ $<
+ 
+ EXTRA_DIST = \
+diff --git a/iso_3166_2/Makefile.am b/iso_3166_2/Makefile.am
+index 42ebb30..ddb01bc 100644
+--- a/iso_3166_2/Makefile.am
++++ b/iso_3166_2/Makefile.am
+@@ -9,7 +9,7 @@ mofiles = $(patsubst $(srcdir)/%.po,%.mo, $(pofiles))
+ noinst_DATA = $(mofiles) $(xml_DATA:.xml=.pot) 
+ 
+ iso_3166_2.pot: iso_3166_2.xml
+-	../iso2pot.py --is-version ${VERSION} --comment code \
++	$(top_srcdir)/iso2pot.py --is-version ${VERSION} --comment code \
+ 		--fields name --outfile $@ $< 
+ 
+ EXTRA_DIST = \
+diff --git a/iso_4217/Makefile.am b/iso_4217/Makefile.am
+index cf6ac04..1d7c680 100644
+--- a/iso_4217/Makefile.am
++++ b/iso_4217/Makefile.am
+@@ -9,7 +9,7 @@ mofiles = $(patsubst $(srcdir)/%.po,%.mo, $(pofiles))
+ noinst_DATA = $(mofiles) $(xml_DATA:.xml=.pot) 
+ 
+ iso_4217.pot: iso_4217.xml
+-	../iso2pot.py --is-version ${VERSION}  --comments letter_code \
++	$(top_srcdir)/iso2pot.py --is-version ${VERSION}  --comments letter_code \
+ 		--fields currency_name  --outfile $@ $< 
+ 
+ EXTRA_DIST = \
+diff --git a/iso_639_3/Makefile.am b/iso_639_3/Makefile.am
+index 5dbe2c6..d517ba2 100644
+--- a/iso_639_3/Makefile.am
++++ b/iso_639_3/Makefile.am
+@@ -9,7 +9,7 @@ mofiles = $(patsubst $(srcdir)/%.po,%.mo, $(pofiles))
+ noinst_DATA = $(mofiles) $(xml_DATA:.xml=.pot) 
+ 
+ iso_639_3.pot: iso_639_3.xml
+-	../iso2pot.py --is-version ${VERSION} --comment id \
++	$(top_srcdir)/iso2pot.py --is-version ${VERSION} --comment id \
+ 		--fields name --outfile $@ $< 
+ 
+ EXTRA_DIST = \
+-- 
+1.7.6.4
+

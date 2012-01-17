@@ -11,7 +11,9 @@
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fd-mesa": "git:git://anongit.freedesktop.org/git/mesa/",
                 "fd-pulse": "git:git://anongit.freedesktop.org/git/pulseaudio/",
+                "fd-p11": "git:git://anongit.freedesktop.org/git/p11-glue/",
                 "0pointer": "git:git://git.0pointer.de/",
+                "linuxwacom": "git:git://linuxwacom.git.sourceforge.net/gitroot/linuxwacom/",
                 "fedora": "git:git://git.fedorahosted.org/",
                 "savannah": "git:git://git.savannah.gnu.org/",
                 "debian": "git:git://anonscm.debian.org/",
@@ -41,6 +43,8 @@
 		 	     "attr-makeinstall.patch"]},
 
    		{"src": "gnome:linux-user-chroot"},
+
+   		{"src": "gnome:ostree-init"},
 
 		{"src": "gnome:ostree",
 		 "config-opts": ["--disable-documentation"]},
@@ -261,6 +265,9 @@
 		{"src": "fd:xorg/lib/libXdamage",
 		 "patches": ["xorg-autogen.patch"]},
 
+		{"src": "fd:xorg/lib/libXcomposite",
+		 "patches": ["xorg-autogen.patch"]},
+
 		{"src": "fd:xorg/lib/libxkbfile",
 		 "patches": ["xorg-autogen.patch"]},
 
@@ -318,7 +325,8 @@
 		                 "--enable-inotify",
 				 "--disable-xml-docs",
 				 "--disable-doxygen-docs",
-				 "--disable-tests"],
+				 "--disable-tests",
+				 "--with-system-pid-file=/run/dbus.pid"],
                  "patches": ["dbus-xmlto-docs.patch"]},
 
 		{"src": "fd:xorg/util/makedepend",
@@ -347,6 +355,15 @@
                                  "--with-gallium-drivers=swrast"],
 	         "patches": ["mesa-no-builddir.patch",
 		             "mesa-minstall-pwd.patch"]},
+
+		{"src": "fd:xorg/app/xkbcomp",
+		 "patches": ["xkbcomp-autogen.patch"]},
+
+		{"src": "fd:xorg/app/xrandr",
+		 "patches": ["xkbcomp-autogen.patch"]},
+
+		{"src": "fd:xkeyboard-config",
+		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/xserver",
 		 "patches": ["xorg-autogen.patch"]},
@@ -435,7 +452,34 @@
 		 "name": "gtk3",
 		 "branch": "3b6665aad2c895fc8bc308fc47628001bbc0b401"},
 
-		{"src": "fd:accountsservice"},
+		{"src": "fd-p11:p11-kit"},
+
+		{"src": "gnome:gcr"},
+
+		{"src": "gnome:json-glib"},
+
+		{"src": "gnome:libcroco",
+		 "branch": "0.6.3"},
+
+		{"src": "gnome:librsvg",
+		 "config-opts": ["--disable-gtk-theme"]},
+
+		{"src": "gnome:cogl"},
+
+		{"src": "gnome:clutter"},
+
+		{"src": "gnome:libnotify"},
+
+		{"src": "cgwalters:iso-codes",
+		 "rm-configure": true,
+		 "patches": ["iso-codes-autogen.patch",
+		             "iso-codes-no-builddir.patch",
+		             "iso-codes-builddir.patch"]},
+
+		{"src": "fd:libxklavier",
+		 "config-opts": ["--disable-introspection"]},
+
+		{"src": "gnome:libgnomekbd"},
 
 		{"src": "fd-pulse:pulseaudio",
 		 "branch": "v0.9.23",
@@ -446,9 +490,50 @@
 		 "patches": ["libcanberra-autogen.patch",
 		             "libcanberra-no-lynx.patch"]},
 
+		{"src": "gnome:gsettings-desktop-schemas"},
+
+		{"src": "gnome:gnome-session"},
+
+		{"src": "gnome:gnome-desktop",
+		 "config-opts": ["--disable-desktop-docs"]},
+
+		{"src": "git:git://github.com/mm2/Little-CMS.git",
+		 "branch": "lcms2.3"},
+
+		{"src": "git:git://gitorious.org/colord/master.git",
+		 "name": "colord"},
+
+		{"src": "linuxwacom:libwacom",
+		 "patches": ["libwacom-autogen.patch"]},
+
+		{"src": "gnome:gnome-settings-daemon",
+		 "config-opts": ["--disable-packagekit",
+		                 "--disable-cups"]},
+
+		{"src": "gnome:gnome-themes-standard"},
+
+		{"src": "gnome:gvfs"},
+
+		{"src": "gnome:gnome-screensaver"},
+
+		{"src": "gnome:gnome-menus"},
+
+		{"src": "git:git://git.webkit.org/WebKit.git"},
+
+		{"src": "gnome:gnome-online-accounts"},
+
+		{"src": "gnome:gnome-bluetooth"},
+
+		{"src": "gnome:mutter"},
+
+		{"src": "gnome:gjs"},
+
+		{"src": "gnome:gnome-shell"},
+
+		{"src": "fd:accountsservice"},
+
 		{"src": "gnome:gdm",
 		 "config-opts": ["--disable-documentation"],
 		 "patches": ["gdm-disable-documentation.patch"]}
-
 	]
 }
