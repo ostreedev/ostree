@@ -3,6 +3,7 @@
 start()
 {
 	echo -n "Starting dbus daemon: "
+	mkdir -p /var/run/dbus
 	/usr/bin/dbus-daemon --system
 }
 

@@ -26,4 +26,12 @@ IMAGE_INSTALL += "libuuid-dev \
 		  libogg-dev \
 		  speex-dev \
 		  libvorbis-dev \
+		  libstdc++-dev \
+		  libcap-dev \
+		  libcap-bin \
+		  libgpg-error-dev \
+		  libtasn1-dev \
+		  libtasn1-bin \
+		  libgcrypt-dev \
+		  libgnutls-dev \
 		  "

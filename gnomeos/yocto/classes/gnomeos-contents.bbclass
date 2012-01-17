@@ -16,11 +16,13 @@ IMAGE_INSTALL = "libuuid1 \
 		 libogg0 \
 		 speex \
 		 libvorbis \
+                 libstdc++6 \
+                 libgnutls26 \
 		 "
 
 RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
-		   ostree ostree-init \
+		   ostree \
 		   strace \
 		   bash \
 		   tar \
