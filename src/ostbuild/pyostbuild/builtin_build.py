@@ -181,6 +181,11 @@ class OstbuildBuild(builtins.Builtin):
         mirror = os.path.join(self.mirrordir, name)
         component_src = self._get_vcs_checkout(name, keytype, mirror, branch)
 
+        if meta.get('rm-configure', False):
+            configure_path = os.path.join(component_src, 'configure')
+            if os.path.exists(configure_path):
+                os.unlink(configure_path)
+
         buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
 
         artifact_meta = {'buildroot': buildroot_name,
