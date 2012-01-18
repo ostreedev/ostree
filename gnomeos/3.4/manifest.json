@@ -12,6 +12,7 @@
                 "fd-mesa": "git:git://anongit.freedesktop.org/git/mesa/",
                 "fd-pulse": "git:git://anongit.freedesktop.org/git/pulseaudio/",
                 "fd-p11": "git:git://anongit.freedesktop.org/git/p11-glue/",
+                "fd-gstreamer": "git:git://anongit.freedesktop.org/gstreamer/",
                 "0pointer": "git:git://git.0pointer.de/",
                 "linuxwacom": "git:git://linuxwacom.git.sourceforge.net/gitroot/linuxwacom/",
                 "fedora": "git:git://git.fedorahosted.org/",
@@ -518,7 +519,36 @@
 
 		{"src": "gnome:gnome-menus"},
 
-		{"src": "git:git://git.webkit.org/WebKit.git"},
+		{"src": "gnome:libgnome-keyring"},
+
+		{"src": "git:git://pkgs.fedoraproject.org/ca-certificates.git",
+		 "branch": "8c27f267a89811f60b0cb442f637a01b2978e2c2",
+		 "patches": ["ca-certs-build.patch"]},
+
+		{"src": "gnome:glib-networking"},
+
+		{"src": "gnome:libsoup",
+		 "config-args": ["--disable-tls-check"]},
+
+		{"src": "fd-gstreamer:gstreamer",
+		 "config-args": ["--disable-tests"],
+		 "branch": "RELEASE-0.11.1"},
+
+		{"src": "fd-gstreamer:gst-plugins-base",
+		 "config-args": ["--with-gtk=3.0",
+		                 "--disable-tests",
+				 "--disable-gnome_vfs"],
+		 "branch": "RELEASE-0.11.1",
+		 "patches": ["gst-plugins-base-no-builddir.patch"]},
+
+		{"src": "fd-gstreamer:gst-plugins-good",
+		 "config-args": ["--with-gtk=3.0",
+		                 "--disable-tests",
+				 "--disable-examples"],
+		 "branch": "RELEASE-0.10.30"},
+
+		{"src": "git:git://git.webkit.org/WebKit.git",
+		 "branch": "4e276ff268f3f3e97abb97f8e5a8cf6d8d97d2db"},
 
 		{"src": "gnome:gnome-online-accounts"},
 
@@ -534,6 +564,9 @@
 
 		{"src": "gnome:gdm",
 		 "config-opts": ["--disable-documentation"],
-		 "patches": ["gdm-disable-documentation.patch"]}
+		 "patches": ["gdm-disable-documentation.patch"]},
+
+		{"src": "gnome:gnome-control-center"}
+
 	]
 }
