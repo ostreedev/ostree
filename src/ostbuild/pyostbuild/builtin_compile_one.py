@@ -152,6 +152,14 @@ class OstbuildCompileOne(builtins.Builtin):
         args.extend(self.configargs)
         run_sync(args, cwd=builddir)
 
+        makefile_path = None
+        for name in ['Makefile', 'makefile', 'GNUmakefile']:
+            makefile_path = os.path.join(builddir, name)
+            if os.path.exists(makefile_path):
+                break
+        if makefile_path is None:
+            fatal("No Makefile found")
+
         args = list(self.makeargs)
         user_specified_jobs = False
         for arg in args:
