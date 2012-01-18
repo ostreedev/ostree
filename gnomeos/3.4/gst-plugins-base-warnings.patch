@@ -1,4 +1,4 @@
-From 1e8d86a199857d762b2bb13be8431112a8eed16d Mon Sep 17 00:00:00 2001
+From f2849da4e3f832d6f5a99bc0f1c0952af3fd2f53 Mon Sep 17 00:00:00 2001
 From: Colin Walters <walters@verbum.org>
 Date: Tue, 17 Jan 2012 16:50:46 -0500
 Subject: [PATCH] build: Add --disable-fatal-warnings
@@ -8,17 +8,9 @@ warnings into fatal errors.  For example, GNOME's jhbuild helps people
 get newer versions of software than came from their distribution, but
 they may not necessarily want to hack on it.
 ---
- common       |    2 +-
  configure.ac |   10 +++++++---
- 2 files changed, 8 insertions(+), 4 deletions(-)
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/common b/common
-index 63d592e..e4a9407 160000
---- a/common
-+++ b/common
-@@ -1 +1 @@
--Subproject commit 63d592ed74618734d69438c770d6462efeb5ab9d
-+Subproject commit e4a9407a51803016bab9918b03e2034981886bdb
 diff --git a/configure.ac b/configure.ac
 index 13647a4..0e3b20e 100644
 --- a/configure.ac
