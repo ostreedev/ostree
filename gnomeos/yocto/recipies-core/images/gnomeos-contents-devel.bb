@@ -34,4 +34,5 @@ IMAGE_INSTALL += "libuuid-dev \
 		  libtasn1-bin \
 		  libgcrypt-dev \
 		  libgnutls-dev \
+		  icu-dev \
 		  "

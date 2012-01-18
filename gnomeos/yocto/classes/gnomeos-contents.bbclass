@@ -18,6 +18,7 @@ IMAGE_INSTALL = "libuuid1 \
 		 libvorbis \
                  libstdc++6 \
                  libgnutls26 \
+		 icu \
 		 "
 
 RECIPE_PACKAGES = "task-core-boot \
