@@ -11,6 +11,7 @@ RECIPE_PACKAGES += "task-core-sdk \
 		python-dev \
 		bison flex \
 		git \
+		gdb \
 		libxml-parser-perl \
 		gettext-dev \
 		"
