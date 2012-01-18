@@ -18,6 +18,7 @@
 import os,sys,subprocess,tempfile,re,shutil
 import argparse
 import json
+import urlparse
 from StringIO import StringIO
 
 from . import builtins
@@ -35,15 +36,51 @@ class OstbuildResolve(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _ensure_vcs_mirror(self, name, keytype, uri, branch):
+    def _ensure_vcs_mirror(self, keytype, uri, branch):
         assert keytype == 'git'
-        mirror = os.path.join(self.mirrordir, name)
+        parsed = urlparse.urlsplit(uri)
+        mirror = os.path.join(self.mirrordir, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
         tmp_mirror = mirror + '.tmp'
         if os.path.isdir(tmp_mirror):
             shutil.rmtree(tmp_mirror)
         if not os.path.isdir(mirror):
             run_sync(['git', 'clone', '--mirror', uri, tmp_mirror])
+            run_sync(['git', 'config', 'gc.auto', '0'], cwd=tmp_mirror)
             os.rename(tmp_mirror, mirror)
+        last_fetch_path = mirror + '.lastfetch'
+        if os.path.exists(last_fetch_path):
+            f = open(last_fetch_path)
+            last_fetch_contents = f.read()
+            f.close()
+            last_fetch_contents = last_fetch_contents.strip()
+        else:
+            last_fetch_contents = None
+        current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
+        current_vcs_version = current_vcs_version.strip()
+        if current_vcs_version != last_fetch_contents:
+            log("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
+            tmp_checkout = os.path.join(self.mirrordir, '_tmp-checkouts', keytype, parsed.netloc, parsed.path[1:])
+            if os.path.isdir(tmp_checkout):
+                shutil.rmtree(tmp_checkout)
+            parent = os.path.dirname(tmp_checkout)
+            if not os.path.isdir(parent):
+                os.makedirs(parent)
+            run_sync(['git', 'clone', '-b', branch, mirror, tmp_checkout])
+            run_sync(['git', 'checkout', '-q', '-f', current_vcs_version], cwd=tmp_checkout)
+            submodules = []
+            submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=tmp_checkout)
+            submodule_status_lines = submodules_status_text.split('\n')
+            for line in submodule_status_lines:
+                if line == '': continue
+                line = line[1:]
+                (sub_checksum, sub_name) = line.split(' ', 1)
+                sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
+                                               'submodule.%s.url' % (sub_name, )], cwd=tmp_checkout)
+                self._ensure_vcs_mirror(keytype, sub_url, sub_checksum)
+            shutil.rmtree(tmp_checkout)
+            f = open(last_fetch_path, 'w')
+            f.write(current_vcs_version + '\n')
+            f.close()
         return mirror
 
     def _parse_src_key(self, srckey):
@@ -117,20 +154,44 @@ class OstbuildResolve(builtins.Builtin):
                 if not found:
                     fatal("Unknown component %r" % (component_name, ))
                 (keytype, uri) = self._parse_src_key(component['src'])
-                mirrordir = self._ensure_vcs_mirror(component['name'],
-                                                    keytype, uri,
-                                                    component['branch'])
+                mirrordir = self._ensure_vcs_mirror(keytype, uri, component['branch'])
                 log("Running git fetch for %s" % (component['name'], ))
                 run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
+        else:
+            fetch_components = []
 
         for component in self.resolved_components:
             (keytype, uri) = self._parse_src_key(component['src'])
-            mirrordir = self._ensure_vcs_mirror(component['name'],
-                                                keytype, uri,
-                                                component['branch'])
+            try:
+                fetch_components.index(component['name'])
+                continue
+            except ValueError, e:
+                pass
+            mirrordir = self._ensure_vcs_mirror(keytype, uri, component['branch'])
             revision = buildutil.get_git_version_describe(mirrordir,
                                                           component['branch'])
             component['revision'] = revision
+
+        mirror_gitconfig_path = os.path.join(self.mirrordir, 'gitconfig')
+        git_mirrordir = os.path.join(self.mirrordir, 'git')
+        f = open(mirror_gitconfig_path, 'w')
+        find_proc = subprocess.Popen(['find', '-type', 'f', '-name', 'HEAD'],
+                                     cwd=git_mirrordir, stdout=subprocess.PIPE)
+        path_to_url_re = re.compile(r'^([^/]+)/([^/]+)/(.+)$')
+        for line in find_proc.stdout:
+            assert line.startswith('./')
+            path = line[2:-6]
+            f.write('[url "')
+            f.write('file://' + os.path.join(git_mirrordir, path) + '/')
+            f.write('"]\n')
+            f.write('   insteadOf = ')
+            match = path_to_url_re.match(path)
+            assert match is not None
+            url = urlparse.urlunparse([match.group(1), match.group(2), match.group(3),
+                                       None, None, None])
+            f.write(url)
+            f.write('/\n')
+        print "Generated git mirror config: %s" % (mirror_gitconfig_path, )
 
         self.manifest['components'] = self.resolved_components
 

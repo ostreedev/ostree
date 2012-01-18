@@ -18,6 +18,7 @@
 import os,sys,subprocess,tempfile,re,shutil
 import argparse
 import time
+import urlparse
 import json
 from StringIO import StringIO
 
@@ -40,6 +41,22 @@ class OstbuildBuild(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
+    def _mirror_for_url(self, url):
+        parsed = urlparse.urlsplit(url)
+        return os.path.join(self.mirrordir, 'git', parsed.scheme, parsed.netloc, parsed.path[1:])
+
+    def _fixup_submodule_references(self, cwd):
+        submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
+        submodule_status_lines = submodules_status_text.split('\n')
+        for line in submodule_status_lines:
+            if line == '': continue
+            line = line[1:]
+            (sub_checksum, sub_name) = line.split(' ', 1)
+            sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
+                                           'submodule.%s.url' % (sub_name, )], cwd=cwd)
+            mirrordir = self._mirror_for_url(sub_url)
+            run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
+
     def _get_vcs_checkout(self, name, keytype, mirrordir, branch):
         checkoutdir = os.path.join(self.workdir, 'src')
         if not os.path.isdir(checkoutdir):
@@ -50,9 +67,18 @@ class OstbuildBuild(builtins.Builtin):
             shutil.rmtree(dest)
         if os.path.isdir(tmp_dest):
             shutil.rmtree(tmp_dest)
-        subprocess.check_call(['git', 'clone', '-q', '--recursive', mirrordir, tmp_dest])
-        subprocess.check_call(['git', 'checkout', '-q', branch], cwd=tmp_dest)
-        subprocess.check_call(['git', 'submodule', 'update', '--init'], cwd=tmp_dest)
+        git_mirrors_path = os.path.join(self.mirrordir, 'gitconfig')
+        f = open(git_mirrors_path)
+        git_mirrors = f.read()
+        f.close()
+        run_sync(['git', 'clone', '-q',
+                  '--no-checkout', mirrordir, tmp_dest])
+        run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest)
+        run_sync(['git', 'submodule', 'init'], cwd=tmp_dest)
+        self._fixup_submodule_references(tmp_dest)
+        run_sync(['linux-user-chroot',
+                  '--unshare-net', '--chdir', tmp_dest, '/',
+                  '/usr/bin/git', 'submodule', 'update'])
         os.rename(tmp_dest, dest)
         return dest
 
@@ -178,7 +204,8 @@ class OstbuildBuild(builtins.Builtin):
         else:
             log("No previous build for '%s' found" % (buildname, ))
 
-        mirror = os.path.join(self.mirrordir, name)
+            
+        mirror = self._mirror_for_url(uri)
         component_src = self._get_vcs_checkout(name, keytype, mirror, branch)
 
         if meta.get('rm-configure', False):
