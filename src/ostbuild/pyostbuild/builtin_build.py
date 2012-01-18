@@ -48,14 +48,17 @@ class OstbuildBuild(builtins.Builtin):
     def _fixup_submodule_references(self, cwd):
         submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
         submodule_status_lines = submodules_status_text.split('\n')
+        have_submodules = False
         for line in submodule_status_lines:
             if line == '': continue
+            have_submodules = True
             line = line[1:]
             (sub_checksum, sub_name) = line.split(' ', 1)
             sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                            'submodule.%s.url' % (sub_name, )], cwd=cwd)
             mirrordir = self._mirror_for_url(sub_url)
             run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
+        return have_submodules
 
     def _get_vcs_checkout(self, name, keytype, mirrordir, branch):
         checkoutdir = os.path.join(self.workdir, 'src')
@@ -75,10 +78,11 @@ class OstbuildBuild(builtins.Builtin):
                   '--no-checkout', mirrordir, tmp_dest])
         run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest)
         run_sync(['git', 'submodule', 'init'], cwd=tmp_dest)
-        self._fixup_submodule_references(tmp_dest)
-        run_sync(['linux-user-chroot',
-                  '--unshare-net', '--chdir', tmp_dest, '/',
-                  '/usr/bin/git', 'submodule', 'update'])
+        have_submodules = self._fixup_submodule_references(tmp_dest)
+        if have_submodules:
+            run_sync(['linux-user-chroot',
+                      '--unshare-net', '--chdir', tmp_dest, '/',
+                      '/usr/bin/git', 'submodule', 'update'])
         os.rename(tmp_dest, dest)
         return dest
 

@@ -65,7 +65,7 @@ class OstbuildResolve(builtins.Builtin):
             parent = os.path.dirname(tmp_checkout)
             if not os.path.isdir(parent):
                 os.makedirs(parent)
-            run_sync(['git', 'clone', '-b', branch, mirror, tmp_checkout])
+            run_sync(['git', 'clone', '-q', '--no-checkout', mirror, tmp_checkout])
             run_sync(['git', 'checkout', '-q', '-f', current_vcs_version], cwd=tmp_checkout)
             submodules = []
             submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=tmp_checkout)
@@ -164,10 +164,8 @@ class OstbuildResolve(builtins.Builtin):
             (keytype, uri) = self._parse_src_key(component['src'])
             try:
                 fetch_components.index(component['name'])
-                continue
             except ValueError, e:
-                pass
-            mirrordir = self._ensure_vcs_mirror(keytype, uri, component['branch'])
+                mirrordir = self._ensure_vcs_mirror(keytype, uri, component['branch'])
             revision = buildutil.get_git_version_describe(mirrordir,
                                                           component['branch'])
             component['revision'] = revision
