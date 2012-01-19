@@ -1,0 +1,22 @@
+From dad1621472d32ae2bf291b4d09a5423225262fb3 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 19 Jan 2012 11:53:42 -0500
+Subject: [PATCH] autogen.sh: Add developer bootstrap script
+
+http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+ create mode 100755 autogen.sh
+
+diff --git a/autogen.sh b/autogen.sh
+new file mode 100755
+index 0000000..c187584
+--- /dev/null
++++ b/autogen.sh
+@@ -0,0 +1,2 @@
++#!/bin/sh
++exec autoreconf -vfi
+-- 
+1.7.6.5
+

@@ -1,0 +1,26 @@
+From f4c1cff02469a4b3c84aa96d0cd47ba56eee8a76 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 19 Jan 2012 15:33:01 -0500
+Subject: [PATCH] build: Note we don't support srcdir != builddir
+
+---
+ configure.ac |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index d0b4e00..0a1aa3e 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -26,6 +26,9 @@ AC_CONFIG_MACRO_DIR([m4])
+ AC_CONFIG_SRCDIR(README)
+ AC_CONFIG_HEADERS(config.h)
+ 
++dnl http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ dnl This is for the autoconf tests only - it set's the language we use
+ AC_LANG(C)
+ 
+-- 
+1.7.6.5
+

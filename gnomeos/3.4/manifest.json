@@ -13,6 +13,7 @@
                 "fd-pulse": "git:git://anongit.freedesktop.org/git/pulseaudio/",
                 "fd-p11": "git:git://anongit.freedesktop.org/git/p11-glue/",
                 "fd-gstreamer": "git:git://anongit.freedesktop.org/gstreamer/",
+                "fd-telepathy": "git:git://anongit.freedesktop.org/telepathy/",
                 "0pointer": "git:git://git.0pointer.de/",
                 "linuxwacom": "git:git://linuxwacom.git.sourceforge.net/gitroot/linuxwacom/",
                 "fedora": "git:git://git.fedorahosted.org/",
@@ -554,15 +555,77 @@
 		 "branch": "4e276ff268f3f3e97abb97f8e5a8cf6d8d97d2db",
 		 "patches": ["WebKit-autogen.patch"]},
 
-		{"src": "gnome:gnome-online-accounts"},
+		{"src": "gnome:librest"},
 
-		{"src": "gnome:gnome-bluetooth"},
+		{"src": "gnome:gnome-online-accounts",
+		 "config-opts": ["--disable-documentation"]},
 
-		{"src": "gnome:mutter"},
+		{"src": "gnome:gnome-bluetooth",
+		 "patches": ["gnome-bluetooth-disable-docs.patch"],
+		 "config-opts": ["--disable-documentation"]},
+
+		{"src": "gnome:zenity"},
+
+		{"src": "gnome:mutter",
+		 "config-opts": ["--enable-compile-warnings=maximum"]},
+
+		{"src": "cgwalters:spidermonkey-tarballs-as-git",
+		 "config-opts": ["--enable-threadsafe",
+		                 "--with-system-nspr"]},
 
 		{"src": "gnome:gjs"},
 
-		{"src": "gnome:gnome-shell"},
+		{"src": "cgwalters:vala-tarballs-as-git",
+		 "config-opts": ["--disable-build-from-vala",
+		                 "--disable-vapigen"],
+		 "rm-configure": true,
+		 "patches": ["vala-tarballs-as-git-autogen.patch",
+		 	     "vala-tarballs-as-git-bootstrap.patch"]},
+
+		{"src": "gnome:vala",
+		 "name": "vala-0.14",
+		 "branch": "0.14.1",
+		 "config-opts": ["--enable-vapigen",
+		                 "--disable-unversioned"],
+		 "patches": ["vala-0.14-builddir.patch"]},
+
+		{"src": "gnome:vala",
+		 "name": "vala-0.16",
+		 "branch": "0.15.0",
+		 "config-opts": ["--enable-vapigen"],
+		 "patches": ["vala-builddir.patch"]},
+
+		{"src": "gnome:libgee",
+		 "branch": "0.6.2.1",
+		 "patches": ["gee-builddir.patch"]},
+
+		{"src": "fd-telepathy:telepathy-glib",
+		 "branch": "telepathy-glib-0.17.4",
+		 "config-opts": ["--enable-vala-bindings"]},
+
+		{"src": "gnome:libgweather"},
+
+		{"src": "cgwalters:liboauth-tarballs-as-git",
+		 "rm-configure": true,
+		 "config-opts": ["--enable-nss"],
+		 "patches": ["liboauth-tarballs-as-git-autogen.patch"]},
+
+		{"src": "gnome:libgdata"},
+
+		{"src": "cgwalters:libical-tarballs-as-git"},
+
+		{"src": "gnome:evolution-data-server",
+		 "patches": ["e-d-s-builddir.patch"],
+		 "config-opts": ["--enable-vala-bindings"]},
+
+		{"src": "gnome:folks",
+		 "config-opts": ["--enable-eds-backend",
+		                 "VALAC=/usr/bin/valac-0.14",
+				 "VAPIGEN=/usr/bin/vapigen-0.14"],
+		 "patches": ["folks-builddir.patch"]},
+
+		{"src": "gnome:gnome-shell",
+		 "config-opts": ["--enable-compile-warnings=maximum"]},
 
 		{"src": "fd:accountsservice"},
 
@@ -570,7 +633,13 @@
 		 "config-opts": ["--disable-documentation"],
 		 "patches": ["gdm-disable-documentation.patch"]},
 
-		{"src": "gnome:gnome-control-center"}
+		{"src": "gnome:gnome-control-center"},
 
+		{"src": "gnome:dconf"},
+
+		{"src": "gnome:caribou",
+		 "config-opts": ["--disable-gtk2-module"]},
+
+		{"src": "gnome:cantarell-fonts"}
 	]
 }
