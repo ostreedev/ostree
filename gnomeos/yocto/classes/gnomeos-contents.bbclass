@@ -19,6 +19,10 @@ IMAGE_INSTALL = "libuuid1 \
                  libstdc++6 \
                  libgnutls26 \
 		 icu \
+		 tzdata \
+                 curl \
+		 eglibc-gconvs \
+		 eglibc-binaries \
 		 "
 
 RECIPE_PACKAGES = "task-core-boot \
@@ -33,7 +37,8 @@ RECIPE_PACKAGES = "task-core-boot \
 		   libpam \
 		   ncurses \
 		   python-modules \
-		   python-misc"
+		   python-misc \
+		   "
 
 PACKAGE_INSTALL = "${RECIPE_PACKAGES} ${IMAGE_INSTALL}"
 
