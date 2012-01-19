@@ -36,10 +36,13 @@ class OstbuildResolve(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _ensure_vcs_mirror(self, keytype, uri, branch):
+    def _get_mirrordir(self, keytype, uri, prefix=''):
         assert keytype == 'git'
         parsed = urlparse.urlsplit(uri)
-        mirror = os.path.join(self.mirrordir, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
+        return os.path.join(self.mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
+
+    def _ensure_vcs_mirror(self, keytype, uri, branch):
+        mirror = self._get_mirrordir(keytype, uri)
         tmp_mirror = mirror + '.tmp'
         if os.path.isdir(tmp_mirror):
             shutil.rmtree(tmp_mirror)
@@ -59,7 +62,7 @@ class OstbuildResolve(builtins.Builtin):
         current_vcs_version = current_vcs_version.strip()
         if current_vcs_version != last_fetch_contents:
             log("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
-            tmp_checkout = os.path.join(self.mirrordir, '_tmp-checkouts', keytype, parsed.netloc, parsed.path[1:])
+            tmp_checkout = self._get_mirrordir(keytype, uri, prefix='_tmp-checkouts')
             if os.path.isdir(tmp_checkout):
                 shutil.rmtree(tmp_checkout)
             parent = os.path.dirname(tmp_checkout)
@@ -164,6 +167,7 @@ class OstbuildResolve(builtins.Builtin):
             (keytype, uri) = self._parse_src_key(component['src'])
             try:
                 fetch_components.index(component['name'])
+                mirrordir = self._get_mirrordir(keytype, uri)
             except ValueError, e:
                 mirrordir = self._ensure_vcs_mirror(keytype, uri, component['branch'])
             revision = buildutil.get_git_version_describe(mirrordir,
