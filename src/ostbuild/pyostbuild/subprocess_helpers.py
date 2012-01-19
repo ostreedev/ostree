@@ -63,7 +63,8 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
     else:
         logfn = None
     if logfn is not None:
-        logfn("cmd '%s' exited with code %d, %d bytes of output" % (subprocess.list2cmdline(args), proc.returncode, len(output)))
+        logfn("cmd '%s' (cwd=%s) exited with code %d, %d bytes of output" % (subprocess.list2cmdline(args),
+                                                                             cwd, proc.returncode, len(output)))
     if proc.returncode == 0:
         return output
     return None
