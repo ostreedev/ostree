@@ -69,9 +69,9 @@ class Mainloop(object):
         to_delete_pids = []
         for pid in self._pid_watches:
             (opid, status) = os.waitpid(pid, os.WNOHANG)
-            if opid != 0:
+            if opid == pid:
                 to_delete_pids.append(pid)
-                self._pid_watches[pid](opid, status)
+                self._pid_watches[pid](pid, status)
         for pid in to_delete_pids:
             del self._pid_watches[pid]
         newtime = time.time() * 1000
