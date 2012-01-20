@@ -75,7 +75,7 @@ if ! test -d ostree; then
     ostree --repo=ostree/repo init
 fi
 cd ostree
-ostree --repo=${OSTREE_REPO} local-clone repo
+ostree --repo=${OSTREE_REPO} local-clone repo ${BRANCH_PREFIX}runtime ${BRANCH_PREFIX}devel
 for branch in runtime devel; do
     rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
