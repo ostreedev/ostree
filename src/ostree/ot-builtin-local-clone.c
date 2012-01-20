@@ -170,10 +170,45 @@ object_iter_callback (OstreeRepo   *repo,
     }
 }
 
+static gboolean
+copy_one_ref (GFile   *src_repo_dir,
+              GFile   *dest_repo_dir,
+              const char *name,
+              GCancellable  *cancellable,
+              GError **error)
+{
+  gboolean ret = FALSE;
+  GFile *src_path = NULL;
+  GFile *dest_path = NULL;
+  GFile *dest_parent = NULL;
+  char *refpath = NULL;
+
+  refpath = g_build_filename ("refs/heads", name, NULL);
+  src_path = g_file_resolve_relative_path (src_repo_dir, refpath);
+  dest_path = g_file_resolve_relative_path (dest_repo_dir, refpath);
+  dest_parent = g_file_get_parent (dest_path);
+  
+  if (!ot_gfile_ensure_directory (dest_parent, TRUE, error))
+    goto out;
+  
+  if (!g_file_copy (src_path, dest_path, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS,
+                    cancellable, NULL, NULL, error))
+    goto out;
+  
+  ret = TRUE;
+ out:
+  g_clear_object (&src_path);
+  g_clear_object (&dest_path);
+  g_clear_object (&dest_parent);
+  g_free (refpath);
+  return ret;
+}
+
 gboolean
 ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
+  GCancellable *cancellable = NULL;
   GOptionContext *context;
   const char *destination;
   GFile *dest_f = NULL;
@@ -184,6 +219,7 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
   GFileInfo *dest_info = NULL;
   GFile *src_dir = NULL;
   GFile *dest_dir = NULL;
+  int i;
 
   context = g_option_context_new ("DEST ... - Create new repository DEST");
   g_option_context_add_main_entries (context, options, NULL);
@@ -197,7 +233,7 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
   if (!ostree_repo_check (data.src_repo, error))
     goto out;
 
-  if (argc < 1)
+  if (argc < 2)
     {
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
       g_printerr ("%s\n", help);
@@ -238,18 +274,29 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
 
   if (!ostree_repo_commit_transaction (data.dest_repo, NULL, error))
     goto out;
-  
-  src_dir = g_file_resolve_relative_path (src_repo_dir, "refs/heads");
-  dest_dir = g_file_resolve_relative_path (dest_repo_dir, "refs/heads");
-  if (!copy_dir_contents_recurse (src_dir, dest_dir, NULL, error))
-    goto out;
-  g_clear_object (&src_dir);
-  g_clear_object (&dest_dir);
 
-  src_dir = g_file_resolve_relative_path (src_repo_dir, "tags");
-  dest_dir = g_file_resolve_relative_path (dest_repo_dir, "tags");
-  if (!copy_dir_contents_recurse (src_dir, dest_dir, NULL, error))
-    goto out;
+  if (argc > 2)
+    {
+      for (i = 2; i < argc; i++)
+        {
+          if (!copy_one_ref (src_repo_dir, dest_repo_dir, argv[i], cancellable, error))
+            goto out;
+        }
+    }
+  else
+    {
+      src_dir = g_file_resolve_relative_path (src_repo_dir, "refs/heads");
+      dest_dir = g_file_resolve_relative_path (dest_repo_dir, "refs/heads");
+      if (!copy_dir_contents_recurse (src_dir, dest_dir, NULL, error))
+        goto out;
+      g_clear_object (&src_dir);
+      g_clear_object (&dest_dir);
+      
+      src_dir = g_file_resolve_relative_path (src_repo_dir, "tags");
+      dest_dir = g_file_resolve_relative_path (dest_repo_dir, "tags");
+      if (!copy_dir_contents_recurse (src_dir, dest_dir, NULL, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:
