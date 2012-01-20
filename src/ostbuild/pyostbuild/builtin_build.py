@@ -60,13 +60,15 @@ class OstbuildBuild(builtins.Builtin):
             run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
         return have_submodules
 
-    def _get_vcs_checkout(self, name, keytype, mirrordir, branch):
+    def _get_vcs_checkout(self, name, keytype, mirrordir, branch, overwrite=True):
         checkoutdir = os.path.join(self.workdir, 'src')
         if not os.path.isdir(checkoutdir):
             os.makedirs(checkoutdir)
         dest = os.path.join(checkoutdir, name)
         tmp_dest = dest + '.tmp'
         if os.path.isdir(dest):
+            if not overwrite:
+                return dest
             shutil.rmtree(dest)
         if os.path.isdir(tmp_dest):
             shutil.rmtree(tmp_dest)
@@ -183,6 +185,14 @@ class OstbuildBuild(builtins.Builtin):
 
         (keytype, uri) = self._parse_src_key(meta['src'])
 
+        mirror = self._mirror_for_url(uri)
+        component_src = self._get_vcs_checkout(name, keytype, mirror, branch,
+                                               overwrite=not self.args.debug_shell)
+
+        if self.args.debug_shell:
+            buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
+            self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
+
         current_vcs_version = meta['revision']
 
         previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
@@ -208,16 +218,12 @@ class OstbuildBuild(builtins.Builtin):
         else:
             log("No previous build for '%s' found" % (buildname, ))
 
-            
-        mirror = self._mirror_for_url(uri)
-        component_src = self._get_vcs_checkout(name, keytype, mirror, branch)
+        buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
 
         if meta.get('rm-configure', False):
             configure_path = os.path.join(component_src, 'configure')
             if os.path.exists(configure_path):
                 os.unlink(configure_path)
-
-        buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
 
         artifact_meta = {'buildroot': buildroot_name,
                          'buildroot-version': buildroot_version,
@@ -257,28 +263,25 @@ class OstbuildBuild(builtins.Builtin):
             saved_name = '%s-%d.log' % (name, int(time.time()),)
             os.rename(log_path, os.path.join(old_logdir, saved_name))
 
-        if self.args.debug_shell:
-            self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
+        log("Logging to %s" % (log_path, ))
+        f = open(log_path, 'w')
+        chroot_args = self._get_ostbuild_chroot_args(architecture)
+        chroot_args.extend(['--buildroot=' + buildroot_name,
+                            '--workdir=' + self.workdir,
+                            '--resultdir=' + component_resultdir,
+                            '--meta=' + metadata_path])
+        global_config_opts = self.manifest.get('config-opts')
+        if global_config_opts is not None:
+            chroot_args.extend(global_config_opts)
+        component_config_opts = meta.get('config-opts')
+        if component_config_opts is not None:
+            chroot_args.extend(component_config_opts)
+        if self.buildopts.shell_on_failure:
+            ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
+            if ecode != 0:
+                self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
         else:
-            log("Logging to %s" % (log_path, ))
-            f = open(log_path, 'w')
-            chroot_args = self._get_ostbuild_chroot_args(architecture)
-            chroot_args.extend(['--buildroot=' + buildroot_name,
-                                '--workdir=' + self.workdir,
-                                '--resultdir=' + component_resultdir,
-                                '--meta=' + metadata_path])
-            global_config_opts = self.manifest.get('config-opts')
-            if global_config_opts is not None:
-                chroot_args.extend(global_config_opts)
-            component_config_opts = meta.get('config-opts')
-            if component_config_opts is not None:
-                chroot_args.extend(component_config_opts)
-            if self.buildopts.shell_on_failure:
-                ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
-                if ecode != 0:
-                    self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
-            else:
-                run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
+            run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
         run_sync(['ostree', '--repo=' + self.repo,
                   'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],

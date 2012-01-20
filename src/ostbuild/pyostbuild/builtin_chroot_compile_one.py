@@ -113,7 +113,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                       '--mount-proc', '/proc', 
                       '--mount-bind', '/dev', '/dev',
                       '--mount-bind', child_tmpdir, '/tmp',
-                      '--mount-bind', os.getcwd(), chroot_sourcedir]
+                      '--mount-bind', os.getcwd(), chroot_sourcedir,
+                      '--chdir', chroot_sourcedir]
         if args.resultdir:
             child_args.extend(['--mount-bind', args.resultdir, '/ostbuild/results'])
         if args.debug_shell:
@@ -121,7 +122,6 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         else:
             child_args.extend([rootdir, '/usr/bin/ostbuild',
                                'compile-one',
-                               '--chdir=' + chroot_sourcedir,
                                '--ostbuild-resultdir=/ostbuild/results',
                                '--ostbuild-meta=_ostbuild-meta'])
             child_args.extend(rest_args)
