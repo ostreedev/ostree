@@ -80,6 +80,7 @@ for branch in runtime devel; do
     rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
+        ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
     fi
     rm -f ${BRANCH_PREFIX}${branch}-current
     ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
