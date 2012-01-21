@@ -1,40 +1,38 @@
-From 9cd7957d9ba16d341e31e053ced6d932949cbdc0 Mon Sep 17 00:00:00 2001
+From 2cd4a37078f416ff848c62b9df2239e21406aab8 Mon Sep 17 00:00:00 2001
 From: Colin Walters <walters@verbum.org>
 Date: Wed, 18 Jan 2012 22:06:58 -0500
 Subject: [PATCH] build: Add --disable-documentation option
 
 This helps operating system builders.
 ---
- Makefile.am  |    9 +++++++--
+ Makefile.am  |    9 ++++++++-
  configure.ac |    5 +++++
- 2 files changed, 12 insertions(+), 2 deletions(-)
+ 2 files changed, 13 insertions(+), 1 deletions(-)
 
 diff --git a/Makefile.am b/Makefile.am
-index 9111350..a136218 100644
+index 9187597..64673bd 100644
 --- a/Makefile.am
 +++ b/Makefile.am
-@@ -4,9 +4,14 @@ if WITH_MOBLIN
- MOBLIN_DIR = moblin
- endif
+@@ -1,6 +1,13 @@
+ DEF_SUBDIRS = icons lib applet wizard sendto docs po help
  
 -SUBDIRS = icons lib applet wizard sendto $(MOBLIN_DIR) docs po help
--
-+SUBDIRS = icons lib applet wizard sendto $(MOBLIN_DIR) docs po
- DIST_SUBDIRS = $(DEF_SUBDIRS) moblin
++SUBDIRS = icons lib applet wizard sendto docs po
++DIST_SUBDIRS = 
++
 +if ENABLE_DOCUMENTATION
 +SUBDIRS += help
 +else
 +DIST_SUBDIRS += help
 +endif
-+
+ 
  EXTRA_DIST = intltool-extract.in intltool-update.in intltool-merge.in ChangeLog.pre-2.27 gtk-doc.make gnome-doc-utils.make
  
- DISTCHECK_CONFIGURE_FLAGS = --disable-schemas-install \
 diff --git a/configure.ac b/configure.ac
-index 9d8a7f2..e43c79d 100644
+index 869e3ed..6f2b5be 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -182,6 +182,11 @@ GNOME_COMPILE_WARNINGS([maximum])
+@@ -146,6 +146,11 @@ GNOME_COMPILE_WARNINGS([maximum])
  GNOME_CXX_WARNINGS
  GNOME_MAINTAINER_MODE_DEFINES
  

@@ -1,0 +1,26 @@
+From e82f2019905dbcb3402bf821cdc0fc3a305cca4c Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 19 Jan 2012 10:31:06 -0500
+Subject: [PATCH] build: Note that we don't support srcdir != builddir
+
+---
+ configure.ac |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index fe30ce0..2ddd31f 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -6,6 +6,9 @@ AC_CONFIG_MACRO_DIR([m4])
+ AM_INIT_AUTOMAKE([1.11 dist-bzip2])
+ AM_MAINTAINER_MODE([enable])
+ 
++dnl http://people.gnome.org/~walters/docs/build-api.txt
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ PACKAGE_SUFFIX=-0.16
+ AC_SUBST(PACKAGE_SUFFIX)
+ AC_DEFINE_UNQUOTED(PACKAGE_SUFFIX, "$PACKAGE_SUFFIX", [Define to the suffix of this package])
+-- 
+1.7.6.5
+

@@ -329,7 +329,8 @@
 				 "--disable-doxygen-docs",
 				 "--disable-tests",
 				 "--with-system-pid-file=/run/dbus.pid"],
-                 "patches": ["dbus-xmlto-docs.patch"]},
+                 "patches": ["dbus-xmlto-docs.patch"],
+		 "setuid": ["/usr/libexec/dbus-daemon-launch-helper"]},
 
 		{"src": "fd:xorg/util/makedepend",
 		 "component": "devel",
@@ -377,6 +378,13 @@
 
 		{"src": "fd:xorg/driver/xf86-video-vesa",
 		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xcb/util",
+		 "component": "devel",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:startup-notification",
+		 "patches": ["startup-notification-autogen.patch"]},
 
 		{"src": "fd-dbus:dbus-glib",
 		 "config-opts": ["--disable-gtk-doc"]},
@@ -451,8 +459,7 @@
 		 "branch": "gtk-2-24"},
 
 		{"src": "gnome:gtk+",
-		 "name": "gtk3",
-		 "branch": "3b6665aad2c895fc8bc308fc47628001bbc0b401"},
+		 "name": "gtk3"},
 
 		{"src": "fd-p11:p11-kit"},
 
@@ -561,10 +568,13 @@
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:gnome-bluetooth",
-		 "patches": ["gnome-bluetooth-disable-docs.patch"],
+		 "patches": ["gnome-bluetooth-disable-docs.patch",
+		             "gnome-bluetooth-applet-la-file.patch"],
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:zenity"},
+
+		{"src": "gnome:metacity"},
 
 		{"src": "gnome:mutter",
 		 "config-opts": ["--enable-compile-warnings=maximum"]},
@@ -583,25 +593,20 @@
 		 	     "vala-tarballs-as-git-bootstrap.patch"]},
 
 		{"src": "gnome:vala",
-		 "name": "vala-0.14",
-		 "branch": "0.14.1",
-		 "config-opts": ["--enable-vapigen",
-		                 "--disable-unversioned"],
-		 "patches": ["vala-0.14-builddir.patch"]},
-
-		{"src": "gnome:vala",
 		 "name": "vala-0.16",
-		 "branch": "0.15.0",
 		 "config-opts": ["--enable-vapigen"],
 		 "patches": ["vala-builddir.patch"]},
 
 		{"src": "gnome:libgee",
-		 "branch": "0.6.2.1",
-		 "patches": ["gee-builddir.patch"]},
+		 "branch": "0.6",
+		 "patches": ["gee-builddir.patch",
+		             "gee-vala-0.15.patch",
+			     "gee-gir-version.patch"]},
 
 		{"src": "fd-telepathy:telepathy-glib",
-		 "branch": "telepathy-glib-0.17.4",
-		 "config-opts": ["--enable-vala-bindings"]},
+		 "branch": "telepathy-glib-0.17.3",
+		 "config-opts": ["--enable-vala-bindings"],
+		 "patches": ["telepathy-glib-builddir.patch"]},
 
 		{"src": "gnome:libgweather"},
 
@@ -620,26 +625,37 @@
 
 		{"src": "gnome:folks",
 		 "config-opts": ["--enable-eds-backend",
-		                 "VALAC=/usr/bin/valac-0.14",
-				 "VAPIGEN=/usr/bin/vapigen-0.14"],
-		 "patches": ["folks-builddir.patch"]},
+		                 "--disable-fatal-warnings"],
+		 "patches": ["folks-builddir.patch",
+		             "folks-vala-0.16.patch",
+			     "folks-config-fatal-warnings.patch"]},
 
-		{"src": "gnome:gnome-shell",
-		 "config-opts": ["--enable-compile-warnings=maximum"]},
+		{"src": "gnome:dconf",
+		 "patches": ["dconf-builddir.patch"]},
+
+		{"src": "gnome:cantarell-fonts"},
 
 		{"src": "fd:accountsservice"},
 
 		{"src": "gnome:gdm",
 		 "config-opts": ["--disable-documentation"],
-		 "patches": ["gdm-disable-documentation.patch"]},
+		 "patches": ["gdm-disable-documentation.patch",
+		             "gdm-pam-auth.patch"]},
 
-		{"src": "gnome:gnome-control-center"},
+		{"src": "fd-telepathy:telepathy-logger",
+		 "branch": "telepathy-logger-0.2.12",
+		 "patches": ["telepathy-logger-autogen.patch"]},
 
-		{"src": "gnome:dconf"},
+		{"src": "gnome:gnome-shell",
+		 "config-opts": ["--enable-compile-warnings=maximum"]},
 
-		{"src": "gnome:caribou",
-		 "config-opts": ["--disable-gtk2-module"]},
+		{"src": "gnome:libgtop"},
 
-		{"src": "gnome:cantarell-fonts"}
+		{"src": "gnome:clutter-gst"},
+
+		{"src": "gnome:gnome-control-center",
+		 "config-opts": ["--disable-cups",
+		                 "--disable-documentation"],
+		 "patches": ["g-c-c-disable-docs.patch"]}
 	]
 }

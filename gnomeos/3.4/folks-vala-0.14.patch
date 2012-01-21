@@ -1,0 +1,36 @@
+From 785f5a87fde722b459f0dd7edd6788b825156586 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 19 Jan 2012 18:14:11 -0500
+Subject: [PATCH] Use vala 0.14 explicitly
+
+---
+ configure.ac |   13 ++++---------
+ 1 files changed, 4 insertions(+), 9 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 7b56633..1d39805 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -242,15 +242,10 @@ if test \
+ fi
+ 
+ if test "x$enable_vala" = "xyes" ; then
+-        AM_PROG_VALAC([$VALA_REQUIRED])
+-        if test "x$VALAC" = "x"; then
+-              AC_MSG_ERROR([Vala requested but valac is not installed])
+-        fi
+-
+-        AC_PATH_PROG([VAPIGEN], [vapigen], [])
+-        if test "x$VAPIGEN" = "x"; then
+-              AC_MSG_ERROR([Vala must be built with --enable-vapigen])
+-        fi
++	VALAC=vala-0.14
++	AC_SUBST(VALAC)
++	VAPIGEN=valapigen-0.14
++	AC_SUBST(VAPIGEN)
+ 
+         # require GLib >= 2.24 so GLib.Array, etc. reffing is handled
+         # automatically
+-- 
+1.7.6.5
+

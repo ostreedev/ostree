@@ -1,0 +1,51 @@
+From 5e35da9f6bbcb99790efb8934c9651e93f095d7c Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 20 Jan 2012 09:49:49 -0500
+Subject: [PATCH] Fix compilation with Vala 0.15
+
+---
+ gee/priorityqueue.vala   |    4 ++--
+ tests/testarraylist.vala |    4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/gee/priorityqueue.vala b/gee/priorityqueue.vala
+index 6c45238..e3e7a85 100644
+--- a/gee/priorityqueue.vala
++++ b/gee/priorityqueue.vala
+@@ -53,7 +53,7 @@ public class Gee.PriorityQueue<G> : Gee.AbstractQueue<G> {
+ 	private Type2Node<G>? _lm_head = null;
+ 	private Type2Node<G>? _lm_tail = null;
+ 	private Type1Node<G>? _p = null;
+-	private Type1Node<G>?[] _a = new Type1Node<G>[0];
++	private Type1Node<G>?[] _a = new Type1Node<G>?[0];
+ 	private NodePair<G>? _lp_head = null;
+ 	private NodePair<G>? _lp_tail = null;
+ 	private bool[] _b = new bool[0];
+@@ -316,7 +316,7 @@ public class Gee.PriorityQueue<G> : Gee.AbstractQueue<G> {
+ 		_lm_head = null;
+ 		_lm_tail = null;
+ 		_p = null;
+-		_a = new Type1Node<G>[0];
++		_a = new Type1Node<G>?[0];
+ 		_lp_head = null;
+ 		_lp_tail = null;
+ 		_b = new bool[0];
+diff --git a/tests/testarraylist.vala b/tests/testarraylist.vala
+index e5340c5..05bc328 100644
+--- a/tests/testarraylist.vala
++++ b/tests/testarraylist.vala
+@@ -148,9 +148,9 @@ public class ArrayListTests : ListTests {
+ 		assert (double_list.add (1.5d));
+ 		assert (double_list.add (2.0d));
+ 
+-		double[] double_array = double_list.to_array ();
++		double?[] double_array = double_list.to_array ();
+ 		index = 0;
+-		foreach (double element in double_list) {
++		foreach (double? element in double_list) {
+ 			assert (element == double_array[index++]);
+ 		}
+ 	}
+-- 
+1.7.6.5
+

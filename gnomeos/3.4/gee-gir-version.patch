@@ -1,0 +1,26 @@
+From a2e1aaedd48503f2f58fbe714a414d428cca4c70 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 20 Jan 2012 11:05:24 -0500
+Subject: [PATCH] assemblyinfo: Use correct .gir version for 0.6 branch
+ (should be 1.0)
+
+https://bugzilla.gnome.org/show_bug.cgi?id=666208
+---
+ gee/assemblyinfo.vala |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/gee/assemblyinfo.vala b/gee/assemblyinfo.vala
+index 8f3474b..1fdde6d 100644
+--- a/gee/assemblyinfo.vala
++++ b/gee/assemblyinfo.vala
+@@ -20,6 +20,6 @@
+  * 	Maciej Piechotka <uzytkownik2@gmail.com>
+  */
+ 
+-[CCode (gir_namespace = "Gee", gir_version = "0.8")]
++[CCode (gir_namespace = "Gee", gir_version = "1.0")]
+ namespace Gee {}
+ 
+-- 
+1.7.6.5
+

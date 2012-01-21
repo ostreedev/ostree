@@ -1,0 +1,28 @@
+From 7e326e637e85af9bf9ea10e469fc88946b2b0d4e Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 20 Jan 2012 21:11:37 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE=1
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 7c64c34..5d0f2f9 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -64,7 +64,9 @@ autoconf || echo "autoconf failed - version 2.5x is probably required"
+ 
+ cd $ORIGDIR
+ 
+-$srcdir/configure --enable-maintainer-mode "$@"
++if test -z "$NOCONFIGURE"; then
++    $srcdir/configure --enable-maintainer-mode "$@"
++fi
+ 
+ echo 
+ echo "Now type 'make' to compile $PROJECT."
+-- 
+1.7.6.5
+

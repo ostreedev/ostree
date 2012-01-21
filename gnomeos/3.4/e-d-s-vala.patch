@@ -1,0 +1,26 @@
+From d09173b7f9116dce51a19c557f26736f01d02da9 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 19 Jan 2012 15:21:09 -0500
+Subject: [PATCH] vala: Add missing --pkg libxml-2.0
+
+EDataServer-1.2.gir depends on libxml2, so we need to tell vapigen
+that as well.
+---
+ vala/Makefile.am |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/vala/Makefile.am b/vala/Makefile.am
+index 3c35ede..ed4a574 100644
+--- a/vala/Makefile.am
++++ b/vala/Makefile.am
+@@ -24,6 +24,7 @@ pkgconfigdir = ${libdir}/pkgconfig
+ libedataserver-1.2.vapi: $(top_builddir)/libedataserver/EDataServer-1.2.gir
+ 	$(VAPIGEN_V)$(VAPIGEN) \
+ 		--pkg gio-2.0 \
++		--pkg libxml-2.0 \
+ 		--library libedataserver-1.2 \
+ 		--metadatadir=$(srcdir) \
+ 		$< \
+-- 
+1.7.6.5
+

@@ -1,0 +1,32 @@
+From ebee614641a9c3af11a2d860e75b1a564744b767 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sat, 21 Jan 2012 10:11:54 -0500
+Subject: [PATCH] applet: Delete gnome-bluetooth-applet.la file
+
+For operating system creators who don't ship .la files in /usr/lib,
+this file will still reference the (now non-existent)
+libgnome-bluetooth.la.
+
+This patch should be harmless for distributors who do still ship the
+.la files though.
+---
+ applet/Makefile-lib.am |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/applet/Makefile-lib.am b/applet/Makefile-lib.am
+index 7f75083..e01c386 100644
+--- a/applet/Makefile-lib.am
++++ b/applet/Makefile-lib.am
+@@ -13,6 +13,9 @@ libgnome_bluetooth_applet_la_LDFLAGS = -no-undefined
+ 
+ AM_CFLAGS = -I$(srcdir) -I$(top_srcdir)/lib $(LIBGNOMEBT_CFLAGS) $(WARN_CFLAGS) $(DISABLE_DEPRECATED)
+ 
++install-data-hook:
++	rm $(DESTDIR)$(pkglibdir)/libgnome-bluetooth-applet.la
++
+ include $(INTROSPECTION_MAKEFILE)
+ INTROSPECTION_GIRS =
+ INTROSPECTION_SCANNER_ARGS = --add-include-path=$(srcdir)
+-- 
+1.7.6.5
+
