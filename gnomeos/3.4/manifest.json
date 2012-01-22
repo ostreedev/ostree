@@ -330,7 +330,7 @@
 				 "--disable-tests",
 				 "--with-system-pid-file=/run/dbus.pid"],
                  "patches": ["dbus-xmlto-docs.patch"],
-		 "setuid": ["/usr/libexec/dbus-daemon-launch-helper"]},
+		 "setuid": ["/runtime/usr/libexec/dbus-daemon-launch-helper"]},
 
 		{"src": "fd:xorg/util/makedepend",
 		 "component": "devel",
