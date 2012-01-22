@@ -36,6 +36,7 @@ static char *body;
 static char *parent;
 static char *branch;
 static char **metadata_strings;
+static char *statoverride_file;
 static gboolean skip_if_unchanged;
 static gboolean tar_autocreate_parents;
 static gboolean no_xattrs;
@@ -57,8 +58,92 @@ static GOptionEntry options[] = {
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &no_xattrs, "Do not import extended attributes", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
+  { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &statoverride_file, "File containing list of modifications to make to permissions", "path" },
   { NULL }
 };
+
+static gboolean
+parse_statoverride_file (GHashTable   **out_mode_add,
+                         GCancellable  *cancellable,
+                         GError        **error)
+{
+  gboolean ret = FALSE;
+  GFile *path = NULL;
+  char *contents = NULL;
+  gsize len;
+  GHashTable *ret_hash = NULL;
+  char **lines = NULL;
+  char **iter = NULL;
+
+  path = ot_gfile_new_for_path (statoverride_file);
+
+  if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
+                             error))
+    goto out;
+  
+  ret_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  lines = g_strsplit (contents, "\n", -1);
+
+  for (iter = lines; iter && *iter; iter++)
+    {
+      const char *line = *iter;
+
+      if (*line == '+')
+        {
+          const char *spc;
+          guint mode_add;
+
+          spc = strchr (line + 1, ' ');
+          if (!spc)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Malformed statoverride file");
+              goto out;
+            }
+          
+          mode_add = (guint32)(gint32)g_ascii_strtod (line + 1, NULL);
+          g_hash_table_insert (ret_hash,
+                               g_strdup (spc + 1),
+                               GUINT_TO_POINTER((gint32)mode_add));
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_mode_add, &ret_hash);
+ out:
+  if (ret_hash)
+    g_hash_table_unref (ret_hash);
+  g_free (contents);
+  g_strfreev (lines);
+  g_clear_object (&path);
+  return ret;
+}
+
+static OstreeRepoCommitFilterResult
+commit_filter (OstreeRepo         *self,
+               const char         *path,
+               GFileInfo          *file_info,
+               gpointer            user_data)
+{
+  GHashTable *mode_adds = user_data;
+  gpointer value;
+
+  if (owner_uid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::uid", owner_uid);
+  if (owner_gid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::gid", owner_gid);
+
+  if (mode_adds && g_hash_table_lookup_extended (mode_adds, path, NULL, &value))
+    {
+      guint current_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+      guint mode_add = GPOINTER_TO_UINT (value);
+      g_file_info_set_attribute_uint32 (file_info, "unix::mode",
+                                        current_mode | mode_add);
+      g_hash_table_remove (mode_adds, path);
+    }
+  
+  return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+}
 
 gboolean
 ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
@@ -82,6 +167,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean metadata_builder_initialized = FALSE;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
+  GHashTable *mode_adds = NULL;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -143,6 +229,12 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
       metadata_builder_initialized = FALSE;
     }
 
+  if (statoverride_file)
+    {
+      if (!parse_statoverride_file (&mode_adds, cancellable, error))
+        goto out;
+    }
+
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
@@ -161,11 +253,13 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
-  if (owner_uid >= 0 || owner_gid >= 0)
+  if (owner_uid >= 0 || owner_gid >= 0 || statoverride_file != NULL
+      || no_xattrs)
     {
       modifier = ostree_repo_commit_modifier_new ();
-      modifier->uid = owner_uid;
-      modifier->gid = owner_gid;
+      modifier->skip_xattrs = no_xattrs;
+      modifier->filter = commit_filter;
+      modifier->user_data = mode_adds;
     }
 
   if (!ostree_repo_resolve_rev (repo, branch, TRUE, &parent, error))
@@ -249,6 +343,22 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
             }
         }
     }
+
+  if (mode_adds && g_hash_table_size (mode_adds) > 0)
+    {
+      GHashTableIter hash_iter;
+      gpointer key, value;
+
+      g_hash_table_iter_init (&hash_iter, mode_adds);
+
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          g_printerr ("Unmatched statoverride path: %s\n", (char*)key);
+        }
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unmatched statoverride paths");
+      goto out;
+    }
           
   if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
@@ -316,6 +426,8 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   g_free (contents_checksum);
   g_free (parent);
   ot_clear_gvariant(&parent_commit);
+  if (mode_adds)
+    g_hash_table_unref (mode_adds);
   g_free (tree_type);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);

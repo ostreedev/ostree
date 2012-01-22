@@ -135,14 +135,24 @@ gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         GVariant     **out_variant,
                                         GError       **error);
 
+typedef enum {
+  OSTREE_REPO_COMMIT_FILTER_ALLOW,
+  OSTREE_REPO_COMMIT_FILTER_SKIP
+} OstreeRepoCommitFilterResult;
+
+typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *repo,
+                                                                const char    *path,
+                                                                GFileInfo     *file_info,
+                                                                gpointer       user_data);
+
 typedef struct {
   volatile gint refcount;
 
-  gint uid;
-  gint gid;
-
   guint reserved_flags : 31;
   guint skip_xattrs : 1;
+
+  OstreeRepoCommitFilter filter;
+  gpointer user_data;
 
   gpointer reserved[3];
 } OstreeRepoCommitModifier;

@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..23"
+echo "1..24"
 
 . libtest.sh
 
@@ -173,3 +173,11 @@ echo "ok metadata commit with strings"
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "no xattrs" --no-xattrs
 echo "ok commit with no xattrs"
+
+cd ${test_tmpdir}
+cat > test-statoverride.txt <<EOF
++2048 /a/nested/3
+EOF
+cd ${test_tmpdir}/checkout-test2-4
+$OSTREE commit -b test2 -s "with statoverride" --statoverride=../test-statoverride.txt
+echo "ok commit statoverridde"
