@@ -283,13 +283,26 @@ class OstbuildBuild(builtins.Builtin):
         else:
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
-        run_sync(['ostree', '--repo=' + self.repo,
-                  'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],
-                  '--add-metadata-string=ostbuild-buildroot-version=' + buildroot_version,
-                  '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['version'],
-                  '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
-                  '--skip-if-unchanged'],
-                 cwd=component_resultdir)
+        args = ['ostree', '--repo=' + self.repo,
+                'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],
+                '--add-metadata-string=ostbuild-buildroot-version=' + buildroot_version,
+                '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['version'],
+                '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                '--skip-if-unchanged']
+
+        setuid_files = meta.get('setuid', [])
+        statoverride_path = None
+        if len(setuid_files) > 0:
+            (fd, statoverride_path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-statoverride-')
+            f = os.fdopen(fd, 'w')
+            for path in setuid_files:
+                f.write('+2048 ' + path)
+            f.close()
+            args.append('--statoverride=' + statoverride_path)
+            
+        run_sync(args, cwd=component_resultdir)
+        if statoverride_path is not None:
+            os.unlink(statoverride_path)
         return True
 
     def _compose(self, target, artifacts):
