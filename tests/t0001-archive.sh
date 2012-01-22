@@ -57,7 +57,7 @@ echo "ok uid0 commit"
 
 cd ${test_tmpdir}
 $OSTREE ls test2-uid0 /firstfile > uid0-ls-output.txt
-assert_file_has_content uid0-ls-output.txt "-00664 0 0      0 /firstfile" 
+assert_file_has_content uid0-ls-output.txt "-00664 0 0      6 /firstfile" 
 echo "ok uid0 ls"
 
 $OSTREE checkout -U test2-uid0 checkout-user-test2-uid0
