@@ -28,9 +28,11 @@
 #include <glib/gi18n.h>
 
 static gboolean quiet;
+static gboolean delete;
 
 static GOptionEntry options[] = {
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &quiet, "Don't display informational messages", NULL },
+  { "delete", 0, 0, G_OPTION_ARG_NONE, &delete, "Remove corrupted objects", NULL },
   { NULL }
 };
 
@@ -162,6 +164,8 @@ object_iter_callback (OstreeRepo    *repo,
       data->had_error = TRUE;
       g_printerr ("ERROR: corrupted object '%s'; actual checksum: %s\n",
                   ot_gfile_get_path_cached (objf), g_checksum_get_string (real_checksum));
+      if (delete)
+        (void) unlink (ot_gfile_get_path_cached (objf));
     }
 
   data->n_objects++;
