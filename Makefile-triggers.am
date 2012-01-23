@@ -19,6 +19,7 @@
 
 triggersdir = $(libexecdir)/ostree/triggers.d
 triggers_SCRIPTS = \
+	src/triggers/triggers.d/dconf.trigger \
 	src/triggers/triggers.d/desktop-database.trigger \
 	src/triggers/triggers.d/gdk-pixbuf.trigger \
 	src/triggers/triggers.d/glib.trigger \
