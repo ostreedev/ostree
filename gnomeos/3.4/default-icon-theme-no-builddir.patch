@@ -1,0 +1,24 @@
+From 59698f4729f384486779efbc8ec7e8c2ecaf548c Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 23 Jan 2012 21:51:57 -0500
+Subject: [PATCH] build: Note we don't support srcdir != builddir
+
+---
+ configure.ac |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index aa5891b..b1a3a8a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1,5 +1,7 @@
+ AC_INIT([hicolor-icon-theme], [0.12])
+ 
++echo \#buildapi-variable-no-builddir >/dev/null
++
+ AC_PROG_INSTALL
+ 
+ AC_CONFIG_FILES([Makefile])
+-- 
+1.7.6.5
+

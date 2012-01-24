@@ -11,6 +11,7 @@
                 "fd-NM": "git:git://anongit.freedesktop.org/git/NetworkManager/",
                 "fd-mesa": "git:git://anongit.freedesktop.org/git/mesa/",
                 "fd-pulse": "git:git://anongit.freedesktop.org/git/pulseaudio/",
+                "fd-xdg": "git:git://anongit.freedesktop.org/git/xdg/",
                 "fd-p11": "git:git://anongit.freedesktop.org/git/p11-glue/",
                 "fd-gstreamer": "git:git://anongit.freedesktop.org/gstreamer/",
                 "fd-telepathy": "git:git://anongit.freedesktop.org/telepathy/",
@@ -519,7 +520,17 @@
 		 "config-opts": ["--disable-packagekit",
 		                 "--disable-cups"]},
 
+		{"src": "git:git://github.com/stephenc/tango-icon-naming.git",
+		 "patches": ["tango-icon-naming-python.patch"],
+		 "component": "devel"},
+
 		{"src": "gnome:gnome-themes-standard"},
+
+		{"src": "gnome:gnome-icon-theme"},
+
+		{"src": "gnome:gnome-icon-theme-symbolic"},
+
+		{"src": "gnome:gnome-icon-theme-extras"},
 
 		{"src": "gnome:gvfs"},
 
@@ -632,6 +643,14 @@
 
 		{"src": "gnome:dconf",
 		 "patches": ["dconf-builddir.patch"]},
+
+		{"src": "fd-xdg:default-icon-theme",
+		 "patches": ["default-icon-theme-autogen.patch",
+		             "default-icon-theme-no-builddir.patch"]},
+
+		{"src": "fd-xdg:shared-mime-info",
+		 "patches": ["shared-mime-info-autogen.patch",
+		             "shared-mime-info-parallel.patch"]},
 
 		{"src": "gnome:cantarell-fonts"},
 

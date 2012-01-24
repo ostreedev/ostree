@@ -1,0 +1,147 @@
+From 633845ace0e94432af319553328c851485218f98 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Mon, 23 Jan 2012 21:33:52 -0500
+Subject: [PATCH] Port to Python
+
+Most of the newer GNOME developer utilities are Python, not Perl;
+also, nothing else depends on Perl XML::Simple, and the fewer modules
+in the OS, the better.
+---
+ Makefile.am             |    9 +++---
+ configure.ac            |   16 +----------
+ icon-name-mapping.py.in |   63 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 69 insertions(+), 19 deletions(-)
+ create mode 100644 icon-name-mapping.py.in
+
+diff --git a/Makefile.am b/Makefile.am
+index baa1c42..d6b051a 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,10 +1,9 @@
+ 
+ libexec_SCRIPTS = icon-name-mapping
+ 
+-%: %.pl.in
+-	sed -e "s#\@PERL\@#$(PERL)#g"		\
+-	    -e "s#\@DATADIR\@#$(pkgdatadir)#g"	\
+-	< $< > $@
++%: %.py.in
++	sed -e "s#\@DATADIR\@#$(pkgdatadir)#g"	\
++	< $< > $@.tmp && mv $@.tmp $@
+ 
+ pkgconfig_in_files =				\
+ 	icon-naming-utils.pc.in
+@@ -17,7 +16,7 @@ dtd_DATA = legacy-icon-mapping.dtd
+ pkgdata_DATA = legacy-icon-mapping.xml
+ 
+ EXTRA_DIST =				\
+-	icon-name-mapping.pl.in		\
++	icon-name-mapping.py.in		\
+ 	$(pkgconfig_in_files)		\
+ 	$(dtd_DATA)			\
+ 	$(pkgdata_DATA)			\
+diff --git a/configure.ac b/configure.ac
+index b11f8cf..cfc40dc 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -2,26 +2,14 @@ dnl Process this file with autoconf to produce a configure script.
+ AC_PREREQ(2.52)
+ 
+ AC_INIT([icon-naming-utils], [0.8.90])
+-AC_CONFIG_SRCDIR(icon-name-mapping.pl.in)
++AC_CONFIG_SRCDIR(icon-name-mapping.py.in)
+ AC_COPYRIGHT([Copyright 2005-2007 Rodney Dawes])
+ 
+ AM_INIT_AUTOMAKE
+ 
+ AM_MAINTAINER_MODE
+ 
+-AC_PATH_PROG(PERL, perl)
+-if test -z "$PERL"; then
+-   AC_MSG_ERROR([perl not found])
+-fi
+-if test -z "`$PERL -v | fgrep 'v5.' 2> /dev/null`" -a -z "`$PERL -v | fgrep 'version 5.' 2> /dev/null`"; then
+-   AC_MSG_ERROR([perl 5.x required for icon-naming-utils])
+-fi
+-AC_MSG_CHECKING([for XML::Simple])
+-if `$PERL -e "require XML::Simple" 2>/dev/null`; then
+-   AC_MSG_RESULT([ok])
+-else
+-   AC_MSG_ERROR([XML::Simple perl module is required for icon-naming-utils])
+-fi
++AM_PATH_PYTHON([2.7])
+ 
+ AC_CONFIG_FILES([
+ Makefile
+diff --git a/icon-name-mapping.py.in b/icon-name-mapping.py.in
+new file mode 100644
+index 0000000..5189b9b
+--- /dev/null
++++ b/icon-name-mapping.py.in
+@@ -0,0 +1,63 @@
++#!/usr/bin/env python
++
++# Copyright 2012 Colin Walters <walters@verbum.org>
++#
++# Based on icon-name-mapping.pl:
++#
++#############################################################################
++## Copyright (C) 2005-2007 Novell, Inc.
++## Copyright (C) 2005-2007 Rodney Dawes
++##
++## Authors: Rodney Dawes <dobey.pwns@gmail.com>
++##
++
++import os
++import sys
++import argparse
++
++try:
++    import xml.etree.ElementTree as ET
++except ImportError:
++    import elementtree.ElementTree as ET
++
++pkgdatadir = "@DATADIR@"
++
++parser = argparse.ArgumentParser()
++parser.add_argument('-c', '--context', required=True)
++
++args = parser.parse_args(sys.argv[1:])
++
++filename = os.path.join(pkgdatadir, "legacy-icon-mapping.xml")
++mapping = ET.parse(open(filename))
++
++print "Setting up icon mapping for: %s" % (args.context, )
++
++os.chdir(args.context)
++
++def make_icon_links(icon_node, suffix):
++    icon_name = icon_node['name']
++    for node in icon_node:
++        if node.tag != 'link':
++            continue
++        link = node
++        link_target = link.text.strip()
++        if not os.path.lexists(link_target):
++            os.symlink(icon_name + suffix, link_target)
++
++for node in mapping.getroot():
++    if node.tag != 'context':
++        continue
++    context = node
++    dirname = context.attrib['dir']
++    for node in context:
++        if node.tag != 'icon':
++            continue
++        icon = node
++        icon_name = icon.attrib['name']
++        if os.path.isfile(icon_name + '.png'):
++            make_icon_links(icon, '.png')
++        elif os.path.isfile(icon_name + '.svg'):
++            make_icon_links(icon, '.svg')
++
++        if os.path.isfile(icon_name + '.icon'):
++            make_icon_links(icon, '.icon')
+-- 
+1.7.6.5
+
