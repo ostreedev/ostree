@@ -1,4 +1,4 @@
-From b37eee01220036d8899e91f334a77d2a4983f43a Mon Sep 17 00:00:00 2001
+From d774559ac7d40d2c1d57bcf7d3647a48b3a9c5ec Mon Sep 17 00:00:00 2001
 From: Colin Walters <walters@verbum.org>
 Date: Fri, 20 Jan 2012 17:23:05 -0500
 Subject: [PATCH] gdm: Switch to use common- auth
@@ -6,8 +6,8 @@ Subject: [PATCH] gdm: Switch to use common- auth
 ---
  data/gdm           |   15 ++++-----------
  data/gdm-autologin |   13 ++++---------
- data/gdm-welcome   |   12 ++++--------
- 3 files changed, 12 insertions(+), 28 deletions(-)
+ data/gdm-welcome   |   10 +++-------
+ 3 files changed, 11 insertions(+), 27 deletions(-)
 
 diff --git a/data/gdm b/data/gdm
 index 58c397d..44d509b 100644
@@ -50,20 +50,19 @@ index c4e598a..44d509b 100644
 +password   include     common-auth
 +session    include     common-auth
 diff --git a/data/gdm-welcome b/data/gdm-welcome
-index b301f4f..44d509b 100644
+index b301f4f..29a6746 100644
 --- a/data/gdm-welcome
 +++ b/data/gdm-welcome
 @@ -1,9 +1,5 @@
  #%PAM-1.0
 -auth       required    pam_env.so
--auth       required    pam_permit.so
+ auth       required    pam_permit.so
 -account    required    pam_nologin.so
 -account    include     system-auth
 -password   include     system-auth
 -session    required    pam_loginuid.so
 -session    optional    pam_keyinit.so force revoke
 -session    include     system-auth
-+auth       include     common-auth
 +account    include     common-auth
 +password   include     common-auth
 +session    include     common-auth
