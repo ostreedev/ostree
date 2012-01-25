@@ -85,18 +85,12 @@ EOF
 
 	ln -sf /var/run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
 
-	# Override base-passwd...it has lots of crap in it we don't
-	# want, and we do want dbus/gdm etc.
-	cat >${IMAGE_ROOTFS}/etc/passwd << EOF
-root::0:0:root:/:/bin/sh
-dbus:*:1:1:dbus:/:/bin/false
-gdm:*:2:2:gdm:/var/lib/gdm:/bin/false
-EOF
-	cat >${IMAGE_ROOTFS}/etc/group << EOF
-root:*:0:root
-dbus:*:1:
-gdm:*:2:
-EOF
+	# The passwd database is stored in /var.
+	rm -f ${IMAGE_ROOTFS}/etc/passwd ${IMAGE_ROOTFS}/etc/shadow ${IMAGE_ROOTFS}/etc/shadow-
+	ln -s /var/passwd ${IMAGE_ROOTFS}/etc/passwd
+	rm -f ${IMAGE_ROOTFS}/etc/group
+	ln -s /var/group ${IMAGE_ROOTFS}/etc/group
+
 	mkdir ${IMAGE_ROOTFS}/var/lib/gdm
 	chown 2:2 ${IMAGE_ROOTFS}/var/lib/gdm
 
