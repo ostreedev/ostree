@@ -1,0 +1,53 @@
+From 9aee5e5db7bbc3ff36e73afeb4a8595981810414 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Tue, 24 Jan 2012 10:52:00 -0500
+Subject: [PATCH] Allow builders to not run make check by default
+
+Doing so breaks cross compilation, and is just plain different from
+pretty much every other module out there in the GNOME dependency stack.
+
+Furthermore, the environment needed for tests is not necessarily the
+same as that needed to just do a build.
+---
+ Makefile.am  |    7 ++++++-
+ configure.in |    6 ++++++
+ 2 files changed, 12 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 9c2c36d..bbde408 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -68,7 +68,12 @@ uninstall-hook:
+ 	rm -f "$(DESTDIR)$(datadir)/mime/types"
+ 	rm -f "$(DESTDIR)$(datadir)/mime/version"
+ 
+-all: check create-pot
++defaultmakedeps=create-pot
++if ENABLE_DEFAULT_MAKE_CHECK
++defaultmakedeps += check
++endif
++
++all: $(defaultmakedeps)
+ 
+ create-pot:
+ 	$(AM_V_GEN) $(MAKE) -C po shared-mime-info.pot
+diff --git a/configure.in b/configure.in
+index 0940625..2d639e6 100644
+--- a/configure.in
++++ b/configure.in
+@@ -42,6 +42,12 @@ if test "x$GCC" = "xyes"; then
+ fi
+ ]
+ 
++AC_ARG_ENABLE(default-make-check,
++   AC_HELP_STRING([--disable-default-make-check],
++                   [run make check by default [default=yes]]),,
++    enable_default_make_check=yes)
++AM_CONDITIONAL(ENABLE_DEFAULT_MAKE_CHECK, test x$enable_default_make_check = xyes)
++
+ AC_ARG_ENABLE(update-mimedb,
+    AC_HELP_STRING([--disable-update-mimedb],
+                    [disable the update-mime-database after install [default=no]]),,
+-- 
+1.7.6.5
+

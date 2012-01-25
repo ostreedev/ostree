@@ -367,9 +367,20 @@
 		 "patches": ["xkbcomp-autogen.patch"]},
 
 		{"src": "fd:xkeyboard-config",
+		 "config-opts": ["--with-xkb-rules-symlink=xorg",
+		                 "--with-xkb-base=/usr/share/X11/xkb"],
 		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/xserver",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/driver/xf86-input-keyboard",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/driver/xf86-input-mouse",
+		 "patches": ["xorg-autogen.patch"]},
+
+		{"src": "fd:xorg/driver/xf86-input-evdev",
 		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/driver/xf86-video-cirrus",
@@ -579,8 +590,6 @@
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:gnome-bluetooth",
-		 "patches": ["gnome-bluetooth-disable-docs.patch",
-		             "gnome-bluetooth-applet-la-file.patch"],
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:zenity"},
@@ -649,8 +658,7 @@
 		             "default-icon-theme-no-builddir.patch"]},
 
 		{"src": "fd-xdg:shared-mime-info",
-		 "patches": ["shared-mime-info-autogen.patch",
-		             "shared-mime-info-parallel.patch"]},
+		 "patches": ["shared-mime-info-check.patch"]},
 
 		{"src": "gnome:cantarell-fonts"},
 
