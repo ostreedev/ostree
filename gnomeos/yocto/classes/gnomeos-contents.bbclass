@@ -17,18 +17,19 @@ IMAGE_INSTALL = "libuuid1 \
 		 libtiff3 \
 		 libjpeg8 \
 		 libltdl7 \
-		 libsndfile1 \
-		 libogg0 \
-		 speex \
-		 libvorbis \
                  libstdc++6 \
                  libgnutls26 \
-		 icu \
-		 tzdata \
-                 curl \
+                 libogg0 \
 		 eglibc-gconvs \
 		 eglibc-binaries \
 		 "
+
+RDEPENDS += "tiff \
+	     libogg \
+	     libvorbis \
+	     speex \
+	     libatomics-ops \
+	     "
 
 RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
@@ -40,9 +41,15 @@ RECIPE_PACKAGES = "task-core-boot \
 		   gawk \
 		   gzip \
 		   less \
+		   curl \
+		   tzdata \
+		   libsndfile1 \
+		   icu \
 		   procps \
 		   libpam \
 		   ncurses \
+		   libvorbis \
+		   speex \
 		   python-modules \
 		   python-misc \
 		   "
