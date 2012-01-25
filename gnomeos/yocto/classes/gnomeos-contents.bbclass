@@ -9,6 +9,11 @@ inherit rootfs_${IMAGE_PKGTYPE}
 
 IMAGE_INSTALL = "libuuid1 \
 	         libblkid1 \
+		 e2fsprogs-blkid \
+		 e2fsprogs-fsck \
+		 e2fsprogs-e2fsck \
+		 e2fsprogs-mke2fs \
+		 e2fsprogs-tune2fs \
 		 libtiff3 \
 		 libjpeg8 \
 		 libltdl7 \
@@ -34,6 +39,8 @@ RECIPE_PACKAGES = "task-core-boot \
 		   grep \
 		   gawk \
 		   gzip \
+		   less \
+		   procps \
 		   libpam \
 		   ncurses \
 		   python-modules \
