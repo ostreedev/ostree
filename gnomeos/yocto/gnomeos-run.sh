@@ -73,17 +73,18 @@ if ! test -d ostree; then
     mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
     mkdir ostree/repo
     ostree --repo=ostree/repo init
-fi
-cat >ostree/var/passwd << EOF
+
+    cat >ostree/var/passwd << EOF
 root::0:0:root:/:/bin/sh
 dbus:*:1:1:dbus:/:/bin/false
 gdm:*:2:2:gdm:/var/lib/gdm:/bin/false
 EOF
-cat >ostree/var/group << EOF
+    cat >ostree/var/group << EOF
 root:*:0:root
 dbus:*:1:
 gdm:*:2:
 EOF
+fi
 
 cd ostree
 ostree --repo=${OSTREE_REPO} local-clone repo ${BRANCH_PREFIX}runtime ${BRANCH_PREFIX}devel
