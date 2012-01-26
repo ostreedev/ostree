@@ -1,0 +1,43 @@
+#!/bin/sh
+
+# Screw sysvinit.
+
+if test -f /var/lib/random-seed
+then
+    cat /var/lib/random-seed >/dev/urandom
+fi
+rm -f /var/lib/random-seed
+umask 077
+dd if=/dev/urandom of=/var/lib/random-seed count=1 \
+    >/dev/null 2>&1 || echo "urandom start: failed."
+umask 022
+
+if test -f /etc/hostname
+then
+	hostname -F /etc/hostname
+fi
+
+echo "Mounting local filesystems"
+mount -at nonfs,nosmbfs,noncpfs 2>/dev/null
+
+if test ! -p /dev/initctl
+then
+	rm -f /dev/initctl
+	mknod -m 600 /dev/initctl p
+fi
+kill -USR1 1
+
+swapon -a
+
+mkdir -p /var/run/dbus
+echo "Starting dbus-daemon"
+/usr/bin/dbus-daemon --system
+sleep 1
+echo "Starting NetworkManager"
+/usr/sbin/NetworkManager &
+echo "Starting udev"
+/usr/libexec/udevd --daemon
+sleep 1
+/usr/sbin/udevadm trigger
+echo "booted!"
+

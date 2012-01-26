@@ -85,6 +85,9 @@ fakeroot do_rootfs () {
 	rm -f ${IMAGE_ROOTFS}/etc/init.d/udev-cache
 	rm -f ${IMAGE_ROOTFS}/etc/rc*.d/*udev-cache*
 
+	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/S03udev
+	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/*networking
+
 	# The default fstab has /, which we don't want, and we do want /sys and /dev/shm
 	cat > ${IMAGE_ROOTFS}/etc/fstab << EOF
 tmpfs                   /dev/shm                tmpfs   defaults        0 0

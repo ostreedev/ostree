@@ -18,6 +18,7 @@ SRC_URI = "file://functions \
            file://mountnfs.sh \
            file://NetworkManager \
            file://dbus \
+           file://gnomeudev \
            file://reboot \
            file://single \
            file://sendsigs \
@@ -61,6 +62,7 @@ do_install () {
 	install -m 0755    ${WORKDIR}/hostname.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountall.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/NetworkManager	${D}${sysconfdir}/init.d
+	install -m 0755    ${WORKDIR}/gnomeudev		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/dbus              ${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/reboot		${D}${sysconfdir}/init.d
@@ -86,13 +88,11 @@ do_install () {
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rc6.d/S30urandom
 	ln -sf		../init.d/umountnfs.sh	${D}${sysconfdir}/rc6.d/S31umountnfs.sh
 	ln -sf		../init.d/umountfs	${D}${sysconfdir}/rc6.d/S40umountfs
-	# udev will run at S55 if installed
 	ln -sf		../init.d/reboot	${D}${sysconfdir}/rc6.d/S90reboot
 	ln -sf		../init.d/sendsigs	${D}${sysconfdir}/rc0.d/S20sendsigs
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rc0.d/S30urandom
 	ln -sf		../init.d/umountnfs.sh	${D}${sysconfdir}/rc0.d/S31umountnfs.sh
 	ln -sf		../init.d/umountfs	${D}${sysconfdir}/rc0.d/S40umountfs
-	# udev will run at S55 if installed
 	ln -sf		../init.d/halt		${D}${sysconfdir}/rc0.d/S90halt
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc0.d/S25save-rtc.sh
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc6.d/S25save-rtc.sh
@@ -101,6 +101,7 @@ do_install () {
 	ln -sf		../init.d/hostname.sh	${D}${sysconfdir}/rcS.d/S39hostname.sh
 	ln -sf		../init.d/dbus	        ${D}${sysconfdir}/rcS.d/S40dbus
 	ln -sf		../init.d/NetworkManager	${D}${sysconfdir}/rcS.d/S41NetworkManager
+	ln -sf		../init.d/gnomeudev     ${D}${sysconfdir}/rcS.d/S03gnomeudev
 	ln -sf		../init.d/mountnfs.sh	${D}${sysconfdir}/rcS.d/S45mountnfs.sh
 	ln -sf		../init.d/bootmisc.sh	${D}${sysconfdir}/rcS.d/S55bootmisc.sh
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rcS.d/S55urandom
