@@ -71,6 +71,8 @@ chmod a=rwxt tmp
 if ! test -d ostree; then
     mkdir ostree
     mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
+    mkdir -p ./ostree/var/lib/dbus
+    dbus-uuidgen > ./ostree/var/lib/dbus/machine-id
     mkdir ostree/repo
     ostree --repo=ostree/repo init
 
