@@ -126,7 +126,10 @@ def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
     
     loop = Mainloop.get(None)
 
+    proc_estatus = None
     def _on_pid_exited(pid, estatus):
+        global proc_estatus
+        proc_estatus = estatus
         failed = estatus != 0
         warnfilter.finish(not failed)
         if fatal_on_error and failed:
@@ -137,4 +140,4 @@ def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
         loop.quit()
     loop.watch_pid(proc.pid, _on_pid_exited)
     loop.run()
-    return proc.returncode
+    return proc_estatus
