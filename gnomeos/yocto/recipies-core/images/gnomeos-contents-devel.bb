@@ -17,7 +17,12 @@ RECIPE_PACKAGES += "task-core-sdk \
 		gettext-dev \
 		"
 
-IMAGE_INSTALL += "libuuid-dev \
+IMAGE_INSTALL += "libc6-dev \
+	      	  libgcc-s-dev \
+	      	  linux-libc-headers-dev \
+	      	  libz-dev \
+	      	  libtool-dev \
+	          libuuid-dev \
 		  libblkid-dev \
 		  libpam-dev \
 		  libtiff-dev \
