@@ -673,6 +673,8 @@
 		 "branch": "telepathy-logger-0.2.12",
 		 "patches": ["telepathy-logger-autogen.patch"]},
 
+		{"src": "gnome:gnome-power-manager"},
+
 		{"src": "gnome:gnome-shell",
 		 "config-opts": ["--enable-compile-warnings=maximum"]},
 
@@ -683,6 +685,14 @@
 		{"src": "gnome:gnome-control-center",
 		 "config-opts": ["--disable-cups",
 		                 "--disable-documentation"],
-		 "patches": ["g-c-c-disable-docs.patch"]}
+		 "patches": ["g-c-c-disable-docs.patch"]},
+
+		{"src": "gnome:notification-daemon"},
+
+		{"src": "gnome:libwnck"},
+
+		{"src": "gnome:gnome-panel",
+		 "patches": ["panel-disable-docs.patch"],
+		 "config-opts": ["--disable-documentation"]}
 	]
 }
