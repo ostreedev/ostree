@@ -101,7 +101,7 @@ fakeroot do_rootfs () {
 
 	# The default fstab has /, which we don't want, and we do want /sys and /dev/shm
 	cat > ${IMAGE_ROOTFS}/etc/fstab << EOF
-tmpfs                   /dev/shm                tmpfs   defaults        0 0
+tmpfs                   /dev/shm                tmpfs   mode=1777,nosuid,nodev 0 0
 devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
 sysfs                   /sys                    sysfs   defaults        0 0
 proc                    /proc                   proc    defaults        0 0
