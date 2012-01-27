@@ -149,6 +149,33 @@ EOF
 	rm -f ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.tar.gz
 	ln -s ${IMAGE_NAME}.rootfs.tar.gz ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.tar.gz
 	echo "Created ${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.tar.gz"
+
+	set -x
+
+	if echo ${IMAGE_LINK_NAME} | grep -q -e -runtime; then
+	   ostree_target=runtime
+	else
+	   ostree_target=devel
+	fi
+	if test x${MACHINE_ARCH} = xqemux86; then
+	   ostree_machine=i686
+	else
+	  if test x${MACHINE_ARCH} = xqemux86_64; then
+	    ostree_machine=x86_64
+	  else
+	    echo "error: unknown machine from ${MACHINE_ARCH}"; exit 1
+	  fi
+	fi
+	buildroot=gnomeos-3.4-${ostree_machine}-${ostree_target}
+	base=bases/yocto/${buildroot}
+	repo=${DEPLOY_DIR_IMAGE}/repo
+	if ! test -d ${repo}; then
+	   mkdir ${repo}
+	   ostree --repo=${repo} init --archive
+        fi
+	ostree --repo=${repo} commit -s "${IMAGE_LINK_NAME}" --skip-if-unchanged "Build" -b ${base} --tree=tar=${DEPLOY_DIR_IMAGE}/${IMAGE_LINK_NAME}.tar.gz
+	ostree --repo=${repo} diff "${base}" || true
+	ostree --repo=${repo} compose -s "Initial compose" -b ${buildroot} ${base}:/
 }
 
 log_check() {
