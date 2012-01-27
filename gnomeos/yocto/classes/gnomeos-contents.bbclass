@@ -22,6 +22,17 @@ IMAGE_INSTALL = "libuuid1 \
                  libogg0 \
 		 eglibc-gconvs \
 		 eglibc-binaries \
+		 pam-plugin-cracklib \
+		 pam-plugin-env \
+		 pam-plugin-keyinit \
+		 pam-plugin-limits \
+		 pam-plugin-localuser \
+		 pam-plugin-loginuid \
+		 pam-plugin-unix \
+		 pam-plugin-rootok \
+		 pam-plugin-succeed-if \
+		 pam-plugin-permit \
+		 pam-plugin-nologin \
 		 "
 
 RDEPENDS += "tiff \
