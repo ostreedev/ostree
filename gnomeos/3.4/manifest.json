@@ -317,8 +317,10 @@
 
 		{"src": "git:git://git.kernel.org/pub/scm/linux/hotplug/udev.git",
 		 "branch": "175",
-		 "config-opts": ["--disable-documentation"],
-		 "patches": ["udev-autogen.patch", "udev-docs.patch"]},
+		 "config-opts": ["--disable-documentation",
+		                 "--enable-udev_acl"],
+		 "patches": ["udev-autogen.patch", "udev-docs.patch",
+		             "udev-gudev-libtool.patch"]},
 
 		{"src": "cgwalters:expat-git-mirror.git",
 		 "patches": ["expat-autogen.patch"]},
