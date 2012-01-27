@@ -693,6 +693,13 @@
 
 		{"src": "gnome:gnome-panel",
 		 "patches": ["panel-disable-docs.patch"],
+		 "config-opts": ["--disable-documentation"]},
+
+		{"src": "gnome:vte",
+		 "branch": "vte-0-32"},
+
+		{"src": "gnome:gnome-terminal",
+		 "patches": ["gnome-terminal-disable-docs.patch"],
 		 "config-opts": ["--disable-documentation"]}
 	]
 }

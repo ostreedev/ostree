@@ -1,0 +1,44 @@
+From 16bf30bf14daa0dfbccdf23bca3d65394145e58a Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 27 Jan 2012 08:34:25 -0500
+Subject: [PATCH] build: Add --disable-documentation flag
+
+Useful for operating system builders to avoid build cycles, and
+also if one just doesn't want to ship the help files.
+---
+ Makefile.am  |    6 +++++-
+ configure.ac |    4 ++++
+ 2 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 27547fd..f96dffd 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,4 +1,8 @@
+-SUBDIRS = src po help
++SUBDIRS = src po
++DIST_SUBDIRS = help
++if ENABLE_DOCUMENTATION
++SUBDIRS += $(DIST_SUBDIRS)
++endif
+ 
+ NULL =
+ 
+diff --git a/configure.ac b/configure.ac
+index 407dc01..9ffee92 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -159,6 +159,10 @@ AC_SUBST([GTK_BUILDER_CONVERT_FLAGS])
+ # Documentation
+ # *************
+ 
++AC_ARG_ENABLE([documentation],
++	AS_HELP_STRING([--enable-documentation], [enable man pages and HTML]),
++	[], [enable_documentation=yes])
++AM_CONDITIONAL(ENABLE_DOCUMENTATION, test x$enable_documentation = xyes)
+ GNOME_DOC_INIT
+ 
+ # ****************************
+-- 
+1.7.6.5
+
