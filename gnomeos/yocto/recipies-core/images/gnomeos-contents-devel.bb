@@ -44,4 +44,5 @@ IMAGE_INSTALL += "libc6-dev \
 		  icu-dev \
 		  curl-dev \
 		  libcurl-dev \
+		  ncurses-dev \
 		  "

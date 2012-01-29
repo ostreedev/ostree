@@ -33,6 +33,7 @@ IMAGE_INSTALL = "libuuid1 \
 		 pam-plugin-succeed-if \
 		 pam-plugin-permit \
 		 pam-plugin-nologin \
+		 ncurses-terminfo-base \
 		 "
 
 RDEPENDS += "tiff \
