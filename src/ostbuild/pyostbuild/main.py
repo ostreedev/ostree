@@ -44,7 +44,7 @@ def main(args):
     else:
         builtin = builtins.get(args[0])
         if builtin is None:
-            print "error: Unknown builtin '%s'" % (args[1], )
+            print "error: Unknown builtin '%s'" % (args[0], )
             return usage(1)
         return builtin.execute(args[1:])
     

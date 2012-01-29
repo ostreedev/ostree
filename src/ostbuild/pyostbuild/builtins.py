@@ -47,7 +47,10 @@ def register(builtin):
     _all_builtins[builtin.name] = builtin
 
 def get(name):
-    return _all_builtins.get(name)()
+    builtin = _all_builtins.get(name)
+    if builtin is not None:
+        return builtin()
+    return None
 
 def get_all():
     return _all_builtins.itervalues()
