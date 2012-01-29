@@ -85,5 +85,6 @@ class Mainloop(object):
                 self._timeouts[i] = (remaining_ms, callback)
 
     def run(self):
+        self._running = True
         while self._running:
             self.run_once()
