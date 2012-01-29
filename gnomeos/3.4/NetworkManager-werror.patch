@@ -1,0 +1,39 @@
+From 96c2bf715e2bc0912433c4ddbe65f76a0a1dba6f Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sun, 29 Jan 2012 16:01:56 -0500
+Subject: [PATCH] build: Allow --set-more-warnings=no|yes|error
+
+For the GNOME autobuilders, we want compiler warnings, but don't want
+-Werror.  For developer compatibility, the default value is "error".
+---
+ m4/compiler_warnings.m4 |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/m4/compiler_warnings.m4 b/m4/compiler_warnings.m4
+index 575ea9a..eeacfae 100644
+--- a/m4/compiler_warnings.m4
++++ b/m4/compiler_warnings.m4
+@@ -1,7 +1,7 @@
+ AC_DEFUN([NM_COMPILER_WARNINGS],
+ [AC_ARG_ENABLE(more-warnings,
+-	AS_HELP_STRING([--enable-more-warnings], [Maximum compiler warnings]),
+-	set_more_warnings="$enableval",set_more_warnings=yes)
++	AS_HELP_STRING([--enable-more-warnings], [Possible values: no/yes/error]),
++	set_more_warnings="$enableval",set_more_warnings=error)
+ AC_MSG_CHECKING(for more warnings)
+ if test "$GCC" = "yes" -a "$set_more_warnings" != "no"; then
+ 	AC_MSG_RESULT(yes)
+@@ -26,7 +26,9 @@ if test "$GCC" = "yes" -a "$set_more_warnings" != "no"; then
+ 		unset SAVE_CFLAGS
+ 	done
+ 	unset option
+-	CFLAGS="$CFLAGS -Werror"
++	if test "x$set_more_warnings" = xerror; then
++		CFLAGS="$CFLAGS -Werror"
++	fi
+ else
+ 	AC_MSG_RESULT(no)
+ fi
+-- 
+1.7.6.5
+

@@ -429,13 +429,16 @@
 		 "config-opts": ["--with-distro=generic",
 		                 "--with-dhclient=yes",
 				 "--with-crypto=nss",
-				 "--with-docs=no"],
-		 "patches": ["NetworkManager-config.patch"]},
+				 "--with-docs=no",
+				 "--enable-more-warnings=yes"],
+		 "patches": ["NetworkManager-config.patch",
+		             "NetworkManager-werror.patch"]},
 		 
 		{"src": "fd:ConsoleKit",
 		 "patches": ["ConsoleKit-builddir.patch"]},
 
 		{"src": "fd:PolicyKit",
+		 "patches": ["PolicyKit-libtool.patch"],
 		 "config-opts": ["--disable-man-pages"]},
 
 		{"src": "0pointer:libatasmart.git",
@@ -448,7 +451,8 @@
 			     "udisks-build-without-docs.patch"]},
 
 	        {"src": "fd:upower",
-		 "config-opts": ["--disable-man-pages"],
+		 "config-opts": ["--disable-man-pages",
+		                 "--disable-strict"],
 		 "patches": ["upower-no-builddir.patch"]},
 
 		{"src": "gnome:gnome-doc-utils",
