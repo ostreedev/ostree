@@ -504,6 +504,7 @@
 		             "iso-codes-builddir.patch"]},
 
 		{"src": "fd:libxklavier",
+		 "branch": "v.5.2",
 		 "config-opts": ["--disable-introspection"]},
 
 		{"src": "gnome:libgnomekbd"},
