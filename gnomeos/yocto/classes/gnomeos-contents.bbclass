@@ -64,6 +64,7 @@ RECIPE_PACKAGES = "task-core-boot \
 		   speex \
 		   python-modules \
 		   python-misc \
+		   openssh \
 		   "
 
 PACKAGE_INSTALL = "${RECIPE_PACKAGES} ${IMAGE_INSTALL}"
