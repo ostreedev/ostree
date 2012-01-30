@@ -17,6 +17,8 @@ RECIPE_PACKAGES += "task-core-sdk \
 		gettext-dev \
 		"
 
+DEPENDS += "db"
+
 IMAGE_INSTALL += "libc6-dev \
 	      	  libgcc-s-dev \
 	      	  linux-libc-headers-dev \
@@ -45,4 +47,5 @@ IMAGE_INSTALL += "libc6-dev \
 		  curl-dev \
 		  libcurl-dev \
 		  ncurses-dev \
+		  db-dev \
 		  "
