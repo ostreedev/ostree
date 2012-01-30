@@ -570,23 +570,20 @@
 
 		{"src": "fd-gstreamer:gstreamer",
 		 "config-opts": ["--disable-tests",
-		                 "--disable-fatal-warnings"],
-		 "patches": ["gstreamer-warning-errors.patch"]},
+		                 "--disable-fatal-warnings"]},
 
 		{"src": "fd-gstreamer:gst-plugins-base",
 		 "config-opts": ["--with-gtk=3.0",
 		                 "--disable-tests",
 				 "--disable-gnome_vfs",
 				 "--disable-fatal-warnings"],
-		 "patches": ["gst-plugins-base-no-builddir.patch",
-		             "gst-plugins-base-warnings.patch"]},
+		 "patches": ["gst-plugins-base-no-builddir.patch"]},
 
 		{"src": "fd-gstreamer:gst-plugins-good",
 		 "config-opts": ["--with-gtk=3.0",
 		                 "--disable-tests",
 				 "--disable-examples",
-				 "--disable-fatal-warnings"],
-		 "patches": ["gst-plugins-good-warnings.patch"]},
+				 "--disable-fatal-warnings"]},
 
 		{"src": "git:git://git.webkit.org/WebKit.git",
 		 "branch": "4e276ff268f3f3e97abb97f8e5a8cf6d8d97d2db",
@@ -628,9 +625,7 @@
 
 		{"src": "gnome:libgee",
 		 "branch": "0.6",
-		 "patches": ["gee-builddir.patch",
-		             "gee-vala-0.15.patch",
-			     "gee-gir-version.patch"]},
+		 "patches": ["gee-builddir.patch"]},
 
 		{"src": "fd-telepathy:telepathy-glib",
 		 "branch": "telepathy-glib-0.17.3",
