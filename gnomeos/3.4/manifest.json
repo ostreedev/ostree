@@ -598,7 +598,8 @@
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:gnome-bluetooth",
-		 "config-opts": ["--disable-documentation"]},
+		 "config-opts": ["--disable-documentation",
+		                 "--disable-scrollkeeper"]},
 
 		{"src": "gnome:zenity"},
 
@@ -633,7 +634,8 @@
 
 		{"src": "fd-telepathy:telepathy-glib",
 		 "branch": "telepathy-glib-0.17.3",
-		 "config-opts": ["--enable-vala-bindings"],
+		 "config-opts": ["--enable-vala-bindings",
+                                 "--disable-compiler-warnings"],
 		 "patches": ["telepathy-glib-builddir.patch"]},
 
 		{"src": "gnome:libgweather"},
@@ -653,9 +655,10 @@
 
 		{"src": "gnome:folks",
 		 "config-opts": ["--enable-eds-backend",
+		                 "--disable-Werror",
 		                 "--disable-fatal-warnings"],
+		 "branch": "wip/vala-0-15",
 		 "patches": ["folks-builddir.patch",
-		             "folks-vala-0.16.patch",
 			     "folks-config-fatal-warnings.patch"]},
 
 		{"src": "gnome:dconf",
@@ -666,7 +669,7 @@
 		             "default-icon-theme-no-builddir.patch"]},
 
 		{"src": "fd-xdg:shared-mime-info",
-		 "patches": ["shared-mime-info-check.patch"]},
+		 "config-opts": ["--disable-default-make-check"]},
 
 		{"src": "gnome:cantarell-fonts"},
 
