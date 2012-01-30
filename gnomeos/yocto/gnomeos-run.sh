@@ -73,6 +73,10 @@ if ! test -d ostree; then
     mkdir -p -m 0755 ./ostree/var/{log,run,tmp,spool}
     mkdir -p ./ostree/var/lib/dbus
     dbus-uuidgen > ./ostree/var/lib/dbus/machine-id
+
+    mkdir ./ostree/var/lib/gdm
+    chown 2:2 ./ostree/var/lib/gdm
+
     mkdir ostree/repo
     ostree --repo=ostree/repo init
 

@@ -121,9 +121,6 @@ EOF
 	rm -f ${IMAGE_ROOTFS}/etc/group
 	ln -s /var/group ${IMAGE_ROOTFS}/etc/group
 
-	mkdir ${IMAGE_ROOTFS}/var/lib/gdm
-	chown 2:2 ${IMAGE_ROOTFS}/var/lib/gdm
-
 	TOPROOT_BIND_MOUNTS="home root tmp"
 	OSTREE_BIND_MOUNTS="var"
 	OSDIRS="dev proc mnt media run sys sysroot"
