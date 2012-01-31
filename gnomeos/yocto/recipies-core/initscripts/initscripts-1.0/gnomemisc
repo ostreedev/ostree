@@ -1,0 +1,3 @@
+#!/bin/sh
+
+mkdir -p -m 1777 /tmp/.ICE-unix

@@ -14,11 +14,11 @@ SRC_URI = "file://functions \
            file://mountall.sh \
            file://banner.sh \
            file://finish.sh \
-           file://bootmisc.sh \
            file://mountnfs.sh \
            file://NetworkManager \
            file://dbus \
            file://gnomeudev \
+           file://gnomemisc \
            file://reboot \
            file://single \
            file://sendsigs \
@@ -56,13 +56,13 @@ do_install () {
 	install -d ${D}${sysconfdir}/default
 
 	install -m 0644    ${WORKDIR}/functions		${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/bootmisc.sh	${D}${sysconfdir}/init.d
 #	install -m 0755    ${WORKDIR}/finish.sh		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/halt		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/hostname.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountall.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/NetworkManager	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/gnomeudev		${D}${sysconfdir}/init.d
+	install -m 0755    ${WORKDIR}/gnomemisc		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/dbus              ${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/reboot		${D}${sysconfdir}/init.d
@@ -102,8 +102,8 @@ do_install () {
 	ln -sf		../init.d/dbus	        ${D}${sysconfdir}/rcS.d/S40dbus
 	ln -sf		../init.d/NetworkManager	${D}${sysconfdir}/rcS.d/S41NetworkManager
 	ln -sf		../init.d/gnomeudev     ${D}${sysconfdir}/rcS.d/S03gnomeudev
+	ln -sf		../init.d/gnomemisc     ${D}${sysconfdir}/rcS.d/S04gnomemisc
 	ln -sf		../init.d/mountnfs.sh	${D}${sysconfdir}/rcS.d/S45mountnfs.sh
-	ln -sf		../init.d/bootmisc.sh	${D}${sysconfdir}/rcS.d/S55bootmisc.sh
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rcS.d/S55urandom
 #	ln -sf		../init.d/finish.sh	${D}${sysconfdir}/rcS.d/S99finish.sh
 	# udev will run at S03 if installed
