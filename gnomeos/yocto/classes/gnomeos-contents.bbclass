@@ -116,8 +116,10 @@ EOF
 	ln -sf /var/run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
 
 	# The passwd database is stored in /var.
-	rm -f ${IMAGE_ROOTFS}/etc/passwd ${IMAGE_ROOTFS}/etc/shadow ${IMAGE_ROOTFS}/etc/shadow-
+	rm -f ${IMAGE_ROOTFS}/etc/passwd
 	ln -s /var/passwd ${IMAGE_ROOTFS}/etc/passwd
+	rm -f ${IMAGE_ROOTFS}/etc/shadow ${IMAGE_ROOTFS}/etc/shadow-
+	ln -s /var/shadow ${IMAGE_ROOTFS}/etc/shadow
 	rm -f ${IMAGE_ROOTFS}/etc/group
 	ln -s /var/group ${IMAGE_ROOTFS}/etc/group
 
