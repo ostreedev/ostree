@@ -66,6 +66,10 @@ git clone gnome:ostree
 git clone git://github.com/cgwalters/poky.git
 cd $builddir
 . $srcdir/poky/oe-init-build-env gnomeos-build
+# Now edit conf/bblayers.conf, and add
+#   /src/ostree/gnomeos/yocto
+# to BBLAYERS.
+
 bitbake ostree-native
 bitbake gnomeos-contents-{runtime,devel}
 
@@ -77,6 +81,7 @@ bitbake gnomeos-contents-{runtime,devel}
 # manifest=/src/ostree/gnomeos/3.4/manifest.json
 
 ostbuild resolve
+ostbuild build
 
 
 
