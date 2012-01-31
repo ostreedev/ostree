@@ -321,7 +321,7 @@ class OstbuildBuild(builtins.Builtin):
 
     def _compose_arch(self, architecture, components):
         runtime_base = self._get_base('runtime', architecture)
-        devel_base = self._get_base('runtime', architecture)
+        devel_base = self._get_base('devel', architecture)
         runtime_contents = [runtime_base + ':/']
         devel_contents = [devel_base + ':/']
 
