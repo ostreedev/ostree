@@ -77,8 +77,8 @@ if ! test -d ostree; then
     mkdir ./ostree/var/lib/gdm
     chown 2:2 ./ostree/var/lib/gdm
 
-    touch /var/shadow
-    chmod 0600 /var/shadow
+    touch ./ostree/var/shadow
+    chmod 0600 ./ostree/var/shadow
 
     mkdir ostree/repo
     ostree --repo=ostree/repo init
