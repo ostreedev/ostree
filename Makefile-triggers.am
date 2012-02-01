@@ -22,6 +22,7 @@ triggers_SCRIPTS = \
 	src/triggers/triggers.d/dconf.trigger \
 	src/triggers/triggers.d/desktop-database.trigger \
 	src/triggers/triggers.d/gdk-pixbuf.trigger \
+	src/triggers/triggers.d/gconf.trigger \
 	src/triggers/triggers.d/glib.trigger \
 	src/triggers/triggers.d/gtk+.trigger \
 	src/triggers/triggers.d/immodules.trigger \
