@@ -24,6 +24,6 @@
 GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source`
 export GCONF_CONFIG_SOURCE
 
-for f in /etc/gconf/schemas/*.schema; do
+for f in /etc/gconf/schemas/*.schemas; do
     gconftool-2 --makefile-install-rule "$f"
 done
