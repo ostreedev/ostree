@@ -128,4 +128,4 @@ if ! echo $ARGS | grep -q 'ostree='; then
     ARGS="ostree=${BRANCH_PREFIX}runtime-current $ARGS"
 fi
 
-exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -net user -net nic,model=virtio -append "$ARGS"
+exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -net user -net nic,model=virtio -append "$ARGS" -monitor stdio
