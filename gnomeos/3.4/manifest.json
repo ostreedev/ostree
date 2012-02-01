@@ -435,12 +435,12 @@
 		 "patches": ["NetworkManager-config.patch",
 		             "NetworkManager-werror.patch"]},
 		 
-		{"src": "fd:ConsoleKit",
-		 "patches": ["ConsoleKit-builddir.patch"]},
-
 		{"src": "fd:PolicyKit",
 		 "patches": ["PolicyKit-libtool.patch"],
 		 "config-opts": ["--disable-man-pages"]},
+
+		{"src": "fd:ConsoleKit",
+		 "patches": ["ConsoleKit-builddir.patch"]},
 
 		{"src": "0pointer:libatasmart.git",
 		 "patches": ["libatasmart-autogen.patch"]},
