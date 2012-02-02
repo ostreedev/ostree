@@ -73,8 +73,13 @@ cd $builddir
 bitbake ostree-native
 bitbake gnomeos-contents-{runtime,devel}
 
+# This bit is just for shorthand convenience, you can skip it 
+cd $builddir
+ln -s tmp/deploy/images/repo repo
+
 # Now create a file ~/.config/ostbuild.cfg
 # example contents:
+# [global]
 # repo=/src/build/gnomeos-build/build/repo
 # mirrordir=/src/build/ostbuild/src
 # workdir=/src/build/ostbuild/work
@@ -82,6 +87,3 @@ bitbake gnomeos-contents-{runtime,devel}
 
 ostbuild resolve
 ostbuild build
-
-
-
