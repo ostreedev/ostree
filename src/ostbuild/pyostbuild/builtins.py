@@ -38,7 +38,7 @@ class Builtin(object):
             fatal("Specified mirrordir '%s' is not a directory" % (self.mirrordir, ))
         self.workdir = ostbuildrc.get_key('workdir')
         if not os.path.isdir(self.workdir):
-            fatal("Specified workdir '%s' is not a directory", (self.workdir, ))
+            fatal("Specified workdir '%s' is not a directory" % (self.workdir, ))
 
     def execute(self, args):
         raise NotImplementedError()
