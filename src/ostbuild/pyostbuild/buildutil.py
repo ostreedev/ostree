@@ -17,6 +17,7 @@
 
 import os
 import re
+import urlparse
 
 from .subprocess_helpers import run_sync_get_output
 
@@ -30,6 +31,11 @@ BUILD_ENV = {
     'TMPDIR' : '/tmp',
     'TZ': 'EST5EDT'
     }
+
+def get_mirrordir(mirrordir, keytype, uri, prefix=''):
+    assert keytype == 'git'
+    parsed = urlparse.urlsplit(uri)
+    return os.path.join(mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
 
 def find_user_chroot_path():
     # We need to search PATH here manually so we correctly pick up an

@@ -41,10 +41,6 @@ class OstbuildBuild(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _mirror_for_url(self, url):
-        parsed = urlparse.urlsplit(url)
-        return os.path.join(self.mirrordir, 'git', parsed.scheme, parsed.netloc, parsed.path[1:])
-
     def _fixup_submodule_references(self, cwd):
         submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
         submodule_status_lines = submodules_status_text.split('\n')
@@ -56,7 +52,7 @@ class OstbuildBuild(builtins.Builtin):
             (sub_checksum, sub_name) = line.split(' ', 1)
             sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                            'submodule.%s.url' % (sub_name, )], cwd=cwd)
-            mirrordir = self._mirror_for_url(sub_url)
+            mirrordir = buildutil.get_mirrordir(self.mirrordir, 'git', sub_url)
             run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
         return have_submodules
 
@@ -185,7 +181,7 @@ class OstbuildBuild(builtins.Builtin):
 
         (keytype, uri) = self._parse_src_key(meta['src'])
 
-        mirror = self._mirror_for_url(uri)
+        mirror = buildutil.get_mirrordir(self.mirrordir, keytype, uri)
         component_src = self._get_vcs_checkout(name, keytype, mirror, branch,
                                                overwrite=not self.args.debug_shell)
 
