@@ -30,6 +30,7 @@ from . import ostbuildrc
 from . import buildutil
 from . import kvfile
 from . import odict
+from . import vcs
 
 class BuildOptions(object):
     pass
@@ -40,59 +41,6 @@ class OstbuildBuild(builtins.Builtin):
 
     def __init__(self):
         builtins.Builtin.__init__(self)
-
-    def _fixup_submodule_references(self, cwd):
-        submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
-        submodule_status_lines = submodules_status_text.split('\n')
-        have_submodules = False
-        for line in submodule_status_lines:
-            if line == '': continue
-            have_submodules = True
-            line = line[1:]
-            (sub_checksum, sub_name) = line.split(' ', 1)
-            sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
-                                           'submodule.%s.url' % (sub_name, )], cwd=cwd)
-            mirrordir = buildutil.get_mirrordir(self.mirrordir, 'git', sub_url)
-            run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
-        return have_submodules
-
-    def _get_vcs_checkout(self, name, keytype, mirrordir, branch, overwrite=True):
-        checkoutdir = os.path.join(self.workdir, 'src')
-        if not os.path.isdir(checkoutdir):
-            os.makedirs(checkoutdir)
-        dest = os.path.join(checkoutdir, name)
-        tmp_dest = dest + '.tmp'
-        if os.path.isdir(dest):
-            if not overwrite:
-                return dest
-            shutil.rmtree(dest)
-        if os.path.isdir(tmp_dest):
-            shutil.rmtree(tmp_dest)
-        git_mirrors_path = os.path.join(self.mirrordir, 'gitconfig')
-        f = open(git_mirrors_path)
-        git_mirrors = f.read()
-        f.close()
-        run_sync(['git', 'clone', '-q',
-                  '--no-checkout', mirrordir, tmp_dest])
-        run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest)
-        run_sync(['git', 'submodule', 'init'], cwd=tmp_dest)
-        have_submodules = self._fixup_submodule_references(tmp_dest)
-        if have_submodules:
-            run_sync(['linux-user-chroot',
-                      '--unshare-net', '--chdir', tmp_dest, '/',
-                      '/usr/bin/git', 'submodule', 'update'])
-        os.rename(tmp_dest, dest)
-        return dest
-
-    def _parse_src_key(self, srckey):
-        idx = srckey.find(':')
-        if idx < 0:
-            raise ValueError("Invalid SRC uri=%s" % (srckey, ))
-        keytype = srckey[:idx]
-        if keytype not in ['git']:
-            raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
-        uri = srckey[idx+1:]
-        return (keytype, uri)
 
     def _get_ostbuild_chroot_args(self, architecture):
         current_machine = os.uname()[4]
@@ -179,11 +127,12 @@ class OstbuildBuild(builtins.Builtin):
         buildname = self._get_buildname(meta, architecture)
         buildroot_name = self._get_buildroot_name(meta, architecture)
 
-        (keytype, uri) = self._parse_src_key(meta['src'])
+        (keytype, uri) = buildutil.parse_src_key(meta['src'])
 
         mirror = buildutil.get_mirrordir(self.mirrordir, keytype, uri)
-        component_src = self._get_vcs_checkout(name, keytype, mirror, branch,
-                                               overwrite=not self.args.debug_shell)
+        checkoutdir = os.path.join(self.workdir, 'src', name)
+        component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir, branch,
+                                             overwrite=not self.args.debug_shell)
 
         if self.args.debug_shell:
             buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)

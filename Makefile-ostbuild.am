@@ -24,6 +24,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
 	src/ostbuild/pyostbuild/builtin_autodiscover_meta.py	\
 	src/ostbuild/pyostbuild/builtin_build.py	\
+	src/ostbuild/pyostbuild/builtin_checkout.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_run_triggers.py	\
 	src/ostbuild/pyostbuild/builtin_commit_artifacts.py	\
@@ -40,5 +41,6 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/ostbuildrc.py		\
 	src/ostbuild/pyostbuild/warningfilter.py	\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
+	src/ostbuild/pyostbuild/vcs.py			\
 	$(NULL)
 

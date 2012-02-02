@@ -32,6 +32,17 @@ BUILD_ENV = {
     'TZ': 'EST5EDT'
     }
 
+def parse_src_key(srckey):
+    idx = srckey.find(':')
+    if idx < 0:
+        raise ValueError("Invalid SRC uri=%s" % (srckey, ))
+    keytype = srckey[:idx]
+    if keytype not in ['git']:
+        raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
+    uri = srckey[idx+1:]
+    return (keytype, uri)
+
+
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     assert keytype == 'git'
     parsed = urlparse.urlsplit(uri)
