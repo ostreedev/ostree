@@ -36,12 +36,14 @@ IMAGE_INSTALL = "libuuid1 \
 		 ncurses-terminfo-base \
 		 "
 
-RDEPENDS += "tiff \
+RDEPENDS += "ostree-native \
+ 	     eglibc-locale \
+	     tiff \
 	     libogg \
 	     libvorbis \
 	     speex \
 	     libatomics-ops \
-	     "
+	    "
 
 RECIPE_PACKAGES = "task-core-boot \
 		   coreutils \
