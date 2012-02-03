@@ -49,11 +49,29 @@ Doing a full build on your system
 srcdir=/src
 builddir=/src/build
 
+# First, you'll need "http://git.gnome.org/browse/linux-user-chroot/"
+# installed as setuid root.
+
 cd $srcdir
-git clone gnome:ostree
+
+git clone gnome:linux-user-chroot
+cd linux-user-chroot
+NOCONFIGURE=1 ./autogen.sh
+./configure
+make
+sudo make install
+sudo chown root:root /usr/local/bin/linux-user-chroot
+sudo chmod u+s /usr/local/bin/linux-user-chroot
+
+# Next, we're grabbing my Poky branch.
+
 git clone git://github.com/cgwalters/poky.git
 cd $builddir
+
+# This command enters the Poky environment, creating
+# a directory named gnomeos-build.
 . $srcdir/poky/oe-init-build-env gnomeos-build
+
 # Now edit conf/bblayers.conf, and add
 #   /src/ostree/gnomeos/yocto
 # to BBLAYERS.
@@ -73,5 +91,16 @@ ln -s tmp/deploy/images/repo repo
 # workdir=/src/build/ostbuild/work
 # manifest=/src/ostree/gnomeos/3.4/manifest.json
 
+# Now we want to use the "ostbuild" binary that was created
+# as part of "bitbake ostree-native".  You can do e.g.:
+
+export PATH=$build/tmp-eglibc/sysroots/x86_64-linux/usr/bin:$PATH
+
+# This next command will download all of the source code to the
+# modules specified in $srcdir/ostree/gnomeos/3.4/manifest.json,
+# and create a file $workdir/manifest.json that has the
+# exact git commits we want to build.
 ostbuild resolve
+
+# This command builds everything
 ostbuild build
