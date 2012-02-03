@@ -16,19 +16,18 @@ base "runtime", and one "devel" with all of the development tools like
 gcc.  We then import that into an OSTree branch
 e.g. "bases/gnomeos-3.4-yocto-i686-devel".
 
-Now we also assume that you have ostree installed on the host build
-system via e.g. jhbuild or RPM if doing a cross build.  The core
-ostbuild tool can then chroot into a checkout of the Yocto base, and
-start generating artifacts.
+We also have a Yocto recipe "ostree-native" which generates (as you
+might guess) a native binary of ostree.  That binary is used to import
+into an "archive mode" OSTree repository.  You can see it in
+$builddir/tmp/deploy/images/repo.
 
-Each generated artifact is committed to an OSTree branch like
-"artifacts/gnomeos-3.4-i686-devel/libxslt/master/runtime".  Then, a
-"compose" process merges together the individual filesystem trees into
-the final branches (e.g. gnomeos-3.4-i686-devel), and the process
-repeats.
+Now that we have an OSTree repository storing a base filesystem, we
+can use "ostbuild" which uses "linux-user-chroot" to chroot inside,
+run a build on a source tree, and outputs binaries, which we then add
+to the build tree for the next module, and so on.
 
 ostbuild details
--------------------
+----------------
 
 The simple goal of ostbuild is that it only takes as input a
 "manifest" which is basically just a list of components to build.  A
@@ -39,24 +38,13 @@ There is no support for building from "tarballs" - I want the ability
 to review all of the code that goes in, and to efficiently store
 source code updates.
 
-For GNOME, tarballs are mostly pointless - it's easy enough to just
-run autogen.sh.  However there are two challenges:
+The result of a build of a component is an OSTree branch like
+"artifacts/gnomeos-3.4-i686-devel/libxslt/master".  Then, a "compose"
+process merges together the individual filesystem trees into the final
+branches (e.g. gnomeos-3.4-i686-devel).
 
-1) Tarballs for modules which self-build-depend may include
-   pre-generated files.  For example - flex's tarball includes a
-   generated .c file for the parser.  For these, we can either move
-   the module build to the Yocto level (thus giving a convenient way
-   to pull in host files), or possibly add the ability to
-   hardlink/copy in host binaries to ostbuild.
-
-2) Tarballs which include translations pulled from a different
-   location.  For example - bison.  For these, we basically have to
-   maintain our own git repositories.
-
-
-
-building
---------
+Doing a full build on your system
+---------------------------------
 
 srcdir=/src
 builddir=/src/build

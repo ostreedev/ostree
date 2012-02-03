@@ -1,5 +1,5 @@
 OSTree
-========
+======
 
 Problem statement
 -----------------
@@ -67,7 +67,7 @@ Comparison with existing tools
     stuck on whatever the distro provides.
 
 Who is ostree for?
-------------------------------
+------------------
 
 First - operating system developers and testers.  I specifically keep
 a few people in mind - Dan Williams and Eric Anholt, as well as myself
@@ -115,16 +115,22 @@ lives inside a distro created partition, a tricky part here is that we
 need to know how to interact with the installed distribution's grub.
 This is an annoying but tractable problem.
 
-OSTree will allow efficiently parallel installing and downloading OS
-builds.
+First, we install a kernel+initramfs alongside the distribution's.
+Then, we have a "trampoline" ostree-init binary which is statically
+linked, and boot the kernel with init=/ostree/ostree-init.  This then
+takes care of chrooting and running the init binary.
 
-An important note here is that we explicitly link /home in each root
-to the real /home.  This means you have your data.  This also implies
-we share uid/gid, so /etc/passwd will have to be in sync.  Probably
-what we'll do is have a script to pull the data from the "host" OS.
+An important note here is that we bind mount the real /home.  This
+means you have your data.  This also implies we share uid/gid, so
+/etc/passwd will have to be in sync.  Probably what we'll do is have a
+script to pull the data from the "host" OS.
 
-Other shared directories are /var and /root.  Note that /etc is
-explicitly NOT shared!
+I've decided for now to move /var into /ostree to avoid sharing it
+with the "host" distribution, because in practice we're likely
+to hit incompatibilities.
+
+Do note however /etc lives *inside* the OSTree; it's presently
+versioned and readonly like everything else.
 
 On a pure OSTree system, the filesystem layout will look like this:
 
@@ -132,6 +138,7 @@ On a pure OSTree system, the filesystem layout will look like this:
 		|-- boot
 		|-- home
 		|-- ostree
+		|   |-- var
 		|   |-- current -> gnomeos-3.2-opt-7e9788a2
 		|   |-- gnomeos-3.0-opt-393a4555
 		|   |   |-- etc
@@ -154,7 +161,6 @@ On a pure OSTree system, the filesystem layout will look like this:
 		|       |-- sys
 		|       `-- usr
 		|-- root
-		`-- var
 		
 
 Making this efficient
@@ -204,19 +210,19 @@ can do this because again each checkout is designed to be read-only.
 
 So we mentioned above there are:
 
-		/gnomeos/root-3.0-opt
-		/gnomeos/root-3.2-opt
+		/ostree/gnomeos-3.2-opt-7e9788a2
+		/ostree/gnomeos-3.2-opt-393a4555
 
 There is also a "repository" that looks like this:
 
-		.ht/objects/17/a95e8ca0ba655b09cb68d7288342588e867ee0.file
-		.ht/objects/17/68625e7ff5a8db77904c77489dc6f07d4afdba.meta
-		.ht/objects/17/cc01589dd8540d85c0f93f52b708500dbaa5a9.file
-		.ht/objects/30
-		.ht/objects/30/6359b3ca7684358a3988afd005013f13c0c533.meta
-		.ht/objects/30/8f3c03010cedd930b1db756ce659c064f0cd7f.meta
-		.ht/objects/30/8cf0fd8e63dfff6a5f00ba5a48f3b92fb52de7.file
-		.ht/objects/30/6cad7f027d69a46bb376044434bbf28d63e88d.file
+		/ostree/repo/objects/17/a95e8ca0ba655b09cb68d7288342588e867ee0.file
+		/ostree/repo/objects/17/68625e7ff5a8db77904c77489dc6f07d4afdba.meta
+		/ostree/repo/objects/17/cc01589dd8540d85c0f93f52b708500dbaa5a9.file
+		/ostree/repo/objects/30
+		/ostree/repo/objects/30/6359b3ca7684358a3988afd005013f13c0c533.meta
+		/ostree/repo/objects/30/8f3c03010cedd930b1db756ce659c064f0cd7f.meta
+		/ostree/repo/objects/30/8cf0fd8e63dfff6a5f00ba5a48f3b92fb52de7.file
+		/ostree/repo/objects/30/6cad7f027d69a46bb376044434bbf28d63e88d.file
 
 Each object is either metadata (like a commit or tree), or a hard link
 to a regular file.
@@ -242,27 +248,36 @@ during an upgrade and reboot process, you either get the full new
 system, or the old one.  There is no "Please don't turn off your
 computer".  We do this by simply using a symbolic link like:
 
-/gnomeos -> /gnomeos-e3b0c4429
+/ostree/current -> /ostree/gnomeos-3.4-opt-e3b0c4429
 
-Where /gnomeos-e3b0c4429/ has the full regular filesystem tree with
-usr/ etc/ directories as above.  To upgrade or rollback (there is no
+Where gnomeos-e3b0c4429 has the full regular filesystem tree with usr/
+etc/ directories as above.  To upgrade or rollback (there is no
 difference internally), we simply check out a new tree into
-/gnomeos-b90ae4763 for example, then swap the symbolic link, then
-remove the old tree.
+gnomeos-b90ae4763 for example, then swap the "current" symbolic link,
+then remove the old tree.
 
-But does this mean you have to "reboot" for OS upgrades?  Very likely,
+But does this mean you have to reboot for OS upgrades?  Very likely,
 yes - and this is no different from RPM/deb or whatever.  They just
-typically lie to you about it =) But read on.
+typically lie to you about it =)
 
-Let's consider a security update to a shared library.  We can download
-the update to the repository, build a new tree and atomically swap it
-as above, but what if a process has the old shared library in use?
+A typical model with RPM/deb is to unpack the new files, then use some
+IPC mechanism (SIGHUP, a control binary like /usr/sbin/apachectl) to
+signal the running process to reload.  There are multiple problems
+with this - one is that in the new state, daemon A may depend on the
+updated configuration in daemon B.  This may not be particularly
+common in default configurations, but it's highly likely that that
+some deployments will have e.g. apache talking to a local MySQL
+instance.  So you really want to do is only apply the updated
+configuration when all the files are in place; not after each RPM or
+.deb is installed.
 
-Here's where we will probably need to inspect which processes are
-using the library - if any are, then we need to trigger either a
-logout/login if it's just the desktop shell and/or apps, or a
-"fastboot" if not.  A fastboot is dropping to "init 1" effectively,
-then going back to "init 5".
+What's even harder is the massive set of race conditions that are
+possible while RPM/deb are in the process of upgrading.  Cron jobs are
+very likely to hit this.  If we want the ability to apply updates to a
+live system, we could first pause execution of non-upgrade userspace
+tasks.  This could be done via SIGSTOP for example.  Then, we can swap
+around the filesystem tree, and then finally attempt to apply updates
+via SIGHUP, and if possible, restart processes.
 
 Configuration Management
 ------------------------
