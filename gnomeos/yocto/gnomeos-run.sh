@@ -40,6 +40,8 @@ usage () {
 OSTREE_REPO=$1
 shift
 test -n "$OSTREE_REPO" || usage
+TYPE=$1
+shift
 
 ARCH=i686
 BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
@@ -100,8 +102,12 @@ ostree --repo=${OSTREE_REPO} local-clone repo ${BRANCH_PREFIX}runtime ${BRANCH_P
 for branch in runtime devel; do
     rev=$(ostree --repo=repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
-        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
-        ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
+        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}.tmp
+        ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}.tmp
+        if test x$TYPE = xcurrent; then
+            cp -ar /lib/modules/`uname -r` ${BRANCH_PREFIX}${branch}-${rev}.tmp/lib/modules
+        fi
+        mv ${BRANCH_PREFIX}${branch}-${rev}{.tmp,}
     fi
     rm -f ${BRANCH_PREFIX}${branch}-current
     ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
@@ -117,15 +123,22 @@ sync
 umount fs
 rmdir fs
 
-ARGS="$@"
+ARGS="rd.plymouth=0 $@"
 if ! echo $ARGS | grep -q 'init='; then
     ARGS="init=/ostree-init $ARGS"
-fi
-if ! echo $ARGS | grep -q 'root='; then
-    ARGS="root=/dev/hda $ARGS"
 fi
 if ! echo $ARGS | grep -q 'ostree='; then
     ARGS="ostree=${BRANCH_PREFIX}runtime-current $ARGS"
 fi
+if test x$TYPE = xqemu; then
+    ARGS="root=/dev/hda $ARGS"
+    KERNEL=./tmp-eglibc/deploy/images/bzImage-qemux86.bin
+else
+    if test x$TYPE = xcurrent; then
+        ARGS="root=/dev/sda $ARGS"
+        KERNEL=/boot/vmlinuz-`uname -r`
+        INITRD_ARG="-initrd /boot/initramfs-`uname -r`.img"
+    fi
+fi
 
-exec qemu-kvm -kernel ./tmp-eglibc/deploy/images/bzImage-qemux86.bin -hda gnomeos-fs.img -net user -net nic,model=virtio -m 512M -append "$ARGS" -monitor stdio
+exec qemu-kvm -kernel ${KERNEL} ${INITRD_ARG} -hda gnomeos-fs.img -net user -net nic,model=virtio -m 512M -append "$ARGS" -monitor stdio

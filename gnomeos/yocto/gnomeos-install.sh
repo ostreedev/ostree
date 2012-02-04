@@ -40,10 +40,19 @@ usage () {
 ARCH=i686
 BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 
-if ! test -d /ostree; then
-    mkdir /ostree
+if ! test -d /ostree/repo/objects; then
+    mkdir -p /ostree
 
     $SRCDIR/ostree-setup.sh /ostree
+fi
+
+#ostree pull http://ostree.gnome.org/3.4/repo gnomeos-3.4-i686-{runtime,devel}
+if ! test -f /ostree/repo/refs/heads/gnomeos-3.4-i686-runtime; then
+    cat <<EOF
+You must get a repo from somewhere...e.g.:
+ cd /ostree && rsync --progress -ave ssh master.gnome.org:/home/users/walters/ostree/repo .
+EOF
+    exit 1
 fi
 
 cd /ostree
@@ -60,5 +69,13 @@ rm -f current
 ln -s ${BRANCH_PREFIX}runtime-current current
 
 cp -a ./${BRANCH_PREFIX}${branch}-current/usr/sbin/ostree-init .
+cd -
 
-cp $SRCDIR/15_ostree /etc/grub.d/
+if test -d /etc/grub.d; then
+    cp $SRCDIR/15_ostree /etc/grub.d/
+else
+    cat <<EOF
+GRUB 2 not detected; you'll need to edit e.g. /boot/grub/grub.conf manually
+Kernel has been installed as /boot/bzImage-gnomeos.bin
+EOF
+fi

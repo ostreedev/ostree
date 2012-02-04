@@ -52,9 +52,6 @@ chown 2:2 ./var/lib/gdm
 touch ./var/shadow
 chmod 0600 ./var/shadow
 
-mkdir repo
-ostree --repo=repo init
-
 cat >./var/passwd << EOF
 root::0:0:root:/:/bin/sh
 dbus:*:1:1:dbus:/:/bin/false
@@ -65,3 +62,6 @@ root:*:0:root
 dbus:*:1:
 gdm:*:2:
 EOF
+
+mkdir repo
+ostree --repo=repo init
