@@ -1,0 +1,27 @@
+From 33040ba93f2b6d0d8a83248ed90b390eddd5b7bf Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Sat, 4 Feb 2012 10:18:22 -0500
+Subject: [PATCH] build: Don't depend on hwdata.spec for 'make install'
+
+It's really not necessary to parse "hwdata.spec" to tell us our
+package name is "hwdata".
+
+The other targets still do depend on the version/release in
+hwdata.spec.
+---
+ Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index e360181..b995e64 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,4 +1,4 @@
+-NAME=$(shell awk '/Name:/ { print $$2 }' hwdata.spec)
++NAME=hwdata
+ VERSION=$(shell awk '/Version:/ { print $$2 }' hwdata.spec)
+ RELEASE=$(shell rpm -q --specfile --qf "%{release}" hwdata.spec)
+ SOURCEDIR := $(shell pwd)
+-- 
+1.7.6.5
+

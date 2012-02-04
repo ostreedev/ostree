@@ -304,7 +304,8 @@
 		 "patches": ["usbutils-autogen.patch"]},
 
 		{"src": "fedora:hwdata.git",
-		 "patches": ["hwdata-buildapi.patch"]},
+		 "patches": ["hwdata-buildapi.patch",
+		             "hwdata-no-spec-file.patch"]},
 
 		{"src": "cgwalters:texinfo-git-mirror",
 		 "branch": "TEXI2HTML_1_82",
