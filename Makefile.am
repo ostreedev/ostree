@@ -25,6 +25,7 @@ MANPAGES =
 CLEANFILES =
 EXTRA_DIST =
 bin_PROGRAMS =
+sbin_PROGRAMS =
 bin_SCRIPTS =
 libexec_PROGRAMS =
 noinst_LTLIBRARIES =
@@ -36,6 +37,7 @@ include Makefile-daemon.am
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
+include Makefile-switchroot.am
 include Makefile-ostbuild.am
 include Makefile-triggers.am
 
