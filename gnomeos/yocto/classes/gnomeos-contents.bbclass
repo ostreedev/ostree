@@ -34,6 +34,8 @@ IMAGE_INSTALL = "libuuid1 \
 		 pam-plugin-permit \
 		 pam-plugin-nologin \
 		 ncurses-terminfo-base \
+		 module-init-tools \
+		 cpio \
 		 "
 
 RDEPENDS += "ostree-native \
