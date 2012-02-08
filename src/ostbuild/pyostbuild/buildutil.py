@@ -73,3 +73,20 @@ def get_git_version_describe(dirpath, commit=None):
         args.append(commit)
     version = run_sync_get_output(args, cwd=dirpath)
     return version.strip()
+
+def manifest_target(manifest, architecture):
+    return '%s-%s-devel' % (manifest['name'], architecture)
+
+def manifest_base(manifest, roottype, architecture):
+    return 'bases/%s-%s-%s' % (manifest['base'],
+                               architecture, roottype)
+
+def manifest_buildname(manifest, component, architecture):
+    return 'artifacts/%s/%s/%s' % (manifest_target (manifest, architecture),
+                                   component['name'],
+                                   component['branch'])
+
+def manifest_buildroot_name(manifest, component, architecture):
+    return 'buildroots/%s/%s/%s' % (manifest_target (manifest, architecture),
+                                    component['name'],
+                                    component['branch'])

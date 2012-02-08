@@ -92,28 +92,11 @@ class OstbuildBuild(builtins.Builtin):
 
         return result
 
-    def _get_target(self, architecture):
-        return '%s-%s-devel' % (self.manifest['name'], architecture)
-
-    def _get_base(self, roottype, architecture):
-        return 'bases/%s-%s-%s' % (self.manifest['base'],
-                                   architecture, roottype)
-
-    def _get_buildname(self, component, architecture):
-        return 'artifacts/%s/%s/%s' % (self._get_target (architecture),
-                                       component['name'],
-                                       component['branch'])
-
-    def _get_buildroot_name(self, component, architecture):
-        return 'buildroots/%s/%s/%s' % (self._get_target (architecture),
-                                        component['name'],
-                                        component['branch'])
-
     def _compose_buildroot(self, buildroot_name, component, dependencies, architecture):
-        base = self._get_base('devel', architecture)
+        base = buildutil.manifest_base(self.manifest, 'devel', architecture)
         buildroot_contents = [base + ':/']
         for dep in dependencies:
-            dep_buildname = self._get_buildname(dep, architecture)
+            dep_buildname = buildutil.manifest_buildname(self.manifest, dep, architecture)
             buildroot_contents.append(dep_buildname + ':/runtime')
             buildroot_contents.append(dep_buildname + ':/devel')
 
@@ -123,9 +106,9 @@ class OstbuildBuild(builtins.Builtin):
         name = meta['name']
         branch = meta['branch']
 
-        target = self._get_target(architecture)
-        buildname = self._get_buildname(meta, architecture)
-        buildroot_name = self._get_buildroot_name(meta, architecture)
+        target = buildutil.manifest_target(self.manifest, architecture)
+        buildname = buildutil.manifest_buildname(self.manifest, meta, architecture)
+        buildroot_name = buildutil.manifest_buildroot_name(self.manifest, meta, architecture)
 
         (keytype, uri) = buildutil.parse_src_key(meta['src'])
 
@@ -265,13 +248,13 @@ class OstbuildBuild(builtins.Builtin):
         return revision
 
     def _compose_arch(self, architecture, components):
-        runtime_base = self._get_base('runtime', architecture)
-        devel_base = self._get_base('devel', architecture)
+        runtime_base = buildutil.manifest_base(self.manifest, 'runtime', architecture)
+        devel_base = buildutil.manifest_base(self.manifest, 'devel', architecture)
         runtime_contents = [runtime_base + ':/']
         devel_contents = [devel_base + ':/']
 
         for component in components:
-            branch = self._get_buildname(component, architecture)
+            branch = buildutil.manifest_buildname(self.manifest, component, architecture)
             runtime_contents.append(branch + ':/runtime')
             devel_contents.append(branch + ':/runtime')
             # For now just hardcode docs going in devel
