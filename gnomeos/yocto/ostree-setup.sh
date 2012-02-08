@@ -46,6 +46,9 @@ mkdir -p -m 0755 ./var/{log,run,tmp,spool}
 mkdir -p ./var/lib/dbus
 dbus-uuidgen > ./var/lib/dbus/machine-id
 
+mkdir -p ./var/tmp
+chmod 1777 ./var/tmp
+
 mkdir ./var/lib/gdm
 chown 2:2 ./var/lib/gdm
 
