@@ -707,6 +707,12 @@
 
 		{"src": "gnome:gnome-terminal",
 		 "patches": ["gnome-terminal-disable-docs.patch"],
+		 "config-opts": ["--disable-documentation"]},
+
+		{"src": "git:git://git.kernel.org/pub/scm/utils/dash/dash.git"},
+
+                {"src": "cgwalters:dracut",
+                 "branch": "ostree3",
 		 "config-opts": ["--disable-documentation"]}
 	]
 }
