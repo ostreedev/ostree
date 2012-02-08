@@ -97,6 +97,10 @@ gdm:*:2:
 EOF
 fi
 
+if test x${TYPE} = xcurrent; then
+    current_uname=$(uname -r)
+fi
+
 cd ostree
 ostree --repo=${OSTREE_REPO} local-clone repo ${BRANCH_PREFIX}runtime ${BRANCH_PREFIX}devel
 for branch in runtime devel; do
@@ -105,7 +109,7 @@ for branch in runtime devel; do
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}.tmp
         ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}.tmp
         if test x$TYPE = xcurrent; then
-            cp -ar /lib/modules/`uname -r` ${BRANCH_PREFIX}${branch}-${rev}.tmp/lib/modules
+            cp -ar /lib/modules/${current_uname} ${BRANCH_PREFIX}${branch}-${rev}.tmp/lib/modules
         fi
         mv ${BRANCH_PREFIX}${branch}-${rev}{.tmp,}
     fi
@@ -136,8 +140,8 @@ if test x$TYPE = xqemu; then
 else
     if test x$TYPE = xcurrent; then
         ARGS="root=/dev/sda $ARGS"
-        KERNEL=/boot/vmlinuz-`uname -r`
-        INITRD_ARG="-initrd /boot/initramfs-`uname -r`.img"
+        KERNEL=/boot/vmlinuz-${current_uname}
+        INITRD_ARG="-initrd /boot/initramfs-ostree-${current_uname}.img"
     fi
 fi
 

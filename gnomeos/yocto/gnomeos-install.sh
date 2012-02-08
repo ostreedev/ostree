@@ -55,12 +55,15 @@ EOF
     exit 1
 fi
 
+uname=$(uname -r)
+
 cd /ostree
 for branch in runtime devel; do
     rev=$(ostree --repo=$(pwd)/repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
         ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
+        cp -ar /lib/modules/${uname} ${BRANCH_PREFIX}${branch}-${rev}/lib/modules/${uname}
     fi
     rm -f ${BRANCH_PREFIX}${branch}-current
     ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
@@ -79,3 +82,24 @@ GRUB 2 not detected; you'll need to edit e.g. /boot/grub/grub.conf manually
 Kernel has been installed as /boot/bzImage-gnomeos.bin
 EOF
 fi
+
+kernel=/boot/vmlinuz-${uname}
+if ! test -f "${kernel}"; then
+    cat <<EOF
+    Kernel does not exist: ${kernel}
+EOF
+    exit 1
+fi
+initrd_name=initramfs-ostree-${uname}.img
+initrd_tmpdir=$(mktemp -d '/tmp/gnomeos-dracut.XXXXXXXXXX')
+linux-user-chroot \
+    --mount-readonly / \
+    --mount-proc /proc \
+    --mount-bind /dev /dev \
+    --mount-bind /ostree/var /var \
+    --mount-bind ${initrd_tmpdir} /tmp \
+    --mount-bind /lib/modules/${uname} /lib/modules/${uname} \
+    /ostree/${BRANCH_PREFIX}devel-current \
+    dracut -f /tmp/${initrd_name} "${uname}"
+mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"
+rm -rf $"{initrd_tmpdir}"
