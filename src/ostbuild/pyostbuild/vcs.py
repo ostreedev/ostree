@@ -51,8 +51,11 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True):
     tmp_dest = dest + '.tmp'
     if os.path.isdir(tmp_dest):
         shutil.rmtree(tmp_dest)
-    if os.path.isdir(dest) and overwrite:
-        shutil.rmtree(dest)
+    if os.path.isdir(dest):
+        if overwrite:
+            shutil.rmtree(dest)
+        else:
+            return dest
     if not os.path.isdir(tmp_dest):
         run_sync(['git', 'clone', '-q',
                   '--no-checkout', module_mirror, tmp_dest])
