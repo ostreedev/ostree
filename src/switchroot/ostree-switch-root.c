@@ -181,6 +181,16 @@ main(int argc, char *argv[])
   ostree_subinit = argv[3];
   before_init_argc++;
 
+  /* For now, we just remount the root filesystem read/write.  This is
+   * kind of ugly, but to do this properly we'd basically have to have
+   * to be fully integrated into the init process.
+   */
+  if (mount (NULL, root_mountpoint, NULL, MS_MGC_VAL|MS_REMOUNT, NULL) < 0)
+    {
+      perrorv ("Failed to remount %s read/write", root_mountpoint);
+      exit (1);
+    }
+
   snprintf (destpath, sizeof(destpath), "%s/ostree/%s",
 	    root_mountpoint, ostree_target);
   if (stat (destpath, &stbuf) < 0)
