@@ -17,7 +17,6 @@ SRC_URI = "file://functions \
            file://mountnfs.sh \
            file://NetworkManager \
            file://dbus \
-           file://gnomeudev \
            file://gnomemisc \
            file://reboot \
            file://single \
@@ -61,7 +60,6 @@ do_install () {
 	install -m 0755    ${WORKDIR}/hostname.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountall.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/NetworkManager	${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/gnomeudev		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/gnomemisc		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/dbus              ${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/mountnfs.sh	${D}${sysconfdir}/init.d
@@ -101,7 +99,6 @@ do_install () {
 	ln -sf		../init.d/hostname.sh	${D}${sysconfdir}/rcS.d/S39hostname.sh
 	ln -sf		../init.d/dbus	        ${D}${sysconfdir}/rcS.d/S40dbus
 	ln -sf		../init.d/NetworkManager	${D}${sysconfdir}/rcS.d/S41NetworkManager
-	ln -sf		../init.d/gnomeudev     ${D}${sysconfdir}/rcS.d/S03gnomeudev
 	ln -sf		../init.d/gnomemisc     ${D}${sysconfdir}/rcS.d/S04gnomemisc
 	ln -sf		../init.d/mountnfs.sh	${D}${sysconfdir}/rcS.d/S45mountnfs.sh
 #	ln -sf		../init.d/urandom	${D}${sysconfdir}/rcS.d/S55urandom

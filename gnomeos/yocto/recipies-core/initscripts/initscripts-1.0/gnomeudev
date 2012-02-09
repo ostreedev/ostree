@@ -1,6 +1,0 @@
-#!/bin/sh
-
-/usr/libexec/udevd --daemon
-sleep 3
-/usr/sbin/udevadm trigger
-
