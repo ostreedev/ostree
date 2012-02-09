@@ -193,7 +193,7 @@ main(int argc, char *argv[])
     {
       const char *path = initramfs_move_mounts[i];
       snprintf (srcpath, sizeof(srcpath), path);
-      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_target, path);
+      snprintf (destpath, sizeof(destpath), "%s/ostree/%s%s", root_mountpoint, ostree_target, path);
       if (mount (srcpath, destpath, NULL, MS_MOVE, NULL) < 0)
 	{
 	  perrorv ("failed to move mount of %s to %s", srcpath, destpath);
