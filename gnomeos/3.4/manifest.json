@@ -712,7 +712,7 @@
 		{"src": "git:git://git.kernel.org/pub/scm/utils/dash/dash.git"},
 
                 {"src": "cgwalters:dracut",
-                 "branch": "ostree3",
+                 "branch": "ostree4",
 		 "config-opts": ["--disable-documentation"]}
 	]
 }
