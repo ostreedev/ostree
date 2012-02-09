@@ -713,6 +713,14 @@
 
                 {"src": "cgwalters:dracut",
                  "branch": "ostree4",
-		 "config-opts": ["--disable-documentation"]}
+		 "config-opts": ["--disable-documentation"]},
+
+		{"src": "git:git://git.cairographics.org/git/py2cairo",
+		 "patches": ["py2cairo-autogen.patch"]},
+
+		{"src": "gnome:pygobject"},
+
+		{"src": "gnome:caribou"}
+
 	]
 }
