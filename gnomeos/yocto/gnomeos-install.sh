@@ -102,4 +102,4 @@ linux-user-chroot \
     /ostree/${BRANCH_PREFIX}devel-current \
     dracut -f /tmp/${initrd_name} "${uname}"
 mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"
-rm -rf $"{initrd_tmpdir}"
+rm -rf "${initrd_tmpdir}"
