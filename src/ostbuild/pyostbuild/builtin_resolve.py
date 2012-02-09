@@ -45,6 +45,8 @@ class OstbuildResolve(builtins.Builtin):
             run_sync(['git', 'clone', '--mirror', uri, tmp_mirror])
             run_sync(['git', 'config', 'gc.auto', '0'], cwd=tmp_mirror)
             os.rename(tmp_mirror, mirror)
+        if branch is None:
+            return mirror
         last_fetch_path = mirror + '.%s-lastfetch' % (name, )
         if os.path.exists(last_fetch_path):
             f = open(last_fetch_path)
@@ -152,7 +154,7 @@ class OstbuildResolve(builtins.Builtin):
                 if not found:
                     fatal("Unknown component %r" % (component_name, ))
                 (keytype, uri) = self._parse_src_key(component['src'])
-                mirrordir = self._ensure_vcs_mirror(component_name, keytype, uri, component['branch'])
+                mirrordir = self._ensure_vcs_mirror(component_name, keytype, uri, None)
                 log("Running git fetch for %s" % (component['name'], ))
                 run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
         else:
@@ -161,11 +163,7 @@ class OstbuildResolve(builtins.Builtin):
         for component in self.resolved_components:
             (keytype, uri) = self._parse_src_key(component['src'])
             name = component['name']
-            try:
-                fetch_components.index(name)
-                mirrordir = buildutil.get_mirrordir(self.mirrordir, keytype, uri)
-            except ValueError, e:
-                mirrordir = self._ensure_vcs_mirror(name, keytype, uri, component['branch'])
+            mirrordir = self._ensure_vcs_mirror(name, keytype, uri, component['branch'])
             revision = buildutil.get_git_version_describe(mirrordir,
                                                           component['branch'])
             component['revision'] = revision
