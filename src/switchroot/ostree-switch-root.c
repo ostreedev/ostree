@@ -153,6 +153,7 @@ main(int argc, char *argv[])
   const char *initramfs_move_mounts[] = { "/dev", "/proc", "/sys", "/run", NULL };
   const char *toproot_bind_mounts[] = { "/home", "/root", "/tmp", NULL };
   const char *ostree_bind_mounts[] = { "/var", NULL };
+  /* ostree_readonly_bind_mounts /lib/modules -> modules */
   const char *readonly_bind_mounts[] = { "/bin", "/etc", "/lib", "/sbin", "/usr",
 					 NULL };
   const char *root_mountpoint = NULL;
@@ -280,6 +281,14 @@ main(int argc, char *argv[])
 	  perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
 	  exit (1);
 	}
+    }
+
+  snprintf (srcpath, sizeof(srcpath), "/ostree/modules");
+  snprintf (destpath, sizeof(destpath), "/ostree/%s/lib/modules", ostree_target);
+  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+    {
+      perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
+      exit (1);
     }
 
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
