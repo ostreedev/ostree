@@ -63,7 +63,6 @@ for branch in runtime devel; do
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
         ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
-        cp -ar /lib/modules/${uname} ${BRANCH_PREFIX}${branch}-${rev}/lib/modules/${uname}
     fi
     rm -f ${BRANCH_PREFIX}${branch}-current
     ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
@@ -90,6 +89,9 @@ if ! test -f "${kernel}"; then
 EOF
     exit 1
 fi
+
+cp -ar /lib/modules/${uname} /ostree/modules/${uname}
+
 initrd_name=initramfs-ostree-${uname}.img
 initrd_tmpdir=$(mktemp -d '/tmp/gnomeos-dracut.XXXXXXXXXX')
 linux-user-chroot \
@@ -98,7 +100,7 @@ linux-user-chroot \
     --mount-bind /dev /dev \
     --mount-bind /ostree/var /var \
     --mount-bind ${initrd_tmpdir} /tmp \
-    --mount-bind /lib/modules/${uname} /lib/modules/${uname} \
+    --mount-bind /ostree/modules /lib/modules \
     /ostree/${BRANCH_PREFIX}devel-current \
     dracut -f /tmp/${initrd_name} "${uname}"
 mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"

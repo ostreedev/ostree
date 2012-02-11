@@ -105,21 +105,28 @@ fakeroot do_rootfs () {
 	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/S03udev
 	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/*networking
 
-	# The default fstab has /, which we don't want, and we do want /sys and /dev/shm
-	cat > ${IMAGE_ROOTFS}/etc/fstab << EOF
-tmpfs                   /dev/shm                tmpfs   mode=1777,nosuid,nodev 0 0
-devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
-sysfs                   /sys                    sysfs   defaults        0 0
-proc                    /proc                   proc    defaults        0 0
-EOF
+	# Clear out the default fstab; everything we need right now is mounted
+	# in the initramfs.
+	cat < /dev/null > ${IMAGE_ROOTFS}/etc/fstab
 
 	# Kill the Debian netbase stuff - we use NetworkManager
 	rm -rf ${IMAGE_ROOTFS}/etc/network
 	rm -f ${IMAGE_ROOTFS}/etc/init.d/networking
 
-	ln -sf /var/run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
+	# We deploy kernels via an external mechanism; the modules
+	# directory is just a bind mount to /sysroot.
+	rm -rf ${IMAGE_ROOTFS}/lib/modules
+	mkdir -p ${IMAGE_ROOTFS}/lib/modules
 
-	# The passwd database is stored in /var.
+	# Blow away udev from poky in favor of our own
+	rm ${IMAGE_ROOTFS}/sbin/udevd
+	ln -s /usr/libexec/udevd ${IMAGE_ROOTFS}/sbin/udev
+
+	# Random configuration changes here
+	sed -i -e 's,^DESTINATION=.*,DESTINATION=\"file\",' ${IMAGE_ROOTFS}/etc/syslog.conf
+
+	# Adjustments for /etc -> {/var,/run} here
+	ln -sf /run/resolv.conf ${IMAGE_ROOTFS}/etc/resolv.conf
 	rm -f ${IMAGE_ROOTFS}/etc/passwd
 	ln -s /var/passwd ${IMAGE_ROOTFS}/etc/passwd
 	rm -f ${IMAGE_ROOTFS}/etc/shadow ${IMAGE_ROOTFS}/etc/shadow-
