@@ -283,14 +283,6 @@ main(int argc, char *argv[])
 	}
     }
 
-  snprintf (srcpath, sizeof(srcpath), "/ostree/modules");
-  snprintf (destpath, sizeof(destpath), "/ostree/%s/lib/modules", ostree_target);
-  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
-    {
-      perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
-      exit (1);
-    }
-
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
     {
       snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_target, readonly_bind_mounts[i]);
@@ -305,7 +297,16 @@ main(int argc, char *argv[])
 	  exit (1);
 	}
     }
-  
+
+  /* This should come after we've bind mounted /lib */
+  snprintf (srcpath, sizeof(srcpath), "/ostree/modules");
+  snprintf (destpath, sizeof(destpath), "/ostree/%s/lib/modules", ostree_target);
+  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+    {
+      perrorv ("failed to bind mount %s to %s", srcpath, destpath);
+      exit (1);
+    }
+
   snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_target);
   if (chroot (destpath) < 0)
     {
