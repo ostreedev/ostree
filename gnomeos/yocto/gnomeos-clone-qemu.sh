@@ -79,7 +79,7 @@ if ! test -d ostree; then
     $SRCDIR/ostree-setup.sh $(pwd)/ostree
 fi
 
-rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/gnomeos-3.4-* ./ostree
+rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/modules ${WORKDIR}/gnomeos-3.4-* ./ostree
 
 current_uname=$(uname -r)
 
