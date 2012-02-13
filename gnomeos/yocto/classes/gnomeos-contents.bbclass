@@ -121,6 +121,8 @@ fakeroot do_rootfs () {
 	# Blow away udev from poky in favor of our own
 	rm ${IMAGE_ROOTFS}/sbin/udevd
 	ln -s /usr/libexec/udevd ${IMAGE_ROOTFS}/sbin/udevd
+	rm ${IMAGE_ROOTFS}/sbin/udevadm
+	ln -s /usr/sbin/udevadm ${IMAGE_ROOTFS}/sbin/udevadm
 
 	# Random configuration changes here
 	sed -i -e 's,^DESTINATION=.*,DESTINATION=\"file\",' ${IMAGE_ROOTFS}/etc/syslog.conf
