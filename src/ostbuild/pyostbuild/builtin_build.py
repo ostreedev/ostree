@@ -269,6 +269,7 @@ class OstbuildBuild(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--skip-built', action='store_true')
+        parser.add_argument('--recompose', action='store_true')
         parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
@@ -289,7 +290,9 @@ class OstbuildBuild(builtins.Builtin):
         self.patchdir = os.path.join(self.workdir, 'patches')
 
         components = self.manifest['components']
-        if len(args.components) == 0:
+        if args.recompose:
+            build_components = []
+        elif len(args.components) == 0:
             build_components = components
         else:
             build_components = []
