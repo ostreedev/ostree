@@ -36,6 +36,7 @@ IMAGE_INSTALL = "libuuid1 \
 		 ncurses-terminfo-base \
 		 module-init-tools \
 		 cpio \
+		 util-linux-mount \
 		 "
 
 RDEPENDS += "ostree-native \
