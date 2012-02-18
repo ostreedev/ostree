@@ -21,7 +21,6 @@ SRC_URI = "file://functions \
            file://reboot \
            file://single \
            file://sendsigs \
-           file://udev \
            file://urandom \
            file://rmnologin.sh \
            file://umountnfs.sh \
@@ -68,7 +67,6 @@ do_install () {
 	install -m 0755    ${WORKDIR}/rmnologin.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/sendsigs		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/single		${D}${sysconfdir}/init.d
-	install -m 0755    ${WORKDIR}/udev		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/umountnfs.sh	${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/urandom		${D}${sysconfdir}/init.d
 	install -m 0755    ${WORKDIR}/save-rtc.sh	${D}${sysconfdir}/init.d
@@ -97,7 +95,6 @@ do_install () {
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc0.d/S25save-rtc.sh
 	ln -sf		../init.d/save-rtc.sh	${D}${sysconfdir}/rc6.d/S25save-rtc.sh
 	ln -sf		../init.d/banner.sh	${D}${sysconfdir}/rcS.d/S02banner.sh
-	ln -sf		../init.d/udev		${D}${sysconfdir}/rcS.d/S04udev
 	ln -sf		../init.d/mountall.sh	${D}${sysconfdir}/rcS.d/S35mountall.sh
 	ln -sf		../init.d/hostname.sh	${D}${sysconfdir}/rcS.d/S39hostname.sh
 	ln -sf		../init.d/dbus	        ${D}${sysconfdir}/rcS.d/S40dbus
