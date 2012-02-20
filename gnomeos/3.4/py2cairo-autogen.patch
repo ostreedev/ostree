@@ -1,0 +1,25 @@
+From f15f500f6adfcff4f673210da8146b83d6b189d5 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 9 Feb 2012 15:58:12 -0500
+Subject: [PATCH] autogen.sh: Honor NOCONFIGURE=1
+
+See http://people.gnome.org/~walters/docs/build-api.txt
+---
+ autogen.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/autogen.sh b/autogen.sh
+index 4e6d3d5..d3d1f3f 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -193,4 +193,6 @@ cd $ORIGDIR || exit 1
+ # don't use 'do_cmd' since it prevents
+ # './autogen.sh --prefix=/usr CFLAGS="$CFLAGS -Werror"'  from working
+ #do_cmd $srcdir/configure --enable-maintainer-mode ${1+"$@"} && echo "Now type \`make' to compile" || exit 1
+-$srcdir/configure --enable-maintainer-mode ${1+"$@"} && echo "Now type \`make' to compile" || exit 1
++if test -z "$NOCONFIGURE"; then
++    $srcdir/configure --enable-maintainer-mode ${1+"$@"} && echo "Now type \`make' to compile" || exit 1
++fi
+-- 
+1.7.6.5
+
