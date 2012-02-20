@@ -99,12 +99,9 @@ fakeroot do_rootfs () {
 
 	rootfs_${IMAGE_PKGTYPE}_do_rootfs
 
-	# We use devtmpfs
-	rm -f ${IMAGE_ROOTFS}/etc/init.d/udev-cache
-	rm -f ${IMAGE_ROOTFS}/etc/rc*.d/*udev-cache*
-
-	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/S03udev
-	rm -f ${IMAGE_ROOTFS}/etc/rcS.d/*networking
+	# Delete all of the init scripts; we have our own
+	rm -f ${IMAGE_ROOTFS}/etc/init.d/*
+	rm -f ${IMAGE_ROOTFS}/etc/rc*.d/*
 
 	# Clear out the default fstab; everything we need right now is mounted
 	# in the initramfs.
@@ -112,7 +109,6 @@ fakeroot do_rootfs () {
 
 	# Kill the Debian netbase stuff - we use NetworkManager
 	rm -rf ${IMAGE_ROOTFS}/etc/network
-	rm -f ${IMAGE_ROOTFS}/etc/init.d/networking
 
 	# We deploy kernels via an external mechanism; the modules
 	# directory is just a bind mount to /sysroot.

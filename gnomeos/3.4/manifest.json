@@ -24,6 +24,8 @@
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
   "components": [
+   		{"src": "cgwalters:ginitscripts"},
+
    		{"src": "gnome:gtk-doc-stub",
 		 "component": "devel"},
 
