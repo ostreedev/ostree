@@ -132,8 +132,8 @@ static int
 compare_files_by_basename (gconstpointer  ap,
                            gconstpointer  bp)
 {
-  GFile *a = (GFile*)ap;
-  GFile *b = (GFile*)ap;
+  GFile *a = *(GFile**)ap;
+  GFile *b = *(GFile**)ap;
   char *name_a, *name_b;
   int c;
 
