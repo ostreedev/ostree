@@ -28,7 +28,7 @@ EOF
 
   cat <<EOF
 	echo '"Loading ${os} ${version}"'
-	linux ${rel_dirname}/${basename} root=${linux_root_device_thisversion} ro init=/ostree/ostree-init ${args}
+	linux ${rel_dirname}/${basename} root=${linux_root_device_thisversion} ro ostree=current ${args}
 EOF
   if test -n "${initrd}" ; then
     message="$(gettext_printf "Loading initial ramdisk ...")"

@@ -70,7 +70,6 @@ done
 rm -f current
 ln -s ${BRANCH_PREFIX}runtime-current current
 
-cp -a ./${BRANCH_PREFIX}${branch}-current/usr/sbin/ostree-init .
 cd -
 
 if test -d /etc/grub.d; then

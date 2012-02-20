@@ -49,8 +49,6 @@
 
    		{"src": "gnome:linux-user-chroot"},
 
-   		{"src": "gnome:ostree-init"},
-
 		{"src": "gnome:ostree",
 		 "config-opts": ["--disable-documentation"]},
 
