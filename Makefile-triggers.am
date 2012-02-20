@@ -19,16 +19,16 @@
 
 triggersdir = $(libexecdir)/ostree/triggers.d
 triggers_SCRIPTS = \
-	src/triggers/triggers.d/dconf.trigger \
-	src/triggers/triggers.d/desktop-database.trigger \
-	src/triggers/triggers.d/gdk-pixbuf.trigger \
-	src/triggers/triggers.d/gconf.trigger \
-	src/triggers/triggers.d/glib.trigger \
-	src/triggers/triggers.d/gtk+.trigger \
-	src/triggers/triggers.d/immodules.trigger \
-	src/triggers/triggers.d/ldconfig.trigger \
-	src/triggers/triggers.d/mime-database.trigger \
-	src/triggers/triggers.d/pango.trigger \
+	src/triggers/triggers.d/0001ldconfig.trigger \
+	src/triggers/triggers.d/0010mime-database.trigger \
+	src/triggers/triggers.d/0020dconf.trigger \
+	src/triggers/triggers.d/0030glib.trigger \
+	src/triggers/triggers.d/0040gdk-pixbuf.trigger \
+	src/triggers/triggers.d/0050gconf.trigger \
+	src/triggers/triggers.d/0060immodules.trigger \
+	src/triggers/triggers.d/0070pango.trigger \
+	src/triggers/triggers.d/0080gtk+.trigger \
+	src/triggers/triggers.d/0090desktop-database.trigger \
 	$(NULL)
 
 bin_PROGRAMS += ostree-run-triggers

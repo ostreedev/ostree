@@ -128,9 +128,26 @@ check_trigger (GFile          *trigger,
   return ret;
 }
 
+static int
+compare_files_by_basename (gconstpointer  ap,
+                           gconstpointer  bp)
+{
+  GFile *a = (GFile*)ap;
+  GFile *b = (GFile*)ap;
+  char *name_a, *name_b;
+  int c;
 
-gboolean
-run_triggers (GError        **error)
+  name_a = g_file_get_basename (a);
+  name_b = g_file_get_basename (b);
+  c = strcmp (name_a, name_b);
+  g_free (name_b);
+  g_free (name_a);
+  return c;
+}
+
+static gboolean
+get_sorted_triggers (GPtrArray       **out_triggers,
+                     GError          **error)
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
@@ -138,6 +155,9 @@ run_triggers (GError        **error)
   GFile *triggerdir = NULL;
   GFileInfo *file_info = NULL;
   GFileEnumerator *enumerator = NULL;
+  GPtrArray *ret_triggers = NULL;
+
+  ret_triggers = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   triggerdir_path = g_build_filename (LIBEXECDIR, "ostree", "triggers.d", NULL);
   triggerdir = g_file_new_for_path (triggerdir_path);
@@ -153,40 +173,68 @@ run_triggers (GError        **error)
     {
       const char *name;
       guint32 type;
-      char *child_path = NULL;
-      GFile *child = NULL;
-      gboolean success;
 
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
       
       if (type == G_FILE_TYPE_REGULAR && g_str_has_suffix (name, ".trigger"))
         {
+          char *child_path;
+          GFile *child;
+
           child_path = g_build_filename (triggerdir_path, name, NULL);
           child = g_file_new_for_path (child_path);
+          g_free (child_path);
 
-          success = check_trigger (child, error);
+          g_ptr_array_add (ret_triggers, child);
         }
-      else
-        success = TRUE;
-
-      g_object_unref (file_info);
-      g_free (child_path);
-      g_clear_object (&child);
-      if (!success)
-        goto out;
+      g_clear_object (&file_info);
     }
   if (file_info == NULL && temp_error != NULL)
     {
       g_propagate_error (error, temp_error);
       goto out;
     }
+  
+  g_ptr_array_sort (ret_triggers, compare_files_by_basename);
 
   ret = TRUE;
+  if (out_triggers)
+    {
+      *out_triggers = ret_triggers;
+      ret_triggers = NULL;
+    }
  out:
   g_free (triggerdir_path);
   g_clear_object (&triggerdir);
   g_clear_object (&enumerator);
+  if (ret_triggers)
+    g_ptr_array_unref (ret_triggers);
+  return ret;
+}
+
+gboolean
+run_triggers (GError        **error)
+{
+  gboolean ret = FALSE;
+  int i;
+  GPtrArray *triggers = NULL;
+
+  if (!get_sorted_triggers (&triggers, error))
+    goto out;
+
+  for (i = 0; i < triggers->len; i++)
+    {
+      GFile *trigger = triggers->pdata[i];
+
+      if (!check_trigger (trigger, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (triggers)
+    g_ptr_array_unref (triggers);
   return ret;
 }
 
