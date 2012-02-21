@@ -26,7 +26,7 @@ import select,time
 
 from . import builtins
 from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync
+from .subprocess_helpers import run_sync, run_sync_get_output
 
 PREFIX = '/usr'
 
@@ -100,7 +100,7 @@ class OstbuildCompileOne(builtins.Builtin):
         self.metadata = {}
 
         if self.ostbuild_meta is None:
-            output = subprocess.check_output(['ostbuild', 'autodiscover-meta'])
+            output = run_sync_get_output(['ostbuild', 'autodiscover-meta'])
             self.metadata = json.loads(output)
         else:
             f = open(self.ostbuild_meta)

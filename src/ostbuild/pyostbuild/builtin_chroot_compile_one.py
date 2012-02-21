@@ -23,7 +23,7 @@ import json
 from . import builtins
 from . import buildutil
 from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync
+from .subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildChrootCompileOne(builtins.Builtin):
     name = "chroot-compile-one"
@@ -41,7 +41,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         (args, rest_args) = parser.parse_known_args(argv)
 
         if args.meta is None:
-            output = subprocess.check_output(['ostbuild', 'autodiscover-meta'])
+            output = run_sync_get_output(['ostbuild', 'autodiscover-meta'])
             self.metadata = json.loads(output)
         else:
             f = open(args.meta)
@@ -67,8 +67,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(child_tmpdir)
         os.mkdir(child_tmpdir)
         
-        rev = subprocess.check_output(['ostree', '--repo=' + args.repo, 'rev-parse', args.buildroot])
-        rev=rev.strip()
+        rev = run_sync_get_output(['ostree', '--repo=' + args.repo, 'rev-parse', args.buildroot])
+        rev = rev.strip()
         
         self.metadata['buildroot'] = args.buildroot
         self.metadata['buildroot-version'] = rev

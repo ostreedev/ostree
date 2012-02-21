@@ -24,6 +24,7 @@ import json
 from . import builtins
 from . import buildutil
 from .ostbuildlog import log, fatal
+from .subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildAutodiscoverMeta(builtins.Builtin):
     name = "autodiscover-meta"
@@ -76,14 +77,13 @@ class OstbuildAutodiscoverMeta(builtins.Builtin):
         
     def _discover_branch_from_git(self):
         if os.path.isdir('.git'):
-            try:
-                try:
-                    ref = subprocess.check_output(['git', 'symbolic-ref', 'HEAD'], stderr=open('/dev/null', 'w'))
-                    return ref.replace('refs/heads/', '').strip()
-                except subprocess.CalledProcessError, e:
-                    return subprocess.check_output(['git', 'describe', '--tags', '--exact-match', 'HEAD']).strip()
-            except subprocess.CalledProcessError, e:
-                return None
+            devnull=open('/dev/null', 'w')
+            ref = run_sync_get_output(['git', 'symbolic-ref', 'HEAD'], stderr=devnull, none_on_error=True)
+            if ref is not None:
+                return ref.replace('refs/heads/', '').strip()
+            ref = run_sync_get_output(['git', 'describe', '--tags', '--exact-match', 'HEAD'], stderr=devnull, none_on_error=True)
+            if ref is not None:
+                return ref
         return None
     
 builtins.register(OstbuildAutodiscoverMeta)
