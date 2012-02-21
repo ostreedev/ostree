@@ -45,6 +45,7 @@ RDEPENDS += "ostree-native \
 	     libogg \
 	     libvorbis \
 	     speex \
+	     cpio \
 	     libatomics-ops \
 	    "
 
