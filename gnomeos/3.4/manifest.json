@@ -510,7 +510,8 @@
 		 "branch": "v.5.2",
 		 "config-opts": ["--disable-introspection"]},
 
-		{"src": "gnome:libgnomekbd"},
+		{"src": "gnome:libgnomekbd",
+		 "config-opts": ["--disable-introspection"]},
 
 		{"src": "fd-pulse:pulseaudio",
 		 "branch": "v0.9.23",
@@ -654,7 +655,6 @@
 		 "config-opts": ["--enable-eds-backend",
 		                 "--disable-Werror",
 		                 "--disable-fatal-warnings"],
-		 "branch": "wip/vala-0-15",
 		 "patches": ["folks-builddir.patch",
 			     "folks-config-fatal-warnings.patch"]},
 
