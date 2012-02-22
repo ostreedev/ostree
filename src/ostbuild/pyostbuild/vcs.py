@@ -63,9 +63,7 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True):
     run_sync(['git', 'submodule', 'init'], cwd=tmp_dest)
     have_submodules = _fixup_submodule_references(mirrordir, tmp_dest)
     if have_submodules:
-        run_sync(['linux-user-chroot',
-                  '--unshare-net', '--chdir', tmp_dest, '/',
-                  '/usr/bin/git', 'submodule', 'update'])
+        run_sync(['git', 'submodule', 'update'])
     os.rename(tmp_dest, dest)
     return dest
 
