@@ -434,6 +434,7 @@
 				 "--with-docs=no",
 				 "--enable-more-warnings=yes"],
 		 "patches": ["NetworkManager-config.patch",
+		 	     "NetworkManager-builddir.patch",
 		             "NetworkManager-werror.patch"]},
 		 
 		{"src": "fd:PolicyKit",
