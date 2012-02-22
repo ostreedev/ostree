@@ -168,6 +168,17 @@ class OstbuildResolve(builtins.Builtin):
                                                           component['branch'])
             component['revision'] = revision
 
+            if 'component' not in component:
+                component['component'] = 'runtime'
+
+            config_opts = list(self.manifest['config-opts'])
+            config_opts.extend(component.get('config-opts', []))
+            component['config-opts'] = config_opts
+
+        # We expand these two keys
+        del self.manifest['config-opts']
+        del self.manifest['vcsconfig']
+
         mirror_gitconfig_path = os.path.join(self.mirrordir, 'gitconfig')
         git_mirrordir = os.path.join(self.mirrordir, 'git')
         f = open(mirror_gitconfig_path, 'w')
