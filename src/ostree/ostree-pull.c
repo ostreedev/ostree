@@ -117,119 +117,141 @@ fetch_object (OstreeRepo  *repo,
               SoupURI     *baseuri,
               const char  *checksum,
               OstreeObjectType objtype,
-              gboolean    *did_exist,
-              GFile      **out_file,
+              GFile           **out_temp_path,
               GError     **error)
 {
   gboolean ret = FALSE;
-  GFile *ret_file = NULL;
   char *objpath = NULL;
   char *relpath = NULL;
   SoupURI *obj_uri = NULL;
-  gboolean exists;
+  GFile *ret_temp_path = NULL;
 
-  g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
-
-  if (!ostree_repo_has_object (repo, objtype, checksum, &exists, NULL, error))
+  objpath = ostree_get_relative_object_path (checksum, objtype);
+  obj_uri = soup_uri_copy (baseuri);
+  relpath = g_build_filename (soup_uri_get_path (obj_uri), objpath, NULL);
+  soup_uri_set_path (obj_uri, relpath);
+  
+  if (!fetch_uri (repo, soup, obj_uri, ostree_object_type_to_string (objtype), &ret_temp_path, error))
     goto out;
 
-  if (!exists)
-    {
-      objpath = ostree_get_relative_object_path (checksum, objtype);
-      obj_uri = soup_uri_copy (baseuri);
-      relpath = g_build_filename (soup_uri_get_path (obj_uri), objpath, NULL);
-      soup_uri_set_path (obj_uri, relpath);
-
-      if (!fetch_uri (repo, soup, obj_uri, ostree_object_type_to_string (objtype), &ret_file, error))
-        goto out;
-
-      *did_exist = FALSE;
-    }
-  else
-    *did_exist = TRUE;
-
   ret = TRUE;
-  ot_transfer_out_value (out_file, &ret_file);
+  ot_transfer_out_value (out_temp_path, &ret_temp_path);
  out:
   if (obj_uri)
     soup_uri_free (obj_uri);
-  g_clear_object (&ret_file);
+  g_clear_object (&ret_temp_path);
   g_free (objpath);
   g_free (relpath);
   return ret;
 }
 
 static gboolean
-store_object (OstreeRepo  *repo,
-              SoupSession *soup,
-              SoupURI     *baseuri,
-              const char  *checksum,
-              OstreeObjectType objtype,
-              gboolean    *did_exist,
-              GError     **error)
+fetch_and_store_object (OstreeRepo  *repo,
+                        SoupSession *soup,
+                        SoupURI     *baseuri,
+                        const char  *checksum,
+                        OstreeObjectType objtype,
+                        gboolean         *out_is_pending,
+                        GVariant        **out_metadata,
+                        GError     **error)
 {
   gboolean ret = FALSE;
-  GFile *filename = NULL;
   GFileInfo *file_info = NULL;
   GInputStream *input = NULL;
+  GFile *stored_path = NULL;
+  GFile *pending_path = NULL;
+  GFile *temp_path = NULL;
+  GVariant *ret_metadata = NULL;
+  gboolean ret_is_pending;
 
-  if (!fetch_object (repo, soup, baseuri, checksum, objtype, did_exist, &filename, error))
+  g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
+
+  if (!ostree_repo_find_object (repo, objtype, checksum,
+                                &stored_path, &pending_path, NULL, error))
     goto out;
-
-  if (!*did_exist)
+      
+  if (!(stored_path || pending_path))
     {
-      file_info = g_file_query_info (filename, OSTREE_GIO_FAST_QUERYINFO,
+      if (!fetch_object (repo, soup, baseuri, checksum, objtype, &temp_path, error))
+        goto out;
+    }
+
+  if (temp_path)
+    {
+      file_info = g_file_query_info (temp_path, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL, error);
       if (!file_info)
         goto out;
       
-      input = (GInputStream*)g_file_read (filename, NULL, error);
+      input = (GInputStream*)g_file_read (temp_path, NULL, error);
       if (!input)
         goto out;
+    }
   
+  if (pending_path || temp_path)
+    {
       if (!ostree_repo_stage_object (repo, objtype, checksum, file_info, NULL, input, NULL, error))
         goto out;
+
+      log_verbose ("Staged object: %s.%s", checksum, ostree_object_type_to_string (objtype));
+
+      ret_is_pending = TRUE;
+      if (out_metadata)
+        {
+          if (!ostree_map_metadata_file (pending_path ? pending_path : temp_path, objtype, &ret_metadata, error))
+            goto out;
+        }
+    }
+  else
+    {
+      ret_is_pending = FALSE;
     }
 
   ret = TRUE;
+  if (out_is_pending)
+    *out_is_pending = ret_is_pending;
+  ot_transfer_out_value (out_metadata, &ret_metadata);
  out:
-  if (filename)
-    (void) unlink (ot_gfile_get_path_cached (filename));
+  if (temp_path)
+    (void) unlink (ot_gfile_get_path_cached (temp_path));
+  ot_clear_gvariant (&ret_metadata);
+  g_clear_object (&temp_path);
   g_clear_object (&file_info);
   g_clear_object (&input);
+  g_clear_object (&stored_path);
+  g_clear_object (&pending_path);
   return ret;
 }
 
 static gboolean
-store_tree_recurse (OstreeRepo   *repo,
-                    SoupSession  *soup,
-                    SoupURI      *base_uri,
-                    const char   *rev,
-                    GError      **error)
+fetch_and_store_tree_recurse (OstreeRepo   *repo,
+                              SoupSession  *soup,
+                              SoupURI      *base_uri,
+                              const char   *rev,
+                              GError      **error)
 {
   gboolean ret = FALSE;
   GVariant *tree = NULL;
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
-  gboolean did_exist;
+  gboolean is_pending;
   int i, n;
   GVariant *archive_metadata = NULL;
   GFileInfo *archive_file_info = NULL;
   GVariant *archive_xattrs = NULL;
-  GFile *meta_file = NULL;
-  GFile *content_file = NULL;
+  GFile *meta_temp_path = NULL;
+  GFile *content_temp_path = NULL;
+  GFile *stored_path = NULL;
+  GFile *pending_path = NULL;
   GInputStream *input = NULL;
 
-  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_DIR_TREE, &did_exist, error))
+  if (!fetch_and_store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_DIR_TREE, &is_pending, &tree, error))
     goto out;
 
-  if (did_exist)
+  if (!is_pending)
     log_verbose ("Already have tree %s", rev);
   else
     {
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, rev, &tree, error))
-        goto out;
-      
       /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
       files_variant = g_variant_get_child_value (tree, 2);
       dirs_variant = g_variant_get_child_value (tree, 3);
@@ -247,43 +269,79 @@ store_tree_recurse (OstreeRepo   *repo,
           if (!ostree_validate_checksum_string (checksum, error))
             goto out;
 
-          g_clear_object (&meta_file);
-
-          if (!fetch_object (repo, soup, base_uri, checksum,
-                             OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                             &did_exist,
-                             &meta_file,
-                             error))
-            goto out;
-
-          if (!ostree_map_metadata_file (meta_file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                                         &archive_metadata, error))
-            goto out;
-
-          if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info, &archive_xattrs, error))
-            goto out;
-
-          g_clear_object (&input);
-          g_clear_object (&content_file);
-          if (g_file_info_get_file_type (archive_file_info) == G_FILE_TYPE_REGULAR)
+          g_clear_object (&stored_path);
+          g_clear_object (&pending_path);
+          /* If we're fetching from an archive into a bare repository, we need
+           * to explicitly check for raw file types locally.
+           */
+          if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
             {
-              if (!fetch_object (repo, soup, base_uri, checksum,
-                                 OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
-                                 &did_exist,
-                                 &content_file,
-                                 error))
+              if (!ostree_repo_find_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
+                                            &stored_path, &pending_path, NULL, error))
                 goto out;
-              
-              input = (GInputStream*)g_file_read (content_file, NULL, error);
-              if (!input)
+            }
+          else
+            {
+              if (!ostree_repo_find_object (repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT, checksum,
+                                            &stored_path, &pending_path, NULL, error))
                 goto out;
             }
 
-          if (!ostree_repo_stage_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
-                                         checksum,
-                                         archive_file_info, archive_xattrs, input,
-                                         NULL, error))
-            goto out;
+          g_clear_object (&input);
+          g_clear_object (&archive_file_info);
+          ot_clear_gvariant (&archive_xattrs);
+          if (!(stored_path || pending_path))
+            {
+              g_clear_object (&meta_temp_path);
+              if (!fetch_object (repo, soup, base_uri, checksum,
+                                 OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                 &meta_temp_path,
+                                 error))
+                goto out;
+
+              if (!ostree_map_metadata_file (meta_temp_path,
+                                             OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                             &archive_metadata, error))
+                goto out;
+
+              if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info, &archive_xattrs, error))
+                goto out;
+
+              if (g_file_info_get_file_type (archive_file_info) == G_FILE_TYPE_REGULAR)
+                {
+                  if (!fetch_object (repo, soup, base_uri, checksum,
+                                     OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
+                                     &content_temp_path,
+                                     error))
+                    goto out;
+                  
+                  input = (GInputStream*)g_file_read (content_temp_path, NULL, error);
+                  if (!input)
+                    goto out;
+                }
+            }
+
+          if (!stored_path)
+            {
+              log_verbose ("Staged file object: %s", checksum);
+
+              if (!ostree_repo_stage_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                             checksum,
+                                             archive_file_info, archive_xattrs, input,
+                                             NULL, error))
+                goto out;
+            }
+              
+          if (meta_temp_path)
+            {
+              (void) unlink (ot_gfile_get_path_cached (meta_temp_path));
+              g_clear_object (&meta_temp_path);
+            }
+          if (content_temp_path)
+            {
+              (void) unlink (ot_gfile_get_path_cached (content_temp_path));
+              g_clear_object (&content_temp_path);
+            }
         }
       
       n = g_variant_n_children (dirs_variant);
@@ -303,10 +361,10 @@ store_tree_recurse (OstreeRepo   *repo,
           if (!ostree_validate_checksum_string (meta_checksum, error))
             goto out;
 
-          if (!store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, &did_exist, error))
+          if (!fetch_and_store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, NULL, NULL, error))
             goto out;
 
-          if (!store_tree_recurse (repo, soup, base_uri, tree_checksum, error))
+          if (!fetch_and_store_tree_recurse (repo, soup, base_uri, tree_checksum, error))
             goto out;
         }
     }
@@ -320,40 +378,49 @@ store_tree_recurse (OstreeRepo   *repo,
   ot_clear_gvariant (&archive_xattrs);
   g_clear_object (&archive_file_info);
   g_clear_object (&input);
+  g_clear_object (&stored_path);
+  g_clear_object (&pending_path);
+  if (content_temp_path)
+    {
+      (void) unlink (ot_gfile_get_path_cached (content_temp_path));
+      g_clear_object (&content_temp_path);
+    }
+  if (meta_temp_path)
+    {
+      (void) unlink (ot_gfile_get_path_cached (meta_temp_path));
+      g_clear_object (&meta_temp_path);
+    }
   return ret;
 }
 
 static gboolean
-store_commit_recurse (OstreeRepo   *repo,
-                      SoupSession  *soup,
-                      SoupURI      *base_uri,
-                      const char   *rev,
-                      GError      **error)
+fetch_and_store_commit_recurse (OstreeRepo   *repo,
+                                SoupSession  *soup,
+                                SoupURI      *base_uri,
+                                const char   *rev,
+                                GError      **error)
 {
   gboolean ret = FALSE;
   GVariant *commit = NULL;
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
-  gboolean did_exist;
+  gboolean is_pending;
 
-  if (!store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_COMMIT, &did_exist, error))
+  if (!fetch_and_store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_COMMIT, &is_pending, &commit, error))
     goto out;
 
-  if (did_exist)
+  if (!is_pending)
     log_verbose ("Already have commit %s", rev);
   else
     {
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, rev, &commit, error))
-        goto out;
-      
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
       g_variant_get_child (commit, 6, "&s", &tree_contents_checksum);
       g_variant_get_child (commit, 7, "&s", &tree_meta_checksum);
       
-      if (!store_object (repo, soup, base_uri, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, &did_exist, error))
+      if (!fetch_and_store_object (repo, soup, base_uri, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META, NULL, NULL, error))
         goto out;
       
-      if (!store_tree_recurse (repo, soup, base_uri, tree_contents_checksum, error))
+      if (!fetch_and_store_tree_recurse (repo, soup, base_uri, tree_contents_checksum, error))
         goto out;
     }
 
@@ -450,7 +517,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       if (!ostree_repo_prepare_transaction (repo, NULL, error))
         goto out;
       
-      if (!store_commit_recurse (repo, soup, base_uri, rev, error))
+      if (!fetch_and_store_commit_recurse (repo, soup, base_uri, rev, error))
         goto out;
 
       if (!ostree_repo_commit_transaction (repo, NULL, error))

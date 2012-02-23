@@ -92,12 +92,13 @@ gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GCancellable   *cancellable,
                                              GError        **error);
 
-gboolean      ostree_repo_has_object (OstreeRepo           *self,
-                                      OstreeObjectType      objtype,
-                                      const char           *checksum,
-                                      gboolean             *out_have_object,
-                                      GCancellable         *cancellable,
-                                      GError             **error);
+gboolean      ostree_repo_find_object (OstreeRepo           *self,
+                                       OstreeObjectType      objtype,
+                                       const char           *checksum,
+                                       GFile               **out_stored_path,
+                                       GFile               **out_pending_path,
+                                       GCancellable         *cancellable,
+                                       GError              **error);
 
 gboolean      ostree_repo_stage_object (OstreeRepo       *self,
                                         OstreeObjectType  objtype,
