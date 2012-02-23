@@ -634,7 +634,7 @@
 		 "patches": ["gee-builddir.patch"]},
 
 		{"src": "fd-telepathy:telepathy-glib",
-		 "branch": "telepathy-glib-0.17.3",
+		 "branch": "telepathy-glib-0.17.5",
 		 "config-opts": ["--enable-vala-bindings",
                                  "--disable-compiler-warnings"],
 		 "patches": ["telepathy-glib-builddir.patch"]},
