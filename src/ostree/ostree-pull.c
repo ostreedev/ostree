@@ -256,14 +256,6 @@ store_tree_recurse (OstreeRepo   *repo,
                              error))
             goto out;
 
-          g_clear_object (&content_file);
-          if (!fetch_object (repo, soup, base_uri, checksum,
-                             OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
-                             &did_exist,
-                             &content_file,
-                             error))
-            goto out;
-
           if (!ostree_map_metadata_file (meta_file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
                                          &archive_metadata, error))
             goto out;
@@ -271,8 +263,17 @@ store_tree_recurse (OstreeRepo   *repo,
           if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info, &archive_xattrs, error))
             goto out;
 
+          g_clear_object (&input);
+          g_clear_object (&content_file);
           if (g_file_info_get_file_type (archive_file_info) == G_FILE_TYPE_REGULAR)
             {
+              if (!fetch_object (repo, soup, base_uri, checksum,
+                                 OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
+                                 &did_exist,
+                                 &content_file,
+                                 error))
+                goto out;
+              
               input = (GInputStream*)g_file_read (content_file, NULL, error);
               if (!input)
                 goto out;
