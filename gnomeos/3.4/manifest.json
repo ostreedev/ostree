@@ -713,6 +713,7 @@
 
 		{"src": "gnome:gnome-terminal",
 		 "patches": ["gnome-terminal-disable-docs.patch"],
+		 "branch": "gnome-3-4",
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "git:git://git.kernel.org/pub/scm/utils/dash/dash.git"},
