@@ -1,0 +1,95 @@
+From 19a3f846f7bb4629d37f97fe244597d82d41f950 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Thu, 23 Feb 2012 10:32:37 -0500
+Subject: [PATCH] build: Remove extra $(srcdir) reference for resources
+
+When using $< make will automatically add the $(srcdir), and specifying
+it twice will break builds.
+---
+ applets/clock/Makefile.am   |    4 ++--
+ applets/fish/Makefile.am    |    4 ++--
+ applets/wncklet/Makefile.am |    4 ++--
+ gnome-panel/Makefile.am     |    8 ++++----
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/applets/clock/Makefile.am b/applets/clock/Makefile.am
+index 727d9f3..662ed3e 100644
+--- a/applets/clock/Makefile.am
++++ b/applets/clock/Makefile.am
+@@ -164,10 +164,10 @@ ui_FILES =		\
+ 	clock-menu.xml
+ 
+ clock-resources.c: clock.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies clock.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name clock $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name clock $<
+ 
+ clock-resources.h: clock.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies clock.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name clock $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name clock $<
+ 
+ schemasdir       = $(GCONF_SCHEMA_FILE_DIR)
+ schemas_in_files = clock.schemas.in
+diff --git a/applets/fish/Makefile.am b/applets/fish/Makefile.am
+index 52914c2..cfdcf71 100644
+--- a/applets/fish/Makefile.am
++++ b/applets/fish/Makefile.am
+@@ -81,10 +81,10 @@ ui_FILES = 		\
+ 	fish-menu.xml
+ 
+ fish-resources.c: fish.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies fish.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name fish $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name fish $<
+ 
+ fish-resources.h: fish.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies fish.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name fish $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name fish $<
+ 
+ BUILT_SOURCES = 		\
+ 	fish-resources.c	\
+diff --git a/applets/wncklet/Makefile.am b/applets/wncklet/Makefile.am
+index 19ba602..6c19a28 100644
+--- a/applets/wncklet/Makefile.am
++++ b/applets/wncklet/Makefile.am
+@@ -81,10 +81,10 @@ ui_FILES = 				\
+ 
+ 
+ wncklet-resources.c: wncklet.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies wncklet.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name wncklet $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name wncklet $<
+ 
+ wncklet-resources.h: wncklet.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies wncklet.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name wncklet $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name wncklet $<
+ 
+ BUILT_SOURCES = 		\
+ 	wncklet-resources.c	\
+diff --git a/gnome-panel/Makefile.am b/gnome-panel/Makefile.am
+index 1664f56..8463563 100644
+--- a/gnome-panel/Makefile.am
++++ b/gnome-panel/Makefile.am
+@@ -242,18 +242,18 @@ ui_FILES =					\
+ 	panel-run-dialog.ui
+ 
+ panel-resources.c: panel.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies panel.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $<
+ 
+ panel-resources.h: panel.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies panel.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $<
+ 
+ uitest_FILES = panel-test-applets.ui
+ 
+ panel-test-applets-resources.c: panel-test-applets.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies panel-test-applets.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $<
+ 
+ panel-test-applets-resources.h: panel-test-applets.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --generate-dependencies panel-test-applets.gresource.xml)
+-	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $(srcdir)/$<
++	$(AM_V_GEN)$(GLIB_COMPILE_RESOURCES) --target=$@ --sourcedir=$(srcdir) --generate --c-name panel $<
+ 
+ desktopdir = $(datadir)/applications
+ desktop_in_files = gnome-panel.desktop.in
+-- 
+1.7.6.5
+
