@@ -673,7 +673,8 @@
 
 		{"src": "gnome:cantarell-fonts"},
 
-		{"src": "fd:accountsservice"},
+		{"src": "fd:accountsservice",
+		 "patches": ["accountsservice-builddir.patch"]},
 
 		{"src": "gnome:gdm",
 		 "config-opts": ["--disable-documentation"],

@@ -1,0 +1,34 @@
+From e866eaadcfe11f36265de4f9088a6958b9d64753 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Wed, 22 Feb 2012 22:50:51 -0500
+Subject: [PATCH] libaccountsservice: Fix srcdir != builddir for generated
+ files
+
+---
+ src/libaccountsservice/Makefile.am |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/libaccountsservice/Makefile.am b/src/libaccountsservice/Makefile.am
+index 922464a..0bce6a4 100644
+--- a/src/libaccountsservice/Makefile.am
++++ b/src/libaccountsservice/Makefile.am
+@@ -42,13 +42,13 @@ accounts-user-generated.c accounts-user-generated.h: $(top_srcdir)/data/org.free
+ 	gdbus-codegen --generate-c-code accounts-user-generated --c-namespace Accounts --interface-prefix=org.freedesktop.Accounts. $(top_srcdir)/data/org.freedesktop.Accounts.User.xml
+ 
+ ck-manager-generated.c ck-manager-generated.h: org.freedesktop.ConsoleKit.Manager.xml Makefile
+-	gdbus-codegen --generate-c-code ck-manager-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit org.freedesktop.ConsoleKit.Manager.xml
++	gdbus-codegen --generate-c-code ck-manager-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit $(srcdir)/org.freedesktop.ConsoleKit.Manager.xml
+ 
+ ck-seat-generated.c ck-seat-generated.h: org.freedesktop.ConsoleKit.Seat.xml Makefile
+-	gdbus-codegen --generate-c-code ck-seat-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit org.freedesktop.ConsoleKit.Seat.xml
++	gdbus-codegen --generate-c-code ck-seat-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit $(srcdir)/org.freedesktop.ConsoleKit.Seat.xml
+ 
+ ck-session-generated.c ck-session-generated.h: org.freedesktop.ConsoleKit.Session.xml Makefile
+-	gdbus-codegen --generate-c-code ck-session-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit org.freedesktop.ConsoleKit.Session.xml
++	gdbus-codegen --generate-c-code ck-session-generated --c-namespace ConsoleKit --interface-prefix=org.freedesktop.ConsoleKit $(srcdir)/org.freedesktop.ConsoleKit.Session.xml
+ 
+ BUILT_SOURCES += \
+ 	accounts-generated.c			\
+-- 
+1.7.6.5
+
