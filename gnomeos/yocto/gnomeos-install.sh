@@ -71,7 +71,6 @@ if test -d /etc/grub.d; then
 else
     cat <<EOF
 GRUB 2 not detected; you'll need to edit e.g. /boot/grub/grub.conf manually
-Kernel has been installed as /boot/bzImage-gnomeos.bin
 EOF
 fi
 
