@@ -56,7 +56,7 @@ if ! test -L run; then
     ln -s ../run run
 fi
 
-mkdir ./var/lib/gdm
+mkdir -p ./var/lib/gdm
 chown 2:2 ./var/lib/gdm
 
 touch ./var/shadow
@@ -73,5 +73,7 @@ dbus:*:1:
 gdm:*:2:
 EOF
 
-mkdir repo
-ostree --repo=repo init
+if ! test -d repo; then
+    mkdir repo
+    ostree --repo=repo init
+fi

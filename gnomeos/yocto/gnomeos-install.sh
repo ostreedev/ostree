@@ -40,6 +40,8 @@ usage () {
 ARCH=i686
 BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 
+cd /ostree
+
 if ! test -d /ostree/repo/objects; then
     mkdir -p /ostree
 
@@ -51,7 +53,6 @@ ostree-pull --repo=repo origin gnomeos-3.4-i686-{runtime,devel}
 
 uname=$(uname -r)
 
-cd /ostree
 for branch in runtime devel; do
     rev=$(ostree --repo=$(pwd)/repo rev-parse ${BRANCH_PREFIX}${branch});
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
