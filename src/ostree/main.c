@@ -39,6 +39,7 @@ static OstreeBuiltin builtins[] = {
   { "local-clone", ostree_builtin_local_clone, 0 },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
+  { "prune", ostree_builtin_prune, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
