@@ -463,7 +463,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   OstreeRepo *repo = NULL;
   const char *remote;
   const char *branch;
-  char *remote_branch_ref_path = NULL;
   char *key = NULL;
   char *baseurl = NULL;
   char *refpath = NULL;
@@ -566,7 +565,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   g_free (original_rev);
   g_free (baseurl);
   g_free (refpath);
-  g_free (remote_branch_ref_path);
   g_clear_object (&soup);
   if (base_uri)
     soup_uri_free (base_uri);

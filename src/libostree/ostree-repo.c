@@ -384,19 +384,26 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
         {
           g_clear_object (&child);
 
-          if (!find_rev_in_remotes (self, rev, &child, error))
-            goto out;
+          child = g_file_resolve_relative_path (priv->remote_heads_dir, rev);
 
-          if (child == NULL)
+          if (!g_file_query_exists (child, NULL))
             {
-              if (!allow_noent)
+              g_clear_object (&child);
+              
+              if (!find_rev_in_remotes (self, rev, &child, error))
+                goto out;
+              
+              if (child == NULL)
                 {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Rev '%s' not found", rev);
-                  goto out;
+                  if (!allow_noent)
+                    {
+                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Rev '%s' not found", rev);
+                      goto out;
+                    }
+                  else
+                    g_clear_object (&child);
                 }
-              else
-                g_clear_object (&child);
             }
         }
 
