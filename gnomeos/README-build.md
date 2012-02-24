@@ -63,6 +63,8 @@ sudo make install
 sudo chown root:root /usr/local/bin/linux-user-chroot
 sudo chmod u+s /usr/local/bin/linux-user-chroot
 
+# We're going to be using Yocto.  You probably want to refer to:
+# http://www.yoctoproject.org/docs/current/yocto-project-qs/yocto-project-qs.html
 # Next, we're grabbing my Poky branch.
 
 git clone git://github.com/cgwalters/poky.git
@@ -75,6 +77,8 @@ cd $builddir
 # Now edit conf/bblayers.conf, and add
 #   /src/ostree/gnomeos/yocto
 # to BBLAYERS.
+# remove tools-profile and tools-testapps from EXTRA_IMAGE_FEATURES
+# Also, you should choose useful values for BB_NUMBER_THREADS, PARALLEL_MAKE
 
 bitbake ostree-native
 bitbake gnomeos-contents-{runtime,devel}
