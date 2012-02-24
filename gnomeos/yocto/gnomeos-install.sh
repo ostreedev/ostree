@@ -45,7 +45,7 @@ cd /ostree
 if ! test -d /ostree/repo/objects; then
     mkdir -p /ostree
 
-    $SRCDIR/ostree-setup.sh /ostree
+    $SRCDIR/gnomeos-setup.sh /ostree
 fi
 
 ostree --repo=repo remote add origin http://ostree.gnome.org/repo
@@ -54,17 +54,7 @@ ostree-pull --repo=repo origin gnomeos-3.4-i686-devel
 
 uname=$(uname -r)
 
-for branch in runtime devel; do
-    rev=$(ostree --repo=$(pwd)/repo rev-parse ${BRANCH_PREFIX}${branch});
-    if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
-        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
-        ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
-    fi
-    rm -f ${BRANCH_PREFIX}${branch}-current
-    ln -s ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current
-done
-rm -f current
-ln -s ${BRANCH_PREFIX}runtime-current current
+$SRCDIR/gnomeos-update-branches.sh
 
 cd -
 
@@ -87,8 +77,9 @@ fi
 cp -ar /lib/modules/${uname} /ostree/modules/${uname}
 
 initrd_name=initramfs-ostree-${uname}.img
-initrd_tmpdir=$(mktemp -d '/tmp/gnomeos-dracut.XXXXXXXXXX')
-linux-user-chroot \
+if ! test -f "/boot/${initrd_name}"; then
+    initrd_tmpdir=$(mktemp -d '/tmp/gnomeos-dracut.XXXXXXXXXX')
+    linux-user-chroot \
     --mount-readonly / \
     --mount-proc /proc \
     --mount-bind /dev /dev \
@@ -97,5 +88,6 @@ linux-user-chroot \
     --mount-bind /ostree/modules /lib/modules \
     /ostree/${BRANCH_PREFIX}devel-current \
     dracut -f /tmp/${initrd_name} "${uname}"
-mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"
-rm -rf "${initrd_tmpdir}"
+    mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"
+    rm -rf "${initrd_tmpdir}"
+fi

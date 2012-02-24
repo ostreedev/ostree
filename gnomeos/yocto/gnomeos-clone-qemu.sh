@@ -79,7 +79,7 @@ if ! test -d ostree; then
     $SRCDIR/ostree-setup.sh $(pwd)/ostree
 fi
 
-rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/modules ${WORKDIR}/gnomeos-3.4-* ./ostree
+rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/current ${WORKDIR}/modules ${WORKDIR}/gnomeos-3.4-* ./ostree
 
 current_uname=$(uname -r)
 
@@ -89,8 +89,9 @@ sync
 umount fs
 rmdir fs
 
+ARGS="$@"
 if ! echo $ARGS | grep -q 'ostree='; then
-    ARGS="ostree=${BRANCH_PREFIX}runtime-current $ARGS"
+    ARGS="ostree=current $ARGS"
 fi
 ARGS="rd.plymouth=0 root=/dev/sda $ARGS"
 KERNEL=/boot/vmlinuz-${current_uname}
