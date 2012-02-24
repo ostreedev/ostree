@@ -265,6 +265,60 @@ parse_rev_file (OstreeRepo     *self,
   return ret;
 }
 
+static gboolean
+find_rev_in_remotes (OstreeRepo         *self,
+                     const char         *rev,
+                     GFile             **out_file,
+                     GError            **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GError *temp_error = NULL;
+  GFileEnumerator *dir_enum = NULL;
+  GFileInfo *file_info = NULL;
+  GFile *child = NULL;
+  GFile *ret_file = NULL;
+
+  dir_enum = g_file_enumerate_children (priv->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        NULL, error);
+  if (!dir_enum)
+    goto out;
+
+  while ((file_info = g_file_enumerator_next_file (dir_enum, NULL, error)) != NULL)
+    {
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          g_clear_object (&child);
+          child = g_file_get_child (priv->remote_heads_dir,
+                                    g_file_info_get_name (file_info));
+          g_clear_object (&ret_file);
+          ret_file = g_file_resolve_relative_path (child, rev);
+          if (!g_file_query_exists (ret_file, NULL))
+            g_clear_object (&ret_file);
+        }
+
+      g_clear_object (&file_info);
+      
+      if (ret_file)
+        break;
+    }
+  if (temp_error != NULL)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_file, &ret_file);
+ out:
+  g_clear_object (&child);
+  g_clear_object (&ret_file);
+  g_clear_object (&dir_enum);
+  g_clear_object (&file_info);
+  return ret;
+}
+
 gboolean
 ostree_repo_resolve_rev (OstreeRepo     *self,
                          const char     *rev,
@@ -329,8 +383,11 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
       if (!g_file_query_exists (child, NULL))
         {
           g_clear_object (&child);
-          child = g_file_get_child (priv->remote_heads_dir, rev);
-          if (!g_file_query_exists (child, NULL))
+
+          if (!find_rev_in_remotes (self, rev, &child, error))
+            goto out;
+
+          if (child == NULL)
             {
               if (!allow_noent)
                 {
