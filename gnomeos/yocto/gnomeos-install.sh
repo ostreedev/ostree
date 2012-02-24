@@ -49,7 +49,8 @@ if ! test -d /ostree/repo/objects; then
 fi
 
 ostree --repo=repo remote add origin http://ostree.gnome.org/repo
-ostree-pull --repo=repo origin gnomeos-3.4-i686-{runtime,devel}
+ostree-pull --repo=repo origin gnomeos-3.4-i686-runtime
+ostree-pull --repo=repo origin gnomeos-3.4-i686-devel
 
 uname=$(uname -r)
 
