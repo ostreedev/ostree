@@ -518,7 +518,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   soup_uri_set_path (target_uri, refpath);
   
   soup = soup_session_sync_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
-                                             SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_GNOME_FEATURES_2_26,
                                              SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_COOKIE_JAR,
                                              NULL);
   if (!fetch_uri (repo, soup, target_uri, "ref-", &tempf, error))
