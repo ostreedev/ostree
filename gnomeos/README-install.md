@@ -26,5 +26,23 @@ Now you may need to edit your GRUB configuration.  This part varies
 for GRUB 1 versus GRUB 2.  The GRUB 2 bits in "15_ostree" don't really
 work yet.  I'm just manually writing GRUB 1 entries.
 
+Running
+-------
 
+Once you have a GRUB entry set up, just reboot.  Log in as root,
+there's no password.
+
+One of the first things you'll need to do is add a user.  The userid
+must match the one from your "host" distribution, since we share
+/home.  For example, let's say my login "walters" has uid/gid 500.
+You should run:
+
+$ groupadd -g 500 walters
+$ useradd -u 500 -g 500 walters
+$ passwd walters
+<type in a new password here>
+
+Finally, you can start gdm:
+
+$ /usr/sbin/gdm
 
