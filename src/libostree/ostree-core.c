@@ -684,9 +684,12 @@ ostree_create_file_from_input (GFile            *dest_file,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (finfo != NULL && !is_archived_content)
+  if (finfo != NULL)
     {
       mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+      /* Archived content files should always be 0644 */
+      if (is_archived_content)
+        mode = (mode & S_IFMT) | 0644;
     }
   else
     {

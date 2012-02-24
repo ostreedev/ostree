@@ -938,8 +938,9 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
                                            cancellable, error))
     goto out;
 
-  if (ret_checksum)
+  if (out_checksum)
     {
+      g_assert (ret_checksum);
       ostree_checksum_update_stat (ret_checksum,
                                    g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
                                    g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
