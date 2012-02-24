@@ -46,14 +46,8 @@ if ! test -d /ostree/repo/objects; then
     $SRCDIR/ostree-setup.sh /ostree
 fi
 
-#ostree pull http://ostree.gnome.org/3.4/repo gnomeos-3.4-i686-{runtime,devel}
-if ! test -f /ostree/repo/refs/heads/gnomeos-3.4-i686-runtime; then
-    cat <<EOF
-You must get a repo from somewhere...e.g.:
- cd /ostree && rsync --progress -ave ssh master.gnome.org:/home/users/walters/ostree/repo .
-EOF
-    exit 1
-fi
+ostree --repo=repo remote add origin http://ostree.gnome.org/repo
+ostree-pull --repo=repo origin gnomeos-3.4-i686-{runtime,devel}
 
 uname=$(uname -r)
 
