@@ -95,6 +95,9 @@ ostree_main (int    argc,
   GFile *repo_file = NULL;
   int arg_off;
 
+  /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
+  g_setenv ("GIO_USE_VFS", "local", TRUE);
+
   g_type_init ();
 
   g_set_prgname (argv[0]);
