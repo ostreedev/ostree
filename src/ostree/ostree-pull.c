@@ -54,6 +54,29 @@ log_verbose (const char  *fmt,
   g_free (msg);
 }
 
+typedef struct {
+  SoupSession    *session;
+  GOutputStream  *stream;
+  gboolean        had_error;
+  GError        **error;
+} OstreeSoupChunkData;
+
+static void
+on_got_chunk (SoupMessage   *msg,
+              SoupBuffer    *buf,
+              gpointer       user_data)
+{
+  OstreeSoupChunkData *data = user_data;
+  gsize bytes_written;
+  
+  if (!g_output_stream_write_all (data->stream, buf->data, buf->length,
+                                  &bytes_written, NULL, data->error))
+    {
+      data->had_error = TRUE;
+      soup_session_cancel_message (data->session, msg, 500);
+    }
+}
+
 static gboolean
 fetch_uri (OstreeRepo  *repo,
            SoupSession *soup,
@@ -65,15 +88,30 @@ fetch_uri (OstreeRepo  *repo,
   gboolean ret = FALSE;
   SoupMessage *msg = NULL;
   guint response;
-  SoupBuffer *buf = NULL;
   char *uri_string = NULL;
   GFile *ret_temp_filename = NULL;
   GOutputStream *output_stream = NULL;
-  gsize bytes_written;
+  OstreeSoupChunkData chunkdata;
+
+  if (!ostree_create_temp_regular_file (ostree_repo_get_tmpdir (repo),
+                                        tmp_prefix, NULL,
+                                        &ret_temp_filename,
+                                        &output_stream,
+                                        NULL, error))
+    goto out;
+
+  chunkdata.session = soup;
+  chunkdata.stream = output_stream;
+  chunkdata.had_error = FALSE;
+  chunkdata.error = error;
   
   uri_string = soup_uri_to_string (uri, FALSE);
   log_verbose ("Fetching %s", uri_string);
   msg = soup_message_new_from_uri (SOUP_METHOD_GET, uri);
+
+  soup_message_body_set_accumulate (msg->response_body, FALSE);
+
+  g_signal_connect (msg, "got-chunk", G_CALLBACK (on_got_chunk), &chunkdata);
   
   response = soup_session_send_message (soup, msg);
   if (response != 200)
@@ -83,19 +121,6 @@ fetch_uri (OstreeRepo  *repo,
                    uri_string, response, msg->reason_phrase);
       goto out;
     }
-
-  if (!ostree_create_temp_regular_file (ostree_repo_get_tmpdir (repo),
-                                        tmp_prefix, NULL,
-                                        &ret_temp_filename,
-                                        &output_stream,
-                                        NULL, error))
-    goto out;
-
-  buf = soup_message_body_flatten (msg->response_body);
-
-  if (!g_output_stream_write_all (output_stream, buf->data, buf->length,
-                                  &bytes_written, NULL, error))
-    goto out;
 
   if (!g_output_stream_close (output_stream, NULL, error))
     goto out;
