@@ -677,7 +677,8 @@
 		 "patches": ["accountsservice-builddir.patch"]},
 
 		{"src": "gnome:gdm",
-		 "config-opts": ["--disable-documentation"],
+		 "config-opts": ["--disable-documentation",
+		                 "--with-consolekit"],
 		 "patches": ["gdm-disable-documentation.patch",
 		             "gdm-pam-auth.patch"]},
 
