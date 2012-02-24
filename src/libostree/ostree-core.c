@@ -687,9 +687,12 @@ ostree_create_file_from_input (GFile            *dest_file,
   if (finfo != NULL)
     {
       mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
-      /* Archived content files should always be 0644 */
+      /* Archived content files should always be readable by all and
+       * read/write by owner.  If the base file is executable then
+       * we're also executable.
+       */
       if (is_archived_content)
-        mode = (mode & S_IFMT) | 0644;
+        mode |= 0644;
     }
   else
     {
