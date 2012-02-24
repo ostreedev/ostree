@@ -49,12 +49,15 @@ AC_ARG_WITH(soup-gnome,
 	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
 	    :, with_soup_gnome=maybe)
 if test x$with_soup_gnome != xno; then
+    AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
     PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup_gnome=yes, have_soup_gnome=no)
+    AC_MSG_RESULT([$have_soup_gnome])
     if test x$have_soup_gnome = xno && test x$with_soup_gnome != xmaybe; then
        AC_MSG_ERROR([libsoup-gnome is enabled but could not be found])
     fi
     if test x$have_soup_gnome = xyes; then
 	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
+	with_soup_gnome=yes
     else
 	with_soup_gnome=no
     fi		
@@ -65,13 +68,16 @@ AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
 if test x$with_libarchive != xno; then
+    AC_MSG_CHECKING([for $LIBARCHIVE_DEPENDENCY])
     PKG_CHECK_EXISTS($LIBARCHIVE_DEPENDENCY, have_libarchive=yes, have_libarchive=no)
+    AC_MSG_RESULT([$have_libarchive])
     if test x$have_libarchive = xno && test x$with_libarchive != xmaybe; then
        AC_MSG_ERROR([libarchive is enabled but could not be found])
     fi
     if test x$have_libarchive = xyes; then
         AC_DEFINE(HAVE_LIBARCHIVE, 1, [Define if we have libarchive.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBARCHIVE, $LIBARCHIVE_DEPENDENCY)
+	with_libarchive=yes
     else
 	with_libarchive=no
     fi		
@@ -84,3 +90,12 @@ AC_CONFIG_FILES([
 Makefile
 ])
 AC_OUTPUT
+
+echo "
+    OSTree $VERSION
+    ===============
+
+
+    libsoup (retrieve remote HTTP repositories): $with_soup_gnome
+    libarchive (parse tar files directly): $with_libarchive
+"
