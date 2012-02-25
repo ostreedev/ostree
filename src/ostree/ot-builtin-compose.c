@@ -251,6 +251,8 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
 
       if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
         goto out;
+
+      g_print ("%s\n", commit_checksum);
     }
   else
     {
@@ -263,7 +265,6 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   ret = TRUE;
-  g_print ("%s\n", commit_checksum);
  out:
   if (in_transaction)
     {
