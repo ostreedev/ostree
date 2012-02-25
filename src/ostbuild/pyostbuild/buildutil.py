@@ -18,6 +18,7 @@
 import os
 import re
 import urlparse
+import tempfile
 
 from .subprocess_helpers import run_sync_get_output
 
@@ -90,3 +91,33 @@ def manifest_buildroot_name(manifest, component, architecture):
     return 'buildroots/%s/%s/%s' % (manifest_target (manifest, architecture),
                                     component['name'],
                                     component['branch'])
+
+def find_component_in_manifest(manifest, component_name):
+    for component in manifest['components']:
+        if component['name'] == component_name:
+            return component
+    return None
+
+def compose(repo, target, artifacts):
+    child_args = ['ostree', '--repo=' + repo, 'compose',
+                  '-b', target, '-s', 'Compose']
+    (fd, path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+    f = os.fdopen(fd, 'w')
+    for artifact in artifacts:
+        f.write(artifact)
+        f.write('\n')
+    f.close()
+    child_args.extend(['-F', path])
+    revision = run_sync_get_output(child_args, log_initiation=True).strip()
+    os.unlink(path)
+    return revision
+
+def compose_buildroot(manifest, repo, buildroot_name, component, dependencies, architecture):
+    base = manifest_base(manifest, 'devel', architecture)
+    buildroot_contents = [base + ':/']
+    for dep in dependencies:
+        dep_buildname = manifest_buildname(manifest, dep, architecture)
+        buildroot_contents.append(dep_buildname + ':/runtime')
+        buildroot_contents.append(dep_buildname + ':/devel')
+
+    return compose(repo, buildroot_name, buildroot_contents)

@@ -96,20 +96,21 @@ class OstbuildCompileOne(builtins.Builtin):
         
         if self.ostbuild_resultdir is None:
             fatal("Must specify --ostbuild-resultdir=")
-
-        self.metadata = {}
-
         if self.ostbuild_meta is None:
-            output = run_sync_get_output(['ostbuild', 'autodiscover-meta'])
-            self.metadata = json.loads(output)
-        else:
-            f = open(self.ostbuild_meta)
-            self.metadata = json.load(f)
-            f.close()
+            fatal("Must specify --ostbuild-meta=")
 
-        for k in ['name', 'version']:
+        f = open(self.ostbuild_meta)
+        self.metadata = json.load(f)
+        f.close()
+
+        for k in ['name', 'revision']:
             if k not in self.metadata:
                 fatal('Missing required key "%s" in metadata' % (k, ))
+
+        if self.metadata.get('rm-configure', False):
+            configure_path = 'configure'
+            if os.path.exists(configure_path):
+                os.unlink(configure_path)
 
         autogen_script = None
         if not os.path.exists('configure'):
@@ -181,18 +182,6 @@ class OstbuildCompileOne(builtins.Builtin):
 
         name = self.metadata['name']
         assert ',' not in name
-        branch = self.metadata['branch']
-        assert ',' not in name
-        version = self.metadata['version']
-        assert ',' not in version
-    
-        root_name = self.metadata.get('buildroot', None)
-        # TODO - pick up current sysroot version from ostree
-        if root_name is None:
-            root_name = 'unknown-' + self.build_target
-            root_version = 'UNKNOWN'
-        else:
-            root_version = self.metadata.get('buildroot-version')
     
         tempdir = tempfile.mkdtemp(prefix='ostbuild-%s-' % (name,))
         self.tempfiles.append(tempdir)

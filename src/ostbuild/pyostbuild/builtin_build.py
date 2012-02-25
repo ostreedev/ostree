@@ -48,8 +48,7 @@ class OstbuildBuild(builtins.Builtin):
             args = ['setarch', architecture]
         else:
             args = []
-        args.extend(['ostbuild', 'chroot-compile-one',
-                     '--repo=' + self.repo])
+        args.extend(['ostbuild', 'chroot-compile-one'])
         return args
 
     def _launch_debug_shell(self, architecture, buildroot, cwd=None):
@@ -92,17 +91,7 @@ class OstbuildBuild(builtins.Builtin):
 
         return result
 
-    def _compose_buildroot(self, buildroot_name, component, dependencies, architecture):
-        base = buildutil.manifest_base(self.manifest, 'devel', architecture)
-        buildroot_contents = [base + ':/']
-        for dep in dependencies:
-            dep_buildname = buildutil.manifest_buildname(self.manifest, dep, architecture)
-            buildroot_contents.append(dep_buildname + ':/runtime')
-            buildroot_contents.append(dep_buildname + ':/devel')
-
-        return self._compose(buildroot_name, buildroot_contents)
-
-    def _build_one_component(self, meta, dependencies, architecture):
+    def _build_one_component(self, meta, architecture):
         name = meta['name']
         branch = meta['branch']
 
@@ -116,10 +105,6 @@ class OstbuildBuild(builtins.Builtin):
         checkoutdir = os.path.join(self.workdir, 'src', name)
         component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir, branch,
                                              overwrite=not self.args.debug_shell)
-
-        if self.args.debug_shell:
-            buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
-            self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
 
         current_vcs_version = meta['revision']
 
@@ -146,39 +131,19 @@ class OstbuildBuild(builtins.Builtin):
         else:
             log("No previous build for '%s' found" % (buildname, ))
 
-        buildroot_version = self._compose_buildroot(buildroot_name, meta, dependencies, architecture)
+        artifact_meta = dict(meta)
 
-        if meta.get('rm-configure', False):
-            configure_path = os.path.join(component_src, 'configure')
-            if os.path.exists(configure_path):
-                os.unlink(configure_path)
-
-        artifact_meta = {'buildroot': buildroot_name,
-                         'buildroot-version': buildroot_version,
-                         'name': name,
-                         'branch': branch,
-                         'version': current_vcs_version
-                         }
-
-        metadata_dir = os.path.join(self.workdir, 'meta')
-        if not os.path.isdir(metadata_dir):
-            os.makedirs(metadata_dir)
-        metadata_path = os.path.join(metadata_dir, '%s-meta.json' % (name, ))
+        metadata_path = os.path.join(component_src, '_ostbuild-meta.json')
         f = open(metadata_path, 'w')
         json.dump(artifact_meta, f)
         f.close()
-
+        
         patches = meta.get('patches')
         if patches is not None:
             for patch in patches:
                 patch_path = os.path.join(self.patchdir, patch)
                 run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=component_src)
         
-        component_resultdir = os.path.join(self.workdir, 'results', name)
-        if os.path.isdir(component_resultdir):
-            shutil.rmtree(component_resultdir)
-        os.makedirs(component_resultdir)
-
         logdir = os.path.join(self.workdir, 'logs', 'compile', name)
         old_logdir = os.path.join(self.workdir, 'old-logs', 'compile', name)
         if not os.path.isdir(logdir):
@@ -194,16 +159,7 @@ class OstbuildBuild(builtins.Builtin):
         log("Logging to %s" % (log_path, ))
         f = open(log_path, 'w')
         chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--buildroot=' + buildroot_name,
-                            '--workdir=' + self.workdir,
-                            '--resultdir=' + component_resultdir,
-                            '--meta=' + metadata_path])
-        global_config_opts = self.manifest.get('config-opts')
-        if global_config_opts is not None:
-            chroot_args.extend(global_config_opts)
-        component_config_opts = meta.get('config-opts')
-        if component_config_opts is not None:
-            chroot_args.extend(component_config_opts)
+        chroot_args.extend(['--meta=' + metadata_path])
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
@@ -211,14 +167,19 @@ class OstbuildBuild(builtins.Builtin):
         else:
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
+        # Reread metadata to get buildroot version
+        f = open(metadata_path)
+        artifact_meta = json.load(f)
+        f.close()
+
         args = ['ostree', '--repo=' + self.repo,
-                'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['version'],
-                '--add-metadata-string=ostbuild-buildroot-version=' + buildroot_version,
-                '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['version'],
+                'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['revision'],
+                '--add-metadata-string=ostbuild-buildroot-version=' + artifact_meta['buildroot-version'],
+                '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['revision'],
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
                 '--skip-if-unchanged']
 
-        setuid_files = meta.get('setuid', [])
+        setuid_files = artifact_meta.get('setuid', [])
         statoverride_path = None
         if len(setuid_files) > 0:
             (fd, statoverride_path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-statoverride-')
@@ -227,25 +188,13 @@ class OstbuildBuild(builtins.Builtin):
                 f.write('+2048 ' + path)
             f.close()
             args.append('--statoverride=' + statoverride_path)
+
+        component_resultdir = os.path.join(self.workdir, 'results', name)
             
         run_sync(args, cwd=component_resultdir)
         if statoverride_path is not None:
             os.unlink(statoverride_path)
         return True
-
-    def _compose(self, target, artifacts):
-        child_args = ['ostree', '--repo=' + self.repo, 'compose',
-                      '-b', target, '-s', 'Compose']
-        (fd, path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
-        f = os.fdopen(fd, 'w')
-        for artifact in artifacts:
-            f.write(artifact)
-            f.write('\n')
-        f.close()
-        child_args.extend(['-F', path])
-        revision = run_sync_get_output(child_args, log_initiation=True).strip()
-        os.unlink(path)
-        return revision
 
     def _compose_arch(self, architecture, components):
         runtime_base = buildutil.manifest_base(self.manifest, 'runtime', architecture)
@@ -261,10 +210,10 @@ class OstbuildBuild(builtins.Builtin):
             devel_contents.append(branch + ':/doc')
             devel_contents.append(branch + ':/devel')
 
-        self._compose('%s-%s-%s' % (self.manifest['name'], architecture, 'runtime'),
-                      runtime_contents)
-        self._compose('%s-%s-%s' % (self.manifest['name'], architecture, 'devel'),
-                      devel_contents)
+        buildutil.compose(self.repo, '%s-%s-%s' % (self.manifest['name'], architecture, 'runtime'),
+                          runtime_contents)
+        buildutil.compose(self.repo, '%s-%s-%s' % (self.manifest['name'], architecture, 'devel'),
+                          devel_contents)
     
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
@@ -321,9 +270,8 @@ class OstbuildBuild(builtins.Builtin):
 
         for component in build_components[start_at_index:]:
             index = components.index(component)
-            dependencies = components[:index]
             for architecture in self.manifest['architectures']:
-                self._build_one_component(component, dependencies, architecture)
+                self._build_one_component(component, architecture)
 
         for architecture in self.manifest['architectures']:
             self._compose_arch(architecture, components)
