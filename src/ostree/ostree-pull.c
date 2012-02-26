@@ -106,7 +106,7 @@ fetch_uri (OstreeRepo  *repo,
   chunkdata.error = error;
   
   uri_string = soup_uri_to_string (uri, FALSE);
-  log_verbose ("Fetching %s", uri_string);
+  g_print ("Fetching %s\n", uri_string);
   msg = soup_message_new_from_uri (SOUP_METHOD_GET, uri);
 
   soup_message_body_set_accumulate (msg->response_body, FALSE);
