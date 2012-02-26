@@ -434,9 +434,7 @@
 				 "--with-crypto=nss",
 				 "--with-docs=no",
 				 "--enable-more-warnings=yes"],
-		 "patches": ["NetworkManager-config.patch",
-		 	     "NetworkManager-builddir.patch",
-		             "NetworkManager-werror.patch"]},
+		 "patches": ["NetworkManager-config.patch"]},
 		 
 		{"src": "fd:PolicyKit",
 		 "patches": ["PolicyKit-libtool.patch"],
