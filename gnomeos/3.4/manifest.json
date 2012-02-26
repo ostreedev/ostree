@@ -704,8 +704,6 @@
 		{"src": "gnome:libwnck"},
 
 		{"src": "gnome:gnome-panel",
-		 "patches": ["panel-disable-docs.patch",
-		             "panel-srcdir.patch"],
 		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "gnome:vte",
