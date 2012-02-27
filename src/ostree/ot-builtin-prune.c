@@ -54,7 +54,8 @@ log_verbose (const char  *fmt,
 
   va_start (args, fmt);
   
-  g_vprintf ("%s\n", args);
+  g_vprintf (fmt, args);
+  g_print ("\n");
 
   va_end (args);
 }
@@ -237,6 +238,8 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   GHashTableIter hash_iter;
   gpointer key, value;
   GCancellable *cancellable = NULL;
+
+  memset (&data, 0, sizeof (data));
 
   context = g_option_context_new ("- Search for unreachable objects");
   g_option_context_add_main_entries (context, options, NULL);
