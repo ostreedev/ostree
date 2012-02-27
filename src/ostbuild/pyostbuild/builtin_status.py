@@ -36,7 +36,7 @@ class OstbuildStatus(builtins.Builtin):
 
     def execute(self, args):
         self.parse_config()
-        build_manifest_path = os.path.join(self.workdir, 'manifest.json')
+        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
 
         for architecture in self.manifest['architectures']:

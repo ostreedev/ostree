@@ -159,6 +159,13 @@ class OstbuildResolve(builtins.Builtin):
                 run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
         else:
             fetch_components = []
+            
+        self.manifest['patches'] = self._resolve_component_meta(self.manifest['patches'])
+        patches_meta = self.manifest['patches']
+        (keytype, uri) = self._parse_src_key(patches_meta['src'])
+        mirrordir = self._ensure_vcs_mirror(patches_meta['name'], keytype, uri, patches_meta['branch'])
+        revision = buildutil.get_git_version_describe(mirrordir, patches_meta['branch'])
+        patches_meta['revision'] = revision
 
         for component in self.resolved_components:
             (keytype, uri) = self._parse_src_key(component['src'])
@@ -202,7 +209,7 @@ class OstbuildResolve(builtins.Builtin):
 
         self.manifest['components'] = self.resolved_components
 
-        out_manifest = os.path.join(self.workdir, 'manifest.json')
+        out_snapshot = os.path.join(self.workdir, 'snapshot.json')
         patchdir = os.path.join(self.workdir, 'patches')
         if not os.path.isdir(patchdir):
             os.mkdir(patchdir)
@@ -217,9 +224,9 @@ class OstbuildResolve(builtins.Builtin):
             dest = os.path.join(patchdir, patch)
             shutil.copy(src, dest)
         
-        f = open(out_manifest, 'w')
+        f = open(out_snapshot, 'w')
         json.dump(self.manifest, f, indent=4)
         f.close()
-        print "Created: %s, %d patches" % (out_manifest, len(all_patches.keys()))
+        print "Created: %s, %d patches" % (out_snapshot, len(all_patches.keys()))
         
 builtins.register(OstbuildResolve)

@@ -173,7 +173,7 @@ class OstbuildBuild(builtins.Builtin):
         f.close()
 
         args = ['ostree', '--repo=' + self.repo,
-                'commit', '-b', buildname, '-s', 'Build ' + artifact_meta['revision'],
+                'commit', '-b', buildname, '-s', 'Build',
                 '--add-metadata-string=ostbuild-buildroot-version=' + artifact_meta['buildroot-version'],
                 '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['revision'],
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
@@ -233,7 +233,7 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.shell_on_failure = args.shell_on_failure
         self.buildopts.skip_built = args.skip_built
 
-        build_manifest_path = os.path.join(self.workdir, 'manifest.json')
+        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
 
         self.patchdir = os.path.join(self.workdir, 'patches')

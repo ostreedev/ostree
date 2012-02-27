@@ -23,6 +23,8 @@
 		"netfilter": "git:git://git.netfilter.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
+  "patches": {"src": "gnome:ostree"},
+
   "components": [
    		{"src": "cgwalters:ginitscripts"},
 

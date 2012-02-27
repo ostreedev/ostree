@@ -45,7 +45,7 @@ class OstbuildCheckout(builtins.Builtin):
         
         self.parse_config()
 
-        build_manifest_path = os.path.join(self.workdir, 'manifest.json')
+        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
 
         for component_name in args.components:

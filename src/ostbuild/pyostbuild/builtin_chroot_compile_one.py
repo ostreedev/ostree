@@ -39,7 +39,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         self.parse_config()
 
         component_name = os.path.basename(os.getcwd())
-        build_manifest_path = os.path.join(self.workdir, 'manifest.json')
+        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
 
         if args.meta is not None:
