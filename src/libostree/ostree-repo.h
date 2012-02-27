@@ -130,6 +130,11 @@ gboolean      ostree_repo_write_ref (OstreeRepo  *self,
                                      const char  *rev,
                                      GError     **error);
 
+gboolean      ostree_repo_list_all_refs (OstreeRepo       *repo,
+                                         GHashTable      **out_all_refs,
+                                         GCancellable     *cancellable,
+                                         GError          **error);
+
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType expected_type,
                                         const char    *sha256, 

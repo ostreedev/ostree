@@ -1375,6 +1375,86 @@ create_empty_gvariant_dict (void)
   return g_variant_builder_end (&builder);
 }
 
+static gboolean
+enumerate_refs_recurse (OstreeRepo    *repo,
+                        GFile         *base,
+                        GFile         *dir,
+                        GHashTable    *refs,
+                        GCancellable  *cancellable,
+                        GError       **error)
+{
+  gboolean ret = FALSE;
+  GFileInfo *file_info = NULL;
+  GFileEnumerator *enumerator = NULL;
+  GFile *child = NULL;
+  GError *temp_error = NULL;
+
+  enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, error);
+  if (!enumerator)
+    goto out;
+
+  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+    {
+      g_clear_object (&child);
+      child = g_file_get_child (dir, g_file_info_get_name (file_info));
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          if (!enumerate_refs_recurse (repo, base, child, refs, cancellable, error))
+            goto out;
+        }
+      else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          char *contents;
+          gsize len;
+
+          if (!g_file_load_contents (child, cancellable, &contents, &len, NULL, error))
+            goto out;
+
+          g_strchomp (contents);
+
+          g_hash_table_insert (refs, g_file_get_relative_path (base, child), contents);
+        }
+
+      g_clear_object (&file_info);
+    }
+  if (temp_error != NULL)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  g_clear_object (&file_info);
+  g_clear_object (&child);
+  return ret;
+}
+
+gboolean
+ostree_repo_list_all_refs (OstreeRepo       *repo,
+                           GHashTable      **out_all_refs,
+                           GCancellable     *cancellable,
+                           GError          **error)
+{
+  gboolean ret = FALSE;
+  GHashTable *ret_all_refs = NULL;
+  GFile *heads_dir = NULL;
+
+  ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+
+  heads_dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/heads");
+  if (!enumerate_refs_recurse (repo, heads_dir, heads_dir, ret_all_refs, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_all_refs, &ret_all_refs);
+ out:
+  g_clear_object (&heads_dir);
+  return ret;
+}
+
 gboolean      
 ostree_repo_write_ref (OstreeRepo  *self,
                        const char  *remote,

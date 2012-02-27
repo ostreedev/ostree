@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..24"
+echo "1..25"
 
 . libtest.sh
 
@@ -181,3 +181,7 @@ EOF
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "with statoverride" --statoverride=../test-statoverride.txt
 echo "ok commit statoverridde"
+
+cd ${test_tmpdir}
+$OSTREE prune
+echo "ok prune didn't fail"
