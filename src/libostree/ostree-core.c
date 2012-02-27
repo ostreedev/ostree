@@ -58,6 +58,29 @@ ostree_validate_checksum_string (const char *sha256,
   return TRUE;
 }
 
+gboolean
+ostree_validate_rev (const char *rev,
+                     GError **error)
+{
+  gboolean ret = FALSE;
+  GPtrArray *components = NULL;
+
+  if (!ot_util_path_split_validate (rev, &components, error))
+    goto out;
+
+  if (components->len == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid empty rev");
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  g_ptr_array_unref (components);
+  return ret;
+}
+
 GVariant *
 ostree_wrap_metadata_variant (OstreeObjectType  type,
                               GVariant         *metadata)

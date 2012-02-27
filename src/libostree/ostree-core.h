@@ -100,6 +100,8 @@ typedef enum {
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
 
+gboolean ostree_validate_rev (const char *rev, GError **error);
+
 void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
 
 const char * ostree_object_type_to_string (OstreeObjectType objtype);

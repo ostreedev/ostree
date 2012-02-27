@@ -339,20 +339,11 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   
   g_return_val_if_fail (rev != NULL, FALSE);
 
-  /* This checks for .. and such, but we don't actually walk
-   * the parsed bits below.
-   */
-  if (!ot_util_path_split_validate (rev, &components, error))
+  if (!ostree_validate_rev (rev, error))
     goto out;
 
-  if (components->len == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid empty rev");
-      goto out;
-    }
   /* We intentionally don't allow a ref that looks like a checksum */
-  else if (ostree_validate_checksum_string (rev, NULL))
+  if (ostree_validate_checksum_string (rev, NULL))
     {
       ret_rev = g_strdup (rev);
     }
