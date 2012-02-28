@@ -223,9 +223,9 @@ class OstbuildResolve(builtins.Builtin):
                                patch)
             dest = os.path.join(patchdir, patch)
             shutil.copy(src, dest)
-        
+
         f = open(out_snapshot, 'w')
-        json.dump(self.manifest, f, indent=4)
+        json.dump(self.manifest, f, indent=4, sort_keys=True)
         f.close()
         print "Created: %s, %d patches" % (out_snapshot, len(all_patches.keys()))
         
