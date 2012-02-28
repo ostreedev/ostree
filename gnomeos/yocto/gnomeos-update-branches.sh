@@ -30,7 +30,6 @@ for branch in runtime devel; do
     if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
         ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
         ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
-        cp -ar /lib/modules/${uname} ${BRANCH_PREFIX}${branch}-${rev}/lib/modules/${uname}
     fi
     ln -sf ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current.new
     mv ${BRANCH_PREFIX}${branch}-current{.new,}
