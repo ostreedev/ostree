@@ -116,7 +116,7 @@ class OstbuildBuild(builtins.Builtin):
             log("Previous build of '%s' is %s" % (buildname, previous_build_version))
 
             previous_vcs_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                        'show', '--print-metadata-key=ostbuild-artifact-version',
+                                                        'show', '--print-metadata-key=ostbuild-revision',
                                                         previous_build_version])
             previous_vcs_version = previous_vcs_version.strip()
 
@@ -167,15 +167,10 @@ class OstbuildBuild(builtins.Builtin):
         else:
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
-        # Reread metadata to get buildroot version
-        f = open(metadata_path)
-        artifact_meta = json.load(f)
-        f.close()
-
         args = ['ostree', '--repo=' + self.repo,
                 'commit', '-b', buildname, '-s', 'Build',
-                '--add-metadata-string=ostbuild-buildroot-version=' + artifact_meta['buildroot-version'],
-                '--add-metadata-string=ostbuild-artifact-version=' + artifact_meta['revision'],
+                '--add-metadata-string=ostbuild-name=' + artifact_meta['name'],
+                '--add-metadata-string=ostbuild-revision=' + artifact_meta['revision'],
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
                 '--skip-if-unchanged']
 
