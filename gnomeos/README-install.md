@@ -49,18 +49,19 @@ $ /usr/sbin/gdm
 Updating
 --------
 
-You need to pull the latest updates to your repos (assuming that
-you have your repos in /ostree)
-
-$ ostree-pull --repo=/ostree/repo origin gnomeos-3.4-i686-runtime
-$ ostree-pull --repo=/ostree/repo origin gnomeos-3.4-i686-devel
-
-And then you need to update your branches: to point to the new
-stuff. That is a little cumbersome, and the easiest is to use
-the gnomeos-update-branches script that comes with ostree. The
-script currently assumes that the repository is in the current
-directory.
+After you've installed, you can download updates like this:
 
 $ su -
 # cd /ostree
+# ostree-pull --repo=repo origin gnomeos-3.4-i686-{runtime,devel}
+
+This just pulls data into your local repository; if you want a
+checked-out filesystem root for them, the easiest is to use the
+gnomeos-update-branches script that comes with ostree. The script
+currently assumes that the repository is in the current directory.
+
 # ~/src/ostree/gnomeos/yocto/gnomeos-update-branches.sh
+
+In the future this will be part of a system administrator oriented
+utility (e.g. "ostreeadm").
+
