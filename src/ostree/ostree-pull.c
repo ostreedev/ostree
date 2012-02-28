@@ -658,7 +658,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   const char *remote;
-  const char *branch;
   SoupSession *soup = NULL;
   char *path = NULL;
   char *baseurl = NULL;
@@ -671,8 +670,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   GHashTableIter hash_iter;
   gpointer key, value;
   char *branch_rev = NULL;
+  int i;
 
-  context = g_option_context_new ("REMOTE [BRANCH] - Download data from remote repository");
+  context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -689,10 +689,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   remote = argv[1];
-  if (argc == 2)
-    branch = NULL;
-  else
-    branch = argv[2];
 
   soup = soup_session_sync_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
                                              SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_COOKIE_JAR,
@@ -713,16 +709,20 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
-  if (branch != NULL)
+  if (argc > 2)
     {
-      char *contents;
-
-      if (!fetch_ref_contents (repo, soup, base_uri, branch, &contents, cancellable, error))
-        goto out;
-      
-      /* Transfer ownership of contents */
       refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-      g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+      for (i = 2; i < argc; i++)
+        {
+          const char *branch = argv[i];
+          char *contents;
+          
+          if (!fetch_ref_contents (repo, soup, base_uri, branch, &contents, cancellable, error))
+            goto out;
+      
+          /* Transfer ownership of contents */
+          g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+        }
     }
   else
     {
