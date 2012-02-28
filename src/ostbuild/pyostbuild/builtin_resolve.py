@@ -210,23 +210,10 @@ class OstbuildResolve(builtins.Builtin):
         self.manifest['components'] = self.resolved_components
 
         out_snapshot = os.path.join(self.workdir, 'snapshot.json')
-        patchdir = os.path.join(self.workdir, 'patches')
-        if not os.path.isdir(patchdir):
-            os.mkdir(patchdir)
-        all_patches = {}
-        for component in self.resolved_components:
-            patches = component.get('patches', [])
-            for patch in patches:
-                all_patches[patch] = True
-        for patch in all_patches:
-            src = os.path.join(os.path.dirname(manifest_path),
-                               patch)
-            dest = os.path.join(patchdir, patch)
-            shutil.copy(src, dest)
 
         f = open(out_snapshot, 'w')
         json.dump(self.manifest, f, indent=4, sort_keys=True)
         f.close()
-        print "Created: %s, %d patches" % (out_snapshot, len(all_patches.keys()))
+        print "Created: %s" % (out_snapshot, )
         
 builtins.register(OstbuildResolve)
