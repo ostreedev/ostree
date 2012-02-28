@@ -695,9 +695,7 @@
 		{"src": "gnome:clutter-gst"},
 
 		{"src": "gnome:gnome-control-center",
-		 "config-opts": ["--disable-cups",
-		                 "--disable-documentation"],
-		 "patches": ["g-c-c-disable-docs.patch"]},
+		 "config-opts": ["--disable-cups"]},
 
 		{"src": "gnome:notification-daemon"},
 
