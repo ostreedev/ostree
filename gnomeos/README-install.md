@@ -65,3 +65,39 @@ currently assumes that the repository is in the current directory.
 In the future this will be part of a system administrator oriented
 utility (e.g. "ostreeadm").
 
+Next steps
+----------
+
+Now that you have your OSTree install and know how to update
+it, you probably want to do something useful with it. OSTrees
+main mission is to assist developers and testers, so lets explain
+how it lets a tester isolate a problem.
+
+Bisecting
+---------
+
+Say you've updated your OSTree installation, and after booting
+it, you notice a new problem. What now ? You probably want to
+identify exactly when this problem was introduced. A good technique
+for doing so is known as 'bisection'. Here is how it works:
+
+[...sadly I don't know how to do this with OSTree]
+
+Once you have identified the binary revision that introduced the
+problem, you can go one step further. OSTree stores the source
+revisions that each commit has been built from, so you can retrieve
+the exact source changes that are likely responsible for
+the problem you've just tracked down.
+
+[...fill me in]
+
+Local changes
+-------------
+
+If are a developer, at this point you may try your hand at fixing
+the problem in the source. Of course, you want to build the module
+with your change, and add it to your OSTree installation to verify
+that it fixes the problem. Here is how:
+
+[...?]
+
