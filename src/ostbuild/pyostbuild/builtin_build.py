@@ -137,24 +137,8 @@ class OstbuildBuild(builtins.Builtin):
         f = open(metadata_path, 'w')
         json.dump(artifact_meta, f)
         f.close()
-        
-        patches = meta.get('patches')
-        if patches is not None:
-            patches_meta = self.manifest['patches']
-            (patches_keytype, patches_uri) = buildutil.parse_src_key(patches_meta['src'])
-            patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
-            vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
-                                 self.patchdir, patches_meta['branch'],
-                                 overwrite=True)
 
-            patch_prefix = patches_meta.get('prefix', None)
-            if patch_prefix is not None:
-                patchdir = os.path.join(self.patchdir, patch_prefix)
-            else:
-                patchdir = self.patchdir
-            for patch in patches:
-                patch_path = os.path.join(patchdir, patch)
-                run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=component_src)
+        run_sync(['ostbuild', 'checkout', name], cwd=checkoutdir)
         
         logdir = os.path.join(self.workdir, 'logs', 'compile', name)
         old_logdir = os.path.join(self.workdir, 'old-logs', 'compile', name)
@@ -242,8 +226,6 @@ class OstbuildBuild(builtins.Builtin):
 
         build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
-
-        self.patchdir = os.path.join(self.workdir, 'patches')
 
         components = self.manifest['components']
         if args.recompose:

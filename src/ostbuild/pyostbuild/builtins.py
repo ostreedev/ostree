@@ -39,6 +39,7 @@ class Builtin(object):
         self.workdir = ostbuildrc.get_key('workdir')
         if not os.path.isdir(self.workdir):
             fatal("Specified workdir '%s' is not a directory" % (self.workdir, ))
+        self.patchdir = os.path.join(self.workdir, 'patches')
 
     def execute(self, args):
         raise NotImplementedError()

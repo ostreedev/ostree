@@ -48,19 +48,42 @@ class OstbuildCheckout(builtins.Builtin):
         build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
         self.manifest = json.load(open(build_manifest_path))
 
-        for component_name in args.components:
+        if len(args.components) > 0:
+            checkout_components = args.components
+        else:
+            checkout_components = [os.path.basename(os.getcwd())]
+
+        for component_name in checkout_components:
             found = False
-            for component in self.manifest['components']:
-                if component['name'] == component_name:
-                    found = True
-                    break
-            if not found:
+            component = buildutil.find_component_in_manifest(self.manifest,
+                                                             component_name)
+            if component is None:
                 fatal("Unknown component %r" % (component_name, ))
             (keytype, uri) = buildutil.parse_src_key(component['src'])
             checkoutdir = os.path.join(os.getcwd(), component['name'])
+
             component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
                                                  component['revision'],
                                                  overwrite=False)
+
+            patches = component.get('patches')
+            if patches is not None:
+                patches_meta = self.manifest['patches']
+                (patches_keytype, patches_uri) = buildutil.parse_src_key(patches_meta['src'])
+                patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
+                vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
+                                     self.patchdir, patches_meta['branch'],
+                                     overwrite=True)
+
+                patch_prefix = patches_meta.get('prefix', None)
+                if patch_prefix is not None:
+                    patchdir = os.path.join(self.patchdir, patch_prefix)
+                else:
+                    patchdir = self.patchdir
+                for patch in patches:
+                    patch_path = os.path.join(patchdir, patch)
+                    run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=checkoutdir)
+        
             print "Checked out: %r" % (component_src, )
         
 builtins.register(OstbuildCheckout)
