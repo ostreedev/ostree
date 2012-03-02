@@ -160,12 +160,11 @@ class OstbuildResolve(builtins.Builtin):
         else:
             fetch_components = []
             
-        self.manifest['patches'] = self._resolve_component_meta(self.manifest['patches'])
-        patches_meta = self.manifest['patches']
-        (keytype, uri) = self._parse_src_key(patches_meta['src'])
-        mirrordir = self._ensure_vcs_mirror(patches_meta['name'], keytype, uri, patches_meta['branch'])
-        revision = buildutil.get_git_version_describe(mirrordir, patches_meta['branch'])
-        patches_meta['revision'] = revision
+        global_patches_meta = self._resolve_component_meta(self.manifest['patches'])
+        (keytype, uri) = self._parse_src_key(global_patches_meta['src'])
+        mirrordir = self._ensure_vcs_mirror(global_patches_meta['name'], keytype, uri, global_patches_meta['branch'])
+        revision = buildutil.get_git_version_describe(mirrordir, global_patches_meta['branch'])
+        global_patches_meta['revision'] = revision
 
         for component in self.resolved_components:
             (keytype, uri) = self._parse_src_key(component['src'])
@@ -182,9 +181,17 @@ class OstbuildResolve(builtins.Builtin):
             config_opts.extend(component.get('config-opts', []))
             component['config-opts'] = config_opts
 
-        # We expand these two keys
+            patch_files = component.get('patches')
+            if patch_files is not None:
+                component['patches'] = dict(global_patches_meta)
+                component['patches']['files'] = patch_files
+
+        self.manifest['components'] = self.resolved_components
+
+        # We expanded these keys
         del self.manifest['config-opts']
         del self.manifest['vcsconfig']
+        del self.manifest['patches']
 
         mirror_gitconfig_path = os.path.join(self.mirrordir, 'gitconfig')
         git_mirrordir = os.path.join(self.mirrordir, 'git')
@@ -207,13 +214,32 @@ class OstbuildResolve(builtins.Builtin):
             f.write('/\n')
         print "Generated git mirror config: %s" % (mirror_gitconfig_path, )
 
-        self.manifest['components'] = self.resolved_components
+        manifest_architectures = self.manifest['architectures']
+        del self.manifest['architectures']
+        for architecture in manifest_architectures:
+            arch_manifest = dict(self.manifest)
+            for component in arch_manifest['components']:
+                component['arch'] = architecture
 
-        out_snapshot = os.path.join(self.workdir, 'snapshot.json')
+            runtime_components = filter(lambda x: x.get('component', 'runtime') == 'runtime', arch_manifest['components'])
+            devel_components = arch_manifest['components']
+            for component in arch_manifest['components']:
+                if 'component' in component:
+                    del component['component']
 
-        f = open(out_snapshot, 'w')
-        json.dump(self.manifest, f, indent=4, sort_keys=True)
-        f.close()
-        print "Created: %s" % (out_snapshot, )
+            for component_type in ['runtime', 'devel']:
+                snapshot = dict(arch_manifest)
+                if component_type == 'runtime':
+                    snapshot['components'] = runtime_components
+                else:
+                    snapshot['components'] = devel_components
+
+                snapshot_name = '%s-%s-%s.snapshot' % (arch_manifest['name'], architecture, component_type)
+                snapshot['name'] = snapshot_name
+                out_snapshot = os.path.join(self.workdir, snapshot_name)
+                f = open(out_snapshot, 'w')
+                json.dump(snapshot, f, indent=4, sort_keys=True)
+                f.close()
+                print "Created: %s" % (out_snapshot, )
         
 builtins.register(OstbuildResolve)
