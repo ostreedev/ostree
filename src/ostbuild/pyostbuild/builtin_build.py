@@ -165,7 +165,6 @@ class OstbuildBuild(builtins.Builtin):
 
         args = ['ostree', '--repo=' + self.repo,
                 'commit', '-b', buildname, '-s', 'Build',
-                '--add-metadata-string=ostbuild-name=' + artifact_meta['name'],
                 '--add-metadata-string=ostbuild-revision=' + artifact_meta['revision'],
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
                 '--skip-if-unchanged']
@@ -187,30 +186,35 @@ class OstbuildBuild(builtins.Builtin):
             os.unlink(statoverride_path)
         return True
 
-    def _compose_arch(self, architecture, components):
-        runtime_base = buildutil.manifest_base(self.manifest, 'runtime', architecture)
-        devel_base = buildutil.manifest_base(self.manifest, 'devel', architecture)
-        runtime_contents = [runtime_base + ':/']
-        devel_contents = [devel_base + ':/']
+    def _compose(self, components):
+        base_ref = 'bases/%s:/' % (self.manifest['base'], )
+        contents = [base_ref]
+
+        # HACK
+        manifest_build_name = self.manifest['name']
+        is_runtime = manifest_build_name.endswith('-runtime')
+        # HACK - we should really name builds just like e.g. gnomeos-3.4-i686 
+        if is_runtime:
+            manifest_build_name = manifest_build_name[:-len('-runtime')] + '-devel'
 
         for component in components:
-            branch = buildutil.manifest_buildname(self.manifest, component, architecture)
-            runtime_contents.append(branch + ':/runtime')
-            devel_contents.append(branch + ':/runtime')
-            # For now just hardcode docs going in devel
-            devel_contents.append(branch + ':/doc')
-            devel_contents.append(branch + ':/devel')
+            branch = 'artifacts/%s/%s/%s' % (manifest_build_name,
+                                             component['name'],
+                                             component['branch'])
+            contents.append(branch + ':/runtime')
+            if not is_runtime:
+                # For now just hardcode docs going in devel
+                contents.append(branch + ':/doc')
+                contents.append(branch + ':/devel')
 
-        buildutil.compose(self.repo, '%s-%s-%s' % (self.manifest['name'], architecture, 'runtime'),
-                          runtime_contents)
-        buildutil.compose(self.repo, '%s-%s-%s' % (self.manifest['name'], architecture, 'devel'),
-                          devel_contents)
+        buildutil.compose(self.repo, self.manifest['name'], contents)
     
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--skip-built', action='store_true')
         parser.add_argument('--recompose', action='store_true')
         parser.add_argument('--start-at')
+        parser.add_argument('--manifest', required=True)
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
         parser.add_argument('components', nargs='*')
@@ -224,8 +228,7 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.shell_on_failure = args.shell_on_failure
         self.buildopts.skip_built = args.skip_built
 
-        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
-        self.manifest = json.load(open(build_manifest_path))
+        self.manifest = json.load(open(args.manifest))
 
         components = self.manifest['components']
         if args.recompose:
@@ -259,10 +262,8 @@ class OstbuildBuild(builtins.Builtin):
 
         for component in build_components[start_at_index:]:
             index = components.index(component)
-            for architecture in self.manifest['architectures']:
-                self._build_one_component(component, architecture)
+            self._build_one_component(component)
 
-        for architecture in self.manifest['architectures']:
-            self._compose_arch(architecture, components)
+        self._compose(components)
         
 builtins.register(OstbuildBuild)

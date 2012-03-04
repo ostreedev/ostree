@@ -234,9 +234,10 @@ class OstbuildResolve(builtins.Builtin):
                 else:
                     snapshot['components'] = devel_components
 
-                snapshot_name = '%s-%s-%s.snapshot' % (arch_manifest['name'], architecture, component_type)
-                snapshot['name'] = snapshot_name
-                out_snapshot = os.path.join(self.workdir, snapshot_name)
+                snapshot['name'] = '%s-%s-%s' % (arch_manifest['name'], architecture, component_type)
+                snapshot_base = snapshot['base']
+                snapshot['base'] = snapshot_base + '-%s-%s' % (architecture, component_type)
+                out_snapshot = os.path.join(self.workdir, snapshot['name'] + '.snapshot')
                 f = open(out_snapshot, 'w')
                 json.dump(snapshot, f, indent=4, sort_keys=True)
                 f.close()
