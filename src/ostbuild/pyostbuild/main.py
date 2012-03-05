@@ -26,7 +26,6 @@ from . import builtin_build
 from . import builtin_checkout
 from . import builtin_chroot_compile_one
 from . import builtin_chroot_run_triggers
-from . import builtin_commit_artifacts
 from . import builtin_compile_one
 from . import builtin_resolve
 from . import builtin_status
