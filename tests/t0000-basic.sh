@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..25"
+echo "1..26"
 
 . libtest.sh
 
@@ -185,3 +185,8 @@ echo "ok commit statoverridde"
 cd ${test_tmpdir}
 $OSTREE prune
 echo "ok prune didn't fail"
+
+cd ${test_tmpdir}
+$OSTREE cat test2 /yet/another/tree/green > greenfile-contents
+assert_file_has_content greenfile-contents "leaf"
+echo "ok cat-file"

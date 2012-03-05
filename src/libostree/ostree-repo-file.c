@@ -989,6 +989,7 @@ ostree_repo_file_read (GFile         *file,
   GFile *local_file = NULL;
   GFileInputStream *ret_stream = NULL;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
+  const char *checksum;
 
   if (self->tree_contents)
     {
@@ -998,20 +999,21 @@ ostree_repo_file_read (GFile         *file,
       goto out;
     }
 
+  checksum = ostree_repo_file_get_checksum (self);
+
   if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
     {
-      g_set_error_literal (error, G_IO_ERROR,
-			   G_IO_ERROR_NOT_SUPPORTED,
-			   "Can't open archived file (yet)");
-      goto out;
+      local_file = ostree_repo_get_object_path (self->repo, checksum,
+                                                OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
     }
   else
     {
-      local_file = ostree_repo_file_nontree_get_local (self);
-      ret_stream = g_file_read (local_file, cancellable, error);
-      if (!ret_stream)
-	goto out;
+      local_file = ostree_repo_get_file_object_path (self->repo, checksum);
     }
+
+  ret_stream = g_file_read (local_file, cancellable, error);
+  if (!ret_stream)
+    goto out;
   
   ret = TRUE;
  out:

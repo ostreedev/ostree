@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..9'
+echo '1..10'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -62,3 +62,8 @@ echo "ok uid0 ls"
 
 $OSTREE checkout -U test2-uid0 checkout-user-test2-uid0
 echo "ok user checkout from uid 0"
+
+cd ${test_tmpdir}
+$OSTREE cat test2 /baz/cow > cow-contents
+assert_file_has_content cow-contents "moo"
+echo "ok cat-file"
