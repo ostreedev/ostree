@@ -38,6 +38,7 @@ class OstbuildCheckout(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--manifest', required=True)
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
@@ -45,8 +46,7 @@ class OstbuildCheckout(builtins.Builtin):
         
         self.parse_config()
 
-        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
-        self.manifest = json.load(open(build_manifest_path))
+        self.manifest = json.load(open(args.manifest))
 
         if len(args.components) > 0:
             checkout_components = args.components

@@ -75,20 +75,24 @@ def get_git_version_describe(dirpath, commit=None):
     version = run_sync_get_output(args, cwd=dirpath)
     return version.strip()
 
-def manifest_target(manifest, architecture):
-    return '%s-%s-devel' % (manifest['name'], architecture)
+def manifest_target(manifest):
+    name = manifest['name']
+    is_runtime = name.endswith('-runtime')
+    # HACK - we should really name builds just like e.g. gnomeos-3.4-i686 
+    if is_runtime:
+        return name[:-len('-runtime')] + '-devel'
+    return name
 
-def manifest_base(manifest, roottype, architecture):
-    return 'bases/%s-%s-%s' % (manifest['base'],
-                               architecture, roottype)
+def manifest_base(manifest):
+    return 'bases/%s' % (manifest['base'],)
 
-def manifest_buildname(manifest, component, architecture):
-    return 'artifacts/%s/%s/%s' % (manifest_target (manifest, architecture),
+def manifest_buildname(manifest, component):
+    return 'artifacts/%s/%s/%s' % (manifest_target(manifest),
                                    component['name'],
                                    component['branch'])
 
-def manifest_buildroot_name(manifest, component, architecture):
-    return 'buildroots/%s/%s/%s' % (manifest_target (manifest, architecture),
+def manifest_buildroot_name(manifest, component):
+    return 'buildroots/%s/%s/%s' % (manifest_target (manifest),
                                     component['name'],
                                     component['branch'])
 
@@ -112,11 +116,11 @@ def compose(repo, target, artifacts):
     os.unlink(path)
     return revision
 
-def compose_buildroot(manifest, repo, buildroot_name, component, dependencies, architecture):
-    base = manifest_base(manifest, 'devel', architecture)
+def compose_buildroot(manifest, repo, buildroot_name, component, dependencies):
+    base = 'bases/%s' % (manifest['base'], )
     buildroot_contents = [base + ':/']
     for dep in dependencies:
-        dep_buildname = manifest_buildname(manifest, dep, architecture)
+        dep_buildname = manifest_buildname(manifest, dep)
         buildroot_contents.append(dep_buildname + ':/runtime')
         buildroot_contents.append(dep_buildname + ':/devel')
 

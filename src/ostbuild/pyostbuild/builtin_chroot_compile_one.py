@@ -31,7 +31,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--meta')
+        parser.add_argument('--manifest', required=True)
+        parser.add_argument('--pristine', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
         
         args = parser.parse_args(argv)
@@ -39,21 +40,13 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         self.parse_config()
 
         component_name = os.path.basename(os.getcwd())
-        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
-        self.manifest = json.load(open(build_manifest_path))
+        self.manifest = json.load(open(args.manifest))
 
-        if args.meta is not None:
-            f = open(args.meta)
-            self.metadata = json.load(f)
-            f.close()
-
-            component = buildutil.find_component_in_manifest(self.manifest, self.metadata['name'])
-        else:
-            component = buildutil.find_component_in_manifest(self.manifest, component_name)
-            if component is None:
-                fatal("Couldn't find component '%s' in manifest" % (component_name, ))
-
-            self.metadata = component
+        component = buildutil.find_component_in_manifest(self.manifest, component_name)
+        self.metadata = component
+        if component is None:
+            fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+        if not args.pristine:
             self.metadata['src'] = 'dirty:worktree'
             self.metadata['revision'] = 'dirty-worktree'
 
@@ -62,11 +55,9 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         dependencies = components[:index]
 
         architecture = os.uname()[4]
-        buildroot_name = buildutil.manifest_buildroot_name(self.manifest, self.metadata, architecture)
+        buildroot_name = self.manifest['name']
         buildroot_version = buildutil.compose_buildroot(self.manifest, self.repo, buildroot_name,
-                                                        self.metadata, dependencies, architecture)
-        self.metadata['buildroot-name'] = buildroot_name
-        self.metadata['buildroot-version'] = buildroot_version
+                                                        self.metadata, dependencies)
 
         if 'name' not in self.metadata:
             sys.stderr.write('Missing required key "%s" in metadata' % (k, ))
@@ -115,7 +106,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             os.mkdir(sourcedir)
         
         output_metadata = open('_ostbuild-meta.json', 'w')
-        json.dump(self.metadata, output_metadata)
+        json.dump(self.metadata, output_metadata, indent=4, sort_keys=True)
         output_metadata.close()
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', self.metadata['name'])
@@ -142,6 +133,15 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         env_copy['PWD'] = chroot_sourcedir
         run_sync(child_args, env=env_copy, keep_stdin=args.debug_shell)
 
-        shutil.copy(build_manifest_path, resultdir)
+        recorded_meta = dict(self.metadata)
+        del recorded_meta['revision']
+        patches_recorded_meta = recorded_meta.get('patches')
+        if patches_recorded_meta is not None:
+            del patches_recorded_meta['revision']
+
+        recorded_meta_path = os.path.join(resultdir, '_ostbuild-meta.json')
+        recorded_meta_f = open(recorded_meta_path, 'w')
+        json.dump(recorded_meta, recorded_meta_f, indent=4, sort_keys=True)
+        recorded_meta_f.close()
         
 builtins.register(OstbuildChrootCompileOne)

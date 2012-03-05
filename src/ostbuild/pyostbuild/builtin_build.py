@@ -91,13 +91,14 @@ class OstbuildBuild(builtins.Builtin):
 
         return result
 
-    def _build_one_component(self, meta, architecture):
+    def _build_one_component(self, meta):
         name = meta['name']
         branch = meta['branch']
+        architecture = meta['arch']
 
-        target = buildutil.manifest_target(self.manifest, architecture)
-        buildname = buildutil.manifest_buildname(self.manifest, meta, architecture)
-        buildroot_name = buildutil.manifest_buildroot_name(self.manifest, meta, architecture)
+        target = buildutil.manifest_target(self.manifest)
+        buildname = buildutil.manifest_buildname(self.manifest, meta)
+        buildroot_name = buildutil.manifest_buildroot_name(self.manifest, meta)
 
         (keytype, uri) = buildutil.parse_src_key(meta['src'])
 
@@ -135,10 +136,10 @@ class OstbuildBuild(builtins.Builtin):
 
         metadata_path = os.path.join(component_src, '_ostbuild-meta.json')
         f = open(metadata_path, 'w')
-        json.dump(artifact_meta, f)
+        json.dump(artifact_meta, f, indent=4, sort_keys=True)
         f.close()
 
-        run_sync(['ostbuild', 'checkout', name], cwd=checkoutdir)
+        run_sync(['ostbuild', 'checkout', '--manifest=' + self.manifest_path, name], cwd=checkoutdir)
         
         logdir = os.path.join(self.workdir, 'logs', 'compile', name)
         old_logdir = os.path.join(self.workdir, 'old-logs', 'compile', name)
@@ -155,7 +156,7 @@ class OstbuildBuild(builtins.Builtin):
         log("Logging to %s" % (log_path, ))
         f = open(log_path, 'w')
         chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--meta=' + metadata_path])
+        chroot_args.extend(['--pristine', '--manifest=' + self.manifest_path])
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
@@ -228,6 +229,7 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.shell_on_failure = args.shell_on_failure
         self.buildopts.skip_built = args.skip_built
 
+        self.manifest_path = args.manifest
         self.manifest = json.load(open(args.manifest))
 
         components = self.manifest['components']

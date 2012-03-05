@@ -19,6 +19,7 @@
 # http://people.gnome.org/~walters/docs/build-api.txt
 
 import os,sys,stat,subprocess,tempfile,re,shutil
+import argparse
 from StringIO import StringIO
 import json
 
@@ -34,27 +35,29 @@ class OstbuildStatus(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def execute(self, args):
-        self.parse_config()
-        build_manifest_path = os.path.join(self.workdir, 'snapshot.json')
-        self.manifest = json.load(open(build_manifest_path))
+    def execute(self, argv):
+        parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--manifest', required=True)
 
-        for architecture in self.manifest['architectures']:
-            for component in self.manifest['components']:
-                branch = buildutil.manifest_buildname(self.manifest, component, architecture)
-                build_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                      'show',
-                                                      '--print-metadata-key=ostbuild-artifact-version',
-                                                      branch],
-                                                     none_on_error=True)
-                if build_revision is None:
-                    build_revision = '(not built)'
-                if build_revision != component['revision']:
-                    build_status = '(needs build)'
-                else:
-                    build_status = 'ok'
-                sys.stdout.write('{:<40} {:<95} {:<10}\n'.format(component['name'],
-                                                               build_revision, build_status))
-                                                  
+        args = parser.parse_args(argv)
+
+        self.parse_config()
+        self.manifest = json.load(open(args.manifest))
+
+        for component in self.manifest['components']:
+            branch = buildutil.manifest_buildname(self.manifest, component)
+            build_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                  'show',
+                                                  '--print-metadata-key=ostbuild-artifact-version',
+                                                  branch],
+                                                 none_on_error=True)
+            if build_revision is None:
+                build_revision = '(not built)'
+            if build_revision != component['revision']:
+                build_status = '(needs build)'
+            else:
+                build_status = 'ok'
+            sys.stdout.write('{:<40} {:<95} {:<10}\n'.format(component['name'],
+                                                             build_revision, build_status))
     
 builtins.register(OstbuildStatus)
