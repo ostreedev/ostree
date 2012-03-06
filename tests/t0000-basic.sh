@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..26"
+echo "1..27"
 
 . libtest.sh
 
@@ -190,3 +190,9 @@ cd ${test_tmpdir}
 $OSTREE cat test2 /yet/another/tree/green > greenfile-contents
 assert_file_has_content greenfile-contents "leaf"
 echo "ok cat-file"
+
+cd ${test_tmpdir}
+$OSTREE checkout --subpath /yet/another test2 checkout-test2-subpath
+cd checkout-test2-subpath
+assert_file_has_content tree/green "leaf"
+echo "ok checkout subpath"

@@ -28,9 +28,11 @@
 #include <glib/gi18n.h>
 
 static gboolean user_mode;
+static char *subpath;
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &user_mode, "Do not change file ownership or initialze extended attributes", NULL },
+  { "subpath", 0, 0, G_OPTION_ARG_STRING, &subpath, "Checkout sub-directory PATH", "PATH" },
   { NULL }
 };
 
@@ -45,7 +47,8 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   char *resolved_commit = NULL;
   const char *destination;
   OstreeRepoFile *root = NULL;
-  GFileInfo *root_info = NULL;
+  OstreeRepoFile *subtree = NULL;
+  GFileInfo *file_info = NULL;
   GFile *destf = NULL;
 
   context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
@@ -80,14 +83,23 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   if (!ostree_repo_file_ensure_resolved (root, error))
     goto out;
 
-  root_info = g_file_query_info ((GFile*)root, OSTREE_GIO_FAST_QUERYINFO,
+  if (subpath)
+    {
+      subtree = (OstreeRepoFile*)g_file_resolve_relative_path ((GFile*)root, subpath);
+    }
+  else
+    {
+      subtree = g_object_ref (root);
+    }
+
+  file_info = g_file_query_info ((GFile*)subtree, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
-  if (!root_info)
+  if (!file_info)
     goto out;
 
   if (!ostree_repo_checkout_tree (repo, user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
-                                  destf, root, root_info, cancellable, error))
+                                  destf, subtree, file_info, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -98,6 +110,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   g_clear_object (&repo);
   g_clear_object (&destf);
   g_clear_object (&root);
-  g_clear_object (&root_info);
+  g_clear_object (&subtree);
+  g_clear_object (&file_info);
   return ret;
 }
