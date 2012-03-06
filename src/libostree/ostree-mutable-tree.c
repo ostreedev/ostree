@@ -23,8 +23,10 @@
 #include "config.h"
 
 #include "ostree-mutable-tree.h"
+#include "otutil.h"
+#include "ostree-core.h"
 
-struct _OstreeMutableTree
+struct OstreeMutableTree
 {
   GObject parent_instance;
 

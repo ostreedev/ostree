@@ -23,7 +23,7 @@
 #ifndef _OSTREE_MUTABLE_TREE
 #define _OSTREE_MUTABLE_TREE
 
-#include "otutil.h"
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 
@@ -34,15 +34,14 @@ G_BEGIN_DECLS
 #define OSTREE_IS_MUTABLE_TREE_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_MUTABLE_TREE))
 #define OSTREE_MUTABLE_TREE_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_MUTABLE_TREE, OstreeMutableTreeClass))
 
-typedef struct _OstreeMutableTree        OstreeMutableTree;
-typedef struct _OstreeMutableTreeClass   OstreeMutableTreeClass;
+typedef struct OstreeMutableTreeClass   OstreeMutableTreeClass;
 
 typedef struct {
   gboolean        in_files;
   GHashTableIter  iter;
 } OstreeMutableTreeIter;
 
-struct _OstreeMutableTreeClass
+struct OstreeMutableTreeClass
 {
   GObjectClass parent_class;
 };

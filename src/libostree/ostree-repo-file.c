@@ -23,10 +23,11 @@
 #include "config.h"
 
 #include "ostree-repo-file-enumerator.h"
+#include "ostree-repo.h"
 
 static void ostree_repo_file_file_iface_init (GFileIface *iface);
 
-struct _OstreeRepoFile
+struct OstreeRepoFile
 {
   GObject parent_instance;
 

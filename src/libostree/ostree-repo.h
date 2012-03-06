@@ -24,7 +24,7 @@
 #define _OSTREE_REPO
 
 #include "ostree-core.h"
-#include "ostree-mutable-tree.h"
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 
@@ -40,9 +40,9 @@ G_BEGIN_DECLS
 #define OSTREE_REPO_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), OSTREE_TYPE_REPO, OstreeRepoClass))
 
-typedef struct {
+struct OstreeRepo {
   GObject parent;
-} OstreeRepo;
+};
 
 typedef struct {
   GObjectClass parent_class;

@@ -23,7 +23,7 @@
 #ifndef _OSTREE_REPO_FILE
 #define _OSTREE_REPO_FILE
 
-#include "ostree-repo.h"
+#include "ostree-types.h"
 
 G_BEGIN_DECLS
 
@@ -34,7 +34,6 @@ G_BEGIN_DECLS
 #define OSTREE_IS_REPO_FILE_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_REPO_FILE))
 #define OSTREE_REPO_FILE_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_REPO_FILE, OstreeRepoFileClass))
 
-typedef struct _OstreeRepoFile        OstreeRepoFile;
 typedef struct _OstreeRepoFileClass   OstreeRepoFileClass;
 
 struct _OstreeRepoFileClass
