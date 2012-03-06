@@ -41,6 +41,7 @@ ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **erro
   char *resolved_rev = NULL;
   GVariant *variant = NULL;
   char *formatted_variant = NULL;
+  int i;
 
   context = g_option_context_new ("REV - Output the target of a rev");
   g_option_context_add_main_entries (context, options, NULL);
@@ -57,12 +58,14 @@ ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **erro
       ot_util_usage_error (context, "REV must be specified", error);
       goto out;
     }
-  rev = argv[1];
-
-  if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-    goto out;
-
-  g_print ("%s\n", resolved_rev);
+  for (i = 1; i < argc; i++)
+    {
+      rev = argv[i];
+      g_free (resolved_rev);
+      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
+        goto out;
+      g_print ("%s\n", resolved_rev);
+    }
  
   ret = TRUE;
  out:
