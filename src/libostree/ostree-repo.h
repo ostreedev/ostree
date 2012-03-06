@@ -220,31 +220,6 @@ gboolean       ostree_repo_read_commit (OstreeRepo *self,
                                         GCancellable *cancellable,
                                         GError  **error);
 
-typedef struct {
-  volatile gint refcount;
-
-  GFile *src;
-  GFile *target;
-
-  GFileInfo *src_info;
-  GFileInfo *target_info;
-
-  char *src_checksum;
-  char *target_checksum;
-} OstreeRepoDiffItem;
-
-OstreeRepoDiffItem *ostree_repo_diff_item_ref (OstreeRepoDiffItem *diffitem);
-void ostree_repo_diff_item_unref (OstreeRepoDiffItem *diffitem);
-
-gboolean      ostree_repo_diff (OstreeRepo     *self,
-                                GFile          *src,
-                                GFile          *target,
-                                GPtrArray     **out_modified, /* OstreeRepoDiffItem */
-                                GPtrArray     **out_removed, /* OstreeRepoDiffItem */
-                                GPtrArray     **out_added, /* OstreeRepoDiffItem */
-                                GCancellable   *cancellable,
-                                GError        **error);
-
 typedef void (*OstreeRepoObjectIter) (OstreeRepo *self, 
                                       const char *checksum,
                                       OstreeObjectType type,
