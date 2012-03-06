@@ -839,8 +839,10 @@ ostree_create_file_from_input (GFile            *dest_file,
   ret = TRUE;
   ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
-  if (!ret)
-    (void) unlink (dest_path);
+  if (!ret && !S_ISDIR(mode))
+    {
+      (void) unlink (dest_path);
+    }
   ot_clear_checksum (&ret_checksum);
   g_clear_object (&out);
   return ret;
