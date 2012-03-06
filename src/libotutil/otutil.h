@@ -21,6 +21,7 @@
  */
 
 #ifndef __OSTREE_UTIL_H__
+#define __OSTREE_UTIL_H__
 
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
 #define ot_clear_checksum(c) G_STMT_START {     \
