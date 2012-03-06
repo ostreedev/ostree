@@ -2486,14 +2486,14 @@ checkout_file_from_input (GFile          *file,
   return ret;
 }
 
-static gboolean
-checkout_tree (OstreeRepo               *self,
-               OstreeRepoCheckoutMode    mode,
-               GFile                    *destination,
-               OstreeRepoFile           *source,
-               GFileInfo                *source_info,
-               GCancellable             *cancellable,
-               GError                  **error)
+gboolean
+ostree_repo_checkout_tree (OstreeRepo               *self,
+                           OstreeRepoCheckoutMode    mode,
+                           GFile                    *destination,
+                           OstreeRepoFile           *source,
+                           GFileInfo                *source_info,
+                           GCancellable             *cancellable,
+                           GError                  **error)
 {
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   gboolean ret = FALSE;
@@ -2541,7 +2541,8 @@ checkout_tree (OstreeRepo               *self,
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!checkout_tree (self, mode, dest_path, (OstreeRepoFile*)src_child, file_info, cancellable, error))
+          if (!ostree_repo_checkout_tree (self, mode, dest_path, (OstreeRepoFile*)src_child, file_info,
+                                          cancellable, error))
             goto out;
         }
       else
@@ -2617,43 +2618,6 @@ checkout_tree (OstreeRepo               *self,
   g_clear_object (&content_input);
   g_clear_object (&dest_path);
   g_free (dest_path);
-  return ret;
-}
-
-gboolean
-ostree_repo_checkout (OstreeRepo              *self,
-                      OstreeRepoCheckoutMode   mode,
-                      const char              *ref,
-                      GFile                   *destination,
-                      GCancellable            *cancellable,
-                      GError                 **error)
-{
-  gboolean ret = FALSE;
-  char *resolved = NULL;
-  OstreeRepoFile *root = NULL;
-  GFileInfo *root_info = NULL;
-
-  if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved, error))
-    goto out;
-
-  root = (OstreeRepoFile*)ostree_repo_file_new_root (self, resolved);
-  if (!ostree_repo_file_ensure_resolved (root, error))
-    goto out;
-
-  root_info = g_file_query_info ((GFile*)root, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 NULL, error);
-  if (!root_info)
-    goto out;
-
-  if (!checkout_tree (self, mode, destination, root, root_info, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  g_free (resolved);
-  g_clear_object (&root);
-  g_clear_object (&root_info);
   return ret;
 }
 
