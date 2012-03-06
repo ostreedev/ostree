@@ -182,6 +182,14 @@ gboolean ostree_create_temp_regular_file (GFile            *dir,
                                           GCancellable     *cancellable,
                                           GError          **error);
 
+gboolean ostree_create_temp_hardlink (GFile            *dir,
+                                      GFile            *src,
+                                      const char       *prefix,
+                                      const char       *suffix,
+                                      GFile           **out_file,
+                                      GCancellable     *cancellable,
+                                      GError          **error);
+
 GVariant *ostree_create_archive_file_metadata (GFileInfo   *file_info,
                                                GVariant    *xattrs);
 

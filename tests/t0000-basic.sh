@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..27"
+echo "1..28"
 
 . libtest.sh
 
@@ -196,3 +196,13 @@ $OSTREE checkout --subpath /yet/another test2 checkout-test2-subpath
 cd checkout-test2-subpath
 assert_file_has_content tree/green "leaf"
 echo "ok checkout subpath"
+
+cd ${test_tmpdir}
+$OSTREE checkout --union test2 checkout-test2-union
+find checkout-test2-union | wc -l > union-files-count
+$OSTREE checkout --union test2 checkout-test2-union
+find checkout-test2-union | wc -l > union-files-count.new
+cmp union-files-count{,.new}
+cd checkout-test2-union
+assert_file_has_content ./yet/another/tree/green "leaf"
+echo "ok checkout union 1"

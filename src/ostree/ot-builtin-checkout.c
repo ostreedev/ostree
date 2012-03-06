@@ -29,10 +29,12 @@
 
 static gboolean user_mode;
 static char *subpath;
+static gboolean opt_union;
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &user_mode, "Do not change file ownership or initialze extended attributes", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &subpath, "Checkout sub-directory PATH", "PATH" },
+  { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { NULL }
 };
 
@@ -99,6 +101,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
     goto out;
 
   if (!ostree_repo_checkout_tree (repo, user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
+                                  opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
                                   destf, subtree, file_info, cancellable, error))
     goto out;
 

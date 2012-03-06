@@ -2453,6 +2453,7 @@ ostree_repo_iter_objects (OstreeRepo  *self,
 static gboolean
 checkout_file_from_input (GFile          *file,
                           OstreeRepoCheckoutMode mode,
+                          OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                           GFileInfo      *finfo,
                           GVariant       *xattrs,
                           GInputStream   *input,
@@ -2460,6 +2461,9 @@ checkout_file_from_input (GFile          *file,
                           GError        **error)
 {
   gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  GFile *dir = NULL;
+  GFile *temp_file = NULL;
   GFileInfo *temp_info = NULL;
 
   if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
@@ -2475,20 +2479,119 @@ checkout_file_from_input (GFile          *file,
       xattrs = NULL;
     }
 
-  if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
-                                      xattrs, input, OSTREE_OBJECT_TYPE_RAW_FILE,
-                                      NULL, cancellable, error))
-    goto out;
+  if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+    {
+      if (g_file_info_get_file_type (temp_info ? temp_info : finfo) == G_FILE_TYPE_DIRECTORY)
+        {
+          if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
+                                              xattrs, input, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                              NULL, cancellable, &temp_error))
+            {
+              if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+                {
+                  g_clear_error (&temp_error);
+                }
+              else
+                {
+                  g_propagate_error (error, temp_error);
+                  goto out;
+                }
+            }
+        }
+      else
+        {
+          dir = g_file_get_parent (file);
+          if (!ostree_create_temp_file_from_input (dir, NULL, "checkout",
+                                                   temp_info ? temp_info : finfo,
+                                                   xattrs, input, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                                   &temp_file, NULL,
+                                                   cancellable, error))
+            goto out;
+          
+          if (rename (ot_gfile_get_path_cached (temp_file), ot_gfile_get_path_cached (file)) < 0)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
+    }
+  else
+    {
+      if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
+                                          xattrs, input, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                          NULL, cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:
   g_clear_object (&temp_info);
+  g_clear_object (&temp_file);
+  g_clear_object (&dir);
+  return ret;
+}
+
+static gboolean
+checkout_file_hardlink (OstreeRepo                  *self,
+                        OstreeRepoCheckoutMode    mode,
+                        OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                        GFile                    *source,
+                        GFile                    *destination,
+                        GCancellable             *cancellable,
+                        GError                  **error)
+{
+  gboolean ret = FALSE;
+  GFile *dir = NULL;
+  GFile *temp_file = NULL;
+
+  if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+    {
+      dir = g_file_get_parent (destination);
+      if (!ostree_create_temp_hardlink (dir, (GFile*)source, NULL, "link",
+                                        &temp_file, cancellable, error))
+        goto out;
+
+      /* Idiocy, from man rename(2)
+       *
+       * "If oldpath and newpath are existing hard links referring to
+       * the same file, then rename() does nothing, and returns a
+       * success status."
+       *
+       * So we can't make this atomic.  
+       */
+
+      (void) unlink (ot_gfile_get_path_cached (destination));
+
+      if (rename (ot_gfile_get_path_cached (temp_file),
+                  ot_gfile_get_path_cached (destination)) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      g_clear_object (&temp_file);
+    }
+  else
+    {
+      if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  g_clear_object (&dir);
+  if (temp_file)
+    (void) unlink (ot_gfile_get_path_cached (temp_file));
+  g_clear_object (&temp_file);
   return ret;
 }
 
 gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
+                           OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                            GFile                    *destination,
                            OstreeRepoFile           *source,
                            GFileInfo                *source_info,
@@ -2511,7 +2614,7 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
     goto out;
 
-  if (!checkout_file_from_input (destination, mode, source_info,
+  if (!checkout_file_from_input (destination, mode, overwrite_mode, source_info,
                                  xattrs, NULL,
                                  cancellable, error))
     goto out;
@@ -2541,7 +2644,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_repo_checkout_tree (self, mode, dest_path, (OstreeRepoFile*)src_child, file_info,
+          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode,
+                                          dest_path, (OstreeRepoFile*)src_child, file_info,
                                           cancellable, error))
             goto out;
         }
@@ -2554,11 +2658,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
               g_clear_object (&object_path);
               object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
 
-              if (link (ot_gfile_get_path_cached (object_path), ot_gfile_get_path_cached (dest_path)) < 0)
-                {
-                  ot_util_set_error_from_errno (error, errno);
-                  goto out;
-                }
+              if (!checkout_file_hardlink (self, mode, overwrite_mode, object_path, dest_path, cancellable, error) < 0)
+                goto out;
             }
           else if (priv->mode == OSTREE_REPO_MODE_ARCHIVE)
             {
@@ -2581,7 +2682,7 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                     goto out;
                 }
 
-              if (!checkout_file_from_input (dest_path, mode, file_info, xattrs, 
+              if (!checkout_file_from_input (dest_path, mode, overwrite_mode, file_info, xattrs, 
                                              content_input, cancellable, error))
                 goto out;
             }
@@ -2590,11 +2691,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
               g_clear_object (&object_path);
               object_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
 
-              if (link (ot_gfile_get_path_cached (object_path), ot_gfile_get_path_cached (dest_path)) < 0)
-                {
-                  ot_util_set_error_from_errno (error, errno);
-                  goto out;
-                }
+              if (!checkout_file_hardlink (self, mode, overwrite_mode, object_path, dest_path, cancellable, error) < 0)
+                goto out;
             }
         }
 

@@ -201,13 +201,19 @@ gboolean      ostree_repo_stage_commit (OstreeRepo   *self,
                                         GError      **error);
 
 typedef enum {
-  OSTREE_REPO_CHECKOUT_MODE_NONE,
-  OSTREE_REPO_CHECKOUT_MODE_USER
+  OSTREE_REPO_CHECKOUT_MODE_NONE = 0,
+  OSTREE_REPO_CHECKOUT_MODE_USER = 1
 } OstreeRepoCheckoutMode;
+
+typedef enum {
+  OSTREE_REPO_CHECKOUT_OVERWRITE_NONE = 0,
+  OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1
+} OstreeRepoCheckoutOverwriteMode;
 
 gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
+                           OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                            GFile                    *destination,
                            OstreeRepoFile           *source,
                            GFileInfo                *source_info,
