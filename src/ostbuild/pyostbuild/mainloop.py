@@ -25,7 +25,7 @@ class Mainloop(object):
     DEFAULT = None
     def __init__(self):
         self._running = True
-        self.poll = select.poll()
+        self.poll = None
         self._timeouts = []
         self._pid_watches = {}
         self._fd_callbacks = {}
@@ -38,7 +38,12 @@ class Mainloop(object):
             return cls.DEFAULT
         raise NotImplementedError("Unknown context %r" % (context, ))
 
+    def _ensure_poll(self):
+        if self.poll is None:
+            self.poll = select.poll()
+
     def watch_fd(self, fd, callback):
+        self._ensure_poll()
         self.poll.register(fd)
         self._fd_callbacks[fd] = callback
 
@@ -63,6 +68,7 @@ class Mainloop(object):
             if (min_timeout is None) or (ms < min_timeout):
                 min_timeout = ms
         origtime = time.time() * 1000
+        self._ensure_poll()
         fds = self.poll.poll(min_timeout)
         for fd in fds:
             self._fd_callbacks[fd]()
