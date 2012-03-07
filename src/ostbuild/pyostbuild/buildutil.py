@@ -115,13 +115,3 @@ def compose(repo, target, artifacts):
     revision = run_sync_get_output(child_args, log_initiation=True).strip()
     os.unlink(path)
     return revision
-
-def compose_buildroot(manifest, repo, buildroot_name, component, dependencies):
-    base = 'bases/%s' % (manifest['base'], )
-    buildroot_contents = [base + ':/']
-    for dep in dependencies:
-        dep_buildname = manifest_buildname(manifest, dep)
-        buildroot_contents.append(dep_buildname + ':/runtime')
-        buildroot_contents.append(dep_buildname + ':/devel')
-
-    return compose(repo, buildroot_name, buildroot_contents)

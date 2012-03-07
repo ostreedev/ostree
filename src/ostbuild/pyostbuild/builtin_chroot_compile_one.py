@@ -29,6 +29,24 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     name = "chroot-compile-one"
     short_description = "Build artifacts from the current source directory in a chroot"
 
+    def _compose_buildroot(self, component, dirpath):
+        components = self.manifest['components']
+        index = components.index(component)
+        dependencies = components[:index]
+
+        base = 'bases/%s' % (self.manifest['base'], )
+        checkout_trees = [(base, '/')]
+        for dep in dependencies:
+            buildname = buildutil.manifest_buildname(self.manifest, dep)
+            checkout_trees.append((buildname, '/runtime'))
+            checkout_trees.append((buildname, '/devel'))
+
+        for (branch, rootpath) in checkout_trees:
+            run_sync(['ostree', '--repo=' + self.repo,
+                      'checkout', '--user-mode',
+                      '--union', '--subpath=' + rootpath,
+                      branch, dirpath])
+
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
@@ -50,14 +68,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             self.metadata['src'] = 'dirty:worktree'
             self.metadata['revision'] = 'dirty-worktree'
 
-        components = self.manifest['components']
-        index = components.index(component)
-        dependencies = components[:index]
-
         architecture = os.uname()[4]
-        buildroot_name = self.manifest['name']
-        buildroot_version = buildutil.compose_buildroot(self.manifest, self.repo, buildroot_name,
-                                                        self.metadata, dependencies)
 
         if 'name' not in self.metadata:
             sys.stderr.write('Missing required key "%s" in metadata' % (k, ))
@@ -81,25 +92,27 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         rootdir_prefix = os.path.join(workdir, 'roots')
         if not os.path.isdir(rootdir_prefix):
             os.makedirs(rootdir_prefix)
-        rootdir = os.path.join(rootdir_prefix, buildroot_version)
+        rootdir = os.path.join(rootdir_prefix, component['name'])
+        if os.path.isdir(rootdir):
+            shutil.rmtree(rootdir)
         
         rootdir_tmp = rootdir + '.tmp'
         builddir = os.path.join(rootdir, 'ostbuild');
-        if not os.path.isdir(rootdir):
-            if os.path.isdir(rootdir_tmp):
-                shutil.rmtree(rootdir_tmp)
-            child_args = ['ostree', '--repo=' + self.repo, 'checkout', '-U', buildroot_version, rootdir_tmp]
-            run_sync(child_args)
-            child_args = ['ostbuild', 'chroot-run-triggers', rootdir_tmp]
-            run_sync(child_args)
-            builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
-            os.mkdir(builddir_tmp)
-            os.mkdir(os.path.join(builddir_tmp, 'source'))
-            os.mkdir(os.path.join(builddir_tmp, 'results'))
-            os.rename(rootdir_tmp, rootdir)
-            log("Checked out root: %s" % (rootdir, ))
-        else:
-            log("Using existing root: %s" % (rootdir, ))
+        if os.path.isdir(rootdir_tmp):
+            shutil.rmtree(rootdir_tmp)
+        os.mkdir(rootdir_tmp)
+            
+        self._compose_buildroot(component, rootdir_tmp)
+
+        child_args = ['ostbuild', 'chroot-run-triggers', rootdir_tmp]
+        run_sync(child_args)
+
+        builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
+        os.mkdir(builddir_tmp)
+        os.mkdir(os.path.join(builddir_tmp, 'source'))
+        os.mkdir(os.path.join(builddir_tmp, 'results'))
+        os.rename(rootdir_tmp, rootdir)
+        log("Checked out buildroot: %s" % (rootdir, ))
         
         sourcedir=os.path.join(builddir, 'source', self.metadata['name'])
         if not os.path.isdir(sourcedir):

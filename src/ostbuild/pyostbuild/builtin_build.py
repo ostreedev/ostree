@@ -194,14 +194,9 @@ class OstbuildBuild(builtins.Builtin):
         # HACK
         manifest_build_name = self.manifest['name']
         is_runtime = manifest_build_name.endswith('-runtime')
-        # HACK - we should really name builds just like e.g. gnomeos-3.4-i686 
-        if is_runtime:
-            manifest_build_name = manifest_build_name[:-len('-runtime')] + '-devel'
 
         for component in components:
-            branch = 'artifacts/%s/%s/%s' % (manifest_build_name,
-                                             component['name'],
-                                             component['branch'])
+            branch = buildutil.manifest_buildname(self.manifest, component)
             contents.append(branch + ':/runtime')
             if not is_runtime:
                 # For now just hardcode docs going in devel
