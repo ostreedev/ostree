@@ -992,6 +992,9 @@ ostree_repo_file_read (GFile         *file,
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
 
+  if (!ostree_repo_file_ensure_resolved (self, error))
+    goto out;
+
   if (self->tree_contents)
     {
       g_set_error_literal (error, G_IO_ERROR,

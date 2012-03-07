@@ -41,9 +41,6 @@ cat_one_file (GFile         *f,
   gboolean ret = FALSE;
   GInputStream *in = NULL;
   
-  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
-    g_assert_not_reached ();
-
   in = (GInputStream*)g_file_read (f, cancellable, error);
   if (!in)
     goto out;
