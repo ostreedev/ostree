@@ -188,23 +188,72 @@ class OstbuildBuild(builtins.Builtin):
         return True
 
     def _compose(self, components):
-        base_ref = 'bases/%s:/' % (self.manifest['base'], )
-        contents = [base_ref]
+        base_ref = 'bases/%s' % (self.manifest['base'], )
 
         # HACK
         manifest_build_name = self.manifest['name']
         is_runtime = manifest_build_name.endswith('-runtime')
 
+        branch_to_rev = {}
+        branches = [base_ref]
         for component in components:
             branch = buildutil.manifest_buildname(self.manifest, component)
-            contents.append(branch + ':/runtime')
+            branches.append(branch)
+
+        args = ['ostree', '--repo=' + self.repo,
+                'rev-parse']
+        args.extend(branches)
+        branch_revs_text = run_sync_get_output(args)
+        branch_revs = branch_revs_text.split('\n')
+
+        for (branch, rev) in zip(branches, branch_revs):
+            branch_to_rev[branch] = rev
+
+        branch_to_subtrees = {}
+        branch_to_subtrees[base_ref] = ['/']
+        contents = [base_ref]
+        
+        for component in components:
+            branch = buildutil.manifest_buildname(self.manifest, component)
+            contents.append(branch)
+            subtrees = ['/runtime']
+            branch_to_subtrees[branch] = subtrees
             if not is_runtime:
                 # For now just hardcode docs going in devel
-                contents.append(branch + ':/doc')
-                contents.append(branch + ':/devel')
+                subtrees.append('/doc')
+                subtrees.append('/devel')
 
-        buildutil.compose(self.repo, self.manifest['name'], contents)
-    
+        compose_rootdir = os.path.join(self.workdir, 'roots', self.manifest['name'])
+        if os.path.isdir(compose_rootdir):
+            shutil.rmtree(compose_rootdir)
+        os.mkdir(compose_rootdir)
+
+        metadata_contents = []
+        metadata = {'source': 'ostbuild compose v0',
+                    'contents': metadata_contents}
+        for branch in contents:
+            branch_rev = branch_to_rev[branch]
+            subtrees = branch_to_subtrees[branch]
+            for subtree in subtrees:
+                run_sync(['ostree', '--repo=' + self.repo,
+                          'checkout', '--user-mode',
+                          '--union', '--subpath=' + subtree,
+                          branch_rev, compose_rootdir])
+            branch_meta = {'name': branch,
+                           'rev': branch_rev,
+                           'subtrees': subtrees}
+            metadata_contents.append(branch_meta)
+
+        contents_path = os.path.join(compose_rootdir, 'contents.json')
+        f = open(contents_path, 'w')
+        json.dump(metadata, f, indent=4, sort_keys=True)
+        f.close()
+
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'commit', '-b', self.manifest['name'], '-s', 'Compose',
+                  '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                  '--skip-if-unchanged'], cwd=compose_rootdir)
+
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--skip-built', action='store_true')
