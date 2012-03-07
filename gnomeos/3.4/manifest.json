@@ -1,7 +1,7 @@
 {
-  "name": "gnomeos-3.4",
+  "name-prefix": "gnomeos-3.4",
   "architectures": ["i686"],
-  "base": "yocto/gnomeos-3.4",
+  "base-prefix": "bases/yocto/gnomeos-3.4",
 
   "config-opts": ["--disable-static", "--disable-silent-rules"],
 

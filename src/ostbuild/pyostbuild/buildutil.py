@@ -83,9 +83,6 @@ def manifest_target(manifest):
         return name[:-len('-runtime')] + '-devel'
     return name
 
-def manifest_base(manifest):
-    return 'bases/%s' % (manifest['base'],)
-
 def manifest_buildname(manifest, component):
     return 'artifacts/%s/%s/%s' % (manifest_target(manifest),
                                    component['name'],

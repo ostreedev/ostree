@@ -34,7 +34,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         index = components.index(component)
         dependencies = components[:index]
 
-        base = 'bases/%s' % (self.manifest['base'], )
+        base = self.manifest['base']
         checkout_trees = [(base, '/')]
         for dep in dependencies:
             buildname = buildutil.manifest_buildname(self.manifest, dep)

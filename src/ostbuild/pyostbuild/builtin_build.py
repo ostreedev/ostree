@@ -188,7 +188,7 @@ class OstbuildBuild(builtins.Builtin):
         return True
 
     def _compose(self, components):
-        base_ref = 'bases/%s' % (self.manifest['base'], )
+        base_ref = self.manifest['base']
 
         # HACK
         manifest_build_name = self.manifest['name']
