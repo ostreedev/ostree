@@ -39,6 +39,7 @@ class OstbuildCheckout(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
+        parser.add_argument('--overwrite', action='store_true')
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
@@ -64,23 +65,22 @@ class OstbuildCheckout(builtins.Builtin):
 
             component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
                                                  component['revision'],
-                                                 overwrite=False)
+                                                 overwrite=args.overwrite)
 
             patches = component.get('patches')
             if patches is not None:
-                patches_meta = self.manifest['patches']
-                (patches_keytype, patches_uri) = buildutil.parse_src_key(patches_meta['src'])
+                (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
                 patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
                 vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
-                                     self.patchdir, patches_meta['branch'],
+                                     self.patchdir, patches['branch'],
                                      overwrite=True)
 
-                patch_prefix = patches_meta.get('prefix', None)
+                patch_prefix = patches.get('prefix', None)
                 if patch_prefix is not None:
                     patchdir = os.path.join(self.patchdir, patch_prefix)
                 else:
                     patchdir = self.patchdir
-                for patch in patches:
+                for patch in patches['files']:
                     patch_path = os.path.join(patchdir, patch)
                     run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=checkoutdir)
         

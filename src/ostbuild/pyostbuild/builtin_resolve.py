@@ -240,7 +240,12 @@ class OstbuildResolve(builtins.Builtin):
                 del snapshot['base-prefix']
 
                 snapshot['name'] = '%s-%s-%s' % (name_prefix, architecture, component_type)
-                snapshot['base'] = '%s-%s-%s' % (base_prefix, architecture, component_type)
+
+                base_ref = '%s-%s-%s' % (base_prefix, architecture, component_type)
+                base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                     'rev-parse', base_ref])
+                snapshot['base'] = {'branch': base_ref,
+                                    'revision': base_revision}
                 out_snapshot = os.path.join(self.workdir, snapshot['name'] + '.snapshot')
                 f = open(out_snapshot, 'w')
                 json.dump(snapshot, f, indent=4, sort_keys=True)

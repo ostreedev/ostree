@@ -100,12 +100,9 @@ class OstbuildBuild(builtins.Builtin):
         buildname = buildutil.manifest_buildname(self.manifest, meta)
         buildroot_name = buildutil.manifest_buildroot_name(self.manifest, meta)
 
-        (keytype, uri) = buildutil.parse_src_key(meta['src'])
-
-        mirror = buildutil.get_mirrordir(self.mirrordir, keytype, uri)
-        checkoutdir = os.path.join(self.workdir, 'src', name)
-        component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir, branch,
-                                             overwrite=not self.args.debug_shell)
+        checkoutdir = os.path.join(self.workdir, 'src')
+        component_src = os.path.join(checkoutdir, name)
+        run_sync(['ostbuild', 'checkout', '--overwrite', '--manifest=' + self.manifest_path, name], cwd=checkoutdir)
 
         current_vcs_version = meta['revision']
 
@@ -116,10 +113,13 @@ class OstbuildBuild(builtins.Builtin):
         if previous_build_version is not None:
             log("Previous build of '%s' is %s" % (buildname, previous_build_version))
 
-            previous_vcs_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                        'show', '--print-metadata-key=ostbuild-revision',
-                                                        previous_build_version])
-            previous_vcs_version = previous_vcs_version.strip()
+            previous_metadata_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                          'cat', previous_build_version,
+                                                          '/_ostbuild-meta.json'],
+                                                         log_initiation=True)
+            previous_meta = json.loads(previous_metadata_text)
+
+            previous_vcs_version = previous_meta['revision']
 
             vcs_version_matches = False
             if previous_vcs_version == current_vcs_version:
@@ -139,8 +139,6 @@ class OstbuildBuild(builtins.Builtin):
         json.dump(artifact_meta, f, indent=4, sort_keys=True)
         f.close()
 
-        run_sync(['ostbuild', 'checkout', '--manifest=' + self.manifest_path, name], cwd=checkoutdir)
-        
         logdir = os.path.join(self.workdir, 'logs', 'compile', name)
         old_logdir = os.path.join(self.workdir, 'old-logs', 'compile', name)
         if not os.path.isdir(logdir):
@@ -166,7 +164,6 @@ class OstbuildBuild(builtins.Builtin):
 
         args = ['ostree', '--repo=' + self.repo,
                 'commit', '-b', buildname, '-s', 'Build',
-                '--add-metadata-string=ostbuild-revision=' + artifact_meta['revision'],
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
                 '--skip-if-unchanged']
 
@@ -188,33 +185,35 @@ class OstbuildBuild(builtins.Builtin):
         return True
 
     def _compose(self, components):
-        base_ref = self.manifest['base']
-
+        base = self.manifest['base']
+        base_branch = base['branch']
+        base_revision = base['revision']
         # HACK
         manifest_build_name = self.manifest['name']
         is_runtime = manifest_build_name.endswith('-runtime')
 
         branch_to_rev = {}
-        branches = [base_ref]
+        branch_to_subtrees = {}
+
+        component_branches = []
         for component in components:
             branch = buildutil.manifest_buildname(self.manifest, component)
-            branches.append(branch)
+            component_branches.append(branch)
 
         args = ['ostree', '--repo=' + self.repo,
                 'rev-parse']
-        args.extend(branches)
+        args.extend(component_branches)
         branch_revs_text = run_sync_get_output(args)
         branch_revs = branch_revs_text.split('\n')
 
-        for (branch, rev) in zip(branches, branch_revs):
+        for (branch, rev) in zip(component_branches, branch_revs):
             branch_to_rev[branch] = rev
 
-        branch_to_subtrees = {}
-        branch_to_subtrees[base_ref] = ['/']
-        contents = [base_ref]
+        contents = [base_branch]
+        branch_to_subtrees[base_branch] = ['/']
+        branch_to_rev[base_branch] = base_revision
         
-        for component in components:
-            branch = buildutil.manifest_buildname(self.manifest, component)
+        for branch in component_branches:
             contents.append(branch)
             subtrees = ['/runtime']
             branch_to_subtrees[branch] = subtrees
@@ -230,6 +229,7 @@ class OstbuildBuild(builtins.Builtin):
 
         metadata_contents = []
         metadata = {'source': 'ostbuild compose v0',
+                    'base': base,
                     'contents': metadata_contents}
         for branch in contents:
             branch_rev = branch_to_rev[branch]

@@ -52,9 +52,6 @@
 
    		{"src": "gnome:linux-user-chroot"},
 
-		{"src": "gnome:ostree",
-		 "config-opts": ["--disable-documentation"]},
-
 		{"src": "gnome:libxml2"},
 
 		{"src": "gnome:libxslt"},
@@ -575,6 +572,9 @@
 
 		{"src": "gnome:libsoup",
 		 "config-args": ["--disable-tls-check"]},
+
+		{"src": "gnome:ostree",
+		 "config-opts": ["--disable-documentation"]},
 
 		{"src": "fd-gstreamer:gstreamer",
 		 "config-opts": ["--disable-tests",

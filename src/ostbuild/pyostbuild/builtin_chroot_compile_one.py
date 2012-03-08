@@ -35,7 +35,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         dependencies = components[:index]
 
         base = self.manifest['base']
-        checkout_trees = [(base, '/')]
+        base_revision = base['revision']
+        checkout_trees = [(base_revision, '/')]
         for dep in dependencies:
             buildname = buildutil.manifest_buildname(self.manifest, dep)
             checkout_trees.append((buildname, '/runtime'))
@@ -146,15 +147,9 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         env_copy['PWD'] = chroot_sourcedir
         run_sync(child_args, env=env_copy, keep_stdin=args.debug_shell)
 
-        recorded_meta = dict(self.metadata)
-        del recorded_meta['revision']
-        patches_recorded_meta = recorded_meta.get('patches')
-        if patches_recorded_meta is not None:
-            del patches_recorded_meta['revision']
-
         recorded_meta_path = os.path.join(resultdir, '_ostbuild-meta.json')
         recorded_meta_f = open(recorded_meta_path, 'w')
-        json.dump(recorded_meta, recorded_meta_f, indent=4, sort_keys=True)
+        json.dump(self.metadata, recorded_meta_f, indent=4, sort_keys=True)
         recorded_meta_f.close()
         
 builtins.register(OstbuildChrootCompileOne)
