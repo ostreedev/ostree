@@ -94,10 +94,6 @@
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
 
-		{"src": "fd:xorg/proto/fixesproto",
-		 "component": "devel",
-		 "patches": ["xorg-autogen.patch"]},
-
 		{"src": "fd:xorg/proto/fontsproto",
 		 "component": "devel",
 		 "patches": ["xorg-autogen.patch"]},
@@ -242,9 +238,6 @@
 		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/lib/libXrandr",
-		 "patches": ["xorg-autogen.patch"]},
-
-		{"src": "fd:xorg/lib/libXrender",
 		 "patches": ["xorg-autogen.patch"]},
 
 		{"src": "fd:xorg/lib/libXRes",
