@@ -100,10 +100,6 @@ class OstbuildBuild(builtins.Builtin):
         buildname = buildutil.manifest_buildname(self.manifest, meta)
         buildroot_name = buildutil.manifest_buildroot_name(self.manifest, meta)
 
-        checkoutdir = os.path.join(self.workdir, 'src')
-        component_src = os.path.join(checkoutdir, name)
-        run_sync(['ostbuild', 'checkout', '--overwrite', '--manifest=' + self.manifest_path, name], cwd=checkoutdir)
-
         current_vcs_version = meta['revision']
 
         previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
@@ -131,6 +127,10 @@ class OstbuildBuild(builtins.Builtin):
                 log("VCS version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
         else:
             log("No previous build for '%s' found" % (buildname, ))
+
+        checkoutdir = os.path.join(self.workdir, 'src')
+        component_src = os.path.join(checkoutdir, name)
+        run_sync(['ostbuild', 'checkout', '--overwrite', '--manifest=' + self.manifest_path, name], cwd=checkoutdir)
 
         artifact_meta = dict(meta)
 
