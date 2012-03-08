@@ -193,27 +193,6 @@ class OstbuildResolve(builtins.Builtin):
         del self.manifest['vcsconfig']
         del self.manifest['patches']
 
-        mirror_gitconfig_path = os.path.join(self.mirrordir, 'gitconfig')
-        git_mirrordir = os.path.join(self.mirrordir, 'git')
-        f = open(mirror_gitconfig_path, 'w')
-        find_proc = subprocess.Popen(['find', '-type', 'f', '-name', 'HEAD'],
-                                     cwd=git_mirrordir, stdout=subprocess.PIPE)
-        path_to_url_re = re.compile(r'^([^/]+)/([^/]+)/(.+)$')
-        for line in find_proc.stdout:
-            assert line.startswith('./')
-            path = line[2:-6]
-            f.write('[url "')
-            f.write('file://' + os.path.join(git_mirrordir, path) + '/')
-            f.write('"]\n')
-            f.write('   insteadOf = ')
-            match = path_to_url_re.match(path)
-            assert match is not None
-            url = urlparse.urlunparse([match.group(1), match.group(2), match.group(3),
-                                       None, None, None])
-            f.write(url)
-            f.write('/\n')
-        print "Generated git mirror config: %s" % (mirror_gitconfig_path, )
-
         manifest_architectures = self.manifest['architectures']
         del self.manifest['architectures']
         for architecture in manifest_architectures:
