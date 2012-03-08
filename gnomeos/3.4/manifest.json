@@ -573,8 +573,10 @@
 		{"src": "gnome:libsoup",
 		 "config-args": ["--disable-tls-check"]},
 
-		{"src": "gnome:ostree",
-		 "config-opts": ["--disable-documentation"]},
+		{"src": "git:/src/ostree",
+		 "branch": "wip/ostbuild-chroot-dev",
+		 "config-opts": ["--disable-documentation",
+		                 "--with-soup-gnome"]},
 
 		{"src": "fd-gstreamer:gstreamer",
 		 "config-opts": ["--disable-tests",
