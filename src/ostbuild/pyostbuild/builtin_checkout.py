@@ -26,6 +26,7 @@ from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from . import ostbuildrc
 from . import buildutil
+from . import fileutil
 from . import odict
 from . import vcs
 
@@ -38,16 +39,15 @@ class OstbuildCheckout(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--manifest', required=True)
         parser.add_argument('--overwrite', action='store_true')
+        parser.add_argument('--clean', action='store_true')
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
         self.args = args
         
         self.parse_config()
-
-        self.manifest = json.load(open(args.manifest))
+        self.parse_components_and_targets()
 
         if len(args.components) > 0:
             checkout_components = args.components
@@ -56,16 +56,19 @@ class OstbuildCheckout(builtins.Builtin):
 
         for component_name in checkout_components:
             found = False
-            component = buildutil.find_component_in_manifest(self.manifest,
-                                                             component_name)
+            component = self.components.get(component_name)
             if component is None:
                 fatal("Unknown component %r" % (component_name, ))
             (keytype, uri) = buildutil.parse_src_key(component['src'])
-            checkoutdir = os.path.join(os.getcwd(), component['name'])
+            checkoutdir = os.path.join(os.getcwd(), component_name)
+            fileutil.ensure_parent_dir(checkoutdir)
 
             component_src = vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
                                                  component['revision'],
                                                  overwrite=args.overwrite)
+
+            if args.clean:
+                vcs.clean(keytype, checkoutdir)
 
             patches = component.get('patches')
             if patches is not None:

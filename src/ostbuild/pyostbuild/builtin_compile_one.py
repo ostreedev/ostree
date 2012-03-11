@@ -103,10 +103,6 @@ class OstbuildCompileOne(builtins.Builtin):
         self.metadata = json.load(f)
         f.close()
 
-        for k in ['name', 'revision']:
-            if k not in self.metadata:
-                fatal('Missing required key "%s" in metadata' % (k, ))
-
         if self.metadata.get('rm-configure', False):
             configure_path = 'configure'
             if os.path.exists(configure_path):
@@ -180,10 +176,7 @@ class OstbuildCompileOne(builtins.Builtin):
     
         run_sync(args, cwd=builddir)
 
-        name = self.metadata['name']
-        assert ',' not in name
-    
-        tempdir = tempfile.mkdtemp(prefix='ostbuild-%s-' % (name,))
+        tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
         self.tempfiles.append(tempdir)
         args = ['make', 'install', 'DESTDIR=' + tempdir]
         run_sync(args, cwd=builddir)

@@ -22,6 +22,7 @@ import json
 
 from . import builtins
 from . import buildutil
+from . import fileutil
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 
@@ -29,16 +30,16 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     name = "chroot-compile-one"
     short_description = "Build artifacts from the current source directory in a chroot"
 
-    def _compose_buildroot(self, component, dirpath):
-        components = self.manifest['components']
-        index = components.index(component)
-        dependencies = components[:index]
+    def _compose_buildroot(self, component_name, dirpath):
+        dependencies = buildutil.build_depends(component_name, self.components)
+        component = self.components.get(component_name)
 
-        base = self.manifest['base']
-        base_revision = base['revision']
-        checkout_trees = [(base_revision, '/')]
-        for dep in dependencies:
-            buildname = buildutil.manifest_buildname(self.manifest, dep)
+        base_devel_name = 'bases/%s-%s-%s' % (self.manifest['base-prefix'],
+                                              component['architecture'],
+                                              'devel')
+        checkout_trees = [(base_devel_name, '/')]
+        for dependency_name in dependencies:
+            buildname = 'components/%s' % (dependency_name, )
             checkout_trees.append((buildname, '/runtime'))
             checkout_trees.append((buildname, '/devel'))
 
@@ -50,30 +51,31 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--manifest', required=True)
         parser.add_argument('--pristine', action='store_true')
+        parser.add_argument('--name')
         parser.add_argument('--debug-shell', action='store_true')
         
         args = parser.parse_args(argv)
 
         self.parse_config()
+        self.parse_components_and_targets()
 
-        component_name = os.path.basename(os.getcwd())
-        self.manifest = json.load(open(args.manifest))
+        if args.name:
+            component_name = args.name
+        else:
+            cwd = os.getcwd()
+            parent = os.path.dirname(cwd)
+            parentparent = os.path.dirname(parent)
+            component_name = '%s/%s/%s' % tuple(map(os.path.basename, [parentparent, parent, cwd]))
 
-        component = buildutil.find_component_in_manifest(self.manifest, component_name)
-        self.metadata = component
+        component = self.components.get(component_name)
         if component is None:
             fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+        self.metadata = dict(component)
+        self.metadata['name'] = component_name
         if not args.pristine:
             self.metadata['src'] = 'dirty:worktree'
             self.metadata['revision'] = 'dirty-worktree'
-
-        architecture = os.uname()[4]
-
-        if 'name' not in self.metadata:
-            sys.stderr.write('Missing required key "%s" in metadata' % (k, ))
-            sys.exit(1)
 
         workdir = self.workdir
             
@@ -83,17 +85,17 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         if os.path.isdir(child_tmpdir):
             log("Cleaning up previous tmpdir: %r" % (child_tmpdir, ))
             shutil.rmtree(child_tmpdir)
-        os.mkdir(child_tmpdir)
+        fileutil.ensure_dir(child_tmpdir)
 
-        resultdir = os.path.join(self.workdir, 'results', component['name'])
+        resultdir = os.path.join(self.workdir, 'results', component_name)
         if os.path.isdir(resultdir):
             shutil.rmtree(resultdir)
-        os.makedirs(resultdir)
+        fileutil.ensure_dir(resultdir)
         
         rootdir_prefix = os.path.join(workdir, 'roots')
-        if not os.path.isdir(rootdir_prefix):
-            os.makedirs(rootdir_prefix)
-        rootdir = os.path.join(rootdir_prefix, component['name'])
+        fileutil.ensure_dir(rootdir_prefix)
+        rootdir = os.path.join(rootdir_prefix, component_name)
+        fileutil.ensure_parent_dir(rootdir)
         if os.path.isdir(rootdir):
             shutil.rmtree(rootdir)
         
@@ -103,7 +105,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(rootdir_tmp)
         os.mkdir(rootdir_tmp)
             
-        self._compose_buildroot(component, rootdir_tmp)
+        self._compose_buildroot(component_name, rootdir_tmp)
 
         child_args = ['ostbuild', 'chroot-run-triggers', rootdir_tmp]
         run_sync(child_args)
@@ -115,15 +117,14 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         os.rename(rootdir_tmp, rootdir)
         log("Checked out buildroot: %s" % (rootdir, ))
         
-        sourcedir=os.path.join(builddir, 'source', self.metadata['name'])
-        if not os.path.isdir(sourcedir):
-            os.mkdir(sourcedir)
+        sourcedir=os.path.join(builddir, 'source', component_name)
+        fileutil.ensure_dir(sourcedir)
         
         output_metadata = open('_ostbuild-meta.json', 'w')
         json.dump(self.metadata, output_metadata, indent=4, sort_keys=True)
         output_metadata.close()
         
-        chroot_sourcedir = os.path.join('/ostbuild', 'source', self.metadata['name'])
+        chroot_sourcedir = os.path.join('/ostbuild', 'source', component_name)
 
         ostbuild_user_chroot_path = buildutil.find_user_chroot_path()
         

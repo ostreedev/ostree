@@ -20,6 +20,7 @@
 import os
 import sys
 import argparse
+import json
 
 from . import ostbuildrc
 from .ostbuildlog import log, fatal
@@ -40,6 +41,18 @@ class Builtin(object):
         if not os.path.isdir(self.workdir):
             fatal("Specified workdir '%s' is not a directory" % (self.workdir, ))
         self.patchdir = os.path.join(self.workdir, 'patches')
+
+    def parse_manifest(self):
+        self.manifest_path = ostbuildrc.get_key('manifest')
+        self.manifest = json.load(open(self.manifest_path))
+        self.name_prefix = self.manifest['name-prefix']
+
+    def parse_components_and_targets(self):
+        self.parse_manifest()
+        components_path = os.path.join(self.workdir, '%s-components.json' % (self.name_prefix, ))
+        self.components = json.load(open(components_path))
+        targets_path = os.path.join(self.workdir, '%s-targets.json' % (self.name_prefix, ))
+        self.targets = json.load(open(targets_path))
 
     def execute(self, args):
         raise NotImplementedError()

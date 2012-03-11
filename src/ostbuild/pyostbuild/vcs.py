@@ -69,3 +69,7 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True):
     if tmp_dest != dest:
         os.rename(tmp_dest, dest)
     return dest
+
+def clean(keytype, checkoutdir):
+    assert keytype == 'git'
+    run_sync(['git', 'clean', '-d', '-f', '-x'], cwd=checkoutdir)

@@ -42,14 +42,14 @@ class OstbuildStatus(builtins.Builtin):
         args = parser.parse_args(argv)
 
         self.parse_config()
-        self.manifest = json.load(open(args.manifest))
+        self.parse_components_and_targets()
 
-        for component in self.manifest['components']:
-            branch = buildutil.manifest_buildname(self.manifest, component)
+        for name,component in self.components.iteritems():
+            buildname = 'components/%s' % (name, )
             build_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                   'show',
                                                   '--print-metadata-key=ostbuild-artifact-version',
-                                                  branch],
+                                                  buildname],
                                                  none_on_error=True)
             if build_revision is None:
                 build_revision = '(not built)'
@@ -57,7 +57,7 @@ class OstbuildStatus(builtins.Builtin):
                 build_status = '(needs build)'
             else:
                 build_status = 'ok'
-            sys.stdout.write('{:<40} {:<95} {:<10}\n'.format(component['name'],
+            sys.stdout.write('{:<40} {:<95} {:<10}\n'.format(name,
                                                              build_revision, build_status))
     
 builtins.register(OstbuildStatus)
