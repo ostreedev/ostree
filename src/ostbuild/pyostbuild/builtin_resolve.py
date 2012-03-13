@@ -193,9 +193,7 @@ class OstbuildResolve(builtins.Builtin):
                 component['patches']['files'] = patch_files
 
         name_prefix = snapshot['name-prefix']
-        del snapshot['name-prefix']
         base_prefix = snapshot['base-prefix']
-        del snapshot['base-prefix']
 
         manifest_architectures = snapshot['architectures']
 
@@ -247,9 +245,8 @@ class OstbuildResolve(builtins.Builtin):
         del snapshot['patches']
         del snapshot['architectures']
 
-        targets_json = {}
         targets_list = []
-        targets_json['targets'] = targets_list
+        snapshot['targets'] = targets_list
         for architecture in manifest_architectures:
             for target_component_type in ['runtime', 'devel']:
                 target = {}
@@ -276,18 +273,15 @@ class OstbuildResolve(builtins.Builtin):
                         component_ref['trees'] = ['/runtime', '/devel', '/doc']
                     contents.append(component_ref)
                 target['contents'] = contents
-        out_targets = os.path.join(self.workdir, '%s-targets.json' % (name_prefix, ))
-        f = open(out_targets, 'w')
-        json.dump(targets_json, f, indent=4, sort_keys=True)
-        f.close()
-        print "Created: %s" % (out_targets, )
 
-        out_components = os.path.join(self.workdir, '%s-components.json' % (name_prefix, ))
-        f = open(out_components, 'w')
         for component in components_by_name.itervalues():
             del component['name']
-        json.dump(components_by_name, f, indent=4, sort_keys=True)
+        snapshot['components'] = components_by_name
+
+        out_snapshot = os.path.join(self.workdir, '%s-snapshot.json' % (name_prefix, ))
+        f = open(out_snapshot, 'w')
+        json.dump(snapshot, f, indent=4, sort_keys=True)
         f.close()
-        print "Created: %s" % (out_components, )
+        print "Created: %s" % (out_snapshot, )
         
 builtins.register(OstbuildResolve)

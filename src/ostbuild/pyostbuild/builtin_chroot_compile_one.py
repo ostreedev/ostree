@@ -31,10 +31,11 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     short_description = "Build artifacts from the current source directory in a chroot"
 
     def _compose_buildroot(self, component_name, dirpath):
-        dependencies = buildutil.build_depends(component_name, self.components)
-        component = self.components.get(component_name)
+        components = self.snapshot['components']
+        dependencies = buildutil.build_depends(component_name, components)
+        component = components.get(component_name)
 
-        base_devel_name = 'bases/%s-%s-%s' % (self.manifest['base-prefix'],
+        base_devel_name = 'bases/%s-%s-%s' % (self.snapshot['base-prefix'],
                                               component['architecture'],
                                               'devel')
         checkout_trees = [(base_devel_name, '/')]
@@ -58,7 +59,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         args = parser.parse_args(argv)
 
         self.parse_config()
-        self.parse_components_and_targets()
+        self.parse_snapshot()
 
         if args.name:
             component_name = args.name
@@ -68,7 +69,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             parentparent = os.path.dirname(parent)
             component_name = '%s/%s/%s' % tuple(map(os.path.basename, [parentparent, parent, cwd]))
 
-        component = self.components.get(component_name)
+        components = self.snapshot['components']
+        component = components.get(component_name)
         if component is None:
             fatal("Couldn't find component '%s' in manifest" % (component_name, ))
         self.metadata = dict(component)

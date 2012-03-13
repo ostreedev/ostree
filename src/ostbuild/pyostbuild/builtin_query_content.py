@@ -28,9 +28,9 @@ from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from . import buildutil
 
-class OstbuildGenSnapshot(builtins.Builtin):
-    name = "gen-snapshot"
-    short_description = "Generate a snapshot description from a tree"
+class OstbuildQueryContent(builtins.Builtin):
+    name = "query-content"
+    short_description = "Output metadata from a component"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -38,6 +38,7 @@ class OstbuildGenSnapshot(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--branch', required=True)
+        parser.add_argument('--component')
 
         args = parser.parse_args(argv)
         self.args = args
@@ -46,23 +47,21 @@ class OstbuildGenSnapshot(builtins.Builtin):
         contents_json_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                   'cat', args.branch, 'contents.json'])
         
-        contents = json.loads(contents_json_text)
-        contents_list = contents['contents']
+        if args.component is None:
+            sys.stdout.write(contents_json_text)
+        else:
+            contents = json.loads(contents_json_text)
+            contents_list = contents['contents']
+            found = False
+            for content in contents_list:
+                if content['name'] != args.component:
+                    found = True
+                    break
+            if not found:
+                fatal("Unknown component '%s'" % (args.component, ))
+            ostbuildmeta_json = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                     'cat', content['ostree-revision'],
+                                                     '/_ostbuild-meta.json'])
+            sys.stdout.write(ostbuildmeta_json)
 
-        base = contents_list[0]
-        artifacts = contents_list[1:]
-
-        components = []
-        snapshot = {'name': args.branch,
-                    'base': contents['base'],
-                    'components': components}
-
-        for artifact in artifacts:
-            component_meta_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                       'cat', artifact['rev'], '/_ostbuild-meta.json'])
-            component_meta = json.loads(component_meta_text)
-            components.append(component_meta)
-
-        json.dump(snapshot, sys.stdout)
-    
-builtins.register(OstbuildGenSnapshot)
+builtins.register(OstbuildQueryContent)

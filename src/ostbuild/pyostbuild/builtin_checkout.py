@@ -47,7 +47,7 @@ class OstbuildCheckout(builtins.Builtin):
         self.args = args
         
         self.parse_config()
-        self.parse_components_and_targets()
+        self.parse_snapshot()
 
         if len(args.components) > 0:
             checkout_components = args.components
@@ -56,7 +56,7 @@ class OstbuildCheckout(builtins.Builtin):
 
         for component_name in checkout_components:
             found = False
-            component = self.components.get(component_name)
+            component = self.snapshot['components'].get(component_name)
             if component is None:
                 fatal("Unknown component %r" % (component_name, ))
             (keytype, uri) = buildutil.parse_src_key(component['src'])

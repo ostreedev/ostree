@@ -47,12 +47,10 @@ class Builtin(object):
         self.manifest = json.load(open(self.manifest_path))
         self.name_prefix = self.manifest['name-prefix']
 
-    def parse_components_and_targets(self):
+    def parse_snapshot(self):
         self.parse_manifest()
-        components_path = os.path.join(self.workdir, '%s-components.json' % (self.name_prefix, ))
-        self.components = json.load(open(components_path))
-        targets_path = os.path.join(self.workdir, '%s-targets.json' % (self.name_prefix, ))
-        self.targets = json.load(open(targets_path))
+        snapshot_path = os.path.join(self.workdir, '%s-snapshot.json' % (self.name_prefix, ))
+        self.snapshot = json.load(open(snapshot_path))
 
     def execute(self, args):
         raise NotImplementedError()

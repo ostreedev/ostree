@@ -60,38 +60,6 @@ class OstbuildBuild(builtins.Builtin):
         run_sync(args, cwd=cwd, fatal_on_error=False, keep_stdin=True)
         fatal("Exiting after debug shell")
 
-    def _resolve_component_meta(self, component_meta):
-        result = dict(component_meta)
-        orig_src = component_meta['src']
-
-        did_expand = False
-        for (vcsprefix, expansion) in self.manifest['vcsconfig'].iteritems():
-            prefix = vcsprefix + ':'
-            if orig_src.startswith(prefix):
-                result['src'] = expansion + orig_src[len(prefix):]
-                did_expand = True
-                break
-
-        name = component_meta.get('name')
-        if name is None:
-            if did_expand:
-                src = orig_src
-                idx = src.rindex(':')
-                name = src[idx+1:]
-            else:
-                src = result['src']
-                idx = src.rindex('/')
-                name = src[idx+1:]
-            if name.endswith('.git'):
-                name = name[:-4]
-            name = name.replace('/', '-')
-            result['name'] = name
-
-        if 'branch' not in result:
-            result['branch'] = 'master'
-
-        return result
-
     def _build_one_component(self, name, component):
         branch = component['branch']
         architecture = component['architecture']
@@ -226,7 +194,7 @@ class OstbuildBuild(builtins.Builtin):
                           '--union', '--subpath=' + subtree,
                           branch_rev, compose_rootdir])
 
-        contents_path = os.path.join(compose_rootdir, 'manifest.json')
+        contents_path = os.path.join(compose_rootdir, 'contents.json')
         f = open(contents_path, 'w')
         json.dump(metadata, f, indent=4, sort_keys=True)
         f.close()
@@ -249,7 +217,7 @@ class OstbuildBuild(builtins.Builtin):
         self.args = args
         
         self.parse_config()
-        self.parse_components_and_targets()
+        self.parse_snapshot()
 
         self.buildopts = BuildOptions()
         self.buildopts.shell_on_failure = args.shell_on_failure
@@ -259,7 +227,7 @@ class OstbuildBuild(builtins.Builtin):
         if args.recompose:
             pass
         elif len(args.components) == 0:
-            tsorted = buildutil.tsort_components(self.components, 'build-depends')
+            tsorted = buildutil.tsort_components(self.snapshot['components'], 'build-depends')
             tsorted.reverse()
             build_component_order = tsorted
         else:
@@ -267,7 +235,7 @@ class OstbuildBuild(builtins.Builtin):
                 fatal("Can't specify --start-at with component list")
             for name in args.components:
                 found = False
-                component = self.components.get(name)
+                component = self.snapshot['components'].get(name)
                 if component is None:
                     fatal("Unknown component %r" % (name, ))
                 build_component_order.append(name)
@@ -284,10 +252,10 @@ class OstbuildBuild(builtins.Builtin):
             start_at_index = 0
 
         for component_name in build_component_order[start_at_index:]:
-            component = self.components.get(component_name)
+            component = self.snapshot['components'].get(component_name)
             self._build_one_component(component_name, component)
 
-        for target in self.targets['targets']:
+        for target in self.snapshot['targets']:
             self._compose(target)
         
 builtins.register(OstbuildBuild)

@@ -27,7 +27,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_run_triggers.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
-	src/ostbuild/pyostbuild/builtin_gen_snapshot.py	\
+	src/ostbuild/pyostbuild/builtin_query_content.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
 	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\
