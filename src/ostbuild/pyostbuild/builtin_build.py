@@ -208,6 +208,7 @@ class OstbuildBuild(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--skip-built', action='store_true')
         parser.add_argument('--recompose', action='store_true')
+        parser.add_argument('--skip-compose', action='store_true')
         parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
@@ -255,7 +256,8 @@ class OstbuildBuild(builtins.Builtin):
             component = self.snapshot['components'].get(component_name)
             self._build_one_component(component_name, component)
 
-        for target in self.snapshot['targets']:
-            self._compose(target)
+        if not args.skip_compose:
+            for target in self.snapshot['targets']:
+                self._compose(target)
         
 builtins.register(OstbuildBuild)

@@ -21,6 +21,7 @@ import urlparse
 import tempfile
 import StringIO
 
+from . import ostbuildrc
 from .subprocess_helpers import run_sync_get_output
 
 BUILD_ENV = {
@@ -141,3 +142,12 @@ def compose(repo, target, artifacts):
     revision = run_sync_get_output(child_args, log_initiation=True).strip()
     os.unlink(path)
     return revision
+
+def get_base_user_chroot_args():
+    path = find_user_chroot_path()
+    args = [path, '--unshare-pid', '--unshare-ipc']
+    if not ostbuildrc.get_key('preserve_net', default=False):
+        args.append('--unshare-net')
+    return args
+
+    

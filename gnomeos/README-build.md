@@ -14,7 +14,7 @@ dependency problems.
 At the end, the Yocto build process generates two tarballs: one for a
 base "runtime", and one "devel" with all of the development tools like
 gcc.  We then import that into an OSTree branch
-e.g. "bases/gnomeos-3.4-yocto-i686-devel".
+e.g. "bases/yocto/gnomeos-3.4-i686-devel".
 
 We also have a Yocto recipe "ostree-native" which generates (as you
 might guess) a native binary of ostree.  That binary is used to import

@@ -31,11 +31,22 @@ def get():
             _config[k.strip()] = v.strip()
     return _config
 
-def get_key(name, provided_args=None):
+# This hack is because we want people to be able to pass None
+# for "default", but still distinguish default=None from default
+# not passed.
+_default_not_supplied = object()
+def get_key(name, provided_args=None, default=_default_not_supplied):
+    global _default_not_supplied
     config = get()
     if provided_args:
         v = provided_args.get(name)
         if v is not None:
             return v
-    return config[name]
+    if default is _default_not_supplied:
+        # Possibly throw a KeyError
+        return config[name]
+    value = config.get(name, _default_not_supplied)
+    if value is _default_not_supplied:
+        return default
+    return value
                                         

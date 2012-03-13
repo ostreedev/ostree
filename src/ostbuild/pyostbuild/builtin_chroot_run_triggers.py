@@ -35,15 +35,11 @@ class OstbuildChrootRunTriggers(builtins.Builtin):
         
         args = parser.parse_args(argv)
 
-        ostbuild_user_chroot_path = buildutil.find_user_chroot_path()
-
-        child_args = [ostbuild_user_chroot_path,
-                      '--unshare-pid', '--unshare-net', '--unshare-ipc',
-                      '--mount-proc', '/proc', 
-                      '--mount-bind', '/dev', '/dev',
-                      args.root,
-                      '/usr/bin/ostree-run-triggers']
-        print "%r" % (child_args,)
+        child_args = buildutil.get_base_user_chroot_args()
+        child_args.extend(['--mount-proc', '/proc', 
+                           '--mount-bind', '/dev', '/dev',
+                           args.root,
+                           '/usr/bin/ostree-run-triggers'])
         env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = '/' 
         run_sync(child_args, env=env_copy)

@@ -23,6 +23,7 @@ import json
 from . import builtins
 from . import buildutil
 from . import fileutil
+from . import ostbuildrc
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 
@@ -128,16 +129,15 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', component_name)
 
-        ostbuild_user_chroot_path = buildutil.find_user_chroot_path()
-        
-        child_args = [ostbuild_user_chroot_path, '--unshare-pid', '--unshare-net', '--unshare-ipc',
-                      '--mount-readonly', '/',
-                      '--mount-proc', '/proc', 
-                      '--mount-bind', '/dev', '/dev',
-                      '--mount-bind', child_tmpdir, '/tmp',
-                      '--mount-bind', os.getcwd(), chroot_sourcedir,
-                      '--mount-bind', resultdir, '/ostbuild/results',
-                      '--chdir', chroot_sourcedir]
+        child_args = buildutil.get_base_user_chroot_args()
+        child_args.extend([
+                '--mount-readonly', '/',
+                '--mount-proc', '/proc', 
+                '--mount-bind', '/dev', '/dev',
+                '--mount-bind', child_tmpdir, '/tmp',
+                '--mount-bind', os.getcwd(), chroot_sourcedir,
+                '--mount-bind', resultdir, '/ostbuild/results',
+                '--chdir', chroot_sourcedir])
         if args.debug_shell:
             child_args.extend([rootdir, '/bin/sh'])
         else:
