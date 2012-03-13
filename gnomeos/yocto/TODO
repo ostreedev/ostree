@@ -1,3 +1,0 @@
-* Add ostree-init binary for the non-initramfs case
-  - Just need to do the chroot before running real init
-* Modify init scripts to do read only bind mounts etc.
