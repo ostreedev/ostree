@@ -566,8 +566,7 @@
 		{"src": "gnome:libsoup",
 		 "config-args": ["--disable-tls-check"]},
 
-		{"src": "git:/src/ostree",
-		 "branch": "wip/ostbuild-chroot-dev",
+		{"src": "gnome:ostree",
 		 "config-opts": ["--disable-documentation",
 		                 "--with-soup-gnome"]},
 
