@@ -565,6 +565,26 @@ ostree_object_type_from_string (const char *str)
 }
 
 char *
+ostree_object_to_string (const char *checksum,
+                         OstreeObjectType objtype)
+{
+  return g_strconcat (checksum, ".", ostree_object_type_to_string (objtype), NULL);
+}
+
+void
+ostree_object_from_string (const char *str,
+                           gchar     **out_checksum,
+                           OstreeObjectType *out_objtype)
+{
+  const char *dot;
+
+  dot = strrchr (str, '.');
+  g_assert (dot != NULL);
+  *out_checksum = g_strndup (str, dot - str);
+  *out_objtype = ostree_object_type_from_string (dot + 1);
+}
+
+char *
 ostree_get_relative_object_path (const char *checksum,
                                  OstreeObjectType type)
 {

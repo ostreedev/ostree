@@ -108,6 +108,13 @@ const char * ostree_object_type_to_string (OstreeObjectType objtype);
 
 OstreeObjectType ostree_object_type_from_string (const char *str);
 
+char * ostree_object_to_string (const char *checksum,
+                                OstreeObjectType objtype);
+
+void ostree_object_from_string (const char *str,
+                                gchar     **out_checksum,
+                                OstreeObjectType *out_objtype);
+
 char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
 

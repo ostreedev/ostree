@@ -752,13 +752,6 @@ ostree_repo_get_file_object_path (OstreeRepo   *self,
   return ostree_repo_get_object_path (self, checksum, get_objtype_for_repo_file (self));
 }
 
-static char *
-create_checksum_and_objtype (const char *checksum,
-                             OstreeObjectType objtype)
-{
-  return g_strconcat (checksum, ".", ostree_object_type_to_string (objtype), NULL);
-}
-
 static GFile *
 get_pending_object_path (OstreeRepo       *self,
                          const char       *checksum,
@@ -847,7 +840,7 @@ insert_into_transaction (OstreeRepo        *self,
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   char *key;
 
-  key = create_checksum_and_objtype (checksum, objtype);
+  key = ostree_object_to_string (checksum, objtype);
   /* Takes ownership */
   g_hash_table_replace (priv->pending_transaction, key, NULL);
 }
@@ -1165,22 +1158,15 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
   GHashTableIter iter;
   gpointer key, value;
   char *checksum = NULL;
+  OstreeObjectType objtype;
 
   g_return_val_if_fail (priv->in_transaction == TRUE, FALSE);
 
   g_hash_table_iter_init (&iter, priv->pending_transaction);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      const char *checksum_and_type = key;
-      const char *type_str;
-      OstreeObjectType objtype;
-
-      type_str = strrchr (checksum_and_type, '.');
-      g_assert (type_str);
       g_free (checksum);
-      checksum = g_strndup (checksum_and_type, type_str - checksum_and_type);
-
-      objtype = ostree_object_type_from_string (type_str + 1);
+      ostree_object_from_string ((char*)key, &checksum, &objtype);
 
       g_clear_object (&f);
       f = get_pending_object_path (self, checksum, objtype);

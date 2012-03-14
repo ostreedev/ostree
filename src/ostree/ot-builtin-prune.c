@@ -69,13 +69,6 @@ typedef struct {
   guint n_unreachable;
 } OtPruneData;
 
-static char *
-create_checksum_and_objtype (const char *checksum,
-                             OstreeObjectType objtype)
-{
-  return g_strconcat (checksum, ".", ostree_object_type_to_string (objtype), NULL);
-}
-
 static gboolean
 compute_reachable_objects_from_dir_contents (OstreeRepo      *repo,
                                              const char      *sha256,
@@ -93,7 +86,7 @@ compute_reachable_objects_from_dir_contents (OstreeRepo      *repo,
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, sha256, &tree, error))
     goto out;
 
-  key = create_checksum_and_objtype (sha256, OSTREE_OBJECT_TYPE_DIR_TREE);
+  key = ostree_object_to_string (sha256, OSTREE_OBJECT_TYPE_DIR_TREE);
   g_hash_table_replace (inout_reachable, key, key);
 
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
@@ -107,14 +100,14 @@ compute_reachable_objects_from_dir_contents (OstreeRepo      *repo,
       g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
       if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
         {
-          key = create_checksum_and_objtype (checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
+          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
           g_hash_table_replace (inout_reachable, key, key);
         }
       else
         {
-          key = create_checksum_and_objtype (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
+          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
           g_hash_table_replace (inout_reachable, key, key);
-          key = create_checksum_and_objtype (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
           g_hash_table_replace (inout_reachable, key, key);
         }
     }
@@ -134,7 +127,7 @@ compute_reachable_objects_from_dir_contents (OstreeRepo      *repo,
                                                         cancellable, error))
         goto out;
 
-      key = create_checksum_and_objtype (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
+      key = ostree_object_to_string (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
       g_hash_table_replace (inout_reachable, key, key);
     }
 
@@ -166,7 +159,7 @@ compute_reachable_objects_from_commit (OstreeRepo      *repo,
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, sha256, &commit, error))
         goto out;
 
-      key = create_checksum_and_objtype (sha256, OSTREE_OBJECT_TYPE_COMMIT);
+      key = ostree_object_to_string (sha256, OSTREE_OBJECT_TYPE_COMMIT);
       g_hash_table_replace (inout_reachable, key, key);
 
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
@@ -184,7 +177,7 @@ compute_reachable_objects_from_commit (OstreeRepo      *repo,
         goto out;
 
       g_variant_get_child (commit, 7, "&s", &meta_checksum);
-      key = create_checksum_and_objtype (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
+      key = ostree_object_to_string (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
       g_hash_table_replace (inout_reachable, key, key);
     }
 
@@ -205,7 +198,7 @@ object_iter_callback (OstreeRepo    *repo,
   OtPruneData *data = user_data;
   char *key;
 
-  key = create_checksum_and_objtype (checksum, objtype);
+  key = ostree_object_to_string (checksum, objtype);
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
