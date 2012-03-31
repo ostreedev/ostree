@@ -80,3 +80,5 @@ doc/%.1: doc/%.xml
 endif
 
 
+release-tag:
+	git tag -m "Release $(VERSION)" v$(VERSION)
