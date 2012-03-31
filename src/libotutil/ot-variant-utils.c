@@ -88,6 +88,12 @@ ot_util_variant_take_ref (GVariant *variant)
 #endif
 }
 
+/**
+ * Return in @out_variant the result of memory-mapping the entire
+ * contents of file @src.
+ *
+ * Note the returned @out_variant is not floating.
+ */
 gboolean
 ot_util_variant_map (GFile *src,
                      const GVariantType *type,
@@ -119,5 +125,44 @@ ot_util_variant_map (GFile *src,
   ot_clear_gvariant (&ret_variant);
   if (mfile)
     g_mapped_file_unref (mfile);
+  return ret;
+}
+
+/**
+ * Read all input from @src, allocating a new #GVariant from it into
+ * output variable @out_variant.  @src will be closed as a result.
+ *
+ * Note the returned @out_variant is not floating.
+ */
+gboolean
+ot_util_variant_from_stream (GInputStream         *src,
+                             const GVariantType   *type,
+                             gboolean              trusted,
+                             GVariant            **out_variant,
+                             GCancellable         *cancellable,
+                             GError              **error)
+{
+  gboolean ret = FALSE;
+  GMemoryOutputStream *data_stream = NULL;
+  GVariant *ret_variant = NULL;
+
+  data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+
+  if (!g_output_stream_splice ((GOutputStream*)data_stream, src,
+                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                               cancellable, error))
+    goto out;
+
+  ret_variant = g_variant_new_from_data (type, g_memory_output_stream_get_data (data_stream),
+                                         g_memory_output_stream_get_data_size (data_stream),
+                                         trusted, (GDestroyNotify) g_object_unref, data_stream);
+  data_stream = NULL; /* Transfer ownership */
+  g_variant_ref_sink (ret_variant);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_variant, &ret_variant);
+ out:
+  g_clear_object (&data_stream);
+  ot_clear_gvariant (&ret_variant);
   return ret;
 }

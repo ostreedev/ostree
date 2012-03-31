@@ -33,6 +33,18 @@ G_BEGIN_DECLS
   *a_v = NULL;                      \
   } while (0);
 
+#define ot_clear_ptrarray(a_v) do { \
+  if (*a_v)                         \
+    g_ptr_array_unref (*a_v);         \
+  *a_v = NULL;                      \
+  } while (0);
+
+#define ot_clear_hashtable(a_v) do { \
+  if (*a_v)                         \
+    g_hash_table_unref (*a_v);         \
+  *a_v = NULL;                      \
+  } while (0);
+
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
 GVariant * ot_util_variant_take_ref (GVariant *variant);
@@ -46,6 +58,13 @@ gboolean ot_util_variant_map (GFile *src,
                               const GVariantType *type,
                               GVariant **out_variant,
                               GError  **error);
+
+gboolean ot_util_variant_from_stream (GInputStream         *src,
+                                      const GVariantType   *type,
+                                      gboolean              trusted,
+                                      GVariant            **out_variant,
+                                      GCancellable         *cancellable,
+                                      GError              **error);
 
 G_END_DECLS
 
