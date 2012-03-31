@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..2'
+echo '1..4'
 
 setup_fake_remote_repo1
 cd ${test_tmpdir}
@@ -29,6 +29,7 @@ mkdir repo
 ostree --repo=repo init
 ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
 ostree-pull --repo=repo origin main
+ostree --repo=repo fsck
 echo "ok pull"
 
 cd ${test_tmpdir}
@@ -37,3 +38,21 @@ cd checkout-origin-main
 assert_file_has_content firstfile '^first$'
 assert_file_has_content baz/cow '^moo$'
 echo "ok pull contents"
+
+cd ${test_tmpdir}
+ostree --repo=$(pwd)/ostree-srv/gnomerepo pack
+rm -rf repo
+mkdir repo
+ostree --repo=repo init
+ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+ostree-pull --repo=repo origin main
+ostree --repo=repo fsck
+echo "ok pull packed"
+
+cd ${test_tmpdir}
+rm -rf checkout-origin-main
+$OSTREE checkout origin/main checkout-origin-main
+cd checkout-origin-main
+assert_file_has_content firstfile '^first$'
+assert_file_has_content baz/cow '^moo$'
+echo "ok pull contents packed"

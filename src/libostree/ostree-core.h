@@ -97,8 +97,42 @@ typedef enum {
  */
 #define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(uuuuusa(ayay))")
 
+/* Pack super index
+ * s - OSTv0SUPERPACKINDEX
+ * a{sv} - Metadata
+ * a(say) - (pack file checksum, bloom filter)
+ */
+#define OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(ayay))")
+
+/* Pack index
+ * s - OSTv0PACKINDEX
+ * a{sv} - Metadata
+ * a(uayt) - (objtype, checksum, offset into packfile)
+ */
+#define OSTREE_PACK_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(uayt))")
+
+typedef enum {
+  OSTREE_PACK_FILE_ENTRY_FLAG_NONE = 0,
+  OSTREE_PACK_FILE_ENTRY_FLAG_GZIP = (1 << 0)
+} OstreePackFileEntryFlag;
+
+/* Pack files
+ * s - OSTv0PACKFILE
+ * a{sv} - Metadata
+ * t - number of entries
+ *
+ * Repeating pair of:
+ * <padding to alignment of 8>
+ * ( uyayay ) - objtype, flags, checksum, data
+ */
+#define OSTREE_PACK_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}t)")
+
+#define OSTREE_PACK_FILE_CONTENT_VARIANT_FORMAT G_VARIANT_TYPE ("(uyayay)")
+
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
+
+GVariant *ostree_checksum_to_bytes (const char *sha256);
 
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
@@ -107,6 +141,32 @@ void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid,
 const char * ostree_object_type_to_string (OstreeObjectType objtype);
 
 OstreeObjectType ostree_object_type_from_string (const char *str);
+
+guint ostree_hash_object_name (gconstpointer a);
+
+int ostree_cmp_checksum_bytes (GVariant *a, GVariant *b);
+
+GVariant *ostree_object_name_serialize (const char *checksum,
+                                        OstreeObjectType objtype);
+
+void ostree_object_name_deserialize (GVariant         *variant,
+                                     const char      **out_checksum,
+                                     OstreeObjectType *out_objtype);
+
+GVariant *ostree_object_name_serialize_v2 (const char *checksum,
+                                           OstreeObjectType objtype);
+
+void ostree_object_name_deserialize_v2_hex (GVariant         *variant,
+                                            char            **out_checksum,
+                                            OstreeObjectType *out_objtype);
+
+
+void ostree_object_name_deserialize_v2_bytes (GVariant         *variant,
+                                              const guchar    **out_checksum,
+                                              OstreeObjectType *out_objtype);
+
+GVariant * ostree_checksum_to_bytes (const char *sha256);
+char * ostree_checksum_from_bytes (GVariant *bytes);
 
 char * ostree_object_to_string (const char *checksum,
                                 OstreeObjectType objtype);
@@ -122,6 +182,11 @@ GVariant *ostree_get_xattrs_for_file (GFile       *f,
                                       GError     **error);
 
 GVariant *ostree_wrap_metadata_variant (OstreeObjectType type, GVariant *metadata);
+
+gboolean ostree_unwrap_metadata (GVariant              *container,
+                                 OstreeObjectType       expected_type,
+                                 GVariant             **out_variant,
+                                 GError               **error);
 
 gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);
@@ -205,5 +270,40 @@ gboolean ostree_parse_archived_file_meta (GVariant         *data,
                                           GVariant        **out_xattrs,
                                           GError          **error);
 
+gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
+                                     guint64           pack_len,
+                                     guint64           object_offset,
+                                     gboolean          trusted,
+                                     GVariant        **out_entry,
+                                     GCancellable     *cancellable,
+                                     GError          **error);
+
+GInputStream *ostree_read_pack_entry_as_stream (GVariant *pack_entry);
+
+gboolean ostree_read_pack_entry_variant (GVariant         *pack_entry,
+                                         OstreeObjectType  expected_objtype,
+                                         gboolean          trusted,
+                                         GVariant        **out_variant,
+                                         GCancellable     *cancellable,
+                                         GError          **error);
+
+gboolean ostree_pack_index_search (GVariant            *index,
+                                   GVariant           *csum_bytes,
+                                   OstreeObjectType    objtype,
+                                   guint64            *out_offset);
+
+/** VALIDATION **/
+
+gboolean ostree_validate_structureof_objtype (guint32    objtype,
+                                              GError   **error);
+
+gboolean ostree_validate_structureof_checksum (GVariant  *checksum,
+                                               GError   **error);
+
+gboolean ostree_validate_structureof_pack_index (GVariant      *index,
+                                                 GError       **error);
+
+gboolean ostree_validate_structureof_pack_superindex (GVariant      *superindex,
+                                                      GError       **error);
 
 #endif /* _OSTREE_REPO */

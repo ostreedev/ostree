@@ -42,10 +42,12 @@ static OstreeBuiltin builtins[] = {
   { "ls", ostree_builtin_ls, 0 },
   { "prune", ostree_builtin_prune, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
+  { "pack", ostree_builtin_pack, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "show", ostree_builtin_show, 0 },
+  { "unpack", ostree_builtin_unpack, 0 },
   { NULL }
 };
 

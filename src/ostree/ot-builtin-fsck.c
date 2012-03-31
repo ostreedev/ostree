@@ -26,6 +26,7 @@
 #include "ostree.h"
 
 #include <glib/gi18n.h>
+#include <glib/gprintf.h>
 
 static gboolean quiet;
 static gboolean delete;
@@ -38,8 +39,8 @@ static GOptionEntry options[] = {
 
 typedef struct {
   OstreeRepo *repo;
-  guint n_objects;
-  gboolean had_error;
+  guint n_loose_objects;
+  guint n_pack_files;
 } OtFsckData;
 
 static gboolean
@@ -123,61 +124,156 @@ checksum_archived_file (OtFsckData   *data,
   return ret;
 }
 
-static void
-object_iter_callback (OstreeRepo    *repo,
-                      const char    *exp_checksum,
-                      OstreeObjectType objtype,
-                      GFile         *objf,
-                      GFileInfo     *file_info,
-                      gpointer       user_data)
+static gboolean
+fsck_loose_object (OtFsckData    *data,
+                   const char    *exp_checksum,
+                   OstreeObjectType objtype,
+                   GCancellable   *cancellable,
+                   GError        **error)
 {
-  OtFsckData *data = user_data;
+  gboolean ret = FALSE;
+  GFile *objf = NULL;
   GChecksum *real_checksum = NULL;
-  GError *error = NULL;
 
-  /* nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
-     if (nlinks < 2 && !quiet)
-     g_printerr ("note: floating object: %s\n", path); */
+  objf = ostree_repo_get_object_path (data->repo, exp_checksum, objtype);
 
   if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
     {
       if (!g_str_has_suffix (ot_gfile_get_path_cached (objf), ".archive-meta"))
         {
-          g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Invalid archive filename '%s'",
                        ot_gfile_get_path_cached (objf));
           goto out;
         }
-      if (!checksum_archived_file (data, exp_checksum, objf, &real_checksum, &error))
+      if (!checksum_archived_file (data, exp_checksum, objf, &real_checksum, error))
         goto out;
     }
   else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
     ; /* Handled above */
   else
     {
-      if (!ostree_checksum_file (objf, objtype, &real_checksum, NULL, &error))
+      if (!ostree_checksum_file (objf, objtype, &real_checksum, NULL, error))
         goto out;
     }
 
   if (real_checksum && strcmp (exp_checksum, g_checksum_get_string (real_checksum)) != 0)
     {
-      data->had_error = TRUE;
-      g_printerr ("ERROR: corrupted object '%s'; actual checksum: %s\n",
-                  ot_gfile_get_path_cached (objf), g_checksum_get_string (real_checksum));
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "corrupted loose object '%s'; actual checksum: %s",
+                   ot_gfile_get_path_cached (objf), g_checksum_get_string (real_checksum));
       if (delete)
         (void) unlink (ot_gfile_get_path_cached (objf));
+      goto out;
     }
 
-  data->n_objects++;
+  data->n_loose_objects++;
 
+  ret = TRUE;
  out:
   ot_clear_checksum (&real_checksum);
-  if (error != NULL)
-    {
-      g_printerr ("%s\n", error->message);
-      g_clear_error (&error);
-    }
+  return ret;
 }
+
+static gboolean
+fsck_pack_files (OtFsckData  *data,
+                 GCancellable   *cancellable,
+                 GError        **error)
+{
+  gboolean ret = FALSE;
+  GPtrArray *pack_indexes = NULL;
+  GVariant *index_variant = NULL;
+  GFile *pack_index_path = NULL;
+  GFile *pack_data_path = NULL;
+  GFileInfo *pack_info = NULL;
+  GInputStream *input = NULL;
+  GChecksum *pack_content_checksum = NULL;
+  GVariantIter *index_content_iter = NULL;
+  guint i;
+  guint32 objtype;
+  guint64 offset;
+  guint64 pack_size;
+
+  if (!ostree_repo_list_pack_indexes (data->repo, &pack_indexes, cancellable, error))
+    goto out;
+
+  for (i = 0; i < pack_indexes->len; i++)
+    {
+      const char *checksum = pack_indexes->pdata[i];
+
+      g_clear_object (&pack_index_path);
+      pack_index_path = ostree_repo_get_pack_index_path (data->repo, checksum);
+
+      ot_clear_gvariant (&index_variant);
+      if (!ot_util_variant_map (pack_index_path,
+                                OSTREE_PACK_INDEX_VARIANT_FORMAT,
+                                &index_variant, error))
+        goto out;
+      
+      if (!ostree_validate_structureof_pack_index (index_variant, error))
+        goto out;
+
+      g_clear_object (&pack_data_path);
+      pack_data_path = ostree_repo_get_pack_data_path (data->repo, checksum);
+      
+      g_clear_object (&input);
+      input = (GInputStream*)g_file_read (pack_data_path, cancellable, error);
+      if (!input)
+        goto out;
+
+      g_clear_object (&pack_info);
+      pack_info = g_file_input_stream_query_info ((GFileInputStream*)input, OSTREE_GIO_FAST_QUERYINFO,
+                                                  cancellable, error);
+      if (!pack_info)
+        goto out;
+      pack_size = g_file_info_get_attribute_uint64 (pack_info, "standard::size");
+     
+      if (pack_content_checksum)
+        g_checksum_free (pack_content_checksum);
+      if (!ot_gio_checksum_stream (input, &pack_content_checksum, cancellable, error))
+        goto out;
+
+      if (strcmp (g_checksum_get_string (pack_content_checksum), checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "corrupted pack '%s', expected checksum %s",
+                       checksum, g_checksum_get_string (pack_content_checksum));
+          goto out;
+        }
+
+      g_variant_get_child (index_variant, 2, "a(uayt)", &index_content_iter);
+
+      while (g_variant_iter_loop (index_content_iter, "(u@ayt)",
+                                  &objtype, NULL, &offset))
+        {
+          offset = GUINT64_FROM_BE (offset);
+          if (offset > pack_size)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "corrupted pack '%s', offset %" G_GUINT64_FORMAT " larger than file size %" G_GUINT64_FORMAT,
+                           checksum,
+                           offset, pack_size);
+              goto out;
+            }
+        }
+
+      data->n_pack_files++;
+    }
+
+  ret = TRUE;
+ out:
+  if (index_content_iter)
+    g_variant_iter_free (index_content_iter);
+  if (pack_content_checksum)
+    g_checksum_free (pack_content_checksum);
+  if (pack_indexes)
+    g_ptr_array_unref (pack_indexes);
+  g_clear_object (&pack_info);
+  g_clear_object (&pack_data_path);
+  g_clear_object (&input);
+  return ret;
+}
+
 
 gboolean
 ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
@@ -186,6 +282,10 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   OtFsckData data;
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
+  GHashTable *objects = NULL;
+  GCancellable *cancellable = NULL;
+  GHashTableIter hash_iter;
+  gpointer key, value;
 
   context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);
@@ -197,26 +297,47 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
+  memset (&data, 0, sizeof (data));
   data.repo = repo;
-  data.n_objects = 0;
-  data.had_error = FALSE;
 
-  if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
+  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
+                                 &objects, cancellable, error))
+    goto out;
+  
+  g_hash_table_iter_init (&hash_iter, objects);
+
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      GVariant *objdata = value;
+      const char *checksum;
+      OstreeObjectType objtype;
+      gboolean is_loose;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_variant_get_child (objdata, 0, "b", &is_loose);
+
+      if (is_loose)
+        {
+          if (!fsck_loose_object (&data, checksum, objtype, cancellable, error))
+            goto out;
+        }
+    }
+
+  if (!fsck_pack_files (&data, cancellable, error))
     goto out;
 
-  if (data.had_error)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Encountered filesystem consistency errors");
-      goto out;
-    }
   if (!quiet)
-    g_printerr ("Total Objects: %u\n", data.n_objects);
+    g_print ("Loose Objects: %u\n", data.n_loose_objects);
+    g_print ("Pack files: %u\n", data.n_pack_files);
 
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
+  if (objects)
+    g_hash_table_unref (objects);
   return ret;
 }

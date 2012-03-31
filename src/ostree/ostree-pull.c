@@ -55,6 +55,55 @@ log_verbose (const char  *fmt,
 }
 
 typedef struct {
+  OstreeRepo   *repo;
+  char         *remote_name;
+  SoupSession  *session;
+  SoupURI      *base_uri;
+
+  gboolean      fetched_packs;
+  GPtrArray    *cached_pack_indexes;
+} OtPullData;
+
+static SoupURI *
+suburi_new (SoupURI   *base,
+            const char *first,
+            ...) G_GNUC_NULL_TERMINATED;
+
+static SoupURI *
+suburi_new (SoupURI   *base,
+            const char *first,
+            ...)
+{
+  va_list args;
+  GPtrArray *arg_array;
+  const char *arg;
+  char *subpath;
+  SoupURI *ret;
+
+  arg_array = g_ptr_array_new ();
+  g_ptr_array_add (arg_array, (char*)soup_uri_get_path (base));
+  g_ptr_array_add (arg_array, (char*)first);
+
+  va_start (args, first);
+  
+  while ((arg = va_arg (args, const char *)) != NULL)
+    g_ptr_array_add (arg_array, (char*)arg);
+  g_ptr_array_add (arg_array, NULL);
+
+  subpath = g_build_filenamev ((char**)arg_array->pdata);
+  g_ptr_array_unref (arg_array);
+  
+  ret = soup_uri_copy (base);
+  soup_uri_set_path (ret, subpath);
+  g_free (subpath);
+  
+  va_end (args);
+  
+  return ret;
+}
+
+
+typedef struct {
   SoupSession    *session;
   GOutputStream  *stream;
   gboolean        had_error;
@@ -78,8 +127,7 @@ on_got_chunk (SoupMessage   *msg,
 }
 
 static gboolean
-fetch_uri (OstreeRepo  *repo,
-           SoupSession *soup,
+fetch_uri (OtPullData  *pull_data,
            SoupURI     *uri,
            const char  *tmp_prefix,
            GFile      **out_temp_filename,
@@ -94,14 +142,14 @@ fetch_uri (OstreeRepo  *repo,
   GOutputStream *output_stream = NULL;
   OstreeSoupChunkData chunkdata;
 
-  if (!ostree_create_temp_regular_file (ostree_repo_get_tmpdir (repo),
+  if (!ostree_create_temp_regular_file (ostree_repo_get_tmpdir (pull_data->repo),
                                         tmp_prefix, NULL,
                                         &ret_temp_filename,
                                         &output_stream,
                                         NULL, error))
     goto out;
 
-  chunkdata.session = soup;
+  chunkdata.session = pull_data->session;
   chunkdata.stream = output_stream;
   chunkdata.had_error = FALSE;
   chunkdata.error = error;
@@ -114,7 +162,7 @@ fetch_uri (OstreeRepo  *repo,
 
   g_signal_connect (msg, "got-chunk", G_CALLBACK (on_got_chunk), &chunkdata);
   
-  response = soup_session_send_message (soup, msg);
+  response = soup_session_send_message (pull_data->session, msg);
   if (response != 200)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -138,8 +186,7 @@ fetch_uri (OstreeRepo  *repo,
 }
 
 static gboolean
-fetch_uri_contents_utf8 (OstreeRepo  *repo,
-                         SoupSession *soup,
+fetch_uri_contents_utf8 (OtPullData  *pull_data,
                          SoupURI     *uri,
                          char       **out_contents,
                          GCancellable  *cancellable,
@@ -150,7 +197,7 @@ fetch_uri_contents_utf8 (OstreeRepo  *repo,
   char *ret_contents = NULL;
   gsize len;
 
-  if (!fetch_uri (repo, soup, uri, "tmp-", &tmpf, cancellable, error))
+  if (!fetch_uri (pull_data, uri, "tmp-", &tmpf, cancellable, error))
     goto out;
 
   if (!g_file_load_contents (tmpf, cancellable, &ret_contents, &len, NULL, error))
@@ -173,29 +220,209 @@ fetch_uri_contents_utf8 (OstreeRepo  *repo,
   return ret;
 }
 
+static gboolean
+fetch_one_pack_file (OtPullData            *pull_data,
+                     const char            *pack_checksum,
+                     GFile                **out_cached_path,
+                     GCancellable          *cancellable,
+                     GError               **error)
+{
+  gboolean ret = FALSE;
+  GFile *ret_cached_path = NULL;
+  GFile *tmp_path = NULL;
+  char *pack_name = NULL;
+  SoupURI *pack_uri = NULL;
+
+  if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
+                                                pack_checksum, &ret_cached_path,
+                                                cancellable, error))
+    goto out;
+
+  if (ret_cached_path == NULL)
+    {
+      pack_name = g_strconcat ("ostpack-", pack_checksum, ".data", NULL);
+      pack_uri = suburi_new (pull_data->base_uri, "objects", "pack", pack_name, NULL);
+      
+      if (!fetch_uri (pull_data, pack_uri, "packdata-", &tmp_path, cancellable, error))
+        goto out;
+
+      if (!ostree_repo_take_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
+                                                     pack_checksum, tmp_path,
+                                                     cancellable, error))
+        goto out;
+    }
+
+  if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
+                                                pack_checksum, &ret_cached_path,
+                                                cancellable, error))
+    goto out;
+
+  g_assert (ret_cached_path != NULL);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_cached_path, &ret_cached_path);
+ out:
+  g_clear_object (&ret_cached_path);
+  g_clear_object (&tmp_path);
+  g_free (pack_name);
+  if (pack_uri)
+    soup_uri_free (pack_uri);
+  return ret;
+}
 
 static gboolean
-fetch_object (OstreeRepo  *repo,
-              SoupSession *soup,
-              SoupURI     *baseuri,
-              const char  *checksum,
-              OstreeObjectType objtype,
-              GFile           **out_temp_path,
-              GCancellable *cancellable,
-              GError     **error)
+find_object_in_remote_packs (OtPullData       *pull_data,
+                             const char       *checksum,
+                             OstreeObjectType  objtype,
+                             char            **out_pack_checksum,
+                             guint64          *out_offset,
+                             GCancellable     *cancellable,
+                             GError          **error)
+{
+  gboolean ret = FALSE;
+  GVariant *mapped_pack = NULL;
+  GVariant *csum_bytes = NULL;
+  char *ret_pack_checksum = NULL;
+  guint64 offset;
+  guint i;
+
+  csum_bytes = ostree_checksum_to_bytes (checksum);
+
+  for (i = 0; i < pull_data->cached_pack_indexes->len; i++)
+    {
+      const char *pack_checksum = pull_data->cached_pack_indexes->pdata[i];
+
+      ot_clear_gvariant (&mapped_pack);
+      if (!ostree_repo_map_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
+                                                     pack_checksum, &mapped_pack,
+                                                     cancellable, error))
+        goto out;
+
+      if (ostree_pack_index_search (mapped_pack, csum_bytes, objtype, &offset))
+        {
+          ret_pack_checksum = g_strdup (pack_checksum);
+          break;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_pack_checksum, &ret_pack_checksum);
+  if (out_offset)
+    *out_offset = offset;
+ out:
+  ot_clear_gvariant (&mapped_pack);
+  g_free (ret_pack_checksum);
+  ot_clear_gvariant (&csum_bytes);
+  return ret;
+}
+
+static gboolean
+fetch_one_cache_index (OtPullData          *pull_data,
+                      const char           *pack_checksum,
+                      GCancellable         *cancellable,
+                      GError              **error)
+{
+  gboolean ret = FALSE;
+  SoupURI *index_uri = NULL;
+  GFile *tmp_path = NULL;
+  char *pack_index_name = NULL;
+
+  pack_index_name = g_strconcat ("ostpack-", pack_checksum, ".index", NULL);
+  index_uri = suburi_new (pull_data->base_uri, "objects", "pack", pack_index_name, NULL);
+  
+  if (!fetch_uri (pull_data, index_uri, "packindex-", &tmp_path,
+                  cancellable, error))
+    goto out;
+  
+  if (!ostree_repo_add_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
+                                                 pack_checksum, tmp_path,
+                                                 cancellable, error))
+    goto out;
+  
+  if (!ot_gfile_unlink (tmp_path, cancellable, error))
+    goto out;
+      
+  g_clear_object (&tmp_path);
+
+  ret = TRUE;
+ out:
+  if (tmp_path != NULL)
+    (void) ot_gfile_unlink (tmp_path, NULL, NULL);
+  g_clear_object (&tmp_path);
+  g_free (pack_index_name);
+  if (index_uri)
+    soup_uri_free (index_uri);
+  return ret;
+}
+
+static gboolean
+fetch_and_cache_pack_indexes (OtPullData        *pull_data,
+                              GCancellable      *cancellable,
+                              GError           **error)
+{
+  gboolean ret = FALSE;
+  SoupURI *superindex_uri = NULL;
+  GFile *superindex_tmppath = NULL;
+  GPtrArray *cached_indexes = NULL;
+  GPtrArray *uncached_indexes = NULL;
+  GVariant *superindex_variant = NULL;
+  GVariantIter *contents_iter = NULL;
+  guint i;
+
+  superindex_uri = suburi_new (pull_data->base_uri, "objects", "pack", "index", NULL);
+  
+  if (!fetch_uri (pull_data, superindex_uri, "index-",
+                  &superindex_tmppath, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_resync_cached_remote_pack_indexes (pull_data->repo, pull_data->remote_name,
+                                                      superindex_tmppath,
+                                                      &cached_indexes, &uncached_indexes,
+                                                      cancellable, error))
+    goto out;
+
+  for (i = 0; i < cached_indexes->len; i++)
+    g_ptr_array_add (pull_data->cached_pack_indexes,
+                     g_strdup (cached_indexes->pdata[i]));
+
+  for (i = 0; i < uncached_indexes->len; i++)
+    {
+      const char *pack_checksum = uncached_indexes->pdata[i];
+
+      if (!fetch_one_cache_index (pull_data, pack_checksum, cancellable, error))
+        goto out;
+      
+      g_ptr_array_add (pull_data->cached_pack_indexes, g_strdup (pack_checksum));
+    }
+
+  ret = TRUE;
+ out:
+  if (superindex_uri)
+    soup_uri_free (superindex_uri);
+  g_clear_object (&superindex_tmppath);
+  ot_clear_gvariant (&superindex_variant);
+  if (contents_iter)
+    g_variant_iter_free (contents_iter);
+  return ret;
+}
+
+static gboolean
+fetch_loose_object (OtPullData  *pull_data,
+                    const char  *checksum,
+                    OstreeObjectType objtype,
+                    GFile           **out_temp_path,
+                    GCancellable *cancellable,
+                    GError     **error)
 {
   gboolean ret = FALSE;
   char *objpath = NULL;
-  char *relpath = NULL;
   SoupURI *obj_uri = NULL;
   GFile *ret_temp_path = NULL;
 
   objpath = ostree_get_relative_object_path (checksum, objtype);
-  obj_uri = soup_uri_copy (baseuri);
-  relpath = g_build_filename (soup_uri_get_path (obj_uri), objpath, NULL);
-  soup_uri_set_path (obj_uri, relpath);
+  obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
   
-  if (!fetch_uri (repo, soup, obj_uri, ostree_object_type_to_string (objtype), &ret_temp_path,
+  if (!fetch_uri (pull_data, obj_uri, ostree_object_type_to_string (objtype), &ret_temp_path,
                   cancellable, error))
     goto out;
 
@@ -206,93 +433,321 @@ fetch_object (OstreeRepo  *repo,
     soup_uri_free (obj_uri);
   g_clear_object (&ret_temp_path);
   g_free (objpath);
-  g_free (relpath);
   return ret;
 }
 
 static gboolean
-fetch_and_store_object (OstreeRepo  *repo,
-                        SoupSession *soup,
-                        SoupURI     *baseuri,
-                        const char  *checksum,
+find_object (OtPullData        *pull_data,
+             const char        *checksum,
+             OstreeObjectType   objtype,
+             gboolean          *out_is_stored,
+             gboolean          *out_is_pending,
+             char             **out_remote_pack_checksum,
+             guint64           *out_offset,
+             GCancellable      *cancellable,
+             GError           **error)
+{
+  gboolean ret = FALSE;
+  gboolean ret_is_stored;
+  gboolean ret_is_pending;
+  GFile *stored_path = NULL;
+  GFile *pending_path = NULL;
+  char *local_pack_checksum = NULL;
+  char *ret_remote_pack_checksum = NULL;
+  guint64 offset;
+
+  if (!ostree_repo_find_object (pull_data->repo, objtype, checksum,
+                                &stored_path, &pending_path,
+                                &local_pack_checksum, NULL,
+                                cancellable, error))
+    goto out;
+
+  ret_is_stored = (stored_path != NULL || local_pack_checksum != NULL);
+  ret_is_pending = pending_path != NULL;
+
+  if (!(ret_is_stored || ret_is_pending))
+    {
+      if (!find_object_in_remote_packs (pull_data, checksum, objtype, 
+                                        &ret_remote_pack_checksum, &offset,
+                                        cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  if (out_is_stored)
+    *out_is_stored = ret_is_stored;
+  if (out_is_pending)
+    *out_is_pending = ret_is_pending;
+  ot_transfer_out_value (out_remote_pack_checksum, &ret_remote_pack_checksum);
+  if (out_offset)
+    *out_offset = offset;
+ out:
+  g_free (local_pack_checksum);
+  g_free (ret_remote_pack_checksum);
+  g_clear_object (&stored_path);
+  return ret;
+}
+
+static void
+unlink_file_on_unref (GFile *f)
+{
+  (void) ot_gfile_unlink (f, NULL, NULL);
+  g_object_unref (f);
+}
+
+static gboolean
+fetch_object_if_not_stored (OtPullData           *pull_data,
+                            const char           *checksum,
+                            OstreeObjectType      objtype,
+                            gboolean             *out_is_stored,
+                            gboolean             *out_is_pending,
+                            GInputStream        **out_input,
+                            GCancellable         *cancellable,
+                            GError              **error)
+{
+  gboolean ret = FALSE;
+  gboolean ret_is_stored = FALSE;
+  gboolean ret_is_pending = FALSE;
+  GInputStream *ret_input = NULL;
+  GFile *temp_path = NULL;
+  GFile *pack_path = NULL;
+  GMappedFile *pack_map = NULL;
+  char *remote_pack_checksum = NULL;
+  guint64 pack_offset = 0;
+  GVariant *pack_entry = NULL;
+
+  if (!find_object (pull_data, checksum, objtype, &ret_is_stored,
+                    &ret_is_pending, &remote_pack_checksum,
+                    &pack_offset, cancellable, error))
+    goto out;
+      
+  if (remote_pack_checksum != NULL)
+    {
+      g_assert (!(ret_is_stored || ret_is_pending));
+
+      if (!fetch_one_pack_file (pull_data, remote_pack_checksum, &pack_path,
+                                cancellable, error))
+        goto out;
+
+      pack_map = g_mapped_file_new (ot_gfile_get_path_cached (pack_path), FALSE, error);
+      if (!pack_map)
+        goto out;
+
+      if (!ostree_read_pack_entry_raw ((guchar*)g_mapped_file_get_contents (pack_map),
+                                       g_mapped_file_get_length (pack_map),
+                                       pack_offset, FALSE, &pack_entry,
+                                       cancellable, error))
+        goto out;
+
+      ret_input = ostree_read_pack_entry_as_stream (pack_entry);
+      g_object_set_data_full ((GObject*)ret_input, "ostree-pull-pack-map",
+                              pack_map, (GDestroyNotify) g_mapped_file_unref);
+      pack_map = NULL; /* Transfer ownership */
+    }
+  else if (!(ret_is_stored || ret_is_pending))
+    {
+      if (!fetch_loose_object (pull_data, checksum, objtype, &temp_path, cancellable, error))
+        goto out;
+      
+      ret_input = (GInputStream*)g_file_read (temp_path, cancellable, error);
+      if (!ret_input)
+        goto out;
+      g_object_set_data_full ((GObject*)ret_input, "ostree-tmpfile-unlink",
+                              g_object_ref (temp_path),
+                              (GDestroyNotify)unlink_file_on_unref);
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_input, &ret_input);
+  if (out_is_stored)
+    *out_is_stored = ret_is_stored;
+  if (out_is_pending)
+    *out_is_pending = ret_is_pending;
+ out:
+  g_clear_object (&temp_path);
+  g_clear_object (&pack_path);
+  if (pack_map)
+    g_mapped_file_unref (pack_map);
+  ot_clear_gvariant (&pack_entry);
+  g_clear_object (&pack_path);
+  g_clear_object (&ret_input);
+  return ret;
+}
+
+static gboolean
+fetch_and_store_object (OtPullData       *pull_data,
+                        const char       *checksum,
                         OstreeObjectType objtype,
-                        gboolean         *out_is_pending,
-                        GVariant        **out_metadata,
-                        GCancellable *cancellable,
-                        GError     **error)
+                        gboolean         *out_was_stored,
+                        GCancellable     *cancellable,
+                        GError          **error)
 {
   gboolean ret = FALSE;
   GFileInfo *file_info = NULL;
   GInputStream *input = NULL;
   GFile *stored_path = NULL;
   GFile *pending_path = NULL;
-  GFile *temp_path = NULL;
-  GVariant *ret_metadata = NULL;
-  gboolean ret_is_pending;
+  char *pack_checksum = NULL;
+  gboolean is_stored;
+  gboolean is_pending;
 
   g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
 
-  if (!ostree_repo_find_object (repo, objtype, checksum,
-                                &stored_path, &pending_path, NULL, error))
+  if (!fetch_object_if_not_stored (pull_data, checksum, objtype,
+                                   &is_stored, &is_pending, &input,
+                                   cancellable, error))
     goto out;
-      
-  if (!(stored_path || pending_path))
-    {
-      if (!fetch_object (repo, soup, baseuri, checksum, objtype, &temp_path, cancellable, error))
-        goto out;
-    }
 
-  if (temp_path)
+  if (is_pending || input)
     {
-      file_info = g_file_query_info (temp_path, OSTREE_GIO_FAST_QUERYINFO,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
-      if (!file_info)
-        goto out;
-      
-      input = (GInputStream*)g_file_read (temp_path, cancellable, error);
-      if (!input)
-        goto out;
-    }
-  
-  if (pending_path || temp_path)
-    {
-      if (!ostree_repo_stage_object (repo, objtype, checksum, file_info, NULL, input, cancellable, error))
+      if (!ostree_repo_stage_object (pull_data->repo, objtype, checksum, NULL, NULL,
+                                     input, cancellable, error))
         goto out;
 
       log_verbose ("Staged object: %s.%s", checksum, ostree_object_type_to_string (objtype));
-
-      ret_is_pending = TRUE;
-      if (out_metadata)
-        {
-          if (!ostree_map_metadata_file (pending_path ? pending_path : temp_path, objtype, &ret_metadata, error))
-            goto out;
-        }
-    }
-  else
-    {
-      ret_is_pending = FALSE;
     }
 
   ret = TRUE;
-  if (out_is_pending)
-    *out_is_pending = ret_is_pending;
-  ot_transfer_out_value (out_metadata, &ret_metadata);
+  if (out_was_stored)
+    *out_was_stored = is_stored;
  out:
-  if (temp_path)
-    (void) unlink (ot_gfile_get_path_cached (temp_path));
-  ot_clear_gvariant (&ret_metadata);
-  g_clear_object (&temp_path);
   g_clear_object (&file_info);
   g_clear_object (&input);
   g_clear_object (&stored_path);
   g_clear_object (&pending_path);
+  g_free (pack_checksum);
   return ret;
 }
 
 static gboolean
-fetch_and_store_tree_recurse (OstreeRepo   *repo,
-                              SoupSession  *soup,
-                              SoupURI      *base_uri,
+fetch_and_store_metadata (OtPullData          *pull_data,
+                          const char          *checksum,
+                          OstreeObjectType     objtype,
+                          gboolean            *out_was_stored,
+                          GVariant           **out_variant,
+                          GCancellable        *cancellable,
+                          GError             **error)
+{
+  gboolean ret = FALSE;
+  gboolean ret_was_stored;
+  GVariant *ret_variant = NULL;
+
+  if (!fetch_and_store_object (pull_data, checksum, objtype,
+                               &ret_was_stored, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_load_variant (pull_data->repo, objtype, checksum,
+                                 &ret_variant, error))
+    goto out;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_variant, &ret_variant);
+  if (out_was_stored)
+    *out_was_stored = ret_was_stored;
+ out:
+  ot_clear_gvariant (&ret_variant);
+  return ret;
+}
+
+static gboolean
+fetch_and_store_file (OtPullData          *pull_data,
+                      const char          *checksum,
+                      GCancellable        *cancellable,
+                      GError             **error)
+{
+  gboolean ret = FALSE;
+  GInputStream *input = NULL;
+  GFile *stored_path = NULL;
+  GFile *pending_path = NULL;
+  char *pack_checksum = NULL;
+  GVariant *archive_metadata_container = NULL;
+  GVariant *archive_metadata = NULL;
+  GFileInfo *archive_file_info = NULL;
+  GVariant *archive_xattrs = NULL;
+  gboolean skip_archive_fetch;
+
+  /* If we're fetching from an archive into a bare repository, we need
+   * to explicitly check for raw file types locally.
+   */
+  if (ostree_repo_get_mode (pull_data->repo) == OSTREE_REPO_MODE_BARE)
+    {
+      if (!ostree_repo_find_object (pull_data->repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                    checksum, &stored_path, &pending_path, &pack_checksum,
+                                    NULL, cancellable, error))
+        goto out;
+      
+      if (stored_path || pack_checksum)
+        skip_archive_fetch = TRUE;
+      else if (pending_path != NULL)
+        {
+          skip_archive_fetch = TRUE;
+          if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                         checksum, NULL, NULL, NULL, cancellable, error))
+            goto out;
+        }
+      else
+        skip_archive_fetch = FALSE;
+      
+      g_clear_object (&stored_path);
+    }
+  else
+    {
+      skip_archive_fetch = FALSE;
+    }
+
+  if (!skip_archive_fetch)
+    {
+      if (!fetch_object_if_not_stored (pull_data, checksum,
+                                       OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                       NULL, NULL, &input, cancellable, error))
+        goto out;
+
+      if (input != NULL)
+        {
+          if (!ot_util_variant_from_stream (input, OSTREE_SERIALIZED_VARIANT_FORMAT,
+                                            FALSE, &archive_metadata_container, cancellable, error))
+            goto out;
+
+          if (!ostree_unwrap_metadata (archive_metadata_container, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                                       &archive_metadata, error))
+            goto out;
+  
+          if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info,
+                                                &archive_xattrs, error))
+            goto out;
+
+          g_clear_object (&input);
+          if (g_file_info_get_file_type (archive_file_info) == G_FILE_TYPE_REGULAR)
+            {
+              if (!fetch_object_if_not_stored (pull_data, checksum,
+                                               OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
+                                               NULL, NULL, &input,
+                                               cancellable, error))
+                goto out;
+            }
+
+          if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
+                                         archive_file_info, archive_xattrs, input,
+                                         cancellable, error))
+            goto out;
+        }
+    }              
+
+  ret = TRUE;
+ out:
+  g_free (pack_checksum);
+  g_clear_object (&stored_path);
+  g_clear_object (&pending_path);
+  g_clear_object (&input);
+  ot_clear_gvariant (&archive_metadata_container);
+  ot_clear_gvariant (&archive_metadata);
+  ot_clear_gvariant (&archive_xattrs);
+  g_clear_object (&archive_file_info);
+  return ret;
+}
+
+static gboolean
+fetch_and_store_tree_recurse (OtPullData   *pull_data,
                               const char   *rev,
                               GCancellable *cancellable,
                               GError      **error)
@@ -301,22 +756,17 @@ fetch_and_store_tree_recurse (OstreeRepo   *repo,
   GVariant *tree = NULL;
   GVariant *files_variant = NULL;
   GVariant *dirs_variant = NULL;
-  gboolean is_pending;
+  gboolean was_stored;
   int i, n;
-  GVariant *archive_metadata = NULL;
-  GFileInfo *archive_file_info = NULL;
-  GVariant *archive_xattrs = NULL;
-  GFile *meta_temp_path = NULL;
-  GFile *content_temp_path = NULL;
   GFile *stored_path = NULL;
   GFile *pending_path = NULL;
-  GInputStream *input = NULL;
+  char *pack_checksum = NULL;
 
-  if (!fetch_and_store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_DIR_TREE,
-                               &is_pending, &tree, cancellable, error))
+  if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                 &was_stored, &tree, cancellable, error))
     goto out;
 
-  if (!is_pending)
+  if (was_stored)
     log_verbose ("Already have tree %s", rev);
   else
     {
@@ -337,81 +787,8 @@ fetch_and_store_tree_recurse (OstreeRepo   *repo,
           if (!ostree_validate_checksum_string (checksum, error))
             goto out;
 
-          g_clear_object (&stored_path);
-          g_clear_object (&pending_path);
-          /* If we're fetching from an archive into a bare repository, we need
-           * to explicitly check for raw file types locally.
-           */
-          if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
-            {
-              if (!ostree_repo_find_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
-                                            &stored_path, &pending_path, cancellable, error))
-                goto out;
-            }
-          else
-            {
-              if (!ostree_repo_find_object (repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT, checksum,
-                                            &stored_path, &pending_path, cancellable, error))
-                goto out;
-            }
-
-          g_clear_object (&input);
-          g_clear_object (&archive_file_info);
-          ot_clear_gvariant (&archive_xattrs);
-          if (!(stored_path || pending_path))
-            {
-              g_clear_object (&meta_temp_path);
-              if (!fetch_object (repo, soup, base_uri, checksum,
-                                 OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                                 &meta_temp_path,
-                                 cancellable,
-                                 error))
-                goto out;
-
-              if (!ostree_map_metadata_file (meta_temp_path,
-                                             OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                                             &archive_metadata, error))
-                goto out;
-
-              if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info, &archive_xattrs, error))
-                goto out;
-
-              if (g_file_info_get_file_type (archive_file_info) == G_FILE_TYPE_REGULAR)
-                {
-                  if (!fetch_object (repo, soup, base_uri, checksum,
-                                     OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
-                                     &content_temp_path,
-                                     cancellable,
-                                     error))
-                    goto out;
-                  
-                  input = (GInputStream*)g_file_read (content_temp_path, cancellable, error);
-                  if (!input)
-                    goto out;
-                }
-            }
-
-          if (!stored_path)
-            {
-              log_verbose ("Staged file object: %s", checksum);
-
-              if (!ostree_repo_stage_object (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
-                                             checksum,
-                                             archive_file_info, archive_xattrs, input,
-                                             cancellable, error))
-                goto out;
-            }
-              
-          if (meta_temp_path)
-            {
-              (void) unlink (ot_gfile_get_path_cached (meta_temp_path));
-              g_clear_object (&meta_temp_path);
-            }
-          if (content_temp_path)
-            {
-              (void) unlink (ot_gfile_get_path_cached (content_temp_path));
-              g_clear_object (&content_temp_path);
-            }
+          if (!fetch_and_store_file (pull_data, checksum, cancellable, error))
+            goto out;
         }
       
       n = g_variant_n_children (dirs_variant);
@@ -431,11 +808,11 @@ fetch_and_store_tree_recurse (OstreeRepo   *repo,
           if (!ostree_validate_checksum_string (meta_checksum, error))
             goto out;
 
-          if (!fetch_and_store_object (repo, soup, base_uri, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
-                                       NULL, NULL, cancellable, error))
+          if (!fetch_and_store_object (pull_data, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
+                                       NULL, cancellable, error))
             goto out;
 
-          if (!fetch_and_store_tree_recurse (repo, soup, base_uri, tree_checksum, cancellable, error))
+          if (!fetch_and_store_tree_recurse (pull_data, tree_checksum, cancellable, error))
             goto out;
         }
     }
@@ -445,29 +822,14 @@ fetch_and_store_tree_recurse (OstreeRepo   *repo,
   ot_clear_gvariant (&tree);
   ot_clear_gvariant (&files_variant);
   ot_clear_gvariant (&dirs_variant);
-  ot_clear_gvariant (&archive_metadata);
-  ot_clear_gvariant (&archive_xattrs);
-  g_clear_object (&archive_file_info);
-  g_clear_object (&input);
   g_clear_object (&stored_path);
   g_clear_object (&pending_path);
-  if (content_temp_path)
-    {
-      (void) unlink (ot_gfile_get_path_cached (content_temp_path));
-      g_clear_object (&content_temp_path);
-    }
-  if (meta_temp_path)
-    {
-      (void) unlink (ot_gfile_get_path_cached (meta_temp_path));
-      g_clear_object (&meta_temp_path);
-    }
+  g_free (pack_checksum);
   return ret;
 }
 
 static gboolean
-fetch_and_store_commit_recurse (OstreeRepo   *repo,
-                                SoupSession  *soup,
-                                SoupURI      *base_uri,
+fetch_and_store_commit_recurse (OtPullData   *pull_data,
                                 const char   *rev,
                                 GCancellable *cancellable,
                                 GError      **error)
@@ -476,13 +838,13 @@ fetch_and_store_commit_recurse (OstreeRepo   *repo,
   GVariant *commit = NULL;
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
-  gboolean is_pending;
+  gboolean was_stored;
 
-  if (!fetch_and_store_object (repo, soup, base_uri, rev, OSTREE_OBJECT_TYPE_COMMIT,
-                               &is_pending, &commit, cancellable, error))
+  if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_COMMIT,
+                                 &was_stored, &commit, cancellable, error))
     goto out;
 
-  if (!is_pending)
+  if (was_stored)
     log_verbose ("Already have commit %s", rev);
   else
     {
@@ -490,11 +852,11 @@ fetch_and_store_commit_recurse (OstreeRepo   *repo,
       g_variant_get_child (commit, 6, "&s", &tree_contents_checksum);
       g_variant_get_child (commit, 7, "&s", &tree_meta_checksum);
       
-      if (!fetch_and_store_object (repo, soup, base_uri, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
-                                   NULL, NULL, cancellable, error))
+      if (!fetch_and_store_object (pull_data, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
+                                   NULL, cancellable, error))
         goto out;
       
-      if (!fetch_and_store_tree_recurse (repo, soup, base_uri, tree_contents_checksum,
+      if (!fetch_and_store_tree_recurse (pull_data, tree_contents_checksum,
                                          cancellable, error))
         goto out;
     }
@@ -506,9 +868,7 @@ fetch_and_store_commit_recurse (OstreeRepo   *repo,
 }
 
 static gboolean
-fetch_ref_contents (OstreeRepo    *repo,
-                    SoupSession   *soup,
-                    SoupURI       *base_uri,
+fetch_ref_contents (OtPullData    *pull_data,
                     const char    *ref,
                     char         **out_contents,
                     GCancellable  *cancellable,
@@ -516,14 +876,11 @@ fetch_ref_contents (OstreeRepo    *repo,
 {
   gboolean ret = FALSE;
   char *ret_contents = NULL;
-  char *refpath = NULL;
   SoupURI *target_uri = NULL;
 
-  target_uri = soup_uri_copy (base_uri);
-  refpath = g_build_filename (soup_uri_get_path (target_uri), "refs", "heads", ref, NULL);
-  soup_uri_set_path (target_uri, refpath);
+  target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
   
-  if (!fetch_uri_contents_utf8 (repo, soup, target_uri, &ret_contents, cancellable, error))
+  if (!fetch_uri_contents_utf8 (pull_data, target_uri, &ret_contents, cancellable, error))
     goto out;
 
   g_strchomp (ret_contents);
@@ -534,7 +891,6 @@ fetch_ref_contents (OstreeRepo    *repo,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  g_free (refpath);
   g_free (ret_contents);
   if (target_uri)
     soup_uri_free (target_uri);
@@ -542,12 +898,9 @@ fetch_ref_contents (OstreeRepo    *repo,
 }
 
 static gboolean
-pull_one_commit (OstreeRepo       *repo,
-                 const char       *remote,
+pull_one_commit (OtPullData       *pull_data,
                  const char       *branch,
                  const char       *rev,
-                 SoupSession      *soup,
-                 SoupURI          *base_uri,
                  GCancellable     *cancellable,
                  GError          **error)
 {
@@ -557,9 +910,9 @@ pull_one_commit (OstreeRepo       *repo,
   char *baseurl = NULL;
   char *original_rev = NULL;
 
-  remote_ref = g_strdup_printf ("%s/%s", remote, branch);
+  remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, branch);
 
-  if (!ostree_repo_resolve_rev (repo, remote_ref, TRUE, &original_rev, error))
+  if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
     goto out;
 
   if (original_rev && strcmp (rev, original_rev) == 0)
@@ -571,16 +924,27 @@ pull_one_commit (OstreeRepo       *repo,
       if (!ostree_validate_checksum_string (rev, error))
         goto out;
 
-      if (!ostree_repo_prepare_transaction (repo, NULL, error))
+      if (!pull_data->fetched_packs)
+        {
+          pull_data->fetched_packs = TRUE;
+          pull_data->cached_pack_indexes = g_ptr_array_new_with_free_func (g_free);
+
+          g_print ("Fetching packs\n");
+
+          if (!fetch_and_cache_pack_indexes (pull_data, cancellable, error))
+            goto out;
+        }
+
+      if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
         goto out;
       
-      if (!fetch_and_store_commit_recurse (repo, soup, base_uri, rev, cancellable, error))
+      if (!fetch_and_store_commit_recurse (pull_data, rev, cancellable, error))
         goto out;
 
-      if (!ostree_repo_commit_transaction (repo, cancellable, error))
+      if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
         goto out;
       
-      if (!ostree_repo_write_ref (repo, remote, branch, rev, error))
+      if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, branch, rev, error))
         goto out;
       
       g_print ("remote %s is now %s\n", remote_ref, rev);
@@ -656,9 +1020,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
+  OtPullData pull_data_real;
+  OtPullData *pull_data = &pull_data_real;
   OstreeRepo *repo = NULL;
-  const char *remote;
-  SoupSession *soup = NULL;
   char *path = NULL;
   char *baseurl = NULL;
   char *summary_data = NULL;
@@ -682,27 +1046,29 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
+  memset (pull_data, 0, sizeof (*pull_data));
+  pull_data->repo = repo;
+
   if (argc < 2)
     {
       ot_util_usage_error (context, "REMOTE must be specified", error);
       goto out;
     }
 
-  remote = argv[1];
-
-  soup = soup_session_sync_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
-                                             SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_COOKIE_JAR,
-                                             NULL);
+  pull_data->remote_name = g_strdup (argv[1]);
+  pull_data->session = soup_session_sync_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
+                                                           SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_COOKIE_JAR,
+                                                           NULL);
 
   config = ostree_repo_get_config (repo);
 
-  key = g_strdup_printf ("remote \"%s\"", remote);
+  key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
   baseurl = g_key_file_get_string (config, key, "url", error);
   if (!baseurl)
     goto out;
-  base_uri = soup_uri_new (baseurl);
+  pull_data->base_uri = soup_uri_new (baseurl);
 
-  if (!base_uri)
+  if (!pull_data->base_uri)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Failed to parse url '%s'", baseurl);
@@ -717,7 +1083,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
           const char *branch = argv[i];
           char *contents;
           
-          if (!fetch_ref_contents (repo, soup, base_uri, branch, &contents, cancellable, error))
+          if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
             goto out;
       
           /* Transfer ownership of contents */
@@ -730,7 +1096,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       path = g_build_filename (soup_uri_get_path (summary_uri), "refs", "summary", NULL);
       soup_uri_set_path (summary_uri, path);
 
-      if (!fetch_uri_contents_utf8 (repo, soup, summary_uri, &summary_data, cancellable, error))
+      if (!fetch_uri_contents_utf8 (pull_data, summary_uri, &summary_data, cancellable, error))
         goto out;
 
       if (!parse_ref_summary (summary_data, &refs_to_fetch, error))
@@ -744,7 +1110,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       const char *ref = key;
       const char *sha256 = value;
       
-      if (!pull_one_commit (repo, remote, ref, sha256, soup, base_uri, cancellable, error))
+      if (!pull_one_commit (pull_data, ref, sha256, cancellable, error))
         goto out;
     }
 
@@ -758,13 +1124,14 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   g_free (branch_rev);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&soup);
-  if (base_uri)
-    soup_uri_free (base_uri);
+  g_clear_object (&pull_data->session);
+  if (pull_data->base_uri)
+    soup_uri_free (pull_data->base_uri);
+  if (pull_data->cached_pack_indexes)
+    g_ptr_array_unref (pull_data->cached_pack_indexes);
   if (summary_uri)
     soup_uri_free (summary_uri);
   g_clear_object (&repo);
-  g_clear_object (&soup);
   return ret;
 }
 

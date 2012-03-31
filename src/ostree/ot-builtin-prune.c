@@ -187,24 +187,27 @@ compute_reachable_objects_from_commit (OstreeRepo      *repo,
   return ret;
 }
 
-static void
-object_iter_callback (OstreeRepo    *repo,
-                      const char    *checksum,
-                      OstreeObjectType objtype,
-                      GFile         *objf,
-                      GFileInfo     *file_info,
-                      gpointer       user_data)
+static gboolean
+prune_loose_object (OtPruneData    *data,
+                    const char    *checksum,
+                    OstreeObjectType objtype,
+                    GCancellable    *cancellable,
+                    GError         **error)
 {
-  OtPruneData *data = user_data;
+  gboolean ret = FALSE;
   char *key;
+  GFile *objf = NULL;
 
   key = ostree_object_to_string (checksum, objtype);
+
+  objf = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
       if (delete)
         {
-          (void) unlink (ot_gfile_get_path_cached (objf));
+          if (!g_file_delete (objf, cancellable, error))
+            goto out;
           g_print ("Deleted: %s\n", key);
         }
       else
@@ -216,16 +219,21 @@ object_iter_callback (OstreeRepo    *repo,
   else
     data->n_reachable++;
 
+  ret = TRUE;
+ out:
+  g_clear_object (&objf);
   g_free (key);
+  return ret;
 }
 
 
 gboolean
 ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 {
+  gboolean ret = FALSE;
   GOptionContext *context;
   OtPruneData data;
-  gboolean ret = FALSE;
+  GHashTable *objects = NULL;
   OstreeRepo *repo = NULL;
   GHashTable *all_refs = NULL;
   GHashTableIter hash_iter;
@@ -266,10 +274,36 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
         goto out;
     }
 
-  g_hash_table_iter_init (&hash_iter, data.reachable);
-
-  if (!ostree_repo_iter_objects (repo, object_iter_callback, &data, error))
+  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects, cancellable, error))
     goto out;
+
+  g_hash_table_iter_init (&hash_iter, objects);
+
+
+  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
+                                 &objects, cancellable, error))
+    goto out;
+  
+  g_hash_table_iter_init (&hash_iter, objects);
+
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      GVariant *objdata = value;
+      const char *checksum;
+      OstreeObjectType objtype;
+      gboolean is_loose;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_variant_get_child (objdata, 0, "b", &is_loose);
+
+      if (is_loose)
+        {
+          if (!prune_loose_object (&data, checksum, objtype, cancellable, error))
+            goto out;
+        }
+    }
 
   if (data.had_error)
     goto out;
@@ -286,5 +320,7 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
+  if (objects)
+    g_hash_table_unref (objects);
   return ret;
 }

@@ -97,22 +97,28 @@ copy_dir_contents_recurse (GFile  *src,
   return ret;
 }
 
-static void
-object_iter_callback (OstreeRepo   *repo,
-                      const char   *checksum,
-                      OstreeObjectType objtype,
-                      GFile        *objfile,
-                      GFileInfo    *file_info,
-                      gpointer      user_data)
+static gboolean
+import_loose_object (OtLocalCloneData *data,
+                     const char   *checksum,
+                     OstreeObjectType objtype,
+                     GCancellable  *cancellable,
+                     GError        **error)
 {
-  OtLocalCloneData *data = user_data;
-  GError *real_error = NULL;
-  GError **error = &real_error;
+  gboolean ret = FALSE;
+  GFile *objfile = NULL;
+  GFileInfo *file_info = NULL;
   GFile *content_path = NULL;
   GFileInfo *archive_info = NULL;
   GVariant *archive_metadata = NULL;
   GVariant *xattrs = NULL;
   GInputStream *input = NULL;
+
+  objfile = ostree_repo_get_object_path (data->src_repo, checksum, objtype);
+  file_info = g_file_query_info (objfile, OSTREE_GIO_FAST_QUERYINFO,
+                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
+
+  if (file_info == NULL)
+    goto out;
 
   if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
     xattrs = ostree_get_xattrs_for_file (objfile, error);
@@ -121,13 +127,13 @@ object_iter_callback (OstreeRepo   *repo,
     ;
   else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
     {
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
+      if (!ostree_repo_load_variant (data->src_repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
         goto out;
 
       if (!ostree_parse_archived_file_meta (archive_metadata, &archive_info, &xattrs, error))
         goto out;
 
-      content_path = ostree_repo_get_object_path (repo, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+      content_path = ostree_repo_get_object_path (data->src_repo, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
 
       if (g_file_info_get_file_type (archive_info) == G_FILE_TYPE_REGULAR)
         {
@@ -136,8 +142,8 @@ object_iter_callback (OstreeRepo   *repo,
             goto out;
         }
       
-      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE, checksum,
-                                             archive_info, xattrs, input,
+      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+                                             checksum, FALSE, archive_info, xattrs, input,
                                              NULL, error))
         goto out;
     }
@@ -151,23 +157,21 @@ object_iter_callback (OstreeRepo   *repo,
         }
 
       if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype, checksum,
-                                             file_info, xattrs, input,
+                                             FALSE, file_info, xattrs, input,
                                              NULL, error))
         goto out;
     }
 
+  ret = TRUE;
  out:
   ot_clear_gvariant (&archive_metadata);
   ot_clear_gvariant (&xattrs);
   g_clear_object (&archive_info);
   g_clear_object (&input);
   g_clear_object (&content_path);
-  if (real_error != NULL)
-    {
-      g_printerr ("%s\n", real_error->message);
-      g_clear_error (error);
-      exit (1);
-    }
+  g_clear_object (&file_info);
+  g_clear_object (&objfile);
+  return ret;
 }
 
 static gboolean
@@ -209,6 +213,7 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
 {
   gboolean ret = FALSE;
   GCancellable *cancellable = NULL;
+  GHashTable *objects = NULL;
   GOptionContext *context;
   const char *destination;
   GFile *dest_f = NULL;
@@ -220,6 +225,8 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
   GFile *src_dir = NULL;
   GFile *dest_dir = NULL;
   int i;
+  GHashTableIter hash_iter;
+  gpointer key, value;
 
   context = g_option_context_new ("DEST ... - Create new repository DEST");
   g_option_context_add_main_entries (context, options, NULL);
@@ -266,11 +273,33 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
 
   data.uids_differ = g_file_info_get_attribute_uint32 (src_info, "unix::uid") != g_file_info_get_attribute_uint32 (dest_info, "unix::uid");
 
-  if (!ostree_repo_prepare_transaction (data.dest_repo, NULL, error))
+  if (!ostree_repo_list_objects (data.src_repo, OSTREE_REPO_LIST_OBJECTS_ALL,
+                                 &objects, cancellable, error))
     goto out;
 
-  if (!ostree_repo_iter_objects (data.src_repo, object_iter_callback, &data, error))
+  if (!ostree_repo_prepare_transaction (data.dest_repo, NULL, error))
     goto out;
+  
+  g_hash_table_iter_init (&hash_iter, objects);
+
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      GVariant *objdata = value;
+      const char *checksum;
+      OstreeObjectType objtype;
+      gboolean is_loose;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_variant_get_child (objdata, 0, "b", &is_loose);
+
+      if (is_loose)
+        {
+          if (!import_loose_object (&data, checksum, objtype, cancellable, error))
+            goto out;
+        }
+    }
 
   if (!ostree_repo_commit_transaction (data.dest_repo, NULL, error))
     goto out;
@@ -311,5 +340,7 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
   g_clear_object (&dest_dir);
   g_clear_object (&data.src_repo);
   g_clear_object (&data.dest_repo);
+  if (objects)
+    g_hash_table_unref (objects);
   return ret;
 }
