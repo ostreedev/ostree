@@ -45,6 +45,9 @@ G_BEGIN_DECLS
   *a_v = NULL;                      \
   } while (0);
 
+GVariant *ot_gvariant_new_bytearray (const guchar   *data,
+                                     gsize           len);
+
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
 GVariant * ot_util_variant_take_ref (GVariant *variant);

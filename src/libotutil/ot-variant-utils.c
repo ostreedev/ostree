@@ -28,6 +28,19 @@
 
 #include "otutil.h"
 
+GVariant *
+ot_gvariant_new_bytearray (const guchar   *data,
+                           gsize           len)
+{
+  gpointer data_copy;
+  GVariant *ret;
+
+  data_copy = g_memdup (data, len);
+  ret = g_variant_new_from_data (G_VARIANT_TYPE ("ay"), data_copy,
+                                 len, FALSE, g_free, data_copy);
+  return ret;
+}
+
 GHashTable *
 ot_util_variant_asv_to_hash_table (GVariant *variant)
 {

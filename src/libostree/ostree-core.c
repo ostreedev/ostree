@@ -680,8 +680,7 @@ ostree_checksum_to_bytes (const char *sha256)
       result[i] = (big << 4) | little;
     }
   
-  return g_variant_new_fixed_array (G_VARIANT_TYPE ("y"),
-                                    (guchar*)result, 32, 1);
+  return ot_gvariant_new_bytearray ((guchar*)result, 32);
 }
 
 char *

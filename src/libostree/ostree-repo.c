@@ -1780,7 +1780,7 @@ create_index_bloom (OstreeRepo          *self,
 
   /* TODO - define and compute bloom filter */
 
-  ret_bloom = g_variant_new_fixed_array (G_VARIANT_TYPE ("y"), NULL, 0, 1);
+  ret_bloom = ot_gvariant_new_bytearray (NULL, 0);
   g_variant_ref_sink (ret_bloom);
 
   ret = TRUE;

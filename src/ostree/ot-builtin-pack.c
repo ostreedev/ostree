@@ -415,9 +415,7 @@ create_pack_file (OtRepackData        *data,
         packed_object = g_variant_new ("(uy@ay@ay)", GUINT32_TO_BE ((guint32)objtype),
                                        entry_flags,
                                        ostree_checksum_to_bytes (checksum),
-                                       g_variant_new_fixed_array (G_VARIANT_TYPE ("y"),
-                                                                  data, data_len,
-                                                                  1));
+                                       ot_gvariant_new_bytearray (data, data_len));
         g_clear_object (&object_data_stream);
       }
 
