@@ -39,141 +39,8 @@ static GOptionEntry options[] = {
 
 typedef struct {
   OstreeRepo *repo;
-  guint n_loose_objects;
   guint n_pack_files;
 } OtFsckData;
-
-static gboolean
-checksum_archived_file (OtFsckData   *data,
-                        const char   *exp_checksum,
-                        GFile        *file,
-                        GChecksum   **out_checksum,
-                        GError      **error)
-{
-  gboolean ret = FALSE;
-  GChecksum *ret_checksum = NULL;
-  GVariant *archive_metadata = NULL;
-  GVariant *xattrs = NULL;
-  GFile *content_path = NULL;
-  GInputStream *content_input = NULL;
-  GFileInfo *file_info = NULL;
-  char buf[8192];
-  gsize bytes_read;
-  guint32 mode;
-
-  if (!ostree_map_metadata_file (file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, &archive_metadata, error))
-    goto out;
-
-  if (!ostree_parse_archived_file_meta (archive_metadata, &file_info, &xattrs, error))
-    goto out;
-
-  content_path = ostree_repo_get_object_path (data->repo, exp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    {
-      content_input = (GInputStream*)g_file_read (content_path, NULL, error);
-      if (!content_input)
-        goto out;
-    }
-
-  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  if (S_ISREG (mode))
-    {
-      g_assert (content_input != NULL);
-      do
-        {
-          if (!g_input_stream_read_all (content_input, buf, sizeof(buf), &bytes_read, NULL, error))
-            goto out;
-          g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
-        }
-      while (bytes_read > 0);
-    }
-  else if (S_ISLNK (mode))
-    {
-      const char *target = g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target");
-      g_checksum_update (ret_checksum, (guint8*) target, strlen (target));
-    }
-  else if (S_ISBLK (mode) || S_ISCHR (mode))
-    {
-      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
-      guint32 rdev_be;
-      
-      rdev_be = GUINT32_TO_BE (rdev);
-
-      g_checksum_update (ret_checksum, (guint8*)&rdev_be, 4);
-    }
-
-  ostree_checksum_update_stat (ret_checksum,
-                               g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                               g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                               mode);
-  if (xattrs)
-    g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-
-  ret = TRUE;
-  ot_transfer_out_value (out_checksum, &ret_checksum);
- out:
-  ot_clear_checksum (&ret_checksum);
-  g_clear_object (&file_info);
-  ot_clear_gvariant (&xattrs);
-  ot_clear_gvariant (&archive_metadata);
-  g_clear_object (&content_path);
-  g_clear_object (&content_input);
-  return ret;
-}
-
-static gboolean
-fsck_loose_object (OtFsckData    *data,
-                   const char    *exp_checksum,
-                   OstreeObjectType objtype,
-                   GCancellable   *cancellable,
-                   GError        **error)
-{
-  gboolean ret = FALSE;
-  GFile *objf = NULL;
-  GChecksum *real_checksum = NULL;
-
-  objf = ostree_repo_get_object_path (data->repo, exp_checksum, objtype);
-
-  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
-    {
-      if (!g_str_has_suffix (ot_gfile_get_path_cached (objf), ".archive-meta"))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid archive filename '%s'",
-                       ot_gfile_get_path_cached (objf));
-          goto out;
-        }
-      if (!checksum_archived_file (data, exp_checksum, objf, &real_checksum, error))
-        goto out;
-    }
-  else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-    ; /* Handled above */
-  else
-    {
-      if (!ostree_checksum_file (objf, objtype, &real_checksum, NULL, error))
-        goto out;
-    }
-
-  if (real_checksum && strcmp (exp_checksum, g_checksum_get_string (real_checksum)) != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "corrupted loose object '%s'; actual checksum: %s",
-                   ot_gfile_get_path_cached (objf), g_checksum_get_string (real_checksum));
-      if (delete)
-        (void) unlink (ot_gfile_get_path_cached (objf));
-      goto out;
-    }
-
-  data->n_loose_objects++;
-
-  ret = TRUE;
- out:
-  ot_clear_checksum (&real_checksum);
-  return ret;
-}
 
 static gboolean
 fsck_pack_files (OtFsckData  *data,
@@ -274,6 +141,118 @@ fsck_pack_files (OtFsckData  *data,
   return ret;
 }
 
+static gboolean
+fsck_reachable_objects_from_commits (OtFsckData            *data,
+                                     GHashTable            *commits,
+                                     GCancellable          *cancellable,
+                                     GError               **error)
+{
+  gboolean ret = FALSE;
+  GHashTable *reachable_objects = NULL;
+  GHashTableIter hash_iter;
+  gpointer key, value;
+  GInputStream *input = NULL;
+  GFileInfo *file_info = NULL;
+  GVariant *xattrs = NULL;
+  GVariant *metadata = NULL;
+  GVariant *metadata_wrapped = NULL;
+  GChecksum *computed_checksum = NULL;
+
+  reachable_objects = ostree_traverse_new_reachable ();
+
+  g_hash_table_iter_init (&hash_iter, commits);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      const char *checksum;
+      OstreeObjectType objtype;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
+
+      if (!ostree_traverse_commit (data->repo, checksum, 0, reachable_objects,
+                                   cancellable, error))
+        goto out;
+    }
+
+  g_hash_table_iter_init (&hash_iter, reachable_objects);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      const char *checksum;
+      OstreeObjectType objtype;
+      OstreeObjectType checksum_objtype;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_clear_object (&input);
+      g_clear_object (&file_info);
+      ot_clear_gvariant (&xattrs);
+
+      checksum_objtype = objtype;
+      
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT
+          || objtype == OSTREE_OBJECT_TYPE_DIR_TREE 
+          || objtype == OSTREE_OBJECT_TYPE_DIR_META)
+        {
+          ot_clear_gvariant (&metadata);
+          if (!ostree_repo_load_variant (data->repo, objtype,
+                                         checksum, &metadata, error))
+            goto out;
+          
+          ot_clear_gvariant (&metadata_wrapped);
+          metadata_wrapped = ostree_wrap_metadata_variant (objtype, metadata);
+          
+          input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata_wrapped),
+                                                       g_variant_get_size (metadata_wrapped),
+                                                       NULL);
+        }
+      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
+        {
+          /* Handled via ARCHIVED_FILE_META */
+          continue;
+        }
+      else if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE
+               || objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
+        {
+          if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info,
+                                      &xattrs, cancellable, error))
+            goto out;
+          checksum_objtype = OSTREE_OBJECT_TYPE_RAW_FILE; /* Override */ 
+        }
+      else
+        {
+          g_assert_not_reached ();
+        }
+
+      ot_clear_checksum (&computed_checksum);
+      if (!ostree_checksum_file_from_input (file_info, xattrs, input,
+                                            checksum_objtype, &computed_checksum,
+                                            cancellable, error))
+        goto out;
+
+      if (strcmp (checksum, g_checksum_get_string (computed_checksum)) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "corrupted object %s.%s; actual checksum: %s",
+                       checksum, ostree_object_type_to_string (objtype),
+                       g_checksum_get_string (computed_checksum));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  ot_clear_checksum (&computed_checksum);
+  g_clear_object (&input);
+  g_clear_object (&file_info);
+  ot_clear_gvariant (&xattrs);
+  ot_clear_gvariant (&metadata);
+  ot_clear_gvariant (&metadata_wrapped);
+  ot_clear_hashtable (&reachable_objects);
+  return ret;
+}
 
 gboolean
 ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
@@ -283,6 +262,7 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   OstreeRepo *repo = NULL;
   GHashTable *objects = NULL;
+  GHashTable *commits = NULL;
   GCancellable *cancellable = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -300,44 +280,48 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   memset (&data, 0, sizeof (data));
   data.repo = repo;
 
+  g_print ("Enumerating objects...\n");
+
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
                                  &objects, cancellable, error))
     goto out;
+
+  commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                   (GDestroyNotify)g_variant_unref, NULL);
   
   g_hash_table_iter_init (&hash_iter, objects);
 
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       GVariant *serialized_key = key;
-      GVariant *objdata = value;
       const char *checksum;
       OstreeObjectType objtype;
-      gboolean is_loose;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      g_variant_get_child (objdata, 0, "b", &is_loose);
-
-      if (is_loose)
-        {
-          if (!fsck_loose_object (&data, checksum, objtype, cancellable, error))
-            goto out;
-        }
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
     }
+
+  ot_clear_hashtable (&objects);
+
+  g_print ("Verifying content integrity of %u commit objects...\n",
+           (guint)g_hash_table_size (commits));
+
+  if (!fsck_reachable_objects_from_commits (&data, commits, cancellable, error))
+    goto out;
+
+  g_print ("Verifying structure of pack files...\n");
 
   if (!fsck_pack_files (&data, cancellable, error))
     goto out;
-
-  if (!quiet)
-    g_print ("Loose Objects: %u\n", data.n_loose_objects);
-    g_print ("Pack files: %u\n", data.n_pack_files);
 
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
   g_clear_object (&repo);
-  if (objects)
-    g_hash_table_unref (objects);
+  ot_clear_hashtable (&objects);
+  ot_clear_hashtable (&commits);
   return ret;
 }
