@@ -1289,6 +1289,7 @@ ostree_read_pack_entry_raw (guchar        *pack_data,
   ret_entry = g_variant_new_from_data (OSTREE_PACK_FILE_CONTENT_VARIANT_FORMAT,
                                        pack_data+entry_start, entry_len,
                                        trusted, NULL, NULL);
+  g_variant_ref_sink (ret_entry);
   ret = TRUE;
   ot_transfer_out_value (out_entry, &ret_entry);
  out:
@@ -1324,6 +1325,7 @@ ostree_read_pack_entry_as_stream (GVariant *pack_entry)
                                                "base-stream", memory_input,
                                                "close-base-stream", TRUE,
                                                NULL);
+      g_object_unref (memory_input);
       g_object_unref (decompressor);
     }
   else
@@ -1354,8 +1356,6 @@ ostree_read_pack_entry_variant (GVariant            *pack_entry,
   if (!ot_util_variant_from_stream (stream, OSTREE_SERIALIZED_VARIANT_FORMAT,
                                     trusted, &container_variant, cancellable, error))
     goto out;
-
-  g_variant_ref_sink (container_variant);
 
   g_variant_get (container_variant, "(uv)",
                  &actual_type, &ret_variant);

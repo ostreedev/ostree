@@ -3298,6 +3298,7 @@ ostree_repo_load_file (OstreeRepo         *self,
  out:
   g_free (content_pack_checksum);
   g_clear_object (&ret_input);
+  g_clear_object (&content_loose_path);
   g_clear_object (&content_loose_info);
   g_clear_object (&ret_file_info);
   ot_clear_gvariant (&ret_xattrs);
@@ -3371,9 +3372,8 @@ list_objects_in_index (OstreeRepo                     *self,
       g_variant_builder_add (&pack_contents_builder, "s", pack_checksum);
       objdata = g_variant_new ("(b@as)", is_loose,
                                g_variant_builder_end (&pack_contents_builder));
-      g_hash_table_replace (inout_objects,
-                            obj_key,
-                            g_variant_ref (objdata));
+      g_variant_ref_sink (objdata);
+      g_hash_table_replace (inout_objects, obj_key, objdata);
     }
 
   ret = TRUE;
