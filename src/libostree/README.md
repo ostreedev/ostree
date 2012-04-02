@@ -44,6 +44,8 @@ MILESTONE 2
 -----------
 * Store checksums as ay
 * Drop version/metadata from tree/dirmeta objects
+* Add index size to superindex, pack size to index
+  - So pull can calculate how much we need to download
 * Split pack files into metadata/data
 * Restructure repository so that links can be generated as a cache;
   i.e. objects/raw, pack files are now the canonical

@@ -72,8 +72,6 @@ struct _OstreeRepoPrivate {
 
   GHashTable *pack_index_mappings;
   GHashTable *pack_data_mappings;
-
-  GHashTable *pending_transaction;
 };
 
 static void
@@ -93,7 +91,6 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&priv->config_file);
   g_hash_table_destroy (priv->pack_index_mappings);
   g_hash_table_destroy (priv->pack_data_mappings);
-  g_hash_table_destroy (priv->pending_transaction);
   if (priv->config)
     g_key_file_free (priv->config);
 
@@ -202,9 +199,6 @@ ostree_repo_init (OstreeRepo *self)
   priv->pack_data_mappings = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                     g_free,
                                                     (GDestroyNotify)g_mapped_file_unref);
-  priv->pending_transaction = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                     g_free,
-                                                     NULL);
 }
 
 OstreeRepo*
@@ -768,22 +762,6 @@ ostree_repo_get_file_object_path (OstreeRepo   *self,
   return ostree_repo_get_object_path (self, checksum, get_objtype_for_repo_file (self));
 }
 
-static GFile *
-get_pending_object_path (OstreeRepo       *self,
-                         const char       *checksum,
-                         OstreeObjectType  objtype)
-{
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *relpath;
-  GFile *ret;
-
-  relpath = ostree_get_relative_object_path (checksum, objtype);
-  ret = g_file_resolve_relative_path (priv->pending_dir, relpath);
-  g_free (relpath);
- 
-  return ret;
-}
-
 static GFileInfo *
 dup_file_info_owned_by_me (GFileInfo  *file_info)
 {
@@ -807,52 +785,40 @@ stage_object_impl (OstreeRepo         *self,
                    GCancellable       *cancellable,
                    GError            **error);
 
-static void
-insert_into_transaction (OstreeRepo        *self,
-                         const char        *checksum,
-                         OstreeObjectType   objtype)
-{
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  char *key;
-
-  key = ostree_object_to_string (checksum, objtype);
-  /* Takes ownership */
-  g_hash_table_replace (priv->pending_transaction, key, NULL);
-}
-
 static gboolean
-stage_tmpfile_trusted (OstreeRepo        *self,
-                       const char        *checksum,
-                       OstreeObjectType   objtype,
-                       GFile             *tempfile_path,
-                       GError           **error)
+commit_tmpfile_trusted (OstreeRepo        *self,
+                        const char        *checksum,
+                        OstreeObjectType   objtype,
+                        GFile             *tempfile_path,
+                        GCancellable      *cancellable,
+                        GError           **error)
 {
   gboolean ret = FALSE;
-  GFile *pending_path = NULL;
+  GFile *dest_file = NULL;
   GFile *checksum_dir = NULL;
 
-  pending_path = get_pending_object_path (self, checksum, objtype);
-  checksum_dir = g_file_get_parent (pending_path);
+  dest_file = ostree_repo_get_object_path (self, checksum, objtype);
+  checksum_dir = g_file_get_parent (dest_file);
 
-  if (!ot_gfile_ensure_directory (checksum_dir, TRUE, error))
+  if (!ot_gfile_ensure_directory (checksum_dir, FALSE, error))
     goto out;
-
-  if (link (ot_gfile_get_path_cached (tempfile_path), ot_gfile_get_path_cached (pending_path)) < 0)
+  
+  if (link (ot_gfile_get_path_cached (tempfile_path), ot_gfile_get_path_cached (dest_file)) < 0)
     {
       if (errno != EEXIST)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "Storing file '%s': ",
+                          ot_gfile_get_path_cached (dest_file));
           goto out;
         }
     }
 
-  insert_into_transaction (self, checksum, objtype);
-  
   (void) unlink (ot_gfile_get_path_cached (tempfile_path));
-                 
+
   ret = TRUE;
  out:
-  g_clear_object (&pending_path);
+  g_clear_object (&dest_file);
   g_clear_object (&checksum_dir);
   return ret;
 }
@@ -933,12 +899,12 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
   else
     actual_checksum = g_checksum_get_string (ret_checksum);
 
-  if (!stage_tmpfile_trusted (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
-                              content_temp_file, error))
+  if (!commit_tmpfile_trusted (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
+                               content_temp_file, cancellable, error))
     goto out;
 
-  if (!stage_tmpfile_trusted (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                              meta_temp_file, error))
+  if (!commit_tmpfile_trusted (self, actual_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
+                               meta_temp_file, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -972,7 +938,6 @@ stage_object_impl (OstreeRepo         *self,
   GFileInfo *temp_info = NULL;
   GFile *temp_file = NULL;
   GFile *stored_path = NULL;
-  GFile *pending_path = NULL;
   char *pack_checksum = NULL;
   guint64 pack_offset;
   const char *actual_checksum;
@@ -989,16 +954,14 @@ stage_object_impl (OstreeRepo         *self,
       if (!store_if_packed)
         {
           if (!ostree_repo_find_object (self, objtype, expected_checksum,
-                                        &stored_path, &pending_path,
-                                        &pack_checksum, &pack_offset,
+                                        &stored_path, &pack_checksum, &pack_offset,
                                         cancellable, error))
             goto out;
         }
       else
         {
           if (!ostree_repo_find_object (self, objtype, expected_checksum,
-                                        &stored_path, &pending_path,
-                                        NULL, NULL,
+                                        &stored_path, NULL, NULL,
                                         cancellable, error))
             goto out;
         }
@@ -1007,7 +970,7 @@ stage_object_impl (OstreeRepo         *self,
   g_assert (objtype != OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
   g_assert (objtype != OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
 
-  if (stored_path == NULL && pending_path == NULL && pack_checksum == NULL)
+  if (stored_path == NULL && pack_checksum == NULL)
     {
       if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
         {
@@ -1055,16 +1018,11 @@ stage_object_impl (OstreeRepo         *self,
                 }
             }
           
-          if (!stage_tmpfile_trusted (self, actual_checksum, objtype, 
-                                      temp_file, error))
+          if (!commit_tmpfile_trusted (self, actual_checksum, objtype, 
+                                       temp_file, cancellable, error))
             goto out;
           g_clear_object (&temp_file);
         }
-    }
-  else if (pending_path)
-    {
-      g_assert (expected_checksum);
-      insert_into_transaction (self, expected_checksum, objtype);
     }
   else
     {
@@ -1080,47 +1038,8 @@ stage_object_impl (OstreeRepo         *self,
   g_clear_object (&temp_file);
   g_clear_object (&temp_info);
   g_clear_object (&stored_path);
-  g_clear_object (&pending_path);
   g_free (pack_checksum);
   ot_clear_checksum (&ret_checksum);
-  return ret;
-}
-
-static gboolean
-commit_staged_file (OstreeRepo         *self,
-                    GFile              *file,
-                    const char         *checksum,
-                    OstreeObjectType    objtype,
-                    GCancellable       *cancellable,
-                    GError            **error)
-{
-  gboolean ret = FALSE;
-  GFile *dest_file = NULL;
-  GFile *checksum_dir = NULL;
-
-  dest_file = ostree_repo_get_object_path (self, checksum, objtype);
-  checksum_dir = g_file_get_parent (dest_file);
-
-  if (!ot_gfile_ensure_directory (checksum_dir, FALSE, error))
-    goto out;
-  
-  if (link (ot_gfile_get_path_cached (file), ot_gfile_get_path_cached (dest_file)) < 0)
-    {
-      if (errno != EEXIST)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "Storing file '%s': ",
-                          ot_gfile_get_path_cached (file));
-          goto out;
-        }
-    }
-
-  (void) unlink (ot_gfile_get_path_cached (file));
-
-  ret = TRUE;
- out:
-  g_clear_object (&dest_file);
-  g_clear_object (&checksum_dir);
   return ret;
 }
 
@@ -1148,34 +1067,13 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GFile *f = NULL;
-  GHashTableIter iter;
-  gpointer key, value;
-  char *checksum = NULL;
-  OstreeObjectType objtype;
 
   g_return_val_if_fail (priv->in_transaction == TRUE, FALSE);
 
-  g_hash_table_iter_init (&iter, priv->pending_transaction);
-  while (g_hash_table_iter_next (&iter, &key, &value))
-    {
-      g_free (checksum);
-      ostree_object_from_string ((char*)key, &checksum, &objtype);
-
-      g_clear_object (&f);
-      f = get_pending_object_path (self, checksum, objtype);
-      
-      if (!commit_staged_file (self, f, checksum, objtype, cancellable, error))
-        goto out;
-    }
-
   ret = TRUE;
- out:
+  /* out: */
   priv->in_transaction = FALSE;
 
-  g_free (checksum);
-  g_hash_table_remove_all (priv->pending_transaction);
-  g_clear_object (&f);
   return ret;
 }
 
@@ -1187,8 +1085,6 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
-  /* For now, let's not delete pending files */
-  g_hash_table_remove_all (priv->pending_transaction);
   priv->in_transaction = FALSE;
 
   ret = TRUE;
@@ -3219,7 +3115,7 @@ ostree_repo_load_file (OstreeRepo         *self,
 
       /* Blah, right now we need to look up the content too to get the file size */
       if (!ostree_repo_find_object (self, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT,
-                                    checksum, &content_loose_path, NULL,
+                                    checksum, &content_loose_path,
                                     &content_pack_checksum, &content_pack_offset,
                                     cancellable, error))
         goto out;
@@ -3475,7 +3371,6 @@ ostree_repo_find_object (OstreeRepo           *self,
                          OstreeObjectType      objtype,
                          const char           *checksum,
                          GFile               **out_stored_path,
-                         GFile               **out_pending_path,
                          char                **out_pack_checksum,
                          guint64              *out_pack_offset,
                          GCancellable         *cancellable,
@@ -3484,7 +3379,6 @@ ostree_repo_find_object (OstreeRepo           *self,
   gboolean ret = FALSE;
   GFile *object_path = NULL;
   GFile *ret_stored_path = NULL;
-  GFile *ret_pending_path = NULL;
   char *ret_pack_checksum = NULL;
   guint64 ret_pack_offset = 0;
   struct stat stbuf;
@@ -3499,15 +3393,6 @@ ostree_repo_find_object (OstreeRepo           *self,
   else
     {
       g_clear_object (&object_path);
-      if (out_pending_path)
-        {
-          object_path = get_pending_object_path (self, checksum, objtype);
-          if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
-            {
-              ret_pending_path = object_path;
-              object_path = NULL;
-            }
-        }
     }
 
   if (out_pack_checksum)
@@ -3520,14 +3405,12 @@ ostree_repo_find_object (OstreeRepo           *self,
   
   ret = TRUE;
   ot_transfer_out_value (out_stored_path, &ret_stored_path);
-  ot_transfer_out_value (out_pending_path, &ret_pending_path);
   ot_transfer_out_value (out_pack_checksum, &ret_pack_checksum);
   if (out_pack_offset)
     *out_pack_offset = ret_pack_offset;
 out:
   g_clear_object (&object_path);
   g_clear_object (&ret_stored_path);
-  g_clear_object (&ret_pending_path);
   g_free (ret_pack_checksum);
   return ret;
 }
@@ -3541,7 +3424,6 @@ ostree_repo_load_variant (OstreeRepo  *self,
 {
   gboolean ret = FALSE;
   GFile *object_path = NULL;
-  GFile *pending_path = NULL;
   GVariant *packed_object = NULL;
   GVariant *ret_variant = NULL;
   char *pack_checksum = NULL;
@@ -3552,16 +3434,15 @@ ostree_repo_load_variant (OstreeRepo  *self,
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
-  if (!ostree_repo_find_object (self, objtype, sha256, &object_path, &pending_path,
+  if (!ostree_repo_find_object (self, objtype, sha256, &object_path,
                                 &pack_checksum, &object_offset,
                                 cancellable, error))
     goto out;
 
   /* Prefer loose metadata for now */
-  if (object_path != NULL || pending_path != NULL)
+  if (object_path != NULL)
     {
-      if (!ostree_map_metadata_file (object_path ? object_path : pending_path,
-                                     objtype, &ret_variant, error))
+      if (!ostree_map_metadata_file (object_path, objtype, &ret_variant, error))
         goto out;
     }
   else if (pack_checksum != NULL)
