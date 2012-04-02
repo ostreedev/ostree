@@ -30,7 +30,7 @@
 
 static gboolean verbose;
 static gboolean delete;
-static int depth = 0;
+static int depth = -1;
 
 static GOptionEntry options[] = {
   { "verbose", 0, 0, G_OPTION_ARG_NONE, &verbose, "Display progress", NULL },
@@ -63,129 +63,10 @@ log_verbose (const char  *fmt,
 typedef struct {
   OstreeRepo *repo;
   GHashTable *reachable;
-  gboolean had_error;
-  GError **error;
   guint n_reachable;
   guint n_unreachable;
 } OtPruneData;
 
-static gboolean
-compute_reachable_objects_from_dir_contents (OstreeRepo      *repo,
-                                             const char      *sha256,
-                                             GHashTable      *inout_reachable,
-                                             GCancellable    *cancellable,
-                                             GError         **error)
-{
-  gboolean ret = FALSE;
-  GVariant *tree = NULL;
-  GVariant *files_variant = NULL;
-  GVariant *dirs_variant = NULL;
-  int n, i;
-  char *key;
-
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, sha256, &tree, error))
-    goto out;
-
-  key = ostree_object_to_string (sha256, OSTREE_OBJECT_TYPE_DIR_TREE);
-  g_hash_table_replace (inout_reachable, key, key);
-
-  /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
-  files_variant = g_variant_get_child_value (tree, 2);
-  n = g_variant_n_children (files_variant);
-  for (i = 0; i < n; i++)
-    {
-      const char *filename;
-      const char *checksum;
-      
-      g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
-      if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
-        {
-          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
-          g_hash_table_replace (inout_reachable, key, key);
-        }
-      else
-        {
-          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
-          g_hash_table_replace (inout_reachable, key, key);
-          key = ostree_object_to_string (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-          g_hash_table_replace (inout_reachable, key, key);
-        }
-    }
-
-  dirs_variant = g_variant_get_child_value (tree, 3);
-  n = g_variant_n_children (dirs_variant);
-  for (i = 0; i < n; i++)
-    {
-      const char *dirname;
-      const char *tree_checksum;
-      const char *meta_checksum;
-      
-      g_variant_get_child (dirs_variant, i, "(&s&s&s)",
-                           &dirname, &tree_checksum, &meta_checksum);
-      
-      if (!compute_reachable_objects_from_dir_contents (repo, tree_checksum, inout_reachable,
-                                                        cancellable, error))
-        goto out;
-
-      key = ostree_object_to_string (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
-      g_hash_table_replace (inout_reachable, key, key);
-    }
-
-  ret = TRUE;
- out:
-  ot_clear_gvariant (&tree);
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
-  return ret;
-}
-
-static gboolean
-compute_reachable_objects_from_commit (OstreeRepo      *repo,
-                                       const char      *sha256,
-                                       int              traverse_depth,
-                                       GHashTable      *inout_reachable,
-                                       GCancellable    *cancellable,
-                                       GError         **error)
-{
-  gboolean ret = FALSE;
-  GVariant *commit = NULL;
-  const char *parent_checksum;
-  const char *contents_checksum;
-  const char *meta_checksum;
-  char *key;
-
-  if (depth == 0 || traverse_depth < depth)
-    {
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, sha256, &commit, error))
-        goto out;
-
-      key = ostree_object_to_string (sha256, OSTREE_OBJECT_TYPE_COMMIT);
-      g_hash_table_replace (inout_reachable, key, key);
-
-      /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-      g_variant_get_child (commit, 2, "&s", &parent_checksum);
-
-      if (strlen (parent_checksum) > 0)
-        {
-          if (!compute_reachable_objects_from_commit (repo, parent_checksum, traverse_depth + 1, inout_reachable, cancellable, error))
-            goto out;
-        }
-
-      g_variant_get_child (commit, 6, "&s", &contents_checksum);
-
-      if (!compute_reachable_objects_from_dir_contents (repo, contents_checksum, inout_reachable, cancellable, error))
-        goto out;
-
-      g_variant_get_child (commit, 7, "&s", &meta_checksum);
-      key = ostree_object_to_string (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
-      g_hash_table_replace (inout_reachable, key, key);
-    }
-
-  ret = TRUE;
- out:
-  ot_clear_gvariant (&commit);
-  return ret;
-}
 
 static gboolean
 prune_loose_object (OtPruneData    *data,
@@ -195,10 +76,10 @@ prune_loose_object (OtPruneData    *data,
                     GError         **error)
 {
   gboolean ret = FALSE;
-  char *key;
+  GVariant *key = NULL;
   GFile *objf = NULL;
 
-  key = ostree_object_to_string (checksum, objtype);
+  key = ostree_object_name_serialize (checksum, objtype);
 
   objf = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
@@ -206,13 +87,13 @@ prune_loose_object (OtPruneData    *data,
     {
       if (delete)
         {
-          if (!g_file_delete (objf, cancellable, error))
+          if (!ot_gfile_unlink (objf, cancellable, error))
             goto out;
-          g_print ("Deleted: %s\n", key);
+          g_print ("Deleted: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
         }
       else
         {
-          g_print ("Unreachable: %s\n", key);
+          g_print ("Unreachable: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
         }
       data->n_unreachable++;
     }
@@ -222,10 +103,9 @@ prune_loose_object (OtPruneData    *data,
   ret = TRUE;
  out:
   g_clear_object (&objf);
-  g_free (key);
+  ot_clear_gvariant (&key);
   return ret;
 }
-
 
 gboolean
 ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
@@ -253,9 +133,7 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
     goto out;
 
   data.repo = repo;
-  data.reachable = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  data.had_error = FALSE;
-  data.error = error;
+  data.reachable = ostree_traverse_new_reachable ();
   data.n_reachable = 0;
   data.n_unreachable = 0;
 
@@ -267,23 +145,16 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *name = key;
-      const char *sha256 = value;
+      const char *checksum = value;
 
-      log_verbose ("Computing reachable, currently %u total, from %s: %s", g_hash_table_size (data.reachable), name, sha256);
-      if (!compute_reachable_objects_from_commit (repo, sha256, 0, data.reachable, cancellable, error))
+      log_verbose ("Computing reachable, currently %u total, from %s: %s", g_hash_table_size (data.reachable), name, checksum);
+      if (!ostree_traverse_commit (repo, checksum, depth, data.reachable, cancellable, error))
         goto out;
     }
 
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects, cancellable, error))
     goto out;
 
-  g_hash_table_iter_init (&hash_iter, objects);
-
-
-  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
-                                 &objects, cancellable, error))
-    goto out;
-  
   g_hash_table_iter_init (&hash_iter, objects);
 
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -304,9 +175,6 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
             goto out;
         }
     }
-
-  if (data.had_error)
-    goto out;
 
   g_print ("Total reachable: %u\n", data.n_reachable);
   g_print ("Total unreachable: %u\n", data.n_unreachable);
