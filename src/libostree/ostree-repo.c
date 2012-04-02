@@ -3274,6 +3274,15 @@ ostree_repo_load_file (OstreeRepo         *self,
                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
       if (!ret_file_info)
         goto out;
+
+      /* Now, look for the content */
+      if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
+          && out_input)
+        {
+          ret_input = (GInputStream*)g_file_read (content_loose_path, cancellable, error);
+          if (!ret_input)
+            goto out;
+        }
       if (out_xattrs)
         {
           ret_xattrs = ostree_get_xattrs_for_file (content_loose_path, error);
