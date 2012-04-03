@@ -874,9 +874,13 @@ pull_one_commit (OtPullData       *pull_data,
 
       if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
         goto out;
+
+      g_print ("Downloading metadata...\n");
       
       if (!fetch_and_store_commit_recurse (pull_data, rev, cancellable, error))
         goto out;
+
+      g_print ("Downloading data...\n");
 
       if (!fetch_files (pull_data, cancellable, error))
         goto out;
