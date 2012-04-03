@@ -35,30 +35,7 @@ gboolean
 ostree_validate_checksum_string (const char *sha256,
                                  GError    **error)
 {
-  int i = 0;
-  size_t len = strlen (sha256);
-
-  if (len != 64)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid rev '%s'", sha256);
-      return FALSE;
-    }
-
-  for (i = 0; i < len; i++)
-    {
-      guint8 c = ((guint8*) sha256)[i];
-
-      if (!((c >= 48 && c <= 57)
-            || (c >= 97 && c <= 102)))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid character '%d' in rev '%s'",
-                       c, sha256);
-          return FALSE;
-        }
-    }
-  return TRUE;
+  return ostree_validate_structureof_checksum_string (sha256, error);
 }
 
 gboolean
@@ -1477,6 +1454,36 @@ ostree_validate_structureof_checksum (GVariant  *checksum,
   return TRUE;
 }
 
+gboolean
+ostree_validate_structureof_checksum_string (const char *checksum,
+                                             GError   **error)
+{
+  int i = 0;
+  size_t len = strlen (checksum);
+
+  if (len != 64)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid rev '%s'", checksum);
+      return FALSE;
+    }
+
+  for (i = 0; i < len; i++)
+    {
+      guint8 c = ((guint8*) checksum)[i];
+
+      if (!((c >= 48 && c <= 57)
+            || (c >= 97 && c <= 102)))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid character '%d' in rev '%s'",
+                       c, checksum);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
 static gboolean
 validate_variant (GVariant           *variant,
                   const GVariantType *variant_type,
@@ -1496,6 +1503,156 @@ validate_variant (GVariant           *variant,
       return FALSE;
     }
   return TRUE;
+}
+
+gboolean
+ostree_validate_structureof_commit (GVariant      *commit,
+                                    GError       **error)
+{
+  gboolean ret = FALSE;
+  const char *parent;
+  const char *contents;
+  const char *metadata;
+
+  if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
+    goto out;
+
+  g_variant_get_child (commit, 2, "&s", &parent);
+
+  if (*parent)
+    {
+      if (!ostree_validate_structureof_checksum_string (parent, error))
+        goto out;
+    }
+
+  g_variant_get_child (commit, 6, "&s", &contents);
+  if (!ostree_validate_structureof_checksum_string (contents, error))
+    goto out;
+
+  g_variant_get_child (commit, 7, "&s", &metadata);
+  if (!ostree_validate_structureof_checksum_string (metadata, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ostree_validate_structureof_dirtree (GVariant      *dirtree,
+                                     GError       **error)
+{
+  gboolean ret = FALSE;
+  GVariantIter *contents_iter = NULL;
+  const char *filename;
+  const char *meta_checksum;
+  const char *content_checksum;
+
+  if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
+    goto out;
+
+  g_variant_get_child (dirtree, 2, "a(ss)", &contents_iter);
+
+  while (g_variant_iter_loop (contents_iter, "(&s&s)",
+                              &filename, &content_checksum))
+    {
+      if (!ot_util_filename_validate (filename, error))
+        goto out;
+      if (!ostree_validate_structureof_checksum_string (content_checksum, error))
+        goto out;
+    }
+
+  g_variant_iter_free (contents_iter);
+  g_variant_get_child (dirtree, 3, "a(sss)", &contents_iter);
+
+  while (g_variant_iter_loop (contents_iter, "(&s&s&s)",
+                              &filename, &content_checksum, &meta_checksum))
+    {
+      if (!ot_util_filename_validate (filename, error))
+        goto out;
+      if (!ostree_validate_structureof_checksum_string (content_checksum, error))
+        goto out;
+      if (!ostree_validate_structureof_checksum_string (meta_checksum, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (contents_iter)
+    g_variant_iter_free (contents_iter);
+  return ret;
+}
+
+static gboolean
+validate_stat_mode_perms (guint32        mode,
+                          GError       **error)
+{
+  gboolean ret = FALSE;
+  guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO);
+
+  if (mode & otherbits)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid mode %u; invalid bits in mode", mode);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ostree_validate_structureof_file_mode (guint32            mode,
+                                       GError           **error)
+{
+  gboolean ret = FALSE;
+
+  if (!(S_ISREG (mode)
+        || S_ISLNK (mode)
+        || S_ISCHR (mode)
+        || S_ISBLK (mode)
+        || S_ISFIFO (mode)))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid file metadata mode %u; not a valid file type", mode);
+      goto out;
+    }
+
+  if (!validate_stat_mode_perms (mode, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
+                                     GError       **error)
+{
+  gboolean ret = FALSE;
+  guint32 mode;
+
+  if (!validate_variant (dirmeta, OSTREE_DIRMETA_GVARIANT_FORMAT, error))
+    goto out;
+
+  g_variant_get_child (dirmeta, 3, "u", &mode); 
+  mode = GUINT32_FROM_BE (mode);
+
+  if (!S_ISDIR (mode))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid directory metadata mode %u; not a directory", mode);
+      goto out;
+    }
+
+  if (!validate_stat_mode_perms (mode, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 gboolean

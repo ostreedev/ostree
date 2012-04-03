@@ -60,7 +60,7 @@ typedef enum {
  * u - mode
  * a(ayay) - xattrs
  */
-#define OSTREE_DIRMETA_GVARIANT_FORMAT "(uuuua(ayay))"
+#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuuua(ayay))")
 
 #define OSTREE_TREE_VERSION 0
 /*
@@ -70,7 +70,7 @@ typedef enum {
  * a(ss) - array of (filename, checksum) for files
  * a(sss) - array of (dirname, tree_checksum, meta_checksum) for directories
  */
-#define OSTREE_TREE_GVARIANT_FORMAT "(ua{sv}a(ss)a(sss)"
+#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE ("(ua{sv}a(ss)a(sss))")
 
 #define OSTREE_COMMIT_VERSION 0
 /*
@@ -84,7 +84,7 @@ typedef enum {
  * s - Root tree contents
  * s - Root tree metadata
  */
-#define OSTREE_COMMIT_GVARIANT_FORMAT "(ua{sv}ssstss)"
+#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(ua{sv}ssstss)")
 
 /* Archive file objects:
  * u - Version
@@ -299,6 +299,21 @@ gboolean ostree_validate_structureof_objtype (guint32    objtype,
 
 gboolean ostree_validate_structureof_checksum (GVariant  *checksum,
                                                GError   **error);
+
+gboolean ostree_validate_structureof_checksum_string (const char *checksum,
+                                                      GError   **error);
+
+gboolean ostree_validate_structureof_file_mode (guint32            mode,
+                                                GError           **error);
+
+gboolean ostree_validate_structureof_commit (GVariant      *index,
+                                             GError       **error);
+
+gboolean ostree_validate_structureof_dirtree (GVariant      *index,
+                                              GError       **error);
+
+gboolean ostree_validate_structureof_dirmeta (GVariant      *index,
+                                              GError       **error);
 
 gboolean ostree_validate_structureof_pack_index (GVariant      *index,
                                                  GError       **error);
