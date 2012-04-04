@@ -1839,6 +1839,7 @@ ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *self,
   GFile *cache_path = NULL;
   GFile *superindex_cache_path = NULL;
   GPtrArray *index_files = NULL;
+  GPtrArray *data_files = NULL;
   GHashTable *new_pack_indexes = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -1919,6 +1920,28 @@ ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *self,
   superindex_cache_path = g_file_get_child (cache_path, "index");
   if (!ot_util_variant_save (superindex_cache_path, superindex_variant, cancellable, error))
     goto out;
+
+  /* Now also delete stale pack files */
+
+  if (!list_files_in_dir_matching (cache_path,
+                                   "ostpack-", ".data",
+                                   &data_files, 
+                                   cancellable, error))
+    goto out;
+  
+  for (i = 0; i < data_files->len; i++)
+    {
+      GFile *data_file = data_files->pdata[i];
+
+      g_free (pack_checksum);
+      pack_checksum = get_checksum_from_pack_name (ot_gfile_get_basename_cached (data_file));
+
+      if (!g_hash_table_lookup (new_pack_indexes, pack_checksum))
+        {
+          if (!ot_gfile_unlink (data_file, cancellable, error))
+            goto out;
+        }
+    }
       
   ret = TRUE;
   ot_transfer_out_value (out_cached_indexes, &ret_cached_indexes);
@@ -1933,6 +1956,41 @@ ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *self,
   ot_clear_ptrarray (&ret_uncached_indexes);
   ot_clear_hashtable (&new_pack_indexes);
   ot_clear_ptrarray (&index_files);
+  return ret;
+}
+
+gboolean
+ostree_repo_clean_cached_remote_pack_data (OstreeRepo       *self,
+                                           const char       *remote_name,
+                                           GCancellable     *cancellable,
+                                           GError          **error)
+{
+  gboolean ret = FALSE;
+  GFile *cache_path = NULL;
+  GPtrArray *data_files = NULL;
+  guint i;
+
+  if (!ensure_remote_cache_dir (self, remote_name, &cache_path, cancellable, error))
+    goto out;
+
+  if (!list_files_in_dir_matching (cache_path,
+                                   "ostpack-", ".data",
+                                   &data_files, 
+                                   cancellable, error))
+    goto out;
+
+  for (i = 0; i < data_files->len; i++)
+    {
+      GFile *data_file = data_files->pdata[i];
+      
+      if (!ot_gfile_unlink (data_file, cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  g_clear_object (&cache_path);
+  ot_clear_ptrarray (&data_files);
   return ret;
 }
 

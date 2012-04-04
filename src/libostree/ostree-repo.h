@@ -248,6 +248,11 @@ gboolean     ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *se
                                                             GCancellable     *cancellable,
                                                             GError          **error);
 
+gboolean     ostree_repo_clean_cached_remote_pack_data (OstreeRepo       *self,
+                                                        const char       *remote_name,
+                                                        GCancellable     *cancellable,
+                                                        GError          **error);
+
 gboolean     ostree_repo_map_cached_remote_pack_index (OstreeRepo       *self,
                                                        const char       *remote_name,
                                                        const char       *pack_checksum,
