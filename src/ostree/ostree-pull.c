@@ -977,6 +977,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   GHashTableIter hash_iter;
   gpointer key, value;
   char *branch_rev = NULL;
+  char **configured_branches = NULL;
   int i;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
@@ -1036,15 +1037,58 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     }
   else
     {
-      summary_uri = soup_uri_copy (pull_data->base_uri);
-      path = g_build_filename (soup_uri_get_path (summary_uri), "refs", "summary", NULL);
-      soup_uri_set_path (summary_uri, path);
+      GError *temp_error = NULL;
+      gboolean fetch_all_refs;
 
-      if (!fetch_uri_contents_utf8 (pull_data, summary_uri, &summary_data, cancellable, error))
-        goto out;
+      refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+      
+      configured_branches = g_key_file_get_string_list (config, key, "branches", NULL, &temp_error);
+      if (configured_branches == NULL && temp_error != NULL)
+        {
+          if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+            {
+              g_clear_error (&temp_error);
+              fetch_all_refs = TRUE;
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+        }
+      else
+        fetch_all_refs = FALSE;
 
-      if (!parse_ref_summary (summary_data, &refs_to_fetch, error))
-        goto out;
+      if (fetch_all_refs)
+        {
+          summary_uri = soup_uri_copy (pull_data->base_uri);
+          path = g_build_filename (soup_uri_get_path (summary_uri), "refs", "summary", NULL);
+          soup_uri_set_path (summary_uri, path);
+          
+          if (!fetch_uri_contents_utf8 (pull_data, summary_uri, &summary_data, cancellable, error))
+            goto out;
+          
+          if (!parse_ref_summary (summary_data, &refs_to_fetch, error))
+            goto out;
+        }
+      else
+        {
+          char **branches_iter = configured_branches;
+
+          if (!*branches_iter)
+            g_print ("No configured branches for remote %s\n", pull_data->remote_name);
+          for (;*branches_iter; branches_iter++)
+            {
+              const char *branch = *branches_iter;
+              char *contents;
+              
+              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
+                goto out;
+              
+              /* Transfer ownership of contents */
+              g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+            }
+        }
     }
 
   g_hash_table_iter_init (&hash_iter, refs_to_fetch);
@@ -1058,10 +1102,19 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
         goto out;
     }
 
+  g_print ("Cleaning cached pack files...\n");
+
+  if (!ostree_repo_clean_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
+                                                  cancellable, error))
+    goto out;
+
+  g_print ("Done\n");
+
   ret = TRUE;
  out:
   if (refs_to_fetch)
     g_hash_table_unref (refs_to_fetch);
+  g_strfreev (configured_branches);
   g_free (path);
   g_free (baseurl);
   g_free (summary_data);

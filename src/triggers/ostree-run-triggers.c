@@ -25,15 +25,16 @@
 #include <gio/gio.h>
 #include <string.h>
 
-static gboolean quiet;
+static gboolean verbose;
 
 static GOptionEntry options[] = {
-  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &quiet, "Don't display informational messages", NULL },
+  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Display informational messages", NULL },
   { NULL }
 };
 
 static gboolean
 run_trigger (const char     *path,
+             GCancellable   *cancellable,
              GError        **error)
 {
   gboolean ret = FALSE;
@@ -47,8 +48,9 @@ run_trigger (const char     *path,
   
   g_ptr_array_add (args, (char*)path);
   g_ptr_array_add (args, NULL);
-      
-  g_print ("Running trigger: %s\n", path);
+
+  if (verbose)
+    g_print ("Running trigger: %s\n", path);
   if (!g_spawn_sync (NULL,
                      (char**)args->pdata,
                      NULL,
@@ -66,65 +68,6 @@ run_trigger (const char     *path,
   g_free (basename);
   if (args)
     g_ptr_array_free (args, TRUE);
-  return ret;
-}
-
-static gboolean
-check_trigger (GFile          *trigger,
-               GError        **error)
-{
-  gboolean ret = FALSE;
-  GInputStream *instream = NULL;
-  GDataInputStream *datain = NULL;
-  GError *temp_error = NULL;
-  char *line;
-  gsize len;
-  char *ifexecutable_path = NULL;
-  char *trigger_path = NULL;
-  gboolean matched = TRUE;
-
-  trigger_path = g_file_get_path (trigger);
-
-  instream = (GInputStream*)g_file_read (trigger, NULL, error);
-  if (!instream)
-    goto out;
-  datain = g_data_input_stream_new (instream);
-
-  while ((line = g_data_input_stream_read_line (datain, &len, NULL, &temp_error)) != NULL)
-    {
-      if (g_str_has_prefix (line, "# IfExecutable: "))
-        {
-          char *executable = g_strdup (line + strlen ("# IfExecutable: "));
-          g_strchomp (executable);
-          g_free (ifexecutable_path);
-          ifexecutable_path = g_find_program_in_path (executable);
-          g_free (executable);
-          if (!ifexecutable_path)
-            {
-              matched = FALSE;
-              break;
-            }
-          break;
-        }
-      g_free (line);
-    }
-  if (line == NULL && temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
-  if (matched)
-    {
-      if (!run_trigger (trigger_path, error))
-        goto out;
-    }
-  
-  ret = TRUE;
- out:
-  g_free (trigger_path);
-  g_free (ifexecutable_path);
-  g_clear_object (&instream);
-  g_clear_object (&datain);
   return ret;
 }
 
@@ -147,6 +90,7 @@ compare_files_by_basename (gconstpointer  ap,
 
 static gboolean
 get_sorted_triggers (GPtrArray       **out_triggers,
+                     GCancellable     *cancellable,
                      GError          **error)
 {
   gboolean ret = FALSE;
@@ -164,12 +108,12 @@ get_sorted_triggers (GPtrArray       **out_triggers,
 
   enumerator = g_file_enumerate_children (triggerdir, "standard::name,standard::type", 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          NULL, 
+                                          cancellable, 
                                           error);
   if (!enumerator)
     goto out;
 
-  while ((file_info = g_file_enumerator_next_file (enumerator, NULL, &temp_error)) != NULL)
+  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
     {
       const char *name;
       guint32 type;
@@ -214,25 +158,31 @@ get_sorted_triggers (GPtrArray       **out_triggers,
 }
 
 gboolean
-run_triggers (GError        **error)
+run_triggers (GCancellable   *cancellable,
+              GError        **error)
 {
   gboolean ret = FALSE;
   int i;
   GPtrArray *triggers = NULL;
+  char *path = NULL;
 
-  if (!get_sorted_triggers (&triggers, error))
+  if (!get_sorted_triggers (&triggers, cancellable, error))
     goto out;
 
   for (i = 0; i < triggers->len; i++)
     {
-      GFile *trigger = triggers->pdata[i];
+      GFile *trigger_path = triggers->pdata[i];
 
-      if (!check_trigger (trigger, error))
+      g_free (path);
+      path = g_file_get_path (trigger_path);
+
+      if (!run_trigger (path, cancellable, error))
         goto out;
     }
 
   ret = TRUE;
  out:
+  g_free (path);
   if (triggers)
     g_ptr_array_unref (triggers);
   return ret;
@@ -245,6 +195,7 @@ main (int    argc,
   GOptionContext *context;
   GError *real_error = NULL;
   GError **error = &real_error;
+  GCancellable *cancellable = NULL;
   gboolean ret = FALSE;
 
   g_type_init ();
@@ -255,7 +206,7 @@ main (int    argc,
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!run_triggers (error))
+  if (!run_triggers (cancellable, error))
     goto out;
 
   ret = TRUE;

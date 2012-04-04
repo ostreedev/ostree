@@ -26,13 +26,7 @@ BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 test -d repo || exit 1
 
 for branch in runtime devel; do
-    rev=$(ostree --repo=$(pwd)/repo rev-parse ${BRANCH_PREFIX}${branch});
-    if ! test -d ${BRANCH_PREFIX}${branch}-${rev}; then
-        ostree --repo=repo checkout ${rev} ${BRANCH_PREFIX}${branch}-${rev}
-        ostbuild chroot-run-triggers ${BRANCH_PREFIX}${branch}-${rev}
-    fi
-    ln -sf ${BRANCH_PREFIX}${branch}-${rev} ${BRANCH_PREFIX}${branch}-current.new
-    mv ${BRANCH_PREFIX}${branch}-current{.new,}
+    ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
 done
 ln -sf ${BRANCH_PREFIX}runtime-current current.new
 mv current.new current

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Post-installation hook for shared libraries.  -*- mode: sh -*-
 #
 # Written by Colin Walters <walters@verbum.org>
@@ -18,7 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: ldconfig
-# REMatch: /lib.*/\.so.*
-
-ldconfig -r .
+if test -x "$(which ldconfig 2>/dev/null)"; then
+    exec ldconfig
+fi

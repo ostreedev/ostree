@@ -18,14 +18,13 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: gtk-update-icon-cache
-# LiteralMatch: /share/icons/
-
-for dir in ./usr/share/icons/*; do
-  if test -f $dir/index.theme; then
-    if ! gtk-update-icon-cache --quiet $dir; then
-	echo "Failed to run gtk-update-icon-cache for $dir"
-	exit 1
-    fi
-  fi
-done
+if test -x "$(which gtk-update-icon-cache 2>/dev/null)"; then
+    for dir in /usr/share/icons/*; do
+	if test -f $dir/index.theme; then
+	    if ! gtk-update-icon-cache --quiet $dir; then
+		echo "Failed to run gtk-update-icon-cache for $dir"
+		exit 1
+	    fi
+	fi
+    done
+fi

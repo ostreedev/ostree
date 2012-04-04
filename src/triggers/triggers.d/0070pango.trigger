@@ -19,8 +19,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: pango-querymodules
-# REMatch: /lib.*/pango/.*/modules/.*\.so
-
-DEST=/etc/pango/pango.modules
-pango-querymodules --system > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}
+if test -x "$(which pango-querymodules 2>/dev/null)"; then
+    DEST=/etc/pango/pango.modules
+    pango-querymodules --system > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}
+fi

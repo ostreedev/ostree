@@ -76,10 +76,10 @@ chmod a=rwxt tmp
 if ! test -d ostree; then
     mkdir -p ostree
 
-    $SRCDIR/ostree-setup.sh $(pwd)/ostree
+    $SRCDIR/gnomeos-setup.sh $(pwd)/ostree
 fi
 
-rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/current ${WORKDIR}/modules ${WORKDIR}/gnomeos-3.4-* ./ostree
+rsync -a -H -v ${WORKDIR}/repo ${WORKDIR}/current ${WORKDIR}/modules ${WORKDIR}/var ${WORKDIR}/gnomeos-3.4-* ./ostree
 
 current_uname=$(uname -r)
 

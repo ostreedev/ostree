@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>.
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,13 +20,20 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_H__
+#ifndef _OSTREE_SYSROOT
+#define _OSTREE_SYSROOT
 
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-mutable-tree.h>
-#include <ostree-repo-file.h>
-#include <ostree-traverse.h>
-#include <ostree-sysroot.h>
+#include "ostree-core.h"
+#include "ostree-types.h"
+
+G_BEGIN_DECLS
+
+const char *const* ostree_get_sysroot_environ (void);
+
+gboolean ostree_run_triggers_in_root (GFile                  *root,
+                                      GCancellable           *cancellable,
+                                      GError                **error);
+
+G_END_DECLS
 
 #endif

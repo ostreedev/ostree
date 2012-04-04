@@ -18,7 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: update-desktop-database
-# REMatch: /share/applications/.*/.*\.desktop
-
-exec update-desktop-database -q ./usr/share/applications
+if test -x "$(which update-desktop-database 2>/dev/null)"; then
+    exec update-desktop-database -q /usr/share/applications
+fi

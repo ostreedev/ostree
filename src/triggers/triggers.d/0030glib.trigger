@@ -18,7 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: glib-compile-schemas
-# LiteralMatch: /share/glib-2.0/schemas/
-
-exec glib-compile-schemas ./usr/share/glib-2.0/schemas
+if test -x "$(which glib-compile-schemas 2>/dev/null)"; then
+    exec glib-compile-schemas /usr/share/glib-2.0/schemas
+fi

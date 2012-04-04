@@ -48,15 +48,14 @@ if ! test -d /ostree/repo/objects; then
     $SRCDIR/gnomeos-setup.sh /ostree
 fi
 
-ostree --repo=repo remote add origin http://ostree.gnome.org/repo
-ostree-pull --repo=repo origin gnomeos-3.4-i686-runtime
-ostree-pull --repo=repo origin gnomeos-3.4-i686-devel
+ostree --repo=repo remote add origin http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
+ostree-pull --repo=repo origin
+for branch in runtime devel; do
+    ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
+done
+ln -sf ${BRANCH_PREFIX}runtime current
 
 uname=$(uname -r)
-
-$SRCDIR/gnomeos-update-branches.sh
-
-cd -
 
 if test -d /etc/grub.d; then
     cp $SRCDIR/15_ostree /etc/grub.d/
@@ -74,7 +73,9 @@ EOF
     exit 1
 fi
 
-cp -ar /lib/modules/${uname} /ostree/modules/${uname}
+if ! test -d /ostree/modules/${uname}; then
+    cp -ar /lib/modules/${uname} /ostree/modules/${uname}
+fi
 
 initrd_name=initramfs-ostree-${uname}.img
 if ! test -f "/boot/${initrd_name}"; then

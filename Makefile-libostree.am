@@ -33,6 +33,8 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-types.h \
 	src/libostree/ostree-traverse.c \
 	src/libostree/ostree-traverse.h \
+	src/libostree/ostree-sysroot.c \
+	src/libostree/ostree-sysroot.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

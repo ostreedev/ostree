@@ -19,8 +19,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: gdk-pixbuf-query-loaders
-# RequiresChroot: true
-# LiteralMatch: /gdk-pixbuf-2.0/2.10.0/loaders/
-
-exec gdk-pixbuf-query-loaders --update-cache
+if test -x "$(which gdk-pixbuf-query-loaders 2>/dev/null)"; then
+    exec gdk-pixbuf-query-loaders --update-cache
+fi

@@ -49,6 +49,8 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
   OstreeRepo *repo = NULL;
   const char *op;
   GKeyFile *config = NULL;
+  GPtrArray *branches = NULL;
+  guint i;
 
   context = g_option_context_new ("OPERATION [args] - Control remote repository configuration");
   g_option_context_add_main_entries (context, options, NULL);
@@ -78,8 +80,17 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
           usage_error (context, "NAME and URL must be specified", error);
           goto out;
         }
+
+      branches = g_ptr_array_new ();
+      for (i = 4; i < argc; i++)
+        g_ptr_array_add (branches, argv[i]);
+
       key = g_strdup_printf ("remote \"%s\"", argv[2]);
       g_key_file_set_string (config, key, "url", argv[3]);
+      if (branches->len > 0)
+        g_key_file_set_string_list (config, key, "branches",
+                                    (const char *const *)branches->pdata,
+                                    branches->len);
       g_free (key);
     }
   else
@@ -93,6 +104,7 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
+  ot_clear_ptrarray (&branches);
   if (context)
     g_option_context_free (context);
   if (config)

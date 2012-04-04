@@ -18,7 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: dconf
-# LiteralMatch: /etc/dconf/*
-
-exec dconf update
+if test -x "$(which dconf 2>/dev/null)"; then
+    exec dconf update
+fi

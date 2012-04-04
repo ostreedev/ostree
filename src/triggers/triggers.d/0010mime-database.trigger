@@ -18,7 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: update-mime-database
-# REMatch: /mime/packages/.*\.xml
-
-exec update-mime-database ./usr/share/mime
+if test -x "$(which update-mime-database 2>/dev/null)"; then
+    exec update-mime-database /usr/share/mime
+fi

@@ -47,6 +47,7 @@ MILESTONE 2
 * Add index size to superindex, pack size to index
   - So pull can calculate how much we need to download
 * Split pack files into metadata/data
+* pull: Extract all we can from each packfile one at a time, then delete it
 * Restructure repository so that links can be generated as a cache;
   i.e. objects/raw, pack files are now the canonical
 * For files, checksum combination of metadata variant + raw data 
