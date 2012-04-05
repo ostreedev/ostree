@@ -40,13 +40,13 @@ usage () {
 ARCH=i686
 BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
 
-cd /ostree
-
 if ! test -d /ostree/repo/objects; then
     mkdir -p /ostree
 
     $SRCDIR/gnomeos-setup.sh /ostree
 fi
+
+cd /ostree
 
 ostree --repo=repo remote add origin http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
 ostree-pull --repo=repo origin
