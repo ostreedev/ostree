@@ -20,7 +20,7 @@ $ jhbuild buildone -nf $(basename $(pwd))
 Now we need to run the install script as root.
 
 $ su -
-# ~/src/ostree/gnomeos/yocto/gnomeos-install.sh
+# ~/src/ostree/gnomeos/gnomeos-install.sh
 
 Now you may need to edit your GRUB configuration.  This part varies
 for GRUB 1 versus GRUB 2.  The GRUB 2 bits in "15_ostree" don't really
