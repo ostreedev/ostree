@@ -31,6 +31,7 @@ gboolean verbose;
 
 static GOptionEntry options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
+  { NULL },
 };
 
 static void
