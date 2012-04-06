@@ -87,7 +87,7 @@ if ! test -f "/boot/${initrd_name}"; then
     --mount-bind /ostree/var /var \
     --mount-bind ${initrd_tmpdir} /tmp \
     --mount-bind /ostree/modules /lib/modules \
-    /ostree/${BRANCH_PREFIX}devel-current \
+    /ostree/${BRANCH_PREFIX}devel \
     dracut -f /tmp/${initrd_name} "${uname}"
     mv "${initrd_tmpdir}/${initrd_name}" "/boot/${initrd_name}"
     rm -rf "${initrd_tmpdir}"
