@@ -31,16 +31,19 @@
 static gboolean recursive;
 static gboolean checksum;
 static gboolean xattrs;
+static gboolean opt_nul_filenames_only;
 
 static GOptionEntry options[] = {
   { "recursive", 'R', 0, G_OPTION_ARG_NONE, &recursive, "Print directories recursively", NULL },
   { "checksum", 'C', 0, G_OPTION_ARG_NONE, &checksum, "Print checksum", NULL },
   { "xattrs", 'X', 0, G_OPTION_ARG_NONE, &xattrs, "Print extended attributes", NULL },
+  { "nul-filenames-only", 0, 0, G_OPTION_ARG_NONE, &opt_nul_filenames_only, "Print only filenames, NUL separated", NULL },
+  { NULL }
 };
 
 static void
-print_one_file (GFile     *f,
-                GFileInfo *file_info)
+print_one_file_text (GFile     *f,
+                     GFileInfo *file_info)
 {
   GString *buf = NULL;
   char type_c;
@@ -116,6 +119,31 @@ print_one_file (GFile     *f,
   g_print ("%s\n", buf->str);
 
   g_string_free (buf, TRUE);
+}
+
+static void
+print_one_file_binary (GFile     *f,
+                       GFileInfo *file_info)
+{
+  const char *path;
+
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
+    g_assert_not_reached ();
+
+  path = ot_gfile_get_path_cached (f);
+
+  fwrite (path, 1, strlen (path), stdout);
+  fwrite ("\0", 1, 1, stdout);
+}
+
+static void
+print_one_file (GFile     *f,
+                GFileInfo *file_info)
+{
+  if (opt_nul_filenames_only)
+    print_one_file_binary (f, file_info);
+  else
+    print_one_file_text (f, file_info);
 }
 
 static gboolean
