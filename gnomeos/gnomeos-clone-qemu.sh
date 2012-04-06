@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -*- indent-tabs-mode: nil; -*-
 # Run built image in QEMU 
 #
