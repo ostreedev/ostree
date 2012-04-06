@@ -1,6 +1,7 @@
 #!/bin/bash
 # -*- indent-tabs-mode: nil; -*-
-# Set up ostree directory
+# Create ostree-qemu.img file in the current directory, suitable
+# for booting via qemu.
 #
 # Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
 #
@@ -33,52 +34,41 @@ EOF
 fi
 
 usage () {
-    echo "$0 OSTREE_DIR_PATH"
+    echo "$0"
     exit 1
 }
 
-OSTREE_DIR_PATH=$1
-shift
-test -n "$OSTREE_DIR_PATH" || usage
-
-cd "$OSTREE_DIR_PATH"
-
-mkdir -p modules
-
-mkdir -p -m 0755 ./var/{log,run,tmp,spool}
-mkdir -p ./var/lib/dbus
-dbus-uuidgen > ./var/lib/dbus/machine-id
-
-mkdir -p ./var/tmp
-chmod 1777 ./var/tmp
-
-if ! test -L run; then
-    ln -s ../run run
+OBJ=ostree-qemu.img
+if ! test -f ${OBJ}; then
+    # Hardcoded 6 gigabyte filesystem size here; 6 gigabytes should be
+    # enough for everybody.
+    qemu-img create $OBJ 6G
+    mkfs.ext4 -q -F $OBJ
 fi
 
-mkdir -p ./var/lib/gdm
-chown 2:2 ./var/lib/gdm
-mkdir -p ./var/log/gdm
-chown 2:2 ./var/log/gdm
-chmod 01770 ./var/log/gdm
+mkdir -p fs
+umount fs || true
+sleep 1 # Avoid Linux kernel bug, pretty sure it's the new RCU pathname lookup
+mount -o loop ostree-qemu.img fs
 
-mkdir -p ./var/lib/AccountsService
+cd fs
 
-touch ./var/shadow
-chmod 0600 ./var/shadow
-
-cat >./var/passwd << EOF
-root::0:0:root:/:/bin/sh
-dbus:*:1:1:dbus:/:/bin/false
-gdm:*:2:2:gdm:/var/lib/gdm:/bin/false
-EOF
-cat >./var/group << EOF
-root:*:0:root
-dbus:*:1:
-gdm:*:2:
-EOF
-
-if ! test -d repo; then
-    mkdir repo
-    ostree --repo=repo init
+if ! test -d ./ostree/repo/objects; then
+    mkdir -p ./ostree
+    
+    $SRCDIR/gnomeos-setup.sh $(pwd)/ostree
 fi
+
+mkdir -p ./run ./home ./root ./sys
+mkdir -p ./tmp 
+chmod 01777 ./tmp
+
+mkdir -p $(pwd)/ostree/modules
+rsync -a -H -v --delete /ostree/modules/ ./ostree/modules/
+
+cd ..
+umount fs
+
+cat << EOF
+Next, run gnomeos-qemu-pull.sh to copy data.
+EOF

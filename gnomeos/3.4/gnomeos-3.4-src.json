@@ -1,7 +1,10 @@
 {
-  "name-prefix": "gnomeos-3.4",
+  "prefix": "gnomeos-3.4",
   "architectures": ["i686"],
-  "base-prefix": "yocto/gnomeos-3.4",
+  "base": {
+            "name": "yocto",
+	    "src": "cgwalters:poky"
+          },
 
   "config-opts": ["--disable-static", "--disable-silent-rules"],
 
@@ -25,13 +28,15 @@
 
   "patches": {"src": "git:/src/ostree",
               "branch": "wip/ostbuild-v2",
-              "prefix": "gnomeos/3.4"},
+              "subdir": "gnomeos/3.4"},
 
   "components": [
-   		{"src": "cgwalters:ginitscripts"},
+   		{"src": "cgwalters:ginitscripts",
+		 "noarch": true},
 
    		{"src": "gnome:gtk-doc-stub",
-		 "component": "devel"},
+		 "component": "devel",
+		 "noarch": true},
 
 		{"src": "git:git://github.com/atgreen/libffi.git"},
 

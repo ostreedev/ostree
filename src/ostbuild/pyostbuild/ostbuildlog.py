@@ -20,12 +20,16 @@
 import os
 import sys
 
-def log(msg):
-    fullmsg = '%s: %s\n' % (os.path.basename(sys.argv[0]), msg)
+def log(msg, prefix=None):
+    if prefix is None:
+        prefix_target = ''
+    else:
+        prefix_target = prefix
+    fullmsg = '%s: %s%s\n' % (os.path.basename(sys.argv[0]), prefix_target, msg)
     sys.stdout.write(fullmsg)
     sys.stdout.flush()
 
 def fatal(msg):
-    log(msg)
+    log(msg, prefix="FATAL: ")
     sys.exit(1)
 

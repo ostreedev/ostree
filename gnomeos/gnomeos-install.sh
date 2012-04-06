@@ -46,16 +46,18 @@ if ! test -d /ostree/repo/objects; then
     mkdir -p /ostree
 
     $SRCDIR/gnomeos-setup.sh /ostree
+
+    cd /ostree
+
+    ostree --repo=repo remote add gnome http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
+    ostree-pull --repo=repo gnome
+    for branch in runtime devel; do
+        ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
+    done
+    ln -sf ${BRANCH_PREFIX}runtime current
+
+    cd ${WORKDIR}
 fi
-
-cd /ostree
-
-ostree --repo=repo remote add gnome http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
-ostree-pull --repo=repo gnome
-for branch in runtime devel; do
-    ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
-done
-ln -sf ${BRANCH_PREFIX}runtime current
 
 uname=$(uname -r)
 

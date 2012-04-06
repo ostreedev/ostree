@@ -18,7 +18,9 @@
 import os,sys,re,subprocess,tempfile,shutil
 from StringIO import StringIO
 import argparse
+import time
 import json
+import hashlib
 
 from . import builtins
 from . import buildutil
@@ -31,47 +33,133 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     name = "chroot-compile-one"
     short_description = "Build artifacts from the current source directory in a chroot"
 
-    def _compose_buildroot(self, component_name, dirpath):
+    def _resolve_refs(self, refs):
+        args = ['ostree', '--repo=' + self.repo, 'rev-parse']
+        args.extend(refs)
+        output = run_sync_get_output(args)
+        return output.split('\n')
+
+    def _compose_buildroot(self, component_name, architecture):
+        starttime = time.time()
+
+        rootdir_prefix = os.path.join(self.workdir, 'roots')
+        rootdir = os.path.join(rootdir_prefix, component_name)
+        fileutil.ensure_parent_dir(rootdir)
+
+        # Clean up any leftover root dir
+        rootdir_tmp = rootdir + '.tmp'
+        if os.path.isdir(rootdir_tmp):
+            shutil.rmtree(rootdir_tmp)
+
         components = self.snapshot['components']
         dependencies = buildutil.build_depends(component_name, components)
         component = components.get(component_name)
 
-        base_devel_name = 'bases/%s-%s-%s' % (self.snapshot['base-prefix'],
-                                              component['architecture'],
-                                              'devel')
+        buildroots = self.snapshot['architecture-buildroots']
+        base_devel_name = 'bases/' + buildroots[architecture]
+
+        refs_to_resolve = [base_devel_name]
         checkout_trees = [(base_devel_name, '/')]
         for dependency_name in dependencies:
-            buildname = 'components/%s' % (dependency_name, )
+            buildname = 'components/%s/%s' % (dependency_name, architecture)
+            refs_to_resolve.append(buildname)
             checkout_trees.append((buildname, '/runtime'))
             checkout_trees.append((buildname, '/devel'))
+
+        resolved_refs = self._resolve_refs(refs_to_resolve)
+        ref_to_rev = {}
+        for ref,rev in zip(refs_to_resolve, resolved_refs):
+            ref_to_rev[ref] = rev
 
         link_cache_dir = os.path.join(self.workdir, 'link-cache')
         fileutil.ensure_dir(link_cache_dir)
 
-        for (branch, rootpath) in checkout_trees:
-            run_sync(['ostree', '--repo=' + self.repo,
-                      'checkout', '--user-mode', '--link-cache=' + link_cache_dir,
-                      '--union', '--subpath=' + rootpath,
-                      branch, dirpath])
+        sha = hashlib.sha256()
+
+        (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-buildroot-')
+        f = os.fdopen(fd, 'w')
+        for (branch, subpath) in checkout_trees:
+            f.write(ref_to_rev[branch])
+            f.write('\0')
+            f.write(subpath)
+            f.write('\0')
+        f.close()
+
+        f = open(tmppath)
+        buf = f.read(8192)
+        while buf != '':
+            sha.update(buf)
+            buf = f.read(8192)
+        f.close()
+
+        new_root_cacheid = sha.hexdigest()
+
+        rootdir_cache_path = os.path.join(rootdir_prefix, component_name + '.cacheid')
+
+        if os.path.isdir(rootdir):
+            if os.path.isfile(rootdir_cache_path):
+                f = open(rootdir_cache_path)
+                prev_cache_id = f.read().strip()
+                f.close()
+                if prev_cache_id == new_root_cacheid:
+                    log("Reusing previous buildroot")
+                    os.unlink(tmppath)
+                    return rootdir
+                else:
+                    log("New buildroot differs from previous")
+
+            shutil.rmtree(rootdir)
+
+        os.mkdir(rootdir_tmp)
+
+        if len(checkout_trees) > 0:
+            log("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
+                                                                    checkout_trees[-1][0]))
+
+        link_cache_dir = os.path.join(self.workdir, 'link-cache')
+        fileutil.ensure_dir(link_cache_dir)
+
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'checkout', '--link-cache=' + link_cache_dir,
+                  '--user-mode', '--union', '--from-stdin', rootdir_tmp],
+                 stdin=open(tmppath))
+
+        os.unlink(tmppath);
+
+        builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
+        os.mkdir(builddir_tmp)
+        os.mkdir(os.path.join(builddir_tmp, 'source'))
+        os.mkdir(os.path.join(builddir_tmp, 'results'))
+        os.rename(rootdir_tmp, rootdir)
+
+        f = open(rootdir_cache_path, 'w')
+        f.write(new_root_cacheid)
+        f.write('\n')
+        f.close()
+
+        endtime = time.time()
+        log("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
+
+        return rootdir
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--pristine', action='store_true')
+        parser.add_argument('--prefix')
+        parser.add_argument('--snapshot', required=True)
         parser.add_argument('--name')
+        parser.add_argument('--arch', required=True)
         parser.add_argument('--debug-shell', action='store_true')
         
         args = parser.parse_args(argv)
 
         self.parse_config()
-        self.parse_snapshot()
+        self.parse_snapshot(args.prefix, args.snapshot)
 
         if args.name:
             component_name = args.name
         else:
-            cwd = os.getcwd()
-            parent = os.path.dirname(cwd)
-            parentparent = os.path.dirname(parent)
-            component_name = '%s/%s/%s' % tuple(map(os.path.basename, [parentparent, parent, cwd]))
+            component_name = self.get_component_from_cwd()
 
         components = self.snapshot['components']
         component = components.get(component_name)
@@ -93,37 +181,16 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(child_tmpdir)
         fileutil.ensure_dir(child_tmpdir)
 
-        resultdir = os.path.join(self.workdir, 'results', component_name)
+        resultdir = os.path.join(self.workdir, 'results', component_name, args.arch)
         if os.path.isdir(resultdir):
             shutil.rmtree(resultdir)
         fileutil.ensure_dir(resultdir)
         
-        rootdir_prefix = os.path.join(workdir, 'roots')
-        fileutil.ensure_dir(rootdir_prefix)
-        rootdir = os.path.join(rootdir_prefix, component_name)
-        fileutil.ensure_parent_dir(rootdir)
-        if os.path.isdir(rootdir):
-            shutil.rmtree(rootdir)
-        
-        rootdir_tmp = rootdir + '.tmp'
-        builddir = os.path.join(rootdir, 'ostbuild');
-        if os.path.isdir(rootdir_tmp):
-            shutil.rmtree(rootdir_tmp)
-        os.mkdir(rootdir_tmp)
-            
-        self._compose_buildroot(component_name, rootdir_tmp)
+        rootdir = self._compose_buildroot(component_name, args.arch)
 
-        child_args = ['ostbuild', 'chroot-run-triggers', rootdir_tmp]
-        run_sync(child_args)
-
-        builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
-        os.mkdir(builddir_tmp)
-        os.mkdir(os.path.join(builddir_tmp, 'source'))
-        os.mkdir(os.path.join(builddir_tmp, 'results'))
-        os.rename(rootdir_tmp, rootdir)
         log("Checked out buildroot: %s" % (rootdir, ))
         
-        sourcedir=os.path.join(builddir, 'source', component_name)
+        sourcedir=os.path.join(rootdir, 'ostbuild', 'source', component_name)
         fileutil.ensure_dir(sourcedir)
         
         output_metadata = open('_ostbuild-meta.json', 'w')
@@ -148,7 +215,6 @@ class OstbuildChrootCompileOne(builtins.Builtin):
                                'compile-one',
                                '--ostbuild-resultdir=/ostbuild/results',
                                '--ostbuild-meta=_ostbuild-meta.json'])
-            child_args.extend(self.metadata.get('config-opts', []))
         env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
         run_sync(child_args, env=env_copy, keep_stdin=args.debug_shell)

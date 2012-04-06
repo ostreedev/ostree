@@ -19,6 +19,7 @@ import os,sys,subprocess,tempfile,re,shutil
 import copy
 import argparse
 import json
+import time
 import urlparse
 from StringIO import StringIO
 
@@ -26,6 +27,7 @@ from . import builtins
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from . import ostbuildrc
+from . import jsondb
 from . import buildutil
 from . import kvfile
 from . import odict
@@ -38,6 +40,7 @@ class OstbuildResolve(builtins.Builtin):
         builtins.Builtin.__init__(self)
 
     def _ensure_vcs_mirror(self, name, keytype, uri, branch):
+        # FIXME - remove "name" from parameter list here - hash uri?
         mirror = buildutil.get_mirrordir(self.mirrordir, keytype, uri)
         tmp_mirror = mirror + '.tmp'
         if os.path.isdir(tmp_mirror):
@@ -135,6 +138,7 @@ class OstbuildResolve(builtins.Builtin):
         self.args = args
         
         self.parse_config()
+        self.repo = ostbuildrc.get_key('repo')
 
         manifest_path = self.ostbuildrc.get_key('manifest')
         self.manifest = json.load(open(manifest_path))
@@ -192,52 +196,52 @@ class OstbuildResolve(builtins.Builtin):
                 component['patches'] = copy.deepcopy(global_patches_meta)
                 component['patches']['files'] = patch_files
 
-        name_prefix = snapshot['name-prefix']
-        base_prefix = snapshot['base-prefix']
-
         manifest_architectures = snapshot['architectures']
+
+        ostree_prefix = snapshot['prefix']
+        base_prefix = '%s/%s' % (snapshot['base']['name'], ostree_prefix)
+        
+        snapshot['architecture-buildroots'] = {}
+        for architecture in manifest_architectures:
+            snapshot['architecture-buildroots'][architecture] = '%s-%s-devel' % (base_prefix, architecture)
 
         components_by_name = {}
         component_ordering = []
-        build_prev_component_by_arch = {}
-        runtime_prev_component_by_arch = {}
-        runtime_components_by_arch = {}
-        devel_components_by_arch = {}
-        for architecture in manifest_architectures:
-            runtime_components_by_arch[architecture] = []
-            devel_components_by_arch[architecture] = []
+        build_prev_component = None
+        runtime_prev_component = None
+        runtime_components = []
+        devel_components = []
+
+        builds = {}
 
         for component in component_source_list:
-            component_architectures = component.get('architectures', manifest_architectures)
-            for architecture in component_architectures:
-                component_binary = copy.deepcopy(component)
-                source_name = component['name']
-                binary_name = '%s/%s/%s' % (name_prefix, architecture, source_name)
-                component_binary['name'] = binary_name
-                component_binary['architecture'] = architecture
+            base_name = component['name']
+            name = '%s/%s' % (ostree_prefix, base_name)
+            component['name'] = name
 
-                components_by_name[binary_name] = component_binary
+            components_by_name[name] = component
 
-                prev_component = build_prev_component_by_arch.get(architecture)
-                if prev_component is not None:
-                    component_binary['build-depends'] = [prev_component['name']]
-                build_prev_component_by_arch[architecture] = component_binary
+            if build_prev_component is not None:
+                component['build-depends'] = [build_prev_component['name']]
+            build_prev_component = component
 
-                is_runtime = component.get('component', 'runtime') == 'runtime'
+            is_runtime = component.get('component', 'runtime') == 'runtime'
 
-                prev_component = runtime_prev_component_by_arch.get(architecture)
-                if prev_component is not None:
-                    component_binary['runtime-depends'] = [prev_component['name']]
+            if runtime_prev_component is not None:
+                component['runtime-depends'] = [runtime_prev_component['name']]
 
-                if is_runtime:
-                    runtime_prev_component_by_arch[architecture] = component_binary
+            if is_runtime:
+                runtime_prev_component = component
+                runtime_components.append(component)
+            devel_components.append(component)
 
-                if is_runtime:
-                    runtime_components_by_arch[architecture].append(component_binary)
-                devel_components_by_arch[architecture].append(component_binary)
-
-                if 'architectures' in component_binary:
-                    del component_binary['architectures']
+            is_noarch = component.get('noarch', False)
+            if is_noarch:
+                # Just use the first specified architecture
+                component_arches = [manifest_architectures[0]]
+            else:
+                component_arches = component.get('architectures', manifest_architectures)
+            builds[name] = component_arches
 
         # We expanded these keys
         del snapshot['config-opts']
@@ -247,26 +251,27 @@ class OstbuildResolve(builtins.Builtin):
 
         targets_list = []
         snapshot['targets'] = targets_list
-        for architecture in manifest_architectures:
-            for target_component_type in ['runtime', 'devel']:
+        for target_component_type in ['runtime', 'devel']:
+            for architecture in manifest_architectures:
                 target = {}
                 targets_list.append(target)
-                target['name'] = '%s-%s-%s' % (name_prefix, architecture, target_component_type)
+                target['name'] = '%s-%s-%s' % (ostree_prefix, architecture, target_component_type)
 
                 base_ref = '%s-%s-%s' % (base_prefix, architecture, target_component_type)
-                base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                     'rev-parse', 'bases/%s' % (base_ref, )])
                 target['base'] = {'name': base_ref}
 
                 if target_component_type == 'runtime':
-                    target_components = runtime_components_by_arch[architecture]
+                    target_components = runtime_components
                 else:
-                    target_components = devel_components_by_arch[architecture]
+                    target_components = devel_components
                     
                 contents = []
                 for component in target_components:
-                    name = component['name']
-                    component_ref = {'name': name}
+                    builds_for_component = builds[component['name']]
+                    if architecture not in builds_for_component:
+                        continue
+                    binary_name = '%s/%s' % (component['name'], architecture)
+                    component_ref = {'name': binary_name}
                     if target_component_type == 'runtime':
                         component_ref['trees'] = ['/runtime']
                     else:
@@ -278,10 +283,12 @@ class OstbuildResolve(builtins.Builtin):
             del component['name']
         snapshot['components'] = components_by_name
 
-        out_snapshot = os.path.join(self.workdir, '%s-snapshot.json' % (name_prefix, ))
-        f = open(out_snapshot, 'w')
-        json.dump(snapshot, f, indent=4, sort_keys=True)
-        f.close()
-        print "Created: %s" % (out_snapshot, )
+        snapshot['00ostree-src-snapshot-version'] = 0
+
+        current_time = time.time()
+
+        src_db = self.get_src_snapshot_db()
+        path = src_db.store(snapshot)
+        log("Source snapshot: %s" % (path, ))
         
 builtins.register(OstbuildResolve)

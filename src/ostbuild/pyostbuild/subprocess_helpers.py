@@ -70,14 +70,16 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
     return None
 
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
-             log_success=True, log_initiation=True, stdout=None,
+             log_success=True, log_initiation=True, stdin=None, stdout=None,
              stderr=None):
     if log_initiation:
         log("running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
-    if keep_stdin:
+    if stdin is not None:
+        stdin_target = stdin
+    elif keep_stdin:
         stdin_target = sys.stdin
     else:
         stdin_target = open('/dev/null', 'r')

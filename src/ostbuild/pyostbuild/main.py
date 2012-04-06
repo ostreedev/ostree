@@ -22,13 +22,17 @@ import sys
 import argparse
 
 from . import builtins
-from . import builtin_build
+from . import builtin_bin_to_src
+from . import builtin_build_components
+from . import builtin_branch_prefix
 from . import builtin_checkout
 from . import builtin_chroot_compile_one
-from . import builtin_chroot_run_triggers
+from . import builtin_compose
 from . import builtin_compile_one
-from . import builtin_query_content
+from . import builtin_pull_components
+from . import builtin_prefix
 from . import builtin_resolve
+from . import builtin_modify_snapshot
 from . import builtin_status
 
 def usage(ecode):

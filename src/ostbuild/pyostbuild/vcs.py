@@ -71,5 +71,5 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True):
     return dest
 
 def clean(keytype, checkoutdir):
-    assert keytype == 'git'
+    assert keytype in ('git', 'dirty-git')
     run_sync(['git', 'clean', '-d', '-f', '-x'], cwd=checkoutdir)

@@ -57,6 +57,8 @@ class OstbuildCompileOne(builtins.Builtin):
 
     def execute(self, args):
         self.default_buildapi_jobs = ['-j', '%d' % (cpu_count() * 2, )]
+
+        starttime = time.time()
         
         uname=os.uname()
         kernel=uname[0].lower()
@@ -77,31 +79,27 @@ class OstbuildCompileOne(builtins.Builtin):
                       '--infodir=' + os.path.join(PREFIX, 'share', 'info')]
         self.makeargs = ['make']
 
-        self.ostbuild_resultdir=None
-        self.ostbuild_meta=None
+        self.ostbuild_resultdir='_ostbuild-results'
+        self.ostbuild_meta_path='_ostbuild-meta.json'
 
         chdir = None
+        opt_install = False
 
         for arg in args:
             if arg.startswith('--ostbuild-resultdir='):
                 self.ostbuild_resultdir=arg[len('--ostbuild-resultdir='):]
             elif arg.startswith('--ostbuild-meta='):
-                self.ostbuild_meta=arg[len('--ostbuild-meta='):]
+                self.ostbuild_meta_path=arg[len('--ostbuild-meta='):]
             elif arg.startswith('--chdir='):
                 os.chdir(arg[len('--chdir='):])
-            elif arg.startswith('--'):
-                self.configargs.append(arg)
             else:
                 self.makeargs.append(arg)
         
-        if self.ostbuild_resultdir is None:
-            fatal("Must specify --ostbuild-resultdir=")
-        if self.ostbuild_meta is None:
-            fatal("Must specify --ostbuild-meta=")
-
-        f = open(self.ostbuild_meta)
+        f = open(self.ostbuild_meta_path)
         self.metadata = json.load(f)
         f.close()
+
+        self.configargs.extend(self.metadata.get('config-opts', []))
 
         if self.metadata.get('rm-configure', False):
             configure_path = 'configure'
@@ -234,6 +232,11 @@ class OstbuildCompileOne(builtins.Builtin):
                     os.unlink(tmpname)
                 except OSError, e:
                     pass
+
+        endtime = time.time()
+
+        log("Compliation succeeded; %d seconds elapsed" % (int(endtime - starttime),))
+        log("Results placed in %s" % (self.ostbuild_resultdir, ))
 
     def _install_and_unlink(self, src, dest):
         statsrc = os.lstat(src)

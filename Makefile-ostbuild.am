@@ -22,18 +22,23 @@ bin_SCRIPTS += ostbuild
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
-	src/ostbuild/pyostbuild/builtin_build.py	\
+	src/ostbuild/pyostbuild/builtin_bin_to_src.py	\
+	src/ostbuild/pyostbuild/builtin_branch_prefix.py	\
+	src/ostbuild/pyostbuild/builtin_build_components.py	\
 	src/ostbuild/pyostbuild/builtin_checkout.py	\
+	src/ostbuild/pyostbuild/builtin_compose.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
-	src/ostbuild/pyostbuild/builtin_chroot_run_triggers.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
-	src/ostbuild/pyostbuild/builtin_query_content.py	\
+	src/ostbuild/pyostbuild/builtin_pull_components.py	\
+	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
+	src/ostbuild/pyostbuild/builtin_modify_snapshot.py	\
 	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\
 	src/ostbuild/pyostbuild/filemonitor.py		\
 	src/ostbuild/pyostbuild/fileutil.py		\
 	src/ostbuild/pyostbuild/__init__.py		\
+	src/ostbuild/pyostbuild/jsondb.py		\
 	src/ostbuild/pyostbuild/kvfile.py		\
 	src/ostbuild/pyostbuild/main.py			\
 	src/ostbuild/pyostbuild/mainloop.py		\

@@ -1,6 +1,6 @@
 #!/bin/bash
 # -*- indent-tabs-mode: nil; -*-
-# Set up ostree directory
+# Run built image in QEMU 
 #
 # Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
 #
@@ -33,52 +33,22 @@ EOF
 fi
 
 usage () {
-    echo "$0 OSTREE_DIR_PATH"
+    echo "$0"
     exit 1
 }
 
-OSTREE_DIR_PATH=$1
-shift
-test -n "$OSTREE_DIR_PATH" || usage
-
-cd "$OSTREE_DIR_PATH"
-
-mkdir -p modules
-
-mkdir -p -m 0755 ./var/{log,run,tmp,spool}
-mkdir -p ./var/lib/dbus
-dbus-uuidgen > ./var/lib/dbus/machine-id
-
-mkdir -p ./var/tmp
-chmod 1777 ./var/tmp
-
-if ! test -L run; then
-    ln -s ../run run
+if ! test -f ostree-qemu.img; then
+    echo "ostree-qemu.img not found; You must run gnomeos-qemu-create.sh first"
 fi
 
-mkdir -p ./var/lib/gdm
-chown 2:2 ./var/lib/gdm
-mkdir -p ./var/log/gdm
-chown 2:2 ./var/log/gdm
-chmod 01770 ./var/log/gdm
+current_uname=$(uname -r)
 
-mkdir -p ./var/lib/AccountsService
-
-touch ./var/shadow
-chmod 0600 ./var/shadow
-
-cat >./var/passwd << EOF
-root::0:0:root:/:/bin/sh
-dbus:*:1:1:dbus:/:/bin/false
-gdm:*:2:2:gdm:/var/lib/gdm:/bin/false
-EOF
-cat >./var/group << EOF
-root:*:0:root
-dbus:*:1:
-gdm:*:2:
-EOF
-
-if ! test -d repo; then
-    mkdir repo
-    ostree --repo=repo init
+ARGS="$@"
+if ! echo $ARGS | grep -q 'ostree='; then
+    ARGS="ostree=current $ARGS"
 fi
+ARGS="rd.plymouth=0 root=/dev/sda $ARGS"
+KERNEL=/boot/vmlinuz-${current_uname}
+INITRD_ARG="-initrd /boot/initramfs-ostree-${current_uname}.img"
+
+exec qemu-kvm -kernel ${KERNEL} ${INITRD_ARG} -hda ostree-qemu.img -net user -net nic,model=virtio -m 512M -append "$ARGS" -monitor stdio
