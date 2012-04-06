@@ -42,8 +42,7 @@ EOF
 EOF
 }
 
-machine=$(uname -m)
-kernels=$(echo /boot/vmlinuz-*.${machine})
+kernels=$(echo /boot/vmlinuz-*)
 while [ "x${kernels}" != x ]; do
   linux=`version_find_latest $kernels` >&2
   basename=`basename $linux`
