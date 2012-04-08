@@ -65,6 +65,11 @@ typedef struct {
   GPtrArray    *cached_pack_indexes;
 
   GHashTable   *file_checksums_to_fetch;
+
+  gboolean      stdout_is_tty;
+
+  guint64       dl_current_bytes;
+  guint64       dl_total_bytes;
 } OtPullData;
 
 static SoupURI *
@@ -106,11 +111,19 @@ suburi_new (SoupURI   *base,
 }
 
 typedef struct {
-  SoupSession    *session;
+  OtPullData     *pull_data;
   GOutputStream  *stream;
   gboolean        had_error;
   GError        **error;
 } OstreeSoupChunkData;
+
+static void
+sync_progress (OtPullData   *pull_data)
+{
+  if (pull_data->stdout_is_tty)
+    g_print ("%c8%" G_GUINT64_FORMAT "/%" G_GUINT64_FORMAT " KiB",
+             0x1b, (pull_data->dl_current_bytes / 1024), (pull_data->dl_total_bytes / 1024));
+}
 
 static void
 on_got_chunk (SoupMessage   *msg,
@@ -119,13 +132,31 @@ on_got_chunk (SoupMessage   *msg,
 {
   OstreeSoupChunkData *data = user_data;
   gsize bytes_written;
-  
+
+  data->pull_data->dl_current_bytes += buf->length;
+  sync_progress (data->pull_data);
+
   if (!g_output_stream_write_all (data->stream, buf->data, buf->length,
                                   &bytes_written, NULL, data->error))
     {
       data->had_error = TRUE;
-      soup_session_cancel_message (data->session, msg, 500);
+      soup_session_cancel_message (data->pull_data->session, msg, 500);
     }
+}
+
+static void
+on_got_content_length (SoupMessage        *msg,
+                       OtPullData         *pull_data)
+{
+  goffset size;
+
+  g_assert (msg->response_headers);
+  
+  size = soup_message_headers_get_content_length (msg->response_headers);
+  if (size > 0)
+    pull_data->dl_total_bytes = (guint64) size;
+
+  sync_progress (pull_data);
 }
 
 static gboolean
@@ -151,17 +182,30 @@ fetch_uri (OtPullData  *pull_data,
                                         NULL, error))
     goto out;
 
-  chunkdata.session = pull_data->session;
+  chunkdata.pull_data = pull_data;
   chunkdata.stream = output_stream;
   chunkdata.had_error = FALSE;
   chunkdata.error = error;
   
   uri_string = soup_uri_to_string (uri, FALSE);
   g_print ("Fetching %s\n", uri_string);
+
+  if (pull_data->stdout_is_tty)
+    {
+      g_print ("0/? KiB");
+      pull_data->dl_current_bytes = 0;
+      pull_data->dl_total_bytes = 0;
+      sync_progress (pull_data);
+    }
+
   msg = soup_message_new_from_uri (SOUP_METHOD_GET, uri);
 
   soup_message_body_set_accumulate (msg->response_body, FALSE);
 
+  soup_message_add_header_handler (msg, "got-headers",
+                                   "Content-Length",
+                                   G_CALLBACK (on_got_content_length),
+                                   pull_data);
   g_signal_connect (msg, "got-chunk", G_CALLBACK (on_got_chunk), &chunkdata);
   
   response = soup_session_send_message (pull_data->session, msg);
@@ -175,6 +219,8 @@ fetch_uri (OtPullData  *pull_data,
 
   if (!g_output_stream_close (output_stream, NULL, error))
     goto out;
+
+  g_print ("\n");
   
   ret = TRUE;
   ot_transfer_out_value (out_temp_filename, &ret_temp_filename);
@@ -473,6 +519,15 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
   is_stored = (stored_path != NULL || local_pack_checksum != NULL);
   if (!is_stored)
     {
+      if (!pull_data->fetched_packs)
+        {
+          pull_data->fetched_packs = TRUE;
+          pull_data->cached_pack_indexes = g_ptr_array_new_with_free_func (g_free);
+
+          if (!fetch_and_cache_pack_indexes (pull_data, cancellable, error))
+            goto out;
+        }
+
       if (!find_object_in_remote_packs (pull_data, checksum, objtype, 
                                         &remote_pack_checksum, &pack_offset,
                                         cancellable, error))
@@ -750,10 +805,10 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
 }
 
 static gboolean
-fetch_and_store_commit_recurse (OtPullData   *pull_data,
-                                const char   *rev,
-                                GCancellable *cancellable,
-                                GError      **error)
+fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
+                                         const char   *rev,
+                                         GCancellable *cancellable,
+                                         GError      **error)
 {
   gboolean ret = FALSE;
   GVariant *commit = NULL;
@@ -837,10 +892,35 @@ fetch_files (OtPullData           *pull_data,
 
 static gboolean
 pull_one_commit (OtPullData       *pull_data,
-                 const char       *branch,
                  const char       *rev,
                  GCancellable     *cancellable,
-                 GError          **error)
+                 GError          **error) 
+{
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
+    goto out;
+  
+  if (!fetch_and_store_commit_metadata_recurse (pull_data, rev, cancellable, error))
+    goto out;
+  
+  if (!fetch_files (pull_data, cancellable, error))
+    goto out;
+  
+  if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+pull_one_ref (OtPullData       *pull_data,
+              const char       *branch,
+              const char       *rev,
+              GCancellable     *cancellable,
+              GError          **error)
 {
   gboolean ret = FALSE;
   char *key = NULL;
@@ -862,31 +942,7 @@ pull_one_commit (OtPullData       *pull_data,
       if (!ostree_validate_checksum_string (rev, error))
         goto out;
 
-      if (!pull_data->fetched_packs)
-        {
-          pull_data->fetched_packs = TRUE;
-          pull_data->cached_pack_indexes = g_ptr_array_new_with_free_func (g_free);
-
-          g_print ("Fetching packs\n");
-
-          if (!fetch_and_cache_pack_indexes (pull_data, cancellable, error))
-            goto out;
-        }
-
-      if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
-        goto out;
-
-      g_print ("Downloading metadata...\n");
-      
-      if (!fetch_and_store_commit_recurse (pull_data, rev, cancellable, error))
-        goto out;
-
-      g_print ("Downloading data...\n");
-
-      if (!fetch_files (pull_data, cancellable, error))
-        goto out;
-
-      if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
+      if (!pull_one_commit (pull_data, rev, cancellable, error))
         goto out;
       
       if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, branch, rev, error))
@@ -975,6 +1031,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   GKeyFile *config = NULL;
   GCancellable *cancellable = NULL;
   GHashTable *refs_to_fetch = NULL;
+  GHashTable *commits_to_fetch = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
   char *branch_rev = NULL;
@@ -1001,6 +1058,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
+  pull_data->stdout_is_tty = isatty (1);
+
   pull_data->remote_name = g_strdup (argv[1]);
   pull_data->session = soup_session_sync_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
                                                            SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_COOKIE_JAR,
@@ -1021,19 +1080,29 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
+  refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
   if (argc > 2)
     {
-      refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
       for (i = 2; i < argc; i++)
         {
           const char *branch = argv[i];
           char *contents;
-          
-          if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
-            goto out;
+
+          if (ostree_validate_checksum_string (branch, NULL))
+            {
+              char *key = g_strdup (branch);
+              g_hash_table_insert (commits_to_fetch, key, key);
+            }
+          else
+            {
+              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
+                goto out;
       
-          /* Transfer ownership of contents */
-          g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+              /* Transfer ownership of contents */
+              g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+            }
         }
     }
   else
@@ -1041,8 +1110,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       GError *temp_error = NULL;
       gboolean fetch_all_refs;
 
-      refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-      
       configured_branches = g_key_file_get_string_list (config, key, "branches", NULL, &temp_error);
       if (configured_branches == NULL && temp_error != NULL)
         {
@@ -1093,28 +1160,33 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   g_hash_table_iter_init (&hash_iter, refs_to_fetch);
-
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *ref = key;
       const char *sha256 = value;
       
-      if (!pull_one_commit (pull_data, ref, sha256, cancellable, error))
+      if (!pull_one_ref (pull_data, ref, sha256, cancellable, error))
         goto out;
     }
 
-  g_print ("Cleaning cached pack files...\n");
+  g_hash_table_iter_init (&hash_iter, commits_to_fetch);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *commit = value;
+      
+      if (!pull_one_commit (pull_data, commit, cancellable, error))
+        goto out;
+    }
 
   if (!ostree_repo_clean_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
                                                   cancellable, error))
     goto out;
 
-  g_print ("Done\n");
-
   ret = TRUE;
  out:
   if (refs_to_fetch)
     g_hash_table_unref (refs_to_fetch);
+  ot_clear_hashtable (&commits_to_fetch);
   g_strfreev (configured_branches);
   g_free (path);
   g_free (baseurl);
