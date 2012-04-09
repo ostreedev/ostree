@@ -41,6 +41,7 @@
     }                                                      \
   } G_STMT_END;
 
+#include <ot-local-alloc.h>
 #include <ot-gio-utils.h>
 #include <ot-glib-compat.h>
 #include <ot-opt-utils.h>

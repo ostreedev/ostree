@@ -197,12 +197,12 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
   const char *rev;
   int i;
-  GFile *root = NULL;
-  GFile *f = NULL;
-  GFileInfo *file_info = NULL;
+  ot_lobj GFile *root = NULL;
+  ot_lobj GFile *f = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
 
   context = g_option_context_new ("COMMIT PATH [PATH...] - List file paths");
   g_option_context_add_main_entries (context, options, NULL);
@@ -247,11 +247,7 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  g_clear_object (&root);
-  g_clear_object (&f);
-  g_clear_object (&file_info);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
   return ret;
 }
