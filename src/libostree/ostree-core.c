@@ -43,7 +43,7 @@ ostree_validate_rev (const char *rev,
                      GError **error)
 {
   gboolean ret = FALSE;
-  GPtrArray *components = NULL;
+  ot_lptrarray GPtrArray *components = NULL;
 
   if (!ot_util_path_split_validate (rev, &components, error))
     goto out;
@@ -57,7 +57,6 @@ ostree_validate_rev (const char *rev,
 
   ret = TRUE;
  out:
-  g_ptr_array_unref (components);
   return ret;
 }
 
@@ -159,12 +158,12 @@ ostree_get_xattrs_for_file (GFile         *f,
 {
   gboolean ret = FALSE;
   const char *path;
-  GVariant *ret_xattrs = NULL;
+  ssize_t bytes_read;
+  ot_lvariant GVariant *ret_xattrs = NULL;
+  ot_lfree char *xattr_names = NULL;
+  ot_lfree char *xattr_names_canonical = NULL;
   GVariantBuilder builder;
   gboolean builder_initialized = FALSE;
-  char *xattr_names = NULL;
-  char *xattr_names_canonical = NULL;
-  ssize_t bytes_read;
 
   path = ot_gfile_get_path_cached (f);
 
@@ -203,8 +202,6 @@ ostree_get_xattrs_for_file (GFile         *f,
  out:
   if (!builder_initialized)
     g_variant_builder_clear (&builder);
-  g_free (xattr_names);
-  g_free (xattr_names_canonical);
   return ret;
 }
 
@@ -218,12 +215,12 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  GChecksum *ret_checksum = NULL;
-  GVariant *dirmeta = NULL;
-  GVariant *packed = NULL;
   guint8 buf[8192];
   gsize bytes_read;
   guint32 mode;
+  ot_lvariant GVariant *dirmeta = NULL;
+  ot_lvariant GVariant *packed = NULL;
+  GChecksum *ret_checksum = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     return ot_gio_checksum_stream (in, out_checksum, cancellable, error);
@@ -288,8 +285,6 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
   ot_transfer_out_value (out_checksum, &ret_checksum);
  out:
   ot_clear_checksum (&ret_checksum);
-  ot_clear_gvariant (&dirmeta);
-  ot_clear_gvariant (&packed);
   return ret;
 }
 
@@ -301,10 +296,10 @@ ostree_checksum_file (GFile            *f,
                       GError          **error)
 {
   gboolean ret = FALSE;
-  GFileInfo *file_info = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lobj GInputStream *in = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
   GChecksum *ret_checksum = NULL;
-  GInputStream *in = NULL;
-  GVariant *xattrs = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -335,10 +330,7 @@ ostree_checksum_file (GFile            *f,
   ret = TRUE;
   ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
-  g_clear_object (&file_info);
-  g_clear_object (&in);
   ot_clear_checksum(&ret_checksum);
-  ot_clear_gvariant(&xattrs);
   return ret;
 }
 
@@ -480,8 +472,8 @@ ostree_unwrap_metadata (GVariant              *container,
                         GError               **error)
 {
   gboolean ret = FALSE;
-  GVariant *ret_variant = NULL;
   guint32 actual_type;
+  ot_lvariant GVariant *ret_variant = NULL;
 
   g_variant_get (container, "(uv)",
                  &actual_type, &ret_variant);
@@ -497,7 +489,6 @@ ostree_unwrap_metadata (GVariant              *container,
   ret = TRUE;
   ot_transfer_out_value (out_variant, &ret_variant);
  out:
-  ot_clear_gvariant (&ret_variant);
   return ret;
 }
 
@@ -508,8 +499,8 @@ ostree_map_metadata_file (GFile                       *file,
                           GError                     **error)
 {
   gboolean ret = FALSE;
-  GVariant *ret_variant = NULL;
-  GVariant *container = NULL;
+  ot_lvariant GVariant *ret_variant = NULL;
+  ot_lvariant GVariant *container = NULL;
 
   if (!ot_util_variant_map (file, OSTREE_SERIALIZED_VARIANT_FORMAT,
                             &container, error))
@@ -526,8 +517,6 @@ ostree_map_metadata_file (GFile                       *file,
   ret = TRUE;
   ot_transfer_out_value(out_variant, &ret_variant);
  out:
-  ot_clear_gvariant (&ret_variant);
-  ot_clear_gvariant (&container);
   return ret;
 }
 
@@ -786,10 +775,10 @@ ostree_parse_archived_file_meta (GVariant         *metadata,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  GFileInfo *ret_file_info = NULL;
-  GVariant *ret_xattrs = NULL;
   guint32 version, uid, gid, mode, rdev;
   const char *symlink_target;
+  ot_lobj GFileInfo *ret_file_info = NULL;
+  ot_lvariant GVariant *ret_xattrs = NULL;
 
   g_variant_get (metadata, "(uuuuu&s@a(ayay))",
                  &version, &uid, &gid, &mode, &rdev,
@@ -842,8 +831,6 @@ ostree_parse_archived_file_meta (GVariant         *metadata,
   ot_transfer_out_value(out_file_info, &ret_file_info);
   ot_transfer_out_value(out_xattrs, &ret_xattrs);
  out:
-  g_clear_object (&ret_file_info);
-  ot_clear_gvariant (&ret_xattrs);
   return ret;
 }
 
@@ -857,13 +844,13 @@ ostree_create_file_from_input (GFile            *dest_file,
                                GCancellable     *cancellable,
                                GError          **error)
 {
-  const char *dest_path;
   gboolean ret = FALSE;
-  GFileOutputStream *out = NULL;
+  const char *dest_path;
   guint32 uid, gid, mode;
-  GChecksum *ret_checksum = NULL;
   gboolean is_meta;
   gboolean is_archived_content;
+  ot_lobj GFileOutputStream *out = NULL;
+  GChecksum *ret_checksum = NULL;
 
   is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
   is_archived_content = objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT;
@@ -1008,7 +995,6 @@ ostree_create_file_from_input (GFile            *dest_file,
       (void) unlink (dest_path);
     }
   ot_clear_checksum (&ret_checksum);
-  g_clear_object (&out);
   return ret;
 }
 
@@ -1066,12 +1052,12 @@ ostree_create_temp_file_from_input (GFile            *dir,
                                     GError          **error)
 {
   gboolean ret = FALSE;
-  GChecksum *ret_checksum = NULL;
-  GString *tmp_name = NULL;
-  char *possible_name = NULL;
-  GFile *possible_file = NULL;
   GError *temp_error = NULL;
   int i = 0;
+  ot_lfree char *possible_name = NULL;
+  ot_lobj GFile *possible_file = NULL;
+  GChecksum *ret_checksum = NULL;
+  GString *tmp_name = NULL;
 
   tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
                                 prefix, suffix);
@@ -1121,8 +1107,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
  out:
   if (tmp_name)
     g_string_free (tmp_name, TRUE);
-  g_free (possible_name);
-  g_clear_object (&possible_file);
   ot_clear_checksum (&ret_checksum);
   return ret;
 }
@@ -1137,8 +1121,8 @@ ostree_create_temp_regular_file (GFile            *dir,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  GFile *ret_file = NULL;
-  GOutputStream *ret_stream = NULL;
+  ot_lobj GFile *ret_file = NULL;
+  ot_lobj GOutputStream *ret_stream = NULL;
 
   if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
                                            OSTREE_OBJECT_TYPE_RAW_FILE, &ret_file,
@@ -1153,8 +1137,6 @@ ostree_create_temp_regular_file (GFile            *dir,
   ot_transfer_out_value(out_file, &ret_file);
   ot_transfer_out_value(out_stream, &ret_stream);
  out:
-  g_clear_object (&ret_file);
-  g_clear_object (&ret_stream);
   return ret;
 }
 
@@ -1168,10 +1150,10 @@ ostree_create_temp_hardlink (GFile            *dir,
                              GError          **error)
 {
   gboolean ret = FALSE;
-  GString *tmp_name = NULL;
-  char *possible_name = NULL;
-  GFile *possible_file = NULL;
   int i = 0;
+  ot_lfree char *possible_name = NULL;
+  ot_lobj GFile *possible_file = NULL;
+  GString *tmp_name = NULL;
 
   tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
                                 prefix, suffix);
@@ -1214,8 +1196,6 @@ ostree_create_temp_hardlink (GFile            *dir,
  out:
   if (tmp_name)
     g_string_free (tmp_name, TRUE);
-  g_free (possible_name);
-  g_clear_object (&possible_file);
   return ret;
 }
 
@@ -1229,10 +1209,10 @@ ostree_read_pack_entry_raw (guchar        *pack_data,
                             GError       **error)
 {
   gboolean ret = FALSE;
-  GVariant *ret_entry = NULL;
   guint64 entry_start;
   guint64 entry_end;
   guint32 entry_len;
+  ot_lvariant GVariant *ret_entry = NULL;
 
   if (G_UNLIKELY (!(offset <= pack_len)))
     {
@@ -1277,7 +1257,6 @@ ostree_read_pack_entry_raw (guchar        *pack_data,
   ret = TRUE;
   ot_transfer_out_value (out_entry, &ret_entry);
  out:
-  ot_clear_gvariant (&ret_entry);
   return ret;
 }
 
@@ -1330,10 +1309,10 @@ ostree_read_pack_entry_variant (GVariant            *pack_entry,
                                 GError             **error)
 {
   gboolean ret = FALSE;
-  GInputStream *stream = NULL;
-  GVariant *container_variant = NULL;
-  GVariant *ret_variant = NULL;
   guint32 actual_type;
+  ot_lobj GInputStream *stream = NULL;
+  ot_lvariant GVariant *container_variant = NULL;
+  ot_lvariant GVariant *ret_variant = NULL;
 
   stream = ostree_read_pack_entry_as_stream (pack_entry);
   
@@ -1356,9 +1335,6 @@ ostree_read_pack_entry_variant (GVariant            *pack_entry,
   ret = TRUE;
   ot_transfer_out_value (out_variant, &ret_variant);
  out:
-  g_clear_object (&stream);
-  ot_clear_gvariant (&ret_variant);
-  ot_clear_gvariant (&container_variant);
   return ret;
 }
 
@@ -1369,10 +1345,10 @@ ostree_pack_index_search (GVariant   *index,
                           guint64    *out_offset)
 {
   gboolean ret = FALSE;
-  GVariant *index_contents;
   gsize imax, imin;
   gsize n;
   guint32 target_objtype;
+  ot_lvariant GVariant *index_contents = NULL;
 
   index_contents = g_variant_get_child_value (index, 2);
 
@@ -1427,7 +1403,6 @@ ostree_pack_index_search (GVariant   *index,
     }
 
  out:
-  ot_clear_gvariant (&index_contents);
   return ret;
 }
 
@@ -1550,10 +1525,10 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
                                      GError       **error)
 {
   gboolean ret = FALSE;
-  GVariantIter *contents_iter = NULL;
   const char *filename;
   const char *meta_checksum;
   const char *content_checksum;
+  GVariantIter *contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
     goto out;
@@ -1668,10 +1643,10 @@ ostree_validate_structureof_pack_index (GVariant      *index,
 {
   gboolean ret = FALSE;
   const char *header;
-  GVariantIter *content_iter = NULL;
   guint32 objtype;
-  GVariant *csum_bytes = NULL;
   guint64 offset;
+  ot_lvariant GVariant *csum_bytes = NULL;
+  GVariantIter *content_iter = NULL;
 
   if (!validate_variant (index, OSTREE_PACK_INDEX_VARIANT_FORMAT, error))
     goto out;
@@ -1701,7 +1676,6 @@ ostree_validate_structureof_pack_index (GVariant      *index,
  out:
   if (content_iter)
     g_variant_iter_free (content_iter);
-  ot_clear_gvariant (&csum_bytes);
   return ret;
 }
 
@@ -1711,8 +1685,8 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
 {
   gboolean ret = FALSE;
   const char *header;
-  GVariant *csum_bytes = NULL;
-  GVariant *bloom = NULL;
+  ot_lvariant GVariant *csum_bytes = NULL;
+  ot_lvariant GVariant *bloom = NULL;
   GVariantIter *content_iter = NULL;
 
   if (!validate_variant (superindex, OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT, error))
@@ -1741,7 +1715,5 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
  out:
   if (content_iter)
     g_variant_iter_free (content_iter);
-  ot_clear_gvariant (&csum_bytes);
-  ot_clear_gvariant (&bloom);
   return ret;
 }

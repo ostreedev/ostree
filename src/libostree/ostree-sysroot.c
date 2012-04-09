@@ -59,9 +59,9 @@ ostree_run_triggers_in_root (GFile                  *root,
 {
   gboolean ret = FALSE;
   int estatus;
-  char *rel_triggerdir = NULL;
-  GFile *triggerdir = NULL;
-  GPtrArray *argv = NULL;
+  ot_lfree char *rel_triggerdir = NULL;
+  ot_lobj GFile *triggerdir = NULL;
+  ot_lptrarray GPtrArray *argv = NULL;
 
   rel_triggerdir = g_build_filename ("usr", "libexec", "ostree", "triggers.d", NULL);
 
@@ -114,8 +114,5 @@ ostree_run_triggers_in_root (GFile                  *root,
 
   ret = TRUE;
  out:
-  g_free (rel_triggerdir);
-  g_clear_object (&triggerdir);
-  ot_clear_ptrarray (&argv);
   return ret;
 }

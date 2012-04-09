@@ -42,11 +42,11 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
                          GError         **error)
 {
   gboolean ret = FALSE;
-  GVariant *tree = NULL;
-  GVariant *files_variant = NULL;
-  GVariant *dirs_variant = NULL;
   int n, i;
-  GVariant *key;
+  ot_lvariant GVariant *key;
+  ot_lvariant GVariant *tree = NULL;
+  ot_lvariant GVariant *files_variant = NULL;
+  ot_lvariant GVariant *dirs_variant = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &tree, error))
     goto out;
@@ -105,10 +105,6 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&key);
-  ot_clear_gvariant (&tree);
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
   return ret;
 }
 
@@ -121,10 +117,10 @@ ostree_traverse_commit (OstreeRepo      *repo,
                         GError         **error)
 {
   gboolean ret = FALSE;
-  GVariant *commit = NULL;
   const char *contents_checksum;
   const char *meta_checksum;
-  GVariant *key;
+  ot_lvariant GVariant *key;
+  ot_lvariant GVariant *commit = NULL;
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
@@ -132,10 +128,12 @@ ostree_traverse_commit (OstreeRepo      *repo,
   
   key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
   g_hash_table_replace (inout_reachable, key, key);
+  key = NULL;
 
   g_variant_get_child (commit, 7, "&s", &meta_checksum);
   key = ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
   g_hash_table_replace (inout_reachable, key, key);
+  key = NULL;
 
   g_variant_get_child (commit, 6, "&s", &contents_checksum);
   if (!ostree_traverse_dirtree (repo, contents_checksum, inout_reachable, cancellable, error))
@@ -158,7 +156,6 @@ ostree_traverse_commit (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&commit);
   return ret;
 }
 
