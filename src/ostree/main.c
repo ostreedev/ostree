@@ -36,7 +36,6 @@ static OstreeBuiltin builtins[] = {
   { "diff", ostree_builtin_diff, 0 },
   { "init", ostree_builtin_init, 0 },
   { "commit", ostree_builtin_commit, 0 },
-  { "compose", ostree_builtin_compose, 0 },
   { "local-clone", ostree_builtin_local_clone, 0 },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },

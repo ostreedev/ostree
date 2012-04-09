@@ -31,7 +31,6 @@ gboolean ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **e
 gboolean ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_checksum (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **error);
