@@ -113,9 +113,9 @@ ot_util_variant_map (GFile *src,
                      GError  **error)
 {
   gboolean ret = FALSE;
-  GMappedFile *mfile = NULL;
   const char *path = NULL;
   ot_lvariant GVariant *ret_variant = NULL;
+  GMappedFile *mfile = NULL;
 
   path = ot_gfile_get_path_cached (src);
   mfile = g_mapped_file_new (path, FALSE, error);

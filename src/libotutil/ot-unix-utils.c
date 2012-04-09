@@ -37,12 +37,12 @@ gboolean
 ot_util_spawn_pager (GOutputStream  **out_stream,
                      GError         **error)
 {
+  gboolean ret = FALSE;
   const char *pager;
   char *argv[2];
   int stdin_fd;
   pid_t pid;
-  gboolean ret = FALSE;
-  GOutputStream *ret_stream = NULL;
+  ot_lfree GOutputStream *ret_stream = NULL;
 
   if (!isatty (1))
     {
@@ -70,7 +70,6 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
   ot_transfer_out_value(out_stream, &ret_stream);
   ret = TRUE;
  out:
-  g_clear_object (&ret_stream);
   return ret;
 }
 
@@ -129,8 +128,8 @@ ot_util_path_split_validate (const char *path,
                              GError    **error)
 {
   gboolean ret = FALSE;
-  GPtrArray *ret_components = NULL;
   int i;
+  ot_lptrarray GPtrArray *ret_components = NULL;
 
   if (strlen (path) > PATH_MAX)
     {
@@ -158,8 +157,6 @@ ot_util_path_split_validate (const char *path,
   ret = TRUE;
   ot_transfer_out_value(out_components, &ret_components);
  out:
-  if (ret_components)
-    g_ptr_array_unref (ret_components);
   return ret;
 }
 

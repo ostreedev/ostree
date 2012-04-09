@@ -54,8 +54,8 @@ ot_gfile_ensure_directory (GFile     *dir,
                            gboolean   with_parents, 
                            GError   **error)
 {
-  GError *temp_error = NULL;
   gboolean ret = FALSE;
+  GError *temp_error = NULL;
 
   if (with_parents)
     ret = g_file_make_directory_with_parents (dir, NULL, &temp_error);
@@ -164,15 +164,15 @@ ot_gfile_rename (GFile          *from,
 
 gboolean
 ot_gfile_load_contents_utf8 (GFile         *file,
-                             char         **contents_out,
-                             char         **etag_out,
+                             char         **out_contents,
+                             char         **out_etag,
                              GCancellable  *cancellable,
                              GError       **error)
 {
-  char *ret_contents = NULL;
-  char *ret_etag = NULL;
-  gsize len;
   gboolean ret = FALSE;
+  gsize len;
+  ot_lfree char *ret_contents = NULL;
+  ot_lfree char *ret_etag = NULL;
 
   if (!g_file_load_contents (file, cancellable, &ret_contents, &len, &ret_etag, error))
     goto out;
@@ -185,20 +185,10 @@ ot_gfile_load_contents_utf8 (GFile         *file,
       goto out;
     }
 
-  if (contents_out)
-    {
-      *contents_out = ret_contents;
-      ret_contents = NULL;
-    }
-  if (etag_out)
-    {
-      *etag_out = ret_etag;
-      ret_etag = NULL;
-    }
   ret = TRUE;
+  ot_transfer_out_value (out_contents, &ret_contents);
+  ot_transfer_out_value (out_etag, &ret_etag);
  out:
-  g_free (ret_contents);
-  g_free (ret_etag);
   return ret;
 }
 
@@ -305,14 +295,14 @@ ot_gfile_merge_dirs (GFile    *destination,
   const char *dest_path = NULL;
   const char *src_path = NULL;
   GError *temp_error = NULL;
-  GFileInfo *src_fileinfo = NULL;
-  GFileInfo *dest_fileinfo = NULL;
-  GFileEnumerator *src_enum = NULL;
-  GFile *dest_subfile = NULL;
-  GFile *src_subfile = NULL;
   const char *name;
   guint32 type;
   const int move_flags = G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA;
+  ot_lobj GFileInfo *src_fileinfo = NULL;
+  ot_lobj GFileInfo *dest_fileinfo = NULL;
+  ot_lobj GFileEnumerator *src_enum = NULL;
+  ot_lobj GFile *dest_subfile = NULL;
+  ot_lobj GFile *src_subfile = NULL;
 
   dest_path = ot_gfile_get_path_cached (destination);
   src_path = ot_gfile_get_path_cached (src);
@@ -379,10 +369,5 @@ ot_gfile_merge_dirs (GFile    *destination,
 
   ret = TRUE;
  out:
-  g_clear_object (&src_fileinfo);
-  g_clear_object (&dest_fileinfo);
-  g_clear_object (&src_enum);
-  g_clear_object (&dest_subfile);
-  g_clear_object (&src_subfile);
   return ret;
 }
