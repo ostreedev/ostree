@@ -39,7 +39,7 @@ parse_file_or_commit (OstreeRepo  *repo,
                       GError     **error)
 {
   gboolean ret = FALSE;
-  GFile *ret_file = NULL;
+  ot_lfree GFile *ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
       || g_str_has_prefix (arg, "./")
@@ -54,10 +54,8 @@ parse_file_or_commit (OstreeRepo  *repo,
     }
 
   ret = TRUE;
-  *out_file = ret_file;
-  ret_file = NULL;
+  ot_transfer_out_value (out_file, &ret_file);
  out:
-  g_clear_object (&ret_file);
   return ret;
 }
 
@@ -70,8 +68,8 @@ get_file_checksum (GFile  *f,
                    GError   **error)
 {
   gboolean ret = FALSE;
+  ot_lfree char *ret_checksum = NULL;
   GChecksum *tmp_checksum = NULL;
-  char *ret_checksum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
@@ -161,8 +159,8 @@ diff_files (GFile          *a,
             GError        **error)
 {
   gboolean ret = FALSE;
-  char *checksum_a = NULL;
-  char *checksum_b = NULL;
+  ot_lfree char *checksum_a = NULL;
+  ot_lfree char *checksum_b = NULL;
   DiffItem *ret_item = NULL;
 
   if (!get_file_checksum (a, a_info, &checksum_a, cancellable, error))
@@ -181,8 +179,6 @@ diff_files (GFile          *a,
  out:
   if (ret_item)
     diff_item_unref (ret_item);
-  g_free (checksum_a);
-  g_free (checksum_b);
   return ret;
 }
 
@@ -193,10 +189,10 @@ diff_add_dir_recurse (GFile          *d,
                       GError        **error)
 {
   gboolean ret = FALSE;
-  GFileEnumerator *dir_enum = NULL;
   GError *temp_error = NULL;
-  GFile *child = NULL;
-  GFileInfo *child_info = NULL;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  ot_lobj GFile *child = NULL;
+  ot_lobj GFileInfo *child_info = NULL;
 
   dir_enum = g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -232,9 +228,6 @@ diff_add_dir_recurse (GFile          *d,
 
   ret = TRUE;
  out:
-  g_clear_object (&child_info);
-  g_clear_object (&child);
-  g_clear_object (&dir_enum);
   return ret;
 }
 
@@ -248,12 +241,12 @@ diff_dirs (GFile          *a,
            GError        **error)
 {
   gboolean ret = FALSE;
-  GFileEnumerator *dir_enum = NULL;
   GError *temp_error = NULL;
-  GFile *child_a = NULL;
-  GFile *child_b = NULL;
-  GFileInfo *child_a_info = NULL;
-  GFileInfo *child_b_info = NULL;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  ot_lobj GFile *child_a = NULL;
+  ot_lobj GFile *child_b = NULL;
+  ot_lobj GFileInfo *child_a_info = NULL;
+  ot_lobj GFileInfo *child_b_info = NULL;
 
   dir_enum = g_file_enumerate_children (a, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -384,11 +377,6 @@ diff_dirs (GFile          *a,
 
   ret = TRUE;
  out:
-  g_clear_object (&dir_enum);
-  g_clear_object (&child_a_info);
-  g_clear_object (&child_b_info);
-  g_clear_object (&child_a);
-  g_clear_object (&child_b);
   return ret;
 }
 
@@ -398,17 +386,17 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   GOptionContext *context;
   GCancellable *cancellable = NULL;
-  OstreeRepo *repo = NULL;
-  char *src_prev = NULL;
+  int i;
   const char *src;
   const char *target;
-  GFile *srcf = NULL;
-  GFile *targetf = NULL;
-  GFile *cwd = NULL;
-  GPtrArray *modified = NULL;
-  GPtrArray *removed = NULL;
-  GPtrArray *added = NULL;
-  int i;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *src_prev = NULL;
+  ot_lobj GFile *srcf = NULL;
+  ot_lobj GFile *targetf = NULL;
+  ot_lobj GFile *cwd = NULL;
+  ot_lptrarray GPtrArray *modified = NULL;
+  ot_lptrarray GPtrArray *removed = NULL;
+  ot_lptrarray GPtrArray *added = NULL;
 
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
   g_option_context_add_main_entries (context, options, NULL);
@@ -481,16 +469,5 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
-  g_free (src_prev);
-  g_clear_object (&repo);
-  g_clear_object (&cwd);
-  g_clear_object (&srcf);
-  g_clear_object (&targetf);
-  if (modified)
-    g_ptr_array_free (modified, TRUE);
-  if (removed)
-    g_ptr_array_free (removed, TRUE);
-  if (added)
-    g_ptr_array_free (added, TRUE);
   return ret;
 }

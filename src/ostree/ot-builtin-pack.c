@@ -197,13 +197,13 @@ compare_index_content (gconstpointer         ap,
   gpointer b = *((gpointer*)bp);
   GVariant *a_v = a;
   GVariant *b_v = b;
-  GVariant *a_csum_bytes;
-  GVariant *b_csum_bytes;
   guint32 a_objtype;
   guint32 b_objtype;
   guint64 a_offset;
   guint64 b_offset;
   int c;
+  ot_lvariant GVariant *a_csum_bytes = NULL;
+  ot_lvariant GVariant *b_csum_bytes = NULL;
 
   g_variant_get (a_v, "(u@ayt)", &a_objtype, &a_csum_bytes, &a_offset);      
   g_variant_get (b_v, "(u@ayt)", &b_objtype, &b_csum_bytes, &b_offset);      
@@ -228,11 +228,11 @@ delete_loose_object (OtRepackData     *data,
                      GError          **error)
 {
   gboolean ret = FALSE;
-  GFile *object_path = NULL;
-  GFile *content_object_path = NULL;
-  GVariant *archive_meta = NULL;
-  GFileInfo *file_info = NULL;
-  GVariant *xattrs = NULL;
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GFile *content_object_path = NULL;
+  ot_lvariant GVariant *archive_meta = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
 
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
   
@@ -266,11 +266,6 @@ delete_loose_object (OtRepackData     *data,
 
   ret = TRUE;
  out:
-  g_clear_object (&object_path);
-  g_clear_object (&content_object_path);
-  ot_clear_gvariant (&archive_meta);
-  g_clear_object (&file_info);
-  ot_clear_gvariant (&xattrs);
   return ret;
 }
 
@@ -281,29 +276,29 @@ create_pack_file (OtRepackData        *data,
                   GError             **error)
 {
   gboolean ret = FALSE;
-  GFile *pack_dir = NULL;
-  GFile *index_temppath = NULL;
-  GOutputStream *index_out = NULL;
-  GFile *pack_temppath = NULL;
-  GOutputStream *pack_out = NULL;
-  GFile *object_path = NULL;
-  GFileInfo *object_file_info = NULL;
-  GFileInputStream *object_input = NULL;
-  GConverter *compressor = NULL;
-  GConverterInputStream *compressed_object_input = NULL;
   guint i;
   guint64 offset;
   gsize bytes_written;
-  GPtrArray *index_content_list = NULL;
-  GVariant *pack_header = NULL;
-  GVariant *packed_object = NULL;
-  GVariant *index_content = NULL;
+  ot_lobj GFile *pack_dir = NULL;
+  ot_lobj GFile *index_temppath = NULL;
+  ot_lobj GOutputStream *index_out = NULL;
+  ot_lobj GFile *pack_temppath = NULL;
+  ot_lobj GOutputStream *pack_out = NULL;
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GFileInfo *object_file_info = NULL;
+  ot_lobj GFileInputStream *object_input = NULL;
+  ot_lobj GConverter *compressor = NULL;
+  ot_lobj GConverterInputStream *compressed_object_input = NULL;
+  ot_lptrarray GPtrArray *index_content_list = NULL;
+  ot_lvariant GVariant *pack_header = NULL;
+  ot_lvariant GVariant *packed_object = NULL;
+  ot_lvariant GVariant *index_content = NULL;
+  ot_lfree char *pack_name = NULL;
+  ot_lobj GFile *pack_file_path = NULL;
+  ot_lobj GFile *pack_index_path = NULL;
+  GMemoryOutputStream *object_data_stream = NULL;
   GVariantBuilder index_content_builder;
   GChecksum *pack_checksum = NULL;
-  char *pack_name = NULL;
-  GFile *pack_file_path = NULL;
-  GFile *pack_index_path = NULL;
-  GMemoryOutputStream *object_data_stream = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -496,26 +491,10 @@ create_pack_file (OtRepackData        *data,
  out:
   if (index_temppath)
     (void) unlink (ot_gfile_get_path_cached (index_temppath));
-  g_clear_object (&index_temppath);
-  g_clear_object (&index_out);
   if (pack_temppath)
     (void) unlink (ot_gfile_get_path_cached (pack_temppath));
-  g_clear_object (&pack_temppath);
-  g_clear_object (&pack_out);
-  g_clear_object (&object_path);
-  g_clear_object (&object_input);
-  g_clear_object (&compressor);
-  g_clear_object (&compressed_object_input);
-  g_clear_object (&object_file_info);
   if (pack_checksum)
     g_checksum_free (pack_checksum);
-  g_clear_object (&pack_dir);
-  ot_clear_gvariant (&index_content);
-  g_free (pack_name);
-  g_clear_object (&pack_file_path);
-  g_clear_object (&pack_index_path);
-  if (index_content_list)
-    g_ptr_array_unref (index_content_list);
   return ret;
 }
 
@@ -535,15 +514,15 @@ cluster_objects_stupidly (OtRepackData      *data,
                           GError           **error)
 {
   gboolean ret = FALSE;
-  GPtrArray *ret_clusters = NULL;
-  GPtrArray *object_list = NULL;
   guint i;
   guint64 current_size;
   guint current_offset;
   GHashTableIter hash_iter;
   gpointer key, value;
-  GFile *object_path = NULL;
-  GFileInfo *object_info = NULL;
+  ot_lptrarray GPtrArray *ret_clusters = NULL;
+  ot_lptrarray GPtrArray *object_list = NULL;
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GFileInfo *object_info = NULL;
 
   object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
@@ -620,8 +599,6 @@ cluster_objects_stupidly (OtRepackData      *data,
   ret = TRUE;
   ot_transfer_out_value (out_clusters, &ret_clusters);
  out:
-  if (object_list)
-    g_ptr_array_unref (object_list);
   return ret;
 }
 
@@ -717,7 +694,6 @@ do_stats_gather_loose (OtRepackData  *data,
                        GError       **error)
 {
   gboolean ret = FALSE;
-  GHashTable *ret_loose = NULL;
   guint n_loose = 0;
   guint n_loose_and_packed = 0;
   guint n_packed = 0;
@@ -728,6 +704,7 @@ do_stats_gather_loose (OtRepackData  *data,
   guint n_files = 0;
   GHashTableIter hash_iter;
   gpointer key, value;
+  ot_lhash GHashTable *ret_loose = NULL;
 
   ret_loose = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                      (GDestroyNotify) g_variant_unref,
@@ -803,8 +780,6 @@ do_stats_gather_loose (OtRepackData  *data,
   ret = TRUE;
   ot_transfer_out_value (out_loose, &ret_loose);
  /* out: */
-  if (ret_loose)
-    g_hash_table_unref (ret_loose);
   return ret;
 }
 
@@ -814,10 +789,10 @@ do_incremental_pack (OtRepackData          *data,
                      GError               **error)
 {
   gboolean ret = FALSE;
-  GHashTable *objects = NULL;
   guint i;
-  GPtrArray *clusters = NULL;
-  GHashTable *loose_objects = NULL;
+  ot_lhash GHashTable *objects = NULL;
+  ot_lptrarray GPtrArray *clusters = NULL;
+  ot_lhash GHashTable *loose_objects = NULL;
 
   if (!ostree_repo_list_objects (data->repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
                                  cancellable, error))
@@ -850,12 +825,6 @@ do_incremental_pack (OtRepackData          *data,
 
   ret = TRUE;
  out:
-  if (clusters)
-    g_ptr_array_unref (clusters);
-  if (loose_objects)
-    g_hash_table_unref (loose_objects);
-  if (objects)
-    g_hash_table_unref (objects);
   return ret;
 }
 
@@ -864,9 +833,9 @@ ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  OtRepackData data;
-  OstreeRepo *repo = NULL;
   GCancellable *cancellable = NULL;
+  OtRepackData data;
+  ot_lobj OstreeRepo *repo = NULL;
 
   memset (&data, 0, sizeof (data));
 
@@ -913,6 +882,5 @@ ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **error)
  out:
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
   return ret;
 }

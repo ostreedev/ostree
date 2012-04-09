@@ -36,11 +36,11 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
-  GOutputStream *pager = NULL;
   const char *rev;
-  GVariant *commit = NULL;
-  char *resolved_rev = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lobj GOutputStream *pager = NULL;
+  ot_lvariant GVariant *commit = NULL;
+  ot_lfree char *resolved_rev = NULL;
 
   context = g_option_context_new ("- Show revision log");
   g_option_context_add_main_entries (context, options, NULL);
@@ -141,10 +141,7 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
-  ot_clear_gvariant (&commit);
-  g_clear_object (&repo);
   return ret;
 }

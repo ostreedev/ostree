@@ -151,9 +151,9 @@ print_directory_recurse (GFile    *f,
                          GError  **error)
 {
   gboolean ret = FALSE;
-  GFileEnumerator *dir_enum = NULL;
-  GFile *child = NULL;
-  GFileInfo *child_info = NULL;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  ot_lobj GFile *child = NULL;
+  ot_lobj GFileInfo *child_info = NULL;
   GError *temp_error = NULL;
 
   dir_enum = g_file_enumerate_children (f, OSTREE_GIO_FAST_QUERYINFO, 
@@ -186,9 +186,6 @@ print_directory_recurse (GFile    *f,
 
   ret = TRUE;
  out:
-  g_clear_object (&child_info);
-  g_clear_object (&child);
-  g_clear_object (&dir_enum);
   return ret;
 }
 

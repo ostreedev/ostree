@@ -46,11 +46,11 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
   const char *op;
-  GKeyFile *config = NULL;
-  GPtrArray *branches = NULL;
   guint i;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lptrarray GPtrArray *branches = NULL;
+  GKeyFile *config = NULL;
 
   context = g_option_context_new ("OPERATION [args] - Control remote repository configuration");
   g_option_context_add_main_entries (context, options, NULL);
@@ -104,11 +104,9 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  ot_clear_ptrarray (&branches);
   if (context)
     g_option_context_free (context);
   if (config)
     g_key_file_free (config);
-  g_clear_object (&repo);
   return ret;
 }

@@ -36,12 +36,12 @@ ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **erro
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
   const char *rev = "master";
-  char *resolved_rev = NULL;
-  GVariant *variant = NULL;
-  char *formatted_variant = NULL;
   int i;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *resolved_rev = NULL;
+  ot_lvariant GVariant *variant = NULL;
+  ot_lfree char *formatted_variant = NULL;
 
   context = g_option_context_new ("REV - Output the target of a rev");
   g_option_context_add_main_entries (context, options, NULL);
@@ -70,11 +70,7 @@ ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **erro
  
   ret = TRUE;
  out:
-  g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
-  ot_clear_gvariant (&variant);
-  g_free (formatted_variant);
   return ret;
 }

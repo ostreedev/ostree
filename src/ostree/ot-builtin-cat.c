@@ -39,7 +39,7 @@ cat_one_file (GFile         *f,
               GError       **error)
 {
   gboolean ret = FALSE;
-  GInputStream *in = NULL;
+  ot_lobj GInputStream *in = NULL;
   
   in = (GInputStream*)g_file_read (f, cancellable, error);
   if (!in)
@@ -51,7 +51,6 @@ cat_one_file (GFile         *f,
 
   ret = TRUE;
  out:
-  g_clear_object (&in);
   return ret;
 }
 
@@ -60,13 +59,13 @@ ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
   int i;
   GCancellable *cancellable = NULL;
   const char *rev;
-  GOutputStream *stdout_stream = NULL;
-  GFile *root = NULL;
-  GFile *f = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lobj GOutputStream *stdout_stream = NULL;
+  ot_lobj GFile *root = NULL;
+  ot_lobj GFile *f = NULL;
 
   context = g_option_context_new ("COMMIT PATH [PATH...] - Concatenate contents of files");
   g_option_context_add_main_entries (context, options, NULL);
@@ -101,11 +100,7 @@ ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  g_clear_object (&root);
-  g_clear_object (&f);
-  g_clear_object (&stdout_stream);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
   return ret;
 }

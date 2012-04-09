@@ -45,11 +45,11 @@ copy_dir_contents_recurse (GFile  *src,
                            GError   **error)
 {
   gboolean ret = FALSE;
-  GFile *child_src = NULL;
-  GFile *child_dest = NULL;
-  GFileEnumerator *dir_enum = NULL;
-  GFileInfo *file_info = NULL;
   GError *temp_error = NULL;
+  ot_lobj GFile *child_src = NULL;
+  ot_lobj GFile *child_dest = NULL;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
 
   dir_enum = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -90,10 +90,6 @@ copy_dir_contents_recurse (GFile  *src,
 
   ret = TRUE;
  out:
-  g_clear_object (&dir_enum);
-  g_clear_object (&child_src);
-  g_clear_object (&child_dest);
-  g_clear_object (&file_info);
   return ret;
 }
 
@@ -105,13 +101,13 @@ import_loose_object (OtLocalCloneData *data,
                      GError        **error)
 {
   gboolean ret = FALSE;
-  GFile *objfile = NULL;
-  GFileInfo *file_info = NULL;
-  GFile *content_path = NULL;
-  GFileInfo *archive_info = NULL;
-  GVariant *archive_metadata = NULL;
-  GVariant *xattrs = NULL;
-  GInputStream *input = NULL;
+  ot_lobj GFile *objfile = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lobj GFile *content_path = NULL;
+  ot_lobj GFileInfo *archive_info = NULL;
+  ot_lvariant GVariant *archive_metadata = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
+  ot_lobj GInputStream *input = NULL;
 
   objfile = ostree_repo_get_object_path (data->src_repo, checksum, objtype);
   file_info = g_file_query_info (objfile, OSTREE_GIO_FAST_QUERYINFO,
@@ -167,13 +163,6 @@ import_loose_object (OtLocalCloneData *data,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&archive_metadata);
-  ot_clear_gvariant (&xattrs);
-  g_clear_object (&archive_info);
-  g_clear_object (&input);
-  g_clear_object (&content_path);
-  g_clear_object (&file_info);
-  g_clear_object (&objfile);
   return ret;
 }
 
@@ -185,10 +174,10 @@ copy_one_ref (GFile   *src_repo_dir,
               GError **error)
 {
   gboolean ret = FALSE;
-  GFile *src_path = NULL;
-  GFile *dest_path = NULL;
-  GFile *dest_parent = NULL;
-  char *refpath = NULL;
+  ot_lobj GFile *src_path = NULL;
+  ot_lobj GFile *dest_path = NULL;
+  ot_lobj GFile *dest_parent = NULL;
+  ot_lfree char *refpath = NULL;
 
   refpath = g_build_filename ("refs/heads", name, NULL);
   src_path = g_file_resolve_relative_path (src_repo_dir, refpath);
@@ -204,10 +193,6 @@ copy_one_ref (GFile   *src_repo_dir,
   
   ret = TRUE;
  out:
-  g_clear_object (&src_path);
-  g_clear_object (&dest_path);
-  g_clear_object (&dest_parent);
-  g_free (refpath);
   return ret;
 }
 
@@ -216,20 +201,20 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
 {
   gboolean ret = FALSE;
   GCancellable *cancellable = NULL;
-  GHashTable *objects = NULL;
   GOptionContext *context;
   const char *destination;
-  GFile *dest_f = NULL;
-  OtLocalCloneData data;
-  GFile *src_repo_dir = NULL;
-  GFile *dest_repo_dir = NULL;
-  GFileInfo *src_info = NULL;
-  GFileInfo *dest_info = NULL;
-  GFile *src_dir = NULL;
-  GFile *dest_dir = NULL;
   int i;
   GHashTableIter hash_iter;
   gpointer key, value;
+  ot_lhash GHashTable *objects = NULL;
+  ot_lobj GFile *dest_f = NULL;
+  ot_lobj GFile *src_repo_dir = NULL;
+  ot_lobj GFile *dest_repo_dir = NULL;
+  ot_lobj GFileInfo *src_info = NULL;
+  ot_lobj GFileInfo *dest_info = NULL;
+  ot_lobj GFile *src_dir = NULL;
+  ot_lobj GFile *dest_dir = NULL;
+  OtLocalCloneData data;
 
   context = g_option_context_new ("DEST ... - Create new repository DEST");
   g_option_context_add_main_entries (context, options, NULL);
@@ -334,16 +319,5 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
  out:
   if (context)
     g_option_context_free (context);
-  g_clear_object (&dest_f);
-  g_clear_object (&src_repo_dir);
-  g_clear_object (&dest_repo_dir);
-  g_clear_object (&src_info);
-  g_clear_object (&dest_info);
-  g_clear_object (&src_dir);
-  g_clear_object (&dest_dir);
-  g_clear_object (&data.src_repo);
-  g_clear_object (&data.dest_repo);
-  if (objects)
-    g_hash_table_unref (objects);
   return ret;
 }

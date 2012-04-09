@@ -68,12 +68,12 @@ parse_statoverride_file (GHashTable   **out_mode_add,
                          GError        **error)
 {
   gboolean ret = FALSE;
-  GFile *path = NULL;
-  char *contents = NULL;
   gsize len;
-  GHashTable *ret_hash = NULL;
+  char **iter = NULL; /* nofree */
+  ot_lhash GHashTable *ret_hash = NULL;
+  ot_lobj GFile *path = NULL;
+  ot_lfree char *contents = NULL;
   char **lines = NULL;
-  char **iter = NULL;
 
   path = ot_gfile_new_for_path (statoverride_file);
 
@@ -111,11 +111,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   ret = TRUE;
   ot_transfer_out_value (out_mode_add, &ret_hash);
  out:
-  if (ret_hash)
-    g_hash_table_unref (ret_hash);
-  g_free (contents);
   g_strfreev (lines);
-  g_clear_object (&path);
   return ret;
 }
 
@@ -150,24 +146,24 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
-  GFile *arg = NULL;
-  char *parent = NULL;
-  char *commit_checksum = NULL;
-  GVariant *parent_commit = NULL;
-  GVariant *metadata = NULL;
-  GMappedFile *metadata_mappedf = NULL;
-  GFile *metadata_f = NULL;
-  OstreeRepoCommitModifier *modifier = NULL;
-  char *contents_checksum = NULL;
-  GCancellable *cancellable = NULL;
-  OstreeMutableTree *mtree = NULL;
-  char *tree_type = NULL;
-  GVariantBuilder metadata_builder;
-  gboolean metadata_builder_initialized = FALSE;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
-  GHashTable *mode_adds = NULL;
+  GCancellable *cancellable = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lobj GFile *arg = NULL;
+  ot_lfree char *parent = NULL;
+  ot_lfree char *commit_checksum = NULL;
+  ot_lvariant GVariant *parent_commit = NULL;
+  ot_lvariant GVariant *metadata = NULL;
+  ot_lobj GFile *metadata_f = NULL;
+  ot_lfree char *contents_checksum = NULL;
+  ot_lobj OstreeMutableTree *mtree = NULL;
+  ot_lfree char *tree_type = NULL;
+  ot_lhash GHashTable *mode_adds = NULL;
+  OstreeRepoCommitModifier *modifier = NULL;
+  GMappedFile *metadata_mappedf = NULL;
+  GVariantBuilder metadata_builder;
+  gboolean metadata_builder_initialized = FALSE;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -188,6 +184,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
                                       NULL, error);
           if (!metadata)
             goto out;
+          g_variant_ref_sink (metadata);
         }
       else if (metadata_bin_path)
         {
@@ -227,6 +224,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         }
       metadata = g_variant_builder_end (&metadata_builder);
       metadata_builder_initialized = FALSE;
+      g_variant_ref_sink (metadata);
     }
 
   if (statoverride_file)
@@ -421,21 +419,11 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
     }
   if (metadata_builder_initialized)
     g_variant_builder_clear (&metadata_builder);
-  g_clear_object (&arg);
-  g_clear_object (&mtree);
-  g_free (contents_checksum);
-  g_free (parent);
-  ot_clear_gvariant(&parent_commit);
-  if (mode_adds)
-    g_hash_table_unref (mode_adds);
-  g_free (tree_type);
   if (metadata_mappedf)
     g_mapped_file_unref (metadata_mappedf);
   if (context)
     g_option_context_free (context);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
-  g_clear_object (&repo);
-  g_free (commit_checksum);
   return ret;
 }

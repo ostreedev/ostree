@@ -76,8 +76,8 @@ prune_loose_object (OtPruneData    *data,
                     GError         **error)
 {
   gboolean ret = FALSE;
-  GVariant *key = NULL;
-  GFile *objf = NULL;
+  ot_lvariant GVariant *key = NULL;
+  ot_lobj GFile *objf = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
 
@@ -102,8 +102,6 @@ prune_loose_object (OtPruneData    *data,
 
   ret = TRUE;
  out:
-  g_clear_object (&objf);
-  ot_clear_gvariant (&key);
   return ret;
 }
 
@@ -112,13 +110,13 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  OtPruneData data;
-  GHashTable *objects = NULL;
-  OstreeRepo *repo = NULL;
-  GHashTable *all_refs = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
   GCancellable *cancellable = NULL;
+  ot_lhash GHashTable *objects = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lhash GHashTable *all_refs = NULL;
+  OtPruneData data;
 
   memset (&data, 0, sizeof (data));
 
@@ -181,14 +179,9 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
-  if (all_refs)
-    g_hash_table_unref (all_refs);
   if (data.reachable)
     g_hash_table_unref (data.reachable);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
-  if (objects)
-    g_hash_table_unref (objects);
   return ret;
 }

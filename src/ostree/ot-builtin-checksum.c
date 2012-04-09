@@ -59,7 +59,7 @@ ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  GFile *f = NULL;
+  ot_lobj GFile *f = NULL;
   AsyncChecksumData data;
 
   context = g_option_context_new ("FILENAME - Checksum a file or directory");
@@ -87,7 +87,6 @@ ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **
  out:
   if (data.loop)
     g_main_loop_unref (data.loop);
-  g_clear_object (&f);
   if (context)
     g_option_context_free (context);
   return ret;

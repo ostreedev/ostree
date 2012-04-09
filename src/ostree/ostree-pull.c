@@ -168,11 +168,11 @@ fetch_uri (OtPullData  *pull_data,
            GError     **error)
 {
   gboolean ret = FALSE;
-  SoupMessage *msg = NULL;
   guint response;
-  char *uri_string = NULL;
-  GFile *ret_temp_filename = NULL;
-  GOutputStream *output_stream = NULL;
+  ot_lfree char *uri_string = NULL;
+  ot_lobj GFile *ret_temp_filename = NULL;
+  ot_lobj GOutputStream *output_stream = NULL;
+  ot_lobj SoupMessage *msg = NULL;
   OstreeSoupChunkData chunkdata;
 
   if (!ostree_create_temp_regular_file (ostree_repo_get_tmpdir (pull_data->repo),
@@ -227,9 +227,6 @@ fetch_uri (OtPullData  *pull_data,
  out:
   if (ret_temp_filename)
     (void) unlink (ot_gfile_get_path_cached (ret_temp_filename));
-  g_clear_object (&ret_temp_filename);
-  g_free (uri_string);
-  g_clear_object (&msg);
   return ret;
 }
 
@@ -241,8 +238,8 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
                          GError     **error)
 {
   gboolean ret = FALSE;
-  GFile *tmpf = NULL;
-  char *ret_contents = NULL;
+  ot_lobj GFile *tmpf = NULL;
+  ot_lfree char *ret_contents = NULL;
   gsize len;
 
   if (!fetch_uri (pull_data, uri, "tmp-", &tmpf, cancellable, error))
@@ -263,8 +260,6 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
  out:
   if (tmpf)
     (void) unlink (ot_gfile_get_path_cached (tmpf));
-  g_clear_object (&tmpf);
-  g_free (ret_contents);
   return ret;
 }
 
@@ -276,9 +271,9 @@ fetch_one_pack_file (OtPullData            *pull_data,
                      GError               **error)
 {
   gboolean ret = FALSE;
-  GFile *ret_cached_path = NULL;
-  GFile *tmp_path = NULL;
-  char *pack_name = NULL;
+  ot_lobj GFile *ret_cached_path = NULL;
+  ot_lobj GFile *tmp_path = NULL;
+  ot_lfree char *pack_name = NULL;
   SoupURI *pack_uri = NULL;
 
   if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
@@ -310,9 +305,6 @@ fetch_one_pack_file (OtPullData            *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_cached_path, &ret_cached_path);
  out:
-  g_clear_object (&ret_cached_path);
-  g_clear_object (&tmp_path);
-  g_free (pack_name);
   if (pack_uri)
     soup_uri_free (pack_uri);
   return ret;
@@ -328,11 +320,11 @@ find_object_in_remote_packs (OtPullData       *pull_data,
                              GError          **error)
 {
   gboolean ret = FALSE;
-  GVariant *mapped_pack = NULL;
-  GVariant *csum_bytes = NULL;
-  char *ret_pack_checksum = NULL;
   guint64 offset;
   guint i;
+  ot_lvariant GVariant *mapped_pack = NULL;
+  ot_lvariant GVariant *csum_bytes = NULL;
+  ot_lfree char *ret_pack_checksum = NULL;
 
   csum_bytes = ostree_checksum_to_bytes (checksum);
 
@@ -358,9 +350,6 @@ find_object_in_remote_packs (OtPullData       *pull_data,
   if (out_offset)
     *out_offset = offset;
  out:
-  ot_clear_gvariant (&mapped_pack);
-  g_free (ret_pack_checksum);
-  ot_clear_gvariant (&csum_bytes);
   return ret;
 }
 
@@ -371,9 +360,9 @@ fetch_one_cache_index (OtPullData          *pull_data,
                       GError              **error)
 {
   gboolean ret = FALSE;
+  ot_lobj GFile *tmp_path = NULL;
+  ot_lfree char *pack_index_name = NULL;
   SoupURI *index_uri = NULL;
-  GFile *tmp_path = NULL;
-  char *pack_index_name = NULL;
 
   pack_index_name = g_strconcat ("ostpack-", pack_checksum, ".index", NULL);
   index_uri = suburi_new (pull_data->base_uri, "objects", "pack", pack_index_name, NULL);
@@ -396,8 +385,6 @@ fetch_one_cache_index (OtPullData          *pull_data,
  out:
   if (tmp_path != NULL)
     (void) ot_gfile_unlink (tmp_path, NULL, NULL);
-  g_clear_object (&tmp_path);
-  g_free (pack_index_name);
   if (index_uri)
     soup_uri_free (index_uri);
   return ret;
@@ -409,13 +396,13 @@ fetch_and_cache_pack_indexes (OtPullData        *pull_data,
                               GError           **error)
 {
   gboolean ret = FALSE;
-  SoupURI *superindex_uri = NULL;
-  GFile *superindex_tmppath = NULL;
-  GPtrArray *cached_indexes = NULL;
-  GPtrArray *uncached_indexes = NULL;
-  GVariant *superindex_variant = NULL;
-  GVariantIter *contents_iter = NULL;
   guint i;
+  ot_lobj GFile *superindex_tmppath = NULL;
+  ot_lptrarray GPtrArray *cached_indexes = NULL;
+  ot_lptrarray GPtrArray *uncached_indexes = NULL;
+  ot_lvariant GVariant *superindex_variant = NULL;
+  GVariantIter *contents_iter = NULL;
+  SoupURI *superindex_uri = NULL;
 
   superindex_uri = suburi_new (pull_data->base_uri, "objects", "pack", "index", NULL);
   
@@ -447,8 +434,6 @@ fetch_and_cache_pack_indexes (OtPullData        *pull_data,
  out:
   if (superindex_uri)
     soup_uri_free (superindex_uri);
-  g_clear_object (&superindex_tmppath);
-  ot_clear_gvariant (&superindex_variant);
   if (contents_iter)
     g_variant_iter_free (contents_iter);
   return ret;
@@ -463,9 +448,9 @@ fetch_loose_object (OtPullData  *pull_data,
                     GError     **error)
 {
   gboolean ret = FALSE;
-  char *objpath = NULL;
+  ot_lfree char *objpath = NULL;
+  ot_lobj GFile *ret_temp_path = NULL;
   SoupURI *obj_uri = NULL;
-  GFile *ret_temp_path = NULL;
 
   objpath = ostree_get_relative_object_path (checksum, objtype);
   obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
@@ -479,8 +464,6 @@ fetch_loose_object (OtPullData  *pull_data,
  out:
   if (obj_uri)
     soup_uri_free (obj_uri);
-  g_clear_object (&ret_temp_path);
-  g_free (objpath);
   return ret;
 }
 
@@ -500,16 +483,16 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
                             GError              **error)
 {
   gboolean ret = FALSE;
-  GInputStream *ret_input = NULL;
-  GFile *temp_path = NULL;
-  GFile *stored_path = NULL;
-  GFile *pack_path = NULL;
-  GMappedFile *pack_map = NULL;
-  char *local_pack_checksum = NULL;
-  char *remote_pack_checksum = NULL;
   guint64 pack_offset = 0;
-  GVariant *pack_entry = NULL;
   gboolean is_stored;
+  ot_lobj GInputStream *ret_input = NULL;
+  ot_lobj GFile *temp_path = NULL;
+  ot_lobj GFile *stored_path = NULL;
+  ot_lobj GFile *pack_path = NULL;
+  ot_lfree char *local_pack_checksum = NULL;
+  ot_lfree char *remote_pack_checksum = NULL;
+  ot_lvariant GVariant *pack_entry = NULL;
+  GMappedFile *pack_map = NULL;
 
   if (!ostree_repo_find_object (pull_data->repo, objtype, checksum,
                                 &stored_path, &local_pack_checksum, NULL,
@@ -574,15 +557,8 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);
  out:
-  g_free (local_pack_checksum);
-  g_clear_object (&stored_path);
-  g_clear_object (&temp_path);
-  g_clear_object (&pack_path);
   if (pack_map)
     g_mapped_file_unref (pack_map);
-  ot_clear_gvariant (&pack_entry);
-  g_clear_object (&pack_path);
-  g_clear_object (&ret_input);
   return ret;
 }
 
@@ -594,8 +570,8 @@ fetch_and_store_object (OtPullData       *pull_data,
                         GError          **error)
 {
   gboolean ret = FALSE;
-  GFileInfo *file_info = NULL;
-  GInputStream *input = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lobj GInputStream *input = NULL;
 
   g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
 
@@ -614,8 +590,6 @@ fetch_and_store_object (OtPullData       *pull_data,
 
   ret = TRUE;
  out:
-  g_clear_object (&file_info);
-  g_clear_object (&input);
   return ret;
 }
 
@@ -628,7 +602,7 @@ fetch_and_store_metadata (OtPullData          *pull_data,
                           GError             **error)
 {
   gboolean ret = FALSE;
-  GVariant *ret_variant = NULL;
+  ot_lvariant GVariant *ret_variant = NULL;
 
   if (!fetch_and_store_object (pull_data, checksum, objtype,
                                cancellable, error))
@@ -641,7 +615,6 @@ fetch_and_store_metadata (OtPullData          *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_variant, &ret_variant);
  out:
-  ot_clear_gvariant (&ret_variant);
   return ret;
 }
 
@@ -652,14 +625,14 @@ fetch_and_store_file (OtPullData          *pull_data,
                       GError             **error)
 {
   gboolean ret = FALSE;
-  GInputStream *input = NULL;
-  GFile *stored_path = NULL;
-  char *pack_checksum = NULL;
-  GVariant *archive_metadata_container = NULL;
-  GVariant *archive_metadata = NULL;
-  GFileInfo *archive_file_info = NULL;
-  GVariant *archive_xattrs = NULL;
   gboolean skip_archive_fetch;
+  ot_lobj GInputStream *input = NULL;
+  ot_lobj GFile *stored_path = NULL;
+  ot_lfree char *pack_checksum = NULL;
+  ot_lvariant GVariant *archive_metadata_container = NULL;
+  ot_lvariant GVariant *archive_metadata = NULL;
+  ot_lobj GFileInfo *archive_file_info = NULL;
+  ot_lvariant GVariant *archive_xattrs = NULL;
 
   /* If we're fetching from an archive into a bare repository, we need
    * to explicitly check for raw file types locally.
@@ -717,13 +690,6 @@ fetch_and_store_file (OtPullData          *pull_data,
 
   ret = TRUE;
  out:
-  g_free (pack_checksum);
-  g_clear_object (&stored_path);
-  g_clear_object (&input);
-  ot_clear_gvariant (&archive_metadata_container);
-  ot_clear_gvariant (&archive_metadata);
-  ot_clear_gvariant (&archive_xattrs);
-  g_clear_object (&archive_file_info);
   return ret;
 }
 
@@ -734,12 +700,12 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
                                        GError      **error)
 {
   gboolean ret = FALSE;
-  GVariant *tree = NULL;
-  GVariant *files_variant = NULL;
-  GVariant *dirs_variant = NULL;
   int i, n;
-  GFile *stored_path = NULL;
-  char *pack_checksum = NULL;
+  ot_lvariant GVariant *tree = NULL;
+  ot_lvariant GVariant *files_variant = NULL;
+  ot_lvariant GVariant *dirs_variant = NULL;
+  ot_lobj GFile *stored_path = NULL;
+  ot_lfree char *pack_checksum = NULL;
 
   if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_DIR_TREE,
                                  &tree, cancellable, error))
@@ -796,11 +762,6 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&tree);
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
-  g_clear_object (&stored_path);
-  g_free (pack_checksum);
   return ret;
 }
 
@@ -811,7 +772,7 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
                                          GError      **error)
 {
   gboolean ret = FALSE;
-  GVariant *commit = NULL;
+  ot_lvariant GVariant *commit = NULL;
   const char *tree_contents_checksum;
   const char *tree_meta_checksum;
 
@@ -833,7 +794,6 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&commit);
   return ret;
 }
 
@@ -845,7 +805,7 @@ fetch_ref_contents (OtPullData    *pull_data,
                     GError       **error)
 {
   gboolean ret = FALSE;
-  char *ret_contents = NULL;
+  ot_lfree char *ret_contents = NULL;
   SoupURI *target_uri = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
@@ -861,7 +821,6 @@ fetch_ref_contents (OtPullData    *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  g_free (ret_contents);
   if (target_uri)
     soup_uri_free (target_uri);
   return ret;
@@ -923,10 +882,10 @@ pull_one_ref (OtPullData       *pull_data,
               GError          **error)
 {
   gboolean ret = FALSE;
-  char *key = NULL;
-  char *remote_ref = NULL;
-  char *baseurl = NULL;
-  char *original_rev = NULL;
+  ot_lfree char *key = NULL;
+  ot_lfree char *remote_ref = NULL;
+  ot_lfree char *baseurl = NULL;
+  ot_lfree char *original_rev = NULL;
 
   remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, branch);
 
@@ -953,10 +912,6 @@ pull_one_ref (OtPullData       *pull_data,
 
   ret = TRUE;
  out:
-  g_free (key);
-  g_free (remote_ref);
-  g_free (baseurl);
-  g_free (original_rev);
   return ret;
 }
 
@@ -966,7 +921,7 @@ parse_ref_summary (const char    *contents,
                    GError       **error)
 {
   gboolean ret = FALSE;
-  GHashTable *ret_refs = NULL;
+  ot_lhash GHashTable *ret_refs = NULL;
   char **lines = NULL;
   char **iter = NULL;
   char *ref = NULL;
@@ -1010,8 +965,6 @@ parse_ref_summary (const char    *contents,
   ret = TRUE;
   ot_transfer_out_value (out_refs, &ret_refs);
  out:
-  if (ret_refs)
-    g_hash_table_unref (ret_refs);
   g_strfreev (lines);
   return ret;
 }
@@ -1021,22 +974,22 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OtPullData pull_data_real;
-  OtPullData *pull_data = &pull_data_real;
-  OstreeRepo *repo = NULL;
-  char *path = NULL;
-  char *baseurl = NULL;
-  char *summary_data = NULL;
-  SoupURI *summary_uri = NULL;
-  GKeyFile *config = NULL;
-  GCancellable *cancellable = NULL;
-  GHashTable *refs_to_fetch = NULL;
-  GHashTable *commits_to_fetch = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
-  char *branch_rev = NULL;
-  char **configured_branches = NULL;
   int i;
+  GCancellable *cancellable = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *path = NULL;
+  ot_lfree char *baseurl = NULL;
+  ot_lfree char *summary_data = NULL;
+  ot_lhash GHashTable *refs_to_fetch = NULL;
+  ot_lhash GHashTable *commits_to_fetch = NULL;
+  ot_lfree char *branch_rev = NULL;
+  OtPullData pull_data_real;
+  OtPullData *pull_data = &pull_data_real;
+  SoupURI *summary_uri = NULL;
+  GKeyFile *config = NULL;
+  char **configured_branches = NULL;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -1184,15 +1137,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
-  if (refs_to_fetch)
-    g_hash_table_unref (refs_to_fetch);
-  ot_clear_hashtable (&commits_to_fetch);
   g_strfreev (configured_branches);
-  g_free (path);
-  g_free (baseurl);
-  g_free (summary_data);
-  g_free (branch_rev);
-  ot_clear_hashtable (&(pull_data->file_checksums_to_fetch));
   if (context)
     g_option_context_free (context);
   g_clear_object (&pull_data->session);
@@ -1202,7 +1147,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     g_ptr_array_unref (pull_data->cached_pack_indexes);
   if (summary_uri)
     soup_uri_free (summary_uri);
-  g_clear_object (&repo);
   return ret;
 }
 

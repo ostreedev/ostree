@@ -48,12 +48,12 @@ add_branch (OstreeRepo          *repo,
             GError             **error)
 {
   gboolean ret = FALSE;
-  GFile *branchf = NULL;
-  GFile *subdir = NULL;
   const char *branch_rev;
-  char **components = NULL;
   const char *branch_name;
   const char *path;
+  ot_lobj GFile *branchf = NULL;
+  ot_lobj GFile *subdir = NULL;
+  char **components = NULL;
 
   components = g_strsplit (branch_path, ":", 2);
 
@@ -86,7 +86,6 @@ add_branch (OstreeRepo          *repo,
   ret = TRUE;
  out:
   g_strfreev (components);
-  g_clear_object (&branchf);
   return ret;
 }
 
@@ -95,30 +94,30 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
-  char *parent = NULL;
-  GFile *destf = NULL;
-  GHashTable *seen_branches = NULL;
+  GCancellable *cancellable = NULL;
+  int i;
+  gboolean skip_commit = FALSE;
+  gboolean in_transaction = FALSE;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *parent = NULL;
+  ot_lobj GFile *destf = NULL;
+  ot_lhash GHashTable *seen_branches = NULL;
+  ot_lvariant GVariant *parent_commit = NULL;
+  ot_lvariant GVariant *parent_commit_metadata = NULL;
+  ot_lvariant GVariant *parent_commit_compose = NULL;
+  ot_lvariant GVariant *commit_metadata = NULL;
+  ot_lfree char *contents_checksum = NULL;
+  ot_lfree char *commit_checksum = NULL;
+  ot_lobj GFile *metadata_f = NULL;
+  ot_lobj GFile *from_file = NULL;
+  ot_lfree char *from_file_contents = NULL;
   gboolean compose_metadata_builder_initialized = FALSE;
   GVariantBuilder compose_metadata_builder;
   gboolean commit_metadata_builder_initialized = FALSE;
   GVariantBuilder commit_metadata_builder;
-  GVariant *parent_commit = NULL;
-  GVariant *parent_commit_metadata = NULL;
-  GVariant *parent_commit_compose = NULL;
-  GVariant *commit_metadata = NULL;
   GVariantIter *parent_commit_compose_iter = NULL;
-  char *contents_checksum = NULL;
-  char *commit_checksum = NULL;
-  GCancellable *cancellable = NULL;
-  GFile *metadata_f = NULL;
-  GFile *from_file = NULL;
-  char *from_file_contents = NULL;
   char **from_file_args = NULL;
   OstreeMutableTree *mtree = NULL;
-  gboolean skip_commit = FALSE;
-  gboolean in_transaction = FALSE;
-  int i;
 
   context = g_option_context_new ("BRANCH1 BRANCH2 ... - Merge multiple commits into a single commit tree");
   g_option_context_add_main_entries (context, options, NULL);
@@ -270,30 +269,14 @@ ostree_builtin_compose (int argc, char **argv, GFile *repo_path, GError **error)
     {
       (void) ostree_repo_abort_transaction (repo, cancellable, NULL);
     }
-
   if (compose_metadata_builder_initialized)
     g_variant_builder_clear (&compose_metadata_builder);
   if (commit_metadata_builder_initialized)
     g_variant_builder_clear (&commit_metadata_builder);
   if (context)
     g_option_context_free (context);
-  g_free (parent);
-  g_free (contents_checksum);
-  g_free (commit_checksum);
-  if (seen_branches)
-    g_hash_table_destroy (seen_branches);
-  ot_clear_gvariant (&commit_metadata);
-  ot_clear_gvariant (&parent_commit);
-  ot_clear_gvariant (&parent_commit_metadata);
-  ot_clear_gvariant (&parent_commit_compose);
   if (parent_commit_compose_iter)
     g_variant_iter_free (parent_commit_compose_iter);
-  g_clear_object (&repo);
-  g_clear_object (&destf);
-  g_clear_object (&metadata_f);
-  g_clear_object (&mtree);
-  g_clear_object (&from_file);
-  g_free (from_file_contents);
   g_strfreev (from_file_args);
   return ret;
 }

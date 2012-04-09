@@ -41,8 +41,8 @@ static GOptionEntry options[] = {
 static void
 print_variant (GVariant *variant)
 {
-  char *formatted_variant = NULL;
-  GVariant *byteswapped = NULL;
+  ot_lfree char *formatted_variant = NULL;
+  ot_lvariant GVariant *byteswapped = NULL;
 
   if (G_BYTE_ORDER != G_BIG_ENDIAN)
     {
@@ -54,9 +54,6 @@ print_variant (GVariant *variant)
       formatted_variant = g_variant_print (variant, TRUE);
     }
   g_print ("%s\n", formatted_variant);
-
-  g_free (formatted_variant);
-  ot_clear_gvariant (&byteswapped);
 }
 
 static gboolean
@@ -65,8 +62,8 @@ do_print_variant_generic (const GVariantType *type,
                           GError **error)
 {
   gboolean ret = FALSE;
-  GFile *f = NULL;
-  GVariant *variant = NULL;
+  ot_lobj GFile *f = NULL;
+  ot_lvariant GVariant *variant = NULL;
 
   f = ot_gfile_new_for_path (filename);
 
@@ -77,8 +74,6 @@ do_print_variant_generic (const GVariantType *type,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&variant);
-  g_clear_object (&f);
   return ret;
 }
 
@@ -89,12 +84,12 @@ show_repo_meta (OstreeRepo  *repo,
                 GError **error)
 {
   gboolean ret = FALSE;
-  GVariant *variant = NULL;
-  GFile *object_path = NULL;
-  GInputStream *in = NULL;
   char buf[8192];
   gsize bytes_read;
   OstreeObjectType objtype;
+  ot_lvariant GVariant *variant = NULL;
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GInputStream *in = NULL;
 
   for (objtype = OSTREE_OBJECT_TYPE_RAW_FILE; objtype <= OSTREE_OBJECT_TYPE_COMMIT; objtype++)
     {
@@ -139,9 +134,6 @@ show_repo_meta (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&variant);
-  g_clear_object (&in);
-  g_clear_object (&object_path);
   return ret;
 }
 
@@ -152,13 +144,13 @@ do_print_compose (OstreeRepo  *repo,
                   GError **error)
 {
   gboolean ret = FALSE;
-  GVariant *variant = NULL;
-  GVariant *metadata = NULL;
-  GVariant *compose_contents = NULL;
-  GVariantIter *viter = NULL;
-  GHashTable *metadata_hash = NULL;
   const char *branch;
   const char *branchrev;
+  ot_lvariant GVariant *variant = NULL;
+  ot_lvariant GVariant *metadata = NULL;
+  ot_lvariant GVariant *compose_contents = NULL;
+  ot_lhash GHashTable *metadata_hash = NULL;
+  GVariantIter *viter = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  resolved_rev, &variant, error))
@@ -184,12 +176,8 @@ do_print_compose (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&variant);
   if (viter)
     g_variant_iter_free (viter);
-  ot_clear_gvariant (&metadata);
-  if (metadata_hash)
-    g_hash_table_destroy (metadata_hash);
   return ret;
 }
 
@@ -200,9 +188,9 @@ do_print_metadata_key (OstreeRepo  *repo,
                        GError **error)
 {
   gboolean ret = FALSE;
-  GVariant *commit = NULL;
-  GVariant *metadata = NULL;
   const char *value;
+  ot_lvariant GVariant *commit = NULL;
+  ot_lvariant GVariant *metadata = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  resolved_rev, &commit, error))
@@ -218,8 +206,6 @@ do_print_metadata_key (OstreeRepo  *repo,
 
   ret = TRUE;
  out:
-  ot_clear_gvariant (&metadata);
-  ot_clear_gvariant (&commit);
   return ret;
 }
 
@@ -228,9 +214,9 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
   const char *rev;
-  char *resolved_rev = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *resolved_rev = NULL;
 
   context = g_option_context_new ("OBJECT - Output a metadata object");
   g_option_context_add_main_entries (context, options, NULL);
@@ -281,9 +267,7 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  g_free (resolved_rev);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
   return ret;
 }

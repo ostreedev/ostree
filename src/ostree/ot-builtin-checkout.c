@@ -53,9 +53,9 @@ atomic_symlink_swap (GFile          *dest,
                      GError        **error)
 {
   gboolean ret = FALSE;
-  GFile *parent = NULL;
-  char *tmp_name = NULL;
-  GFile *tmp_link = NULL;
+  ot_lobj GFile *parent = NULL;
+  ot_lfree char *tmp_name = NULL;
+  ot_lobj GFile *tmp_link = NULL;
 
   parent = g_file_get_parent (dest);
   /* HACK - should use randomly generated temporary target name */
@@ -72,9 +72,6 @@ atomic_symlink_swap (GFile          *dest,
 
   ret = TRUE;
  out:
-  g_free (tmp_name);
-  g_clear_object (&parent);
-  g_clear_object (&tmp_link);
   return ret;
 }
 
@@ -85,11 +82,11 @@ parse_commit_from_symlink (GFile        *symlink,
                            GError       **error)
 {
   gboolean ret = FALSE;
-  GFileInfo *file_info = NULL;
   const char *target;
   const char *last_dash;
   const char *checksum;
-  char *ret_commit = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lfree char *ret_commit = NULL;
 
   file_info = g_file_query_info (symlink, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -115,8 +112,6 @@ parse_commit_from_symlink (GFile        *symlink,
   ret = TRUE;
   ot_transfer_out_value (out_commit, &ret_commit);
  out:
-  g_free (ret_commit);
-  g_clear_object (&file_info);
   return ret;
 }
 
@@ -129,9 +124,9 @@ process_one_checkout (OstreeRepo           *repo,
                       GError              **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoFile *root = NULL;
-  OstreeRepoFile *subtree = NULL;
-  GFileInfo *file_info = NULL;
+  ot_lobj OstreeRepoFile *root = NULL;
+  ot_lobj OstreeRepoFile *subtree = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
   
   root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, resolved_commit);
   if (!ostree_repo_file_ensure_resolved (root, error))
@@ -155,9 +150,6 @@ process_one_checkout (OstreeRepo           *repo,
                       
   ret = TRUE;
  out:
-  g_clear_object (&subtree);
-  g_clear_object (&root);
-  g_clear_object (&file_info);
   return ret;
 }
 
@@ -168,13 +160,13 @@ process_many_checkouts (OstreeRepo         *repo,
                         GError            **error)
 {
   gboolean ret = FALSE;
-  GInputStream *stdin_stream = NULL;
-  GDataInputStream *stdin_data = NULL;
-  char *revision = NULL;
-  char *subpath = NULL;
-  char *resolved_commit = NULL;
   gsize len;
   GError *temp_error = NULL;
+  ot_lobj GInputStream *stdin_stream = NULL;
+  ot_lobj GDataInputStream *stdin_data = NULL;
+  ot_lfree char *revision = NULL;
+  ot_lfree char *subpath = NULL;
+  ot_lfree char *resolved_commit = NULL;
 
   stdin_stream = (GInputStream*)g_unix_input_stream_new (0, FALSE);
   stdin_data = g_data_input_stream_new (stdin_stream);
@@ -216,11 +208,6 @@ process_many_checkouts (OstreeRepo         *repo,
 
   ret = TRUE;
  out:
-  g_free (subpath);
-  g_free (revision);
-  g_free (resolved_commit);
-  g_clear_object (&stdin_stream);
-  g_clear_object (&stdin_data);
   return ret;
 }
 
@@ -230,18 +217,18 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   GOptionContext *context;
   GCancellable *cancellable = NULL;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
   const char *commit;
-  char *existing_commit = NULL;
-  char *resolved_commit = NULL;
   const char *destination;
-  char *suffixed_destination = NULL;
-  char *tmp_destination = NULL;
-  GFileInfo *symlink_file_info = NULL;
-  GFile *checkout_target = NULL;
-  GFile *checkout_target_tmp = NULL;
-  GFile *symlink_target = NULL;
   gboolean skip_checkout;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *existing_commit = NULL;
+  ot_lfree char *resolved_commit = NULL;
+  ot_lfree char *suffixed_destination = NULL;
+  ot_lfree char *tmp_destination = NULL;
+  ot_lobj GFileInfo *symlink_file_info = NULL;
+  ot_lobj GFile *checkout_target = NULL;
+  ot_lobj GFile *checkout_target_tmp = NULL;
+  ot_lobj GFile *symlink_target = NULL;
 
   context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
   g_option_context_add_main_entries (context, options, NULL);
@@ -358,16 +345,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
 
   ret = TRUE;
  out:
-  g_free (suffixed_destination);
-  g_free (tmp_destination);
-  g_free (resolved_commit);
-  g_free (existing_commit);
-  g_clear_object (&symlink_target);
-  g_clear_object (&checkout_target_tmp);
-  g_clear_object (&checkout_target);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
-  g_clear_object (&symlink_file_info);
   return ret;
 }

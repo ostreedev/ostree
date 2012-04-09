@@ -43,11 +43,11 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  GFile *child = NULL;
-  GFile *grandchild = NULL;
   GCancellable *cancellable = NULL;
+  ot_lobj GFile *child = NULL;
+  ot_lobj GFile *grandchild = NULL;
+  ot_lobj OstreeRepo *repo = NULL;
   GString *config_data = NULL;
-  OstreeRepo *repo = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -119,8 +119,5 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
     g_option_context_free (context);
   if (config_data)
     g_string_free (config_data, TRUE);
-  g_clear_object (&child);
-  g_clear_object (&grandchild);
-  g_clear_object (&repo);
   return ret;
 }

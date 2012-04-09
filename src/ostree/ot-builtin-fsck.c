@@ -48,18 +48,18 @@ fsck_pack_files (OtFsckData  *data,
                  GError        **error)
 {
   gboolean ret = FALSE;
-  GPtrArray *pack_indexes = NULL;
-  GVariant *index_variant = NULL;
-  GFile *pack_index_path = NULL;
-  GFile *pack_data_path = NULL;
-  GFileInfo *pack_info = NULL;
-  GInputStream *input = NULL;
-  GChecksum *pack_content_checksum = NULL;
-  GVariantIter *index_content_iter = NULL;
   guint i;
   guint32 objtype;
   guint64 offset;
   guint64 pack_size;
+  ot_lptrarray GPtrArray *pack_indexes = NULL;
+  ot_lvariant GVariant *index_variant = NULL;
+  ot_lobj GFile *pack_index_path = NULL;
+  ot_lobj GFile *pack_data_path = NULL;
+  ot_lobj GFileInfo *pack_info = NULL;
+  ot_lobj GInputStream *input = NULL;
+  GChecksum *pack_content_checksum = NULL;
+  GVariantIter *index_content_iter = NULL;
 
   if (!ostree_repo_list_pack_indexes (data->repo, &pack_indexes, cancellable, error))
     goto out;
@@ -131,13 +131,7 @@ fsck_pack_files (OtFsckData  *data,
  out:
   if (index_content_iter)
     g_variant_iter_free (index_content_iter);
-  if (pack_content_checksum)
-    g_checksum_free (pack_content_checksum);
-  if (pack_indexes)
-    g_ptr_array_unref (pack_indexes);
-  g_clear_object (&pack_info);
-  g_clear_object (&pack_data_path);
-  g_clear_object (&input);
+  ot_clear_checksum (&pack_content_checksum);
   return ret;
 }
 
@@ -148,14 +142,14 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
                                      GError               **error)
 {
   gboolean ret = FALSE;
-  GHashTable *reachable_objects = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
-  GInputStream *input = NULL;
-  GFileInfo *file_info = NULL;
-  GVariant *xattrs = NULL;
-  GVariant *metadata = NULL;
-  GVariant *metadata_wrapped = NULL;
+  ot_lhash GHashTable *reachable_objects = NULL;
+  ot_lobj GInputStream *input = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
+  ot_lvariant GVariant *metadata = NULL;
+  ot_lvariant GVariant *metadata_wrapped = NULL;
   GChecksum *computed_checksum = NULL;
 
   reachable_objects = ostree_traverse_new_reachable ();
@@ -268,12 +262,6 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   ret = TRUE;
  out:
   ot_clear_checksum (&computed_checksum);
-  g_clear_object (&input);
-  g_clear_object (&file_info);
-  ot_clear_gvariant (&xattrs);
-  ot_clear_gvariant (&metadata);
-  ot_clear_gvariant (&metadata_wrapped);
-  ot_clear_hashtable (&reachable_objects);
   return ret;
 }
 
@@ -283,12 +271,12 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   OtFsckData data;
   gboolean ret = FALSE;
-  OstreeRepo *repo = NULL;
-  GHashTable *objects = NULL;
-  GHashTable *commits = NULL;
   GCancellable *cancellable = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lhash GHashTable *objects = NULL;
+  ot_lhash GHashTable *commits = NULL;
 
   context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);
@@ -343,8 +331,5 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
  out:
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
-  ot_clear_hashtable (&objects);
-  ot_clear_hashtable (&commits);
   return ret;
 }

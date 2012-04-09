@@ -47,10 +47,10 @@ gather_packed (OtUnpackData  *data,
                GError       **error)
 {
   gboolean ret = FALSE;
-  GHashTable *ret_packed = NULL;
-  GHashTableIter hash_iter;
   gpointer key, value;
-  GVariant *pack_array = NULL;
+  GHashTableIter hash_iter;
+  ot_lhash GHashTable *ret_packed = NULL;
+  ot_lvariant GVariant *pack_array = NULL;
 
   ret_packed = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                       (GDestroyNotify) g_variant_unref,
@@ -86,9 +86,6 @@ gather_packed (OtUnpackData  *data,
   ret = TRUE;
   ot_transfer_out_value (out_packed, &ret_packed);
  /* out: */
-  ot_clear_gvariant (&pack_array);
-  if (ret_packed)
-    g_hash_table_unref (ret_packed);
   return ret;
 }
 
@@ -100,11 +97,11 @@ unpack_one_object (OstreeRepo        *repo,
                    GError           **error)
 {
   gboolean ret = FALSE;
-  GInputStream *input = NULL;
-  GFileInfo *file_info = NULL;
-  GVariant *xattrs = NULL;
-  GVariant *meta = NULL;
-  GVariant *serialized_meta = NULL;
+  ot_lobj GInputStream *input = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
+  ot_lvariant GVariant *meta = NULL;
+  ot_lvariant GVariant *serialized_meta = NULL;
 
   g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
 
@@ -141,11 +138,6 @@ unpack_one_object (OstreeRepo        *repo,
 
   ret = TRUE;
  out:
-  g_clear_object (&input);
-  g_clear_object (&file_info);
-  ot_clear_gvariant (&xattrs);
-  ot_clear_gvariant (&meta);
-  ot_clear_gvariant (&serialized_meta);
   return ret;
 }
 
@@ -156,8 +148,8 @@ delete_one_packfile (OstreeRepo        *repo,
                      GError           **error)
 {
   gboolean ret = FALSE;
-  GFile *data_path = NULL;
-  GFile *index_path = NULL;
+  ot_lobj GFile *data_path = NULL;
+  ot_lobj GFile *index_path = NULL;
 
   index_path = ostree_repo_get_pack_index_path (repo, pack_checksum);
   data_path = ostree_repo_get_pack_data_path (repo, pack_checksum);
@@ -175,8 +167,6 @@ delete_one_packfile (OstreeRepo        *repo,
 
   ret = TRUE;
  out:
-  g_clear_object (&index_path);
-  g_clear_object (&data_path);
   return ret;
 }
 
@@ -185,18 +175,18 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  GCancellable *cancellable = NULL;
   gboolean in_transaction = FALSE;
   OtUnpackData data;
-  OstreeRepo *repo = NULL;
-  GHashTable *objects = NULL;
-  GCancellable *cancellable = NULL;
-  GPtrArray *clusters = NULL;
-  GHashTable *packed_objects = NULL;
-  GHashTableIter hash_iter;
-  GHashTable *packfiles_to_delete = NULL;
   gpointer key, value;
-  GFile *objpath = NULL;
   guint64 unpacked_object_count = 0;
+  GHashTableIter hash_iter;
+  ot_lobj OstreeRepo *repo = NULL;
+  ot_lhash GHashTable *objects = NULL;
+  ot_lptrarray GPtrArray *clusters = NULL;
+  ot_lhash GHashTable *packed_objects = NULL;
+  ot_lhash GHashTable *packfiles_to_delete = NULL;
+  ot_lobj GFile *objpath = NULL;
 
   memset (&data, 0, sizeof (data));
 
@@ -289,17 +279,7 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
  out:
   if (in_transaction)
     (void) ostree_repo_abort_transaction (repo, cancellable, NULL);
-  g_clear_object (&objpath);
   if (context)
     g_option_context_free (context);
-  g_clear_object (&repo);
-  if (clusters)
-    g_ptr_array_unref (clusters);
-  if (packfiles_to_delete)
-    g_hash_table_unref (packfiles_to_delete);
-  if (packed_objects)
-    g_hash_table_unref (packed_objects);
-  if (objects)
-    g_hash_table_unref (objects);
   return ret;
 }
