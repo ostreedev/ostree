@@ -110,7 +110,7 @@ ostree_repo_set_property(GObject         *object,
     {
     case PROP_PATH:
       /* Canonicalize */
-      priv->repodir = ot_gfile_new_for_path (g_file_get_path (g_value_get_object (value)));
+      priv->repodir = ot_gfile_new_for_path (ot_gfile_get_path_cached (g_value_get_object (value)));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
