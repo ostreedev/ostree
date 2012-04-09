@@ -2324,8 +2324,7 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
         {
           if (!(modifier && modifier->skip_xattrs))
             {
-              xattrs = ostree_get_xattrs_for_file (dir, error);
-              if (!xattrs)
+              if (!ostree_get_xattrs_for_file (dir, &xattrs, cancellable, error))
                 goto out;
             }
           
@@ -2394,8 +2393,7 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
 
                   if (!(modifier && modifier->skip_xattrs))
                     {
-                      xattrs = ostree_get_xattrs_for_file (child, error);
-                      if (!xattrs)
+                      if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
                         goto out;
                     }
 
@@ -3239,8 +3237,7 @@ ostree_repo_load_file (OstreeRepo         *self,
         }
       if (out_xattrs)
         {
-          ret_xattrs = ostree_get_xattrs_for_file (content_loose_path, error);
-          if (!ret_xattrs)
+          if (!ostree_get_xattrs_for_file (content_loose_path, &ret_xattrs, cancellable,error))
             goto out;
         }
     }

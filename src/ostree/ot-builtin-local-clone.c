@@ -121,7 +121,10 @@ import_loose_object (OtLocalCloneData *data,
     goto out;
 
   if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
-    xattrs = ostree_get_xattrs_for_file (objfile, error);
+    {
+      if (!ostree_get_xattrs_for_file (objfile, &xattrs, cancellable, error))
+        goto out;
+    }
   
   if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
     ;

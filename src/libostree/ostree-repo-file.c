@@ -317,7 +317,8 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
   else
     {
       local_file = ostree_repo_file_nontree_get_local (self);
-      ret_xattrs = ostree_get_xattrs_for_file (local_file, error);
+      if (!ostree_get_xattrs_for_file (local_file, &ret_xattrs, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;

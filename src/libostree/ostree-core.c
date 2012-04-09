@@ -151,13 +151,17 @@ read_xattr_name_array (const char *path,
   return ret;
 }
 
-GVariant *
-ostree_get_xattrs_for_file (GFile      *f,
-                            GError    **error)
+gboolean
+ostree_get_xattrs_for_file (GFile         *f,
+                            GVariant     **out_xattrs,
+                            GCancellable  *cancellable,
+                            GError       **error)
 {
+  gboolean ret = FALSE;
   const char *path;
-  GVariant *ret = NULL;
+  GVariant *ret_xattrs = NULL;
   GVariantBuilder builder;
+  gboolean builder_initialized = FALSE;
   char *xattr_names = NULL;
   char *xattr_names_canonical = NULL;
   ssize_t bytes_read;
@@ -165,6 +169,7 @@ ostree_get_xattrs_for_file (GFile      *f,
   path = ot_gfile_get_path_cached (f);
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
+  builder_initialized = TRUE;
 
   bytes_read = llistxattr (path, NULL, 0);
 
@@ -190,10 +195,13 @@ ostree_get_xattrs_for_file (GFile      *f,
         goto out;
     }
 
-  ret = g_variant_builder_end (&builder);
-  g_variant_ref_sink (ret);
+  ret_xattrs = g_variant_builder_end (&builder);
+  g_variant_ref_sink (ret_xattrs);
+  
+  ret = TRUE;
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
  out:
-  if (!ret)
+  if (!builder_initialized)
     g_variant_builder_clear (&builder);
   g_free (xattr_names);
   g_free (xattr_names_canonical);
@@ -316,8 +324,7 @@ ostree_checksum_file (GFile            *f,
 
   if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
     {
-      xattrs = ostree_get_xattrs_for_file (f, error);
-      if (!xattrs)
+      if (!ostree_get_xattrs_for_file (f, &xattrs, cancellable, error))
         goto out;
     }
 

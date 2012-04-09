@@ -178,8 +178,10 @@ void ostree_object_from_string (const char *str,
 char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
 
-GVariant *ostree_get_xattrs_for_file (GFile       *f,
-                                      GError     **error);
+gboolean ostree_get_xattrs_for_file (GFile         *f,
+                                     GVariant     **out_xattrs,
+                                     GCancellable  *cancellable,
+                                     GError       **error);
 
 GVariant *ostree_wrap_metadata_variant (OstreeObjectType type, GVariant *metadata);
 
