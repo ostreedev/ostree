@@ -70,13 +70,12 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
   while (TRUE)
     {
       char *formatted = NULL;
-      guint32 version;
-      const char *parent;
+      GVariant *parent_csum_v = NULL;
       const char *subject;
       const char *body;
       guint64 timestamp;
-      const char *contents;
-      const char *root_metadata;
+      GVariant *content_csum_v = NULL;
+      GVariant *metadata_csum_v = NULL;
       GDateTime *time_obj = NULL;
       char *formatted_date = NULL;
       const char *body_newline;
@@ -89,10 +88,13 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
         goto out;
 
       /* Ignore commit metadata for now */
-      g_variant_get (commit, "(u@a{sv}&s&s&st&s&s)",
-                     &version, &commit_metadata, &parent, &subject, &body,
-                     &timestamp, &contents, &root_metadata);
-      version = GUINT32_FROM_BE (version);
+      ot_clear_gvariant (&commit_metadata);
+      ot_clear_gvariant (&parent_csum_v);
+      ot_clear_gvariant (&content_csum_v);
+      ot_clear_gvariant (&metadata_csum_v);
+      g_variant_get (commit, "(@a{sv}@ay@a(say)&s&st@ay@ay)",
+                     &commit_metadata, &parent_csum_v, NULL, &subject, &body,
+                     &timestamp, &content_csum_v, &metadata_csum_v);
       timestamp = GUINT64_FROM_BE (timestamp);
       time_obj = g_date_time_new_from_unix_utc (timestamp);
       formatted_date = g_date_time_format (time_obj, "%a %b %d %H:%M:%S %Y %z");
@@ -130,10 +132,10 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
           body_newline += 1;
       } while (*body_newline);
 
-      if (strcmp (parent, "") == 0)
+      if (g_variant_n_children (parent_csum_v) == 0)
         break;
       g_free (resolved_rev);
-      resolved_rev = g_strdup (parent);
+      resolved_rev = ostree_checksum_from_bytes_v (parent_csum_v);
     }
 
   if (!g_output_stream_close (pager, NULL, error))

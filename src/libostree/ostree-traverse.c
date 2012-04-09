@@ -47,6 +47,10 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
   ot_lvariant GVariant *tree = NULL;
   ot_lvariant GVariant *files_variant = NULL;
   ot_lvariant GVariant *dirs_variant = NULL;
+  ot_lvariant GVariant *csum_v = NULL;
+  ot_lvariant GVariant *content_csum_v = NULL;
+  ot_lvariant GVariant *metadata_csum_v = NULL;
+  ot_lfree char *tmp_checksum = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &tree, error))
     goto out;
@@ -58,46 +62,52 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
       key = NULL;
 
       /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
-      files_variant = g_variant_get_child_value (tree, 2);
+      files_variant = g_variant_get_child_value (tree, 0);
       n = g_variant_n_children (files_variant);
       for (i = 0; i < n; i++)
         {
           const char *filename;
-          const char *checksum;
       
-          g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
+          ot_clear_gvariant (&csum_v);
+          g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum_v);
+          g_free (tmp_checksum);
+          tmp_checksum = ostree_checksum_from_bytes_v (csum_v);
           if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
             {
-              key = ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
+              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
               g_hash_table_replace (inout_reachable, key, key);
               key = NULL;
             }
           else
             {
-              key = ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
+              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
               g_hash_table_replace (inout_reachable, key, key);
-              key = ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
+              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
               g_hash_table_replace (inout_reachable, key, key);
               key = NULL;
             }
         }
 
-      dirs_variant = g_variant_get_child_value (tree, 3);
+      dirs_variant = g_variant_get_child_value (tree, 1);
       n = g_variant_n_children (dirs_variant);
       for (i = 0; i < n; i++)
         {
           const char *dirname;
-          const char *tree_checksum;
-          const char *meta_checksum;
       
-          g_variant_get_child (dirs_variant, i, "(&s&s&s)",
-                               &dirname, &tree_checksum, &meta_checksum);
+          ot_clear_gvariant (&content_csum_v);
+          ot_clear_gvariant (&metadata_csum_v);
+          g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
+                               &dirname, &content_csum_v, &metadata_csum_v);
       
-          if (!ostree_traverse_dirtree (repo, tree_checksum, inout_reachable,
+          g_free (tmp_checksum);
+          tmp_checksum = ostree_checksum_from_bytes_v (content_csum_v);
+          if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable,
                                         cancellable, error))
             goto out;
 
-          key = ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
+          g_free (tmp_checksum);
+          tmp_checksum = ostree_checksum_from_bytes_v (metadata_csum_v);
+          key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META);
           g_hash_table_replace (inout_reachable, key, key);
           key = NULL;
         }
@@ -117,10 +127,12 @@ ostree_traverse_commit (OstreeRepo      *repo,
                         GError         **error)
 {
   gboolean ret = FALSE;
-  const char *contents_checksum;
-  const char *meta_checksum;
+  ot_lvariant GVariant *parent_csum_bytes = NULL;
+  ot_lvariant GVariant *meta_csum_bytes = NULL;
+  ot_lvariant GVariant *content_csum_bytes = NULL;
   ot_lvariant GVariant *key;
   ot_lvariant GVariant *commit = NULL;
+  ot_lfree char*tmp_checksum = NULL;
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
@@ -130,24 +142,28 @@ ostree_traverse_commit (OstreeRepo      *repo,
   g_hash_table_replace (inout_reachable, key, key);
   key = NULL;
 
-  g_variant_get_child (commit, 7, "&s", &meta_checksum);
-  key = ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
+  g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
+  g_free (tmp_checksum);
+  tmp_checksum = ostree_checksum_from_bytes_v (meta_csum_bytes);
+  key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META);
   g_hash_table_replace (inout_reachable, key, key);
   key = NULL;
 
-  g_variant_get_child (commit, 6, "&s", &contents_checksum);
-  if (!ostree_traverse_dirtree (repo, contents_checksum, inout_reachable, cancellable, error))
+  g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
+  g_free (tmp_checksum);
+  tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
+  if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
     goto out;
 
   if (maxdepth == -1 || maxdepth > 0)
     {
-      const char *parent_checksum;
+      g_variant_get_child (commit, 1, "@ay", &parent_csum_bytes);
 
-      g_variant_get_child (commit, 2, "&s", &parent_checksum);
-
-      if (parent_checksum[0])
+      if (g_variant_n_children (parent_csum_bytes) > 0)
         {
-          if (!ostree_traverse_commit (repo, parent_checksum,
+          g_free (tmp_checksum);
+          tmp_checksum = ostree_checksum_from_bytes_v (parent_csum_bytes);
+          if (!ostree_traverse_commit (repo, tmp_checksum,
                                        maxdepth > 0 ? maxdepth - 1 : -1,
                                        inout_reachable, cancellable, error))
             goto out;

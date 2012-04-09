@@ -415,8 +415,7 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
 {
   GVariant *ret_metadata = NULL;
 
-  ret_metadata = g_variant_new ("(uuuu@a(ayay))",
-                                OSTREE_DIR_META_VERSION,
+  ret_metadata = g_variant_new ("(uuu@a(ayay))",
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::uid")),
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::gid")),
                                 GUINT32_TO_BE (g_file_info_get_attribute_uint32 (dir_info, "unix::mode")),
@@ -725,7 +724,6 @@ ostree_create_archive_file_metadata (GFileInfo         *finfo,
   rdev = g_file_info_get_attribute_uint32 (finfo, G_FILE_ATTRIBUTE_UNIX_RDEV);
 
   g_variant_builder_init (&pack_builder, OSTREE_ARCHIVED_FILE_VARIANT_FORMAT);
-  g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (0));   /* Version */ 
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (uid));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (gid));
   g_variant_builder_add (&pack_builder, "u", GUINT32_TO_BE (mode));
@@ -750,22 +748,14 @@ ostree_parse_archived_file_meta (GVariant         *metadata,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  guint32 version, uid, gid, mode, rdev;
+  guint32 uid, gid, mode, rdev;
   const char *symlink_target;
   ot_lobj GFileInfo *ret_file_info = NULL;
   ot_lvariant GVariant *ret_xattrs = NULL;
 
-  g_variant_get (metadata, "(uuuuu&s@a(ayay))",
-                 &version, &uid, &gid, &mode, &rdev,
+  g_variant_get (metadata, "(uuuu&s@a(ayay))",
+                 &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
-  version = GUINT32_FROM_BE (version);
-
-  if (version != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid version %d in archived file metadata", version);
-      goto out;
-    }
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
@@ -1400,8 +1390,8 @@ ostree_validate_structureof_objtype (guint32    objtype,
 }
 
 gboolean
-ostree_validate_structureof_checksum (GVariant  *checksum,
-                                      GError   **error)
+ostree_validate_structureof_csum_v (GVariant  *checksum,
+                                    GError   **error)
 {
   gsize n_children = g_variant_n_children (checksum);
   if (n_children != 32)
@@ -1470,27 +1460,28 @@ ostree_validate_structureof_commit (GVariant      *commit,
                                     GError       **error)
 {
   gboolean ret = FALSE;
-  const char *parent;
-  const char *contents;
-  const char *metadata;
+  ot_lvariant GVariant *parent_csum_v = NULL;
+  ot_lvariant GVariant *content_csum_v = NULL;
+  ot_lvariant GVariant *metadata_csum_v = NULL;
+  gsize n_elts;
 
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
     goto out;
 
-  g_variant_get_child (commit, 2, "&s", &parent);
-
-  if (*parent)
+  g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
+  (void) g_variant_get_fixed_array (parent_csum_v, &n_elts, 1);
+  if (n_elts > 0)
     {
-      if (!ostree_validate_structureof_checksum_string (parent, error))
+      if (!ostree_validate_structureof_csum_v (parent_csum_v, error))
         goto out;
     }
 
-  g_variant_get_child (commit, 6, "&s", &contents);
-  if (!ostree_validate_structureof_checksum_string (contents, error))
+  g_variant_get_child (commit, 6, "@ay", &content_csum_v);
+  if (!ostree_validate_structureof_csum_v (content_csum_v, error))
     goto out;
 
-  g_variant_get_child (commit, 7, "&s", &metadata);
-  if (!ostree_validate_structureof_checksum_string (metadata, error))
+  g_variant_get_child (commit, 7, "@ay", &metadata_csum_v);
+  if (!ostree_validate_structureof_csum_v (metadata_csum_v, error))
     goto out;
 
   ret = TRUE;
@@ -1504,37 +1495,40 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
 {
   gboolean ret = FALSE;
   const char *filename;
-  const char *meta_checksum;
-  const char *content_checksum;
+  ot_lvariant GVariant *content_csum_v = NULL;
+  ot_lvariant GVariant *meta_csum_v = NULL;
   GVariantIter *contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
     goto out;
 
-  g_variant_get_child (dirtree, 2, "a(ss)", &contents_iter);
+  g_variant_get_child (dirtree, 0, "a(say)", &contents_iter);
 
-  while (g_variant_iter_loop (contents_iter, "(&s&s)",
-                              &filename, &content_checksum))
+  while (g_variant_iter_loop (contents_iter, "(&s@ay)",
+                              &filename, &content_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
         goto out;
-      if (!ostree_validate_structureof_checksum_string (content_checksum, error))
+      if (!ostree_validate_structureof_csum_v (content_csum_v, error))
         goto out;
     }
+  content_csum_v = NULL;
 
   g_variant_iter_free (contents_iter);
-  g_variant_get_child (dirtree, 3, "a(sss)", &contents_iter);
+  g_variant_get_child (dirtree, 1, "a(sayay)", &contents_iter);
 
-  while (g_variant_iter_loop (contents_iter, "(&s&s&s)",
-                              &filename, &content_checksum, &meta_checksum))
+  while (g_variant_iter_loop (contents_iter, "(&s@ay@ay)",
+                              &filename, &content_csum_v, &meta_csum_v))
     {
       if (!ot_util_filename_validate (filename, error))
         goto out;
-      if (!ostree_validate_structureof_checksum_string (content_checksum, error))
+      if (!ostree_validate_structureof_csum_v (content_csum_v, error))
         goto out;
-      if (!ostree_validate_structureof_checksum_string (meta_checksum, error))
+      if (!ostree_validate_structureof_csum_v (meta_csum_v, error))
         goto out;
     }
+  content_csum_v = NULL;
+  meta_csum_v = NULL;
 
   ret = TRUE;
  out:
@@ -1597,7 +1591,7 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
   if (!validate_variant (dirmeta, OSTREE_DIRMETA_GVARIANT_FORMAT, error))
     goto out;
 
-  g_variant_get_child (dirmeta, 3, "u", &mode); 
+  g_variant_get_child (dirmeta, 2, "u", &mode); 
   mode = GUINT32_FROM_BE (mode);
 
   if (!S_ISDIR (mode))
@@ -1623,7 +1617,7 @@ ostree_validate_structureof_pack_index (GVariant      *index,
   const char *header;
   guint32 objtype;
   guint64 offset;
-  ot_lvariant GVariant *csum_bytes = NULL;
+  ot_lvariant GVariant *csum_v = NULL;
   GVariantIter *content_iter = NULL;
 
   if (!validate_variant (index, OSTREE_PACK_INDEX_VARIANT_FORMAT, error))
@@ -1641,14 +1635,14 @@ ostree_validate_structureof_pack_index (GVariant      *index,
   g_variant_get_child (index, 2, "a(uayt)", &content_iter);
 
   while (g_variant_iter_loop (content_iter, "(u@ayt)",
-                              &objtype, &csum_bytes, &offset))
+                              &objtype, &csum_v, &offset))
     {
       if (!ostree_validate_structureof_objtype (objtype, error))
         goto out;
-      if (!ostree_validate_structureof_checksum (csum_bytes, error))
+      if (!ostree_validate_structureof_csum_v (csum_v, error))
         goto out;
     }
-  csum_bytes = NULL;
+  csum_v = NULL;
 
   ret = TRUE;
  out:
@@ -1663,7 +1657,7 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
 {
   gboolean ret = FALSE;
   const char *header;
-  ot_lvariant GVariant *csum_bytes = NULL;
+  ot_lvariant GVariant *csum_v = NULL;
   ot_lvariant GVariant *bloom = NULL;
   GVariantIter *content_iter = NULL;
 
@@ -1682,12 +1676,12 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
   g_variant_get_child (superindex, 2, "a(ayay)", &content_iter);
 
   while (g_variant_iter_loop (content_iter, "(@ay@ay)",
-                              &csum_bytes, &bloom))
+                              &csum_v, &bloom))
     {
-      if (!ostree_validate_structureof_checksum (csum_bytes, error))
+      if (!ostree_validate_structureof_csum_v (csum_v, error))
         goto out;
     }
-  csum_bytes = NULL;
+  csum_v = NULL;
 
   ret = TRUE;
  out:

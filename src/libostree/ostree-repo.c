@@ -341,6 +341,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   ot_lobj GFile *child = NULL;
   ot_lobj GFile *origindir = NULL;
   ot_lvariant GVariant *commit = NULL;
+  ot_lvariant GVariant *parent_csum_v = NULL;
   
   g_return_val_if_fail (rev != NULL, FALSE);
 
@@ -363,14 +364,14 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
       if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, tmp2, &commit, error))
         goto out;
       
-      g_variant_get_child (commit, 2, "s", &ret_rev);
-      if (strlen (ret_rev) == 0)
+      g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
+      if (g_variant_n_children (parent_csum_v) == 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Commit %s has no parent", tmp2);
           goto out;
-
         }
+      ret_rev = ostree_checksum_from_bytes_v (parent_csum_v);
     }
   else
     {
@@ -1364,14 +1365,15 @@ ostree_repo_stage_commit (OstreeRepo *self,
   g_return_val_if_fail (root_metadata_checksum != NULL, FALSE);
 
   now = g_date_time_new_now_utc ();
-  commit = g_variant_new ("(u@a{sv}ssstss)",
-                          GUINT32_TO_BE (OSTREE_COMMIT_VERSION),
+  commit = g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",
                           metadata ? metadata : create_empty_gvariant_dict (),
-                          parent ? parent : "",
+                          parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
+                          g_variant_new_array (G_VARIANT_TYPE ("(say)"),
+                                               NULL, 0),
                           subject, body ? body : "",
                           GUINT64_TO_BE (g_date_time_to_unix (now)),
-                          root_contents_checksum,
-                          root_metadata_checksum);
+                          ostree_checksum_to_bytes_v (root_contents_checksum),
+                          ostree_checksum_to_bytes_v (root_metadata_checksum));
   g_variant_ref_sink (commit);
   if (!stage_gvariant_object (self, OSTREE_OBJECT_TYPE_COMMIT,
                               commit, &ret_commit_obj, NULL, error))
@@ -2076,8 +2078,8 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   GSList *iter;
   GVariant *serialized_tree;
 
-  g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(ss)"));
-  g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sss)"));
+  g_variant_builder_init (&files_builder, G_VARIANT_TYPE ("a(say)"));
+  g_variant_builder_init (&dirs_builder, G_VARIANT_TYPE ("a(sayay)"));
 
   g_hash_table_iter_init (&hash_iter, file_checksums);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2094,7 +2096,8 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
       const char *value;
 
       value = g_hash_table_lookup (file_checksums, name);
-      g_variant_builder_add (&files_builder, "(ss)", name, value);
+      g_variant_builder_add (&files_builder, "(s@ay)", name,
+                             ostree_checksum_to_bytes_v (value));
     }
   
   g_slist_free (sorted_filenames);
@@ -2112,19 +2115,22 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   for (iter = sorted_filenames; iter; iter = iter->next)
     {
       const char *name = iter->data;
+      const char *content_checksum;
+      const char *meta_checksum;
 
-      g_variant_builder_add (&dirs_builder, "(sss)",
+      content_checksum = g_hash_table_lookup (dir_contents_checksums, name);
+      meta_checksum = g_hash_table_lookup (dir_metadata_checksums, name);
+
+      g_variant_builder_add (&dirs_builder, "(s@ay@ay)",
                              name,
-                             g_hash_table_lookup (dir_contents_checksums, name),
-                             g_hash_table_lookup (dir_metadata_checksums, name));
+                             ostree_checksum_to_bytes_v (content_checksum),
+                             ostree_checksum_to_bytes_v (meta_checksum));
     }
 
   g_slist_free (sorted_filenames);
   sorted_filenames = NULL;
 
-  serialized_tree = g_variant_new ("(u@a{sv}@a(ss)@a(sss))",
-                                   GUINT32_TO_BE (0),
-                                   create_empty_gvariant_dict (),
+  serialized_tree = g_variant_new ("(@a(say)@a(sayay))",
                                    g_variant_builder_end (&files_builder),
                                    g_variant_builder_end (&dirs_builder));
   g_variant_ref_sink (serialized_tree);
@@ -3327,6 +3333,26 @@ ostree_repo_find_object (OstreeRepo           *self,
   if (out_pack_offset)
     *out_pack_offset = ret_pack_offset;
 out:
+  return ret;
+}
+
+gboolean
+ostree_repo_load_variant_c (OstreeRepo          *self,
+                            OstreeObjectType     objtype,
+                            const guchar        *csum, 
+                            GVariant           **out_variant,
+                            GError             **error)
+{
+  gboolean ret = FALSE;
+  ot_lfree char *checksum = NULL;
+
+  checksum = ostree_checksum_from_bytes (csum);
+
+  if (!ostree_repo_load_variant (self, objtype, checksum, out_variant, error))
+    goto out;
+
+  ret = TRUE;
+ out:
   return ret;
 }
 

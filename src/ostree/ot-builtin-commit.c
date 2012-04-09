@@ -160,6 +160,10 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lobj OstreeMutableTree *mtree = NULL;
   ot_lfree char *tree_type = NULL;
   ot_lhash GHashTable *mode_adds = NULL;
+  ot_lvariant GVariant *parent_content_csum_v = NULL;
+  ot_lvariant GVariant *parent_metadata_csum_v = NULL;
+  ot_lfree char *parent_content_checksum = NULL;
+  ot_lfree char *parent_metadata_checksum = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GVariantBuilder metadata_builder;
@@ -363,13 +367,13 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
 
   if (skip_if_unchanged && parent_commit)
     {
-      const char *parent_contents_checksum;
-      const char *parent_metadata_checksum;
+      g_variant_get_child (parent_commit, 6, "@ay", &parent_content_csum_v);
+      g_variant_get_child (parent_commit, 7, "@ay", &parent_metadata_csum_v);
 
-      g_variant_get_child (parent_commit, 6, "&s", &parent_contents_checksum);
-      g_variant_get_child (parent_commit, 7, "&s", &parent_metadata_checksum);
+      parent_content_checksum = ostree_checksum_from_bytes_v (parent_content_csum_v);
+      parent_metadata_checksum = ostree_checksum_from_bytes_v (parent_metadata_csum_v);
 
-      if (strcmp (contents_checksum, parent_contents_checksum) == 0
+      if (strcmp (contents_checksum, parent_content_checksum) == 0
           && strcmp (ostree_mutable_tree_get_metadata_checksum (mtree),
                      parent_metadata_checksum) == 0)
         skip_commit = TRUE;

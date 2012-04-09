@@ -51,43 +51,36 @@ typedef enum {
  */
 #define OSTREE_XATTR_GVARIANT_FORMAT "a(ayay)"
 
-#define OSTREE_DIR_META_VERSION 0
 /*
  * dirmeta objects:
- * u - Version
  * u - uid
  * u - gid
  * u - mode
  * a(ayay) - xattrs
  */
-#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuuua(ayay))")
+#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuua(ayay))")
 
-#define OSTREE_TREE_VERSION 0
 /*
  * Tree objects:
- * u - Version
- * a{sv} - Metadata
- * a(ss) - array of (filename, checksum) for files
- * a(sss) - array of (dirname, tree_checksum, meta_checksum) for directories
+ * a(say) - array of (filename, checksum) for files
+ * a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories
  */
-#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE ("(ua{sv}a(ss)a(sss))")
+#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE ("(a(say)a(sayay))")
 
-#define OSTREE_COMMIT_VERSION 0
 /*
  * Commit objects:
- * u - Version
  * a{sv} - Metadata
- * s - parent checksum (empty string for initial)
+ * ay - parent checksum (empty string for initial)
+ * a(say) - Related objects
  * s - subject 
  * s - body
  * t - Timestamp in seconds since the epoch (UTC)
- * s - Root tree contents
- * s - Root tree metadata
+ * ay - Root tree contents
+ * ay - Root tree metadata
  */
-#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(ua{sv}ssstss)")
+#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
 /* Archive file objects:
- * u - Version
  * u - uid
  * u - gid
  * u - mode
@@ -95,12 +88,12 @@ typedef enum {
  * s - symlink target
  * a(ayay) - xattrs
  */
-#define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(uuuuusa(ayay))")
+#define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(uuuusa(ayay))")
 
 /* Pack super index
  * s - OSTv0SUPERPACKINDEX
  * a{sv} - Metadata
- * a(say) - (pack file checksum, bloom filter)
+ * a(ayay) - (pack file checksum, bloom filter)
  */
 #define OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(ayay))")
 
@@ -290,8 +283,8 @@ gboolean ostree_pack_index_search (GVariant            *index,
 gboolean ostree_validate_structureof_objtype (guint32    objtype,
                                               GError   **error);
 
-gboolean ostree_validate_structureof_checksum (GVariant  *checksum,
-                                               GError   **error);
+gboolean ostree_validate_structureof_csum_v (GVariant  *checksum,
+                                             GError   **error);
 
 gboolean ostree_validate_structureof_checksum_string (const char *checksum,
                                                       GError   **error);

@@ -712,24 +712,22 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
     goto out;
 
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
-  files_variant = g_variant_get_child_value (tree, 2);
-  dirs_variant = g_variant_get_child_value (tree, 3);
+  files_variant = g_variant_get_child_value (tree, 0);
+  dirs_variant = g_variant_get_child_value (tree, 1);
       
   n = g_variant_n_children (files_variant);
   for (i = 0; i < n; i++)
     {
       const char *filename;
-      const char *checksum;
+      ot_lvariant GVariant *csum = NULL;
 
-      g_variant_get_child (files_variant, i, "(&s&s)", &filename, &checksum);
+      g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
       if (!ot_util_filename_validate (filename, error))
         goto out;
-      if (!ostree_validate_checksum_string (checksum, error))
-        goto out;
 
       {
-        char *duped_key = g_strdup (checksum);
+        char *duped_key = ostree_checksum_from_bytes_v (csum);
         g_hash_table_replace (pull_data->file_checksums_to_fetch,
                               duped_key, duped_key);
       }
@@ -739,24 +737,25 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
   for (i = 0; i < n; i++)
     {
       const char *dirname;
-      const char *tree_checksum;
-      const char *meta_checksum;
+      ot_lvariant GVariant *tree_csum = NULL;
+      ot_lvariant GVariant *meta_csum = NULL;
+      ot_lfree char *tmp_checksum = NULL;
 
-      g_variant_get_child (dirs_variant, i, "(&s&s&s)",
-                           &dirname, &tree_checksum, &meta_checksum);
+      g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
+                           &dirname, &tree_csum, &meta_csum);
 
       if (!ot_util_filename_validate (dirname, error))
         goto out;
-      if (!ostree_validate_checksum_string (tree_checksum, error))
-        goto out;
-      if (!ostree_validate_checksum_string (meta_checksum, error))
-        goto out;
 
-      if (!fetch_and_store_object (pull_data, meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes_v (meta_csum);
+      if (!fetch_and_store_object (pull_data, tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META,
                                    cancellable, error))
         goto out;
 
-      if (!fetch_and_store_tree_metadata_recurse (pull_data, tree_checksum, cancellable, error))
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes_v (tree_csum);
+      if (!fetch_and_store_tree_metadata_recurse (pull_data, tmp_checksum, cancellable, error))
         goto out;
     }
 
@@ -773,22 +772,27 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
 {
   gboolean ret = FALSE;
   ot_lvariant GVariant *commit = NULL;
-  const char *tree_contents_checksum;
-  const char *tree_meta_checksum;
+  ot_lvariant GVariant *tree_contents_csum = NULL;
+  ot_lvariant GVariant *tree_meta_csum = NULL;
+  ot_lfree char *tmp_checksum = NULL;
 
   if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_COMMIT,
                                  &commit, cancellable, error))
     goto out;
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-  g_variant_get_child (commit, 6, "&s", &tree_contents_checksum);
-  g_variant_get_child (commit, 7, "&s", &tree_meta_checksum);
-  
-  if (!fetch_and_store_object (pull_data, tree_meta_checksum, OSTREE_OBJECT_TYPE_DIR_META,
+  g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
+  g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
+
+  g_free (tmp_checksum);
+  tmp_checksum = ostree_checksum_from_bytes_v (tree_meta_csum);
+  if (!fetch_and_store_object (pull_data, tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META,
                                cancellable, error))
     goto out;
   
-  if (!fetch_and_store_tree_metadata_recurse (pull_data, tree_contents_checksum,
+  g_free (tmp_checksum);
+  tmp_checksum = ostree_checksum_from_bytes_v (tree_contents_csum);
+  if (!fetch_and_store_tree_metadata_recurse (pull_data, tmp_checksum,
                                               cancellable, error))
     goto out;
 
