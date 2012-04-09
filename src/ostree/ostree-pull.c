@@ -326,7 +326,7 @@ find_object_in_remote_packs (OtPullData       *pull_data,
   ot_lvariant GVariant *csum_bytes = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
 
-  csum_bytes = ostree_checksum_to_bytes (checksum);
+  csum_bytes = ostree_checksum_to_bytes_v (checksum);
 
   for (i = 0; i < pull_data->cached_pack_indexes->len; i++)
     {

@@ -209,7 +209,8 @@ compare_index_content (gconstpointer         ap,
   g_variant_get (b_v, "(u@ayt)", &b_objtype, &b_csum_bytes, &b_offset);      
   a_objtype = GUINT32_FROM_BE (a_objtype);
   b_objtype = GUINT32_FROM_BE (b_objtype);
-  c = ostree_cmp_checksum_bytes (a_csum_bytes, b_csum_bytes);
+  c = ostree_cmp_checksum_bytes (ostree_checksum_bytes_peek (a_csum_bytes),
+                                 ostree_checksum_bytes_peek (b_csum_bytes));
   if (c == 0)
     {
       if (a_objtype < b_objtype)
@@ -409,7 +410,7 @@ create_pack_file (OtRepackData        *data,
         gsize data_len = g_memory_output_stream_get_data_size (object_data_stream);
         packed_object = g_variant_new ("(uy@ay@ay)", GUINT32_TO_BE ((guint32)objtype),
                                        entry_flags,
-                                       ostree_checksum_to_bytes (checksum),
+                                       ostree_checksum_to_bytes_v (checksum),
                                        ot_gvariant_new_bytearray (data, data_len));
         g_clear_object (&object_data_stream);
       }
@@ -420,7 +421,7 @@ create_pack_file (OtRepackData        *data,
       /* offset points to aligned header size */
       index_entry = g_variant_new ("(u@ayt)",
                                    GUINT32_TO_BE ((guint32)objtype),
-                                   ostree_checksum_to_bytes (checksum),
+                                   ostree_checksum_to_bytes_v (checksum),
                                    GUINT64_TO_BE (offset));
       g_ptr_array_add (index_content_list, g_variant_ref_sink (index_entry));
 

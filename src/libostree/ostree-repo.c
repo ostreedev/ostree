@@ -1567,7 +1567,7 @@ list_pack_checksums_from_superindex_file (GFile         *superindex_path,
   
   while (g_variant_iter_loop (variant_iter, "(@ay@ay)",
                               &checksum, &bloom))
-    g_ptr_array_add (ret_indexes, ostree_checksum_from_bytes (checksum));
+    g_ptr_array_add (ret_indexes, ostree_checksum_from_bytes_v (checksum));
   checksum = NULL;
   bloom = NULL;
 
@@ -1663,7 +1663,7 @@ ostree_repo_regenerate_pack_index (OstreeRepo       *self,
 
       g_variant_builder_add (index_content_builder,
                              "(@ay@ay)",
-                             ostree_checksum_to_bytes (pack_checksum),
+                             ostree_checksum_to_bytes_v (pack_checksum),
                              bloom);
       g_variant_unref (bloom);
     }
@@ -1806,7 +1806,7 @@ ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *self,
   while (g_variant_iter_loop (superindex_contents_iter,
                               "(@ay@ay)", &csum_bytes, &bloom))
     {
-      pack_checksum = ostree_checksum_from_bytes (csum_bytes);
+      pack_checksum = ostree_checksum_from_bytes_v (csum_bytes);
       g_hash_table_insert (new_pack_indexes, pack_checksum, pack_checksum);
       pack_checksum = NULL; /* transfer ownership */
     }
@@ -3173,7 +3173,7 @@ list_objects_in_index (OstreeRepo                     *self,
                               G_VARIANT_TYPE_STRING_ARRAY);
       
       g_free (checksum);
-      checksum = ostree_checksum_from_bytes (csum_bytes);
+      checksum = ostree_checksum_from_bytes_v (csum_bytes);
       obj_key = ostree_object_name_serialize (checksum, objtype);
       ot_util_variant_take_ref (obj_key);
 
@@ -3251,7 +3251,7 @@ find_object_in_packs (OstreeRepo        *self,
   ot_lvariant GVariant *csum_bytes = NULL;
   ot_lvariant GVariant *index_variant = NULL;
 
-  csum_bytes = ostree_checksum_to_bytes (checksum);
+  csum_bytes = ostree_checksum_to_bytes_v (checksum);
 
   if (!ostree_repo_list_pack_indexes (self, &index_checksums, cancellable, error))
     goto out;
