@@ -144,15 +144,20 @@ unpack_one_object (OstreeRepo        *repo,
 static gboolean
 delete_one_packfile (OstreeRepo        *repo,
                      const char        *pack_checksum,
+                     gboolean           is_meta,
                      GCancellable      *cancellable,
                      GError           **error)
 {
   gboolean ret = FALSE;
+  ot_lfree char *data_name = NULL;
   ot_lobj GFile *data_path = NULL;
+  ot_lfree char *index_name = NULL;
   ot_lobj GFile *index_path = NULL;
 
-  index_path = ostree_repo_get_pack_index_path (repo, pack_checksum);
-  data_path = ostree_repo_get_pack_data_path (repo, pack_checksum);
+  index_name = ostree_get_relative_pack_index_path (is_meta, pack_checksum);
+  index_path = g_file_resolve_relative_path (ostree_repo_get_path (repo), index_name);
+  data_name = ostree_get_relative_pack_data_path (is_meta, pack_checksum);
+  data_path = g_file_resolve_relative_path (ostree_repo_get_path (repo), data_name);
 
   if (!ot_gfile_unlink (index_path, cancellable, error))
     {
@@ -185,7 +190,8 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lhash GHashTable *objects = NULL;
   ot_lptrarray GPtrArray *clusters = NULL;
   ot_lhash GHashTable *packed_objects = NULL;
-  ot_lhash GHashTable *packfiles_to_delete = NULL;
+  ot_lhash GHashTable *meta_packfiles_to_delete = NULL;
+  ot_lhash GHashTable *data_packfiles_to_delete = NULL;
   ot_lobj GFile *objpath = NULL;
 
   memset (&data, 0, sizeof (data));
@@ -220,7 +226,8 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
 
   in_transaction = TRUE;
 
-  packfiles_to_delete = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  meta_packfiles_to_delete = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  data_packfiles_to_delete = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   g_hash_table_iter_init (&hash_iter, packed_objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -232,6 +239,9 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
       OstreeObjectType objtype;
       gboolean is_loose;
       GVariantIter *pack_array_iter;
+      GHashTable *target_hash;
+
+      ostree_object_name_deserialize (objkey, &checksum, &objtype);
       
       objdata = g_hash_table_lookup (objects, objkey);
       g_assert (objdata);
@@ -240,12 +250,17 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
 
       g_assert (!is_loose);
 
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        target_hash = meta_packfiles_to_delete;
+      else
+        target_hash = data_packfiles_to_delete;
+
       while (g_variant_iter_loop (pack_array_iter, "&s", &pack_checksum))
         {
-          if (!g_hash_table_lookup (packfiles_to_delete, pack_checksum))
+          if (!g_hash_table_lookup (target_hash, pack_checksum))
             {
               gchar *duped_checksum = g_strdup (pack_checksum);
-              g_hash_table_replace (packfiles_to_delete, duped_checksum, duped_checksum);
+              g_hash_table_replace (target_hash, duped_checksum, duped_checksum);
             }
         }
       g_variant_iter_free (pack_array_iter);
@@ -261,15 +276,27 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_commit_transaction (repo, cancellable, error))
     goto out;
 
-  if (g_hash_table_size (packfiles_to_delete) == 0)
+  if (g_hash_table_size (meta_packfiles_to_delete) == 0
+      && g_hash_table_size (data_packfiles_to_delete) == 0)
     g_print ("No pack files; nothing to do\n");
 
-  g_hash_table_iter_init (&hash_iter, packfiles_to_delete);
+  g_hash_table_iter_init (&hash_iter, meta_packfiles_to_delete);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *pack_checksum = key;
 
-      if (!delete_one_packfile (repo, pack_checksum, cancellable, error))
+      if (!delete_one_packfile (repo, pack_checksum, TRUE, cancellable, error))
+        goto out;
+      
+      g_print ("Deleted packfile '%s'\n", pack_checksum);
+    }
+
+  g_hash_table_iter_init (&hash_iter, data_packfiles_to_delete);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *pack_checksum = key;
+
+      if (!delete_one_packfile (repo, pack_checksum, FALSE, cancellable, error))
         goto out;
       
       g_print ("Deleted packfile '%s'\n", pack_checksum);

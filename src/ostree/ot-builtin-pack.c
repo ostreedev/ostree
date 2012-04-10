@@ -197,18 +197,16 @@ compare_index_content (gconstpointer         ap,
   gpointer b = *((gpointer*)bp);
   GVariant *a_v = a;
   GVariant *b_v = b;
-  guint32 a_objtype;
-  guint32 b_objtype;
+  guchar a_objtype;
+  guchar b_objtype;
   guint64 a_offset;
   guint64 b_offset;
   int c;
   ot_lvariant GVariant *a_csum_bytes = NULL;
   ot_lvariant GVariant *b_csum_bytes = NULL;
 
-  g_variant_get (a_v, "(u@ayt)", &a_objtype, &a_csum_bytes, &a_offset);      
-  g_variant_get (b_v, "(u@ayt)", &b_objtype, &b_csum_bytes, &b_offset);      
-  a_objtype = GUINT32_FROM_BE (a_objtype);
-  b_objtype = GUINT32_FROM_BE (b_objtype);
+  g_variant_get (a_v, "(y@ayt)", &a_objtype, &a_csum_bytes, &a_offset);      
+  g_variant_get (b_v, "(y@ayt)", &b_objtype, &b_csum_bytes, &b_offset);      
   c = ostree_cmp_checksum_bytes (ostree_checksum_bytes_peek (a_csum_bytes),
                                  ostree_checksum_bytes_peek (b_csum_bytes));
   if (c == 0)
@@ -271,7 +269,120 @@ delete_loose_object (OtRepackData     *data,
 }
 
 static gboolean
+pack_one_meta_object (OtRepackData        *data,
+                      const char          *checksum,
+                      OstreeObjectType     objtype,
+                      GVariant           **out_packed_object,
+                      GCancellable        *cancellable,
+                      GError             **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFile *object_path = NULL;
+  ot_lvariant GVariant *metadata_v = NULL;
+  ot_lvariant GVariant *ret_packed_object = NULL;
+
+  object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+
+  if (!ostree_map_metadata_file (object_path, objtype, &metadata_v, error))
+    goto out;
+
+  ret_packed_object = g_variant_new ("(y@ayv)", (guchar) objtype,
+                                     ostree_checksum_to_bytes_v (checksum),
+                                     metadata_v);
+      
+  ret = TRUE;
+  ot_transfer_out_value (out_packed_object, &ret_packed_object);
+ out:
+  return ret;
+}
+
+static gboolean
+pack_one_data_object (OtRepackData        *data,
+                      const char          *checksum,
+                      OstreeObjectType     objtype,
+                      guint64              expected_objsize,
+                      GVariant           **out_packed_object,
+                      GCancellable        *cancellable,
+                      GError             **error)
+{
+  gboolean ret = FALSE;
+  guint64 objsize;
+  guchar entry_flags = 0;
+  GInputStream *read_object_in; /* nofree */
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GFileInputStream *object_input = NULL;
+  ot_lobj GFileInfo *object_file_info = NULL;
+  ot_lobj GMemoryOutputStream *object_data_stream = NULL;
+  ot_lobj GConverter *compressor = NULL;
+  ot_lobj GConverterInputStream *compressed_object_input = NULL;
+  ot_lvariant GVariant *ret_packed_object = NULL;
+
+  switch (data->int_compression)
+    {
+    case OT_COMPRESSION_GZIP:
+      {
+        entry_flags |= OSTREE_PACK_FILE_ENTRY_FLAG_GZIP;
+        break;
+      }
+    default:
+      {
+        g_assert_not_reached ();
+      }
+    }
+
+  object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+      
+  object_input = g_file_read (object_path, cancellable, error);
+  if (!object_input)
+    goto out;
+
+  object_file_info = g_file_input_stream_query_info (object_input, OSTREE_GIO_FAST_QUERYINFO, cancellable, error);
+  if (!object_file_info)
+    goto out;
+
+  objsize = g_file_info_get_attribute_uint64 (object_file_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
+  
+  g_assert_cmpint (objsize, ==, expected_objsize);
+
+  object_data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+      
+  if (entry_flags & OSTREE_PACK_FILE_ENTRY_FLAG_GZIP)
+    {
+      compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_GZIP, OT_GZIP_COMPRESSION_LEVEL);
+      compressed_object_input = (GConverterInputStream*)g_object_new (G_TYPE_CONVERTER_INPUT_STREAM,
+                                                                      "converter", compressor,
+                                                                      "base-stream", object_input,
+                                                                      "close-base-stream", TRUE,
+                                                                      NULL);
+      read_object_in = (GInputStream*)compressed_object_input;
+    }
+  else
+    {
+      read_object_in = (GInputStream*)object_input;
+    }
+
+  if (!g_output_stream_splice ((GOutputStream*)object_data_stream, read_object_in,
+                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                               cancellable, error))
+    goto out;
+
+  {
+    guchar *data = g_memory_output_stream_get_data (object_data_stream);
+    gsize data_len = g_memory_output_stream_get_data_size (object_data_stream);
+    ret_packed_object = g_variant_new ("(yy@ay@ay)", (guchar)objtype, entry_flags,
+                                       ostree_checksum_to_bytes_v (checksum),
+                                       ot_gvariant_new_bytearray (data, data_len));
+  }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_packed_object, &ret_packed_object);
+ out:
+  return ret;
+}
+
+static gboolean
 create_pack_file (OtRepackData        *data,
+                  gboolean             is_meta,
                   GPtrArray           *objects,
                   GCancellable        *cancellable,
                   GError             **error)
@@ -285,19 +396,12 @@ create_pack_file (OtRepackData        *data,
   ot_lobj GOutputStream *index_out = NULL;
   ot_lobj GFile *pack_temppath = NULL;
   ot_lobj GOutputStream *pack_out = NULL;
-  ot_lobj GFile *object_path = NULL;
-  ot_lobj GFileInfo *object_file_info = NULL;
-  ot_lobj GFileInputStream *object_input = NULL;
-  ot_lobj GConverter *compressor = NULL;
-  ot_lobj GConverterInputStream *compressed_object_input = NULL;
   ot_lptrarray GPtrArray *index_content_list = NULL;
   ot_lvariant GVariant *pack_header = NULL;
-  ot_lvariant GVariant *packed_object = NULL;
   ot_lvariant GVariant *index_content = NULL;
   ot_lfree char *pack_name = NULL;
   ot_lobj GFile *pack_file_path = NULL;
   ot_lobj GFile *pack_index_path = NULL;
-  GMemoryOutputStream *object_data_stream = NULL;
   GVariantBuilder index_content_builder;
   GChecksum *pack_checksum = NULL;
 
@@ -324,7 +428,7 @@ create_pack_file (OtRepackData        *data,
   pack_checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   pack_header = g_variant_new ("(s@a{sv}t)",
-                               "OSTv0PACKFILE",
+                               is_meta ? "OSTv0PACKMETAFILE" : "OSTv0PACKDATAFILE",
                                g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0),
                                (guint64)objects->len);
 
@@ -339,92 +443,37 @@ create_pack_file (OtRepackData        *data,
       guint32 objtype_u32;
       OstreeObjectType objtype;
       guint64 expected_objsize;
-      guint64 objsize;
-      GInputStream *read_object_in;
-      guchar entry_flags = 0;
-      GVariant *index_entry;
+      ot_lvariant GVariant *packed_object = NULL;
+      ot_lvariant GVariant *index_entry = NULL;
 
       g_variant_get (object_data, "(&sut)", &checksum, &objtype_u32, &expected_objsize);
                      
       objtype = (OstreeObjectType) objtype_u32;
 
-      switch (data->int_compression)
+      if (is_meta)
         {
-        case OT_COMPRESSION_GZIP:
-          {
-            entry_flags |= OSTREE_PACK_FILE_ENTRY_FLAG_GZIP;
-            break;
-          }
-        default:
-          {
-            g_assert_not_reached ();
-          }
-        }
-
-      g_clear_object (&object_path);
-      object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
-      
-      g_clear_object (&object_input);
-      object_input = g_file_read (object_path, cancellable, error);
-      if (!object_input)
-        goto out;
-
-      g_clear_object (&object_file_info);
-      object_file_info = g_file_input_stream_query_info (object_input, OSTREE_GIO_FAST_QUERYINFO, cancellable, error);
-      if (!object_file_info)
-        goto out;
-
-      objsize = g_file_info_get_attribute_uint64 (object_file_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
-
-      g_assert_cmpint (objsize, ==, expected_objsize);
-
-      g_clear_object (&object_data_stream);
-      object_data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-      
-      if (entry_flags & OSTREE_PACK_FILE_ENTRY_FLAG_GZIP)
-        {
-          g_clear_object (&compressor);
-          compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_GZIP, OT_GZIP_COMPRESSION_LEVEL);
-          
-          g_clear_object (&compressed_object_input);
-          compressed_object_input = (GConverterInputStream*)g_object_new (G_TYPE_CONVERTER_INPUT_STREAM,
-                                                                          "converter", compressor,
-                                                                          "base-stream", object_input,
-                                                                          "close-base-stream", TRUE,
-                                                                          NULL);
-          read_object_in = (GInputStream*)compressed_object_input;
+          if (!pack_one_meta_object (data, checksum, objtype, &packed_object,
+                                     cancellable, error))
+            goto out;
         }
       else
         {
-          read_object_in = (GInputStream*)object_input;
+          if (!pack_one_data_object (data, checksum, objtype, expected_objsize,
+                                     &packed_object, cancellable, error))
+            goto out;
         }
-
-      if (!g_output_stream_splice ((GOutputStream*)object_data_stream, read_object_in,
-                                   G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                   cancellable, error))
-        goto out;
-
-      ot_clear_gvariant (&packed_object);
-      {
-        guchar *data = g_memory_output_stream_get_data (object_data_stream);
-        gsize data_len = g_memory_output_stream_get_data_size (object_data_stream);
-        packed_object = g_variant_new ("(uy@ay@ay)", GUINT32_TO_BE ((guint32)objtype),
-                                       entry_flags,
-                                       ostree_checksum_to_bytes_v (checksum),
-                                       ot_gvariant_new_bytearray (data, data_len));
-        g_clear_object (&object_data_stream);
-      }
 
       if (!write_padding (pack_out, 4, pack_checksum, &offset, cancellable, error))
         goto out;
 
       /* offset points to aligned header size */
-      index_entry = g_variant_new ("(u@ayt)",
-                                   GUINT32_TO_BE ((guint32)objtype),
+      index_entry = g_variant_new ("(y@ayt)",
+                                   (guchar)objtype,
                                    ostree_checksum_to_bytes_v (checksum),
                                    GUINT64_TO_BE (offset));
       g_ptr_array_add (index_content_list, g_variant_ref_sink (index_entry));
-
+      index_entry = NULL;
+      
       if (!write_variant_with_size (pack_out, packed_object, pack_checksum,
                                     &offset, cancellable, error))
         goto out;
@@ -433,14 +482,14 @@ create_pack_file (OtRepackData        *data,
   if (!g_output_stream_close (pack_out, cancellable, error))
     goto out;
 
-  g_variant_builder_init (&index_content_builder, G_VARIANT_TYPE ("a(uayt)"));
+  g_variant_builder_init (&index_content_builder, G_VARIANT_TYPE ("a(yayt)"));
   g_ptr_array_sort (index_content_list, compare_index_content);
   for (i = 0; i < index_content_list->len; i++)
     {
       GVariant *index_item = index_content_list->pdata[i];
       g_variant_builder_add_value (&index_content_builder, index_item);
     }
-  index_content = g_variant_new ("(s@a{sv}@a(uayt))",
+  index_content = g_variant_new ("(s@a{sv}@a(yayt))",
                                  "OSTv0PACKINDEX",
                                  g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0),
                                  g_variant_builder_end (&index_content_builder));
@@ -458,6 +507,7 @@ create_pack_file (OtRepackData        *data,
 
   if (!ostree_repo_add_pack_file (data->repo,
                                   g_checksum_get_string (pack_checksum),
+                                  is_meta,
                                   index_temppath,
                                   pack_temppath,
                                   cancellable,
@@ -499,67 +549,14 @@ create_pack_file (OtRepackData        *data,
   return ret;
 }
 
-/**
- * cluster_objects_stupidly:
- * @objects: Map from serialized object name to objdata
- * @out_clusters: (out): [Array of [Array of object data]].  Free with g_ptr_array_unref().
- *
- * Just sorts by size currently.  Also filters out non-regular object
- * content.
- */
-static gboolean
-cluster_objects_stupidly (OtRepackData      *data,
-                          GHashTable        *objects,
-                          GPtrArray        **out_clusters,
-                          GCancellable      *cancellable,
-                          GError           **error)
+static void
+cluster_one_object_chain (OtRepackData     *data,
+                          GPtrArray        *object_list,
+                          GPtrArray        *inout_clusters)
 {
-  gboolean ret = FALSE;
   guint i;
   guint64 current_size;
   guint current_offset;
-  GHashTableIter hash_iter;
-  gpointer key, value;
-  ot_lptrarray GPtrArray *ret_clusters = NULL;
-  ot_lptrarray GPtrArray *object_list = NULL;
-  ot_lobj GFile *object_path = NULL;
-  ot_lobj GFileInfo *object_info = NULL;
-
-  object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
-
-  g_hash_table_iter_init (&hash_iter, objects);
-
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      GVariant *serialized_key = key;
-      const char *checksum;
-      OstreeObjectType objtype;
-      guint64 size;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-
-      g_clear_object (&object_path);
-      object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
-
-      g_clear_object (&object_info);
-      object_info = g_file_query_info (object_path, OSTREE_GIO_FAST_QUERYINFO,
-                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                       cancellable, error);
-      if (!object_info)
-        goto out;
-
-      if (g_file_info_get_file_type (object_info) != G_FILE_TYPE_REGULAR)
-        continue;
-
-      size = g_file_info_get_attribute_uint64 (object_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
-
-      g_ptr_array_add (object_list,
-                       g_variant_ref_sink (g_variant_new ("(sut)", checksum, (guint32)objtype, size)));
-    }
-
-  g_ptr_array_sort (object_list, compare_object_data_by_size);
-
-  ret_clusters = g_ptr_array_new_with_free_func ((GDestroyNotify)g_ptr_array_unref);
 
   current_size = 0;
   current_offset = 0;
@@ -582,7 +579,7 @@ cluster_objects_stupidly (OtRepackData      *data,
                 {
                   g_ptr_array_add (current, g_variant_ref (object_list->pdata[j]));
                 }
-              g_ptr_array_add (ret_clusters, current);
+              g_ptr_array_add (inout_clusters, current);
               current_size = objsize;
               current_offset = i+1;
             }
@@ -596,9 +593,83 @@ cluster_objects_stupidly (OtRepackData      *data,
           current_size += objsize;
         }
     }
+}
+
+/**
+ * cluster_objects_stupidly:
+ * @objects: Map from serialized object name to objdata
+ * @out_meta_clusters: (out): [Array of [Array of object data]].  Free with g_ptr_array_unref().
+ * @out_data_clusters: (out): [Array of [Array of object data]].  Free with g_ptr_array_unref().
+ *
+ * Just sorts by size currently.  Also filters out non-regular object
+ * content.
+ */
+static gboolean
+cluster_objects_stupidly (OtRepackData      *data,
+                          GHashTable        *objects,
+                          GPtrArray        **out_meta_clusters,
+                          GPtrArray        **out_data_clusters,
+                          GCancellable      *cancellable,
+                          GError           **error)
+{
+  gboolean ret = FALSE;
+  GHashTableIter hash_iter;
+  gpointer key, value;
+  ot_lptrarray GPtrArray *ret_meta_clusters = NULL;
+  ot_lptrarray GPtrArray *ret_data_clusters = NULL;
+  ot_lptrarray GPtrArray *meta_object_list = NULL;
+  ot_lptrarray GPtrArray *data_object_list = NULL;
+  ot_lobj GFile *object_path = NULL;
+  ot_lobj GFileInfo *object_info = NULL;
+
+  meta_object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  data_object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+
+  g_hash_table_iter_init (&hash_iter, objects);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      const char *checksum;
+      OstreeObjectType objtype;
+      guint64 size;
+      GVariant *v;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_clear_object (&object_path);
+      object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+
+      g_clear_object (&object_info);
+      object_info = g_file_query_info (object_path, OSTREE_GIO_FAST_QUERYINFO,
+                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                       cancellable, error);
+      if (!object_info)
+        goto out;
+
+      if (g_file_info_get_file_type (object_info) != G_FILE_TYPE_REGULAR)
+        continue;
+
+      size = g_file_info_get_attribute_uint64 (object_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
+
+      v = g_variant_ref_sink (g_variant_new ("(sut)", checksum, (guint32)objtype, size));
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        g_ptr_array_add (meta_object_list, v);
+      else
+        g_ptr_array_add (data_object_list, v);
+    }
+
+  g_ptr_array_sort (meta_object_list, compare_object_data_by_size);
+  g_ptr_array_sort (data_object_list, compare_object_data_by_size);
+
+  ret_meta_clusters = g_ptr_array_new_with_free_func ((GDestroyNotify)g_ptr_array_unref);
+  ret_data_clusters = g_ptr_array_new_with_free_func ((GDestroyNotify)g_ptr_array_unref);
+
+  cluster_one_object_chain (data, meta_object_list, ret_meta_clusters);
+  cluster_one_object_chain (data, data_object_list, ret_data_clusters);
 
   ret = TRUE;
-  ot_transfer_out_value (out_clusters, &ret_clusters);
+  ot_transfer_out_value (out_meta_clusters, &ret_meta_clusters);
+  ot_transfer_out_value (out_data_clusters, &ret_data_clusters);
  out:
   return ret;
 }
@@ -792,7 +863,8 @@ do_incremental_pack (OtRepackData          *data,
   gboolean ret = FALSE;
   guint i;
   ot_lhash GHashTable *objects = NULL;
-  ot_lptrarray GPtrArray *clusters = NULL;
+  ot_lptrarray GPtrArray *meta_clusters = NULL;
+  ot_lptrarray GPtrArray *data_clusters = NULL;
   ot_lhash GHashTable *loose_objects = NULL;
 
   if (!ostree_repo_list_objects (data->repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
@@ -805,21 +877,30 @@ do_incremental_pack (OtRepackData          *data,
   g_print ("\n");
   g_print ("Using pack size: %" G_GUINT64_FORMAT "\n", data->pack_size);
 
-  if (!cluster_objects_stupidly (data, loose_objects, &clusters, cancellable, error))
+  if (!cluster_objects_stupidly (data, loose_objects, &meta_clusters, &data_clusters,
+                                 cancellable, error))
     goto out;
   
-  if (clusters->len > 0)
-    g_print ("Going to create %u packfiles\n", clusters->len);
+  if (meta_clusters->len > 0 || data_clusters->len > 0)
+    g_print ("Going to create %u meta packfiles, %u data packfiles\n",
+             meta_clusters->len, data_clusters->len);
   else
     g_print ("Nothing to do\n");
-  
-  for (i = 0; i < clusters->len; i++)
+
+  if (!opt_analyze_only)
     {
-      GPtrArray *cluster = clusters->pdata[i];
-      
-      if (!opt_analyze_only)
+      for (i = 0; i < meta_clusters->len; i++)
         {
-          if (!create_pack_file (data, cluster, cancellable, error))
+          GPtrArray *cluster = meta_clusters->pdata[i];
+          
+          if (!create_pack_file (data, TRUE, cluster, cancellable, error))
+            goto out;
+        }
+      for (i = 0; i < data_clusters->len; i++)
+        {
+          GPtrArray *cluster = data_clusters->pdata[i];
+          
+          if (!create_pack_file (data, FALSE, cluster, cancellable, error))
             goto out;
         }
     }

@@ -93,34 +93,44 @@ typedef enum {
 /* Pack super index
  * s - OSTv0SUPERPACKINDEX
  * a{sv} - Metadata
- * a(ayay) - (pack file checksum, bloom filter)
+ * a(ayay) - metadata packs (pack file checksum, bloom filter)
+ * a(ayay) - data packs (pack file checksum, bloom filter)
  */
-#define OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(ayay))")
+#define OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(ayay)a(ayay))")
 
 /* Pack index
  * s - OSTv0PACKINDEX
  * a{sv} - Metadata
- * a(uayt) - (objtype, checksum, offset into packfile)
+ * a(yayt) - (objtype, checksum, offset into packfile)
  */
-#define OSTREE_PACK_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(uayt))")
+#define OSTREE_PACK_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(yayt))")
 
 typedef enum {
   OSTREE_PACK_FILE_ENTRY_FLAG_NONE = 0,
   OSTREE_PACK_FILE_ENTRY_FLAG_GZIP = (1 << 0)
 } OstreePackFileEntryFlag;
 
-/* Pack files
- * s - OSTv0PACKFILE
+/* Data Pack files
+ * s - OSTv0PACKDATAFILE
  * a{sv} - Metadata
  * t - number of entries
  *
  * Repeating pair of:
  * <padding to alignment of 8>
- * ( uyayay ) - objtype, flags, checksum, data
+ * ( yyayay ) - objtype, flags, checksum, data
  */
-#define OSTREE_PACK_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}t)")
+#define OSTREE_PACK_DATA_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(yyayay)")
 
-#define OSTREE_PACK_FILE_CONTENT_VARIANT_FORMAT G_VARIANT_TYPE ("(uyayay)")
+/* Meta Pack files
+ * s - OSTv0PACKMETAFILE
+ * a{sv} - Metadata
+ * t - number of entries
+ *
+ * Repeating pair of:
+ * <padding to alignment of 8>
+ * ( yayv ) - objtype, checksum, data
+ */
+#define OSTREE_PACK_META_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(yayv)")
 
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
@@ -161,6 +171,16 @@ void ostree_object_from_string (const char *str,
 
 char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
+
+char *ostree_get_pack_index_name (gboolean        is_meta,
+                                  const char     *checksum);
+char *ostree_get_pack_data_name (gboolean        is_meta,
+                                 const char     *checksum);
+
+char *ostree_get_relative_pack_index_path (gboolean        is_meta,
+                                           const char     *checksum);
+char *ostree_get_relative_pack_data_path (gboolean        is_meta,
+                                          const char     *checksum);
 
 gboolean ostree_get_xattrs_for_file (GFile         *f,
                                      GVariant     **out_xattrs,
@@ -260,6 +280,7 @@ gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
                                      guint64           pack_len,
                                      guint64           object_offset,
                                      gboolean          trusted,
+                                     gboolean          is_meta,
                                      GVariant        **out_entry,
                                      GCancellable     *cancellable,
                                      GError          **error);
@@ -280,7 +301,7 @@ gboolean ostree_pack_index_search (GVariant            *index,
 
 /** VALIDATION **/
 
-gboolean ostree_validate_structureof_objtype (guint32    objtype,
+gboolean ostree_validate_structureof_objtype (guchar    objtype,
                                               GError   **error);
 
 gboolean ostree_validate_structureof_csum_v (GVariant  *checksum,

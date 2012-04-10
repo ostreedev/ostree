@@ -43,88 +43,76 @@ typedef struct {
 } OtFsckData;
 
 static gboolean
-fsck_pack_files (OtFsckData  *data,
-                 GCancellable   *cancellable,
-                 GError        **error)
+fsck_one_pack_file (OtFsckData        *data,
+                    const char        *pack_checksum,
+                    gboolean           is_meta,
+                    GCancellable      *cancellable,
+                    GError           **error)
 {
   gboolean ret = FALSE;
-  guint i;
-  guint32 objtype;
+  guchar objtype_u8;
   guint64 offset;
   guint64 pack_size;
-  ot_lptrarray GPtrArray *pack_indexes = NULL;
+  ot_lfree char *path = NULL;
+  ot_lobj GFileInfo *pack_info = NULL;
+  ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *index_variant = NULL;
   ot_lobj GFile *pack_index_path = NULL;
   ot_lobj GFile *pack_data_path = NULL;
-  ot_lobj GFileInfo *pack_info = NULL;
-  ot_lobj GInputStream *input = NULL;
   GChecksum *pack_content_checksum = NULL;
   GVariantIter *index_content_iter = NULL;
 
-  if (!ostree_repo_list_pack_indexes (data->repo, &pack_indexes, cancellable, error))
+  g_free (path);
+  path = ostree_get_relative_pack_index_path (is_meta, pack_checksum);
+  pack_index_path = g_file_resolve_relative_path (ostree_repo_get_path (data->repo), path);
+
+  if (!ot_util_variant_map (pack_index_path,
+                            OSTREE_PACK_INDEX_VARIANT_FORMAT,
+                            &index_variant, error))
+    goto out;
+      
+  if (!ostree_validate_structureof_pack_index (index_variant, error))
     goto out;
 
-  for (i = 0; i < pack_indexes->len; i++)
-    {
-      const char *checksum = pack_indexes->pdata[i];
-
-      g_clear_object (&pack_index_path);
-      pack_index_path = ostree_repo_get_pack_index_path (data->repo, checksum);
-
-      ot_clear_gvariant (&index_variant);
-      if (!ot_util_variant_map (pack_index_path,
-                                OSTREE_PACK_INDEX_VARIANT_FORMAT,
-                                &index_variant, error))
-        goto out;
+  g_free (path);
+  path = ostree_get_relative_pack_data_path (is_meta, pack_checksum);
+  pack_data_path = g_file_resolve_relative_path (ostree_repo_get_path (data->repo), path);
       
-      if (!ostree_validate_structureof_pack_index (index_variant, error))
-        goto out;
+  input = (GInputStream*)g_file_read (pack_data_path, cancellable, error);
+  if (!input)
+    goto out;
 
-      g_clear_object (&pack_data_path);
-      pack_data_path = ostree_repo_get_pack_data_path (data->repo, checksum);
-      
-      g_clear_object (&input);
-      input = (GInputStream*)g_file_read (pack_data_path, cancellable, error);
-      if (!input)
-        goto out;
-
-      g_clear_object (&pack_info);
-      pack_info = g_file_input_stream_query_info ((GFileInputStream*)input, OSTREE_GIO_FAST_QUERYINFO,
-                                                  cancellable, error);
-      if (!pack_info)
-        goto out;
-      pack_size = g_file_info_get_attribute_uint64 (pack_info, "standard::size");
+  pack_info = g_file_input_stream_query_info ((GFileInputStream*)input, OSTREE_GIO_FAST_QUERYINFO,
+                                              cancellable, error);
+  if (!pack_info)
+    goto out;
+  pack_size = g_file_info_get_attribute_uint64 (pack_info, "standard::size");
      
-      if (pack_content_checksum)
-        g_checksum_free (pack_content_checksum);
-      if (!ot_gio_checksum_stream (input, &pack_content_checksum, cancellable, error))
-        goto out;
+  if (!ot_gio_checksum_stream (input, &pack_content_checksum, cancellable, error))
+    goto out;
 
-      if (strcmp (g_checksum_get_string (pack_content_checksum), checksum) != 0)
+  if (strcmp (g_checksum_get_string (pack_content_checksum), pack_checksum) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "corrupted pack '%s', expected checksum %s",
+                   pack_checksum, g_checksum_get_string (pack_content_checksum));
+      goto out;
+    }
+
+  g_variant_get_child (index_variant, 2, "a(yayt)", &index_content_iter);
+
+  while (g_variant_iter_loop (index_content_iter, "(y@ayt)",
+                              &objtype_u8, NULL, &offset))
+    {
+      offset = GUINT64_FROM_BE (offset);
+      if (offset > pack_size)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "corrupted pack '%s', expected checksum %s",
-                       checksum, g_checksum_get_string (pack_content_checksum));
+                       "corrupted pack '%s', offset %" G_GUINT64_FORMAT " larger than file size %" G_GUINT64_FORMAT,
+                       pack_checksum,
+                       offset, pack_size);
           goto out;
         }
-
-      g_variant_get_child (index_variant, 2, "a(uayt)", &index_content_iter);
-
-      while (g_variant_iter_loop (index_content_iter, "(u@ayt)",
-                                  &objtype, NULL, &offset))
-        {
-          offset = GUINT64_FROM_BE (offset);
-          if (offset > pack_size)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "corrupted pack '%s', offset %" G_GUINT64_FORMAT " larger than file size %" G_GUINT64_FORMAT,
-                           checksum,
-                           offset, pack_size);
-              goto out;
-            }
-        }
-
-      data->n_pack_files++;
     }
 
   ret = TRUE;
@@ -132,6 +120,44 @@ fsck_pack_files (OtFsckData  *data,
   if (index_content_iter)
     g_variant_iter_free (index_content_iter);
   ot_clear_checksum (&pack_content_checksum);
+  return ret;
+}
+
+static gboolean
+fsck_pack_files (OtFsckData  *data,
+                 GCancellable   *cancellable,
+                 GError        **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  ot_lptrarray GPtrArray *meta_pack_indexes = NULL;
+  ot_lptrarray GPtrArray *data_pack_indexes = NULL;
+  
+  if (!ostree_repo_list_pack_indexes (data->repo, &meta_pack_indexes, &data_pack_indexes,
+                                      cancellable, error))
+    goto out;
+
+  for (i = 0; i < meta_pack_indexes->len; i++)
+    {
+      const char *pack_checksum = meta_pack_indexes->pdata[i];
+
+      if (!fsck_one_pack_file (data, pack_checksum, TRUE, cancellable, error))
+        goto out;
+
+      data->n_pack_files++;
+    }
+  for (i = 0; i < data_pack_indexes->len; i++)
+    {
+      const char *pack_checksum = data_pack_indexes->pdata[i];
+
+      if (!fsck_one_pack_file (data, pack_checksum, FALSE, cancellable, error))
+        goto out;
+
+      data->n_pack_files++;
+    }
+
+  ret = TRUE;
+ out:
   return ret;
 }
 
@@ -198,17 +224,26 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_validate_structureof_commit (metadata, error))
-                goto out;
+                {
+                  g_prefix_error (error, "While validating commit metadata '%s': ", checksum);
+                  goto out;
+                }
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
             {
               if (!ostree_validate_structureof_dirtree (metadata, error))
-                goto out;
+                {
+                  g_prefix_error (error, "While validating directory tree '%s': ", checksum);
+                  goto out;
+                }
             }
           else if (objtype == OSTREE_OBJECT_TYPE_DIR_META)
             {
               if (!ostree_validate_structureof_dirmeta (metadata, error))
-                goto out;
+                {
+                  g_prefix_error (error, "While validating directory metadata '%s': ", checksum);
+                  goto out;
+                }
             }
           else
             g_assert_not_reached ();
@@ -236,7 +271,10 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
 
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
-            goto out;
+            {
+              g_prefix_error (error, "While validating file '%s': ", checksum);
+              goto out;
+            }
         }
       else
         {

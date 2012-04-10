@@ -710,6 +710,58 @@ ostree_get_relative_object_path (const char *checksum,
   return g_string_free (path, FALSE);
 }
 
+static char *
+get_pack_name (gboolean        is_meta,
+               gboolean        is_index,
+               const char     *prefix,
+               const char     *checksum)
+{
+  GString *path;
+
+  g_assert (strlen (checksum) == 64);
+
+  path = g_string_new (prefix);
+  if (is_meta)
+    g_string_append (path, "ostmetapack-");
+  else
+    g_string_append (path, "ostdatapack-");
+  g_string_append (path, checksum);
+  if (is_index)
+    g_string_append (path, ".index");
+  else
+    g_string_append (path, ".data");
+
+  return g_string_free (path, FALSE);
+}
+
+char *
+ostree_get_pack_index_name (gboolean        is_meta,
+                            const char     *checksum)
+{
+  return get_pack_name (is_meta, TRUE, "", checksum);
+}
+
+char *
+ostree_get_pack_data_name (gboolean        is_meta,
+                           const char     *checksum)
+{
+  return get_pack_name (is_meta, FALSE, "", checksum);
+}
+
+char *
+ostree_get_relative_pack_index_path (gboolean        is_meta,
+                                     const char     *checksum)
+{
+  return get_pack_name (is_meta, TRUE, "objects/pack/", checksum);
+}
+
+char *
+ostree_get_relative_pack_data_path (gboolean        is_meta,
+                                    const char     *checksum)
+{
+  return get_pack_name (is_meta, FALSE, "objects/pack/", checksum);
+}
+
 GVariant *
 ostree_create_archive_file_metadata (GFileInfo         *finfo,
                                      GVariant          *xattrs)
@@ -1169,6 +1221,7 @@ ostree_read_pack_entry_raw (guchar        *pack_data,
                             guint64        pack_len,
                             guint64        offset,
                             gboolean       trusted,
+                            gboolean       is_meta,
                             GVariant     **out_entry,
                             GCancellable  *cancellable,
                             GError       **error)
@@ -1215,7 +1268,8 @@ ostree_read_pack_entry_raw (guchar        *pack_data,
       goto out;
     }
 
-  ret_entry = g_variant_new_from_data (OSTREE_PACK_FILE_CONTENT_VARIANT_FORMAT,
+  ret_entry = g_variant_new_from_data (is_meta ? OSTREE_PACK_META_FILE_VARIANT_FORMAT :
+                                       OSTREE_PACK_DATA_FILE_VARIANT_FORMAT,
                                        pack_data+entry_start, entry_len,
                                        trusted, NULL, NULL);
   g_variant_ref_sink (ret_entry);
@@ -1274,32 +1328,13 @@ ostree_read_pack_entry_variant (GVariant            *pack_entry,
                                 GError             **error)
 {
   gboolean ret = FALSE;
-  guint32 actual_type;
-  ot_lobj GInputStream *stream = NULL;
-  ot_lvariant GVariant *container_variant = NULL;
   ot_lvariant GVariant *ret_variant = NULL;
 
-  stream = ostree_read_pack_entry_as_stream (pack_entry);
-  
-  if (!ot_util_variant_from_stream (stream, OSTREE_SERIALIZED_VARIANT_FORMAT,
-                                    trusted, &container_variant, cancellable, error))
-    goto out;
-
-  g_variant_get (container_variant, "(uv)",
-                 &actual_type, &ret_variant);
-  actual_type = GUINT32_FROM_BE (actual_type);
-
-  if (actual_type != expected_objtype)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted metadata object in pack file; found type %u, expected %u",
-                   actual_type, (guint32)expected_objtype);
-      goto out;
-    }
+  g_variant_get_child (pack_entry, 2, "v", &ret_variant);
 
   ret = TRUE;
   ot_transfer_out_value (out_variant, &ret_variant);
- out:
+  /* out: */
   return ret;
 }
 
@@ -1332,16 +1367,15 @@ ostree_pack_index_search (GVariant   *index,
   while (imax >= imin)
     {
       GVariant *cur_csum_bytes;
-      guint32 cur_objtype;
+      guchar cur_objtype;
       guint64 cur_offset;
       gsize imid;
       int c;
 
       imid = (imin + imax) / 2;
 
-      g_variant_get_child (index_contents, imid, "(u@ayt)", &cur_objtype,
+      g_variant_get_child (index_contents, imid, "(y@ayt)", &cur_objtype,
                            &cur_csum_bytes, &cur_offset);      
-      cur_objtype = GUINT32_FROM_BE (cur_objtype);
 
       c = ostree_cmp_checksum_bytes (ostree_checksum_bytes_peek (cur_csum_bytes), csum);
       if (c == 0)
@@ -1375,12 +1409,12 @@ ostree_pack_index_search (GVariant   *index,
 }
 
 gboolean
-ostree_validate_structureof_objtype (guint32    objtype,
+ostree_validate_structureof_objtype (guchar    objtype,
                                      GError   **error)
 {
-  objtype = GUINT32_FROM_BE (objtype);
-  if (objtype < OSTREE_OBJECT_TYPE_RAW_FILE 
-      || objtype > OSTREE_OBJECT_TYPE_COMMIT)
+  OstreeObjectType objtype_v = (OstreeObjectType) objtype;
+  if (objtype_v < OSTREE_OBJECT_TYPE_RAW_FILE 
+      || objtype_v > OSTREE_OBJECT_TYPE_COMMIT)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid object type '%u'", objtype);
@@ -1542,7 +1576,8 @@ validate_stat_mode_perms (guint32        mode,
                           GError       **error)
 {
   gboolean ret = FALSE;
-  guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO);
+  guint32 otherbits = (~S_IFMT & ~S_IRWXU & ~S_IRWXG & ~S_IRWXO &
+                       ~S_ISUID & ~S_ISGID & ~S_ISVTX);
 
   if (mode & otherbits)
     {
@@ -1615,7 +1650,7 @@ ostree_validate_structureof_pack_index (GVariant      *index,
 {
   gboolean ret = FALSE;
   const char *header;
-  guint32 objtype;
+  guchar objtype_u8;
   guint64 offset;
   ot_lvariant GVariant *csum_v = NULL;
   GVariantIter *content_iter = NULL;
@@ -1632,12 +1667,12 @@ ostree_validate_structureof_pack_index (GVariant      *index,
       goto out;
     }
 
-  g_variant_get_child (index, 2, "a(uayt)", &content_iter);
+  g_variant_get_child (index, 2, "a(yayt)", &content_iter);
 
-  while (g_variant_iter_loop (content_iter, "(u@ayt)",
-                              &objtype, &csum_v, &offset))
+  while (g_variant_iter_loop (content_iter, "(y@ayt)",
+                              &objtype_u8, &csum_v, &offset))
     {
-      if (!ostree_validate_structureof_objtype (objtype, error))
+      if (!ostree_validate_structureof_objtype (objtype_u8, error))
         goto out;
       if (!ostree_validate_structureof_csum_v (csum_v, error))
         goto out;
@@ -1674,7 +1709,15 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
     }
 
   g_variant_get_child (superindex, 2, "a(ayay)", &content_iter);
+  while (g_variant_iter_loop (content_iter, "(@ay@ay)",
+                              &csum_v, &bloom))
+    {
+      if (!ostree_validate_structureof_csum_v (csum_v, error))
+        goto out;
+    }
+  csum_v = NULL;
 
+  g_variant_get_child (superindex, 3, "a(ayay)", &content_iter);
   while (g_variant_iter_loop (content_iter, "(@ay@ay)",
                               &csum_v, &bloom))
     {

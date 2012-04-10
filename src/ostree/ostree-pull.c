@@ -62,7 +62,8 @@ typedef struct {
   SoupURI      *base_uri;
 
   gboolean      fetched_packs;
-  GPtrArray    *cached_pack_indexes;
+  GPtrArray    *cached_meta_pack_indexes;
+  GPtrArray    *cached_data_pack_indexes;
 
   GHashTable   *file_checksums_to_fetch;
 
@@ -266,6 +267,7 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
 static gboolean
 fetch_one_pack_file (OtPullData            *pull_data,
                      const char            *pack_checksum,
+                     gboolean               is_meta,
                      GFile                **out_cached_path,
                      GCancellable          *cancellable,
                      GError               **error)
@@ -277,26 +279,26 @@ fetch_one_pack_file (OtPullData            *pull_data,
   SoupURI *pack_uri = NULL;
 
   if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
-                                                pack_checksum, &ret_cached_path,
+                                                pack_checksum, is_meta, &ret_cached_path,
                                                 cancellable, error))
     goto out;
 
   if (ret_cached_path == NULL)
     {
-      pack_name = g_strconcat ("ostpack-", pack_checksum, ".data", NULL);
+      pack_name = ostree_get_pack_data_name (is_meta, pack_checksum);
       pack_uri = suburi_new (pull_data->base_uri, "objects", "pack", pack_name, NULL);
       
       if (!fetch_uri (pull_data, pack_uri, "packdata-", &tmp_path, cancellable, error))
         goto out;
 
       if (!ostree_repo_take_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
-                                                     pack_checksum, tmp_path,
+                                                     pack_checksum, is_meta, tmp_path,
                                                      cancellable, error))
         goto out;
     }
 
   if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
-                                                pack_checksum, &ret_cached_path,
+                                                pack_checksum, is_meta, &ret_cached_path,
                                                 cancellable, error))
     goto out;
 
@@ -322,19 +324,25 @@ find_object_in_remote_packs (OtPullData       *pull_data,
   gboolean ret = FALSE;
   guint64 offset;
   guint i;
+  GPtrArray *iter;
   ot_lvariant GVariant *mapped_pack = NULL;
   ot_lvariant GVariant *csum_bytes = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
 
   csum_bytes = ostree_checksum_to_bytes_v (checksum);
 
-  for (i = 0; i < pull_data->cached_pack_indexes->len; i++)
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    iter = pull_data->cached_meta_pack_indexes;
+  else
+    iter = pull_data->cached_data_pack_indexes;
+  for (i = 0; i < iter->len; i++)
     {
-      const char *pack_checksum = pull_data->cached_pack_indexes->pdata[i];
+      const char *pack_checksum = iter->pdata[i];
 
       ot_clear_gvariant (&mapped_pack);
       if (!ostree_repo_map_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
-                                                     pack_checksum, &mapped_pack,
+                                                     pack_checksum, OSTREE_OBJECT_TYPE_IS_META (objtype),
+                                                     &mapped_pack,
                                                      cancellable, error))
         goto out;
 
@@ -354,17 +362,18 @@ find_object_in_remote_packs (OtPullData       *pull_data,
 }
 
 static gboolean
-fetch_one_cache_index (OtPullData          *pull_data,
-                      const char           *pack_checksum,
-                      GCancellable         *cancellable,
-                      GError              **error)
+fetch_one_cache_index (OtPullData           *pull_data,
+                       const char           *pack_checksum,
+                       gboolean              is_meta,
+                       GCancellable         *cancellable,
+                       GError              **error)
 {
   gboolean ret = FALSE;
   ot_lobj GFile *tmp_path = NULL;
   ot_lfree char *pack_index_name = NULL;
   SoupURI *index_uri = NULL;
 
-  pack_index_name = g_strconcat ("ostpack-", pack_checksum, ".index", NULL);
+  pack_index_name = ostree_get_pack_index_name (is_meta, pack_checksum);
   index_uri = suburi_new (pull_data->base_uri, "objects", "pack", pack_index_name, NULL);
   
   if (!fetch_uri (pull_data, index_uri, "packindex-", &tmp_path,
@@ -372,7 +381,7 @@ fetch_one_cache_index (OtPullData          *pull_data,
     goto out;
   
   if (!ostree_repo_add_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
-                                                 pack_checksum, tmp_path,
+                                                 pack_checksum, is_meta, tmp_path,
                                                  cancellable, error))
     goto out;
   
@@ -398,8 +407,10 @@ fetch_and_cache_pack_indexes (OtPullData        *pull_data,
   gboolean ret = FALSE;
   guint i;
   ot_lobj GFile *superindex_tmppath = NULL;
-  ot_lptrarray GPtrArray *cached_indexes = NULL;
-  ot_lptrarray GPtrArray *uncached_indexes = NULL;
+  ot_lptrarray GPtrArray *cached_meta_indexes = NULL;
+  ot_lptrarray GPtrArray *cached_data_indexes = NULL;
+  ot_lptrarray GPtrArray *uncached_meta_indexes = NULL;
+  ot_lptrarray GPtrArray *uncached_data_indexes = NULL;
   ot_lvariant GVariant *superindex_variant = NULL;
   GVariantIter *contents_iter = NULL;
   SoupURI *superindex_uri = NULL;
@@ -412,22 +423,33 @@ fetch_and_cache_pack_indexes (OtPullData        *pull_data,
 
   if (!ostree_repo_resync_cached_remote_pack_indexes (pull_data->repo, pull_data->remote_name,
                                                       superindex_tmppath,
-                                                      &cached_indexes, &uncached_indexes,
+                                                      &cached_meta_indexes,
+                                                      &cached_data_indexes,
+                                                      &uncached_meta_indexes,
+                                                      &uncached_data_indexes,
                                                       cancellable, error))
     goto out;
 
-  for (i = 0; i < cached_indexes->len; i++)
-    g_ptr_array_add (pull_data->cached_pack_indexes,
-                     g_strdup (cached_indexes->pdata[i]));
+  for (i = 0; i < cached_meta_indexes->len; i++)
+    g_ptr_array_add (pull_data->cached_meta_pack_indexes,
+                     g_strdup (cached_meta_indexes->pdata[i]));
+  for (i = 0; i < cached_data_indexes->len; i++)
+    g_ptr_array_add (pull_data->cached_data_pack_indexes,
+                     g_strdup (cached_data_indexes->pdata[i]));
 
-  for (i = 0; i < uncached_indexes->len; i++)
+  for (i = 0; i < uncached_meta_indexes->len; i++)
     {
-      const char *pack_checksum = uncached_indexes->pdata[i];
-
-      if (!fetch_one_cache_index (pull_data, pack_checksum, cancellable, error))
+      const char *pack_checksum = uncached_meta_indexes->pdata[i];
+      if (!fetch_one_cache_index (pull_data, pack_checksum, TRUE, cancellable, error))
         goto out;
-      
-      g_ptr_array_add (pull_data->cached_pack_indexes, g_strdup (pack_checksum));
+      g_ptr_array_add (pull_data->cached_meta_pack_indexes, g_strdup (pack_checksum));
+    }
+  for (i = 0; i < uncached_data_indexes->len; i++)
+    {
+      const char *pack_checksum = uncached_data_indexes->pdata[i];
+      if (!fetch_one_cache_index (pull_data, pack_checksum, FALSE, cancellable, error))
+        goto out;
+      g_ptr_array_add (pull_data->cached_data_pack_indexes, g_strdup (pack_checksum));
     }
 
   ret = TRUE;
@@ -485,6 +507,7 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
   gboolean ret = FALSE;
   guint64 pack_offset = 0;
   gboolean is_stored;
+  gboolean is_meta;
   ot_lobj GInputStream *ret_input = NULL;
   ot_lobj GFile *temp_path = NULL;
   ot_lobj GFile *stored_path = NULL;
@@ -493,6 +516,8 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
   ot_lfree char *remote_pack_checksum = NULL;
   ot_lvariant GVariant *pack_entry = NULL;
   GMappedFile *pack_map = NULL;
+
+  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
 
   if (!ostree_repo_find_object (pull_data->repo, objtype, checksum,
                                 &stored_path, &local_pack_checksum, NULL,
@@ -505,7 +530,8 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
       if (!pull_data->fetched_packs)
         {
           pull_data->fetched_packs = TRUE;
-          pull_data->cached_pack_indexes = g_ptr_array_new_with_free_func (g_free);
+          pull_data->cached_meta_pack_indexes = g_ptr_array_new_with_free_func (g_free);
+          pull_data->cached_data_pack_indexes = g_ptr_array_new_with_free_func (g_free);
 
           if (!fetch_and_cache_pack_indexes (pull_data, cancellable, error))
             goto out;
@@ -521,8 +547,8 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
     {
       g_assert (!is_stored);
 
-      if (!fetch_one_pack_file (pull_data, remote_pack_checksum, &pack_path,
-                                cancellable, error))
+      if (!fetch_one_pack_file (pull_data, remote_pack_checksum, is_meta,
+                                &pack_path, cancellable, error))
         goto out;
 
       pack_map = g_mapped_file_new (ot_gfile_get_path_cached (pack_path), FALSE, error);
@@ -531,7 +557,7 @@ fetch_object_if_not_stored (OtPullData           *pull_data,
 
       if (!ostree_read_pack_entry_raw ((guchar*)g_mapped_file_get_contents (pack_map),
                                        g_mapped_file_get_length (pack_map),
-                                       pack_offset, FALSE, &pack_entry,
+                                       pack_offset, FALSE, is_meta, &pack_entry,
                                        cancellable, error))
         goto out;
 
@@ -1147,8 +1173,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   g_clear_object (&pull_data->session);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
-  if (pull_data->cached_pack_indexes)
-    g_ptr_array_unref (pull_data->cached_pack_indexes);
+  ot_clear_ptrarray (&pull_data->cached_meta_pack_indexes);
+  ot_clear_ptrarray (&pull_data->cached_data_pack_indexes);
   if (summary_uri)
     soup_uri_free (summary_uri);
   return ret;
