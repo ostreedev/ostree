@@ -69,7 +69,7 @@ get_file_checksum (GFile  *f,
 {
   gboolean ret = FALSE;
   ot_lfree char *ret_checksum = NULL;
-  GChecksum *tmp_checksum = NULL;
+  ot_lfree guchar *csum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
@@ -78,15 +78,14 @@ get_file_checksum (GFile  *f,
   else
     {
       if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_RAW_FILE,
-                                 &tmp_checksum, cancellable, error))
+                                 &csum, cancellable, error))
         goto out;
-      ret_checksum = g_strdup (g_checksum_get_string (tmp_checksum));
+      ret_checksum = ostree_checksum_from_bytes (csum);
     }
 
   ret = TRUE;
   ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
-  ot_clear_checksum (&tmp_checksum);
   return ret;
 }
 

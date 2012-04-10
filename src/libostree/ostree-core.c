@@ -79,15 +79,63 @@ ostree_validate_rev (const char *rev,
 }
 
 void
-ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode)
+ostree_checksum_update_meta (GChecksum *checksum,
+                             GFileInfo *file_info,
+                             GVariant  *xattrs)
 {
+  guint32 mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  guint32 uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  guint32 gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   guint32 perms;
+
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR
+      || g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+    {
+      /* Nothing */
+    }
+  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
+    {
+      const char *symlink_target = g_file_info_get_symlink_target (file_info);
+      
+      g_assert (symlink_target != NULL);
+      
+      g_checksum_update (checksum, (guint8*)symlink_target, strlen (symlink_target));
+    }
+  else if (S_ISCHR(mode) || S_ISBLK(mode))
+    {
+      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
+      rdev = GUINT32_TO_BE (rdev);
+      g_checksum_update (checksum, (guint8*)&rdev, 4);
+    }
+  else if (S_ISFIFO(mode))
+    {
+      /* Nothing */
+    }
+  else 
+    {
+      g_assert_not_reached ();
+    }
+
   perms = GUINT32_TO_BE (mode & ~S_IFMT);
   uid = GUINT32_TO_BE (uid);
   gid = GUINT32_TO_BE (gid);
   g_checksum_update (checksum, (guint8*) &uid, 4);
   g_checksum_update (checksum, (guint8*) &gid, 4);
   g_checksum_update (checksum, (guint8*) &perms, 4);
+
+  if (xattrs)
+    {
+      g_checksum_update (checksum, (guint8*)g_variant_get_data (xattrs),
+                         g_variant_get_size (xattrs));
+    }
+  else
+    {
+      ot_lvariant GVariant *tmp_attrs = g_variant_new_array (G_VARIANT_TYPE ("(ayay)"),
+                                                             NULL, 0);
+      g_variant_ref_sink (tmp_attrs);
+      g_checksum_update (checksum, (guint8*)g_variant_get_data (tmp_attrs),
+                         g_variant_get_size (tmp_attrs));
+    }
 }
 
 static char *
@@ -220,87 +268,71 @@ gboolean
 ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GVariant         *xattrs,
                                  GInputStream     *in,
-                                 OstreeObjectType objtype,
-                                 GChecksum       **out_checksum,
+                                 OstreeObjectType  objtype,
+                                 guchar          **out_csum,
                                  GCancellable     *cancellable,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  guint8 buf[8192];
-  gsize bytes_read;
   guint32 mode;
   ot_lvariant GVariant *dirmeta = NULL;
-  GChecksum *ret_checksum = NULL;
+  ot_lfree guchar *ret_csum = NULL;
+  GChecksum *checksum = NULL;
+
+  checksum = g_checksum_new (G_CHECKSUM_SHA256);
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-    return ot_gio_checksum_stream (in, out_checksum, cancellable, error);
-
-  ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
-  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
-      dirmeta = ostree_create_directory_metadata (file_info, xattrs);
-      g_checksum_update (ret_checksum, g_variant_get_data (dirmeta),
-                         g_variant_get_size (dirmeta));
-
-    }
-  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    {
-      while ((bytes_read = g_input_stream_read (in, buf, sizeof (buf), cancellable, error)) > 0)
-        g_checksum_update (ret_checksum, buf, bytes_read);
-      if (bytes_read < 0)
+      if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
         goto out;
-    }
-  else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
-    {
-      const char *symlink_target = g_file_info_get_symlink_target (file_info);
-
-      g_assert (symlink_target != NULL);
-      
-      g_checksum_update (ret_checksum, (guint8*)symlink_target, strlen (symlink_target));
-    }
-  else if (S_ISCHR(mode) || S_ISBLK(mode))
-    {
-      guint32 rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
-      rdev = GUINT32_TO_BE (rdev);
-      g_checksum_update (ret_checksum, (guint8*)&rdev, 4);
-    }
-  else if (S_ISFIFO(mode))
-    {
-      ;
     }
   else
     {
-      g_set_error (error, G_IO_ERROR,
-                   G_IO_ERROR_FAILED,
-                   "Unsupported file (must be regular, symbolic link, fifo, or character/block device)");
-      goto out;
+      mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          dirmeta = ostree_create_directory_metadata (file_info, xattrs);
+          g_checksum_update (checksum, g_variant_get_data (dirmeta),
+                             g_variant_get_size (dirmeta));
+
+        }
+      else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+            goto out;
+        }
+      else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK
+               || S_ISCHR(mode) || S_ISBLK(mode)
+               || S_ISFIFO(mode))
+        {
+          /* We update the checksum below */
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR,
+                       G_IO_ERROR_FAILED,
+                       "Unsupported file (must be regular, symbolic link, fifo, or character/block device)");
+          goto out;
+        }
+
+      if (objtype != OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
+        ostree_checksum_update_meta (checksum, file_info, xattrs);
     }
 
-  if (objtype != OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-    {
-      ostree_checksum_update_stat (ret_checksum,
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                                   g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-      /* FIXME - ensure empty xattrs are the same as NULL xattrs */
-      if (xattrs)
-        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-    }
+  ret_csum = ot_csum_from_gchecksum (checksum);
 
   ret = TRUE;
-  ot_transfer_out_value (out_checksum, &ret_checksum);
+  ot_transfer_out_value (out_csum, &ret_csum);
  out:
-  ot_clear_checksum (&ret_checksum);
+  ot_clear_checksum (&checksum);
   return ret;
 }
 
 gboolean
 ostree_checksum_file (GFile            *f,
-                      OstreeObjectType objtype,
-                      GChecksum       **out_checksum,
+                      OstreeObjectType  objtype,
+                      guchar          **out_csum,
                       GCancellable     *cancellable,
                       GError          **error)
 {
@@ -308,7 +340,7 @@ ostree_checksum_file (GFile            *f,
   ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GInputStream *in = NULL;
   ot_lvariant GVariant *xattrs = NULL;
-  GChecksum *ret_checksum = NULL;
+  ot_lfree guchar *ret_csum = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -333,20 +365,19 @@ ostree_checksum_file (GFile            *f,
     }
 
   if (!ostree_checksum_file_from_input (file_info, xattrs, in, objtype,
-                                        &ret_checksum, cancellable, error))
+                                        &ret_csum, cancellable, error))
     goto out;
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
+  ot_transfer_out_value(out_csum, &ret_csum);
  out:
-  ot_clear_checksum(&ret_checksum);
   return ret;
 }
 
 typedef struct {
   GFile  *f;
   OstreeObjectType objtype;
-  GChecksum *checksum;
+  guchar *csum;
 } ChecksumFileAsyncData;
 
 static void
@@ -356,13 +387,13 @@ checksum_file_async_thread (GSimpleAsyncResult  *res,
 {
   GError *error = NULL;
   ChecksumFileAsyncData *data;
-  GChecksum *checksum = NULL;
+  guchar *csum = NULL;
 
   data = g_simple_async_result_get_op_res_gpointer (res);
-  if (!ostree_checksum_file (data->f, data->objtype, &checksum, cancellable, &error))
+  if (!ostree_checksum_file (data->f, data->objtype, &csum, cancellable, &error))
     g_simple_async_result_take_error (res, error);
   else
-    data->checksum = checksum;
+    data->csum = csum;
 }
 
 static void
@@ -371,7 +402,7 @@ checksum_file_async_data_free (gpointer datap)
   ChecksumFileAsyncData *data = datap;
 
   g_object_unref (data->f);
-  ot_clear_checksum (&data->checksum);
+  g_free (data->csum);
   g_free (data);
 }
   
@@ -400,7 +431,7 @@ ostree_checksum_file_async (GFile                 *f,
 gboolean
 ostree_checksum_file_async_finish (GFile          *f,
                                    GAsyncResult   *result,
-                                   GChecksum     **out_checksum,
+                                   guchar        **out_csum,
                                    GError        **error)
 {
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
@@ -413,8 +444,8 @@ ostree_checksum_file_async_finish (GFile          *f,
 
   data = g_simple_async_result_get_op_res_gpointer (simple);
   /* Transfer ownership */
-  *out_checksum = data->checksum;
-  data->checksum = NULL;
+  *out_csum = data->csum;
+  data->csum = NULL;
   return TRUE;
 }
 
@@ -810,21 +841,13 @@ ostree_create_file_from_input (GFile            *dest_file,
                                GFileInfo        *finfo,
                                GVariant         *xattrs,
                                GInputStream     *input,
-                               OstreeObjectType  objtype,
-                               GChecksum       **out_checksum,
                                GCancellable     *cancellable,
                                GError          **error)
 {
   gboolean ret = FALSE;
   const char *dest_path;
   guint32 uid, gid, mode;
-  gboolean is_meta;
-  gboolean is_archived_content;
   ot_lobj GFileOutputStream *out = NULL;
-  GChecksum *ret_checksum = NULL;
-
-  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
-  is_archived_content = objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -832,12 +855,6 @@ ostree_create_file_from_input (GFile            *dest_file,
   if (finfo != NULL)
     {
       mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
-      /* Archived content files should always be readable by all and
-       * read/write by owner.  If the base file is executable then
-       * we're also executable.
-       */
-      if (is_archived_content)
-        mode |= 0644;
     }
   else
     {
@@ -861,9 +878,8 @@ ostree_create_file_from_input (GFile            *dest_file,
 
       if (input)
         {
-          if (!ot_gio_splice_and_checksum ((GOutputStream*)out, input,
-                                           out_checksum ? &ret_checksum : NULL,
-                                           cancellable, error))
+          if (g_output_stream_splice ((GOutputStream*)out, input, 0,
+                                      cancellable, error) < 0)
             goto out;
         }
 
@@ -873,11 +889,6 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISLNK (mode))
     {
       const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
-      g_assert (!is_meta);
-      if (out_checksum)
-        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-      if (ret_checksum)
-        g_checksum_update (ret_checksum, (guint8*)target, strlen (target));
       if (symlink (target, dest_path) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -887,13 +898,6 @@ ostree_create_file_from_input (GFile            *dest_file,
   else if (S_ISCHR (mode) || S_ISBLK (mode))
     {
       guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
-      guint32 dev_be;
-      g_assert (!is_meta);
-      dev_be = GUINT32_TO_BE (dev);
-      if (out_checksum)
-        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-      if (ret_checksum)
-        g_checksum_update (ret_checksum, (guint8*)&dev_be, 4);
       if (mknod (dest_path, mode, dev) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -902,9 +906,6 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else if (S_ISFIFO (mode))
     {
-      g_assert (!is_meta);
-      if (out_checksum)
-        ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       if (mkfifo (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
@@ -918,7 +919,7 @@ ostree_create_file_from_input (GFile            *dest_file,
       goto out;
     }
 
-  if (finfo != NULL && !is_meta && !is_archived_content)
+  if (finfo != NULL)
     {
       uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
       gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
@@ -941,31 +942,16 @@ ostree_create_file_from_input (GFile            *dest_file,
 
   if (xattrs != NULL)
     {
-      g_assert (!is_meta);
       if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
         goto out;
     }
 
-  if (ret_checksum && !is_meta && !is_archived_content)
-    {
-      g_assert (finfo != NULL);
-
-      ostree_checksum_update_stat (ret_checksum,
-                                   g_file_info_get_attribute_uint32 (finfo, "unix::uid"),
-                                   g_file_info_get_attribute_uint32 (finfo, "unix::gid"),
-                                   mode);
-      if (xattrs)
-        g_checksum_update (ret_checksum, (guint8*)g_variant_get_data (xattrs), g_variant_get_size (xattrs));
-    }
-
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
   if (!ret && !S_ISDIR(mode))
     {
       (void) unlink (dest_path);
     }
-  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 
@@ -1016,9 +1002,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
                                     GFileInfo        *finfo,
                                     GVariant         *xattrs,
                                     GInputStream     *input,
-                                    OstreeObjectType objtype,
                                     GFile           **out_file,
-                                    GChecksum       **out_checksum,
                                     GCancellable     *cancellable,
                                     GError          **error)
 {
@@ -1027,7 +1011,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
   int i = 0;
   ot_lfree char *possible_name = NULL;
   ot_lobj GFile *possible_file = NULL;
-  GChecksum *ret_checksum = NULL;
+  ot_lfree guchar *ret_csum = NULL;
   GString *tmp_name = NULL;
 
   tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
@@ -1045,8 +1029,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
       possible_file = g_file_get_child (dir, possible_name);
       
       if (!ostree_create_file_from_input (possible_file, finfo, xattrs, input,
-                                          objtype,
-                                          out_checksum ? &ret_checksum : NULL,
                                           cancellable, &temp_error))
         {
           if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
@@ -1073,12 +1055,10 @@ ostree_create_temp_file_from_input (GFile            *dir,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
   ot_transfer_out_value(out_file, &possible_file);
  out:
   if (tmp_name)
     g_string_free (tmp_name, TRUE);
-  ot_clear_checksum (&ret_checksum);
   return ret;
 }
 
@@ -1096,8 +1076,7 @@ ostree_create_temp_regular_file (GFile            *dir,
   ot_lobj GOutputStream *ret_stream = NULL;
 
   if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
-                                           OSTREE_OBJECT_TYPE_RAW_FILE, &ret_file,
-                                           NULL, cancellable, error))
+                                           &ret_file, cancellable, error))
     goto out;
   
   ret_stream = (GOutputStream*)g_file_append_to (ret_file, 0, cancellable, error);

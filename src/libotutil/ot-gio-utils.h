@@ -61,14 +61,20 @@ gboolean ot_gfile_load_contents_utf8 (GFile         *file,
                                       GCancellable  *cancellable,
                                       GError       **error);
 
-gboolean ot_gio_splice_and_checksum (GOutputStream  *out,
+gboolean ot_gio_splice_get_checksum (GOutputStream  *out,
                                      GInputStream   *in,
-                                     GChecksum     **out_checksum,
+                                     guchar        **out_csum,
                                      GCancellable   *cancellable,
                                      GError        **error);
 
+gboolean ot_gio_splice_update_checksum (GOutputStream  *out,
+                                        GInputStream   *in,
+                                        GChecksum      *checksum,
+                                        GCancellable   *cancellable,
+                                        GError        **error);
+
 gboolean ot_gio_checksum_stream (GInputStream   *in,
-                                 GChecksum     **out_checksum,
+                                 guchar        **out_csum,
                                  GCancellable   *cancellable,
                                  GError        **error);
 

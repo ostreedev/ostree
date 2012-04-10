@@ -229,21 +229,17 @@ ot_gfile_get_basename_cached (GFile *file)
 }
 
 gboolean
-ot_gio_splice_and_checksum (GOutputStream  *out,
-                            GInputStream   *in,
-                            GChecksum     **out_checksum,
-                            GCancellable   *cancellable,
-                            GError        **error)
+ot_gio_splice_update_checksum (GOutputStream  *out,
+                               GInputStream   *in,
+                               GChecksum      *checksum,
+                               GCancellable   *cancellable,
+                               GError        **error)
 {
   gboolean ret = FALSE;
-  GChecksum *ret_checksum = NULL;
 
-  g_return_val_if_fail (out != NULL || out_checksum != NULL, FALSE);
+  g_return_val_if_fail (out != NULL || checksum != NULL, FALSE);
 
-  if (out_checksum)
-    ret_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-  
-  if (ret_checksum != NULL)
+  if (checksum != NULL)
     {
       gsize bytes_read, bytes_written;
       char buf[4096];
@@ -251,8 +247,7 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
         {
           if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
             goto out;
-          if (ret_checksum)
-            g_checksum_update (ret_checksum, (guint8*)buf, bytes_read);
+          g_checksum_update (checksum, (guint8*)buf, bytes_read);
           if (out)
             {
               if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
@@ -268,21 +263,44 @@ ot_gio_splice_and_checksum (GOutputStream  *out,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_checksum, &ret_checksum);
  out:
-  ot_clear_checksum (&ret_checksum);
+  return ret;
+}
+
+gboolean
+ot_gio_splice_get_checksum (GOutputStream  *out,
+                            GInputStream   *in,
+                            guchar        **out_csum,
+                            GCancellable   *cancellable,
+                            GError        **error)
+{
+  gboolean ret = FALSE;
+  GChecksum *checksum = NULL;
+  ot_lfree guchar *ret_csum = NULL;
+
+  checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+  if (!ot_gio_splice_update_checksum (out, in, checksum, cancellable, error))
+    goto out;
+
+  ret_csum = ot_csum_from_gchecksum (checksum);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_csum, &ret_csum);
+ out:
+  ot_clear_checksum (&checksum);
   return ret;
 }
 
 gboolean
 ot_gio_checksum_stream (GInputStream   *in,
-                        GChecksum     **out_checksum,
+                        guchar        **out_csum,
                         GCancellable   *cancellable,
                         GError        **error)
 {
-  if (!out_checksum)
+  if (!out_csum)
     return TRUE;
-  return ot_gio_splice_and_checksum (NULL, in, out_checksum, cancellable, error);
+  return ot_gio_splice_get_checksum (NULL, in, out_csum, cancellable, error);
 }
 
 gboolean

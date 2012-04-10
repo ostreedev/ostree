@@ -22,6 +22,8 @@ privlib_LTLIBRARIES += libostree.la
 libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-core.c \
 	src/libostree/ostree-core.h \
+	src/libostree/ostree-checksum-input-stream.c \
+	src/libostree/ostree-checksum-input-stream.h \
 	src/libostree/ostree-mutable-tree.c \
 	src/libostree/ostree-mutable-tree.h \
 	src/libostree/ostree-repo.c \

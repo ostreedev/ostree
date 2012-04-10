@@ -59,7 +59,8 @@ fsck_one_pack_file (OtFsckData        *data,
   ot_lvariant GVariant *index_variant = NULL;
   ot_lobj GFile *pack_index_path = NULL;
   ot_lobj GFile *pack_data_path = NULL;
-  GChecksum *pack_content_checksum = NULL;
+  ot_lfree guchar *pack_content_csum = NULL;
+  ot_lfree char *tmp_checksum = NULL;
   GVariantIter *index_content_iter = NULL;
 
   g_free (path);
@@ -88,14 +89,15 @@ fsck_one_pack_file (OtFsckData        *data,
     goto out;
   pack_size = g_file_info_get_attribute_uint64 (pack_info, "standard::size");
      
-  if (!ot_gio_checksum_stream (input, &pack_content_checksum, cancellable, error))
+  if (!ot_gio_checksum_stream (input, &pack_content_csum, cancellable, error))
     goto out;
 
-  if (strcmp (g_checksum_get_string (pack_content_checksum), pack_checksum) != 0)
+  tmp_checksum = ostree_checksum_from_bytes (pack_content_csum);
+  if (strcmp (tmp_checksum, pack_checksum) != 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "corrupted pack '%s', expected checksum %s",
-                   pack_checksum, g_checksum_get_string (pack_content_checksum));
+                   "corrupted pack '%s', actual checksum is %s",
+                   pack_checksum, tmp_checksum);
       goto out;
     }
 
@@ -119,7 +121,6 @@ fsck_one_pack_file (OtFsckData        *data,
  out:
   if (index_content_iter)
     g_variant_iter_free (index_content_iter);
-  ot_clear_checksum (&pack_content_checksum);
   return ret;
 }
 
@@ -175,7 +176,8 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lvariant GVariant *metadata = NULL;
-  GChecksum *computed_checksum = NULL;
+  ot_lfree guchar *computed_csum = NULL;
+  ot_lfree char *tmp_checksum = NULL;
 
   reachable_objects = ostree_traverse_new_reachable ();
 
@@ -277,25 +279,26 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
           g_assert_not_reached ();
         }
 
-      ot_clear_checksum (&computed_checksum);
+      g_free (computed_csum);
       if (!ostree_checksum_file_from_input (file_info, xattrs, input,
-                                            checksum_objtype, &computed_checksum,
+                                            checksum_objtype, &computed_csum,
                                             cancellable, error))
         goto out;
 
-      if (strcmp (checksum, g_checksum_get_string (computed_checksum)) != 0)
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes (computed_csum);
+      if (strcmp (checksum, tmp_checksum) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "corrupted object %s.%s; actual checksum: %s",
                        checksum, ostree_object_type_to_string (objtype),
-                       g_checksum_get_string (computed_checksum));
+                       tmp_checksum);
           goto out;
         }
     }
 
   ret = TRUE;
  out:
-  ot_clear_checksum (&computed_checksum);
   return ret;
 }
 

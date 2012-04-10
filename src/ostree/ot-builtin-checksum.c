@@ -41,14 +41,14 @@ on_checksum_received (GObject    *obj,
                       GAsyncResult  *result,
                       gpointer       user_data)
 {
-  GChecksum *checksum = NULL;
+  ot_lfree guchar *csum = NULL;
+  ot_lfree char *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
-  if (ostree_checksum_file_async_finish ((GFile*)obj, result, &checksum, data->error))
+  if (ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error))
     {
-      g_print ("%s\n", g_checksum_get_string (checksum));
-      
-      ot_clear_checksum (&checksum);
+      checksum = ostree_checksum_from_bytes (csum);
+      g_print ("%s\n", checksum);
     }
   
   g_main_loop_quit (data->loop);

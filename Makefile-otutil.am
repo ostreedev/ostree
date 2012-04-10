@@ -20,6 +20,8 @@
 noinst_LTLIBRARIES += libotutil.la
 
 libotutil_la_SOURCES = \
+	src/libotutil/ot-checksum-utils.c \
+	src/libotutil/ot-checksum-utils.h \
 	src/libotutil/ot-local-alloc.c \
 	src/libotutil/ot-local-alloc.h \
 	src/libotutil/ot-opt-utils.c \

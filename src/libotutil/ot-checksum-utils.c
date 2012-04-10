@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>.
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,14 +20,19 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_H__
+#include "config.h"
 
-#include <ostree-checksum-input-stream.h>
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-mutable-tree.h>
-#include <ostree-repo-file.h>
-#include <ostree-traverse.h>
-#include <ostree-sysroot.h>
+#include "otutil.h"
 
-#endif
+#include <string.h>
+
+guchar *
+ot_csum_from_gchecksum (GChecksum  *checksum)
+{
+  guchar *ret = g_malloc (32);
+  gsize len = 32;
+  
+  g_checksum_get_digest (checksum, ret, &len);
+  g_assert (len == 32);
+  return ret;
+}

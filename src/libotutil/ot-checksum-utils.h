@@ -20,14 +20,15 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_H__
+#ifndef __OSTREE_CHECKSUM_UTILS_H__
+#define __OSTREE_CHECKSUM_UTILS_H__
 
-#include <ostree-checksum-input-stream.h>
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-mutable-tree.h>
-#include <ostree-repo-file.h>
-#include <ostree-traverse.h>
-#include <ostree-sysroot.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+guchar *ot_csum_from_gchecksum (GChecksum *checksum);
+
+G_END_DECLS
 
 #endif

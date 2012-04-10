@@ -147,7 +147,7 @@ int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
-void ostree_checksum_update_stat (GChecksum *checksum, guint32 uid, guint32 gid, guint32 mode);
+void ostree_checksum_update_meta (GChecksum *checksum, GFileInfo *file_info, GVariant  *xattrs);
 
 const char * ostree_object_type_to_string (OstreeObjectType objtype);
 
@@ -199,13 +199,13 @@ gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GVariant         *xattrs,
                                           GInputStream     *in,
                                           OstreeObjectType  objtype,
-                                          GChecksum       **out_checksum,
+                                          guchar          **out_csum,
                                           GCancellable     *cancellable,
                                           GError          **error);
 
 gboolean ostree_checksum_file (GFile             *f,
                                OstreeObjectType   type,
-                               GChecksum        **out_checksum,
+                               guchar           **out_csum,
                                GCancellable      *cancellable,
                                GError           **error);
 
@@ -218,7 +218,7 @@ void ostree_checksum_file_async (GFile                 *f,
 
 gboolean ostree_checksum_file_async_finish (GFile          *f,
                                             GAsyncResult   *result,
-                                            GChecksum     **out_checksum,
+                                            guchar        **out_csum,
                                             GError        **error);
 
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
@@ -228,8 +228,6 @@ gboolean ostree_create_file_from_input (GFile          *file,
                                         GFileInfo      *finfo,
                                         GVariant       *xattrs,
                                         GInputStream   *input,
-                                        OstreeObjectType objtype,
-                                        GChecksum     **out_checksum,
                                         GCancellable   *cancellable,
                                         GError        **error);
 
@@ -239,9 +237,7 @@ gboolean ostree_create_temp_file_from_input (GFile            *dir,
                                              GFileInfo        *finfo,
                                              GVariant         *xattrs,
                                              GInputStream     *input,
-                                             OstreeObjectType objtype,
                                              GFile           **out_file,
-                                             GChecksum       **out_checksum,
                                              GCancellable     *cancellable,
                                              GError          **error);
 

@@ -159,9 +159,9 @@ ot_util_variant_from_stream (GInputStream         *src,
 
   data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 
-  if (!g_output_stream_splice ((GOutputStream*)data_stream, src,
-                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                               cancellable, error))
+  if (g_output_stream_splice ((GOutputStream*)data_stream, src,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                              cancellable, error) < 0)
     goto out;
 
   ret_variant = g_variant_new_from_data (type, g_memory_output_stream_get_data (data_stream),
