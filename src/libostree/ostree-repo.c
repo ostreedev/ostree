@@ -822,14 +822,12 @@ impl_stage_archive_file_object_from_raw (OstreeRepo         *self,
   ot_lobj GFile *meta_temp_file = NULL;
   ot_lobj GFile *content_temp_file = NULL;
   ot_lobj GInputStream *mem = NULL;
-  ot_lvariant GVariant *serialized = NULL;
   GChecksum *ret_checksum = NULL;
   
   archive_metadata = ostree_create_archive_file_metadata (file_info, xattrs);
   
-  serialized = ostree_wrap_metadata_variant (OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, archive_metadata);
-  mem = g_memory_input_stream_new_from_data (g_variant_get_data (serialized),
-                                             g_variant_get_size (serialized),
+  mem = g_memory_input_stream_new_from_data (g_variant_get_data (archive_metadata),
+                                             g_variant_get_size (archive_metadata),
                                              NULL);
 
   if (!ostree_create_temp_file_from_input (priv->tmp_dir,
@@ -1071,13 +1069,11 @@ stage_gvariant_object (OstreeRepo         *self,
                        GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *serialized = NULL;
   ot_lobj GInputStream *mem = NULL;
   GChecksum *ret_checksum = NULL;
 
-  serialized = ostree_wrap_metadata_variant (type, variant);
-  mem = g_memory_input_stream_new_from_data (g_variant_get_data (serialized),
-                                             g_variant_get_size (serialized),
+  mem = g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                             g_variant_get_size (variant),
                                              NULL);
   
   if (!stage_object_impl (self, type, FALSE,
@@ -3510,7 +3506,8 @@ ostree_repo_load_variant (OstreeRepo  *self,
   /* Prefer loose metadata for now */
   if (object_path != NULL)
     {
-      if (!ostree_map_metadata_file (object_path, objtype, &ret_variant, error))
+      if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
+                                &ret_variant, error))
         goto out;
     }
   else if (pack_checksum != NULL)

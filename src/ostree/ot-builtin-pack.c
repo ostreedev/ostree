@@ -238,7 +238,7 @@ delete_loose_object (OtRepackData     *data,
   /* This is gross - we need to specially clean up symbolic link object content */
   if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
     {
-      if (!ostree_map_metadata_file (object_path, objtype, &archive_meta, error))
+      if (!ot_util_variant_map (object_path, OSTREE_ARCHIVED_FILE_VARIANT_FORMAT, &archive_meta, error))
         goto out;
       if (!ostree_parse_archived_file_meta (archive_meta, &file_info, &xattrs, error))
         goto out;
@@ -283,7 +283,8 @@ pack_one_meta_object (OtRepackData        *data,
 
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
-  if (!ostree_map_metadata_file (object_path, objtype, &metadata_v, error))
+  if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
+                            &metadata_v, error))
     goto out;
 
   ret_packed_object = g_variant_new ("(y@ayv)", (guchar) objtype,

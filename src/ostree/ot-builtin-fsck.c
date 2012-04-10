@@ -175,7 +175,6 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lvariant GVariant *metadata = NULL;
-  ot_lvariant GVariant *metadata_wrapped = NULL;
   GChecksum *computed_checksum = NULL;
 
   reachable_objects = ostree_traverse_new_reachable ();
@@ -248,11 +247,8 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
           else
             g_assert_not_reached ();
           
-          ot_clear_gvariant (&metadata_wrapped);
-          metadata_wrapped = ostree_wrap_metadata_variant (objtype, metadata);
-          
-          input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata_wrapped),
-                                                       g_variant_get_size (metadata_wrapped),
+          input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
+                                                       g_variant_get_size (metadata),
                                                        NULL);
         }
       else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)

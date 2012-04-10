@@ -101,7 +101,6 @@ unpack_one_object (OstreeRepo        *repo,
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lvariant GVariant *meta = NULL;
-  ot_lvariant GVariant *serialized_meta = NULL;
 
   g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
 
@@ -126,10 +125,8 @@ unpack_one_object (OstreeRepo        *repo,
       if (!ostree_repo_load_variant (repo, objtype, checksum, &meta, error))
         goto out;
 
-      serialized_meta = ostree_wrap_metadata_variant (objtype, meta);
-
-      input = g_memory_input_stream_new_from_data (g_variant_get_data (serialized_meta),
-                                                   g_variant_get_size (serialized_meta), NULL);
+      input = g_memory_input_stream_new_from_data (g_variant_get_data (meta),
+                                                   g_variant_get_size (meta), NULL);
       
       if (!ostree_repo_stage_object_trusted (repo, objtype, checksum, TRUE,
                                              NULL, NULL, input, cancellable, error))

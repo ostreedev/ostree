@@ -43,8 +43,6 @@ typedef enum {
 #define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 3 && t <= 6)
 #define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
 
-#define OSTREE_SERIALIZED_VARIANT_FORMAT G_VARIANT_TYPE("(uv)")
-
 /*
  * xattr objects:
  * a(ayay) - array of (name, value) pairs, both binary data, though name is a bytestring
@@ -132,6 +130,8 @@ typedef enum {
  */
 #define OSTREE_PACK_META_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(yayv)")
 
+const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
+
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
 
@@ -186,13 +186,6 @@ gboolean ostree_get_xattrs_for_file (GFile         *f,
                                      GVariant     **out_xattrs,
                                      GCancellable  *cancellable,
                                      GError       **error);
-
-GVariant *ostree_wrap_metadata_variant (OstreeObjectType type, GVariant *metadata);
-
-gboolean ostree_unwrap_metadata (GVariant              *container,
-                                 OstreeObjectType       expected_type,
-                                 GVariant             **out_variant,
-                                 GError               **error);
 
 gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
                             GCancellable *cancellable, GError **error);

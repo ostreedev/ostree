@@ -31,6 +31,24 @@
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
+const GVariantType *
+ostree_metadata_variant_type (OstreeObjectType objtype)
+{
+  switch (objtype)
+    {
+    case OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META:
+      return OSTREE_ARCHIVED_FILE_VARIANT_FORMAT;
+    case OSTREE_OBJECT_TYPE_DIR_TREE:
+      return OSTREE_TREE_GVARIANT_FORMAT;
+    case OSTREE_OBJECT_TYPE_DIR_META:
+      return OSTREE_DIRMETA_GVARIANT_FORMAT;
+    case OSTREE_OBJECT_TYPE_COMMIT:
+      return OSTREE_COMMIT_GVARIANT_FORMAT;
+    default:
+      g_assert_not_reached ();
+    }
+}
+
 gboolean
 ostree_validate_checksum_string (const char *sha256,
                                  GError    **error)
@@ -58,13 +76,6 @@ ostree_validate_rev (const char *rev,
   ret = TRUE;
  out:
   return ret;
-}
-
-GVariant *
-ostree_wrap_metadata_variant (OstreeObjectType  type,
-                              GVariant         *metadata)
-{
-  return g_variant_new ("(uv)", GUINT32_TO_BE ((guint32)type), metadata);
 }
 
 void
@@ -219,7 +230,6 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
   gsize bytes_read;
   guint32 mode;
   ot_lvariant GVariant *dirmeta = NULL;
-  ot_lvariant GVariant *packed = NULL;
   GChecksum *ret_checksum = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
@@ -232,9 +242,8 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
       dirmeta = ostree_create_directory_metadata (file_info, xattrs);
-      packed = ostree_wrap_metadata_variant (OSTREE_OBJECT_TYPE_DIR_META, dirmeta);
-      g_checksum_update (ret_checksum, g_variant_get_data (packed),
-                         g_variant_get_size (packed));
+      g_checksum_update (ret_checksum, g_variant_get_data (dirmeta),
+                         g_variant_get_size (dirmeta));
 
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
@@ -460,61 +469,6 @@ ostree_set_xattrs (GFile  *f,
     }
 
   ret = TRUE;
- out:
-  return ret;
-}
-
-gboolean
-ostree_unwrap_metadata (GVariant              *container,
-                        OstreeObjectType       expected_type,
-                        GVariant             **out_variant,
-                        GError               **error)
-{
-  gboolean ret = FALSE;
-  guint32 actual_type;
-  ot_lvariant GVariant *ret_variant = NULL;
-
-  g_variant_get (container, "(uv)",
-                 &actual_type, &ret_variant);
-  actual_type = GUINT32_FROM_BE (actual_type);
-  if (actual_type != expected_type)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted metadata object; found type %u, expected %u",
-                   actual_type, (guint32)expected_type);
-      goto out;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_variant, &ret_variant);
- out:
-  return ret;
-}
-
-gboolean
-ostree_map_metadata_file (GFile                       *file,
-                          OstreeObjectType             expected_type,
-                          GVariant                   **out_variant,
-                          GError                     **error)
-{
-  gboolean ret = FALSE;
-  ot_lvariant GVariant *ret_variant = NULL;
-  ot_lvariant GVariant *container = NULL;
-
-  if (!ot_util_variant_map (file, OSTREE_SERIALIZED_VARIANT_FORMAT,
-                            &container, error))
-    goto out;
-
-  if (!ostree_unwrap_metadata (container, expected_type, &ret_variant,
-                               error))
-    {
-      g_prefix_error (error, "While parsing '%s': ",
-                      ot_gfile_get_path_cached (file));
-      goto out;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value(out_variant, &ret_variant);
  out:
   return ret;
 }

@@ -655,7 +655,6 @@ fetch_and_store_file (OtPullData          *pull_data,
   ot_lobj GInputStream *input = NULL;
   ot_lobj GFile *stored_path = NULL;
   ot_lfree char *pack_checksum = NULL;
-  ot_lvariant GVariant *archive_metadata_container = NULL;
   ot_lvariant GVariant *archive_metadata = NULL;
   ot_lobj GFileInfo *archive_file_info = NULL;
   ot_lvariant GVariant *archive_xattrs = NULL;
@@ -686,14 +685,10 @@ fetch_and_store_file (OtPullData          *pull_data,
 
       if (input != NULL)
         {
-          if (!ot_util_variant_from_stream (input, OSTREE_SERIALIZED_VARIANT_FORMAT,
-                                            FALSE, &archive_metadata_container, cancellable, error))
+          if (!ot_util_variant_from_stream (input, OSTREE_ARCHIVED_FILE_VARIANT_FORMAT,
+                                            FALSE, &archive_metadata, cancellable, error))
             goto out;
 
-          if (!ostree_unwrap_metadata (archive_metadata_container, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                                       &archive_metadata, error))
-            goto out;
-  
           if (!ostree_parse_archived_file_meta (archive_metadata, &archive_file_info,
                                                 &archive_xattrs, error))
             goto out;

@@ -53,9 +53,9 @@ gboolean ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                             GError         **error);
 
 gboolean ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
-                                       GVariant       **out_xattrs,
-                                       GCancellable    *cancellable,
-                                       GError         **error);
+                                      GVariant       **out_xattrs,
+                                      GCancellable    *cancellable,
+                                      GError         **error);
 
 OstreeRepo * ostree_repo_file_get_repo (OstreeRepoFile  *self);
 OstreeRepoFile * ostree_repo_file_get_root (OstreeRepoFile  *self);

@@ -288,35 +288,22 @@ ostree_repo_file_get_commit (OstreeRepoFile  *self)
 
 gboolean
 ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
-                              GVariant       **out_xattrs,
-                              GCancellable    *cancellable,
-                              GError         **error)
+                             GVariant       **out_xattrs,
+                             GCancellable    *cancellable,
+                             GError         **error)
 {
   gboolean ret = FALSE;
   ot_lvariant GVariant *ret_xattrs = NULL;
-  ot_lvariant GVariant *metadata = NULL;
-  ot_lobj GFile *local_file = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
 
   if (self->tree_metadata)
     ret_xattrs = g_variant_get_child_value (self->tree_metadata, 3);
-  else if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
+  else 
     {
-      local_file = ostree_repo_file_nontree_get_local (self);
-      
-      if (!ostree_map_metadata_file (local_file, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META,
-                                     &metadata, error))
-        goto out;
-
-      if (!ostree_parse_archived_file_meta (metadata, NULL, &ret_xattrs, error))
-        goto out;
-    }
-  else
-    {
-      local_file = ostree_repo_file_nontree_get_local (self);
-      if (!ostree_get_xattrs_for_file (local_file, &ret_xattrs, cancellable, error))
+      if (!ostree_repo_load_file (self->repo, ostree_repo_file_get_checksum (self),
+                                  NULL, NULL, &ret_xattrs, cancellable, error))
         goto out;
     }
 
