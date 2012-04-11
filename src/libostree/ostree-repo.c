@@ -3145,8 +3145,8 @@ list_objects_in_index (OstreeRepo                     *self,
   guint64 offset;
   ot_lobj GFile *index_path = NULL;
   ot_lvariant GVariant *index_variant = NULL;
-  ot_lvariant GVariant *contents;
-  ot_lvariant GVariant *csum_bytes;
+  ot_lvariant GVariant *contents = NULL;
+  ot_lvariant GVariant *csum_bytes = NULL;
   ot_lfree char *checksum = NULL;
   GVariantIter content_iter;
 
