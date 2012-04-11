@@ -79,7 +79,7 @@ ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **
 
   data.loop = g_main_loop_new (NULL, FALSE);
   data.error = error;
-  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_RAW_FILE, G_PRIORITY_DEFAULT, NULL, on_checksum_received, &data);
+  ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, NULL, on_checksum_received, &data);
   
   g_main_loop_run (data.loop);
 

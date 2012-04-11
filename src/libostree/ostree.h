@@ -23,6 +23,7 @@
 #ifndef __OSTREE_H__
 
 #include <ostree-checksum-input-stream.h>
+#include <ostree-chain-input-stream.h>
 #include <ostree-core.h>
 #include <ostree-repo.h>
 #include <ostree-mutable-tree.h>

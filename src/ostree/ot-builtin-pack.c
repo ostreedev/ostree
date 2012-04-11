@@ -151,44 +151,6 @@ write_padding (GOutputStream    *output,
   return ret;
 }
 
-static gboolean
-write_variant_with_size (GOutputStream      *output,
-                         GVariant           *variant,
-                         GChecksum          *checksum,
-                         guint64            *inout_offset,
-                         GCancellable       *cancellable,
-                         GError            **error)
-{
-  gboolean ret = FALSE;
-  guint64 variant_size;
-  guint32 variant_size_u32_be;
-
-  g_assert ((*inout_offset & 3) == 0);
-
-  /* Write variant size */
-  variant_size = g_variant_get_size (variant);
-  g_assert (variant_size < G_MAXUINT32);
-  variant_size_u32_be = GUINT32_TO_BE((guint32) variant_size);
-
-  if (!write_bytes_update_checksum (output, (guchar*)&variant_size_u32_be, 4,
-                                    checksum, inout_offset, cancellable, error))
-    goto out;
-
-  /* Pad to offset of 8, write variant */
-  if (!write_padding (output, 8, checksum, inout_offset, cancellable, error))
-    goto out;
-  g_assert ((*inout_offset & 7) == 0);
-
-  if (!write_bytes_update_checksum (output, g_variant_get_data (variant),
-                                    variant_size, checksum,
-                                    inout_offset, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 static gint
 compare_index_content (gconstpointer         ap,
                        gconstpointer         bp)
@@ -235,27 +197,6 @@ delete_loose_object (OtRepackData     *data,
 
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
   
-  /* This is gross - we need to specially clean up symbolic link object content */
-  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
-    {
-      if (!ot_util_variant_map (object_path, OSTREE_ARCHIVED_FILE_VARIANT_FORMAT, &archive_meta, error))
-        goto out;
-      if (!ostree_parse_archived_file_meta (archive_meta, &file_info, &xattrs, error))
-        goto out;
-      
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_REGULAR)
-        {
-          content_object_path = ostree_repo_get_object_path (data->repo, checksum,
-                                                             OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-          if (!ot_gfile_unlink (content_object_path, cancellable, error))
-            {
-              g_prefix_error (error, "Failed to delete archived content '%s'",
-                              ot_gfile_get_path_cached (content_object_path));
-              goto out;
-            }
-        }
-    }
-
   if (!ot_gfile_unlink (object_path, cancellable, error))
     {
       g_prefix_error (error, "Failed to delete archived file metadata '%s'",
@@ -307,15 +248,16 @@ pack_one_data_object (OtRepackData        *data,
                       GError             **error)
 {
   gboolean ret = FALSE;
-  guint64 objsize;
   guchar entry_flags = 0;
   GInputStream *read_object_in; /* nofree */
   ot_lobj GFile *object_path = NULL;
-  ot_lobj GFileInputStream *object_input = NULL;
-  ot_lobj GFileInfo *object_file_info = NULL;
+  ot_lobj GInputStream *input = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
   ot_lobj GMemoryOutputStream *object_data_stream = NULL;
   ot_lobj GConverter *compressor = NULL;
   ot_lobj GConverterInputStream *compressed_object_input = NULL;
+  ot_lvariant GVariant *file_header = NULL;
   ot_lvariant GVariant *ret_packed_object = NULL;
 
   switch (data->int_compression)
@@ -332,46 +274,44 @@ pack_one_data_object (OtRepackData        *data,
     }
 
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+
+  if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info, &xattrs,
+                              cancellable, error))
+    goto out;
+
+  file_header = ostree_file_header_new (file_info, xattrs);
       
-  object_input = g_file_read (object_path, cancellable, error);
-  if (!object_input)
-    goto out;
-
-  object_file_info = g_file_input_stream_query_info (object_input, OSTREE_GIO_FAST_QUERYINFO, cancellable, error);
-  if (!object_file_info)
-    goto out;
-
-  objsize = g_file_info_get_attribute_uint64 (object_file_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
-  
-  g_assert_cmpint (objsize, ==, expected_objsize);
-
   object_data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-      
-  if (entry_flags & OSTREE_PACK_FILE_ENTRY_FLAG_GZIP)
+  if (input != NULL)
     {
-      compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_GZIP, OT_GZIP_COMPRESSION_LEVEL);
-      compressed_object_input = (GConverterInputStream*)g_object_new (G_TYPE_CONVERTER_INPUT_STREAM,
-                                                                      "converter", compressor,
-                                                                      "base-stream", object_input,
-                                                                      "close-base-stream", TRUE,
-                                                                      NULL);
-      read_object_in = (GInputStream*)compressed_object_input;
-    }
-  else
-    {
-      read_object_in = (GInputStream*)object_input;
-    }
+      if (entry_flags & OSTREE_PACK_FILE_ENTRY_FLAG_GZIP)
+        {
+          compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_GZIP, OT_GZIP_COMPRESSION_LEVEL);
+          compressed_object_input = (GConverterInputStream*)g_object_new (G_TYPE_CONVERTER_INPUT_STREAM,
+                                                                          "converter", compressor,
+                                                                          "base-stream", input,
+                                                                          "close-base-stream", TRUE,
+                                                                          NULL);
+          read_object_in = (GInputStream*)compressed_object_input;
+        }
+      else
+        {
+          read_object_in = (GInputStream*)input;
+        }
 
-  if (!g_output_stream_splice ((GOutputStream*)object_data_stream, read_object_in,
-                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                               cancellable, error))
-    goto out;
+      if (!g_output_stream_splice ((GOutputStream*)object_data_stream, read_object_in,
+                                   G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                   cancellable, error))
+        goto out;
+    }
 
   {
     guchar *data = g_memory_output_stream_get_data (object_data_stream);
     gsize data_len = g_memory_output_stream_get_data_size (object_data_stream);
-    ret_packed_object = g_variant_new ("(yy@ay@ay)", (guchar)objtype, entry_flags,
+    ret_packed_object = g_variant_new ("(@ayy@(uuuusa(ayay))@ay)",
                                        ostree_checksum_to_bytes_v (checksum),
+                                       entry_flags,
+                                       file_header,
                                        ot_gvariant_new_bytearray (data, data_len));
   }
 
@@ -433,9 +373,10 @@ create_pack_file (OtRepackData        *data,
                                g_variant_new_array (G_VARIANT_TYPE ("{sv}"), NULL, 0),
                                (guint64)objects->len);
 
-  if (!write_variant_with_size (pack_out, pack_header, pack_checksum, &offset,
-                                cancellable, error))
+  if (!ostree_write_variant_with_size (pack_out, pack_header, offset, &bytes_written, pack_checksum,
+                                       cancellable, error))
     goto out;
+  offset += bytes_written;
   
   for (i = 0; i < objects->len; i++)
     {
@@ -475,9 +416,11 @@ create_pack_file (OtRepackData        *data,
       g_ptr_array_add (index_content_list, g_variant_ref_sink (index_entry));
       index_entry = NULL;
       
-      if (!write_variant_with_size (pack_out, packed_object, pack_checksum,
-                                    &offset, cancellable, error))
+      bytes_written = 0;
+      if (!ostree_write_variant_with_size (pack_out, packed_object, offset, &bytes_written, 
+                                           pack_checksum, cancellable, error))
         goto out;
+      offset += bytes_written;
     }
   
   if (!g_output_stream_close (pack_out, cancellable, error))
@@ -830,13 +773,11 @@ do_stats_gather_loose (OtRepackData  *data,
         case OSTREE_OBJECT_TYPE_DIR_META:
           n_dirmeta++;
           break;
-        case OSTREE_OBJECT_TYPE_RAW_FILE:
-        case OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META:
+        case OSTREE_OBJECT_TYPE_FILE:
           n_files++;
           break;
-        case OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT:
-          /* Counted under files by META */
-          break;
+        default:
+          g_assert_not_reached ();
         }
     }
 

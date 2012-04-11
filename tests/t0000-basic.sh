@@ -19,20 +19,12 @@
 
 set -e
 
-echo "1..30"
+echo "1..29"
 
 . libtest.sh
 
-echo hello > afile
-assert_streq "$(ostree checksum afile)" e56457ac3d60e89083e3492c738588f28311ea44c347f57f12e8b7f35d518fe3
-
 setup_test_repository "regular"
 echo "ok setup"
-
-assert_file_has_content ${test_tmpdir}/repo/objects/3a/9b4a6fb6885c2548e35c9382b316ad073ef7c1872a97cc9661e6403777cbaf.file moo
-assert_streq "$(readlink ${test_tmpdir}/repo/objects/d4/69b152ab4c8ddcfdfd5b15510560bcb76ae4ffea6eace4074435e5a5d05622.file)" nonexistent
-
-echo "ok check"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"

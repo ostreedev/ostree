@@ -94,18 +94,18 @@ copy_dir_contents_recurse (GFile  *src,
 }
 
 static gboolean
-import_loose_object (OtLocalCloneData *data,
-                     const char   *checksum,
-                     OstreeObjectType objtype,
-                     GCancellable  *cancellable,
-                     GError        **error)
+import_one_object (OtLocalCloneData *data,
+                   const char   *checksum,
+                   OstreeObjectType objtype,
+                   GCancellable  *cancellable,
+                   GError        **error)
 {
   gboolean ret = FALSE;
   ot_lobj GFile *objfile = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GFile *content_path = NULL;
   ot_lobj GFileInfo *archive_info = NULL;
-  ot_lvariant GVariant *archive_metadata = NULL;
+  ot_lvariant GVariant *metadata = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lobj GInputStream *input = NULL;
 
@@ -116,48 +116,29 @@ import_loose_object (OtLocalCloneData *data,
   if (file_info == NULL)
     goto out;
 
-  if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!ostree_get_xattrs_for_file (objfile, &xattrs, cancellable, error))
-        goto out;
-    }
-  
-  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-    ;
-  else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
-    {
-      if (!ostree_repo_load_variant (data->src_repo, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META, checksum, &archive_metadata, error))
+      if (!ostree_repo_load_file (data->src_repo, checksum,
+                                  &input, &file_info, &xattrs,
+                                  cancellable, error))
         goto out;
 
-      if (!ostree_parse_archived_file_meta (archive_metadata, &archive_info, &xattrs, error))
-        goto out;
-
-      content_path = ostree_repo_get_object_path (data->src_repo, checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-
-      if (g_file_info_get_file_type (archive_info) == G_FILE_TYPE_REGULAR)
-        {
-          input = (GInputStream*)g_file_read (content_path, NULL, error);
-          if (!input)
-            goto out;
-        }
-      
-      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_RAW_FILE,
-                                             checksum, FALSE, archive_info, xattrs, input,
-                                             NULL, error))
+      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_FILE,
+                                             checksum, FALSE, file_info, xattrs, input,
+                                             cancellable, error))
         goto out;
     }
   else
     {
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-        {
-          input = (GInputStream*)g_file_read (objfile, NULL, error);
-          if (!input)
-            goto out;
-        }
+      if (!ostree_repo_load_variant (data->src_repo, objtype, checksum, &metadata,
+                                     error))
+        goto out;
 
-      if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype, checksum,
-                                             FALSE, file_info, xattrs, input,
-                                             NULL, error))
+      input = ot_variant_read (metadata);
+
+      if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype,
+                                             checksum, FALSE, NULL, NULL, input,
+                                             cancellable, error))
         goto out;
     }
 
@@ -273,20 +254,13 @@ ostree_builtin_local_clone (int argc, char **argv, GFile *repo_path, GError **er
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       GVariant *serialized_key = key;
-      GVariant *objdata = value;
       const char *checksum;
       OstreeObjectType objtype;
-      gboolean is_loose;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      g_variant_get_child (objdata, 0, "b", &is_loose);
-
-      if (is_loose)
-        {
-          if (!import_loose_object (&data, checksum, objtype, cancellable, error))
-            goto out;
-        }
+      if (!import_one_object (&data, checksum, objtype, cancellable, error))
+        goto out;
     }
 
   if (!ostree_repo_commit_transaction (data.dest_repo, NULL, error))

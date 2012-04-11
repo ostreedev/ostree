@@ -77,7 +77,7 @@ get_file_checksum (GFile  *f,
     }
   else
     {
-      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_RAW_FILE,
+      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
                                  &csum, cancellable, error))
         goto out;
       ret_checksum = ostree_checksum_from_bytes (csum);

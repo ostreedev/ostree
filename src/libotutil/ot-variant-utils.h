@@ -69,6 +69,8 @@ gboolean ot_util_variant_from_stream (GInputStream         *src,
                                       GCancellable         *cancellable,
                                       GError              **error);
 
+GInputStream *ot_variant_read (GVariant             *variant);
+
 G_END_DECLS
 
 #endif

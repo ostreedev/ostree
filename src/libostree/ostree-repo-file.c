@@ -943,7 +943,7 @@ ostree_repo_file_read (GFile         *file,
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
   ot_lobj GFile *local_file = NULL;
-  ot_lobj GFileInputStream *ret_stream = NULL;
+  ot_lobj GInputStream *ret_stream = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
@@ -958,18 +958,8 @@ ostree_repo_file_read (GFile         *file,
 
   checksum = ostree_repo_file_get_checksum (self);
 
-  if (ostree_repo_get_mode (self->repo) == OSTREE_REPO_MODE_ARCHIVE)
-    {
-      local_file = ostree_repo_get_object_path (self->repo, checksum,
-                                                OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-    }
-  else
-    {
-      local_file = ostree_repo_get_file_object_path (self->repo, checksum);
-    }
-
-  ret_stream = g_file_read (local_file, cancellable, error);
-  if (!ret_stream)
+  if (!ostree_repo_load_file (self->repo, checksum, &ret_stream,
+                              NULL, NULL, cancellable, error))
     goto out;
   
   ret = TRUE;
@@ -978,7 +968,7 @@ ostree_repo_file_read (GFile         *file,
     g_clear_object (&ret_stream);
   else
     g_object_ref (ret_stream);
-  return ret_stream;
+  return (GFileInputStream*)ret_stream;
 }
 
 static void

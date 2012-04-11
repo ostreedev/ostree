@@ -72,20 +72,9 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
           g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum_v);
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes_v (csum_v);
-          if (ostree_repo_get_mode (repo) == OSTREE_REPO_MODE_BARE)
-            {
-              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_RAW_FILE);
-              g_hash_table_replace (inout_reachable, key, key);
-              key = NULL;
-            }
-          else
-            {
-              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META);
-              g_hash_table_replace (inout_reachable, key, key);
-              key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT);
-              g_hash_table_replace (inout_reachable, key, key);
-              key = NULL;
-            }
+          key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_FILE);
+          g_hash_table_replace (inout_reachable, key, key);
+          key = NULL;
         }
 
       dirs_variant = g_variant_get_child_value (tree, 1);

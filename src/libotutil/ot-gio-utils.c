@@ -229,6 +229,36 @@ ot_gfile_get_basename_cached (GFile *file)
 }
 
 gboolean
+ot_gio_write_update_checksum (GOutputStream  *out,
+                              gconstpointer   data,
+                              gsize           len,
+                              gsize          *out_bytes_written,
+                              GChecksum      *checksum,
+                              GCancellable   *cancellable,
+                              GError        **error)
+{
+  gboolean ret = FALSE;
+
+  if (out)
+    {
+      if (!g_output_stream_write_all (out, data, len, out_bytes_written,
+                                      cancellable, error))
+        goto out;
+    }
+  else if (out_bytes_written)
+    {
+      *out_bytes_written = len;
+    }
+
+  if (checksum)
+    g_checksum_update (checksum, data, len);
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
 ot_gio_splice_update_checksum (GOutputStream  *out,
                                GInputStream   *in,
                                GChecksum      *checksum,
@@ -247,12 +277,9 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
         {
           if (!g_input_stream_read_all (in, buf, sizeof(buf), &bytes_read, cancellable, error))
             goto out;
-          g_checksum_update (checksum, (guint8*)buf, bytes_read);
-          if (out)
-            {
-              if (!g_output_stream_write_all (out, buf, bytes_read, &bytes_written, cancellable, error))
-                goto out;
-            }
+          if (!ot_gio_write_update_checksum (out, buf, bytes_read, &bytes_written, checksum,
+                                             cancellable, error))
+            goto out;
         }
       while (bytes_read > 0);
     }

@@ -91,7 +91,7 @@ show_repo_meta (OstreeRepo  *repo,
   ot_lobj GFile *object_path = NULL;
   ot_lobj GInputStream *in = NULL;
 
-  for (objtype = OSTREE_OBJECT_TYPE_RAW_FILE; objtype <= OSTREE_OBJECT_TYPE_COMMIT; objtype++)
+  for (objtype = OSTREE_OBJECT_TYPE_FILE; objtype <= OSTREE_OBJECT_TYPE_COMMIT; objtype++)
     {
       g_clear_object (&object_path);
       
@@ -109,7 +109,7 @@ show_repo_meta (OstreeRepo  *repo,
           print_variant (variant);
           break;
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE)
+      else if (objtype == OSTREE_OBJECT_TYPE_FILE)
         {
           in = (GInputStream*)g_file_read (object_path, NULL, error);
           if (!in)
@@ -120,12 +120,6 @@ show_repo_meta (OstreeRepo  *repo,
               goto out;
             g_print ("%s", buf);
           } while (bytes_read > 0);
-        }
-      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                       "Can't show archived files yet");
-          goto out;
         }
       else
         g_assert_not_reached ();

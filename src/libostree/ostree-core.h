@@ -32,22 +32,29 @@ G_BEGIN_DECLS
 #define OSTREE_EMPTY_STRING_SHA256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
 typedef enum {
-  OSTREE_OBJECT_TYPE_RAW_FILE = 1,   /* .raw */
-  OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT = 2,  /* .archive-content */
-  OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META = 3,  /* .archive-meta */
-  OSTREE_OBJECT_TYPE_DIR_TREE = 4,  /* .dirtree */
-  OSTREE_OBJECT_TYPE_DIR_META = 5,  /* .dirmeta */
-  OSTREE_OBJECT_TYPE_COMMIT = 6     /* .commit */
+  OSTREE_OBJECT_TYPE_FILE = 1,      /* .file */
+  OSTREE_OBJECT_TYPE_DIR_TREE = 2,  /* .dirtree */
+  OSTREE_OBJECT_TYPE_DIR_META = 3,  /* .dirmeta */
+  OSTREE_OBJECT_TYPE_COMMIT = 4     /* .commit */
 } OstreeObjectType;
 
-#define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 3 && t <= 6)
+#define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 2 && t <= 4)
 #define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
 
+
 /*
- * xattr objects:
- * a(ayay) - array of (name, value) pairs, both binary data, though name is a bytestring
+ * file objects:
+ * <BE guint32 containing variant length>
+ * u - uid
+ * u - gid
+ * u - mode
+ * u - rdev
+ * s - symlink target 
+ * a(ayay) - xattrs
+ * ---
+ * data
  */
-#define OSTREE_XATTR_GVARIANT_FORMAT "a(ayay)"
+#define OSTREE_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuuusa(ayay))")
 
 /*
  * dirmeta objects:
@@ -78,16 +85,6 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
-/* Archive file objects:
- * u - uid
- * u - gid
- * u - mode
- * u - rdev
- * s - symlink target
- * a(ayay) - xattrs
- */
-#define OSTREE_ARCHIVED_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(uuuusa(ayay))")
-
 /* Pack super index
  * s - OSTv0SUPERPACKINDEX
  * a{sv} - Metadata
@@ -115,9 +112,9 @@ typedef enum {
  *
  * Repeating pair of:
  * <padding to alignment of 8>
- * ( yyayay ) - objtype, flags, checksum, data
+ * ( ayy(uuuusa(ayay))ay) ) - checksum, flags, file meta, data
  */
-#define OSTREE_PACK_DATA_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(yyayay)")
+#define OSTREE_PACK_DATA_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(ayy(uuuusa(ayay))ay)")
 
 /* Meta Pack files
  * s - OSTv0PACKMETAFILE
@@ -195,6 +192,43 @@ gboolean ostree_map_metadata_file (GFile                       *file,
                                    GVariant                   **out_variant,
                                    GError                     **error);
 
+GVariant *ostree_file_header_new (GFileInfo         *file_info,
+                                  GVariant          *xattrs);
+
+gboolean ostree_write_variant_with_size (GOutputStream      *output,
+                                         GVariant           *variant,
+                                         guint64             alignment_offset,
+                                         gsize              *out_bytes_written,
+                                         GChecksum          *checksum,
+                                         GCancellable       *cancellable,
+                                         GError            **error);
+
+gboolean ostree_file_header_parse (GVariant         *data,
+                                   GFileInfo       **out_file_info,
+                                   GVariant        **out_xattrs,
+                                   GError          **error);
+
+gboolean ostree_content_file_parse (GFile                  *content_path,
+                                    gboolean                trusted,
+                                    GInputStream          **out_input,
+                                    GFileInfo             **out_file_info,
+                                    GVariant              **out_xattrs,
+                                    GCancellable           *cancellable,
+                                    GError                **error);
+
+gboolean ostree_write_file_header_update_checksum (GOutputStream         *out,
+                                                   GVariant              *header,
+                                                   GChecksum             *checksum,
+                                                   GCancellable          *cancellable,
+                                                   GError               **error);
+
+gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
+                                            GFileInfo          *file_info,
+                                            GVariant           *xattrs,
+                                            GInputStream      **out_input,
+                                            GCancellable       *cancellable,
+                                            GError            **error);
+
 gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GVariant         *xattrs,
                                           GInputStream     *in,
@@ -257,14 +291,6 @@ gboolean ostree_create_temp_hardlink (GFile            *dir,
                                       GCancellable     *cancellable,
                                       GError          **error);
 
-GVariant *ostree_create_archive_file_metadata (GFileInfo   *file_info,
-                                               GVariant    *xattrs);
-
-gboolean ostree_parse_archived_file_meta (GVariant         *data,
-                                          GFileInfo       **out_file_info,
-                                          GVariant        **out_xattrs,
-                                          GError          **error);
-
 gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
                                      guint64           pack_len,
                                      guint64           object_offset,
@@ -274,14 +300,12 @@ gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
-GInputStream *ostree_read_pack_entry_as_stream (GVariant *pack_entry);
-
-gboolean ostree_read_pack_entry_variant (GVariant         *pack_entry,
-                                         OstreeObjectType  expected_objtype,
-                                         gboolean          trusted,
-                                         GVariant        **out_variant,
-                                         GCancellable     *cancellable,
-                                         GError          **error);
+gboolean ostree_parse_file_pack_entry (GVariant       *pack_entry,
+                                       GInputStream  **out_input,
+                                       GFileInfo     **out_info,
+                                       GVariant      **out_xattrs,
+                                       GCancellable   *cancellable,
+                                       GError        **error);
 
 gboolean ostree_pack_index_search (GVariant            *index,
                                    GVariant           *csum_bytes,

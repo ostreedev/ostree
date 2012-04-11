@@ -175,3 +175,17 @@ ot_util_variant_from_stream (GInputStream         *src,
  out:
   return ret;
 }
+
+GInputStream *
+ot_variant_read (GVariant             *variant)
+{
+  GMemoryInputStream *ret = NULL;
+
+  ret = (GMemoryInputStream*)g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                                                  g_variant_get_size (variant),
+                                                                  NULL);
+  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
+                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
+  return (GInputStream*)ret;
+}
+

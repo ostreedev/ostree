@@ -203,7 +203,6 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
       GVariant *serialized_key = key;
       const char *checksum;
       OstreeObjectType objtype;
-      OstreeObjectType checksum_objtype;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
@@ -211,8 +210,6 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
       g_clear_object (&file_info);
       ot_clear_gvariant (&xattrs);
 
-      checksum_objtype = objtype;
-      
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT
           || objtype == OSTREE_OBJECT_TYPE_DIR_TREE 
           || objtype == OSTREE_OBJECT_TYPE_DIR_META)
@@ -253,19 +250,12 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
                                                        g_variant_get_size (metadata),
                                                        NULL);
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-        {
-          /* Handled via ARCHIVED_FILE_META */
-          continue;
-        }
-      else if (objtype == OSTREE_OBJECT_TYPE_RAW_FILE
-               || objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
+      else if (objtype == OSTREE_OBJECT_TYPE_FILE)
         {
           guint32 mode;
           if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info,
                                       &xattrs, cancellable, error))
             goto out;
-          checksum_objtype = OSTREE_OBJECT_TYPE_RAW_FILE; /* Override */ 
 
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
@@ -281,7 +271,7 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
 
       g_free (computed_csum);
       if (!ostree_checksum_file_from_input (file_info, xattrs, input,
-                                            checksum_objtype, &computed_csum,
+                                            objtype, &computed_csum,
                                             cancellable, error))
         goto out;
 

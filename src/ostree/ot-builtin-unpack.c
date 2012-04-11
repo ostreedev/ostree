@@ -102,31 +102,24 @@ unpack_one_object (OstreeRepo        *repo,
   ot_lvariant GVariant *xattrs = NULL;
   ot_lvariant GVariant *meta = NULL;
 
-  g_assert (objtype != OSTREE_OBJECT_TYPE_RAW_FILE);
-
-  if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_META)
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       if (!ostree_repo_load_file (repo, checksum,
                                   &input, &file_info, &xattrs,
                                   cancellable, error))
         goto out;
 
-      if (!ostree_repo_stage_object_trusted (repo, OSTREE_OBJECT_TYPE_RAW_FILE,
+      if (!ostree_repo_stage_object_trusted (repo, OSTREE_OBJECT_TYPE_FILE,
                                              checksum, TRUE, file_info, xattrs, input,
                                              cancellable, error))
         goto out;
-    }
-  else if (objtype == OSTREE_OBJECT_TYPE_ARCHIVED_FILE_CONTENT)
-    {
-      /* nothing; handled in META case */
     }
   else
     {
       if (!ostree_repo_load_variant (repo, objtype, checksum, &meta, error))
         goto out;
 
-      input = g_memory_input_stream_new_from_data (g_variant_get_data (meta),
-                                                   g_variant_get_size (meta), NULL);
+      input = ot_variant_read (meta);
       
       if (!ostree_repo_stage_object_trusted (repo, objtype, checksum, TRUE,
                                              NULL, NULL, input, cancellable, error))
