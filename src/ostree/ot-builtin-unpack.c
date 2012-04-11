@@ -275,6 +275,9 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
       g_print ("Deleted packfile '%s'\n", pack_checksum);
     }
 
+  if (!ostree_repo_regenerate_pack_index (repo, cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   if (in_transaction)
