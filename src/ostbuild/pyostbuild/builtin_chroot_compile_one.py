@@ -45,9 +45,12 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             checkout_trees.append((buildname, '/runtime'))
             checkout_trees.append((buildname, '/devel'))
 
+        link_cache_dir = os.path.join(self.workdir, 'link-cache')
+        fileutil.ensure_dir(link_cache_dir)
+
         for (branch, rootpath) in checkout_trees:
             run_sync(['ostree', '--repo=' + self.repo,
-                      'checkout', '--user-mode',
+                      'checkout', '--user-mode', '--link-cache=' + link_cache_dir,
                       '--union', '--subpath=' + rootpath,
                       branch, dirpath])
 
