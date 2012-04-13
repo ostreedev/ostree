@@ -310,6 +310,7 @@ gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
                            OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                           GFile                    *link_cache,
                            GFile                    *destination,
                            OstreeRepoFile           *source,
                            GFileInfo                *source_info,

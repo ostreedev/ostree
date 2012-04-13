@@ -3567,9 +3567,6 @@ checkout_file_from_input (GFile          *file,
 
   if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      if (g_file_info_get_file_type (finfo) == G_FILE_TYPE_SPECIAL)
-        return TRUE;
-
       temp_info = g_file_info_dup (finfo);
       
       g_file_info_set_attribute_uint32 (temp_info, "unix::uid", geteuid ());
@@ -3684,6 +3681,7 @@ static gboolean
 checkout_one_file (OstreeRepo                  *self,
                    OstreeRepoCheckoutMode    mode,
                    OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                   GFile                             *link_cache,
                    OstreeRepoFile           *src,
                    GFileInfo                *file_info,
                    GFile                    *destination,
@@ -3698,18 +3696,28 @@ checkout_one_file (OstreeRepo                  *self,
   ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *xattrs = NULL;
 
+  /* Hack to avoid trying to create device files as a user */
+  if (mode == OSTREE_REPO_CHECKOUT_MODE_USER
+      && g_file_info_get_file_type (file_info) == G_FILE_TYPE_SPECIAL)
+    return TRUE;
+
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)src);
 
   if (priv->mode == OSTREE_REPO_MODE_BARE && mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
     {
       possible_loose_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
     }
+  else if (link_cache)
+    {
+      ot_lfree char *relpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE);
+      possible_loose_path = g_file_resolve_relative_path (link_cache, relpath);
+    }
 
   if (possible_loose_path && lstat (ot_gfile_get_path_cached (possible_loose_path), &stbuf) >= 0)
     {
       /* If we found one, we can just hardlink */
       if (!checkout_file_hardlink (self, mode, overwrite_mode, possible_loose_path, destination,
-                                   cancellable, error) < 0)
+                                   cancellable, error))
         goto out;
     }
   else
@@ -3720,6 +3728,23 @@ checkout_one_file (OstreeRepo                  *self,
       if (!checkout_file_from_input (destination, mode, overwrite_mode, file_info, xattrs, 
                                      input, cancellable, error))
         goto out;
+
+      if (link_cache)
+        {
+          ot_lobj GFile *parent;
+          g_assert (possible_loose_path);
+
+          parent = g_file_get_parent (possible_loose_path);
+          if (!ot_gfile_ensure_directory (parent, TRUE, error))
+            goto out;
+
+          if (link (ot_gfile_get_path_cached (destination),
+                    ot_gfile_get_path_cached (possible_loose_path)) < 0)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
     }
 
   ret = TRUE;
@@ -3731,6 +3756,7 @@ gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
                            OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                           GFile                    *link_cache,
                            GFile                    *destination,
                            OstreeRepoFile           *source,
                            GFileInfo                *source_info,
@@ -3778,14 +3804,14 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode,
+          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode, link_cache,
                                           dest_path, (OstreeRepoFile*)src_child, file_info,
                                           cancellable, error))
             goto out;
         }
       else
         {
-          if (!checkout_one_file (self, mode, overwrite_mode,
+          if (!checkout_one_file (self, mode, overwrite_mode, link_cache,
                                   (OstreeRepoFile*)src_child, file_info, 
                                   dest_path, cancellable, error))
             goto out;

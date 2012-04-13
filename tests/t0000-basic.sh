@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..29"
+echo "1..30"
 
 . libtest.sh
 
@@ -211,3 +211,11 @@ $OSTREE checkout --atomic-retarget test2
 cd test2
 assert_file_has_content ./yet/another/tree/green "leaf"
 echo "ok checkout short form"
+
+cd ${test_tmpdir}
+rm -rf test2
+mkdir linkcache
+$OSTREE checkout --link-cache=linkcache test2 test2-checkout-from-link-cache
+cd test2-checkout-from-link-cache
+assert_file_has_content ./yet/another/tree/green "leaf"
+echo "ok checkout link cache"
