@@ -406,7 +406,7 @@
 		{"src": "cgwalters:sqlite-tarballs-as-git"},
 
 		{"src": "cgwalters:nss-tarballs-as-git",
-		 "patches": ["nss-linux-3.1.patch"]},
+		 "branch": "v3.13.4"},
 
 		{"src": "git:git://ozlabs.org/~paulus/ppp.git",
 		 "patches": ["ppp-srcdir-builddir.patch", "ppp-destdir.patch"]},
