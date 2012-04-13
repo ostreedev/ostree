@@ -18,12 +18,10 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# IfExecutable: gconftool-2
-# LiteralMatch: /etc/gconf
-
-GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source`
-export GCONF_CONFIG_SOURCE
-
-for f in /etc/gconf/schemas/*.schemas; do
-    gconftool-2 --makefile-install-rule "$f"
-done
+if test -x "$(which gconftool-2 2>/dev/null)"; then
+    GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source`
+    export GCONF_CONFIG_SOURCE
+    for f in /etc/gconf/schemas/*.schemas; do
+	gconftool-2 --makefile-install-rule "$f"
+    done
+fi
