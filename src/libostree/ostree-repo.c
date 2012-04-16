@@ -64,6 +64,9 @@ struct _OstreeRepoPrivate {
   GFile *remote_cache_dir;
   GFile *config_file;
 
+  GPtrArray *cached_meta_indexes;
+  GPtrArray *cached_content_indexes;
+
   gboolean inited;
   gboolean in_transaction;
 
@@ -93,6 +96,8 @@ ostree_repo_finalize (GObject *object)
   g_hash_table_destroy (priv->pack_data_mappings);
   if (priv->config)
     g_key_file_free (priv->config);
+  ot_clear_ptrarray (&priv->cached_meta_indexes);
+  ot_clear_ptrarray (&priv->cached_content_indexes);
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
@@ -1582,19 +1587,30 @@ ostree_repo_list_pack_indexes (OstreeRepo              *self,
   ot_lptrarray GPtrArray *ret_meta_indexes = NULL;
   ot_lptrarray GPtrArray *ret_data_indexes = NULL;
 
-  superindex_path = g_file_get_child (priv->pack_dir, "index");
-
-  if (g_file_query_exists (superindex_path, cancellable))
+  if (priv->cached_meta_indexes)
     {
-      if (!list_pack_checksums_from_superindex_file (superindex_path, &ret_meta_indexes,
-                                                     &ret_data_indexes,
-                                                     cancellable, error))
-        goto out;
+      ret_meta_indexes = g_ptr_array_ref (priv->cached_meta_indexes);
+      ret_data_indexes = g_ptr_array_ref (priv->cached_content_indexes);
     }
   else
     {
-      ret_meta_indexes = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free); 
-      ret_data_indexes = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free); 
+      superindex_path = g_file_get_child (priv->pack_dir, "index");
+
+      if (g_file_query_exists (superindex_path, cancellable))
+        {
+          if (!list_pack_checksums_from_superindex_file (superindex_path, &ret_meta_indexes,
+                                                         &ret_data_indexes,
+                                                         cancellable, error))
+            goto out;
+        }
+      else
+        {
+          ret_meta_indexes = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free); 
+          ret_data_indexes = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free); 
+        }
+
+      priv->cached_meta_indexes = g_ptr_array_ref (ret_meta_indexes);
+      priv->cached_content_indexes = g_ptr_array_ref (ret_data_indexes);
     }
 
   ret = TRUE;
@@ -1670,6 +1686,9 @@ ostree_repo_regenerate_pack_index (OstreeRepo       *self,
   ot_lvariant GVariant *superindex_variant = NULL;
   GVariantBuilder *meta_index_content_builder = NULL;
   GVariantBuilder *data_index_content_builder = NULL;
+
+  ot_clear_ptrarray (&priv->cached_meta_indexes);
+  ot_clear_ptrarray (&priv->cached_content_indexes);
 
   superindex_path = g_file_get_child (priv->pack_dir, "index");
 
