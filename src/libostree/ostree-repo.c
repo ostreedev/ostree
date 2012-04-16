@@ -2163,7 +2163,8 @@ ostree_repo_get_cached_remote_pack_data (OstreeRepo       *self,
 }
 
 /**
- * Add file @cached_path into the cache for given @remote_name.
+ * Add file @cached_path into the cache for given @remote_name.  If
+ * @cached_path is %NULL, delete the cached pack data (if any).
  *
  * <note>
  *   This unlinks @cached_path.
@@ -2186,8 +2187,15 @@ ostree_repo_take_cached_remote_pack_data (OstreeRepo       *self,
     goto out;
 
   target_path = get_pack_data_path (cachedir, is_meta, pack_checksum);
-  if (!ot_gfile_rename (cached_path, target_path, cancellable, error))
-    goto out;
+  if (cached_path)
+    {
+      if (!ot_gfile_rename (cached_path, target_path, cancellable, error))
+        goto out;
+    }
+  else
+    {
+      (void) ot_gfile_unlink (target_path, cancellable, NULL);
+    }
 
   ret = TRUE;
  out:

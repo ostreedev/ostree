@@ -296,6 +296,38 @@ fetch_one_pack_file (OtPullData            *pull_data,
 }
 
 static gboolean
+find_object_in_one_remote_pack (OtPullData       *pull_data,
+                                GVariant         *csum_bytes_v,
+                                OstreeObjectType  objtype,
+                                const char       *pack_checksum,
+                                gboolean         *out_exists,
+                                guint64          *out_offset,
+                                GCancellable     *cancellable,
+                                GError          **error)
+{
+  gboolean ret = FALSE;
+  guint64 ret_offset;
+  gboolean ret_exists;
+  ot_lvariant GVariant *mapped_pack = NULL;
+
+  if (!ostree_repo_map_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
+                                                 pack_checksum, OSTREE_OBJECT_TYPE_IS_META (objtype),
+                                                 &mapped_pack,
+                                                 cancellable, error))
+    goto out;
+  
+  ret_exists = ostree_pack_index_search (mapped_pack, csum_bytes_v, objtype, &ret_offset);
+
+  ret = TRUE;
+  if (out_exists)
+    *out_exists = ret_exists;
+  if (out_offset)
+    *out_offset = ret_offset;
+ out:
+  return ret;
+}
+
+static gboolean
 find_object_in_remote_packs (OtPullData       *pull_data,
                              const char       *checksum,
                              OstreeObjectType  objtype,
@@ -305,14 +337,13 @@ find_object_in_remote_packs (OtPullData       *pull_data,
                              GError          **error)
 {
   gboolean ret = FALSE;
-  guint64 offset;
+  guint64 ret_offset;
   guint i;
   GPtrArray *iter;
-  ot_lvariant GVariant *mapped_pack = NULL;
-  ot_lvariant GVariant *csum_bytes = NULL;
+  ot_lvariant GVariant *csum_bytes_v = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
 
-  csum_bytes = ostree_checksum_to_bytes_v (checksum);
+  csum_bytes_v = ostree_checksum_to_bytes_v (checksum);
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     iter = pull_data->cached_meta_pack_indexes;
@@ -321,15 +352,14 @@ find_object_in_remote_packs (OtPullData       *pull_data,
   for (i = 0; i < iter->len; i++)
     {
       const char *pack_checksum = iter->pdata[i];
+      gboolean exists;
 
-      ot_clear_gvariant (&mapped_pack);
-      if (!ostree_repo_map_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
-                                                     pack_checksum, OSTREE_OBJECT_TYPE_IS_META (objtype),
-                                                     &mapped_pack,
-                                                     cancellable, error))
+      if (!find_object_in_one_remote_pack (pull_data, csum_bytes_v, objtype,
+                                           pack_checksum, &exists, &ret_offset,
+                                           cancellable, error))
         goto out;
 
-      if (ostree_pack_index_search (mapped_pack, csum_bytes, objtype, &offset))
+      if (exists)
         {
           ret_pack_checksum = g_strdup (pack_checksum);
           break;
@@ -339,7 +369,7 @@ find_object_in_remote_packs (OtPullData       *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_pack_checksum, &ret_pack_checksum);
   if (out_offset)
-    *out_offset = offset;
+    *out_offset = ret_offset;
  out:
   return ret;
 }
@@ -473,21 +503,20 @@ fetch_loose_object (OtPullData  *pull_data,
 }
 
 static gboolean
-find_object_ensure_packs (OtPullData            *pull_data,
-                          const char            *checksum,
-                          OstreeObjectType       objtype,
-                          gboolean              *out_is_stored,
-                          GFile                **out_remote_pack_path,
-                          guint64               *out_remote_pack_offset,
-                          GCancellable          *cancellable,
-                          GError               **error)
+find_object_ensure_indexes (OtPullData            *pull_data,
+                            const char            *checksum,
+                            OstreeObjectType       objtype,
+                            gboolean              *out_is_stored,
+                            char                 **out_remote_pack_checksum,
+                            guint64               *out_remote_pack_offset,
+                            GCancellable          *cancellable,
+                            GError               **error)
 {
   gboolean ret = FALSE;
   gboolean ret_is_stored;
   ot_lobj GFile *stored_path = NULL;
   ot_lfree char *local_pack_checksum = NULL;
-  ot_lfree char *remote_pack_checksum = NULL;
-  ot_lobj GFile *ret_remote_pack_path = NULL;
+  ot_lfree char *ret_remote_pack_checksum = NULL;
 
   if (!ostree_repo_find_object (pull_data->repo, objtype, checksum,
                                 &stored_path, &local_pack_checksum, NULL,
@@ -495,6 +524,7 @@ find_object_ensure_packs (OtPullData            *pull_data,
     goto out;
 
   ret_is_stored = (stored_path != NULL || local_pack_checksum != NULL);
+
   if (!ret_is_stored)
     {
       if (!pull_data->fetched_packs)
@@ -508,10 +538,41 @@ find_object_ensure_packs (OtPullData            *pull_data,
         }
 
       if (!find_object_in_remote_packs (pull_data, checksum, objtype, 
-                                        &remote_pack_checksum, out_remote_pack_offset,
+                                        &ret_remote_pack_checksum, out_remote_pack_offset,
                                         cancellable, error))
         goto out;
+    }
 
+  ret = TRUE;
+  if (out_is_stored)
+    *out_is_stored = ret_is_stored;
+  ot_transfer_out_value (out_remote_pack_checksum, &ret_remote_pack_checksum);
+ out:
+  return ret;
+}
+
+static gboolean
+find_object_ensure_pack_data (OtPullData            *pull_data,
+                              const char            *checksum,
+                              OstreeObjectType       objtype,
+                              gboolean              *out_is_stored,
+                              GFile                **out_remote_pack_path,
+                              guint64               *out_remote_pack_offset,
+                              GCancellable          *cancellable,
+                              GError               **error)
+{
+  gboolean ret = FALSE;
+  gboolean ret_is_stored;
+  ot_lfree char *remote_pack_checksum = NULL;
+  ot_lobj GFile *ret_remote_pack_path = NULL;
+
+  if (!find_object_ensure_indexes (pull_data, checksum, objtype, &ret_is_stored,
+                                   &remote_pack_checksum, out_remote_pack_offset,
+                                   cancellable, error))
+    goto out;
+
+  if (!ret_is_stored)
+    {
       if (remote_pack_checksum)
         {
           if (!fetch_one_pack_file (pull_data, remote_pack_checksum, OSTREE_OBJECT_TYPE_IS_META (objtype),
@@ -550,9 +611,9 @@ fetch_and_store_metadata (OtPullData          *pull_data,
 
   g_assert (OSTREE_OBJECT_TYPE_IS_META (objtype));
 
-  if (!find_object_ensure_packs (pull_data, checksum, objtype,
-                                 &is_stored, &remote_pack_path, &pack_offset,
-                                 cancellable, error))
+  if (!find_object_ensure_pack_data (pull_data, checksum, objtype,
+                                     &is_stored, &remote_pack_path, &pack_offset,
+                                     cancellable, error))
     goto out;
       
   if (remote_pack_path != NULL)
@@ -598,76 +659,6 @@ fetch_and_store_metadata (OtPullData          *pull_data,
 
   ret = TRUE;
   ot_transfer_out_value (out_variant, &ret_variant);
- out:
-  if (temp_path)
-    (void) ot_gfile_unlink (temp_path, NULL, NULL);
-  if (pack_map)
-    g_mapped_file_unref (pack_map);
-  return ret;
-}
-
-static gboolean
-fetch_and_store_file (OtPullData          *pull_data,
-                      const char          *checksum,
-                      GCancellable        *cancellable,
-                      GError             **error)
-{
-  gboolean ret = FALSE;
-  gboolean is_stored;
-  guint64 pack_offset;
-  ot_lobj GFile *remote_pack_path = NULL;
-  ot_lobj GFile *temp_path = NULL;
-  ot_lvariant GVariant *pack_entry = NULL;
-  ot_lobj GInputStream *input = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  GMappedFile *pack_map = NULL;
-
-  if (!find_object_ensure_packs (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                 &is_stored, &remote_pack_path, &pack_offset,
-                                 cancellable, error))
-    goto out;
-
-  if (remote_pack_path != NULL)
-    {
-      g_assert (!is_stored);
-
-      pack_map = g_mapped_file_new (ot_gfile_get_path_cached (remote_pack_path), FALSE, error);
-      if (!pack_map)
-        goto out;
-
-      if (!ostree_read_pack_entry_raw ((guchar*)g_mapped_file_get_contents (pack_map),
-                                       g_mapped_file_get_length (pack_map),
-                                       pack_offset, FALSE, FALSE, &pack_entry,
-                                       cancellable, error))
-        goto out;
-
-      if (!ostree_parse_file_pack_entry (pack_entry, &input, &file_info, &xattrs,
-                                         cancellable, error))
-        goto out;
-      
-      if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                     file_info, xattrs, input,
-                                     cancellable, error))
-        goto out;
-    }
-  else if (!is_stored)
-    {
-      if (!fetch_loose_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, &temp_path,
-                               cancellable, error))
-        goto out;
-
-      if (!ostree_content_file_parse (temp_path, FALSE, &input, &file_info, &xattrs,
-                                      cancellable, error))
-        goto out;
-
-      if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                     file_info, xattrs, input,
-                                     cancellable, error))
-        goto out;
-    }
-
-  ret = TRUE;
  out:
   if (temp_path)
     (void) ot_gfile_unlink (temp_path, NULL, NULL);
@@ -814,91 +805,176 @@ fetch_ref_contents (OtPullData    *pull_data,
 }
 
 static gboolean
-fetch_files (OtPullData           *pull_data,
-             GCancellable         *cancellable,
-             GError              **error)
+store_file_from_pack (OtPullData          *pull_data,
+                      const char          *checksum,
+                      const char          *pack_checksum,
+                      GFile               *pack_file,
+                      GCancellable        *cancellable,
+                      GError             **error)
+{
+  gboolean ret = FALSE;
+  gboolean exists;
+  guint64 pack_offset;
+  ot_lobj GFile *remote_pack_path = NULL;
+  ot_lobj GFile *temp_path = NULL;
+  ot_lvariant GVariant *pack_entry = NULL;
+  ot_lobj GInputStream *input = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
+  ot_lvariant GVariant *csum_bytes_v = NULL;
+  GMappedFile *pack_map = NULL;
+
+  csum_bytes_v = ostree_checksum_to_bytes_v (checksum);
+
+  if (!find_object_in_one_remote_pack (pull_data, csum_bytes_v, OSTREE_OBJECT_TYPE_FILE,
+                                       pack_checksum, &exists, &pack_offset,
+                                       cancellable, error))
+    goto out;
+
+  g_assert (exists);
+
+  pack_map = g_mapped_file_new (ot_gfile_get_path_cached (pack_file), FALSE, error);
+  if (!pack_map)
+    goto out;
+  
+  if (!ostree_read_pack_entry_raw ((guchar*)g_mapped_file_get_contents (pack_map),
+                                   g_mapped_file_get_length (pack_map),
+                                   pack_offset, FALSE, FALSE, &pack_entry,
+                                   cancellable, error))
+    goto out;
+  
+  if (!ostree_parse_file_pack_entry (pack_entry, &input, &file_info, &xattrs,
+                                     cancellable, error))
+    goto out;
+  
+  if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
+                                 file_info, xattrs, input,
+                                 cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (pack_map)
+    g_mapped_file_unref (pack_map);
+  return ret;
+}
+
+static gboolean
+fetch_content (OtPullData           *pull_data,
+               GCancellable         *cancellable,
+               GError              **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
+  ot_lobj GFile *temp_path = NULL;
+  ot_lhash GHashTable *data_packs_to_fetch = NULL;
+  ot_lhash GHashTable *loose_files = NULL;
+  guint n_objects_to_fetch = 0;
 
+  data_packs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, 
+                                               (GDestroyNotify) g_ptr_array_unref);
+  loose_files = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  
   g_hash_table_iter_init (&hash_iter, pull_data->file_checksums_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *checksum = key;
+      GPtrArray *files_to_fetch;
+      gboolean is_stored;
+      ot_lfree char *remote_pack_checksum = NULL;
 
-      if (!fetch_and_store_file (pull_data, checksum, cancellable, error))
+      if (!find_object_ensure_indexes (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE,
+                                       &is_stored, &remote_pack_checksum, NULL,
+                                       cancellable, error))
         goto out;
+
+      if (remote_pack_checksum)
+        {
+          files_to_fetch = g_hash_table_lookup (data_packs_to_fetch, remote_pack_checksum);
+          if (files_to_fetch == NULL)
+            {
+              files_to_fetch = g_ptr_array_new_with_free_func (g_free);
+              g_hash_table_insert (data_packs_to_fetch, remote_pack_checksum, files_to_fetch);
+              /* transfer ownership */
+              remote_pack_checksum = NULL;
+            }
+          g_ptr_array_add (files_to_fetch, g_strdup (checksum));
+          n_objects_to_fetch++;
+        }
+      else if (!is_stored)
+        {
+          char *key = g_strdup (checksum);
+          g_hash_table_insert (loose_files, key, key);
+          n_objects_to_fetch++;
+        }
     }
 
-  ret = TRUE;
- out:
-  return ret;
-}
+  if (n_objects_to_fetch > 0)
+    g_print ("%u content objects to fetch\n", n_objects_to_fetch);
 
-static gboolean
-pull_one_commit (OtPullData       *pull_data,
-                 const char       *rev,
-                 GCancellable     *cancellable,
-                 GError          **error) 
-{
-  gboolean ret = FALSE;
+  if (g_hash_table_size (data_packs_to_fetch) > 0)
+    g_print ("Fetching %u content packs\n",
+             g_hash_table_size (data_packs_to_fetch));
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
-    goto out;
-  
-  if (!fetch_and_store_commit_metadata_recurse (pull_data, rev, cancellable, error))
-    goto out;
-  
-  if (!fetch_files (pull_data, cancellable, error))
-    goto out;
-  
-  if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
-pull_one_ref (OtPullData       *pull_data,
-              const char       *branch,
-              const char       *rev,
-              GCancellable     *cancellable,
-              GError          **error)
-{
-  gboolean ret = FALSE;
-  ot_lfree char *key = NULL;
-  ot_lfree char *remote_ref = NULL;
-  ot_lfree char *baseurl = NULL;
-  ot_lfree char *original_rev = NULL;
-
-  remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, branch);
-
-  if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
-    goto out;
-
-  if (original_rev && strcmp (rev, original_rev) == 0)
+  g_hash_table_iter_init (&hash_iter, data_packs_to_fetch);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      g_print ("No changes in %s\n", remote_ref);
-    }
-  else
-    {
-      if (!ostree_validate_checksum_string (rev, error))
+      const char *pack_checksum = key;
+      GPtrArray *file_checksums = value;
+      guint i;
+      ot_lobj GFile *pack_path = NULL;
+
+      if (!fetch_one_pack_file (pull_data, pack_checksum, FALSE,
+                                &pack_path, cancellable, error))
         goto out;
 
-      if (!pull_one_commit (pull_data, rev, cancellable, error))
+      g_print ("Storing %u objects from content pack %s\n", file_checksums->len,
+               pack_checksum);
+      for (i = 0; i < file_checksums->len; i++)
+        {
+          const char *checksum = file_checksums->pdata[i];
+          if (!store_file_from_pack (pull_data, checksum, pack_checksum, pack_path,
+                                     cancellable, error))
+            goto out;
+        }
+
+      if (!ostree_repo_take_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
+                                                     pack_checksum, FALSE, NULL,
+                                                     cancellable, error))
         goto out;
-      
-      if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, branch, rev, error))
+    }
+
+  if (g_hash_table_size (loose_files) > 0)
+    g_print ("Fetching %u loose objects\n",
+             g_hash_table_size (loose_files));
+
+  g_hash_table_iter_init (&hash_iter, loose_files);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *checksum = key;
+      ot_lobj GInputStream *input = NULL;
+      ot_lobj GFileInfo *file_info = NULL;
+      ot_lvariant GVariant *xattrs = NULL;
+
+      if (!fetch_loose_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, &temp_path,
+                               cancellable, error))
         goto out;
-      
-      g_print ("remote %s is now %s\n", remote_ref, rev);
+
+      if (!ostree_content_file_parse (temp_path, FALSE, &input, &file_info, &xattrs,
+                                      cancellable, error))
+        goto out;
+
+      if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
+                                     file_info, xattrs, input,
+                                     cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
  out:
+  if (temp_path)
+    (void) ot_gfile_unlink (temp_path, NULL, NULL);
   return ret;
 }
 
@@ -969,7 +1045,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lfree char *path = NULL;
   ot_lfree char *baseurl = NULL;
   ot_lfree char *summary_data = NULL;
-  ot_lhash GHashTable *refs_to_fetch = NULL;
+  ot_lhash GHashTable *requested_refs_to_fetch = NULL;
+  ot_lhash GHashTable *updated_refs = NULL;
   ot_lhash GHashTable *commits_to_fetch = NULL;
   ot_lfree char *branch_rev = NULL;
   OtPullData pull_data_real;
@@ -1020,7 +1097,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
-  refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  updated_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   if (argc > 2)
@@ -1041,7 +1119,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
                 goto out;
       
               /* Transfer ownership of contents */
-              g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
             }
         }
     }
@@ -1076,7 +1154,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
           if (!fetch_uri_contents_utf8 (pull_data, summary_uri, &summary_data, cancellable, error))
             goto out;
           
-          if (!parse_ref_summary (summary_data, &refs_to_fetch, error))
+          if (!parse_ref_summary (summary_data, &requested_refs_to_fetch, error))
             goto out;
         }
       else
@@ -1094,28 +1172,73 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
                 goto out;
               
               /* Transfer ownership of contents */
-              g_hash_table_insert (refs_to_fetch, g_strdup (branch), contents);
+              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
             }
         }
     }
 
-  g_hash_table_iter_init (&hash_iter, refs_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *ref = key;
-      const char *sha256 = value;
-      
-      if (!pull_one_ref (pull_data, ref, sha256, cancellable, error))
-        goto out;
-    }
+  if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
+    goto out;
 
   g_hash_table_iter_init (&hash_iter, commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
       
-      if (!pull_one_commit (pull_data, commit, cancellable, error))
+      if (!fetch_and_store_commit_metadata_recurse (pull_data, commit, cancellable, error))
         goto out;
+    }
+
+  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *ref = key;
+      const char *sha256 = value;
+      ot_lfree char *key = NULL;
+      ot_lfree char *remote_ref = NULL;
+      ot_lfree char *baseurl = NULL;
+      ot_lfree char *original_rev = NULL;
+
+      remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
+
+      if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
+        goto out;
+
+      if (original_rev && strcmp (sha256, original_rev) == 0)
+        {
+          g_print ("No changes in %s\n", remote_ref);
+        }
+      else
+        {
+          if (!ostree_validate_checksum_string (sha256, error))
+            goto out;
+
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, sha256, cancellable, error))
+            goto out;
+         
+          g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));
+        }
+    }
+
+  if (!fetch_content (pull_data, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
+    goto out;
+
+  g_hash_table_iter_init (&hash_iter, updated_refs);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *ref = key;
+      const char *checksum = value;
+      ot_lfree char *remote_ref = NULL;
+
+      remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
+
+      if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, ref, checksum, error))
+        goto out;
+      
+      g_print ("remote %s is now %s\n", remote_ref, checksum);
     }
 
   if (!ostree_repo_clean_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
