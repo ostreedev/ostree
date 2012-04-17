@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..30"
+echo "1..31"
 
 . libtest.sh
 
@@ -219,3 +219,13 @@ $OSTREE checkout --link-cache=linkcache test2 test2-checkout-from-link-cache
 cd test2-checkout-from-link-cache
 assert_file_has_content ./yet/another/tree/green "leaf"
 echo "ok checkout link cache"
+
+cd ${test_tmpdir}
+rm -rf shadow-repo
+mkdir shadow-repo
+ostree --repo=shadow-repo init
+ostree --repo=shadow-repo config set core.parent $(pwd)/repo
+rm -rf test2-checkout
+parent_rev_test2=$(ostree --repo=repo rev-parse test2)
+ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-checkout
+echo "ok checkout from shadow repo"

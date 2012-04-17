@@ -514,16 +514,11 @@ find_object_ensure_indexes (OtPullData            *pull_data,
 {
   gboolean ret = FALSE;
   gboolean ret_is_stored;
-  ot_lobj GFile *stored_path = NULL;
-  ot_lfree char *local_pack_checksum = NULL;
   ot_lfree char *ret_remote_pack_checksum = NULL;
 
-  if (!ostree_repo_find_object (pull_data->repo, objtype, checksum,
-                                &stored_path, &local_pack_checksum, NULL,
-                                cancellable, error))
+  if (!ostree_repo_has_object (pull_data->repo, objtype, checksum, &ret_is_stored,
+                               cancellable, error))
     goto out;
-
-  ret_is_stored = (stored_path != NULL || local_pack_checksum != NULL);
 
   if (!ret_is_stored)
     {

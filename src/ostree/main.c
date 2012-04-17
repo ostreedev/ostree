@@ -31,6 +31,7 @@
 
 static OstreeBuiltin builtins[] = {
   { "cat", ostree_builtin_cat, 0 },
+  { "config", ostree_builtin_config, 0 },
   { "checkout", ostree_builtin_checkout, 0 },
   { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
   { "diff", ostree_builtin_diff, 0 },

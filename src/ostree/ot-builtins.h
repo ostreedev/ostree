@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 gboolean ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **error);
+gboolean ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_checksum (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error);
