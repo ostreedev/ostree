@@ -22,8 +22,10 @@
 set -e
 set -x
 
-SRCDIR=`dirname $0`
 WORKDIR=`pwd`
+cd `dirname $0`
+SRCDIR=`pwd`
+cd $WORKDIR
 
 if test $(id -u) != 0; then
     cat <<EOF
