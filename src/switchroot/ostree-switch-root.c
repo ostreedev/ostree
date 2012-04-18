@@ -168,9 +168,9 @@ main(int argc, char *argv[])
   int before_init_argc = 0;
   pid_t cleanup_pid;
 
-  if (argc < 3)
+  if (argc < 4)
     {
-      fprintf (stderr, "usage: ostree-switch-root NEWROOT INIT [ARGS...]\n");
+      fprintf (stderr, "usage: ostree-switch-root NEWROOT TARGET INIT [ARGS...]\n");
       exit (1);
     }
 
