@@ -1,3 +1,7 @@
+Note, I'm slowly trying to move some of this content to
+
+https://live.gnome.org/OSTree
+
 OSTree
 ======
 
