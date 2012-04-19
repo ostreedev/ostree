@@ -438,3 +438,14 @@ didn't use them:
 
    What we've been using in GNOME, and has the essential property of allowing you
    to "fall back" to a stable system.  But ostree will blow it out of the water.
+
+Development
+-----------
+
+ - OSTree wiki page: <https://live.gnome.org/OSTree>
+
+ - ostbuild wiki page: <https://live.gnome.org/OSTree/Ostbuild>
+
+ - Git repository: <http://git.gnome.org/browse/ostree/>
+
+ - Deploying OSTree in the Gnome servers: <https://bugzilla.gnome.org/show_bug.cgi?id=669772>
