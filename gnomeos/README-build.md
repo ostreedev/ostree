@@ -75,9 +75,9 @@ cd $builddir
 . $srcdir/poky/oe-init-build-env gnomeos-build
 
 # Now edit conf/bblayers.conf, and add
-#   /src/ostree/gnomeos/yocto
+#   /src/poky/meta-gnomeos
 # to BBLAYERS.
-# remove tools-profile and tools-testapps from EXTRA_IMAGE_FEATURES
+# Make sure tools-profile and tools-testapps are not in EXTRA_IMAGE_FEATURES
 # Also, you should choose useful values for BB_NUMBER_THREADS, PARALLEL_MAKE
 
 bitbake ostree-native
@@ -93,12 +93,12 @@ ln -s tmp/deploy/images/repo repo
 # repo=/src/build/gnomeos-build/build/repo
 # mirrordir=/src/build/ostbuild/src
 # workdir=/src/build/ostbuild/work
-# manifest=/src/ostree/gnomeos/3.4/manifest.json
+# manifest=/src/ostree/gnomeos/3.4/gnomeos-3.4-src.json
 
 # Now we want to use the "ostbuild" binary that was created
 # as part of "bitbake ostree-native".  You can do e.g.:
 
-export PATH=$build/tmp-eglibc/sysroots/x86_64-linux/usr/bin:$PATH
+export PATH=$builddir/build/tmp/sysroots/x86_64-linux/usr/bin:$PATH
 
 # This next command will download all of the source code to the
 # modules specified in $srcdir/ostree/gnomeos/3.4/manifest.json,
