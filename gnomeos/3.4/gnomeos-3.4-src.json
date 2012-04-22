@@ -429,7 +429,7 @@
 				 "--enable-more-warnings=yes"],
 		 "patches": ["NetworkManager-config.patch"]},
 		 
-		{"src": "fd:PolicyKit",
+		{"src": "fd:polkit",
 		 "patches": ["PolicyKit-libtool.patch"],
 		 "config-opts": ["--disable-man-pages"]},
 
