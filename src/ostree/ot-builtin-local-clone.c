@@ -101,20 +101,12 @@ import_one_object (OtLocalCloneData *data,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *objfile = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GFile *content_path = NULL;
   ot_lobj GFileInfo *archive_info = NULL;
   ot_lvariant GVariant *metadata = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lobj GInputStream *input = NULL;
-
-  objfile = ostree_repo_get_object_path (data->src_repo, checksum, objtype);
-  file_info = g_file_query_info (objfile, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, cancellable, error);
-
-  if (file_info == NULL)
-    goto out;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
