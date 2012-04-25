@@ -119,7 +119,7 @@ ostree_traverse_commit (OstreeRepo      *repo,
   ot_lvariant GVariant *parent_csum_bytes = NULL;
   ot_lvariant GVariant *meta_csum_bytes = NULL;
   ot_lvariant GVariant *content_csum_bytes = NULL;
-  ot_lvariant GVariant *key;
+  ot_lvariant GVariant *key = NULL;
   ot_lvariant GVariant *commit = NULL;
   ot_lfree char*tmp_checksum = NULL;
 
