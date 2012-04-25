@@ -287,7 +287,7 @@
 		 "component": "devel"},
 
 		{"src": "gnome:gobject-introspection"},
-		
+
 		{"src": "git:git://git.libusb.org/libusb.git",
 		 "branch": "v1.0.8",
 		 "patches": ["libusb-autogen.patch"]},
@@ -428,8 +428,8 @@
 				 "--with-docs=no",
 				 "--enable-more-warnings=yes"],
 		 "patches": ["NetworkManager-config.patch"]},
-		 
-		{"src": "fd:PolicyKit",
+
+		{"src": "fd:polkit",
 		 "patches": ["PolicyKit-libtool.patch"],
 		 "config-opts": ["--disable-man-pages"]},
 
