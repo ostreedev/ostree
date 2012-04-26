@@ -79,7 +79,8 @@ class JsonDB(object):
 
         current_time = time.gmtime()
 
-        (fd, tmppath) = tempfile.mkstemp(suffix='.tmp', prefix='tmp-jsondb-')
+        (fd, tmppath) = tempfile.mkstemp(suffix='.tmp',
+                prefix='tmp-jsondb-', dir=self._dirpath)
         os.close(fd)
         f = open(tmppath, 'w')
         json.dump(obj, f, indent=4, sort_keys=True)
