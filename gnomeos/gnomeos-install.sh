@@ -50,8 +50,8 @@ fi
 
 cd /ostree
 
-ostree --repo=repo remote add origin http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
-ostree-pull --repo=repo origin
+ostree --repo=repo remote add gnome http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
+ostree-pull --repo=repo gnome
 for branch in runtime devel; do
     ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
 done
