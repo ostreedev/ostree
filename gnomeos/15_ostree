@@ -53,20 +53,14 @@ while [ "x${kernels}" != x ]; do
   linux_root_device_thisversion="${LINUX_ROOT_DEVICE}"
 
   initrd=
-  for i in "initrd.img-${version}" "initrd-${version}.img" \
-	   "initrd-${version}" "initramfs-${version}.img" \
-	   "initrd.img-${alt_version}" "initrd-${alt_version}.img" \
-	   "initrd-${alt_version}" "initramfs-${alt_version}.img" \
-	   "initramfs-genkernel-${version}" \
-	   "initramfs-genkernel-${alt_version}"; do
+  for i in "initramfs-ostree-${version}.img" "initramfs-ostree-${alt_version}.img"; do
     if test -e "${dirname}/${i}" ; then
       initrd="$i"
+      ostree_linux_entry "GNOMEOS 3.4" "${version}" \
+	        "${GRUB_CMDLINE_LINUX}" "${GRUB_CMDLINE_LINUX_DEFAULT}"
       break
     fi
   done
-
-  ostree_linux_entry "GNOMEOS 3.4" "${version}" \
-	"${GRUB_CMDLINE_LINUX}" "${GRUB_CMDLINE_LINUX_DEFAULT}"
 
   kernels=`echo $kernels | tr ' ' '\n' | grep -vx $linux | tr '\n' ' '`
 done
