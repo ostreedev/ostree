@@ -26,7 +26,7 @@ from . import filemonitor
 from . import mainloop
 
 warning_re = re.compile(r'(: ((warning)|(error)|(fatal error)): )|(make(\[[0-9]+\])?: \*\*\*)')
-output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(ostbuild )')
+output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(ostbuild:)')
 
 _bold_sequence = None
 _normal_sequence = None
