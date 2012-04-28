@@ -471,6 +471,9 @@
 		 "name": "gtk2",
 		 "branch": "gtk-2-24"},
 
+		{"src": "gnome:gtk-engines",
+		 "branch": "gtk-engines-2-22"},
+
 		{"src": "gnome:gtk+",
 		 "name": "gtk3"},
 
