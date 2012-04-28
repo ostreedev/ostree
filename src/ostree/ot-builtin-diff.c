@@ -247,10 +247,41 @@ diff_dirs (GFile          *a,
   ot_lobj GFileInfo *child_a_info = NULL;
   ot_lobj GFileInfo *child_b_info = NULL;
 
+  child_a_info = g_file_query_info (a, OSTREE_GIO_FAST_QUERYINFO,
+                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                    cancellable, error);
+  if (!child_a_info)
+    goto out;
+
+  child_b_info = g_file_query_info (b, OSTREE_GIO_FAST_QUERYINFO,
+                                    G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                    cancellable, error);
+  if (!child_b_info)
+    goto out;
+
+  /* Fast path test for unmodified directories */
+  if (g_file_info_get_file_type (child_a_info) == G_FILE_TYPE_DIRECTORY
+      && g_file_info_get_file_type (child_b_info) == G_FILE_TYPE_DIRECTORY
+      && OSTREE_IS_REPO_FILE (a)
+      && OSTREE_IS_REPO_FILE (b))
+    {
+      OstreeRepoFile *a_repof = (OstreeRepoFile*) a;
+      OstreeRepoFile *b_repof = (OstreeRepoFile*) b;
+      
+      if (strcmp (ostree_repo_file_tree_get_content_checksum (a_repof),
+                  ostree_repo_file_tree_get_content_checksum (b_repof)) == 0)
+        {
+          ret = TRUE;
+          goto out;
+        }
+    }
+
+  g_clear_object (&child_a_info);
+  g_clear_object (&child_b_info);
+
   dir_enum = g_file_enumerate_children (a, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
-                                        error);
+                                        cancellable, error);
   if (!dir_enum)
     goto out;
 
@@ -293,7 +324,7 @@ diff_dirs (GFile          *a,
           if (child_a_type != child_b_type)
             {
               DiffItem *diff_item = diff_item_new (child_a, child_a_info,
-                                                             child_b, child_b_info, NULL, NULL);
+                                                   child_b, child_b_info, NULL, NULL);
               
               g_ptr_array_add (modified, diff_item);
             }
@@ -327,8 +358,7 @@ diff_dirs (GFile          *a,
   g_clear_object (&dir_enum);
   dir_enum = g_file_enumerate_children (b, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
-                                        error);
+                                        cancellable, error);
   if (!dir_enum)
     goto out;
 
