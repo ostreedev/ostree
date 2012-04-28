@@ -35,6 +35,7 @@
 #define OT_GZIP_COMPRESSION_LEVEL (8)
 
 static gboolean opt_analyze_only;
+static gboolean opt_metadata_only;
 static gboolean opt_reindex_only;
 static gboolean opt_keep_loose;
 static char* opt_pack_size;
@@ -51,6 +52,7 @@ static GOptionEntry options[] = {
   { "pack-size", 0, 0, G_OPTION_ARG_STRING, &opt_pack_size, "Maximum uncompressed size of packfiles in bytes; may be suffixed with k, m, or g", "BYTES" },
   { "internal-compression", 0, 0, G_OPTION_ARG_STRING, &opt_int_compression, "Compress objects using COMPRESSION", "COMPRESSION" },
   { "external-compression", 0, 0, G_OPTION_ARG_STRING, &opt_ext_compression, "Compress entire packfiles using COMPRESSION", "COMPRESSION" },
+  { "metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_metadata_only, "Only pack metadata objects", NULL },
   { "analyze-only", 0, 0, G_OPTION_ARG_NONE, &opt_analyze_only, "Just analyze current state", NULL },
   { "reindex-only", 0, 0, G_OPTION_ARG_NONE, &opt_reindex_only, "Regenerate pack index", NULL },
   { "keep-loose", 0, 0, G_OPTION_ARG_NONE, &opt_keep_loose, "Don't delete loose objects", NULL },
@@ -749,8 +751,12 @@ do_stats_gather_loose (OtRepackData  *data,
         }
       else if (is_loose)
         {
-          GVariant *copy = g_variant_ref (serialized_key);
-          g_hash_table_replace (ret_loose, copy, copy);
+          if (!(opt_metadata_only && !OSTREE_OBJECT_TYPE_IS_META(objtype))
+              || OSTREE_OBJECT_TYPE_IS_META (objtype))
+            {
+              GVariant *copy = g_variant_ref (serialized_key);
+              g_hash_table_replace (ret_loose, copy, copy);
+            }
           n_loose++;
         }
       else if (g_variant_n_children (pack_array) > 1)
@@ -872,13 +878,6 @@ ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **error)
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
-
-  if (ostree_repo_get_mode (repo) != OSTREE_REPO_MODE_ARCHIVE)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Can't repack bare repositories yet");
-      goto out;
-    }
 
   data.repo = repo;
   data.error = error;
