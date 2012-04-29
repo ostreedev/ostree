@@ -1,0 +1,282 @@
+From 5239bd5782ba083f30d3667e038b7c44f2f579c9 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Fri, 27 Apr 2012 18:34:39 -0400
+Subject: [PATCH 3/3] Add --with-default-pam-config option
+
+The PAM files that ship with GDM are really specific to Red Hat's
+historical fork of pam.  For example, the "system-auth" file still
+lives in the Fedora 17 "pam" git.
+
+Add new PAM files (which may still not work for everybody, but hey,
+it's a starting point) that should be somewhat useful for people who
+build with "Linux PAM" upstream, which uses "common-*" prefixes.
+
+The default is still to use the Red Hat PAM files for backwards
+compatibility.
+
+https://bugzilla.gnome.org/show_bug.cgi?id=675085
+---
+ configure.ac                  |   17 +++++++++++++++++
+ data/Makefile.am              |   33 +++++++++++++++++++++------------
+ data/gdm                      |   12 ------------
+ data/gdm-autologin            |   10 ----------
+ data/gdm-welcome              |    9 ---------
+ data/pam-linux/gdm            |   12 ++++++++++++
+ data/pam-linux/gdm-autologin  |   10 ++++++++++
+ data/pam-linux/gdm-welcome    |    9 +++++++++
+ data/pam-redhat/gdm           |   12 ++++++++++++
+ data/pam-redhat/gdm-autologin |   10 ++++++++++
+ data/pam-redhat/gdm-welcome   |    9 +++++++++
+ 11 files changed, 100 insertions(+), 43 deletions(-)
+ delete mode 100644 data/gdm
+ delete mode 100644 data/gdm-autologin
+ delete mode 100644 data/gdm-welcome
+ create mode 100644 data/pam-linux/gdm
+ create mode 100644 data/pam-linux/gdm-autologin
+ create mode 100644 data/pam-linux/gdm-welcome
+ create mode 100644 data/pam-redhat/gdm
+ create mode 100644 data/pam-redhat/gdm-autologin
+ create mode 100644 data/pam-redhat/gdm-welcome
+
+diff --git a/configure.ac b/configure.ac
+index 35e6e04..21e44e0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -226,6 +226,23 @@ if test x$enable_split_authentication = xyes; then
+   AC_DEFINE(ENABLE_SPLIT_AUTHENTICATION, 1, [Define if split authentication is enabled])
+ fi
+ 
++AC_ARG_WITH(default-pam-config,
++	    AS_HELP_STRING([--with-default-pam-config: One of redhat, linux @<:@default=redhat@:>@]),
++            with_default_pam_config=${withval}, with_default_pam_config=redhat)
++case x$with_default_pam_config in
++     xredhat|xlinux) ;;
++     *)
++       AC_MSG_ERROR([Invalid --with-default-pam-config ${with_default_pam_config}])
++       exit 1
++       ;;
++esac
++AM_CONDITIONAL(ENABLE_REDHAT_PAM_CONFIG, test x$with_default_pam_config = xredhat)
++AM_CONDITIONAL(ENABLE_LINUX_PAM_CONFIG, test x$with_default_pam_config = xlinux)
++
++if test x$enable_split_authentication = xyes; then
++  AC_DEFINE(ENABLE_SPLIT_AUTHENTICATION, 1, [Define if split authentication is enabled])
++fi
++
+ AC_ARG_ENABLE(console-helper,
+ 	      AS_HELP_STRING([--enable-console-helper],
+                              [Enable PAM console helper @<:@default=auto@:>@]),,
+diff --git a/data/Makefile.am b/data/Makefile.am
+index f0d00bf..e940d71 100644
+--- a/data/Makefile.am
++++ b/data/Makefile.am
+@@ -1,5 +1,6 @@
+ NULL =
+ 
++EXTRA_DIST =
+ SUBDIRS =			\
+ 	applications		\
+ 	pixmaps			\
+@@ -97,7 +98,19 @@ gdm-smartcard: gdm-smartcard.pam
+ pamdir = $(PAM_PREFIX)/pam.d
+ pam_DATA = gdm-fingerprint gdm-smartcard
+ 
+-EXTRA_DIST =			\
++pam_redhat_files = pam-redhat/gdm pam-redhat/gdm-autologin pam-redhat/gdm-welcome
++EXTRA_DIST += $(pam_redhat_files)
++pam_linux_files = pam-linux/gdm pam-linux/gdm-autologin pam-linux/gdm-welcome
++EXTRA_DIST += $(pam_linux_files)
++
++if ENABLE_REDHAT_PAM_CONFIG
++pam_files = $(pam_redhat_files)
++endif
++if ENABLE_LINUX_PAM_CONFIG
++pam_files = $(pam_linux_files)
++endif
++
++EXTRA_DIST +=			\
+ 	$(schemas_in_files)	\
+ 	$(schemas_DATA)		\
+ 	$(dbusconf_in_files)	\
+@@ -105,9 +118,6 @@ EXTRA_DIST =			\
+ 	gdm.schemas.in.in	\
+ 	gdm.conf-custom.in 	\
+ 	Xsession.in 		\
+-	gdm 			\
+-	gdm-autologin 		\
+-	gdm-welcome 		\
+ 	gdm-fingerprint.pam	\
+ 	gdm-smartcard.pam	\
+ 	gdm-fallback.session	\
+@@ -233,14 +243,13 @@ install-data-hook: gdm.conf-custom Xsession Init PostSession PreSession 00-upstr
+ 		$(mkinstalldirs) $(DESTDIR)$(PAM_PREFIX)/pam.d; \
+ 		chmod 755 $(DESTDIR)$(PAM_PREFIX)/pam.d; \
+ 	   fi; \
+-	   if test $$system = Linux && test '!' -f $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm; then \
+-		$(INSTALL_DATA) $(srcdir)/gdm $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm; \
+-	   fi; \
+-	   if test $$system = Linux && test '!' -f $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm-autologin; then \
+-		$(INSTALL_DATA) $(srcdir)/gdm-autologin $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm-autologin; \
+-	   fi; \
+-	   if test $$system = Linux && test '!' -f $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm-welcome; then \
+-		$(INSTALL_DATA) $(srcdir)/gdm-welcome $(DESTDIR)$(PAM_PREFIX)/pam.d/gdm-welcome; \
++	   if test $$system = Linux; then \
++	     for file in $(pam_files); do \
++               bn=$$(basename $$file); \
++	       if test '!' -f $(DESTDIR)$(PAM_PREFIX)/pam.d/$$bn; then \
++		 $(INSTALL_DATA) $(srcdir)/$$file $(DESTDIR)$(PAM_PREFIX)/pam.d/$$bn; \
++	       fi; \
++	     done; \
+ 	   fi; \
+ 	   if test $$system = SunOS; then \
+ 		echo "Please add PAM authentication for gdm, gdm-autologin and gdm-welcome in $(PAM_PREFIX)/pam.conf!"; \
+diff --git a/data/gdm b/data/gdm
+deleted file mode 100644
+index 58c397d..0000000
+--- a/data/gdm
++++ /dev/null
+@@ -1,12 +0,0 @@
+-#%PAM-1.0
+-auth       required    pam_env.so
+-auth       required    pam_succeed_if.so user != root quiet
+-auth       sufficient  pam_succeed_if.so user ingroup nopasswdlogin
+-auth       include     system-auth
+-account    required    pam_nologin.so
+-account    include     system-auth
+-password   include     system-auth
+-session    optional    pam_keyinit.so force revoke
+-session    include     system-auth
+-session    required    pam_loginuid.so
+-session    optional    pam_console.so
+diff --git a/data/gdm-autologin b/data/gdm-autologin
+deleted file mode 100644
+index c4e598a..0000000
+--- a/data/gdm-autologin
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#%PAM-1.0
+-auth       required    pam_env.so
+-auth       required    pam_permit.so
+-account    required    pam_nologin.so
+-account    include     system-auth
+-password   include     system-auth
+-session    optional    pam_keyinit.so force revoke
+-session    include     system-auth
+-session    required    pam_loginuid.so
+-session    optional    pam_console.so
+diff --git a/data/gdm-welcome b/data/gdm-welcome
+deleted file mode 100644
+index b301f4f..0000000
+--- a/data/gdm-welcome
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#%PAM-1.0
+-auth       required    pam_env.so
+-auth       required    pam_permit.so
+-account    required    pam_nologin.so
+-account    include     system-auth
+-password   include     system-auth
+-session    required    pam_loginuid.so
+-session    optional    pam_keyinit.so force revoke
+-session    include     system-auth
+diff --git a/data/pam-linux/gdm b/data/pam-linux/gdm
+new file mode 100644
+index 0000000..de223de
+--- /dev/null
++++ b/data/pam-linux/gdm
+@@ -0,0 +1,12 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_succeed_if.so user != root quiet
++auth       sufficient  pam_succeed_if.so user ingroup nopasswdlogin
++auth       include     common-auth
++account    required    pam_nologin.so
++account    include     common-account
++password   include     common-password
++session    optional    pam_keyinit.so force revoke
++session    include     common-session
++session    required    pam_loginuid.so
++session    optional    pam_console.so
+diff --git a/data/pam-linux/gdm-autologin b/data/pam-linux/gdm-autologin
+new file mode 100644
+index 0000000..32d5248
+--- /dev/null
++++ b/data/pam-linux/gdm-autologin
+@@ -0,0 +1,10 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_permit.so
++account    required    pam_nologin.so
++account    include     common-auth
++password   include     common-auth
++session    optional    pam_keyinit.so force revoke
++session    include     common-session
++session    required    pam_loginuid.so
++session    optional    pam_console.so
+diff --git a/data/pam-linux/gdm-welcome b/data/pam-linux/gdm-welcome
+new file mode 100644
+index 0000000..602217b
+--- /dev/null
++++ b/data/pam-linux/gdm-welcome
+@@ -0,0 +1,9 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_permit.so
++account    required    pam_nologin.so
++account    include     common-account
++password   include     common-auth
++session    required    pam_loginuid.so
++session    optional    pam_keyinit.so force revoke
++session    include     common-session
+diff --git a/data/pam-redhat/gdm b/data/pam-redhat/gdm
+new file mode 100644
+index 0000000..58c397d
+--- /dev/null
++++ b/data/pam-redhat/gdm
+@@ -0,0 +1,12 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_succeed_if.so user != root quiet
++auth       sufficient  pam_succeed_if.so user ingroup nopasswdlogin
++auth       include     system-auth
++account    required    pam_nologin.so
++account    include     system-auth
++password   include     system-auth
++session    optional    pam_keyinit.so force revoke
++session    include     system-auth
++session    required    pam_loginuid.so
++session    optional    pam_console.so
+diff --git a/data/pam-redhat/gdm-autologin b/data/pam-redhat/gdm-autologin
+new file mode 100644
+index 0000000..c4e598a
+--- /dev/null
++++ b/data/pam-redhat/gdm-autologin
+@@ -0,0 +1,10 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_permit.so
++account    required    pam_nologin.so
++account    include     system-auth
++password   include     system-auth
++session    optional    pam_keyinit.so force revoke
++session    include     system-auth
++session    required    pam_loginuid.so
++session    optional    pam_console.so
+diff --git a/data/pam-redhat/gdm-welcome b/data/pam-redhat/gdm-welcome
+new file mode 100644
+index 0000000..b301f4f
+--- /dev/null
++++ b/data/pam-redhat/gdm-welcome
+@@ -0,0 +1,9 @@
++#%PAM-1.0
++auth       required    pam_env.so
++auth       required    pam_permit.so
++account    required    pam_nologin.so
++account    include     system-auth
++password   include     system-auth
++session    required    pam_loginuid.so
++session    optional    pam_keyinit.so force revoke
++session    include     system-auth
+-- 
+1.7.7.6
+

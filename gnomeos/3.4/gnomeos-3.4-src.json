@@ -676,9 +676,12 @@
 
 		{"src": "gnome:gdm",
 		 "config-opts": ["--disable-documentation",
+		                 "--disable-split-authentication",
+		                 "--with-default-pam-config=linux",
 		                 "--with-consolekit"],
 		 "patches": ["gdm-disable-documentation.patch",
-		             "gdm-pam-auth.patch"]},
+		 	     "gdm-debug-prints.patch",
+		             "gdm-pam-config.patch"]},
 
 		{"src": "fd-telepathy:telepathy-logger",
 		 "branch": "telepathy-logger-0.2.12",
