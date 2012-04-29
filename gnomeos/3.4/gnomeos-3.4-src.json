@@ -23,7 +23,8 @@
 		"netfilter": "git:git://git.netfilter.org/",
 		"cgwalters": "git:git://github.com/cgwalters/"},
 
-  "patches": {"src": "gnome:ostree",
+  "patches": {"src": "git:/src/ostree",
+              "branch": "wip/ostbuild-v2",
               "prefix": "gnomeos/3.4"},
 
   "components": [
@@ -568,7 +569,8 @@
 		{"src": "gnome:libsoup",
 		 "config-args": ["--disable-tls-check"]},
 
-		{"src": "gnome:ostree",
+		{"src": "git:/src/ostree",
+		 "branch": "wip/ostbuild-v2",
 		 "config-opts": ["--disable-documentation",
 		                 "--with-soup-gnome"]},
 
