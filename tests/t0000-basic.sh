@@ -132,8 +132,8 @@ echo "ok metadata content"
 cd ${test_tmpdir}
 mkdir repo2
 ostree --repo=repo2 init
-$OSTREE local-clone repo2
-echo "ok local clone"
+ostree --repo=repo2 pull-local repo
+echo "ok pull-local"
 
 cd ${test_tmpdir}
 ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
