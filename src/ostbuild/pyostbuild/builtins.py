@@ -82,10 +82,10 @@ class Builtin(object):
     def parse_config(self):
         self.ostbuildrc = ostbuildrc
 
-        self.mirrordir = ostbuildrc.get_key('mirrordir')
+        self.mirrordir = os.path.expanduser(ostbuildrc.get_key('mirrordir'))
         if not os.path.isdir(self.mirrordir):
             fatal("Specified mirrordir '%s' is not a directory" % (self.mirrordir, ))
-        self.workdir = ostbuildrc.get_key('workdir')
+        self.workdir = os.path.expanduser(ostbuildrc.get_key('workdir'))
         if not os.path.isdir(self.workdir):
             fatal("Specified workdir '%s' is not a directory" % (self.workdir, ))
 
