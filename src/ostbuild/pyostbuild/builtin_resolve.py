@@ -131,6 +131,7 @@ class OstbuildResolve(builtins.Builtin):
     
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--manifest', required=True)
         parser.add_argument('--fetch', action='store_true')
         parser.add_argument('components', nargs='*')
 
@@ -140,8 +141,8 @@ class OstbuildResolve(builtins.Builtin):
         self.parse_config()
         self.repo = ostbuildrc.get_key('repo')
 
-        manifest_path = self.ostbuildrc.get_key('manifest')
-        self.manifest = json.load(open(manifest_path))
+        self.manifest = json.load(open(args.manifest))
+        self.prefix = self.manifest['prefix']
 
         snapshot = copy.deepcopy(self.manifest)
         component_source_list = map(self._resolve_component_meta, self.manifest['components'])
