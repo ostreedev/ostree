@@ -169,10 +169,21 @@ class Builtin(object):
             self._bin_snapshots = self.create_db('bin-snapshot')
         return self._bin_snapshots
 
+    def _init_repo(self):
+        repo = ostbuildrc.get_key('repo', default=None)
+        if repo is not None:
+            self.repo = repo
+        else:
+            shadow_path = os.path.join(self.workdir, 'shadow-repo')
+            if os.path.isdir(shadow_path):
+                self.repo = shadow_path
+            else:
+                fatal("No repository configured, and shadow-repo not found.  Use \"ostbuild shadow-repo-init\" to make one")
+
     def parse_snapshot(self, prefix, path):
         if prefix is not None:
             self.prefix = prefix
-        self.repo = ostbuildrc.get_key('repo')
+        self._init_repo()
         if path is None:
             latest_path = self.get_src_snapshot_db().get_latest_path()
             if latest_path is None:
@@ -183,12 +194,12 @@ class Builtin(object):
         self.snapshot = json.load(open(self.snapshot_path))
         src_ver = self.snapshot['00ostree-src-snapshot-version']
         if src_ver != 0:
-            fatal("Unhandled 00ostree-src-snapshot-version \"%d\", expected 0", src_ver)
+            fatal("Unhandled 00ostree-src-snapshot-version \"%d\", expected 0" % (src_ver, ))
 
     def parse_bin_snapshot(self, prefix, path):
         if prefix is not None:
             self.prefix = prefix
-        self.repo = ostbuildrc.get_key('repo')
+        self._init_repo()
         if path is None:
             latest_path = self.get_bin_snapshot_db().get_latest_path()
             if latest_path is None:
@@ -199,7 +210,7 @@ class Builtin(object):
         self.bin_snapshot = json.load(open(self.bin_snapshot_path))
         bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
         if bin_ver != 0:
-            fatal("Unhandled 00ostree-bin-snapshot-version \"%d\", expected 0", bin_ver)
+            fatal("Unhandled 00ostree-bin-snapshot-version \"%d\", expected 0" % (bin_ver, ))
 
     def execute(self, args):
         raise NotImplementedError()

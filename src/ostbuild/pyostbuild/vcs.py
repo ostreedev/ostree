@@ -51,17 +51,20 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True):
     tmp_dest = dest + '.tmp'
     if os.path.isdir(tmp_dest):
         shutil.rmtree(tmp_dest)
+    if os.path.islink(dest):
+        os.unlink(dest)
     if os.path.isdir(dest):
         if overwrite:
             shutil.rmtree(dest)
         else:
             tmp_dest = dest
     if not os.path.isdir(tmp_dest):
-        run_sync(['git', 'clone', '-q',
+        run_sync(['git', 'clone', '-q', '--origin', 'localmirror',
                   '--no-checkout', module_mirror, tmp_dest])
     else:
         run_sync(['git', 'fetch'], cwd=tmp_dest)
     run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest)
+    run_sync(['git', 'remote', 'add', 'upstream', uri], cwd=tmp_dest)
     run_sync(['git', 'submodule', 'init'], cwd=tmp_dest)
     have_submodules = _fixup_submodule_references(mirrordir, tmp_dest)
     if have_submodules:

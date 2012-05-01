@@ -34,6 +34,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
 	src/ostbuild/pyostbuild/builtin_modify_snapshot.py	\
 	src/ostbuild/pyostbuild/builtin_tree_to_bin.py	\
+	src/ostbuild/pyostbuild/builtin_shadow_repo_init.py	\
 	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\
 	src/ostbuild/pyostbuild/filemonitor.py		\

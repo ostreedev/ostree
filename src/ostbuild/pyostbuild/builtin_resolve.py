@@ -139,7 +139,6 @@ class OstbuildResolve(builtins.Builtin):
         self.args = args
         
         self.parse_config()
-        self.repo = ostbuildrc.get_key('repo')
 
         self.manifest = json.load(open(args.manifest))
         self.prefix = self.manifest['prefix']

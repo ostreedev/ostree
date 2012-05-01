@@ -63,7 +63,9 @@ class OstbuildBranchPrefix(builtins.Builtin):
                 fatal("Mismatched name %r in snapshot" % (name, ))
             target['name'] = name.replace(orig_prefix, args.newprefix)
         
-        db.store(forked_snapshot)
+        path = db.store(forked_snapshot)
+
+        log("Saved %r" % (path, ))
 
         run_sync(['ostbuild', 'prefix', args.newprefix],
                  log_initiation=False, log_success=False)

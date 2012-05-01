@@ -97,6 +97,7 @@ class JsonDB(object):
         
         if latest is not None:
             if digest == latest[2]:
+                os.unlink(tmppath)
                 return latest[3]
             latest_version = (latest[0], latest[1])
         else:

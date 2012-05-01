@@ -72,8 +72,10 @@ class OstbuildCheckout(builtins.Builtin):
 
             if is_dirty:
                 # Kind of a hack, but...
-                if os.path.lexists(checkoutdir):
+                if os.path.islink(checkoutdir):
                     os.unlink(checkoutdir)
+                if args.overwrite and os.path.isdir(checkoutdir):
+                    shutil.rmtree(checkoutdir)
                 os.symlink(uri, checkoutdir)
             else:
                 vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
