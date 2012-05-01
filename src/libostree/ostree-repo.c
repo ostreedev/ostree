@@ -3439,7 +3439,7 @@ find_object_in_packs (OstreeRepo        *self,
 {
   gboolean ret = FALSE;
   guint i;
-  guint64 ret_pack_offset;
+  guint64 ret_pack_offset = 0;
   gboolean is_meta;
   ot_lptrarray GPtrArray *index_checksums = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
