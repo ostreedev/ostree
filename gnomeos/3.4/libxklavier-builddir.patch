@@ -1,0 +1,25 @@
+From 41e2d4eaec24006139d4e64ee0ae6a21c9ea2d74 Mon Sep 17 00:00:00 2001
+From: Colin Walters <walters@verbum.org>
+Date: Tue, 1 May 2012 15:59:51 -0400
+Subject: [PATCH] build: Fix srcdir != builddir when introspection is enabled
+
+---
+ libxklavier/Makefile.am |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/libxklavier/Makefile.am b/libxklavier/Makefile.am
+index c53ff6d..5be41b9 100644
+--- a/libxklavier/Makefile.am
++++ b/libxklavier/Makefile.am
+@@ -94,7 +94,7 @@ introspection_sources = $(xklavier_headers) $(filter %.c, $(libxklavier_la_SOURC
+ 
+ Xkl-1.0.gir: libxklavier.la
+ Xkl_1_0_gir_INCLUDES = GObject-2.0 xlib-2.0
+-Xkl_1_0_gir_CFLAGS = -I$(top_srcdir) $(INCLUDES) $(X_CFLAGS) $(XML_CFLAGS) $(GLIB_CFLAGS) $(XINPUT_CFLAGS)
++Xkl_1_0_gir_CFLAGS = -I$(top_srcdir) -I$(top_builddir) $(INCLUDES) $(X_CFLAGS) $(XML_CFLAGS) $(GLIB_CFLAGS) $(XINPUT_CFLAGS)
+ Xkl_1_0_gir_LIBS = libxklavier.la
+ Xkl_1_0_gir_FILES = $(xklavier_headers) $(introspection_sources)
+ INTROSPECTION_GIRS += Xkl-1.0.gir
+-- 
+1.7.7.6
+
