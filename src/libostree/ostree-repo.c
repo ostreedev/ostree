@@ -3327,7 +3327,7 @@ list_objects_in_index (OstreeRepo                     *self,
 {
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  guint32 objtype_u8;
+  guint8 objtype_u8;
   guint64 offset;
   ot_lobj GFile *index_path = NULL;
   ot_lvariant GVariant *index_variant = NULL;
