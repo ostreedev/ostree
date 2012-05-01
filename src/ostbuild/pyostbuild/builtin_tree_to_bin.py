@@ -28,51 +28,30 @@ from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from . import buildutil
 
-class OstbuildBinToSrc(builtins.Builtin):
-    name = "bin-to-src"
-    short_description = "Turn a binary snapshot into a source snapshot"
+class OstbuildTreeToBin(builtins.Builtin):
+    name = "tree-to-bin"
+    short_description = "Turn a tree into a binary snapshot"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def bin_snapshot_to_src(self, bin_snapshot):
-        del bin_snapshot['00ostree-bin-snapshot-version']
-
-        src_snapshot = dict(bin_snapshot)
-        src_snapshot['00ostree-src-snapshot-version'] = 0
-
-        all_architectures = src_snapshot['architecture-buildroots'].keys()
-        # Arbitrarily take first architecture
-        first_arch = all_architectures[0]
-
-        bin_components = src_snapshot['components']
-        src_components = {}
-        src_snapshot['components'] = src_components
-        for archname,rev in bin_components.iteritems():
-            (name, arch) = archname.rsplit('/', 1)
-            if arch != first_arch:
-                continue
-            meta = dict(self.get_component_meta_from_revision(rev))
-            del meta['name']
-            src_components[name] = meta
-
-        for target in src_snapshot['targets']:
-            del target['base']['ostree-revision']
-
-        return src_snapshot
-
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
-        parser.add_argument('--bin-snapshot')
+        parser.add_argument('--tree')
 
         args = parser.parse_args(argv)
         self.parse_config()
-        self.parse_bin_snapshot(args.prefix, args.bin_snapshot)
+        if args.prefix:
+            self.prefix = args.prefix
 
-        snapshot = self.bin_snapshot_to_src(self.bin_snapshot)
-        db = self.get_src_snapshot_db()
-        path = db.store(snapshot)
-        log("Source snapshot: %s" % (path, ))
+        if args.tree:
+            self.load_bin_snapshot_from_path(args.tree)
+        else:
+            self.load_bin_snapshot_from_current()
 
-builtins.register(OstbuildBinToSrc)
+        db = self.get_bin_snapshot_db()
+        path = db.store(self.bin_snapshot)
+        log("Binary snapshot: %s" % (path, ))
+
+builtins.register(OstbuildTreeToBin)

@@ -33,6 +33,7 @@ from . import builtin_pull_components
 from . import builtin_prefix
 from . import builtin_resolve
 from . import builtin_modify_snapshot
+from . import builtin_tree_to_bin
 from . import builtin_status
 
 def usage(ecode):

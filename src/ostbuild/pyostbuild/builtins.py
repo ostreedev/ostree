@@ -92,7 +92,14 @@ class Builtin(object):
         self.snapshot_dir = os.path.join(self.workdir, 'snapshots')
         self.patchdir = os.path.join(self.workdir, 'patches')
 
-    def parse_active_branch(self):
+    def load_bin_snapshot_from_path(self, path):
+        self.bin_snapshot_path = os.path.join(path, 'contents.json')
+        self.bin_snapshot = json.load(open(self.bin_snapshot_path))
+        bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
+        if bin_ver != 0:
+            fatal("Unhandled 00ostree-bin-snapshot-version \"%d\", expected 0", bin_ver)
+
+    def load_bin_snapshot_from_current(self):
         if self.ostree_dir is None:
             fatal("/ostree directory not found")
         repo_path = os.path.join(self.ostree_dir, 'repo')
@@ -101,11 +108,8 @@ class Builtin(object):
         self.repo = repo_path
         if self.active_branch is None:
             fatal("No \"current\" link found")
-        branch_path = os.path.join(self.ostree_dir, self.active_branch)
-        contents_path = os.path.join(branch_path, 'contents.json')
-        f = open(contents_path)
-        self.active_branch_contents = json.load(f)
-        f.close()
+        tree_path = os.path.join(self.ostree_dir, self.active_branch)
+        self.load_bin_snapshot_from_path(tree_path)
 
     def get_component_snapshot(self, name):
         found = False
