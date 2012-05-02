@@ -19,6 +19,7 @@ import os,sys,subprocess,tempfile,re,shutil
 import argparse
 import time
 import urlparse
+import hashlib
 import json
 from StringIO import StringIO
 
@@ -69,6 +70,16 @@ class OstbuildBuildComponents(builtins.Builtin):
 
         current_vcs_version = component['revision']
 
+        # TODO - deduplicate this with chroot_compile_one
+        current_meta_io = StringIO()
+        meta_copy = dict(component)
+        meta_copy['name'] = basename  # Note we have to match the name here
+        json.dump(meta_copy, current_meta_io, indent=4, sort_keys=True)
+        current_metadata_text = current_meta_io.getvalue()
+        sha = hashlib.sha256()
+        sha.update(current_metadata_text)
+        current_meta_digest = sha.hexdigest()
+
         previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                       'rev-parse', buildname],
                                                      stderr=open('/dev/null', 'w'),
@@ -80,18 +91,21 @@ class OstbuildBuildComponents(builtins.Builtin):
                                                           'cat', previous_build_version,
                                                           '/_ostbuild-meta.json'],
                                                          log_initiation=True)
-            previous_meta = json.loads(previous_metadata_text)
+            sha = hashlib.sha256()
+            sha.update(previous_metadata_text)
+            previous_meta_digest = sha.hexdigest()
 
-            previous_vcs_version = previous_meta['revision']
-
-            vcs_version_matches = False
-            if previous_vcs_version == current_vcs_version:
-                vcs_version_matches = True
-                log("VCS version is unchanged from '%s'" % (previous_vcs_version, ))
+            if current_meta_digest == previous_meta_digest:
+                log("Metadata is unchanged from previous")
                 if self.buildopts.skip_built:
                     return False
             else:
-                log("VCS version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
+                current_vcs_version = component['revision']
+                previous_vcs_version = json.loads(previous_metadata_text)['revision']
+                if current_vcs_version != previous_vcs_version:
+                    log("Metadata differs; VCS version unchanged")
+                else:
+                    log("Metadata differs; note vcs version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
         else:
             log("No previous build for '%s' found" % (name, ))
 
