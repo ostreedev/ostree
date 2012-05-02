@@ -121,8 +121,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
         run_sync(['ostree', '--repo=' + self.repo,
                   'checkout', '--link-cache=' + link_cache_dir,
-                  '--user-mode', '--union', '--from-stdin', rootdir_tmp],
-                 stdin=open(tmppath))
+                  '--user-mode', '--union', '--from-file=' + tmppath, rootdir_tmp])
 
         os.unlink(tmppath);
 
