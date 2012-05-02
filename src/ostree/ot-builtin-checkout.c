@@ -35,6 +35,7 @@ static gboolean opt_no_triggers;
 static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_from_stdin;
+static char *opt_from_file;
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialze extended attributes", NULL },
@@ -43,6 +44,7 @@ static GOptionEntry options[] = {
   { "atomic-retarget", 0, 0, G_OPTION_ARG_NONE, &opt_atomic_retarget, "Make a symbolic link for destination, suffix with checksum", NULL },
   { "no-triggers", 0, 0, G_OPTION_ARG_NONE, &opt_no_triggers, "Don't run triggers", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
+  { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
   { NULL }
 };
 
@@ -162,25 +164,37 @@ process_many_checkouts (OstreeRepo         *repo,
   gboolean ret = FALSE;
   gsize len;
   GError *temp_error = NULL;
-  ot_lobj GInputStream *stdin_stream = NULL;
-  ot_lobj GDataInputStream *stdin_data = NULL;
+  ot_lobj GInputStream *instream = NULL;
+  ot_lobj GDataInputStream *datastream = NULL;
   ot_lfree char *revision = NULL;
   ot_lfree char *subpath = NULL;
   ot_lfree char *resolved_commit = NULL;
 
-  stdin_stream = (GInputStream*)g_unix_input_stream_new (0, FALSE);
-  stdin_data = g_data_input_stream_new (stdin_stream);
+  if (opt_from_stdin)
+    {
+      instream = (GInputStream*)g_unix_input_stream_new (0, FALSE);
+    }
+  else
+    {
+      ot_lobj GFile *f = ot_gfile_new_for_path (opt_from_file);
 
-  while ((revision = g_data_input_stream_read_upto (stdin_data, "", 1, &len,
+      instream = (GInputStream*)g_file_read (f, cancellable, error);
+      if (!instream)
+        goto out;
+    }
+    
+  datastream = g_data_input_stream_new (instream);
+
+  while ((revision = g_data_input_stream_read_upto (datastream, "", 1, &len,
                                                     cancellable, &temp_error)) != NULL)
     {
       if (revision[0] == '\0')
         break;
 
       /* Read the null byte */
-      (void) g_data_input_stream_read_byte (stdin_data, cancellable, NULL);
+      (void) g_data_input_stream_read_byte (datastream, cancellable, NULL);
       g_free (subpath);
-      subpath = g_data_input_stream_read_upto (stdin_data, "", 1, &len,
+      subpath = g_data_input_stream_read_upto (datastream, "", 1, &len,
                                                cancellable, &temp_error);
       if (temp_error)
         {
@@ -189,7 +203,7 @@ process_many_checkouts (OstreeRepo         *repo,
         }
 
       /* Read the null byte */
-      (void) g_data_input_stream_read_byte (stdin_data, cancellable, NULL);
+      (void) g_data_input_stream_read_byte (datastream, cancellable, NULL);
 
       if (!ostree_repo_resolve_rev (repo, revision, FALSE, &resolved_commit, error))
         goto out;
@@ -250,12 +264,12 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
       goto out;
     }
 
-  if (opt_from_stdin)
+  if (opt_from_stdin || opt_from_file)
     {
       if (opt_atomic_retarget)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "--atomic-retarget may not be used with --from-stdin");
+                       "--atomic-retarget may not be used with --from-stdin or --from-file");
           goto out;
         }
 
