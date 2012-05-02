@@ -101,9 +101,14 @@ class OstbuildBuildComponents(builtins.Builtin):
                     return False
             else:
                 current_vcs_version = component['revision']
-                previous_vcs_version = json.loads(previous_metadata_text)['revision']
-                if current_vcs_version != previous_vcs_version:
+                previous_metadata = json.loads(previous_metadata_text)
+                previous_vcs_version = previous_metadata['revision']
+                if current_vcs_version == previous_vcs_version:
                     log("Metadata differs; VCS version unchanged")
+                    for k,v in meta_copy.iteritems():
+                        previous_v = previous_metadata.get(k)
+                        if v != previous_v:
+                            log("Key %r differs: old: %r new: %r" % (k, previous_v, v))
                 else:
                     log("Metadata differs; note vcs version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
         else:

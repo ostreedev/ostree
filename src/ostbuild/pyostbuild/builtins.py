@@ -42,12 +42,12 @@ class Builtin(object):
         self.snapshot = None
         self.bin_snapshot = None
         self.repo = None
-        self.ostree_dir = self._find_ostree_dir()
+        self.ostree_dir = self.find_ostree_dir()
         (self.active_branch, self.active_branch_checksum) = self._find_active_branch()
         self._src_snapshots = None
         self._bin_snapshots = None
 
-    def _find_ostree_dir(self):
+    def find_ostree_dir(self):
         for path in ['/ostree', '/sysroot/ostree']:
             if os.path.isdir(path):
                 return path
@@ -180,9 +180,12 @@ class Builtin(object):
             else:
                 fatal("No repository configured, and shadow-repo not found.  Use \"ostbuild shadow-repo-init\" to make one")
 
-    def parse_snapshot(self, prefix, path):
+    def parse_prefix(self, prefix):
         if prefix is not None:
             self.prefix = prefix
+
+    def parse_snapshot(self, prefix, path):
+        self.parse_prefix(prefix)
         self._init_repo()
         if path is None:
             latest_path = self.get_src_snapshot_db().get_latest_path()
@@ -197,8 +200,7 @@ class Builtin(object):
             fatal("Unhandled 00ostree-src-snapshot-version \"%d\", expected 0" % (src_ver, ))
 
     def parse_bin_snapshot(self, prefix, path):
-        if prefix is not None:
-            self.prefix = prefix
+        self.parse_prefix(prefix)
         self._init_repo()
         if path is None:
             latest_path = self.get_bin_snapshot_db().get_latest_path()

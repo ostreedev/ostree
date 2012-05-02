@@ -29,6 +29,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_compose.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
+	src/ostbuild/pyostbuild/builtin_deploy_root.py	\
 	src/ostbuild/pyostbuild/builtin_pull_components.py	\
 	src/ostbuild/pyostbuild/builtin_git_mirror.py	\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
@@ -48,6 +49,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/odict.py		\
 	src/ostbuild/pyostbuild/ostbuildlog.py		\
 	src/ostbuild/pyostbuild/ostbuildrc.py		\
+	src/ostbuild/pyostbuild/privileged_subproc.py	\
 	src/ostbuild/pyostbuild/warningfilter.py	\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
 	src/ostbuild/pyostbuild/vcs.py			\

@@ -29,6 +29,7 @@ from . import builtin_checkout
 from . import builtin_chroot_compile_one
 from . import builtin_compose
 from . import builtin_compile_one
+from . import builtin_deploy_root
 from . import builtin_git_mirror
 from . import builtin_pull_components
 from . import builtin_prefix
