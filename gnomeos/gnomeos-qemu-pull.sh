@@ -59,7 +59,7 @@ sleep 1 # Avoid Linux kernel bug, pretty sure it's the new RCU pathname lookup
 mount -o loop ostree-qemu.img fs
 
 cd fs
-ostree --repo=${SRC_REPO_PATH} local-clone ./ostree/repo ${CURRENT_REF} "$@"
+ostree --repo=./ostree/repo pull-local ${SRC_REPO_PATH} ${CURRENT_REF} "$@"
 
 cd ostree
 ostree --repo=./repo checkout --atomic-retarget ${CURRENT_REF}
