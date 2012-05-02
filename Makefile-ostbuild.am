@@ -30,6 +30,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_pull_components.py	\
+	src/ostbuild/pyostbuild/builtin_git_mirror.py	\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
 	src/ostbuild/pyostbuild/builtin_modify_snapshot.py	\

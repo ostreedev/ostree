@@ -96,6 +96,7 @@ class OstbuildBuildComponents(builtins.Builtin):
             log("No previous build for '%s' found" % (name, ))
 
         checkoutdir = os.path.join(self.workdir, 'checkouts')
+        fileutil.ensure_dir(checkoutdir)
         component_src = os.path.join(checkoutdir, basename)
         run_sync(['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
                   '--clean', '--overwrite', basename], cwd=checkoutdir)
