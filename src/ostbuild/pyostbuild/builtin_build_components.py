@@ -54,10 +54,10 @@ class OstbuildBuildComponents(builtins.Builtin):
                      '--snapshot=' + self.snapshot_path])
         return args
 
-    def _launch_debug_shell(self, architecture, buildroot, cwd=None):
+    def _launch_debug_shell(self, architecture, component, cwd=None):
         args = self._get_ostbuild_chroot_args(architecture)
-        args.extend(['--buildroot=' + buildroot,
-                     '--workdir=' + self.workdir,
+        args.extend(['--arch=' + architecture,
+                     '--name=' + component,
                      '--debug-shell'])
         run_sync(args, cwd=cwd, fatal_on_error=False, keep_stdin=True)
         fatal("Exiting after debug shell")
@@ -137,7 +137,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
-                self._launch_debug_shell(architecture, buildroot_name, cwd=component_src)
+                self._launch_debug_shell(architecture, basename, cwd=component_src)
         else:
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
