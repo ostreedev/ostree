@@ -108,6 +108,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   ot_lobj GFile *src_dir = NULL;
   ot_lobj GFile *dest_dir = NULL;
   ot_lhash GHashTable *refs_to_clone = NULL;
+  ot_lhash GHashTable *source_objects = NULL;
   ot_lhash GHashTable *objects_to_copy = NULL;
   OtLocalCloneData data;
 
@@ -164,16 +165,38 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
         }
     }
 
-  objects_to_copy = ostree_traverse_new_reachable ();
+  g_print ("Enumerating objects...\n");
+
+  source_objects = ostree_traverse_new_reachable ();
 
   g_hash_table_iter_init (&hash_iter, refs_to_clone);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *checksum = value;
 
-      if (!ostree_traverse_commit (data.src_repo, checksum, 0, objects_to_copy, cancellable, error))
+      if (!ostree_traverse_commit (data.src_repo, checksum, 0, source_objects, cancellable, error))
         goto out;
     }
+
+  objects_to_copy = ostree_traverse_new_reachable ();
+  g_hash_table_iter_init (&hash_iter, source_objects);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      gboolean has_object;
+      const char *checksum;
+      OstreeObjectType objtype;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      if (!ostree_repo_has_object (data.dest_repo, objtype, checksum, &has_object,
+                                   cancellable, error))
+        goto out;
+      if (!has_object)
+        g_hash_table_insert (objects_to_copy, g_variant_ref (serialized_key), serialized_key);
+    }
+
+  g_print ("%u objects to copy\n", g_hash_table_size (objects_to_copy));
 
   if (!ostree_repo_prepare_transaction (data.dest_repo, cancellable, error))
     goto out;
@@ -193,6 +216,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   if (!ostree_repo_commit_transaction (data.dest_repo, NULL, error))
     goto out;
+
+  g_print ("Writing %u refs\n", g_hash_table_size (refs_to_clone));
 
   g_hash_table_iter_init (&hash_iter, refs_to_clone);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
