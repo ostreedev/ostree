@@ -3565,7 +3565,10 @@ ostree_repo_load_file (OstreeRepo         *self,
             {
               ret_input = (GInputStream*) g_file_read (loose_path, cancellable, error);
               if (!ret_input)
-                goto out;
+                {
+                  g_prefix_error (error, "Error opening loose file object %s: ", ot_gfile_get_path_cached (loose_path));
+                  goto out;
+                }
             }
         }
     }
