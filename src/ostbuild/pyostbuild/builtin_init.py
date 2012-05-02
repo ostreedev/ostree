@@ -22,13 +22,14 @@ import select,time
 import argparse
 
 from . import builtins
+from . import ostbuildrc
 from .ostbuildlog import log, fatal
 from . import fileutil
 from .subprocess_helpers import run_sync, run_sync_get_output
 
-class OstbuildShadowRepoInit(builtins.Builtin):
-    name = "shadow-repo-init"
-    short_description = "Initialize a user-mode shadow repository for /ostree/repo"
+class OstbuildInit(builtins.Builtin):
+    name = "init"
+    short_description = "Initialize working state"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -38,15 +39,20 @@ class OstbuildShadowRepoInit(builtins.Builtin):
 
         args = parser.parse_args(argv)
         
+        mirrordir = os.path.expanduser(ostbuildrc.get_key('mirrordir'))
+        fileutil.ensure_dir(mirrordir)
+        workdir = os.path.expanduser(ostbuildrc.get_key('workdir'))
+        fileutil.ensure_dir(workdir)
+
         self.parse_config()
 
         path = os.path.join(self.workdir, 'shadow-repo')
         fileutil.ensure_dir(path)
         if os.path.isdir(os.path.join(path, 'objects')):
-            log("Shadow repository '%s' appears to already exist" % (path, ))
+            log("note: shadow repository '%s' already exists" % (path, ))
         else:
             run_sync(['ostree', '--repo=' + path, 'init', '--archive'])
             run_sync(['ostree', '--repo=' + path, 'config', 'set', 'core.parent', '/ostree/repo'])
             log("Created shadow repository: %s" % (path, ))
     
-builtins.register(OstbuildShadowRepoInit)
+builtins.register(OstbuildInit)
