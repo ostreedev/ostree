@@ -19,6 +19,7 @@ import os,sys,subprocess
 
 from .ostbuildlog import log, fatal
 from . import ostbuildrc
+from .subprocess_helpers import run_sync
 
 class PrivilegedSubprocess(object):
 
@@ -35,5 +36,4 @@ class PrivilegedSubprocess(object):
 
     def _pkexec_spawn_sync(self, argv):
         pkexec_argv = ['pkexec'] + argv
-        log("Running: %s" % (subprocess.list2cmdline(pkexec_argv), ))
-        subprocess.check_call(pkexec_argv)
+        run_sync(pkexec_argv)

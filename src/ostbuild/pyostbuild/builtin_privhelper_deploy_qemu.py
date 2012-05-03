@@ -24,8 +24,9 @@ from StringIO import StringIO
 
 from . import builtins
 from .ostbuildlog import log, fatal
+from .subprocess_helpers import run_sync
 from . import ostbuildrc
-from . import privileged_subproc
+from . import fileutil
 
 class OstbuildPrivhelperDeployQemu(builtins.Builtin):
     name = "privhelper-deploy-qemu"
@@ -34,23 +35,76 @@ class OstbuildPrivhelperDeployQemu(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
+    def _create_qemu_disk(self):
+        log("%s not found, creating" % (self.qemu_path, ))
+        success = False
+        tmppath = self.qemu_path + '.tmp'
+        if os.path.exists(tmppath):
+            os.unlink(tmppath)
+        subprocess.check_call(['qemu-img', 'create', tmppath, '6G'])
+        subprocess.check_call(['mkfs.ext4', '-q', '-F', tmppath])
+
+        subprocess.call(['umount', self.mountpoint], stderr=open('/dev/null', 'w'))
+        try:
+            subprocess.check_call(['mount', '-o', 'loop', tmppath, self.mountpoint])
+            
+            for topdir in ['mnt', 'sys', 'root', 'home', 'opt', 'tmp', 'run',
+                           'ostree']:
+                path = os.path.join(self.mountpoint, topdir)
+                fileutil.ensure_dir(path)
+            os.chmod(os.path.join(self.mountpoint, 'root'), 0700)
+            os.chmod(os.path.join(self.mountpoint, 'tmp'), 01777)
+
+            varpath = os.path.join(self.mountpoint, 'ostree', 'var')
+            fileutil.ensure_dir(varpath)
+            modulespath = os.path.join(self.mountpoint, 'ostree', 'modules')
+            fileutil.ensure_dir(modulespath)
+            
+            repo_path = os.path.join(self.mountpoint, 'ostree', 'repo')
+            fileutil.ensure_dir(repo_path)
+            subprocess.check_call(['ostree', '--repo=' + repo_path, 'init'])
+            success = True
+        finally:
+            subprocess.call(['umount', self.mountpoint])
+        if success:
+            os.rename(tmppath, self.qemu_path)
+
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('srcrepo')
+        parser.add_argument('targets', nargs='+')
 
         args = parser.parse_args(argv)
-        self.args = args
-        
-        self.parse_config()
-        self.parse_bin_snapshot(args.prefix, args.bin_snapshot)
-        
-        target_names = []
-        for target in self.bin_snapshot['targets']:
-            target_names.append(target['name'])
 
-        helper = privileged_subproc.PrivilegedSubprocess()
-        sys_repo = os.path.join(self.ostree_dir, 'repo')
-        shadow_path = os.path.join(self.workdir, 'shadow-repo')
-        helper.spawn_sync(['ostree', '--repo=' + sys_repo,
-                           'pull-local', shadow_path])
+        if os.geteuid() != 0:
+            fatal("This helper can only be run as root")
+
+        self.ostree_dir = self.find_ostree_dir()
+        self.qemu_path = os.path.join(self.ostree_dir, "ostree-qemu.img")
+
+        self.mountpoint = os.path.join(self.ostree_dir, 'ostree-qemu-mnt')
+        fileutil.ensure_dir(self.mountpoint)
+
+        if not os.path.exists(self.qemu_path):
+            self._create_qemu_disk()
+
+        subprocess.call(['umount', self.mountpoint], stderr=open('/dev/null', 'w'))
+        repo_path = os.path.join(self.mountpoint, 'ostree', 'repo')
+        try:
+            subprocess.check_call(['mount', '-o', 'loop', self.qemu_path, self.mountpoint])
+            child_args = ['ostree', '--repo=' + repo_path, 'pull-local', args.srcrepo]
+            child_args.extend(args.targets)
+            run_sync(child_args)
+
+            first_target = args.targets[0]
+            for target in args.targets:
+                run_sync(['ostree', '--repo=' + repo_path, 'checkout', '--atomic-retarget', target],
+                         cwd=os.path.join(self.mountpoint, 'ostree'))
+            current_link_path = os.path.join(self.mountpoint, 'ostree', 'current')
+            os.symlink(first_target, current_link_path + '.tmp')
+            os.rename(current_link_path + '.tmp', current_link_path)
+        finally:
+            subprocess.call(['umount', self.mountpoint])
+
         
-builtins.register(OstbuildDeployRoot)
+builtins.register(OstbuildPrivhelperDeployQemu)

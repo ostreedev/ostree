@@ -30,8 +30,10 @@ from . import builtin_chroot_compile_one
 from . import builtin_compose
 from . import builtin_compile_one
 from . import builtin_deploy_root
+from . import builtin_deploy_qemu
 from . import builtin_git_mirror
 from . import builtin_pull_components
+from . import builtin_privhelper_deploy_qemu
 from . import builtin_prefix
 from . import builtin_resolve
 from . import builtin_modify_snapshot
@@ -42,6 +44,8 @@ from . import builtin_status
 def usage(ecode):
     print "Builtins:"
     for builtin in builtins.get_all():
+        if builtin.name.startswith('privhelper'):
+            continue
         print "    %s - %s" % (builtin.name, builtin.short_description)
     return ecode
 

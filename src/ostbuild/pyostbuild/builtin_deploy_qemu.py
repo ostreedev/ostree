@@ -50,9 +50,9 @@ class OstbuildDeployQemu(builtins.Builtin):
             target_names.append(target['name'])
 
         helper = privileged_subproc.PrivilegedSubprocess()
-        sys_repo = os.path.join(self.ostree_dir, 'repo')
         shadow_path = os.path.join(self.workdir, 'shadow-repo')
-        helper.spawn_sync(['ostree', '--repo=' + sys_repo,
-                           'pull-local', shadow_path])
+        child_args = ['ostbuild', 'privhelper-deploy-qemu', shadow_path]
+        child_args.extend(target_names)
+        helper.spawn_sync(child_args)
         
-builtins.register(OstbuildDeployRoot)
+builtins.register(OstbuildDeployQemu)
