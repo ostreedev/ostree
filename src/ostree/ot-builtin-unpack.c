@@ -104,13 +104,19 @@ unpack_one_object (OstreeRepo        *repo,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
+      ot_lobj GInputStream *file_object = NULL;
+
       if (!ostree_repo_load_file (repo, checksum,
                                   &input, &file_info, &xattrs,
                                   cancellable, error))
         goto out;
 
+      if (!ostree_raw_file_to_content_stream (input, file_info, xattrs, &file_object, 
+                                              cancellable, error))
+        goto out;
+
       if (!ostree_repo_stage_object_trusted (repo, OSTREE_OBJECT_TYPE_FILE,
-                                             checksum, TRUE, file_info, xattrs, input,
+                                             checksum, TRUE, file_object,
                                              cancellable, error))
         goto out;
     }
@@ -122,7 +128,7 @@ unpack_one_object (OstreeRepo        *repo,
       input = ot_variant_read (meta);
       
       if (!ostree_repo_stage_object_trusted (repo, objtype, checksum, TRUE,
-                                             NULL, NULL, input, cancellable, error))
+                                             input, cancellable, error))
         goto out;
     }
 

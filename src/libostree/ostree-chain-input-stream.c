@@ -175,15 +175,18 @@ ostree_chain_input_stream_read (GInputStream  *stream,
   if (self->priv->index >= self->priv->streams->len)
     return 0;
 
-  child = self->priv->streams->pdata[self->priv->index];
-
-  res = g_input_stream_read (child,
-                             buffer,
-                             count,
-                             cancellable,
-                             error);
-  if (res == 0)
-    self->priv->index++;
+  res = 0;
+  while (res == 0 && self->priv->index < self->priv->streams->len)
+    {
+      child = self->priv->streams->pdata[self->priv->index];
+      res = g_input_stream_read (child,
+                                 buffer,
+                                 count,
+                                 cancellable,
+                                 error);
+      if (res == 0)
+        self->priv->index++;
+    }
 
   return res;
 }

@@ -642,8 +642,7 @@ fetch_and_store_metadata (OtPullData          *pull_data,
   if (input)
     {
       g_assert (remote_pack_path != NULL || !is_stored);
-      if (!ostree_repo_stage_object (pull_data->repo, objtype, checksum, 
-                                     NULL, NULL, input,
+      if (!ostree_repo_stage_object (pull_data->repo, objtype, checksum, input,
                                      cancellable, error))
         goto out;
     }
@@ -814,6 +813,7 @@ store_file_from_pack (OtPullData          *pull_data,
   ot_lobj GFile *temp_path = NULL;
   ot_lvariant GVariant *pack_entry = NULL;
   ot_lobj GInputStream *input = NULL;
+  ot_lobj GInputStream *file_object_input = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lvariant GVariant *csum_bytes_v = NULL;
@@ -841,9 +841,13 @@ store_file_from_pack (OtPullData          *pull_data,
   if (!ostree_parse_file_pack_entry (pack_entry, &input, &file_info, &xattrs,
                                      cancellable, error))
     goto out;
+
+  if (!ostree_raw_file_to_content_stream (input, file_info, xattrs,
+                                          &file_object_input, cancellable, error))
+    goto out;
   
   if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                 file_info, xattrs, input,
+                                 file_object_input,
                                  cancellable, error))
     goto out;
 
@@ -948,20 +952,18 @@ fetch_content (OtPullData           *pull_data,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *checksum = key;
-      ot_lobj GInputStream *input = NULL;
-      ot_lobj GFileInfo *file_info = NULL;
-      ot_lvariant GVariant *xattrs = NULL;
+      ot_lobj GInputStream *file_object_input = NULL;
 
       if (!fetch_loose_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, &temp_path,
                                cancellable, error))
         goto out;
 
-      if (!ostree_content_file_parse (temp_path, FALSE, &input, &file_info, &xattrs,
-                                      cancellable, error))
+      file_object_input = (GInputStream*)g_file_read (temp_path, cancellable, error);
+      if (!file_object_input)
         goto out;
 
       if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                     file_info, xattrs, input,
+                                     file_object_input,
                                      cancellable, error))
         goto out;
     }

@@ -360,6 +360,9 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
                                        cancellable, error))
     goto out;
 
+  if (!g_output_stream_close (header_out_stream, cancellable, error))
+    goto out;
+
   header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
   header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
   header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
@@ -367,7 +370,8 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   g_ptr_array_add (streams, g_object_ref (header_in_stream));
-  g_ptr_array_add (streams, g_object_ref (input));
+  if (input)
+    g_ptr_array_add (streams, g_object_ref (input));
   
   ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
 
