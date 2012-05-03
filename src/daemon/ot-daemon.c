@@ -183,8 +183,12 @@ do_op_overlay (OstreeDaemon            *self,
   tdata->op = op;
   tdata->dir = ot_gfile_new_for_path (dir);
 
+#if GLIB_CHECK_VERSION(2,32,0)  
+  g_thread_new ("overlay-dir-thread", overlay_dir_thread, tdata);
+#else
   g_thread_create_full (overlay_dir_thread, tdata, 0, FALSE, FALSE,
                         G_THREAD_PRIORITY_NORMAL, NULL);
+#endif
 }
 
 static void
