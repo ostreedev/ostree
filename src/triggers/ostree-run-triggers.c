@@ -171,11 +171,18 @@ run_triggers (GCancellable   *cancellable,
 
   for (i = 0; i < triggers->len; i++)
     {
+      const char *basename;
       GFile *trigger_path = triggers->pdata[i];
 
       g_free (path);
       path = g_file_get_path (trigger_path);
+      basename = strrchr (path, '/');
+      if (basename)
+        basename += 1;
+      else
+        basename = path;
 
+      g_print ("ostree-run-triggers: %s\n", basename);
       if (!run_trigger (path, cancellable, error))
         goto out;
     }
