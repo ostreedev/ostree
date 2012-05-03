@@ -29,9 +29,9 @@ G_BEGIN_DECLS
 
 void ot_local_free (void *loc);
 void ot_local_obj_unref (void *loc);
-void ot_local_variant_unref (void *loc);
-void ot_local_ptrarray_unref (void *loc);
-void ot_local_hashtable_unref (void *loc);
+void ot_local_variant_unref (GVariant **loc);
+void ot_local_ptrarray_unref (GPtrArray **loc);
+void ot_local_hashtable_unref (GHashTable **loc);
 
 #define ot_lfree __attribute__ ((cleanup(ot_local_free)))
 #define ot_lobj __attribute__ ((cleanup(ot_local_obj_unref)))

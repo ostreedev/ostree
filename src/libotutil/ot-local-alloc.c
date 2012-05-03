@@ -45,23 +45,28 @@ ot_local_free (void *loc)
 void
 ot_local_obj_unref (void *loc)
 {
-  _ot_local_free(GObject, g_object_unref);
+  GObject **location = (GObject**)loc;
+  if (location && *location)
+    g_object_unref (*location);
 }
 
 void
-ot_local_variant_unref (void *loc)
+ot_local_variant_unref (GVariant **loc)
 {
-  _ot_local_free(GVariant, g_variant_unref);
+  if (loc && *loc)
+    g_variant_unref (*loc);
 }
 
 void
-ot_local_ptrarray_unref (void *loc)
+ot_local_ptrarray_unref (GPtrArray **loc)
 {
-  _ot_local_free(GPtrArray, g_ptr_array_unref);
+  if (loc && *loc)
+    g_ptr_array_unref (*loc);
 }
 
 void
-ot_local_hashtable_unref (void *loc)
+ot_local_hashtable_unref (GHashTable **loc)
 {
-  _ot_local_free(GHashTable, g_hash_table_unref);
+  if (loc && *loc)
+    g_hash_table_unref (*loc);
 }
