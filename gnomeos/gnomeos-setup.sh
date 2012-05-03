@@ -45,39 +45,6 @@ cd "$OSTREE_DIR_PATH"
 
 mkdir -p modules
 
-mkdir -p -m 0755 ./var/{log,run,tmp,spool}
-mkdir -p ./var/lib/dbus
-dbus-uuidgen > ./var/lib/dbus/machine-id
-
-mkdir -p ./var/tmp
-chmod 1777 ./var/tmp
-
-if ! test -L run; then
-    ln -s ../run run
-fi
-
-mkdir -p ./var/lib/gdm
-chown 2:2 ./var/lib/gdm
-mkdir -p ./var/log/gdm
-chown 2:2 ./var/log/gdm
-chmod 01770 ./var/log/gdm
-
-mkdir -p ./var/lib/AccountsService
-
-touch ./var/shadow
-chmod 0600 ./var/shadow
-
-cat >./var/passwd << EOF
-root::0:0:root:/:/bin/sh
-dbus:*:1:1:dbus:/:/bin/false
-gdm:*:2:2:gdm:/var/lib/gdm:/bin/false
-EOF
-cat >./var/group << EOF
-root:*:0:root
-dbus:*:1:
-gdm:*:2:
-EOF
-
 if ! test -d repo; then
     mkdir repo
     ostree --repo=repo init
