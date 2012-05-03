@@ -1,8 +1,13 @@
 #!/bin/bash
 # -*- indent-tabs-mode: nil; -*-
-# Install OSTree to system
-#
 # Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
+#
+# Prepare an empty OSTree setup on system; this presently uses the
+# "host" kernel.  This has no impact on the host system.
+# 
+# Note also this script is idempotent - you can run it more than
+# once, and you should in fact do so right now to update to a newer
+# host kernel.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -34,29 +39,16 @@ EOF
     exit 1
 fi
 
-usage () {
-    echo "$0 OSTREE_REPO_URL"
-    exit 1
-}
+mkdir -p /ostree
 
-ARCH=i686
-BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
+cd /ostree
 
-if ! test -d /ostree/repo/objects; then
-    mkdir -p /ostree
+mkdir -p modules
+mkdir -p var
 
-    $SRCDIR/gnomeos-setup.sh /ostree
-
-    cd /ostree
-
-    ostree --repo=repo remote add gnome http://ostree.gnome.org/repo ${BRANCH_PREFIX}{runtime,devel}
-    ostree-pull --repo=repo gnome
-    for branch in runtime devel; do
-        ostree --repo=repo checkout --atomic-retarget ${BRANCH_PREFIX}${branch}
-    done
-    ln -sf ${BRANCH_PREFIX}runtime current
-
-    cd ${WORKDIR}
+if ! test -d repo; then
+    mkdir repo
+    ostree --repo=repo init
 fi
 
 uname=$(uname -r)
