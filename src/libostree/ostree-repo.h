@@ -106,6 +106,13 @@ gboolean      ostree_repo_stage_object (OstreeRepo       *self,
                                         GCancellable     *cancellable,
                                         GError          **error);
 
+gboolean      ostree_repo_stage_file_object (OstreeRepo       *self,
+                                             const char       *expected_checksum,
+                                             GInputStream     *content,
+                                             guint64           content_length,
+                                             GCancellable     *cancellable,
+                                             GError          **error);
+
 gboolean      ostree_repo_stage_object_trusted (OstreeRepo   *self,
                                                 OstreeObjectType objtype,
                                                 const char   *checksum,
@@ -113,6 +120,14 @@ gboolean      ostree_repo_stage_object_trusted (OstreeRepo   *self,
                                                 GInputStream     *content,
                                                 GCancellable *cancellable,
                                                 GError      **error);
+
+gboolean      ostree_repo_stage_file_object_trusted (OstreeRepo   *self,
+                                                     const char   *checksum,
+                                                     gboolean          store_if_packed,
+                                                     GInputStream     *content,
+                                                     guint64           content_length,
+                                                     GCancellable *cancellable,
+                                                     GError      **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *rev,

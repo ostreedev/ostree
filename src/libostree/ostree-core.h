@@ -207,6 +207,15 @@ gboolean ostree_file_header_parse (GVariant         *data,
                                    GFileInfo       **out_file_info,
                                    GVariant        **out_xattrs,
                                    GError          **error);
+gboolean
+ostree_content_stream_parse (GInputStream           *input,
+                             guint64                 input_length,
+                             gboolean                trusted,
+                             GInputStream          **out_input,
+                             GFileInfo             **out_file_info,
+                             GVariant              **out_xattrs,
+                             GCancellable           *cancellable,
+                             GError                **error);
 
 gboolean ostree_content_file_parse (GFile                  *content_path,
                                     gboolean                trusted,
@@ -226,6 +235,7 @@ gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GFileInfo          *file_info,
                                             GVariant           *xattrs,
                                             GInputStream      **out_input,
+                                            guint64            *out_length,
                                             GCancellable       *cancellable,
                                             GError            **error);
 

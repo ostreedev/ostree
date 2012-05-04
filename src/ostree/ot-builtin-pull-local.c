@@ -55,19 +55,21 @@ import_one_object (OtLocalCloneData *data,
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       ot_lobj GInputStream *file_object = NULL;
+      guint64 length;
 
       if (!ostree_repo_load_file (data->src_repo, checksum,
                                   &input, &file_info, &xattrs,
                                   cancellable, error))
         goto out;
 
-      if (!ostree_raw_file_to_content_stream (input, file_info, xattrs, &file_object, 
+      if (!ostree_raw_file_to_content_stream (input, file_info, xattrs,
+                                              &file_object, &length,
                                               cancellable, error))
         goto out;
 
-      if (!ostree_repo_stage_object_trusted (data->dest_repo, OSTREE_OBJECT_TYPE_FILE,
-                                             checksum, FALSE, file_object,
-                                             cancellable, error))
+      if (!ostree_repo_stage_file_object_trusted (data->dest_repo, checksum, FALSE,
+                                                  file_object, length,
+                                                  cancellable, error))
         goto out;
     }
   else

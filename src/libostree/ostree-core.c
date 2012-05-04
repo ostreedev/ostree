@@ -340,6 +340,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
                                    GFileInfo          *file_info,
                                    GVariant           *xattrs,
                                    GInputStream      **out_input,
+                                   guint64            *out_length,
                                    GCancellable       *cancellable,
                                    GError            **error)
 {
@@ -377,21 +378,23 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
 
   ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);
+  if (out_length)
+    *out_length = header_size + g_file_info_get_size (file_info);
  out:
   return ret;
 }
 
 gboolean
-ostree_content_file_parse (GFile                  *content_path,
-                           gboolean                trusted,
-                           GInputStream          **out_input,
-                           GFileInfo             **out_file_info,
-                           GVariant              **out_xattrs,
-                           GCancellable           *cancellable,
-                           GError                **error)
+ostree_content_stream_parse (GInputStream           *input,
+                             guint64                 input_length,
+                             gboolean                trusted,
+                             GInputStream          **out_input,
+                             GFileInfo             **out_file_info,
+                             GVariant              **out_xattrs,
+                             GCancellable           *cancellable,
+                             GError                **error)
 {
   gboolean ret = FALSE;
-  guint64 length;
   guint32 archive_header_size;
   guchar dummy[4];
   gsize bytes_read;
@@ -402,39 +405,27 @@ ostree_content_file_parse (GFile                  *content_path,
   ot_lvariant GVariant *file_header = NULL;
   ot_lfree guchar *buf = NULL;
 
-  ret_input = (GInputStream*)g_file_read (content_path, cancellable, error);
-  if (!ret_input)
-    goto out;
-
-  content_file_info = g_file_input_stream_query_info ((GFileInputStream*)ret_input,
-                                                      OSTREE_GIO_FAST_QUERYINFO,
-                                                      cancellable, error);
-  if (!content_file_info)
-    goto out;
-
-  length = g_file_info_get_size (content_file_info);
-
-  if (!g_input_stream_read_all (ret_input,
+  if (!g_input_stream_read_all (input,
                                 &archive_header_size, 4, &bytes_read,
                                 cancellable, error))
     goto out;
   archive_header_size = GUINT32_FROM_BE (archive_header_size);
-  if (archive_header_size > length)
+  if (archive_header_size > input_length)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "File header size %u exceeds size %" G_GUINT64_FORMAT,
-                   (guint)archive_header_size, length);
+                   (guint)archive_header_size, input_length);
       goto out;
     }
 
   /* Skip over padding */
-  if (!g_input_stream_read_all (ret_input,
+  if (!g_input_stream_read_all (input,
                                 dummy, 4, &bytes_read,
                                 cancellable, error))
     goto out;
 
   buf = g_malloc (archive_header_size);
-  if (!g_input_stream_read_all (ret_input, buf, archive_header_size, &bytes_read,
+  if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read,
                                 cancellable, error))
     goto out;
   file_header = g_variant_new_from_data (OSTREE_FILE_HEADER_GVARIANT_FORMAT,
@@ -448,14 +439,61 @@ ostree_content_file_parse (GFile                  *content_path,
                                  error))
     goto out;
   if (ret_file_info)
-    g_file_info_set_size (ret_file_info, length - archive_header_size - 8);
+    g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
   
   if (g_file_info_get_file_type (ret_file_info) != G_FILE_TYPE_REGULAR)
     {
       g_clear_object (&ret_input);
     }
 
-  /* Now give the input stream at its current position as return value */
+  ret = TRUE;
+  /* Give the input stream at its current position as return value;
+   * assuming the caller doesn't seek, this should be fine.  We might
+   * want to wrap it though in a non-seekable stream.
+   **/
+  g_object_ref (input);
+  ot_transfer_out_value (out_input, &input);
+  ot_transfer_out_value (out_file_info, &ret_file_info);
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
+ out:
+  return ret;
+
+}
+
+gboolean
+ostree_content_file_parse (GFile                  *content_path,
+                           gboolean                trusted,
+                           GInputStream          **out_input,
+                           GFileInfo             **out_file_info,
+                           GVariant              **out_xattrs,
+                           GCancellable           *cancellable,
+                           GError                **error)
+{
+  gboolean ret = FALSE;
+  guint64 length;
+  ot_lobj GInputStream *file_input = NULL;
+  ot_lobj GInputStream *ret_input = NULL;
+  ot_lobj GFileInfo *content_file_info = NULL;
+  ot_lobj GFileInfo *ret_file_info = NULL;
+  ot_lvariant GVariant *ret_xattrs = NULL;
+
+  file_input = (GInputStream*)g_file_read (content_path, cancellable, error);
+  if (!file_input)
+    goto out;
+
+  content_file_info = g_file_input_stream_query_info ((GFileInputStream*)file_input,
+                                                      OSTREE_GIO_FAST_QUERYINFO,
+                                                      cancellable, error);
+  if (!content_file_info)
+    goto out;
+
+  length = g_file_info_get_size (content_file_info);
+
+  if (!ostree_content_stream_parse (file_input, length, trusted,
+                                    out_input ? &ret_input : NULL,
+                                    &ret_file_info, &ret_xattrs,
+                                    cancellable, error))
+    goto out;
 
   ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);

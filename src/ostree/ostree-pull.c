@@ -843,7 +843,7 @@ store_file_from_pack (OtPullData          *pull_data,
     goto out;
 
   if (!ostree_raw_file_to_content_stream (input, file_info, xattrs,
-                                          &file_object_input, cancellable, error))
+                                          &file_object_input, NULL, cancellable, error))
     goto out;
   
   if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
