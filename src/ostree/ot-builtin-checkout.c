@@ -29,7 +29,6 @@
 
 #include <glib/gi18n.h>
 
-static char *opt_link_cache;
 static gboolean opt_user_mode;
 static gboolean opt_atomic_retarget;
 static gboolean opt_no_triggers;
@@ -38,7 +37,6 @@ static gboolean opt_union;
 static gboolean opt_from_stdin;
 
 static GOptionEntry options[] = {
-  { "link-cache", 0, 0, G_OPTION_ARG_STRING, &opt_link_cache, "Use directory as lookaside cache for hard links", NULL },
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialze extended attributes", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
@@ -122,7 +120,6 @@ process_one_checkout (OstreeRepo           *repo,
                       const char           *resolved_commit,
                       const char           *subpath,
                       GFile                *target,
-                      GFile                *link_cache,
                       GCancellable         *cancellable,
                       GError              **error)
 {
@@ -148,7 +145,7 @@ process_one_checkout (OstreeRepo           *repo,
 
   if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
                                   opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
-                                  link_cache, target, subtree, file_info, cancellable, error))
+                                  target, subtree, file_info, cancellable, error))
     goto out;
                       
   ret = TRUE;
@@ -158,7 +155,6 @@ process_one_checkout (OstreeRepo           *repo,
 
 static gboolean
 process_many_checkouts (OstreeRepo         *repo,
-                        GFile              *link_cache,
                         GFile              *target,
                         GCancellable       *cancellable,
                         GError            **error)
@@ -198,7 +194,7 @@ process_many_checkouts (OstreeRepo         *repo,
       if (!ostree_repo_resolve_rev (repo, revision, FALSE, &resolved_commit, error))
         goto out;
 
-      if (!process_one_checkout (repo, resolved_commit, subpath, target, link_cache,
+      if (!process_one_checkout (repo, resolved_commit, subpath, target,
                                  cancellable, error))
         goto out;
 
@@ -229,7 +225,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   ot_lfree char *resolved_commit = NULL;
   ot_lfree char *suffixed_destination = NULL;
   ot_lfree char *tmp_destination = NULL;
-  ot_lobj GFile *link_cache = NULL;
   ot_lobj GFileInfo *symlink_file_info = NULL;
   ot_lobj GFile *checkout_target = NULL;
   ot_lobj GFile *checkout_target_tmp = NULL;
@@ -255,9 +250,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
       goto out;
     }
 
-  if (opt_link_cache)
-    link_cache = ot_gfile_new_for_path (opt_link_cache);
-
   if (opt_from_stdin)
     {
       if (opt_atomic_retarget)
@@ -270,7 +262,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
       destination = argv[1];
       checkout_target = ot_gfile_new_for_path (destination);
 
-      if (!process_many_checkouts (repo, link_cache, checkout_target, cancellable, error))
+      if (!process_many_checkouts (repo, checkout_target, cancellable, error))
         goto out;
       
       if (!opt_no_triggers)
@@ -329,7 +321,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
         {
           if (!process_one_checkout (repo, resolved_commit, opt_subpath,
                                      checkout_target_tmp ? checkout_target_tmp : checkout_target,
-                                     link_cache, cancellable, error))
+                                     cancellable, error))
             goto out;
 
           if (!opt_no_triggers)

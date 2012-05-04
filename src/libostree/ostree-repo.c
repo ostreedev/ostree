@@ -3951,7 +3951,6 @@ static gboolean
 checkout_one_file (OstreeRepo                  *self,
                    OstreeRepoCheckoutMode    mode,
                    OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                   GFile                             *link_cache,
                    OstreeRepoFile           *src,
                    GFileInfo                *file_info,
                    GFile                    *destination,
@@ -3977,10 +3976,9 @@ checkout_one_file (OstreeRepo                  *self,
     {
       possible_loose_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
     }
-  else if (link_cache)
+  else if (priv->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      ot_lfree char *relpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE);
-      possible_loose_path = g_file_resolve_relative_path (link_cache, relpath);
+      possible_loose_path = ostree_repo_get_archive_content_path (self, checksum);
     }
 
   if (possible_loose_path && lstat (ot_gfile_get_path_cached (possible_loose_path), &stbuf) >= 0)
@@ -3998,23 +3996,6 @@ checkout_one_file (OstreeRepo                  *self,
       if (!checkout_file_from_input (destination, mode, overwrite_mode, file_info, xattrs, 
                                      input, cancellable, error))
         goto out;
-
-      if (link_cache)
-        {
-          ot_lobj GFile *parent = NULL;
-          g_assert (possible_loose_path);
-
-          parent = g_file_get_parent (possible_loose_path);
-          if (!ot_gfile_ensure_directory (parent, TRUE, error))
-            goto out;
-
-          if (link (ot_gfile_get_path_cached (destination),
-                    ot_gfile_get_path_cached (possible_loose_path)) < 0)
-            {
-              ot_util_set_error_from_errno (error, errno);
-              goto out;
-            }
-        }
     }
 
   ret = TRUE;
@@ -4026,7 +4007,6 @@ gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
                            OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                           GFile                    *link_cache,
                            GFile                    *destination,
                            OstreeRepoFile           *source,
                            GFileInfo                *source_info,
@@ -4071,14 +4051,14 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode, link_cache,
+          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode,
                                           dest_path, (OstreeRepoFile*)src_child, file_info,
                                           cancellable, error))
             goto out;
         }
       else
         {
-          if (!checkout_one_file (self, mode, overwrite_mode, link_cache,
+          if (!checkout_one_file (self, mode, overwrite_mode,
                                   (OstreeRepoFile*)src_child, file_info, 
                                   dest_path, cancellable, error))
             goto out;

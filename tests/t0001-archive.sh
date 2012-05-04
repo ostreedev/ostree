@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..23'
+echo '1..22'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -96,14 +96,6 @@ echo "ok fsck"
 cd ${test_tmpdir}
 $OSTREE checkout test2 checkout-test2-from-unpacked
 echo "ok checkout union 2"
-
-cd ${test_tmpdir}
-rm -rf test2
-mkdir linkcache
-$OSTREE checkout --user-mode --link-cache=linkcache test2 test2
-cd test2
-assert_file_has_content baz/cow moo
-echo "ok checkout link cache"
 
 $OSTREE pack --metadata-only
 echo "ok pack metadata"
