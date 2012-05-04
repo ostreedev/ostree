@@ -32,6 +32,10 @@ if test -n "${OT_TESTS_DEBUG}"; then
     set -x
 fi
 
+if test -n "$OT_TESTS_VALGRIND"; then
+    CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
+fi
+
 die () {
     if test -z "$OT_TESTS_SAVE_TEMPS"; then
         test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
@@ -70,7 +74,7 @@ setup_test_repository () {
     mkdir repo
     cd repo
     ot_repo="--repo=`pwd`"
-    export OSTREE="ostree ${ot_repo}"
+    export OSTREE="${CMD_PREFIX} ostree ${ot_repo}"
     if test "$mode" = "archive"; then
 	$OSTREE init --archive
     else
@@ -110,20 +114,20 @@ setup_fake_remote_repo1() {
     mkdir ostree-srv
     cd ostree-srv
     mkdir gnomerepo
-    ostree --repo=gnomerepo init --archive
+    ${CMD_PREFIX} ostree --repo=gnomerepo init --archive
     mkdir gnomerepo-files
     cd gnomerepo-files 
     echo first > firstfile
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
-    ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body"
+    ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body"
     mkdir baz/deeper
-    ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper"
     echo hi > baz/deeper/ohyeah
     mkdir baz/another/
     echo x > baz/another/y
-    ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest"
     cd ..
     rm -rf gnomerepo-files
     

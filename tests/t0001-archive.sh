@@ -38,12 +38,12 @@ echo "ok content"
 
 cd ${test_tmpdir}
 mkdir repo2
-ostree --repo=repo2 init
-ostree --repo=repo2 pull-local repo
+${CMD_PREFIX} ostree --repo=repo2 init
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 echo "ok local clone"
 
 cd ${test_tmpdir}
-ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
+${CMD_PREFIX} ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
 cd test2-checkout-from-local-clone
 assert_file_has_content baz/cow moo
 echo "ok local clone checkout"

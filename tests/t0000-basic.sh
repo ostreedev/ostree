@@ -131,12 +131,12 @@ echo "ok metadata content"
 
 cd ${test_tmpdir}
 mkdir repo2
-ostree --repo=repo2 init
-ostree --repo=repo2 pull-local repo
+${CMD_PREFIX} ostree --repo=repo2 init
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 echo "ok pull-local"
 
 cd ${test_tmpdir}
-ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
+${CMD_PREFIX} ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
 cd test2-checkout-from-local-clone
 assert_file_has_content yet/another/tree/green 'leaf'
 echo "ok local clone checkout"
@@ -223,9 +223,9 @@ echo "ok checkout link cache"
 cd ${test_tmpdir}
 rm -rf shadow-repo
 mkdir shadow-repo
-ostree --repo=shadow-repo init
-ostree --repo=shadow-repo config set core.parent $(pwd)/repo
+${CMD_PREFIX} ostree --repo=shadow-repo init
+${CMD_PREFIX} ostree --repo=shadow-repo config set core.parent $(pwd)/repo
 rm -rf test2-checkout
 parent_rev_test2=$(ostree --repo=repo rev-parse test2)
-ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-checkout
+${CMD_PREFIX} ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-checkout
 echo "ok checkout from shadow repo"

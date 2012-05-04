@@ -737,7 +737,7 @@ do_stats_gather_loose (OtRepackData  *data,
       OstreeObjectType objtype;
       gboolean is_loose;
       gboolean is_packed;
-      GVariant *pack_array;
+      ot_lvariant GVariant *pack_array = NULL;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 

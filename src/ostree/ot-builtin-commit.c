@@ -188,7 +188,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
                                       NULL, error);
           if (!metadata)
             goto out;
-          g_variant_ref_sink (metadata);
         }
       else if (metadata_bin_path)
         {
@@ -210,7 +209,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         {
           const char *s;
           const char *eq;
-          char *key;
+          ot_lfree char *key = NULL;
 
           s = *iter;
 

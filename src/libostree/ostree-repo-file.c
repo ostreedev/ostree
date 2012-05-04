@@ -65,6 +65,7 @@ ostree_repo_file_finalize (GObject *object)
   g_free (self->tree_contents_checksum);
   g_free (self->tree_metadata_checksum);
   g_free (self->commit);
+  g_clear_error (&self->commit_resolve_error);
   g_free (self->name);
 
   G_OBJECT_CLASS (ostree_repo_file_parent_class)->finalize (object);
@@ -400,6 +401,8 @@ ostree_repo_file_get_checksum (OstreeRepoFile  *self)
 
   self->cached_file_checksum = ostree_checksum_from_bytes_v (csum_bytes);
 
+  g_variant_unref (csum_bytes);
+
   return self->cached_file_checksum;
 }
 
@@ -721,7 +724,7 @@ bsearch_in_file_variant (GVariant  *variant,
   imin = 0;
   while (imax >= imin)
     {
-      GVariant *child;
+      ot_lvariant GVariant *child = NULL;
       const char *cur;
       int cmp;
 
@@ -741,11 +744,9 @@ bsearch_in_file_variant (GVariant  *variant,
         }
       else
         {
-          ot_clear_gvariant (&child);
           *out_pos = imid;
           return TRUE;
         }
-      ot_clear_gvariant (&child);
     }
 
   *out_pos = imid;

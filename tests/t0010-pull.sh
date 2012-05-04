@@ -26,10 +26,10 @@ echo '1..4'
 setup_fake_remote_repo1
 cd ${test_tmpdir}
 mkdir repo
-ostree --repo=repo init
-ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
-ostree-pull --repo=repo origin main
-ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree-pull --repo=repo origin main
+${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull"
 
 cd ${test_tmpdir}
@@ -43,10 +43,10 @@ cd ${test_tmpdir}
 ostree --repo=$(pwd)/ostree-srv/gnomerepo pack
 rm -rf repo
 mkdir repo
-ostree --repo=repo init
-ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
-ostree-pull --repo=repo origin main
-ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree-pull --repo=repo origin main
+${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull packed"
 
 cd ${test_tmpdir}

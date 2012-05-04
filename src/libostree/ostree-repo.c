@@ -265,13 +265,12 @@ parse_rev_file (OstreeRepo     *self,
 
   if (g_str_has_prefix (rev, "ref: "))
     {
-      GFile *ref;
+      ot_lobj GFile *ref = NULL;
       char *ref_sha256;
       gboolean subret;
 
       ref = g_file_resolve_relative_path (priv->local_heads_dir, rev + 5);
       subret = parse_rev_file (self, ref, &ref_sha256, error);
-      g_clear_object (&ref);
         
       if (!subret)
         {
@@ -3025,7 +3024,7 @@ list_loose_object_dir (OstreeRepo             *self,
           value = g_variant_new ("(b@as)",
                                  TRUE, g_variant_new_strv (NULL, 0));
           /* transfer ownership */
-          g_hash_table_replace (inout_objects, g_variant_ref_sink (key),
+          g_hash_table_replace (inout_objects, key,
                                 g_variant_ref_sink (value));
         }
     loop_next:
@@ -3870,7 +3869,7 @@ checkout_one_file (OstreeRepo                  *self,
 
       if (link_cache)
         {
-          ot_lobj GFile *parent;
+          ot_lobj GFile *parent = NULL;
           g_assert (possible_loose_path);
 
           parent = g_file_get_parent (possible_loose_path);
@@ -3907,8 +3906,6 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
   ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFile *src_child = NULL;
-  ot_lobj GFile *dest_path = NULL;
 
   if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
     goto out;
@@ -3931,14 +3928,13 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
     {
       const char *name;
       guint32 type;
+      ot_lobj GFile *dest_path = NULL;
+      ot_lobj GFile *src_child = NULL;
 
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
 
-      g_clear_object (&dest_path);
       dest_path = g_file_get_child (destination, name);
-
-      g_clear_object (&src_child);
       src_child = g_file_get_child ((GFile*)source, name);
 
       if (type == G_FILE_TYPE_DIRECTORY)

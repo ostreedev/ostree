@@ -441,18 +441,18 @@ ostree_content_stream_parse (GInputStream           *input,
   if (ret_file_info)
     g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
   
-  if (g_file_info_get_file_type (ret_file_info) != G_FILE_TYPE_REGULAR)
+  if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
+      && out_input)
     {
-      g_clear_object (&ret_input);
+      /* Give the input stream at its current position as return value;
+       * assuming the caller doesn't seek, this should be fine.  We might
+       * want to wrap it though in a non-seekable stream.
+       **/
+      ret_input = g_object_ref (input);
     }
 
   ret = TRUE;
-  /* Give the input stream at its current position as return value;
-   * assuming the caller doesn't seek, this should be fine.  We might
-   * want to wrap it though in a non-seekable stream.
-   **/
-  g_object_ref (input);
-  ot_transfer_out_value (out_input, &input);
+  ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
   ot_transfer_out_value (out_xattrs, &ret_xattrs);
  out:
@@ -1835,6 +1835,7 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
         goto out;
     }
   csum_v = NULL;
+  bloom = NULL;
 
   g_variant_get_child (superindex, 3, "a(ayay)", &content_iter);
   while (g_variant_iter_loop (content_iter, "(@ay@ay)",
@@ -1844,6 +1845,7 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
         goto out;
     }
   csum_v = NULL;
+  bloom = NULL;
 
   ret = TRUE;
  out:

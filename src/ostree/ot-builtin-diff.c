@@ -362,6 +362,7 @@ diff_dirs (GFile          *a,
   if (!dir_enum)
     goto out;
 
+  g_clear_object (&child_b_info);
   while ((child_b_info = g_file_enumerator_next_file (dir_enum, cancellable, &temp_error)) != NULL)
     {
       const char *name;
@@ -397,6 +398,7 @@ diff_dirs (GFile          *a,
               goto out;
             }
         }
+      g_clear_object (&child_b_info);
     }
   if (temp_error != NULL)
     {
@@ -498,5 +500,7 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
 
   ret = TRUE;
  out:
+  if (context)
+    g_option_context_free (context);
   return ret;
 }

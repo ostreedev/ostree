@@ -280,6 +280,7 @@ fetch_one_pack_file (OtPullData            *pull_data,
         goto out;
     }
 
+  g_clear_object (&ret_cached_path);
   if (!ostree_repo_get_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
                                                 pack_checksum, is_meta, &ret_cached_path,
                                                 cancellable, error))
@@ -1038,6 +1039,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
+  ot_lfree char *tmpstr = NULL;
   ot_lobj OstreeRepo *repo = NULL;
   ot_lfree char *path = NULL;
   ot_lfree char *baseurl = NULL;
@@ -1081,8 +1083,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 
   config = ostree_repo_get_config (repo);
 
-  key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
-  baseurl = g_key_file_get_string (config, key, "url", error);
+  tmpstr = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
+  baseurl = g_key_file_get_string (config, tmpstr, "url", error);
   if (!baseurl)
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
@@ -1248,8 +1250,10 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (context)
     g_option_context_free (context);
   g_clear_object (&pull_data->session);
+  g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
+  ot_clear_hashtable (&pull_data->file_checksums_to_fetch);
   ot_clear_ptrarray (&pull_data->cached_meta_pack_indexes);
   ot_clear_ptrarray (&pull_data->cached_data_pack_indexes);
   if (summary_uri)

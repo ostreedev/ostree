@@ -206,6 +206,10 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   ret = TRUE;
  out:
+  if (data.src_repo)
+    g_object_unref (data.src_repo);
+  if (data.dest_repo)
+    g_object_unref (data.dest_repo);
   if (context)
     g_option_context_free (context);
   return ret;
