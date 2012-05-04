@@ -169,6 +169,8 @@ void ostree_object_from_string (const char *str,
 char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
 
+char *ostree_get_relative_archive_content_path (const char        *checksum);
+
 char *ostree_get_pack_index_name (gboolean        is_meta,
                                   const char     *checksum);
 char *ostree_get_pack_data_name (gboolean        is_meta,

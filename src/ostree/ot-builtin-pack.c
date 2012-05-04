@@ -192,7 +192,7 @@ delete_loose_object (OtRepackData     *data,
 {
   gboolean ret = FALSE;
   ot_lobj GFile *object_path = NULL;
-  ot_lobj GFile *content_object_path = NULL;
+  ot_lobj GFile *file_content_object_path = NULL;
   ot_lvariant GVariant *archive_meta = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
@@ -204,6 +204,19 @@ delete_loose_object (OtRepackData     *data,
       g_prefix_error (error, "Failed to delete archived file metadata '%s'",
                       ot_gfile_get_path_cached (object_path));
       goto out;
+    }
+
+  if (objtype == OSTREE_OBJECT_TYPE_FILE
+      && ostree_repo_get_mode (data->repo) == OSTREE_REPO_MODE_ARCHIVE)
+    {
+      ot_lobj GFile *content_object_path = NULL;
+
+      content_object_path = ostree_repo_get_archive_content_path (data->repo, checksum);
+
+      /* Ignoring errors for now; later should only be trying to
+       * delete files with content.
+       */
+      (void) ot_gfile_unlink (object_path, NULL, NULL);
     }
 
   ret = TRUE;
@@ -252,7 +265,6 @@ pack_one_data_object (OtRepackData        *data,
   gboolean ret = FALSE;
   guchar entry_flags = 0;
   GInputStream *read_object_in; /* nofree */
-  ot_lobj GFile *object_path = NULL;
   ot_lobj GInputStream *input = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lvariant GVariant *xattrs = NULL;
@@ -274,8 +286,6 @@ pack_one_data_object (OtRepackData        *data,
         g_assert_not_reached ();
       }
     }
-
-  object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
   if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info, &xattrs,
                               cancellable, error))

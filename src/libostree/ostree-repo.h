@@ -77,6 +77,9 @@ GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
                                            const char   *object,
                                            OstreeObjectType type);
 
+GFile *       ostree_repo_get_archive_content_path (OstreeRepo    *self,
+                                                    const char    *checksum);
+
 GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
                                                 const char   *object);
 

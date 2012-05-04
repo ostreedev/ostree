@@ -868,8 +868,10 @@ fetch_content (OtPullData           *pull_data,
   GHashTableIter hash_iter;
   gpointer key, value;
   ot_lobj GFile *temp_path = NULL;
+  ot_lobj GFile *content_temp_path = NULL;
   ot_lhash GHashTable *data_packs_to_fetch = NULL;
   ot_lhash GHashTable *loose_files = NULL;
+  SoupURI *content_uri = NULL;
   guint n_objects_to_fetch = 0;
 
   data_packs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, 
@@ -953,14 +955,41 @@ fetch_content (OtPullData           *pull_data,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *checksum = key;
+      guint64 length;
       ot_lobj GInputStream *file_object_input = NULL;
+      ot_lvariant GVariant *file_meta = NULL;
+      ot_lobj GFileInfo *file_info = NULL;
+      ot_lvariant GVariant *xattrs = NULL;
+      ot_lobj GInputStream *content_input = NULL;
 
       if (!fetch_loose_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, &temp_path,
                                cancellable, error))
         goto out;
 
-      file_object_input = (GInputStream*)g_file_read (temp_path, cancellable, error);
-      if (!file_object_input)
+      if (!ot_util_variant_map (temp_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, &file_meta,
+                                error))
+        goto out;
+
+      if (!ostree_file_header_parse (file_meta, &file_info, &xattrs, error))
+        goto out;
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          ot_lfree char *content_path = ostree_get_relative_archive_content_path (checksum);
+          content_uri = suburi_new (pull_data->base_uri, content_path, NULL);
+
+          if (!fetch_uri (pull_data, content_uri, "filecontent", &content_temp_path,
+                          cancellable, error))
+            goto out;
+
+          content_input = (GInputStream*)g_file_read (content_temp_path, cancellable, error);
+          if (!content_input)
+            goto out;
+        }
+
+      if (!ostree_raw_file_to_content_stream (content_input, file_info, xattrs,
+                                              &file_object_input, &length,
+                                              cancellable, error))
         goto out;
 
       if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
@@ -971,8 +1000,12 @@ fetch_content (OtPullData           *pull_data,
 
   ret = TRUE;
  out:
+  if (content_uri)
+    soup_uri_free (content_uri);
   if (temp_path)
     (void) ot_gfile_unlink (temp_path, NULL, NULL);
+  if (content_temp_path)
+    (void) ot_gfile_unlink (content_temp_path, NULL, NULL);
   return ret;
 }
 

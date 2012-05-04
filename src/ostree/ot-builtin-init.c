@@ -35,7 +35,7 @@ static GOptionEntry options[] = {
 };
 
 #define DEFAULT_CONFIG_CONTENTS ("[core]\n" \
-                                 "repo_version=0\n")
+                                 "repo_version=1\n")
 
 
 gboolean
