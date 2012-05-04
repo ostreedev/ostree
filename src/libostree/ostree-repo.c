@@ -79,6 +79,7 @@ struct _OstreeRepoPrivate {
 
   gboolean inited;
   gboolean in_transaction;
+  GHashTable *loose_object_devino_hash;
 
   GKeyFile *config;
   OstreeRepoMode mode;
@@ -108,6 +109,8 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&priv->config_file);
   g_hash_table_destroy (priv->pack_index_mappings);
   g_hash_table_destroy (priv->pack_data_mappings);
+  if (priv->loose_object_devino_hash)
+    g_hash_table_destroy (priv->loose_object_devino_hash);
   if (priv->config)
     g_key_file_free (priv->config);
   ot_clear_ptrarray (&priv->cached_meta_indexes);
@@ -1114,6 +1117,186 @@ stage_object (OstreeRepo         *self,
   return ret;
 }
 
+static gboolean
+get_loose_object_dirs (OstreeRepo       *self,
+                       GPtrArray       **out_object_dirs,
+                       GCancellable     *cancellable,
+                       GError          **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GError *temp_error = NULL;
+  ot_lptrarray GPtrArray *ret_object_dirs = NULL;
+  ot_lobj GFileEnumerator *enumerator = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+
+  ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  enumerator = g_file_enumerate_children (priv->objects_dir, OSTREE_GIO_FAST_QUERYINFO, 
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, 
+                                          error);
+  if (!enumerator)
+    goto out;
+
+  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+    {
+      const char *name;
+      guint32 type;
+
+      name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
+      type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
+      
+      if (strlen (name) == 2 && type == G_FILE_TYPE_DIRECTORY)
+        {
+          GFile *objdir = g_file_get_child (priv->objects_dir, name);
+          g_ptr_array_add (ret_object_dirs, objdir);  /* transfer ownership */
+        }
+      g_clear_object (&file_info);
+    }
+  if (file_info == NULL && temp_error != NULL)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+  if (!g_file_enumerator_close (enumerator, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_object_dirs, &ret_object_dirs);
+ out:
+  return ret;
+}
+
+typedef struct {
+  dev_t dev;
+  ino_t ino;
+} OstreeDevIno;
+
+static guint
+devino_hash (gconstpointer a)
+{
+  OstreeDevIno *a_i = (gpointer)a;
+  return (guint) (a_i->dev + a_i->ino);
+}
+
+static int
+devino_equal (gconstpointer   a,
+              gconstpointer   b)
+{
+  OstreeDevIno *a_i = (gpointer)a;
+  OstreeDevIno *b_i = (gpointer)b;
+  return a_i->dev == b_i->dev
+    && a_i->ino == b_i->ino;
+}
+
+static gboolean
+scan_loose_devino (OstreeRepo                     *self,
+                   GCancellable                   *cancellable,
+                   GError                        **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  GError *temp_error = NULL;
+  guint i;
+  ot_lptrarray GPtrArray *object_dirs = NULL;
+  ot_lobj GFile *objdir = NULL;
+
+  if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
+    goto out;
+
+  for (i = 0; i < object_dirs->len; i++)
+    {
+      GFile *objdir = object_dirs->pdata[i];
+      ot_lobj GFileEnumerator *enumerator = NULL;
+      ot_lobj GFileInfo *file_info = NULL;
+      const char *dirname;
+
+      enumerator = g_file_enumerate_children (objdir, OSTREE_GIO_FAST_QUERYINFO, 
+                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                              cancellable, 
+                                              error);
+      if (!enumerator)
+        goto out;
+
+      dirname = ot_gfile_get_basename_cached (objdir);
+  
+      while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+        {
+          const char *name;
+          const char *dot;
+          guint32 type;
+          OstreeDevIno *key;
+          GString *checksum;
+
+          name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
+          type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
+
+          if (type == G_FILE_TYPE_DIRECTORY)
+            {
+              g_clear_object (&file_info);
+              continue;
+            }
+      
+          if (!((ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE
+                 && g_str_has_suffix (name, ".filecontent"))
+                || (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE
+                    && g_str_has_suffix (name, ".file"))))
+            {
+              g_clear_object (&file_info);
+              continue;
+            }
+
+          dot = strrchr (name, '.');
+          g_assert (dot);
+
+          if ((dot - name) != 62)
+            {
+              g_clear_object (&file_info);
+              continue;
+            }
+                  
+          checksum = g_string_new (dirname);
+          g_string_append_len (checksum, name, 62);
+          
+          key = g_new (OstreeDevIno, 1);
+          key->dev = g_file_info_get_attribute_uint32 (file_info, "unix::device");
+          key->ino = g_file_info_get_attribute_uint64 (file_info, "unix::inode");
+          
+          g_hash_table_replace (priv->loose_object_devino_hash, key,
+                                g_string_free (checksum, FALSE));
+          g_clear_object (&file_info);
+        }
+
+      if (temp_error != NULL)
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+      if (!g_file_enumerator_close (enumerator, NULL, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static const char *
+devino_cache_lookup (OstreeRepo           *self,
+                     GFileInfo            *finfo)
+{
+  OstreeDevIno dev_ino;
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+
+  if (!priv->loose_object_devino_hash)
+    return NULL;
+
+  dev_ino.dev = g_file_info_get_attribute_uint32 (finfo, "unix::device");
+  dev_ino.ino = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
+  return g_hash_table_lookup (priv->loose_object_devino_hash, &dev_ino);
+}
+
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  GCancellable   *cancellable,
@@ -1126,8 +1309,16 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   priv->in_transaction = TRUE;
 
+  if (!priv->loose_object_devino_hash)
+    {
+      priv->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
+    }
+  g_hash_table_remove_all (priv->loose_object_devino_hash);
+  if (!scan_loose_devino (self, cancellable, error))
+    goto out;
+
   ret = TRUE;
-  /* out: */
+ out:
   return ret;
 }
 
@@ -1144,6 +1335,8 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
   ret = TRUE;
   /* out: */
   priv->in_transaction = FALSE;
+  if (priv->loose_object_devino_hash)
+    g_hash_table_remove_all (priv->loose_object_devino_hash);
 
   return ret;
 }
@@ -1157,6 +1350,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
 
   priv->in_transaction = FALSE;
+  if (priv->loose_object_devino_hash)
+    g_hash_table_remove_all (priv->loose_object_devino_hash);
 
   ret = TRUE;
   return ret;
@@ -2589,40 +2784,52 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                 {
                   ot_lobj GInputStream *file_object_input = NULL;
                   guint64 file_obj_length;
+                  const char *loose_checksum;
 
-                  g_clear_object (&file_input);
-                  if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
+                  loose_checksum = devino_cache_lookup (self, child_info);
+
+                  if (loose_checksum)
                     {
-                      file_input = (GInputStream*)g_file_read (child, cancellable, error);
-                      if (!file_input)
+                      if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
+                                                             error))
                         goto out;
                     }
-
-                  if (!(modifier && modifier->skip_xattrs))
+                  else
                     {
-                      ot_clear_gvariant (&xattrs);
-                      if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
+                      g_clear_object (&file_input);
+                      if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
+                        {
+                          file_input = (GInputStream*)g_file_read (child, cancellable, error);
+                          if (!file_input)
+                            goto out;
+                        }
+
+                      if (!(modifier && modifier->skip_xattrs))
+                        {
+                          ot_clear_gvariant (&xattrs);
+                          if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
+                            goto out;
+                        }
+
+                      g_free (child_file_csum);
+                      child_file_csum = NULL;
+
+                      if (!ostree_raw_file_to_content_stream (file_input,
+                                                              modified_info, xattrs,
+                                                              &file_object_input, &file_obj_length,
+                                                              cancellable, error))
+                        goto out;
+                      if (!stage_object (self, OSTREE_REPO_STAGE_FLAGS_LENGTH_VALID,
+                                         OSTREE_OBJECT_TYPE_FILE, file_object_input, file_obj_length,
+                                         NULL, &child_file_csum, cancellable, error))
+                        goto out;
+
+                      g_free (tmp_checksum);
+                      tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
+                      if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
+                                                             error))
                         goto out;
                     }
-
-                  g_free (child_file_csum);
-                  child_file_csum = NULL;
-
-                  if (!ostree_raw_file_to_content_stream (file_input,
-                                                          modified_info, xattrs,
-                                                          &file_object_input, &file_obj_length,
-                                                          cancellable, error))
-                    goto out;
-                  if (!stage_object (self, OSTREE_REPO_STAGE_FLAGS_LENGTH_VALID,
-                                     OSTREE_OBJECT_TYPE_FILE, file_object_input, file_obj_length,
-                                     NULL, &child_file_csum, cancellable, error))
-                    goto out;
-
-                  g_free (tmp_checksum);
-                  tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
-                  if (!ostree_mutable_tree_replace_file (mtree, name, tmp_checksum,
-                                                         error))
-                    goto out;
                 }
 
               g_ptr_array_remove_index (path, path->len - 1);
@@ -3161,43 +3368,19 @@ list_loose_objects (OstreeRepo                     *self,
                     GError                        **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoPrivate *priv = GET_PRIVATE (self);
-  GError *temp_error = NULL;
-  ot_lobj GFileEnumerator *enumerator = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
+  guint i;
+  ot_lptrarray GPtrArray *object_dirs = NULL;
   ot_lobj GFile *objdir = NULL;
 
-  enumerator = g_file_enumerate_children (priv->objects_dir, OSTREE_GIO_FAST_QUERYINFO, 
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          cancellable, 
-                                          error);
-  if (!enumerator)
+  if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
 
-  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+  for (i = 0; i < object_dirs->len; i++)
     {
-      const char *name;
-      guint32 type;
-
-      name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
-      type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
-      
-      if (strlen (name) == 2 && type == G_FILE_TYPE_DIRECTORY)
-        {
-          g_clear_object (&objdir);
-          objdir = g_file_get_child (priv->objects_dir, name);
-          if (!list_loose_object_dir (self, objdir, inout_objects, cancellable, error))
-            goto out;
-        }
-      g_clear_object (&file_info);
+      GFile *objdir = object_dirs->pdata[i];
+      if (!list_loose_object_dir (self, objdir, inout_objects, cancellable, error))
+        goto out;
     }
-  if (file_info == NULL && temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
-  if (!g_file_enumerator_close (enumerator, cancellable, error))
-    goto out;
 
   ret = TRUE;
  out:
