@@ -417,6 +417,12 @@ ostree_content_stream_parse (GInputStream           *input,
                    (guint)archive_header_size, input_length);
       goto out;
     }
+  if (archive_header_size == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "File header size is zero");
+      goto out;
+    }
 
   /* Skip over padding */
   if (!g_input_stream_read_all (input,

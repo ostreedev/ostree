@@ -217,7 +217,10 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
           ot_clear_gvariant (&metadata);
           if (!ostree_repo_load_variant (data->repo, objtype,
                                          checksum, &metadata, error))
-            goto out;
+            {
+              g_prefix_error (error, "Loading metadata object %s: ", checksum);
+              goto out;
+            }
 
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
@@ -255,7 +258,10 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
           guint32 mode;
           if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info,
                                       &xattrs, cancellable, error))
-            goto out;
+            {
+              g_prefix_error (error, "Loading file object %s: ", checksum);
+              goto out;
+            }
 
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
