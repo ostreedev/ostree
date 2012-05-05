@@ -106,6 +106,7 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
     }
   else if (!strcmp (op, "set"))
     {
+      GKeyFile *readonly_config = NULL;
       ot_lfree char *value = NULL;
       if (argc < 3)
         {
@@ -119,9 +120,8 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
       if (!split_key_string (section_key, &section, &key, error))
         goto out;
 
-      config = g_key_file_ref (ostree_repo_get_config (repo));
-
-      value = g_key_file_get_string (config, section, key, error);
+      readonly_config = ostree_repo_get_config (repo);
+      value = g_key_file_get_string (readonly_config, section, key, error);
       if (value == NULL)
         goto out;
 

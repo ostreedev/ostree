@@ -28,7 +28,7 @@
 
 #include "otutil.h"
 
-#if GLIB_CHECK_VERSION(2,32,0)
+#if GLIB_CHECK_VERSION(2,32,0) && !defined(OSTREE_GLIB_TARGET_MIN)
 /* nothing */
 #else
 /* Code copied from glib/glib/genviron.c */

@@ -91,7 +91,7 @@ ot_util_variant_save (GFile *dest,
 GVariant *
 ot_util_variant_take_ref (GVariant *variant)
 {
-#if GLIB_CHECK_VERSION(2,32,0)
+#if GLIB_CHECK_VERSION(2,32,0) && !defined(OSTREE_GLIB_TARGET_MIN)
   return g_variant_take_ref (variant);
 #else
   if (g_variant_is_floating (variant))

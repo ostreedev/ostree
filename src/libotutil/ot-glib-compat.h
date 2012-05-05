@@ -27,10 +27,16 @@
 
 G_BEGIN_DECLS
 
-#if GLIB_CHECK_VERSION(2,32,0)
+#if GLIB_CHECK_VERSION(2,32,0) && !defined(OSTREE_GLIB_TARGET_MIN)
 #define ot_g_environ_getenv g_environ_getenv
 #define ot_g_environ_setenv g_environ_setenv
 #define ot_g_environ_unsetenv g_environ_unsetenv
+
+#define ot_mutex_init(v) do { g_mutex_init (&(v)); } while (0);
+#define ot_mutex_free(v) do { g_mutex_clear (&(v)); } while (0);
+#define ot_mutex_lock(v) do { g_mutex_lock (&(v)); } while (0);
+#define ot_mutex_unlock(v) do { g_mutex_unlock (&(v)); } while (0);
+
 #else
 const gchar *
 ot_g_environ_getenv (gchar       **envp,
@@ -45,6 +51,11 @@ ot_g_environ_setenv (gchar       **envp,
 gchar **
 ot_g_environ_unsetenv (gchar       **envp,
                        const gchar  *variable);
+
+#define ot_mutex_init(v) do { v = g_mutex_new (); } while (0);
+#define ot_mutex_free(v) do { g_mutex_free (v); } while (0);
+#define ot_mutex_lock(v) do { g_mutex_lock (v); } while (0);
+#define ot_mutex_unlock(v) do { g_mutex_unlock (v); } while (0);
 #endif
 
 
