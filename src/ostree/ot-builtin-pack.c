@@ -575,8 +575,6 @@ cluster_objects_stupidly (OtRepackData      *data,
   ot_lptrarray GPtrArray *ret_data_clusters = NULL;
   ot_lptrarray GPtrArray *meta_object_list = NULL;
   ot_lptrarray GPtrArray *data_object_list = NULL;
-  ot_lobj GFile *object_path = NULL;
-  ot_lobj GFileInfo *object_info = NULL;
 
   meta_object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
   data_object_list = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -589,21 +587,27 @@ cluster_objects_stupidly (OtRepackData      *data,
       OstreeObjectType objtype;
       guint64 size;
       GVariant *v;
+      ot_lobj GFile *object_path = NULL;
+      ot_lobj GFileInfo *object_info = NULL;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      g_clear_object (&object_path);
-      object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        {
+          object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
-      g_clear_object (&object_info);
-      object_info = g_file_query_info (object_path, OSTREE_GIO_FAST_QUERYINFO,
-                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                       cancellable, error);
-      if (!object_info)
-        goto out;
-
-      if (g_file_info_get_file_type (object_info) != G_FILE_TYPE_REGULAR)
-        continue;
+          object_info = g_file_query_info (object_path, OSTREE_GIO_FAST_QUERYINFO,
+                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                           cancellable, error);
+          if (!object_info)
+            goto out;
+        }
+      else
+        {
+          if (!ostree_repo_load_file (data->repo, checksum, NULL, &object_info, NULL,
+                                      cancellable, error))
+            goto out;
+        }
 
       size = g_file_info_get_attribute_uint64 (object_info, G_FILE_ATTRIBUTE_STANDARD_SIZE);
 
