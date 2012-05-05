@@ -71,9 +71,6 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         for ref,rev in zip(refs_to_resolve, resolved_refs):
             ref_to_rev[ref] = rev
 
-        link_cache_dir = os.path.join(self.workdir, 'link-cache')
-        fileutil.ensure_dir(link_cache_dir)
-
         sha = hashlib.sha256()
 
         (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-buildroot-')
@@ -116,12 +113,9 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             log("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
                                                                     checkout_trees[-1][0]))
 
-        link_cache_dir = os.path.join(self.workdir, 'link-cache')
-        fileutil.ensure_dir(link_cache_dir)
-
         run_sync(['ostree', '--repo=' + self.repo,
-                  'checkout', '--link-cache=' + link_cache_dir,
-                  '--user-mode', '--union', '--from-file=' + tmppath, rootdir_tmp])
+                  'checkout', '--user-mode', '--union',
+                  '--from-file=' + tmppath, rootdir_tmp])
 
         os.unlink(tmppath);
 

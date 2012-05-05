@@ -68,12 +68,8 @@ class OstbuildCompose(builtins.Builtin):
             f.write('\0')
         f.close()
 
-        link_cache_dir = os.path.join(self.workdir, 'link-cache')
-        fileutil.ensure_dir(link_cache_dir)
-
         run_sync(['ostree', '--repo=' + self.repo,
-                  'checkout', '--link-cache=' + link_cache_dir,
-                  '--user-mode', '--no-triggers',
+                  'checkout', '--user-mode', '--no-triggers',
                   '--union', '--from-stdin', compose_rootdir],
                  stdin=open(tmppath))
         os.unlink(tmppath)
