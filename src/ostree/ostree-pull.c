@@ -1072,7 +1072,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
-  ot_lfree char *tmpstr = NULL;
+  ot_lfree char *remote_key = NULL;
   ot_lobj OstreeRepo *repo = NULL;
   ot_lfree char *path = NULL;
   ot_lfree char *baseurl = NULL;
@@ -1116,8 +1116,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 
   config = ostree_repo_get_config (repo);
 
-  tmpstr = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
-  baseurl = g_key_file_get_string (config, tmpstr, "url", error);
+  remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
+  baseurl = g_key_file_get_string (config, remote_key, "url", error);
   if (!baseurl)
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
@@ -1160,7 +1160,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       GError *temp_error = NULL;
       gboolean fetch_all_refs;
 
-      configured_branches = g_key_file_get_string_list (config, key, "branches", NULL, &temp_error);
+      configured_branches = g_key_file_get_string_list (config, remote_key, "branches", NULL, &temp_error);
       if (configured_branches == NULL && temp_error != NULL)
         {
           if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
@@ -1193,9 +1193,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
         {
           char **branches_iter = configured_branches;
 
-          if (!*branches_iter)
+          if (!(branches_iter && *branches_iter))
             g_print ("No configured branches for remote %s\n", pull_data->remote_name);
-          for (;*branches_iter; branches_iter++)
+          for (;branches_iter && *branches_iter; branches_iter++)
             {
               const char *branch = *branches_iter;
               char *contents;
