@@ -97,6 +97,13 @@ parse_commit_from_symlink (GFile        *symlink,
     goto out;
 
   target = g_file_info_get_symlink_target (file_info);
+  if (target == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Not a symbolic link");
+      goto out;
+    }
+
   last_dash = strrchr (target, '-');
   if (last_dash == NULL)
     {
