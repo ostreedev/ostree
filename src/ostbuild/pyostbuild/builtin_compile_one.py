@@ -235,7 +235,7 @@ class OstbuildCompileOne(builtins.Builtin):
 
         endtime = time.time()
 
-        log("Compliation succeeded; %d seconds elapsed" % (int(endtime - starttime),))
+        log("Compilation succeeded; %d seconds elapsed" % (int(endtime - starttime),))
         log("Results placed in %s" % (self.ostbuild_resultdir, ))
 
     def _install_and_unlink(self, src, dest):
