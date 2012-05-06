@@ -338,7 +338,11 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
           skip_checkout = FALSE;
         }
 
-      if (!skip_checkout)
+      if (skip_checkout)
+        {
+          g_print ("ostree-checkout: Rev %s is already checked out as %s\n", commit, resolved_commit);
+        }
+      else
         {
           if (!process_one_checkout (repo, resolved_commit, opt_subpath,
                                      checkout_target_tmp ? checkout_target_tmp : checkout_target,
@@ -360,6 +364,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
                                         ot_gfile_get_basename_cached (checkout_target),
                                         cancellable, error))
                 goto out;
+              g_print ("ostree-checkout: Rev %s checked out as %s\n", commit, resolved_commit);
             }
         }
     }

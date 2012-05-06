@@ -23,6 +23,8 @@
 #ifndef __OSTREE_UTIL_H__
 #define __OSTREE_UTIL_H__
 
+#include <gio/gio.h>
+
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
 #define ot_clear_checksum(c) G_STMT_START {     \
   typeof(c) __tmp_chksum = c;                   \
@@ -47,6 +49,9 @@
 #include <ot-opt-utils.h>
 #include <ot-unix-utils.h>
 #include <ot-variant-utils.h>
+#include <ot-spawn-utils.h>
 #include <ot-checksum-utils.h>
+
+void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED; 
 
 #endif

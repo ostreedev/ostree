@@ -78,6 +78,34 @@ ot_gfile_ensure_directory (GFile     *dir,
 }
 
 GFile *
+ot_gfile_from_build_path (const char *first, ...)
+{
+  va_list args;
+  const char *arg;
+  ot_lfree char *path = NULL;
+  ot_lptrarray GPtrArray *components = NULL;  
+
+  va_start (args, first);
+
+  components = g_ptr_array_new ();
+  
+  arg = first;
+  while (arg != NULL)
+    {
+      g_ptr_array_add (components, (char*)arg);
+      arg = va_arg (args, const char *);
+    }
+
+  va_end (args);
+
+  g_ptr_array_add (components, NULL);
+
+  path = g_build_filenamev ((char**)components->pdata);
+
+  return g_file_new_for_path (path);
+}
+
+GFile *
 ot_gfile_get_child_strconcat (GFile *parent,
                               const char *first,
                               ...) 
