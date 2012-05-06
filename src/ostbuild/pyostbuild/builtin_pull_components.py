@@ -43,10 +43,10 @@ class OstbuildPullComponents(builtins.Builtin):
         parser.add_argument('targets', nargs='*')
 
         args = parser.parse_args(argv)
+        self.parse_config()
         self._init_repo()
 
         if len(args.targets) == 0:
-            self.parse_active_branch()
             targets = [self.active_branch]
         else:
             targets = args.targets
