@@ -39,6 +39,9 @@ EOF
     exit 1
 fi
 
+ARCH=i686
+BRANCH_PREFIX="gnomeos-3.4-${ARCH}-"
+
 mkdir -p /ostree
 
 cd /ostree
