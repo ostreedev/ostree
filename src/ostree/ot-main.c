@@ -140,7 +140,7 @@ ostree_main (int    argc,
   builtin = builtins;
   while (builtin->name)
     {
-      if (strcmp (cmd, builtin->name) == 0)
+      if (g_strcmp0 (cmd, builtin->name) == 0)
         break;
       builtin++;
     }
