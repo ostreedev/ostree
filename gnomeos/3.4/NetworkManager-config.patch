@@ -30,7 +30,7 @@ index e941e9b..e074873 100644
  	$(mkinstalldirs) -m 0755 $(DESTDIR)$(keyfiledir)
 -
 +	if $(install_keyfile_conf); then \
-+		install -m 0600 $(srcdir)/NetworkManager-keyfile.conf $(DESTDIR)/$(sysconfdir)/NetworkManager/NetworkManager.conf; \
++		install -m 0644 $(srcdir)/NetworkManager-keyfile.conf $(DESTDIR)/$(sysconfdir)/NetworkManager/NetworkManager.conf; \
 +	fi
 diff --git a/src/settings/plugins/keyfile/NetworkManager-keyfile.conf b/src/settings/plugins/keyfile/NetworkManager-keyfile.conf
 new file mode 100644
