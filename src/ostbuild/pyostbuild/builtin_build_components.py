@@ -80,10 +80,14 @@ class OstbuildBuildComponents(builtins.Builtin):
         sha.update(current_metadata_text)
         current_meta_digest = sha.hexdigest()
 
-        previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                      'rev-parse', buildname],
-                                                     stderr=open('/dev/null', 'w'),
-                                                     none_on_error=True)
+        if (self.buildopts.force_rebuild or
+            name in self.force_build_components):
+            previous_build_version = None
+        else:
+            previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                          'rev-parse', buildname],
+                                                         stderr=open('/dev/null', 'w'),
+                                                         none_on_error=True)
         if previous_build_version is not None:
             log("Previous build of '%s' is %s" % (name, previous_build_version))
 
@@ -97,14 +101,15 @@ class OstbuildBuildComponents(builtins.Builtin):
 
             if current_meta_digest == previous_meta_digest:
                 log("Metadata is unchanged from previous")
-                if self.buildopts.skip_built:
-                    return False
+                return False
             else:
                 current_vcs_version = component['revision']
                 previous_metadata = json.loads(previous_metadata_text)
                 previous_vcs_version = previous_metadata['revision']
                 if current_vcs_version == previous_vcs_version:
                     log("Metadata differs; VCS version unchanged")
+                    if self.buildopts.skip_vcs_matches:
+                        return False
                     for k,v in meta_copy.iteritems():
                         previous_v = previous_metadata.get(k)
                         if v != previous_v:
@@ -201,7 +206,8 @@ class OstbuildBuildComponents(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--skip-built', action='store_true')
+        parser.add_argument('--force-rebuild', action='store_true')
+        parser.add_argument('--skip-vcs-matches', action='store_true')
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
         parser.add_argument('--compose', action='store_true')
@@ -220,7 +226,10 @@ class OstbuildBuildComponents(builtins.Builtin):
 
         self.buildopts = BuildOptions()
         self.buildopts.shell_on_failure = args.shell_on_failure
-        self.buildopts.skip_built = args.skip_built
+        self.buildopts.force_rebuild = args.force_rebuild
+        self.buildopts.skip_vcs_matches = args.skip_vcs_matches
+
+        self.force_build_components = set()
 
         required_components = {}
         component_architectures = {}
@@ -247,6 +256,7 @@ class OstbuildBuildComponents(builtins.Builtin):
                 if component is None:
                     fatal("Unknown component %r" % (name, ))
                 build_component_order.append(name)
+                self.force_build_components.add(name)
 
         start_at_index = -1
         if args.start_at is not None:
