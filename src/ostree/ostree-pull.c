@@ -340,7 +340,7 @@ find_object_in_remote_packs (OtPullData       *pull_data,
                              GError          **error)
 {
   gboolean ret = FALSE;
-  guint64 ret_offset;
+  guint64 ret_offset = 0;
   guint i;
   GPtrArray *iter;
   ot_lvariant GVariant *csum_bytes_v = NULL;
