@@ -321,7 +321,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
                             "checkout", "--atomic-retarget", deploy_target, NULL);
       g_ptr_array_add (checkout_args, NULL);
 
-      if (!ot_spawn_sync_checked (NULL, (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
+      if (!ot_spawn_sync_checked ("/ostree", (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
                                   NULL, NULL, NULL, NULL, error))
         goto out;
 
