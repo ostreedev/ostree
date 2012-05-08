@@ -258,6 +258,38 @@ update_grub (const char         *release,
   return ret;
 }
 
+static gboolean
+update_current (const char         *last_deploy_target,
+                GCancellable       *cancellable,
+                GError            **error)
+{
+  gboolean ret = FALSE;
+  ot_lfree char *tmp_symlink = NULL;
+  ot_lfree char *current_name = NULL;
+
+  tmp_symlink = g_build_filename ("/ostree", "tmp-current", NULL);
+  (void) unlink (tmp_symlink);
+
+  if (symlink (last_deploy_target, tmp_symlink) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  current_name = g_build_filename ("/ostree", "current", NULL);
+  if (rename (tmp_symlink, current_name) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  g_print ("/ostree/current set to %s\n", last_deploy_target);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ot_admin_builtin_deploy (int argc, char **argv, GError **error)
 {
@@ -298,11 +330,12 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
 
   if (!opt_checkout_only)
     {
+
       struct utsname utsname;
       const char *release;
-
+  
       (void) uname (&utsname);
-      
+  
       if (strcmp (utsname.sysname, "Linux") != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -318,6 +351,9 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
       if (!update_grub (release, cancellable, error))
         goto out;
     }
+
+  if (!update_current (last_deploy_target, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
