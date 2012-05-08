@@ -30,6 +30,7 @@ triggers_SCRIPTS = \
 	src/triggers/triggers.d/0080gtk+.trigger \
 	src/triggers/triggers.d/0090desktop-database.trigger \
 	$(NULL)
+EXTRA_DIST += $(triggers_SCRIPTS)
 
 bin_PROGRAMS += ostree-run-triggers
 

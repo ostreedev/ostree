@@ -18,6 +18,7 @@
 ostbuild: src/ostbuild/ostbuild.in Makefile
 	sed -e s,@libdir\@,$(libdir), -e s,@datarootdir\@,$(datarootdir), -e s,@PYTHON\@,$(PYTHON), $< > $@.tmp && mv $@.tmp $@
 bin_SCRIPTS += ostbuild 
+EXTRA_DIST += src/ostbuild/ostbuild.in
 
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
