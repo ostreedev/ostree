@@ -1087,6 +1087,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   GKeyFile *config = NULL;
   char **configured_branches = NULL;
 
+  memset (pull_data, 0, sizeof (*pull_data));
+
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
   g_option_context_add_main_entries (context, options, NULL);
 
@@ -1097,7 +1099,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  memset (pull_data, 0, sizeof (*pull_data));
   pull_data->repo = repo;
   pull_data->file_checksums_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
