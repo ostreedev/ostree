@@ -91,14 +91,18 @@ class OstbuildCheckout(builtins.Builtin):
             patches = component.get('patches')
             if patches is not None:
                 (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
-                patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
-                vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
-                                     self.patchdir, patches['branch'],
-                                     overwrite=True)
+                if patches_keytype == 'git':
+                    patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
+                    vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
+                                         self.patchdir, patches['branch'],
+                                         overwrite=True)
+                    patchdir = self.patchdir
+                else:
+                    patchdir = patches_uri
 
                 patch_subdir = patches.get('subdir', None)
                 if patch_subdir is not None:
-                    patchdir = os.path.join(self.patchdir, patch_subdir)
+                    patchdir = os.path.join(patchdir, patch_subdir)
                 else:
                     patchdir = self.patchdir
                 for patch in patches['files']:
