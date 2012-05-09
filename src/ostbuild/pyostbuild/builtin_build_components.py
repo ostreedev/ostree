@@ -81,7 +81,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         current_meta_digest = sha.hexdigest()
 
         if (self.buildopts.force_rebuild or
-            name in self.force_build_components):
+            basename in self.force_build_components):
             previous_build_version = None
         else:
             previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
