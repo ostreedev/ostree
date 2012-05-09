@@ -100,7 +100,8 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch):
         os.rename(tmp_mirror, mirror)
     if branch is None:
         return mirror
-    last_fetch_path = mirror + '.lastfetch'
+    branch_safename = branch.replace('/','_').replace('.', '_')
+    last_fetch_path = mirror + '.lastfetch-%s' % (branch_safename, )
     if os.path.exists(last_fetch_path):
         f = open(last_fetch_path)
         last_fetch_contents = f.read()
