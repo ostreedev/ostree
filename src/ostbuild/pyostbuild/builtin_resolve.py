@@ -76,6 +76,7 @@ class OstbuildResolve(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
         parser.add_argument('--fetch', action='store_true')
+        parser.add_argument('--fetch-patches', action='store_true')
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
@@ -113,6 +114,8 @@ class OstbuildResolve(builtins.Builtin):
         global_patches_meta = self._resolve_component_meta(self.manifest['patches'])
         (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
         mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
+        if args.fetch_patches:
+            run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
         revision = buildutil.get_git_version_describe(mirrordir, global_patches_meta['branch'])
         global_patches_meta['revision'] = revision
 
