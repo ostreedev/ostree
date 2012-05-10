@@ -28,9 +28,11 @@
 #include "ot-main.h"
 
 gboolean verbose;
+gboolean opt_prefer_loose;
 
 static GOptionEntry options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
+  { "prefer-loose", 0, 0, G_OPTION_ARG_NONE, &opt_prefer_loose, "Download loose objects by default", NULL },
   { NULL },
 };
 
@@ -891,7 +893,7 @@ fetch_content (OtPullData           *pull_data,
                                        cancellable, error))
         goto out;
 
-      if (remote_pack_checksum)
+      if (remote_pack_checksum && !opt_prefer_loose)
         {
           files_to_fetch = g_hash_table_lookup (data_packs_to_fetch, remote_pack_checksum);
           if (files_to_fetch == NULL)
