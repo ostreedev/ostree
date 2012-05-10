@@ -187,6 +187,13 @@ class OstbuildBuildComponents(builtins.Builtin):
                                                  'rev-parse', base_name])
             base['ostree-revision'] = base_revision
 
+        if 'architecture-buildroots2' in bin_snapshot:
+            for arch,buildroot in bin_snapshot['architecture-buildroots2'].iteritems():
+                name = buildroot['name']
+                rev = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                           'rev-parse', name])
+                buildroot['ostree-revision'] = rev
+
         component_refs = []
         for name in components.iterkeys():
             for architecture in component_architectures[name]:

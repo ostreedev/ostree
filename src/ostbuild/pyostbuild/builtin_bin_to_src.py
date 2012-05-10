@@ -57,7 +57,10 @@ class OstbuildBinToSrc(builtins.Builtin):
             src_components[name] = meta
 
         for target in src_snapshot['targets']:
-            del target['base']['ostree-revision']
+            for content_item in target['contents']:
+                name = content_item['name']
+                rev = bin_components[name]
+                content_item['ostree-revision'] = rev
 
         return src_snapshot
 

@@ -150,6 +150,12 @@ class OstbuildResolve(builtins.Builtin):
         snapshot['architecture-buildroots'] = {}
         for architecture in manifest_architectures:
             snapshot['architecture-buildroots'][architecture] = '%s-%s-devel' % (base_prefix, architecture)
+        # Lame bit neeeded because I didn't have enough foresight to use an object
+        # for this in the first place, and I don't want to break backwards compatibility
+        # right now.
+        snapshot['architecture-buildroots2'] = {}
+        for architecture in manifest_architectures:
+            snapshot['architecture-buildroots2'][architecture] = {'name': 'bases/%s-%s-devel' % (base_prefix, architecture)}
 
         components_by_name = {}
         component_ordering = []

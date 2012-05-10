@@ -55,11 +55,27 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         dependencies = buildutil.build_depends(component_name, components)
         component = components.get(component_name)
 
-        buildroots = self.snapshot['architecture-buildroots']
-        base_devel_name = 'bases/' + buildroots[architecture]
+        ref_to_rev = {}
 
-        refs_to_resolve = [base_devel_name]
-        checkout_trees = [(base_devel_name, '/')]
+        arch_buildroot_name = None
+        arch_buildroot_rev = None
+        if 'architecture-buildroots2' in self.snapshot:
+            buildroots = self.snapshot['architecture-buildroots2']
+            arch_buildroot = buildroots[architecture]
+            arch_buildroot_name = arch_buildroot['name']
+            arch_buildroot_rev = arch_buildroot.get('ostree-revision')
+        else:
+            buildroots = self.snapshot['architecture-buildroots']
+            arch_rev_suffix = buildsroots['architecture']
+            arch_buildroot_name = 'bases/' + arch_rev_suffix
+
+        if arch_buildroot_rev is None:
+            arch_buildroot_rev = run_sync_get_output(['ostree', '--repo=' + self.repo, 'rev-parse',
+                                                      arch_buildroot_name]).strip()
+
+        ref_to_rev[arch_buildroot_name] = arch_buildroot_rev
+        checkout_trees = [(arch_buildroot_name, '/')]
+        refs_to_resolve = []
         for dependency_name in dependencies:
             buildname = 'components/%s/%s' % (dependency_name, architecture)
             refs_to_resolve.append(buildname)
@@ -67,7 +83,6 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             checkout_trees.append((buildname, '/devel'))
 
         resolved_refs = self._resolve_refs(refs_to_resolve)
-        ref_to_rev = {}
         for ref,rev in zip(refs_to_resolve, resolved_refs):
             ref_to_rev[ref] = rev
 
