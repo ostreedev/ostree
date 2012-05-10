@@ -40,56 +40,6 @@ typedef struct {
 } OtUnpackData;
 
 static gboolean
-gather_packed (OtUnpackData  *data,
-               GHashTable    *objects,
-               GHashTable   **out_packed,
-               GCancellable  *cancellable,
-               GError       **error)
-{
-  gboolean ret = FALSE;
-  gpointer key, value;
-  GHashTableIter hash_iter;
-  ot_lhash GHashTable *ret_packed = NULL;
-  ot_lvariant GVariant *pack_array = NULL;
-
-  ret_packed = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                      (GDestroyNotify) g_variant_unref,
-                                      NULL);
-
-  g_hash_table_iter_init (&hash_iter, objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      GVariant *serialized_key = key;
-      GVariant *key_copy;
-      GVariant *objdata = value;
-      const char *checksum;
-      OstreeObjectType objtype;
-      gboolean is_loose;
-      gboolean is_packed;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-
-      ot_clear_gvariant (&pack_array);
-      g_variant_get (objdata, "(b@as)", &is_loose, &pack_array);
-
-      is_packed = g_variant_n_children (pack_array) > 0;
-      
-      if (is_loose)
-        continue;
-
-      g_assert (is_packed);
-
-      key_copy = g_variant_ref (serialized_key);
-      g_hash_table_replace (ret_packed, key_copy, key_copy);
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_packed, &ret_packed);
- /* out: */
-  return ret;
-}
-
-static gboolean
 unpack_one_object (OstreeRepo        *repo,
                    const char        *checksum,
                    OstreeObjectType   objtype,
@@ -185,7 +135,6 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lobj OstreeRepo *repo = NULL;
   ot_lhash GHashTable *objects = NULL;
   ot_lptrarray GPtrArray *clusters = NULL;
-  ot_lhash GHashTable *packed_objects = NULL;
   ot_lhash GHashTable *meta_packfiles_to_delete = NULL;
   ot_lhash GHashTable *data_packfiles_to_delete = NULL;
   ot_lobj GFile *objpath = NULL;
@@ -214,9 +163,6 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects, cancellable, error))
     goto out;
 
-  if (!gather_packed (&data, objects, &packed_objects, cancellable, error))
-    goto out;
-
   if (!ostree_repo_prepare_transaction (repo, cancellable, error))
     goto out;
 
@@ -225,7 +171,7 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   meta_packfiles_to_delete = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   data_packfiles_to_delete = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
-  g_hash_table_iter_init (&hash_iter, packed_objects);
+  g_hash_table_iter_init (&hash_iter, objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       GVariant *objkey = key;
@@ -234,6 +180,7 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
       const char *pack_checksum;
       OstreeObjectType objtype;
       gboolean is_loose;
+      gboolean is_packed = FALSE;
       GVariantIter *pack_array_iter;
       GHashTable *target_hash;
 
@@ -243,16 +190,15 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
       g_assert (objdata);
 
       g_variant_get (objdata, "(bas)", &is_loose, &pack_array_iter);
-
-      g_assert (!is_loose);
-
+      
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         target_hash = meta_packfiles_to_delete;
       else
         target_hash = data_packfiles_to_delete;
-
+      
       while (g_variant_iter_loop (pack_array_iter, "&s", &pack_checksum))
         {
+          is_packed = TRUE;
           if (!g_hash_table_lookup (target_hash, pack_checksum))
             {
               gchar *duped_checksum = g_strdup (pack_checksum);
@@ -261,12 +207,13 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
         }
       g_variant_iter_free (pack_array_iter);
 
-      ostree_object_name_deserialize (objkey, &checksum, &objtype);
+      if (is_packed)
+        {
+          if (!unpack_one_object (repo, checksum, objtype, cancellable, error))
+            goto out;
 
-      if (!unpack_one_object (repo, checksum, objtype, cancellable, error))
-        goto out;
-
-      unpacked_object_count++;
+          unpacked_object_count++;
+        }
     }
 
   if (!ostree_repo_commit_transaction (repo, cancellable, error))
