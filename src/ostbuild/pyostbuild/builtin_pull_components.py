@@ -40,31 +40,19 @@ class OstbuildPullComponents(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('origin')
         parser.add_argument('targets', nargs='*')
+        parser.add_argument('--prefix')
+        parser.add_argument('--bin-snapshot')
 
         args = parser.parse_args(argv)
         self.parse_config()
-        self._init_repo()
+        self.parse_bin_snapshot(args.prefix, args.bin_snapshot)
 
-        if len(args.targets) == 0:
-            targets = [self.active_branch]
-        else:
-            targets = args.targets
-
-        tree_contents_list = []
-        for target in targets:
-            tree_contents_path = os.path.join(self.ostree_dir, target, 'contents.json')
-            tree_contents = json.load(open(tree_contents_path))
-            tree_contents_list.append(tree_contents)
-        revisions = set()
-        for tree_contents in tree_contents_list:
-            for component in tree_contents['components']:
-                revisions.add('components/' + component)
-        args = ['ostree-pull', '--repo=' + self.repo]
-        # FIXME FIXME - don't hardcode origin here
-        args.append('gnome')
-        for revision in revisions:
-            args.append(revision)
-        run_sync(args)
+        child_args = ['ostree-pull', '--repo=' + self.repo, '--prefer-loose',
+                      args.origin]
+        for component,revision in self.bin_snapshot['components'].iteritems():
+            child_args.append(revision)
+        run_sync(child_args)
         
 builtins.register(OstbuildPullComponents)
