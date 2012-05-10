@@ -37,7 +37,8 @@
 static gboolean opt_analyze_only;
 static gboolean opt_metadata_only;
 static gboolean opt_reindex_only;
-static gboolean opt_keep_loose;
+static gboolean opt_delete_all_loose;
+static gboolean opt_keep_all_loose;
 static char* opt_pack_size;
 static char* opt_int_compression;
 static char* opt_ext_compression;
@@ -55,7 +56,8 @@ static GOptionEntry options[] = {
   { "metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_metadata_only, "Only pack metadata objects", NULL },
   { "analyze-only", 0, 0, G_OPTION_ARG_NONE, &opt_analyze_only, "Just analyze current state", NULL },
   { "reindex-only", 0, 0, G_OPTION_ARG_NONE, &opt_reindex_only, "Regenerate pack index", NULL },
-  { "keep-loose", 0, 0, G_OPTION_ARG_NONE, &opt_keep_loose, "Don't delete loose objects", NULL },
+  { "delete-all-loose", 0, 0, G_OPTION_ARG_NONE, &opt_delete_all_loose, "Delete all loose objects (default: delete unreferenced loose)", NULL },
+  { "keep-all-loose", 0, 0, G_OPTION_ARG_NONE, &opt_keep_all_loose, "Don't delete any loose objects (default: delete unreferenced loose)", NULL },
   { NULL }
 };
 
@@ -191,32 +193,74 @@ delete_loose_object (OtRepackData     *data,
                      GError          **error)
 {
   gboolean ret = FALSE;
+  gboolean do_delete = FALSE;
+  GError *temp_error = NULL;
   ot_lobj GFile *object_path = NULL;
   ot_lobj GFile *file_content_object_path = NULL;
-  ot_lvariant GVariant *archive_meta = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
 
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
+
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
+    {
+      ot_lobj GFileInfo *file_info = NULL;
+
+      if (ostree_repo_get_mode (data->repo) == OSTREE_REPO_MODE_BARE)
+        {
+          file_info = g_file_query_info (object_path, OSTREE_GIO_FAST_QUERYINFO,
+                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                         cancellable, &temp_error);
+        }
+      else
+        {
+          ot_lobj GFile *content_object_path = NULL;
+        
+          content_object_path = ostree_repo_get_archive_content_path (data->repo, checksum);
+
+          file_info = g_file_query_info (content_object_path, OSTREE_GIO_FAST_QUERYINFO,
+                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                         cancellable, &temp_error);
+        }
   
-  if (!ot_gfile_unlink (object_path, cancellable, error))
-    {
-      g_prefix_error (error, "Failed to delete archived file metadata '%s'",
-                      ot_gfile_get_path_cached (object_path));
-      goto out;
+      if (!file_info)
+        {
+          if (!g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+          else
+            {
+              g_clear_error (&temp_error);
+            }
+        }
+          
+      do_delete = opt_delete_all_loose
+        || (file_info && g_file_info_get_attribute_uint32 (file_info, "unix::nlink") <= 1);
     }
+  else
+    do_delete = TRUE;
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE
-      && ostree_repo_get_mode (data->repo) == OSTREE_REPO_MODE_ARCHIVE)
+  if (do_delete)
     {
-      ot_lobj GFile *content_object_path = NULL;
+      if (!ot_gfile_unlink (object_path, cancellable, error))
+        {
+          g_prefix_error (error, "Failed to delete loose object '%s'",
+                          ot_gfile_get_path_cached (object_path));
+          goto out;
+        }
 
-      content_object_path = ostree_repo_get_archive_content_path (data->repo, checksum);
-
-      /* Ignoring errors for now; later should only be trying to
-       * delete files with content.
-       */
-      (void) ot_gfile_unlink (object_path, NULL, NULL);
+      if (objtype == OSTREE_OBJECT_TYPE_FILE
+          && ostree_repo_get_mode (data->repo) == OSTREE_REPO_MODE_ARCHIVE)
+        {
+          ot_lobj GFile *content_object_path = NULL;
+      
+          content_object_path = ostree_repo_get_archive_content_path (data->repo, checksum);
+      
+          /* Ignoring errors for now; later should only be trying to
+           * delete files with content.
+           */
+          (void) ot_gfile_unlink (content_object_path, NULL, NULL);
+        }
     }
 
   ret = TRUE;
@@ -475,7 +519,7 @@ create_pack_file (OtRepackData        *data,
 
   g_print ("Created pack file '%s' with %u objects\n", g_checksum_get_string (pack_checksum), objects->len);
 
-  if (!opt_keep_loose)
+  if (!opt_keep_all_loose)
     {
       for (i = 0; i < objects->len; i++)
         {
@@ -484,11 +528,11 @@ create_pack_file (OtRepackData        *data,
           guint32 objtype_u32;
           OstreeObjectType objtype;
           guint64 expected_objsize;
-
+      
           g_variant_get (object_data, "(&sut)", &checksum, &objtype_u32, &expected_objsize);
-          
+      
           objtype = (OstreeObjectType) objtype_u32;
-
+      
           if (!delete_loose_object (data, checksum, objtype, cancellable, error))
             goto out;
         }
