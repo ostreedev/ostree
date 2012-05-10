@@ -93,11 +93,13 @@ class Builtin(object):
         self.patchdir = os.path.join(self.workdir, 'patches')
 
     def load_bin_snapshot_from_path(self, path):
-        self.bin_snapshot_path = os.path.join(path, 'contents.json')
+        self.bin_snapshot_path = os.path.join(path, 'ostree-meta', 'contents.json')
+        if not os.path.exists(self.bin_snapshot_path):
+            self.bin_snapshot_path = os.path.join(path, 'contents.json')
         self.bin_snapshot = json.load(open(self.bin_snapshot_path))
         bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
-        if bin_ver != 0:
-            fatal("Unhandled 00ostree-bin-snapshot-version \"%d\", expected 0", bin_ver)
+        if bin_ver != 1:
+            fatal("Unhandled 00ostree-bin-snapshot-version %r, expected 1" % (bin_ver, ))
 
     def load_bin_snapshot_from_current(self):
         if self.ostree_dir is None:
@@ -211,8 +213,8 @@ class Builtin(object):
             self.bin_snapshot_path = path
         self.bin_snapshot = json.load(open(self.bin_snapshot_path))
         bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
-        if bin_ver != 0:
-            fatal("Unhandled 00ostree-bin-snapshot-version \"%d\", expected 0" % (bin_ver, ))
+        if bin_ver != 1:
+            fatal("Unhandled 00ostree-bin-snapshot-version %r, expected 1" % (bin_ver, ))
 
     def execute(self, args):
         raise NotImplementedError()

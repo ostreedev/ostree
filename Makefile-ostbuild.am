@@ -23,7 +23,6 @@ EXTRA_DIST += src/ostbuild/ostbuild.in
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
-	src/ostbuild/pyostbuild/builtin_bin_to_src.py	\
 	src/ostbuild/pyostbuild/builtin_branch_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_build_components.py	\
 	src/ostbuild/pyostbuild/builtin_checkout.py	\
@@ -38,7 +37,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
 	src/ostbuild/pyostbuild/builtin_modify_snapshot.py	\
-	src/ostbuild/pyostbuild/builtin_tree_to_bin.py	\
+	src/ostbuild/pyostbuild/builtin_tree_to_src.py	\
 	src/ostbuild/pyostbuild/builtin_init.py	\
 	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\

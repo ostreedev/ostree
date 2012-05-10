@@ -22,7 +22,6 @@ import sys
 import argparse
 
 from . import builtins
-from . import builtin_bin_to_src
 from . import builtin_build_components
 from . import builtin_branch_prefix
 from . import builtin_checkout
@@ -37,7 +36,7 @@ from . import builtin_privhelper_deploy_qemu
 from . import builtin_prefix
 from . import builtin_resolve
 from . import builtin_modify_snapshot
-from . import builtin_tree_to_bin
+from . import builtin_tree_to_src
 from . import builtin_init
 from . import builtin_status
 

@@ -41,7 +41,7 @@ class OstbuildCompose(builtins.Builtin):
         builtins.Builtin.__init__(self)
 
     def _compose_one_target(self, bin_snapshot, target):
-        components = bin_snapshot['components']
+        components = bin_snapshot['component-revisions']
         base = target['base']
         base_name = 'bases/%s' % (base['name'], )
         base_revision = target['base']['ostree-revision']

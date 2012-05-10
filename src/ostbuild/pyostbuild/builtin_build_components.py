@@ -178,7 +178,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         bin_snapshot = dict(self.snapshot)
 
         del bin_snapshot['00ostree-src-snapshot-version']
-        bin_snapshot['00ostree-bin-snapshot-version'] = 0
+        bin_snapshot['00ostree-bin-snapshot-version'] = 1
 
         for target in bin_snapshot['targets']:
             base = target['base']
@@ -199,14 +199,14 @@ class OstbuildBuildComponents(builtins.Builtin):
             for architecture in component_architectures[name]:
                 component_refs.append('components/%s/%s' % (name, architecture))
 
-        new_components = {}
+        component_revisions = {}
         resolved_refs = self._resolve_refs(component_refs)
         for name,rev in zip(components.iterkeys(), resolved_refs):
             for architecture in component_architectures[name]:
                 archname = '%s/%s' % (name, architecture)
-                new_components[archname] = rev
+                component_revisions[archname] = rev
 
-        bin_snapshot['components'] = new_components
+        bin_snapshot['component-revisions'] = component_revisions
 
         path = self.get_bin_snapshot_db().store(bin_snapshot)
         log("Binary snapshot: %s" % (path, ))
@@ -218,6 +218,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
         parser.add_argument('--compose', action='store_true')
+        parser.add_argument('--compose-only', action='store_true')
         parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
@@ -276,11 +277,12 @@ class OstbuildBuildComponents(builtins.Builtin):
         else:
             start_at_index = 0
 
-        for component_name in build_component_order[start_at_index:]:
-            component = required_components[component_name]
-            architectures = component_architectures[component_name]
-            for architecture in architectures:
-                self._build_one_component(component_name, component, architecture)
+        if not args.compose_only:
+            for component_name in build_component_order[start_at_index:]:
+                component = required_components[component_name]
+                architectures = component_architectures[component_name]
+                for architecture in architectures:
+                    self._build_one_component(component_name, component, architecture)
 
         self._save_bin_snapshot(required_components, component_architectures)   
 
