@@ -31,7 +31,10 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 
+static gboolean opt_keep_packs;
+
 static GOptionEntry options[] = {
+  { "keep-packs", 0, 0, G_OPTION_ARG_NONE, &opt_keep_packs, "Don't delete pack files", NULL },
   { NULL }
 };
 
@@ -219,34 +222,39 @@ ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_commit_transaction (repo, cancellable, error))
     goto out;
 
-  if (g_hash_table_size (meta_packfiles_to_delete) == 0
-      && g_hash_table_size (data_packfiles_to_delete) == 0)
-    g_print ("No pack files; nothing to do\n");
-
-  g_hash_table_iter_init (&hash_iter, meta_packfiles_to_delete);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  if (!opt_keep_packs)
     {
-      const char *pack_checksum = key;
-
-      if (!delete_one_packfile (repo, pack_checksum, TRUE, cancellable, error))
-        goto out;
+      if (g_hash_table_size (meta_packfiles_to_delete) == 0
+          && g_hash_table_size (data_packfiles_to_delete) == 0)
+        g_print ("No pack files; nothing to do\n");
       
-      g_print ("Deleted packfile '%s'\n", pack_checksum);
+      g_hash_table_iter_init (&hash_iter, meta_packfiles_to_delete);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *pack_checksum = key;
+
+          if (!delete_one_packfile (repo, pack_checksum, TRUE, cancellable, error))
+            goto out;
+      
+          g_print ("Deleted packfile '%s'\n", pack_checksum);
+        }
+
+      g_hash_table_iter_init (&hash_iter, data_packfiles_to_delete);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *pack_checksum = key;
+
+          if (!delete_one_packfile (repo, pack_checksum, FALSE, cancellable, error))
+            goto out;
+      
+          g_print ("Deleted packfile '%s'\n", pack_checksum);
+        }
+
+      if (!ostree_repo_regenerate_pack_index (repo, cancellable, error))
+        goto out;
     }
 
-  g_hash_table_iter_init (&hash_iter, data_packfiles_to_delete);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *pack_checksum = key;
-
-      if (!delete_one_packfile (repo, pack_checksum, FALSE, cancellable, error))
-        goto out;
-      
-      g_print ("Deleted packfile '%s'\n", pack_checksum);
-    }
-
-  if (!ostree_repo_regenerate_pack_index (repo, cancellable, error))
-    goto out;
+  g_print ("Unpacked %" G_GUINT64_FORMAT " objects\n", unpacked_object_count);
 
   ret = TRUE;
  out:
