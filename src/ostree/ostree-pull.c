@@ -1062,7 +1062,46 @@ parse_ref_summary (const char    *contents,
   g_strfreev (lines);
   return ret;
 }
-                      
+
+static gboolean
+repo_get_string_key_inherit (OstreeRepo          *repo,
+                             const char          *section,
+                             const char          *key,
+                             char               **out_value,
+                             GError             **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  GKeyFile *config;
+  ot_lfree char *ret_value = NULL;
+
+  config = ostree_repo_get_config (repo);
+
+  ret_value = g_key_file_get_value (config, section, key, &temp_error);
+  if (temp_error)
+    {
+      OstreeRepo *parent = ostree_repo_get_parent (repo);
+      if (parent &&
+          (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND)
+           || g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND)))
+        {
+          g_clear_error (&temp_error);
+          if (!repo_get_string_key_inherit (parent, section, key, &ret_value, error))
+            goto out;
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_value, &ret_value);
+ out:
+  return ret;
+}
+
 static gboolean
 ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
@@ -1118,8 +1157,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   config = ostree_repo_get_config (repo);
 
   remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
-  baseurl = g_key_file_get_string (config, remote_key, "url", error);
-  if (!baseurl)
+  if (!repo_get_string_key_inherit (repo, remote_key, "url", &baseurl, error))
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
 

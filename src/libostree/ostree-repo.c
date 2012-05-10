@@ -781,6 +781,22 @@ ostree_repo_get_mode (OstreeRepo  *self)
   return priv->mode;
 }
 
+/**
+ * ostree_repo_get_parent:
+ * @self:
+ * 
+ * Before this function can be used, ostree_repo_init() must have been
+ * called.
+ *
+ * Returns: (transfer none): Parent repository, or %NULL if none
+ */
+OstreeRepo *
+ostree_repo_get_parent (OstreeRepo  *self)
+{
+  OstreeRepoPrivate *priv = GET_PRIVATE (self);
+  return priv->parent_repo;
+}
+
 GFile *
 ostree_repo_get_file_object_path (OstreeRepo   *self,
                                   const char   *checksum)
