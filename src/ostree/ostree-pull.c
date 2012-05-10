@@ -994,9 +994,9 @@ fetch_content (OtPullData           *pull_data,
                                               cancellable, error))
         goto out;
 
-      if (!ostree_repo_stage_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
-                                     file_object_input,
-                                     cancellable, error))
+      if (!ostree_repo_stage_file_object (pull_data->repo, checksum,
+                                          file_object_input, length,
+                                          cancellable, error))
         goto out;
     }
 
