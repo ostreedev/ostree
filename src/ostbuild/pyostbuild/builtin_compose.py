@@ -59,20 +59,25 @@ class OstbuildCompose(builtins.Builtin):
             for subpath in subtrees:
                 compose_contents.append((rev, subpath))
 
-        (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
-        f = os.fdopen(fd, 'w')
+        (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        related_f = os.fdopen(related_fd, 'w')
+        contents_f = os.fdopen(contents_fd, 'w')
         for (branch, subpath) in compose_contents:
-            f.write(branch)
-            f.write('\0')
-            f.write(subpath)
-            f.write('\0')
-        f.close()
+            related_f.write(' ') 
+            related_f.write(branch) 
+            related_f.write('\n') 
+            contents_f.write(branch)
+            contents_f.write('\0')
+            contents_f.write(subpath)
+            contents_f.write('\0')
+        related_f.close()
+        contents_f.close()
 
         run_sync(['ostree', '--repo=' + self.repo,
-                  'checkout', '--user-mode', '--no-triggers',
-                  '--union', '--from-stdin', compose_rootdir],
-                 stdin=open(tmppath))
-        os.unlink(tmppath)
+                  'checkout', '--user-mode', '--no-triggers', '--union', 
+                  '--from-file=' + contents_tmppath, compose_rootdir])
+        os.unlink(contents_tmppath)
 
         contents_path = os.path.join(compose_rootdir, 'contents.json')
         f = open(contents_path, 'w')
@@ -82,7 +87,9 @@ class OstbuildCompose(builtins.Builtin):
         run_sync(['ostree', '--repo=' + self.repo,
                   'commit', '-b', target['name'], '-s', 'Compose',
                   '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                  '--related-objects-file=' + related_tmppath,
                   '--skip-if-unchanged'], cwd=compose_rootdir)
+        os.unlink(related_tmppath)
         shutil.rmtree(compose_rootdir)
 
     def execute(self, argv):
