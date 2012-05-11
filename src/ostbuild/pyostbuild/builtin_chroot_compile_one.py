@@ -66,7 +66,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             arch_buildroot_rev = arch_buildroot.get('ostree-revision')
         else:
             buildroots = self.snapshot['architecture-buildroots']
-            arch_rev_suffix = buildsroots['architecture']
+            arch_rev_suffix = buildroots[architecture]
             arch_buildroot_name = 'bases/' + arch_rev_suffix
 
         if arch_buildroot_rev is None:

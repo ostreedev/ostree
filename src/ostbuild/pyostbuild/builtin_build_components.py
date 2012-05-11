@@ -286,7 +286,7 @@ class OstbuildBuildComponents(builtins.Builtin):
 
         self._save_bin_snapshot(required_components, component_architectures)   
 
-        if args.compose:
+        if args.compose or args.compose_only:
             run_sync(['ostbuild', 'compose', '--prefix=' + self.prefix])
         
 builtins.register(OstbuildBuildComponents)
