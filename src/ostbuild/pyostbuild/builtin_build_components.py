@@ -183,28 +183,34 @@ class OstbuildBuildComponents(builtins.Builtin):
         for target in bin_snapshot['targets']:
             base = target['base']
             base_name = 'bases/%s' % (base['name'], )
-            base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                 'rev-parse', base_name])
-            base['ostree-revision'] = base_revision
+            if 'ostree-revision' not in target:
+                base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                     'rev-parse', base_name])
+                base['ostree-revision'] = base_revision
 
         if 'architecture-buildroots2' in bin_snapshot:
             for arch,buildroot in bin_snapshot['architecture-buildroots2'].iteritems():
                 name = buildroot['name']
-                rev = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                           'rev-parse', name])
-                buildroot['ostree-revision'] = rev
+                if 'ostree-revision' not in buildroot:
+                    rev = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                               'rev-parse', name])
+                    buildroot['ostree-revision'] = rev
 
-        component_refs = []
+        component_revisions = bin_snapshot.get('component-revisions', {})
+
+        component_refs_to_resolve = []
         for name in components.iterkeys():
             for architecture in component_architectures[name]:
-                component_refs.append('components/%s/%s' % (name, architecture))
-
-        component_revisions = {}
-        resolved_refs = self._resolve_refs(component_refs)
-        for name,rev in zip(components.iterkeys(), resolved_refs):
-            for architecture in component_architectures[name]:
                 archname = '%s/%s' % (name, architecture)
-                component_revisions[archname] = rev
+                if archname not in component_revisions:
+                    component_refs_to_resolve.append('components/' + archname)
+
+        if len(component_refs_to_resolve) > 0:
+            resolved_refs = self._resolve_refs(component_refs_to_resolve)
+            for name,rev in zip(components.iterkeys(), resolved_refs):
+                for architecture in component_architectures[name]:
+                    archname = '%s/%s' % (name, architecture)
+                    component_revisions[archname] = rev
 
         bin_snapshot['component-revisions'] = component_revisions
 
@@ -224,13 +230,23 @@ class OstbuildBuildComponents(builtins.Builtin):
         parser.add_argument('--debug-shell', action='store_true')
         parser.add_argument('components', nargs='*')
 
+
+        
         args = parser.parse_args(argv)
         self.args = args
         
         self.parse_config()
         self.parse_snapshot(args.prefix, args.src_snapshot)
 
-        log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
+        component_revisions = self.snapshot.get('component-revisions', {})
+
+        if component_revisions is not None:
+            snapshot_type = "source+binary"
+        else:
+            snapshot_type = "source"
+
+        log("Using %s snapshot: %s" % (snapshot_type,
+                                       os.path.basename(self.snapshot_path), ))
 
         self.buildopts = BuildOptions()
         self.buildopts.shell_on_failure = args.shell_on_failure
@@ -277,12 +293,26 @@ class OstbuildBuildComponents(builtins.Builtin):
         else:
             start_at_index = 0
 
+        components_to_build = []
+        component_skipped_count = 0
+
         if not args.compose_only:
             for component_name in build_component_order[start_at_index:]:
                 component = required_components[component_name]
                 architectures = component_architectures[component_name]
                 for architecture in architectures:
-                    self._build_one_component(component_name, component, architecture)
+                    archname = '%s/%s' % (component_name, architecture)
+                    if (component_revisions is not None and 
+                        archname in component_revisions):
+                        component_skipped_count += 1
+                    else:
+                        components_to_build.append((component_name, component, architecture))
+
+            log("%d components to build" % (len(components_to_build), ))
+            if component_skipped_count > 0:
+                log("%d components skipped due to existing component-revisions" % (component_skipped_count, ))
+            for (component_name, component, architecture) in components_to_build:
+                self._build_one_component(component_name, component, architecture)
 
         self._save_bin_snapshot(required_components, component_architectures)   
 
