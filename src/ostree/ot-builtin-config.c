@@ -104,7 +104,7 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
       if (!ostree_repo_write_config (repo, config, error))
         goto out;
     }
-  else if (!strcmp (op, "set"))
+  else if (!strcmp (op, "get"))
     {
       GKeyFile *readonly_config = NULL;
       ot_lfree char *value = NULL;
