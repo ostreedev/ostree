@@ -29,10 +29,12 @@
 
 gboolean verbose;
 gboolean opt_prefer_loose;
+gboolean opt_related;
 
 static GOptionEntry options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
   { "prefer-loose", 0, 0, G_OPTION_ARG_NONE, &opt_prefer_loose, "Download loose objects by default", NULL },
+  { "related", 0, 0, G_OPTION_ARG_NONE, &opt_related, "Download related commits", NULL },
   { NULL },
 };
 
@@ -666,6 +668,7 @@ fetch_and_store_metadata (OtPullData          *pull_data,
 
 static gboolean
 fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
+                                       int           depth,
                                        const char   *rev,
                                        GCancellable *cancellable,
                                        GError      **error)
@@ -677,6 +680,13 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
   ot_lvariant GVariant *dirs_variant = NULL;
   ot_lobj GFile *stored_path = NULL;
   ot_lfree char *pack_checksum = NULL;
+
+  if (depth > OSTREE_MAX_RECURSION)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Exceeded maximum recursion");
+      goto out;
+    }
 
   if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_DIR_TREE,
                                  &tree, cancellable, error))
@@ -726,7 +736,7 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
 
       g_free (tmp_checksum);
       tmp_checksum = ostree_checksum_from_bytes_v (tree_csum);
-      if (!fetch_and_store_tree_metadata_recurse (pull_data, tmp_checksum, cancellable, error))
+      if (!fetch_and_store_tree_metadata_recurse (pull_data, depth+1, tmp_checksum, cancellable, error))
         goto out;
     }
 
@@ -737,15 +747,18 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
 
 static gboolean
 fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
+                                         int           depth,
                                          const char   *rev,
                                          GCancellable *cancellable,
                                          GError      **error)
 {
   gboolean ret = FALSE;
   ot_lvariant GVariant *commit = NULL;
+  ot_lvariant GVariant *related_objects = NULL;
   ot_lvariant GVariant *tree_contents_csum = NULL;
   ot_lvariant GVariant *tree_meta_csum = NULL;
   ot_lfree char *tmp_checksum = NULL;
+  GVariantIter *iter = NULL;
 
   if (!fetch_and_store_metadata (pull_data, rev, OSTREE_OBJECT_TYPE_COMMIT,
                                  &commit, cancellable, error))
@@ -763,12 +776,39 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
   
   g_free (tmp_checksum);
   tmp_checksum = ostree_checksum_from_bytes_v (tree_contents_csum);
-  if (!fetch_and_store_tree_metadata_recurse (pull_data, tmp_checksum,
+  if (!fetch_and_store_tree_metadata_recurse (pull_data, depth, tmp_checksum,
                                               cancellable, error))
     goto out;
 
+  if (opt_related)
+    {
+      const char *name;
+      ot_lvariant GVariant *csum_v = NULL;
+
+      if (depth > OSTREE_MAX_RECURSION)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Exceeded maximum recursion");
+          goto out;
+        }
+
+      related_objects = g_variant_get_child_value (commit, 2);
+      iter = g_variant_iter_new (related_objects);
+
+      while (g_variant_iter_loop (iter, "(&s@ay)", &name, &csum_v))
+        {
+          ot_lfree char *checksum = ostree_checksum_from_bytes_v (csum_v);
+
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, depth+1, checksum,
+                                                        cancellable, error))
+            goto out;
+        }
+    }
+
   ret = TRUE;
  out:
+  if (iter)
+    g_variant_iter_free (iter);
   return ret;
 }
 
@@ -1258,7 +1298,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     {
       const char *commit = value;
       
-      if (!fetch_and_store_commit_metadata_recurse (pull_data, commit, cancellable, error))
+      if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, commit,
+                                                    cancellable, error))
         goto out;
     }
 
@@ -1286,7 +1327,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
           if (!ostree_validate_checksum_string (sha256, error))
             goto out;
 
-          if (!fetch_and_store_commit_metadata_recurse (pull_data, sha256, cancellable, error))
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, sha256, cancellable, error))
             goto out;
          
           g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));

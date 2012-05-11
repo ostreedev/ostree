@@ -37,6 +37,7 @@ static char *parent;
 static char *branch;
 static char **metadata_strings;
 static char *statoverride_file;
+static char *opt_related_objects_file;
 static gboolean skip_if_unchanged;
 static gboolean tar_autocreate_parents;
 static gboolean no_xattrs;
@@ -59,6 +60,7 @@ static GOptionEntry options[] = {
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &statoverride_file, "File containing list of modifications to make to permissions", "path" },
+  { "related-objects-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_related_objects_file, "File containing newline-separated pairs of (checksum SPACE name) of related objects", "path" },
   { NULL }
 };
 
@@ -115,6 +117,74 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   return ret;
 }
 
+static gboolean
+parse_related_objects_file (GVariant     **out_related_objects,
+                            GCancellable  *cancellable,
+                            GError        **error)
+{
+  gboolean ret = FALSE;
+  gsize len;
+  char **iter = NULL; /* nofree */
+  ot_lhash GHashTable *ret_hash = NULL;
+  ot_lvariant GVariant *ret_related_objects = NULL;
+  ot_lobj GFile *path = NULL;
+  ot_lfree char *contents = NULL;
+  GVariantBuilder builder;
+  gboolean builder_initialized = FALSE;
+  char **lines = NULL;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(say)"));
+  builder_initialized = TRUE;
+
+  path = ot_gfile_new_for_path (opt_related_objects_file);
+
+  if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
+                             error))
+    goto out;
+  
+  lines = g_strsplit (contents, "\n", -1);
+
+  for (iter = lines; iter && *iter; iter++)
+    {
+      const char *line = *iter;
+      const char *spc;
+      ot_lfree char *name = NULL;
+
+      if (!*line)
+        break;
+
+      spc = strchr (line, ' ');
+      if (!spc)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Malformed related objects file");
+          goto out;
+        }
+
+      name = g_strndup (line, spc - line);
+
+      if (!ostree_validate_checksum_string (spc + 1, error))
+        goto out;
+
+      {
+        GVariant *csum_bytes_v = ostree_checksum_to_bytes_v (spc + 1);
+        g_variant_builder_add (&builder, "(s@ay)", name, csum_bytes_v);
+      }
+    }
+
+  ret_related_objects = g_variant_builder_end (&builder);
+  g_variant_ref_sink (ret_related_objects);
+  builder_initialized = FALSE;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_related_objects, &ret_related_objects);
+ out:
+  if (builder_initialized)
+    g_variant_builder_clear (&builder);
+  g_strfreev (lines);
+  return ret;
+}
+
 static OstreeRepoCommitFilterResult
 commit_filter (OstreeRepo         *self,
                const char         *path,
@@ -155,6 +225,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lfree char *commit_checksum = NULL;
   ot_lvariant GVariant *parent_commit = NULL;
   ot_lvariant GVariant *metadata = NULL;
+  ot_lvariant GVariant *related_objects = NULL;
   ot_lobj GFile *metadata_f = NULL;
   ot_lfree char *contents_checksum = NULL;
   ot_lobj OstreeMutableTree *mtree = NULL;
@@ -233,6 +304,12 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   if (statoverride_file)
     {
       if (!parse_statoverride_file (&mode_adds, cancellable, error))
+        goto out;
+    }
+
+  if (opt_related_objects_file)
+    {
+      if (!parse_related_objects_file (&related_objects, cancellable, error))
         goto out;
     }
 
@@ -390,7 +467,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         }
 
       if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
-                                     contents_checksum, root_metadata,
+                                     related_objects, contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
 
