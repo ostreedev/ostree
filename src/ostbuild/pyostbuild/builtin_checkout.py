@@ -42,35 +42,32 @@ class OstbuildCheckout(builtins.Builtin):
         parser.add_argument('--overwrite', action='store_true')
         parser.add_argument('--prefix')
         parser.add_argument('--snapshot')
+        parser.add_argument('--checkoutdir')
         parser.add_argument('-a', '--active-tree', action='store_true')
         parser.add_argument('--clean', action='store_true')
-        parser.add_argument('components', nargs='*')
+        parser.add_argument('component') 
 
         args = parser.parse_args(argv)
         self.args = args
         
         self.parse_config()
 
-        if len(args.components) > 0:
-            checkout_components = args.components
-        else:
-            checkout_components = [os.path.basename(os.getcwd())]
-
         if args.active_tree:
             self.parse_active_branch()
         else:
             self.parse_snapshot(args.prefix, args.snapshot)
 
-        for component_name in checkout_components:
-            found = False
-            component = self.get_component_meta(component_name)
-            (keytype, uri) = buildutil.parse_src_key(component['src'])
-            checkoutdir = os.path.join(os.getcwd(), component_name)
-            fileutil.ensure_parent_dir(checkoutdir)
+        component_name = args.component
 
-            is_dirty = (keytype == 'dirty-git')
+        found = False
+        component = self.get_component_meta(component_name)
+        (keytype, uri) = buildutil.parse_src_key(component['src'])
 
-            if is_dirty:
+        is_local = (keytype == 'local')
+
+        if is_local:
+            if args.checkoutdir:
+                checkoutdir = args.checkoutdir
                 # Kind of a hack, but...
                 if os.path.islink(checkoutdir):
                     os.unlink(checkoutdir)
@@ -78,42 +75,49 @@ class OstbuildCheckout(builtins.Builtin):
                     shutil.rmtree(checkoutdir)
                 os.symlink(uri, checkoutdir)
             else:
+                checkoutdir = uri
+        else:
+            if args.checkoutdir:
+                checkoutdir = args.checkoutdir
+            else:
+                checkoutdir = os.path.join(os.getcwd(), component_name)
+                fileutil.ensure_parent_dir(checkoutdir)
                 vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
                                      component['revision'],
                                      overwrite=args.overwrite)
-                
-            if args.clean:
-                if is_dirty:
-                    log("note: ignoring --clean argument due to \"dirty-git:\" specification")
-                else:
-                    vcs.clean(keytype, checkoutdir)
 
-            patches = component.get('patches')
-            if patches is not None:
-                (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
-                if patches_keytype == 'git':
-                    patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
-                    vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
-                                         self.patchdir, patches['branch'],
-                                         overwrite=True)
-                    patchdir = self.patchdir
-                else:
-                    patchdir = patches_uri
+        if args.clean:
+            if is_local:
+                log("note: ignoring --clean argument due to \"local:\" specification")
+            else:
+                vcs.clean(keytype, checkoutdir)
 
-                patch_subdir = patches.get('subdir', None)
-                if patch_subdir is not None:
-                    patchdir = os.path.join(patchdir, patch_subdir)
-                else:
-                    patchdir = self.patchdir
-                for patch in patches['files']:
-                    patch_path = os.path.join(patchdir, patch)
-                    run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=checkoutdir)
+        patches = component.get('patches')
+        if patches is not None:
+            (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
+            if patches_keytype == 'git':
+                patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
+                vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,
+                                     self.patchdir, patches['branch'],
+                                     overwrite=True)
+                patchdir = self.patchdir
+            else:
+                patchdir = patches_uri
 
-            metadata_path = os.path.join(checkoutdir, '_ostbuild-meta.json')
-            f = open(metadata_path, 'w')
-            json.dump(component, f, indent=4, sort_keys=True)
-            f.close()
+            patch_subdir = patches.get('subdir', None)
+            if patch_subdir is not None:
+                patchdir = os.path.join(patchdir, patch_subdir)
+            else:
+                patchdir = self.patchdir
+            for patch in patches['files']:
+                patch_path = os.path.join(patchdir, patch)
+                run_sync(['git', 'am', '--ignore-date', '-3', patch_path], cwd=checkoutdir)
+
+        metadata_path = os.path.join(checkoutdir, '_ostbuild-meta.json')
+        f = open(metadata_path, 'w')
+        json.dump(component, f, indent=4, sort_keys=True)
+        f.close()
         
-            log("Checked out: %r" % (checkoutdir, ))
+        log("Checked out: %r" % (checkoutdir, ))
         
 builtins.register(OstbuildCheckout)

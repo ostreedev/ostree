@@ -40,7 +40,7 @@ def parse_src_key(srckey):
     if idx < 0:
         raise ValueError("Invalid SRC uri=%s" % (srckey, ))
     keytype = srckey[:idx]
-    if keytype not in ['git', 'dirty-git']:
+    if keytype not in ['git', 'local']:
         raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
     uri = srckey[idx+1:]
     return (keytype, uri)

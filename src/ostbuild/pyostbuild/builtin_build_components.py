@@ -68,7 +68,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         name = '%s/%s' % (basename, architecture)
         buildname = 'components/%s' % (name, )
 
-        current_vcs_version = component['revision']
+        current_vcs_version = component.get('revision')
 
         # TODO - deduplicate this with chroot_compile_one
         current_meta_io = StringIO()
@@ -88,7 +88,8 @@ class OstbuildBuildComponents(builtins.Builtin):
                                                           'rev-parse', buildname],
                                                          stderr=open('/dev/null', 'w'),
                                                          none_on_error=True)
-        if previous_build_version is not None:
+        if (current_vcs_version is not None
+            and previous_build_version is not None):
             log("Previous build of '%s' is %s" % (name, previous_build_version))
 
             previous_metadata_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
@@ -103,7 +104,6 @@ class OstbuildBuildComponents(builtins.Builtin):
                 log("Metadata is unchanged from previous")
                 return False
             else:
-                current_vcs_version = component['revision']
                 previous_metadata = json.loads(previous_metadata_text)
                 previous_vcs_version = previous_metadata['revision']
                 if current_vcs_version == previous_vcs_version:
@@ -123,7 +123,8 @@ class OstbuildBuildComponents(builtins.Builtin):
         fileutil.ensure_dir(checkoutdir)
         component_src = os.path.join(checkoutdir, basename)
         run_sync(['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
-                  '--clean', '--overwrite', basename], cwd=checkoutdir)
+                  '--checkoutdir=' + component_src,
+                  '--clean', '--overwrite', basename])
 
         artifact_meta = dict(component)
 
@@ -207,10 +208,10 @@ class OstbuildBuildComponents(builtins.Builtin):
 
         if len(component_refs_to_resolve) > 0:
             resolved_refs = self._resolve_refs(component_refs_to_resolve)
-            for name,rev in zip(components.iterkeys(), resolved_refs):
-                for architecture in component_architectures[name]:
-                    archname = '%s/%s' % (name, architecture)
-                    component_revisions[archname] = rev
+            for name,rev in zip(component_refs_to_resolve, resolved_refs):
+                assert name.startswith('components/')
+                archname = name[len('components/'):]
+                component_revisions[archname] = rev
 
         bin_snapshot['component-revisions'] = component_revisions
 
