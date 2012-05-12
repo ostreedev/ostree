@@ -44,6 +44,7 @@ static gboolean
 repo_find_object (OstreeRepo           *self,
                   OstreeObjectType      objtype,
                   const char           *checksum,
+                  gboolean              lookup_all,
                   GFile               **out_stored_path,
                   char                **out_pack_checksum,
                   guint64              *out_pack_offset,
@@ -1110,14 +1111,14 @@ stage_object (OstreeRepo         *self,
     {
       if (!(flags & OSTREE_REPO_STAGE_FLAGS_STORE_IF_PACKED))
         {
-          if (!repo_find_object (self, objtype, expected_checksum,
+          if (!repo_find_object (self, objtype, expected_checksum, FALSE,
                                  &stored_path, &pack_checksum, &pack_offset,
                                  cancellable, error))
             goto out;
         }
       else
         {
-          if (!repo_find_object (self, objtype, expected_checksum,
+          if (!repo_find_object (self, objtype, expected_checksum, FALSE,
                                  &stored_path, NULL, NULL,
                                  cancellable, error))
             goto out;
@@ -3526,7 +3527,7 @@ ostree_repo_load_file (OstreeRepo         *self,
   ot_lvariant GVariant *ret_xattrs = NULL;
 
   if (!repo_find_object (self, OSTREE_OBJECT_TYPE_FILE,
-                         checksum, &loose_path,
+                         checksum, FALSE, &loose_path,
                          &pack_checksum, &pack_offset,
                          cancellable, error))
     goto out;
@@ -3811,6 +3812,7 @@ static gboolean
 repo_find_object (OstreeRepo           *self,
                   OstreeObjectType      objtype,
                   const char           *checksum,
+                  gboolean              lookup_all,
                   GFile               **out_stored_path,
                   char                **out_pack_checksum,
                   guint64              *out_pack_offset,
@@ -3824,24 +3826,29 @@ repo_find_object (OstreeRepo           *self,
   ot_lobj GFile *ret_stored_path = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
 
-  object_path = ostree_repo_get_object_path (self, checksum, objtype);
+  if (out_stored_path)
+    {
+      object_path = ostree_repo_get_object_path (self, checksum, objtype);
   
-  if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
-    {
-      ret_stored_path = object_path;
-      object_path = NULL;
+      if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
+        {
+          ret_stored_path = object_path;
+          object_path = NULL;
+        }
+      else
+        {
+          g_clear_object (&object_path);
+        }
     }
-  else
+  if (!ret_stored_path || lookup_all)
     {
-      g_clear_object (&object_path);
-    }
-
-  if (out_pack_checksum)
-    {
-      if (!find_object_in_packs (self, checksum, objtype,
-                                 &ret_pack_checksum, &ret_pack_offset,
-                                 cancellable, error))
-        goto out;
+      if (out_pack_checksum)
+        {
+          if (!find_object_in_packs (self, checksum, objtype,
+                                     &ret_pack_checksum, &ret_pack_offset,
+                                     cancellable, error))
+            goto out;
+        }
     }
   
   ret = TRUE;
@@ -3867,7 +3874,8 @@ ostree_repo_has_object (OstreeRepo           *self,
   ot_lobj GFile *loose_path = NULL;
   ot_lfree char *pack_checksum = NULL;
 
-  if (!repo_find_object (self, objtype, checksum, &loose_path,
+  if (!repo_find_object (self, objtype, checksum, FALSE,
+                         &loose_path,
                          &pack_checksum, NULL,
                          cancellable, error))
     goto out;
@@ -3928,8 +3936,8 @@ ostree_repo_load_variant (OstreeRepo  *self,
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
-  if (!repo_find_object (self, objtype, sha256, &object_path,
-                         &pack_checksum, &object_offset,
+  if (!repo_find_object (self, objtype, sha256, FALSE,
+                         &object_path, &pack_checksum, &object_offset,
                          cancellable, error))
     goto out;
 
