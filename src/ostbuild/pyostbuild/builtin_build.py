@@ -37,9 +37,9 @@ from . import vcs
 class BuildOptions(object):
     pass
 
-class OstbuildBuildComponents(builtins.Builtin):
-    name = "build-components"
-    short_description = "Build multiple components from given source snapshot"
+class OstbuildBuild(builtins.Builtin):
+    name = "build"
+    short_description = "Build multiple components and generate trees"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -62,19 +62,20 @@ class OstbuildBuildComponents(builtins.Builtin):
         run_sync(args, cwd=cwd, fatal_on_error=False, keep_stdin=True)
         fatal("Exiting after debug shell")
 
-    def _build_one_component(self, basename, component, architecture):
+    def _build_one_component(self, component, architecture):
+        basename = component['name']
         branch = component['branch']
 
-        name = '%s/%s' % (basename, architecture)
-        buildname = 'components/%s' % (name, )
+        archname = '%s/%s' % (basename, architecture)
+        buildname = 'components/%s' % (archname, )
 
         current_vcs_version = component.get('revision')
 
+        expanded_component = self.expand_component(component)
+
         # TODO - deduplicate this with chroot_compile_one
         current_meta_io = StringIO()
-        meta_copy = dict(component)
-        meta_copy['name'] = basename  # Note we have to match the name here
-        json.dump(meta_copy, current_meta_io, indent=4, sort_keys=True)
+        json.dump(expanded_component, current_meta_io, indent=4, sort_keys=True)
         current_metadata_text = current_meta_io.getvalue()
         sha = hashlib.sha256()
         sha.update(current_metadata_text)
@@ -90,7 +91,7 @@ class OstbuildBuildComponents(builtins.Builtin):
                                                          none_on_error=True)
         if (current_vcs_version is not None
             and previous_build_version is not None):
-            log("Previous build of '%s' is %s" % (name, previous_build_version))
+            log("Previous build of '%s' is %s" % (archname, previous_build_version))
 
             previous_metadata_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                           'cat', previous_build_version,
@@ -102,33 +103,33 @@ class OstbuildBuildComponents(builtins.Builtin):
 
             if current_meta_digest == previous_meta_digest:
                 log("Metadata is unchanged from previous")
-                return False
+                return previous_build_version
             else:
                 previous_metadata = json.loads(previous_metadata_text)
                 previous_vcs_version = previous_metadata['revision']
                 if current_vcs_version == previous_vcs_version:
                     log("Metadata differs; VCS version unchanged")
                     if self.buildopts.skip_vcs_matches:
-                        return False
-                    for k,v in meta_copy.iteritems():
+                        return previous_build_version
+                    for k,v in expanded_component.iteritems():
                         previous_v = previous_metadata.get(k)
                         if v != previous_v:
                             log("Key %r differs: old: %r new: %r" % (k, previous_v, v))
                 else:
                     log("Metadata differs; note vcs version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
         else:
-            log("No previous build for '%s' found" % (name, ))
+            log("No previous build for '%s' found" % (archname, ))
 
         checkoutdir = os.path.join(self.workdir, 'checkouts')
-        fileutil.ensure_dir(checkoutdir)
-        component_src = os.path.join(checkoutdir, basename)
+        component_src = os.path.join(checkoutdir, archname)
+        fileutil.ensure_parent_dir(component_src)
         run_sync(['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
                   '--checkoutdir=' + component_src,
                   '--clean', '--overwrite', basename])
 
         artifact_meta = dict(component)
 
-        logdir = os.path.join(self.workdir, 'logs', name)
+        logdir = os.path.join(self.workdir, 'logs', archname)
         fileutil.ensure_dir(logdir)
         log_path = os.path.join(logdir, 'compile.log')
         if os.path.isfile(log_path):
@@ -139,7 +140,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         log("Logging to %s" % (log_path, ))
         f = open(log_path, 'w')
         chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--pristine', '--name=' + basename, '--arch=' + architecture])
+        chroot_args.extend(['--name=' + basename, '--arch=' + architecture])
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
@@ -162,76 +163,87 @@ class OstbuildBuildComponents(builtins.Builtin):
             f.close()
             args.append('--statoverride=' + statoverride_path)
 
-        component_resultdir = os.path.join(self.workdir, 'results', name)
+        component_resultdir = os.path.join(self.workdir, 'results', archname)
             
         run_sync(args, cwd=component_resultdir)
         if statoverride_path is not None:
             os.unlink(statoverride_path)
-        return True
 
-    def _resolve_refs(self, refs):
-        args = ['ostree', '--repo=' + self.repo, 'rev-parse']
-        args.extend(refs)
-        output = run_sync_get_output(args)
-        return output.split('\n')
+        return run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                    'rev-parse', buildname])
 
-    def _save_bin_snapshot(self, components, component_architectures):
-        bin_snapshot = dict(self.snapshot)
+    def _compose_one_target(self, target, component_build_revs):
+        base = target['base']
+        base_name = 'bases/%s' % (base['name'], )
 
-        del bin_snapshot['00ostree-src-snapshot-version']
-        bin_snapshot['00ostree-bin-snapshot-version'] = 1
+        compose_rootdir = os.path.join(self.workdir, 'roots', target['name'])
+        if os.path.isdir(compose_rootdir):
+            shutil.rmtree(compose_rootdir)
+        os.mkdir(compose_rootdir)
 
-        for target in bin_snapshot['targets']:
-            base = target['base']
-            base_name = 'bases/%s' % (base['name'], )
-            if 'ostree-revision' not in target:
-                base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                     'rev-parse', base_name])
-                base['ostree-revision'] = base_revision
+        base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                             'rev-parse', base_name])
 
-        if 'architecture-buildroots2' in bin_snapshot:
-            for arch,buildroot in bin_snapshot['architecture-buildroots2'].iteritems():
-                name = buildroot['name']
-                if 'ostree-revision' not in buildroot:
-                    rev = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                               'rev-parse', name])
-                    buildroot['ostree-revision'] = rev
+        compose_contents = [(base_name, base_revision, '/')]
+        for tree_content in target['contents']:
+            name = tree_content['name']
+            rev = component_build_revs[name]
+            subtrees = tree_content['trees']
+            for subpath in subtrees:
+                compose_contents.append((name, rev, subpath))
 
-        component_revisions = bin_snapshot.get('component-revisions', {})
+        (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        related_f = os.fdopen(related_fd, 'w')
+        resolved_refs = {}
+        for (name, branch, subpath) in compose_contents:
+            resolved_refs[name] = branch
+        for (name, rev) in resolved_refs.iteritems():
+            related_f.write(name) 
+            related_f.write(' ') 
+            related_f.write(rev) 
+            related_f.write('\n') 
+        related_f.close()
 
-        component_refs_to_resolve = []
-        for name in components.iterkeys():
-            for architecture in component_architectures[name]:
-                archname = '%s/%s' % (name, architecture)
-                if archname not in component_revisions:
-                    component_refs_to_resolve.append('components/' + archname)
+        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        contents_f = os.fdopen(contents_fd, 'w')
+        for (name, branch, subpath) in compose_contents:
+            contents_f.write(branch)
+            contents_f.write('\0')
+            contents_f.write(subpath)
+            contents_f.write('\0')
+        contents_f.close()
 
-        if len(component_refs_to_resolve) > 0:
-            resolved_refs = self._resolve_refs(component_refs_to_resolve)
-            for name,rev in zip(component_refs_to_resolve, resolved_refs):
-                assert name.startswith('components/')
-                archname = name[len('components/'):]
-                component_revisions[archname] = rev
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'checkout', '--user-mode', '--no-triggers', '--union', 
+                  '--from-file=' + contents_tmppath, compose_rootdir])
+        os.unlink(contents_tmppath)
 
-        bin_snapshot['component-revisions'] = component_revisions
+        contents_path = os.path.join(compose_rootdir, 'contents.json')
+        f = open(contents_path, 'w')
+        json.dump(self.snapshot, f, indent=4, sort_keys=True)
+        f.close()
 
-        path = self.get_bin_snapshot_db().store(bin_snapshot)
-        log("Binary snapshot: %s" % (path, ))
+        treename = 'trees/%s' % (target['name'], )
+
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'commit', '-b', treename, '-s', 'Compose',
+                  '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                  '--related-objects-file=' + related_tmppath,
+                  '--skip-if-unchanged'], cwd=compose_rootdir)
+        os.unlink(related_tmppath)
+        shutil.rmtree(compose_rootdir)
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--force-rebuild', action='store_true')
-        parser.add_argument('--skip-vcs-matches', action='store_true')
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
-        parser.add_argument('--compose', action='store_true')
+        parser.add_argument('--force-rebuild', action='store_true')
+        parser.add_argument('--skip-vcs-matches', action='store_true')
+        parser.add_argument('--no-compose', action='store_true')
         parser.add_argument('--compose-only', action='store_true')
-        parser.add_argument('--start-at')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
         parser.add_argument('components', nargs='*')
-
-
         
         args = parser.parse_args(argv)
         self.args = args
@@ -239,15 +251,7 @@ class OstbuildBuildComponents(builtins.Builtin):
         self.parse_config()
         self.parse_snapshot(args.prefix, args.src_snapshot)
 
-        component_revisions = self.snapshot.get('component-revisions', {})
-
-        if component_revisions is not None:
-            snapshot_type = "source+binary"
-        else:
-            snapshot_type = "source"
-
-        log("Using %s snapshot: %s" % (snapshot_type,
-                                       os.path.basename(self.snapshot_path), ))
+        log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
 
         self.buildopts = BuildOptions()
         self.buildopts.shell_on_failure = args.shell_on_failure
@@ -256,68 +260,87 @@ class OstbuildBuildComponents(builtins.Builtin):
 
         self.force_build_components = set()
 
-        required_components = {}
-        component_architectures = {}
-        for target in self.snapshot['targets']:
-            for tree_content in target['contents']:
-                (name, arch) = tree_content['name'].rsplit('/', 1)
-                required_components[name] = self.snapshot['components'][name]
-                if name not in component_architectures:
-                    component_architectures[name] = set([arch])
-                else:
-                    component_architectures[name].add(arch)
+        components = self.snapshot['components']
 
-        build_component_order = []
-        if len(args.components) == 0:
-            tsorted = buildutil.tsort_components(required_components, 'build-depends')
-            tsorted.reverse()
-            build_component_order = tsorted
-        else:
-            if args.start_at is not None:
-                fatal("Can't specify --start-at with component list")
-            for name in args.components:
-                found = False
-                component = self.snapshot['components'].get(name)
-                if component is None:
-                    fatal("Unknown component %r" % (name, ))
-                build_component_order.append(name)
-                self.force_build_components.add(name)
+        prefix = self.snapshot['prefix']
+        base_prefix = '%s/%s' % (self.snapshot['base']['name'], prefix)
 
-        start_at_index = -1
-        if args.start_at is not None:
-            for i,component_name in enumerate(build_component_order):
-                if component_name == args.start_at:
-                    start_at_index = i
-                    break
-            if start_at_index == -1:
-                fatal("Unknown component %r specified for --start-at" % (args.start_at, ))
-        else:
-            start_at_index = 0
+        architectures = self.snapshot['architectures']
+
+        component_to_arches = {}
+
+        runtime_components = []
+        devel_components = []
+
+        for component in components:
+            name = component['name']
+
+            is_runtime = component.get('component', 'runtime') == 'runtime'
+
+            if is_runtime:
+                runtime_components.append(component)
+            devel_components.append(component)
+
+            is_noarch = component.get('noarch', False)
+            if is_noarch:
+                # Just use the first specified architecture
+                component_arches = [architectures[0]]
+            else:
+                component_arches = component.get('architectures', architectures)
+            component_to_arches[name] = component_arches
+
+        for name in args.components:
+            component = components.get(name)
+            if component is None:
+                fatal("Unknown component %r" % (name, ))
+            self.force_build_components.add(name)
 
         components_to_build = []
         component_skipped_count = 0
 
+        component_build_revs = {}
+
         if not args.compose_only:
-            for component_name in build_component_order[start_at_index:]:
-                component = required_components[component_name]
-                architectures = component_architectures[component_name]
+            for component in components:
                 for architecture in architectures:
-                    archname = '%s/%s' % (component_name, architecture)
-                    if (component_revisions is not None and 
-                        archname in component_revisions):
-                        component_skipped_count += 1
-                    else:
-                        components_to_build.append((component_name, component, architecture))
+                    components_to_build.append((component, architecture))
 
             log("%d components to build" % (len(components_to_build), ))
-            if component_skipped_count > 0:
-                log("%d components skipped due to existing component-revisions" % (component_skipped_count, ))
-            for (component_name, component, architecture) in components_to_build:
-                self._build_one_component(component_name, component, architecture)
+            for (component, architecture) in components_to_build:
+                archname = '%s/%s' % (component['name'], architecture)
+                build_rev = self._build_one_component(component, architecture)
+                component_build_revs[archname] = build_rev
 
-        self._save_bin_snapshot(required_components, component_architectures)   
+        targets_list = []
+        for target_component_type in ['runtime', 'devel']:
+            for architecture in architectures:
+                target = {}
+                targets_list.append(target)
+                target['name'] = '%s-%s-%s' % (prefix, architecture, target_component_type)
 
-        if args.compose or args.compose_only:
-            run_sync(['ostbuild', 'compose', '--prefix=' + self.prefix])
-        
-builtins.register(OstbuildBuildComponents)
+                base_ref = '%s-%s-%s' % (base_prefix, architecture, target_component_type)
+                target['base'] = {'name': base_ref}
+
+                if target_component_type == 'runtime':
+                    target_components = runtime_components
+                else:
+                    target_components = devel_components
+                    
+                contents = []
+                for component in target_components:
+                    builds_for_component = component_to_arches[component['name']]
+                    if architecture not in builds_for_component:
+                        continue
+                    binary_name = '%s/%s' % (component['name'], architecture)
+                    component_ref = {'name': binary_name}
+                    if target_component_type == 'runtime':
+                        component_ref['trees'] = ['/runtime']
+                    else:
+                        component_ref['trees'] = ['/runtime', '/devel', '/doc']
+                    contents.append(component_ref)
+                target['contents'] = contents
+
+        for target in targets_list:
+            self._compose_one_target(target, component_build_revs)
+
+builtins.register(OstbuildBuild)

@@ -34,6 +34,8 @@ class OstbuildChrootCompileOne(builtins.Builtin):
     short_description = "Build artifacts from the current source directory in a chroot"
 
     def _resolve_refs(self, refs):
+        if len(refs) == 0:
+            return []
         args = ['ostree', '--repo=' + self.repo, 'rev-parse']
         args.extend(refs)
         output = run_sync_get_output(args)
@@ -52,32 +54,27 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(rootdir_tmp)
 
         components = self.snapshot['components']
-        dependencies = buildutil.build_depends(component_name, components)
-        component = components.get(component_name)
+        component = None
+        build_dependencies = []
+        for component in components:
+            if component['name'] == component_name:
+                break
+            build_dependencies.append(component)
 
         ref_to_rev = {}
 
-        arch_buildroot_name = None
-        arch_buildroot_rev = None
-        if 'architecture-buildroots2' in self.snapshot:
-            buildroots = self.snapshot['architecture-buildroots2']
-            arch_buildroot = buildroots[architecture]
-            arch_buildroot_name = arch_buildroot['name']
-            arch_buildroot_rev = arch_buildroot.get('ostree-revision')
-        else:
-            buildroots = self.snapshot['architecture-buildroots']
-            arch_rev_suffix = buildroots[architecture]
-            arch_buildroot_name = 'bases/' + arch_rev_suffix
+        arch_buildroot_name = 'bases/%s/%s-%s-devel' % (self.snapshot['base']['name'],
+                                                        self.snapshot['prefix'],
+                                                        architecture)
 
-        if arch_buildroot_rev is None:
-            arch_buildroot_rev = run_sync_get_output(['ostree', '--repo=' + self.repo, 'rev-parse',
-                                                      arch_buildroot_name]).strip()
+        arch_buildroot_rev = run_sync_get_output(['ostree', '--repo=' + self.repo, 'rev-parse',
+                                                  arch_buildroot_name]).strip()
 
         ref_to_rev[arch_buildroot_name] = arch_buildroot_rev
         checkout_trees = [(arch_buildroot_name, '/')]
         refs_to_resolve = []
-        for dependency_name in dependencies:
-            buildname = 'components/%s/%s' % (dependency_name, architecture)
+        for dependency in build_dependencies:
+            buildname = 'components/%s/%s' % (dependency['name'], architecture)
             refs_to_resolve.append(buildname)
             checkout_trees.append((buildname, '/runtime'))
             checkout_trees.append((buildname, '/devel'))
@@ -152,7 +149,6 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--pristine', action='store_true')
         parser.add_argument('--prefix')
         parser.add_argument('--snapshot', required=True)
         parser.add_argument('--name')
@@ -169,15 +165,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         else:
             component_name = self.get_component_from_cwd()
 
-        components = self.snapshot['components']
-        component = components.get(component_name)
-        if component is None:
-            fatal("Couldn't find component '%s' in manifest" % (component_name, ))
-        self.metadata = dict(component)
-        self.metadata['name'] = component_name
-        if not args.pristine:
-            self.metadata['src'] = 'dirty:worktree'
-            self.metadata['revision'] = 'dirty-worktree'
+        component = self.get_expanded_component(component_name)
 
         workdir = self.workdir
             
@@ -202,7 +190,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         fileutil.ensure_dir(sourcedir)
         
         output_metadata = open('_ostbuild-meta.json', 'w')
-        json.dump(self.metadata, output_metadata, indent=4, sort_keys=True)
+        json.dump(component, output_metadata, indent=4, sort_keys=True)
         output_metadata.close()
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', component_name)
@@ -229,7 +217,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
         recorded_meta_path = os.path.join(resultdir, '_ostbuild-meta.json')
         recorded_meta_f = open(recorded_meta_path, 'w')
-        json.dump(self.metadata, recorded_meta_f, indent=4, sort_keys=True)
+        json.dump(component, recorded_meta_f, indent=4, sort_keys=True)
         recorded_meta_f.close()
         
 builtins.register(OstbuildChrootCompileOne)

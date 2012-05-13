@@ -129,18 +129,30 @@ class Builtin(object):
                                     '/_ostbuild-meta.json'])
         return json.loads(text)
 
-    def get_component_meta(self, name):
-        assert self.repo is not None
-
-        if self.snapshot is not None:
-            return self.snapshot['components'][name]
-
-        meta = self._meta_cache.get(name)
-        if meta is None:
-            content = self.get_component_snapshot(name)
-            meta = self.get_component_meta_from_revision(content['ostree-revision'])
-            self._meta_cache[name] = meta
+    def expand_component(self, component):
+        meta = dict(component)
+        global_patchmeta = self.snapshot.get('patches')
+        if global_patchmeta is not None:
+            component_patch_files = component.get('patches', [])
+            if len(component_patch_files) > 0:
+                patches = dict(global_patchmeta)
+                patches['files'] = component_patch_files
+                meta['patches'] = patches
+        config_opts = self.snapshot.get('config-opts', [])
+        config_opts.extend(component.get('config-opts', []))
+        meta['config-opts'] = config_opts
         return meta
+
+    def get_component(self, name):
+        assert self.repo is not None
+        assert self.snapshot is not None
+        for component in self.snapshot['components']:
+            if component['name'] == name:
+                return component
+        fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+
+    def get_expanded_component(self, name):
+        return self.expand_component(self.get_component(name))
 
     def get_prefix(self):
         if self.prefix is None:
@@ -197,9 +209,10 @@ class Builtin(object):
         else:
             self.snapshot_path = path
         self.snapshot = json.load(open(self.snapshot_path))
-        src_ver = self.snapshot['00ostree-src-snapshot-version']
+        key = '00ostbuild-manifest-version'
+        src_ver = self.snapshot[key]
         if src_ver != 0:
-            fatal("Unhandled 00ostree-src-snapshot-version \"%d\", expected 0" % (src_ver, ))
+            fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
 
     def parse_bin_snapshot(self, prefix, path):
         self.parse_prefix(prefix)

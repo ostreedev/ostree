@@ -22,21 +22,20 @@ import sys
 import argparse
 
 from . import builtins
-from . import builtin_build_components
+from . import builtin_build
 from . import builtin_branch_prefix
 from . import builtin_checkout
 from . import builtin_chroot_compile_one
-from . import builtin_compose
 from . import builtin_compile_one
 from . import builtin_deploy_root
 from . import builtin_deploy_qemu
+from . import builtin_import_tree
 from . import builtin_git_mirror
 from . import builtin_pull_components
 from . import builtin_privhelper_deploy_qemu
 from . import builtin_prefix
 from . import builtin_resolve
 from . import builtin_modify_snapshot
-from . import builtin_tree_to_src
 from . import builtin_init
 from . import builtin_status
 

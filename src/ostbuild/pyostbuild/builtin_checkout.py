@@ -60,7 +60,7 @@ class OstbuildCheckout(builtins.Builtin):
         component_name = args.component
 
         found = False
-        component = self.get_component_meta(component_name)
+        component = self.get_expanded_component(component_name)
         (keytype, uri) = buildutil.parse_src_key(component['src'])
 
         is_local = (keytype == 'local')
@@ -82,9 +82,9 @@ class OstbuildCheckout(builtins.Builtin):
             else:
                 checkoutdir = os.path.join(os.getcwd(), component_name)
                 fileutil.ensure_parent_dir(checkoutdir)
-                vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
-                                     component['revision'],
-                                     overwrite=args.overwrite)
+            vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
+                                 component['revision'],
+                                 overwrite=args.overwrite)
 
         if args.clean:
             if is_local:

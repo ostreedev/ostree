@@ -24,20 +24,18 @@ pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
 	src/ostbuild/pyostbuild/builtin_branch_prefix.py	\
-	src/ostbuild/pyostbuild/builtin_build_components.py	\
+	src/ostbuild/pyostbuild/builtin_build.py	\
 	src/ostbuild/pyostbuild/builtin_checkout.py	\
-	src/ostbuild/pyostbuild/builtin_compose.py	\
 	src/ostbuild/pyostbuild/builtin_chroot_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_deploy_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_deploy_root.py	\
+	src/ostbuild/pyostbuild/builtin_import_tree.py	\
 	src/ostbuild/pyostbuild/builtin_pull_components.py	\
 	src/ostbuild/pyostbuild/builtin_privhelper_deploy_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_git_mirror.py	\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
-	src/ostbuild/pyostbuild/builtin_modify_snapshot.py	\
-	src/ostbuild/pyostbuild/builtin_tree_to_src.py	\
 	src/ostbuild/pyostbuild/builtin_init.py	\
 	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\

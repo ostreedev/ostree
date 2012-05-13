@@ -28,9 +28,9 @@ from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from . import buildutil
 
-class OstbuildTreeToSrc(builtins.Builtin):
-    name = "tree-to-src"
-    short_description = "Turn a tree into a source snapshot"
+class OstbuildImportTree(builtins.Builtin):
+    name = "import-tree"
+    short_description = "Extract source data from tree"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -63,4 +63,4 @@ class OstbuildTreeToSrc(builtins.Builtin):
         path = db.store(snapshot)
         log("Source snapshot: %s" % (path, ))
 
-builtins.register(OstbuildTreeToSrc)
+builtins.register(OstbuildImportTree)
