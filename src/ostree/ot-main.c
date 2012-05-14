@@ -90,6 +90,8 @@ ostree_main (int    argc,
   char **cmd_argv = NULL;
   gboolean am_root;
   gboolean have_repo_arg;
+  const char *binname = NULL;
+  const char *slash = NULL;
   const char *cmd = NULL;
   const char *repo = NULL;
   GFile *repo_file = NULL;
@@ -118,9 +120,16 @@ ostree_main (int    argc,
   if (repo)
     repo_file = ot_gfile_new_for_path (repo);
 
-  cmd = strchr (argv[0], '-');
-  if (cmd)
+  slash = strrchr (argv[0], '/');
+  if (slash)
+    binname = slash+1;
+  else
+    binname = argv[0];
+
+  if (g_str_has_prefix (binname, "ostree-"))
     {
+      cmd = strchr (binname, '-');
+      g_assert (cmd);
       cmd += 1;
       arg_off = 1;
       if (have_repo_arg)
@@ -147,7 +156,8 @@ ostree_main (int    argc,
 
   if (!builtin->name)
     {
-      set_error_print_usage (&error, builtins, "Unknown command", argv);
+      ot_lfree char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
+      set_error_print_usage (&error, builtins, msg, argv);
       goto out;
     }
 
