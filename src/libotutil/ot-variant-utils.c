@@ -69,7 +69,7 @@ ot_util_variant_save (GFile *dest,
   ot_lobj GOutputStream *out = NULL;
   gsize bytes_written;
   
-  out = (GOutputStream*)g_file_replace (dest, NULL, G_FILE_CREATE_REPLACE_DESTINATION, FALSE,
+  out = (GOutputStream*)g_file_replace (dest, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION,
                                         cancellable, error);
   if (!out)
     goto out;
