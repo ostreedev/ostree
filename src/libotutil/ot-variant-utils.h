@@ -59,6 +59,7 @@ gboolean ot_util_variant_save (GFile *dest,
 
 gboolean ot_util_variant_map (GFile *src,
                               const GVariantType *type,
+                              gboolean trusted,
                               GVariant **out_variant,
                               GError  **error);
 

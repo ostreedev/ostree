@@ -68,7 +68,7 @@ fsck_one_pack_file (OtFsckData        *data,
   pack_index_path = g_file_resolve_relative_path (ostree_repo_get_path (data->repo), path);
 
   if (!ot_util_variant_map (pack_index_path,
-                            OSTREE_PACK_INDEX_VARIANT_FORMAT,
+                            OSTREE_PACK_INDEX_VARIANT_FORMAT, FALSE,
                             &index_variant, error))
     goto out;
       

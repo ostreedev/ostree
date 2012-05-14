@@ -284,7 +284,7 @@ pack_one_meta_object (OtRepackData        *data,
   object_path = ostree_repo_get_object_path (data->repo, checksum, objtype);
 
   if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
-                            &metadata_v, error))
+                            TRUE, &metadata_v, error))
     goto out;
 
   ret_packed_object = g_variant_new ("(y@ayv)", (guchar) objtype,

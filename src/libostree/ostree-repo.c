@@ -1803,6 +1803,7 @@ static gboolean
 map_variant_file_check_header_string (GFile         *path,
                                       const GVariantType  *variant_type,
                                       const char    *expected_header,
+                                      gboolean       trusted,
                                       GVariant     **out_variant,
                                       GCancellable  *cancellable,
                                       GError       **error)
@@ -1811,7 +1812,7 @@ map_variant_file_check_header_string (GFile         *path,
   const char *header;
   ot_lvariant GVariant *ret_variant = NULL;
 
-  if (!ot_util_variant_map (path, variant_type, &ret_variant, error))
+  if (!ot_util_variant_map (path, variant_type, trusted, &ret_variant, error))
     goto out;
 
   g_variant_get_child (ret_variant, 0, "&s", &header);
@@ -1899,7 +1900,7 @@ list_pack_checksums_from_superindex_file (GFile         *superindex_path,
   GVariantIter *data_variant_iter = NULL;
 
   if (!ot_util_variant_map (superindex_path, OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT,
-                            &superindex_variant, error))
+                            TRUE, &superindex_variant, error))
     goto out;
   
   g_variant_get (superindex_variant, "(&s@a{sv}a(ayay)a(ayay))",
@@ -2293,7 +2294,7 @@ ostree_repo_resync_cached_remote_pack_indexes (OstreeRepo       *self,
   ret_uncached_data_indexes = g_ptr_array_new_with_free_func (g_free);
 
   if (!ot_util_variant_map (superindex_path, OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT,
-                            &superindex_variant, error))
+                            FALSE, &superindex_variant, error))
     goto out;
 
   if (!ostree_validate_structureof_pack_superindex (superindex_variant, error))
@@ -2438,7 +2439,7 @@ ostree_repo_map_cached_remote_pack_index (OstreeRepo       *self,
 
   cached_pack_path = get_pack_index_path (cache_dir, is_meta, pack_checksum);
   if (!ot_util_variant_map (cached_pack_path, OSTREE_PACK_INDEX_VARIANT_FORMAT,
-                            &ret_variant, error))
+                            FALSE, &ret_variant, error))
     goto out;
 
   ret = TRUE;
@@ -2470,7 +2471,7 @@ ostree_repo_add_cached_remote_pack_index (OstreeRepo       *self,
   if (!map_variant_file_check_header_string (cached_path,
                                              OSTREE_PACK_INDEX_VARIANT_FORMAT,
                                              "OSTv0PACKINDEX",
-                                             &input_index_variant,
+                                             FALSE, &input_index_variant,
                                              cancellable, error))
     goto out;
 
@@ -3437,7 +3438,7 @@ ostree_repo_load_pack_index (OstreeRepo    *self,
       path = get_pack_index_path (priv->pack_dir, is_meta, pack_checksum);
       if (!map_variant_file_check_header_string (path,
                                                  OSTREE_PACK_INDEX_VARIANT_FORMAT,
-                                                 "OSTv0PACKINDEX",
+                                                 "OSTv0PACKINDEX", TRUE,
                                                  &ret_variant,
                                                  cancellable, error))
         goto out;
@@ -3539,7 +3540,7 @@ ostree_repo_load_file (OstreeRepo         *self,
           ot_lvariant GVariant *archive_meta = NULL;
 
           if (!ot_util_variant_map (loose_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-                                    &archive_meta, error))
+                                    TRUE, &archive_meta, error))
             goto out;
 
           if (!ostree_file_header_parse (archive_meta, &ret_file_info, &ret_xattrs,
@@ -3826,21 +3827,13 @@ repo_find_object (OstreeRepo           *self,
   ot_lobj GFile *ret_stored_path = NULL;
   ot_lfree char *ret_pack_checksum = NULL;
 
-  if (out_stored_path)
-    {
-      object_path = ostree_repo_get_object_path (self, checksum, objtype);
-  
-      if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
-        {
-          ret_stored_path = object_path;
-          object_path = NULL;
-        }
-      else
-        {
-          g_clear_object (&object_path);
-        }
-    }
-  if (!ret_stored_path || lookup_all)
+  /* Look up metadata in packs first, but content loose first.  We
+   * want to find loose content since that's preferable for
+   * hardlinking scenarios.
+   *
+   * Metadata is much more efficient packed.
+   */
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
       if (out_pack_checksum)
         {
@@ -3848,6 +3841,47 @@ repo_find_object (OstreeRepo           *self,
                                      &ret_pack_checksum, &ret_pack_offset,
                                      cancellable, error))
             goto out;
+        }
+      if (!ret_pack_checksum || lookup_all)
+        {
+          object_path = ostree_repo_get_object_path (self, checksum, objtype);
+  
+          if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
+            {
+              ret_stored_path = object_path;
+              object_path = NULL;
+            }
+          else
+            {
+              g_clear_object (&object_path);
+            }
+        }
+    }
+  else
+    {
+      if (out_stored_path)
+        {
+          object_path = ostree_repo_get_object_path (self, checksum, objtype);
+  
+          if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
+            {
+              ret_stored_path = object_path;
+              object_path = NULL;
+            }
+          else
+            {
+              g_clear_object (&object_path);
+            }
+        }
+      if (!ret_stored_path || lookup_all)
+        {
+          if (out_pack_checksum)
+            {
+              if (!find_object_in_packs (self, checksum, objtype,
+                                         &ret_pack_checksum, &ret_pack_offset,
+                                         cancellable, error))
+                goto out;
+            }
         }
     }
   
@@ -3945,7 +3979,7 @@ ostree_repo_load_variant (OstreeRepo  *self,
   if (object_path != NULL)
     {
       if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
-                                &ret_variant, error))
+                                TRUE, &ret_variant, error))
         goto out;
     }
   else if (pack_checksum != NULL)

@@ -1008,8 +1008,8 @@ fetch_content (OtPullData           *pull_data,
                                cancellable, error))
         goto out;
 
-      if (!ot_util_variant_map (temp_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, &file_meta,
-                                error))
+      if (!ot_util_variant_map (temp_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, FALSE,
+                                &file_meta, error))
         goto out;
 
       if (!ostree_file_header_parse (file_meta, &file_info, &xattrs, error))

@@ -67,7 +67,7 @@ do_print_variant_generic (const GVariantType *type,
 
   f = ot_gfile_new_for_path (filename);
 
-  if (!ot_util_variant_map (f, type, &variant, error))
+  if (!ot_util_variant_map (f, type, TRUE, &variant, error))
     goto out;
 
   print_variant (variant);

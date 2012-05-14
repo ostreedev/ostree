@@ -108,10 +108,11 @@ ot_util_variant_take_ref (GVariant *variant)
  * Note the returned @out_variant is not floating.
  */
 gboolean
-ot_util_variant_map (GFile *src,
+ot_util_variant_map (GFile              *src,
                      const GVariantType *type,
-                     GVariant **out_variant,
-                     GError  **error)
+                     gboolean            trusted,
+                     GVariant          **out_variant,
+                     GError            **error)
 {
   gboolean ret = FALSE;
   const char *path = NULL;
@@ -126,7 +127,7 @@ ot_util_variant_map (GFile *src,
   ret_variant = g_variant_new_from_data (type,
                                          g_mapped_file_get_contents (mfile),
                                          g_mapped_file_get_length (mfile),
-                                         FALSE,
+                                         trusted,
                                          (GDestroyNotify) g_mapped_file_unref,
                                          mfile);
   mfile = NULL;

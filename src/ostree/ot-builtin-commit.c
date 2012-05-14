@@ -263,7 +263,8 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
       else if (metadata_bin_path)
         {
           metadata_f = ot_gfile_new_for_path (metadata_bin_path);
-          if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), &metadata, error))
+          if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), TRUE,
+                                    &metadata, error))
             goto out;
         }
       else
