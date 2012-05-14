@@ -3624,7 +3624,7 @@ ostree_repo_load_file (OstreeRepo         *self,
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Couldn't find object '%s'", checksum);
+                   "Couldn't find file object '%s'", checksum);
       goto out;
     }
 
