@@ -314,11 +314,14 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   for (i = 2; i < argc; i++)
     {
       const char *deploy_target = argv[i];
+      ot_lfree char *tree_ref = NULL;
       ot_lptrarray GPtrArray *checkout_args = NULL;
+
+      tree_ref = g_strconcat ("trees/", deploy_target, NULL);
 
       checkout_args = g_ptr_array_new ();
       ot_ptrarray_add_many (checkout_args, "ostree", "--repo=/ostree/repo",
-                            "checkout", "--atomic-retarget", deploy_target, NULL);
+                            "checkout", "--atomic-retarget", tree_ref, deploy_target, NULL);
       g_ptr_array_add (checkout_args, NULL);
 
       if (!ot_spawn_sync_checked ("/ostree", (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
