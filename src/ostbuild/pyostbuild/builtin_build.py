@@ -66,8 +66,8 @@ class OstbuildBuild(builtins.Builtin):
         basename = component['name']
         branch = component['branch']
 
-        archname = '%s/%s' % (basename, architecture)
-        buildname = 'components/%s' % (archname, )
+        buildname = '%s/%s/%s' % (self.snapshot['prefix'], basename, architecture)
+        build_ref = 'components/%s' % (buildname, )
 
         current_vcs_version = component.get('revision')
 
@@ -86,12 +86,12 @@ class OstbuildBuild(builtins.Builtin):
             previous_build_version = None
         else:
             previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                          'rev-parse', buildname],
+                                                          'rev-parse', build_ref],
                                                          stderr=open('/dev/null', 'w'),
                                                          none_on_error=True)
         if (current_vcs_version is not None
             and previous_build_version is not None):
-            log("Previous build of '%s' is %s" % (archname, previous_build_version))
+            log("Previous build of '%s' is %s" % (buildname, previous_build_version))
 
             previous_metadata_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                           'cat', previous_build_version,
@@ -118,10 +118,10 @@ class OstbuildBuild(builtins.Builtin):
                 else:
                     log("Metadata differs; note vcs version is now '%s', was '%s'" % (current_vcs_version, previous_vcs_version))
         else:
-            log("No previous build for '%s' found" % (archname, ))
+            log("No previous build for '%s' found" % (buildname, ))
 
         checkoutdir = os.path.join(self.workdir, 'checkouts')
-        component_src = os.path.join(checkoutdir, archname)
+        component_src = os.path.join(checkoutdir, buildname)
         fileutil.ensure_parent_dir(component_src)
         run_sync(['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
                   '--checkoutdir=' + component_src,
@@ -129,7 +129,7 @@ class OstbuildBuild(builtins.Builtin):
 
         artifact_meta = dict(component)
 
-        logdir = os.path.join(self.workdir, 'logs', archname)
+        logdir = os.path.join(self.workdir, 'logs', buildname)
         fileutil.ensure_dir(logdir)
         log_path = os.path.join(logdir, 'compile.log')
         if os.path.isfile(log_path):
@@ -137,10 +137,16 @@ class OstbuildBuild(builtins.Builtin):
             saved_name = os.path.join(logdir, 'compile-prev.log')
             os.rename(log_path, saved_name)
 
+        component_resultdir = os.path.join(self.workdir, 'results', buildname)
+        if os.path.isdir(component_resultdir):
+            shutil.rmtree(component_resultdir)
+        fileutil.ensure_dir(component_resultdir)
+
         log("Logging to %s" % (log_path, ))
         f = open(log_path, 'w')
         chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--name=' + basename, '--arch=' + architecture])
+        chroot_args.extend(['--name=' + basename, '--arch=' + architecture,
+                            '--resultdir=' + component_resultdir])
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
@@ -149,7 +155,7 @@ class OstbuildBuild(builtins.Builtin):
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
         args = ['ostree', '--repo=' + self.repo,
-                'commit', '-b', buildname, '-s', 'Build',
+                'commit', '-b', build_ref, '-s', 'Build',
                 '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
                 '--skip-if-unchanged']
 
@@ -163,50 +169,66 @@ class OstbuildBuild(builtins.Builtin):
             f.close()
             args.append('--statoverride=' + statoverride_path)
 
-        component_resultdir = os.path.join(self.workdir, 'results', archname)
-            
         run_sync(args, cwd=component_resultdir)
         if statoverride_path is not None:
             os.unlink(statoverride_path)
 
+        if os.path.islink(component_src):
+            os.unlink(component_src)
+        else:
+            shutil.rmtree(component_src)
+        shutil.rmtree(component_resultdir)
+
         return run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                    'rev-parse', buildname])
+                                    'rev-parse', build_ref])
 
     def _compose_one_target(self, target, component_build_revs):
         base = target['base']
         base_name = 'bases/%s' % (base['name'], )
+        runtime_name = 'bases/%s' % (base['runtime'], )
+        devel_name = 'bases/%s' % (base['devel'], )
 
         compose_rootdir = os.path.join(self.workdir, 'roots', target['name'])
         if os.path.isdir(compose_rootdir):
             shutil.rmtree(compose_rootdir)
         os.mkdir(compose_rootdir)
 
+        related_refs = {}
+
         base_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                              'rev-parse', base_name])
 
-        compose_contents = [(base_name, base_revision, '/')]
-        for tree_content in target['contents']:
-            name = tree_content['name']
-            rev = component_build_revs[name]
-            subtrees = tree_content['trees']
-            for subpath in subtrees:
-                compose_contents.append((name, rev, subpath))
+        runtime_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                'rev-parse', runtime_name])
+        related_refs[runtime_name] = runtime_revision
+        devel_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                              'rev-parse', devel_name])
+        related_refs[devel_name] = devel_revision
+
+        for name,rev in component_build_revs.iteritems():
+            build_ref = 'components/%s/%s' % (self.snapshot['prefix'], name)
+            related_refs[build_ref] = rev
 
         (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
         related_f = os.fdopen(related_fd, 'w')
-        resolved_refs = {}
-        for (name, branch, subpath) in compose_contents:
-            resolved_refs[name] = branch
-        for (name, rev) in resolved_refs.iteritems():
+        for (name, rev) in related_refs.iteritems():
             related_f.write(name) 
             related_f.write(' ') 
             related_f.write(rev) 
             related_f.write('\n') 
         related_f.close()
 
+        compose_contents = [(base_revision, '/')]
+        for tree_content in target['contents']:
+            name = tree_content['name']
+            rev = component_build_revs[name]
+            subtrees = tree_content['trees']
+            for subpath in subtrees:
+                compose_contents.append((rev, subpath))
+
         (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
         contents_f = os.fdopen(contents_fd, 'w')
-        for (name, branch, subpath) in compose_contents:
+        for (branch, subpath) in compose_contents:
             contents_f.write(branch)
             contents_f.write('\0')
             contents_f.write(subpath)
@@ -224,12 +246,15 @@ class OstbuildBuild(builtins.Builtin):
         f.close()
 
         treename = 'trees/%s' % (target['name'], )
-
-        run_sync(['ostree', '--repo=' + self.repo,
-                  'commit', '-b', treename, '-s', 'Compose',
-                  '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
-                  '--related-objects-file=' + related_tmppath,
-                  '--skip-if-unchanged'], cwd=compose_rootdir)
+        
+        child_args = ['ostree', '--repo=' + self.repo,
+                      'commit', '-b', treename, '-s', 'Compose',
+                      '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
+                      '--related-objects-file=' + related_tmppath,
+                      ]
+        if not self.buildopts.no_skip_if_unchanged:
+            child_args.append('--skip-if-unchanged')
+        run_sync(child_args, cwd=compose_rootdir)
         os.unlink(related_tmppath)
         shutil.rmtree(compose_rootdir)
 
@@ -240,6 +265,7 @@ class OstbuildBuild(builtins.Builtin):
         parser.add_argument('--force-rebuild', action='store_true')
         parser.add_argument('--skip-vcs-matches', action='store_true')
         parser.add_argument('--no-compose', action='store_true')
+        parser.add_argument('--no-skip-if-unchanged', action='store_true')
         parser.add_argument('--compose-only', action='store_true')
         parser.add_argument('--shell-on-failure', action='store_true')
         parser.add_argument('--debug-shell', action='store_true')
@@ -257,6 +283,7 @@ class OstbuildBuild(builtins.Builtin):
         self.buildopts.shell_on_failure = args.shell_on_failure
         self.buildopts.force_rebuild = args.force_rebuild
         self.buildopts.skip_vcs_matches = args.skip_vcs_matches
+        self.buildopts.no_skip_if_unchanged = args.no_skip_if_unchanged
 
         self.force_build_components = set()
 
@@ -290,10 +317,8 @@ class OstbuildBuild(builtins.Builtin):
             component_to_arches[name] = component_arches
 
         for name in args.components:
-            component = components.get(name)
-            if component is None:
-                fatal("Unknown component %r" % (name, ))
-            self.force_build_components.add(name)
+            component = self.get_component(name)
+            self.force_build_components.add(component['name'])
 
         components_to_build = []
         component_skipped_count = 0
@@ -318,8 +343,15 @@ class OstbuildBuild(builtins.Builtin):
                 targets_list.append(target)
                 target['name'] = '%s-%s-%s' % (prefix, architecture, target_component_type)
 
-                base_ref = '%s-%s-%s' % (base_prefix, architecture, target_component_type)
-                target['base'] = {'name': base_ref}
+                runtime_ref = '%s-%s-runtime' % (base_prefix, architecture)
+                buildroot_ref = '%s-%s-devel' % (base_prefix, architecture)
+                if target_component_type == 'runtime':
+                    base_ref = runtime_ref
+                else:
+                    base_ref = buildroot_ref
+                target['base'] = {'name': base_ref,
+                                  'runtime': runtime_ref,
+                                  'devel': buildroot_ref}
 
                 if target_component_type == 'runtime':
                     target_components = runtime_components

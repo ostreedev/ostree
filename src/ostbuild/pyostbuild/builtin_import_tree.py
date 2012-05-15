@@ -30,7 +30,7 @@ from . import buildutil
 
 class OstbuildImportTree(builtins.Builtin):
     name = "import-tree"
-    short_description = "Extract source data from tree"
+    short_description = "Extract source data from tree into new prefix"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -45,22 +45,52 @@ class OstbuildImportTree(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--prefix')
         parser.add_argument('--tree')
+        parser.add_argument('new_prefix')
 
         args = parser.parse_args(argv)
         self.parse_config()
-        if args.prefix:
-            self.prefix = args.prefix
+        self.parse_snapshot_from_current()
 
-        if args.tree:
-            self.load_bin_snapshot_from_path(args.tree)
-        else:
-            self.load_bin_snapshot_from_current()
+        log("Loading source from tree %r" % (self.snapshot_path, ))
 
-        snapshot = self.bin_snapshot_to_src(self.bin_snapshot)
+        related_objects = run_sync_get_output(['ostree', '--repo='+ self.repo,
+                                               'show', '--print-related',
+                                               self.active_branch_checksum])
+        ref_to_revision = {}
+        for line in StringIO(related_objects):
+            line = line.strip()
+            (ref, revision) = line.split(' ', 1)
+            ref_to_revision[ref] = revision
+
+        (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-import-tree-')
+        f = os.fdopen(fd, 'w')
+        for (ref, rev) in ref_to_revision.iteritems():
+            if ref.startswith('components/'):
+                ref = ref[len('components/'):]
+                (prefix, subref) = ref.split('/', 1)
+                newref = 'components/%s/%s' % (args.new_prefix, subref)
+            elif ref.startswith('bases/'):
+                # hack
+                base_key = '/' + self.snapshot['prefix'] + '-'
+                replace_key = '/' + args.new_prefix + '-'
+                newref = ref.replace(base_key, replace_key)
+            else:
+                fatal("Unhandled ref %r; expected components/ or bases/" % (ref, ))
+                
+            f.write('%s %s\n' % (newref, rev))
+        f.close()
+
+        run_sync(['ostree', '--repo=' + self.repo,
+                  'write-refs'], stdin=open(tmppath))
+
+        self.snapshot['prefix'] = args.new_prefix
+
+        run_sync(['ostbuild', 'prefix', args.new_prefix])
+        self.prefix = args.new_prefix
+
         db = self.get_src_snapshot_db()
-        path = db.store(snapshot)
+        path = db.store(self.snapshot)
         log("Source snapshot: %s" % (path, ))
 
 builtins.register(OstbuildImportTree)

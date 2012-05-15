@@ -92,27 +92,6 @@ class Builtin(object):
         self.snapshot_dir = os.path.join(self.workdir, 'snapshots')
         self.patchdir = os.path.join(self.workdir, 'patches')
 
-    def load_bin_snapshot_from_path(self, path):
-        self.bin_snapshot_path = os.path.join(path, 'ostree-meta', 'contents.json')
-        if not os.path.exists(self.bin_snapshot_path):
-            self.bin_snapshot_path = os.path.join(path, 'contents.json')
-        self.bin_snapshot = json.load(open(self.bin_snapshot_path))
-        bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
-        if bin_ver != 1:
-            fatal("Unhandled 00ostree-bin-snapshot-version %r, expected 1" % (bin_ver, ))
-
-    def load_bin_snapshot_from_current(self):
-        if self.ostree_dir is None:
-            fatal("/ostree directory not found")
-        repo_path = os.path.join(self.ostree_dir, 'repo')
-        if not os.path.isdir(repo_path):
-            fatal("Repository '%s' doesn't exist" % (repo_path, ))
-        self.repo = repo_path
-        if self.active_branch is None:
-            fatal("No \"current\" link found")
-        tree_path = os.path.join(self.ostree_dir, self.active_branch)
-        self.load_bin_snapshot_from_path(tree_path)
-
     def get_component_snapshot(self, name):
         found = False
         for content in self.active_branch_contents['contents']:
@@ -138,7 +117,7 @@ class Builtin(object):
                 patches = dict(global_patchmeta)
                 patches['files'] = component_patch_files
                 meta['patches'] = patches
-        config_opts = self.snapshot.get('config-opts', [])
+        config_opts = list(self.snapshot.get('config-opts', []))
         config_opts.extend(component.get('config-opts', []))
         meta['config-opts'] = config_opts
         return meta
@@ -213,21 +192,20 @@ class Builtin(object):
         src_ver = self.snapshot[key]
         if src_ver != 0:
             fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
+        if self.prefix is None:
+            self.prefix = self.snapshot['prefix']
 
-    def parse_bin_snapshot(self, prefix, path):
-        self.parse_prefix(prefix)
-        self._init_repo()
-        if path is None:
-            latest_path = self.get_bin_snapshot_db().get_latest_path()
-            if latest_path is None:
-                raise Exception("No binary snapshot found for prefix %r" % (self.prefix, ))
-            self.bin_snapshot_path = latest_path
-        else:
-            self.bin_snapshot_path = path
-        self.bin_snapshot = json.load(open(self.bin_snapshot_path))
-        bin_ver = self.bin_snapshot['00ostree-bin-snapshot-version']
-        if bin_ver != 1:
-            fatal("Unhandled 00ostree-bin-snapshot-version %r, expected 1" % (bin_ver, ))
+    def parse_snapshot_from_current(self):
+        if self.ostree_dir is None:
+            fatal("/ostree directory not found")
+        repo_path = os.path.join(self.ostree_dir, 'repo')
+        if not os.path.isdir(repo_path):
+            fatal("Repository '%s' doesn't exist" % (repo_path, ))
+        self.repo = repo_path
+        if self.active_branch is None:
+            fatal("No \"current\" link found")
+        tree_path = os.path.join(self.ostree_dir, self.active_branch)
+        self.parse_snapshot(None, os.path.join(tree_path, 'contents.json'))
 
     def execute(self, args):
         raise NotImplementedError()

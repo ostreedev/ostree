@@ -63,8 +63,10 @@ class OstbuildChrootCompileOne(builtins.Builtin):
 
         ref_to_rev = {}
 
+        prefix = self.snapshot['prefix']
+
         arch_buildroot_name = 'bases/%s/%s-%s-devel' % (self.snapshot['base']['name'],
-                                                        self.snapshot['prefix'],
+                                                        prefix,
                                                         architecture)
 
         arch_buildroot_rev = run_sync_get_output(['ostree', '--repo=' + self.repo, 'rev-parse',
@@ -74,7 +76,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         checkout_trees = [(arch_buildroot_name, '/')]
         refs_to_resolve = []
         for dependency in build_dependencies:
-            buildname = 'components/%s/%s' % (dependency['name'], architecture)
+            buildname = 'components/%s/%s/%s' % (prefix, dependency['name'], architecture)
             refs_to_resolve.append(buildname)
             checkout_trees.append((buildname, '/runtime'))
             checkout_trees.append((buildname, '/devel'))
@@ -152,6 +154,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
         parser.add_argument('--prefix')
         parser.add_argument('--snapshot', required=True)
         parser.add_argument('--name')
+        parser.add_argument('--resultdir')
         parser.add_argument('--arch', required=True)
         parser.add_argument('--debug-shell', action='store_true')
         
@@ -177,10 +180,7 @@ class OstbuildChrootCompileOne(builtins.Builtin):
             shutil.rmtree(child_tmpdir)
         fileutil.ensure_dir(child_tmpdir)
 
-        resultdir = os.path.join(self.workdir, 'results', component_name, args.arch)
-        if os.path.isdir(resultdir):
-            shutil.rmtree(resultdir)
-        fileutil.ensure_dir(resultdir)
+        resultdir = args.resultdir
         
         rootdir = self._compose_buildroot(component_name, args.arch)
 
