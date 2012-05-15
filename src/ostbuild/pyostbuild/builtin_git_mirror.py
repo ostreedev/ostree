@@ -48,16 +48,20 @@ class OstbuildGitMirror(builtins.Builtin):
         self.parse_snapshot(args.prefix, args.src_snapshot)
 
         if len(args.components) == 0:
-            components = self.snapshot['components'].keys()
+            components = []
+            for component in self.snapshot['components']:
+                components.append(component['name'])
         else:
             components = args.components
+
         for name in components:
-            component = self.snapshot['components'][name]
+            component = self.get_component(name)
             src = component['src']
             (keytype, uri) = vcs.parse_src_key(src)
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, component['branch'])
 
             if args.fetch:
+                log("Running git fetch for %s" % (name, ))
                 run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
 
 builtins.register(OstbuildGitMirror)
