@@ -110,7 +110,7 @@
    g_type_class_ref never finalized
    Memcheck:Leak
    fun:calloc
-   fun:g_malloc0
+   ...
    fun:g_type_class_ref
    ...
 }
