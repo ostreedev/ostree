@@ -39,7 +39,6 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\
 	src/ostbuild/pyostbuild/builtin_init.py	\
-	src/ostbuild/pyostbuild/builtin_status.py	\
 	src/ostbuild/pyostbuild/builtins.py		\
 	src/ostbuild/pyostbuild/filemonitor.py		\
 	src/ostbuild/pyostbuild/fileutil.py		\

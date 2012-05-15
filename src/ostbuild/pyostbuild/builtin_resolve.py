@@ -45,7 +45,7 @@ class OstbuildResolve(builtins.Builtin):
         orig_src = component_meta['src']
 
         did_expand = False
-        for (vcsprefix, expansion) in self.manifest['vcsconfig'].iteritems():
+        for (vcsprefix, expansion) in self.snapshot['vcsconfig'].iteritems():
             prefix = vcsprefix + ':'
             if orig_src.startswith(prefix):
                 result['src'] = expansion + orig_src[len(prefix):]
@@ -75,7 +75,6 @@ class OstbuildResolve(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
-        parser.add_argument('--fetch', action='store_true')
         parser.add_argument('--fetch-patches', action='store_true')
         parser.add_argument('components', nargs='*')
 
@@ -84,35 +83,14 @@ class OstbuildResolve(builtins.Builtin):
         
         self.parse_config()
 
-        self.manifest = json.load(open(args.manifest))
-        self.prefix = self.manifest['prefix']
+        self.snapshot = json.load(open(args.manifest))
+        self.prefix = self.snapshot['prefix']
 
-        snapshot = copy.deepcopy(self.manifest)
-        components = map(self._resolve_component_meta, self.manifest['components'])
-        snapshot['components'] = components
+        components = map(self._resolve_component_meta, self.snapshot['components'])
+        self.snapshot['components'] = components
 
-        if args.fetch:
-            if len(args.components) == 0:
-                fetch_components = map(lambda x: x['name'], component_source_list)
-            else:
-                fetch_components = args.components
-            for component_name in fetch_components:
-                found = False
-                for component in components:
-                    if component['name'] == component_name:
-                        found = True
-                        break
-                if not found:
-                    fatal("Unknown component %r" % (component_name, ))
-                (keytype, uri) = vcs.parse_src_key(component['src'])
-                mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, None)
-                log("Running git fetch for %s" % (component['name'], ))
-                run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
-        else:
-            fetch_components = []
-
-        global_patches_meta = self._resolve_component_meta(self.manifest['patches'])
-        snapshot['patches'] = global_patches_meta
+        global_patches_meta = self._resolve_component_meta(self.snapshot['patches'])
+        self.snapshot['patches'] = global_patches_meta
         (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
         mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
         if args.fetch_patches:
@@ -135,7 +113,7 @@ class OstbuildResolve(builtins.Builtin):
             component['revision'] = revision
 
         src_db = self.get_src_snapshot_db()
-        path = src_db.store(snapshot)
+        path = src_db.store(self.snapshot)
         log("Source snapshot: %s" % (path, ))
         
 builtins.register(OstbuildResolve)

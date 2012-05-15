@@ -40,6 +40,7 @@ class OstbuildGitMirror(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
+        parser.add_argument('--start-at')
         parser.add_argument('--fetch', action='store_true')
         parser.add_argument('components', nargs='*')
 
@@ -51,6 +52,9 @@ class OstbuildGitMirror(builtins.Builtin):
             components = []
             for component in self.snapshot['components']:
                 components.append(component['name'])
+            if args.start_at:
+                idx = components.index(args.start_at)
+                components = components[idx:]
         else:
             components = args.components
 

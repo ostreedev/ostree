@@ -123,7 +123,6 @@ class Builtin(object):
         return meta
 
     def get_component(self, name):
-        assert self.repo is not None
         assert self.snapshot is not None
         for component in self.snapshot['components']:
             if component['name'] == name:

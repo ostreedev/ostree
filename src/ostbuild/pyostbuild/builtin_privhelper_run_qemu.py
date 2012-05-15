@@ -57,6 +57,7 @@ class OstbuildPrivhelperRunQemu(builtins.Builtin):
 
         args = [qemu, '-kernel', kernel, '-initrd', initramfs,
                 '-hda', self.qemu_path, '-m', memory, '-append', extra_args]
+        log("Running: %s" % (subprocess.list2cmdline(args), ))
         os.execvp(qemu, args)
         
 builtins.register(OstbuildPrivhelperRunQemu)
