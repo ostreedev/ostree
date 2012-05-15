@@ -188,6 +188,12 @@ class OstbuildCompileOne(builtins.Builtin):
                 shutil.rmtree(resultdir)
             os.makedirs(resultdir)
 
+        # Remove /var from the install - components are required to
+        # auto-create these directories on demand.
+        varpath = os.path.join(tempdir, 'var')
+        if os.path.isdir(varpath):
+            shutil.rmtree(varpath)
+
         # Move symbolic links for shared libraries as well
         # as static libraries.  And delete all .la files.
         for libdirname in ['lib', 'usr/lib']:
