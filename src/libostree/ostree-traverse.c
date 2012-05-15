@@ -34,12 +34,13 @@ ostree_traverse_new_reachable (void)
                                 (GDestroyNotify)g_variant_unref, NULL);
 }
 
-gboolean
-ostree_traverse_dirtree (OstreeRepo      *repo,
-                         const char      *dirtree_checksum,
-                         GHashTable      *inout_reachable,
-                         GCancellable    *cancellable,
-                         GError         **error)
+static gboolean
+traverse_dirtree_internal (OstreeRepo      *repo,
+                           const char      *dirtree_checksum,
+                           int              recursion_depth,
+                           GHashTable      *inout_reachable,
+                           GCancellable    *cancellable,
+                           GError         **error)
 {
   gboolean ret = FALSE;
   int n, i;
@@ -51,6 +52,13 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
   ot_lvariant GVariant *content_csum_v = NULL;
   ot_lvariant GVariant *metadata_csum_v = NULL;
   ot_lfree char *tmp_checksum = NULL;
+
+  if (recursion_depth > OSTREE_MAX_RECURSION)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Maximum recursion limit reached during traversal");
+      goto out;
+    }
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &tree, error))
     goto out;
@@ -90,8 +98,8 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
       
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes_v (content_csum_v);
-          if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable,
-                                        cancellable, error))
+          if (!traverse_dirtree_internal (repo, tmp_checksum, recursion_depth + 1,
+                                          inout_reachable, cancellable, error))
             goto out;
 
           g_free (tmp_checksum);
@@ -108,6 +116,17 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
 }
 
 gboolean
+ostree_traverse_dirtree (OstreeRepo      *repo,
+                         const char      *dirtree_checksum,
+                         GHashTable      *inout_reachable,
+                         GCancellable    *cancellable,
+                         GError         **error)
+{
+  return traverse_dirtree_internal (repo, dirtree_checksum, 0,
+                                    inout_reachable, cancellable, error);
+}
+
+gboolean
 ostree_traverse_commit (OstreeRepo      *repo,
                         const char      *commit_checksum,
                         int              maxdepth,
@@ -116,47 +135,54 @@ ostree_traverse_commit (OstreeRepo      *repo,
                         GError         **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *parent_csum_bytes = NULL;
-  ot_lvariant GVariant *meta_csum_bytes = NULL;
-  ot_lvariant GVariant *content_csum_bytes = NULL;
-  ot_lvariant GVariant *key = NULL;
-  ot_lvariant GVariant *commit = NULL;
   ot_lfree char*tmp_checksum = NULL;
 
-  /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
-    goto out;
-  
-  key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
-  g_hash_table_replace (inout_reachable, key, key);
-  key = NULL;
-
-  g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
-  g_free (tmp_checksum);
-  tmp_checksum = ostree_checksum_from_bytes_v (meta_csum_bytes);
-  key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META);
-  g_hash_table_replace (inout_reachable, key, key);
-  key = NULL;
-
-  g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
-  g_free (tmp_checksum);
-  tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
-  if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
-    goto out;
-
-  if (maxdepth == -1 || maxdepth > 0)
+  while (TRUE)
     {
-      g_variant_get_child (commit, 1, "@ay", &parent_csum_bytes);
+      gboolean recurse = FALSE;
+      ot_lvariant GVariant *parent_csum_bytes = NULL;
+      ot_lvariant GVariant *meta_csum_bytes = NULL;
+      ot_lvariant GVariant *content_csum_bytes = NULL;
+      ot_lvariant GVariant *key = NULL;
+      ot_lvariant GVariant *commit = NULL;
 
-      if (g_variant_n_children (parent_csum_bytes) > 0)
+      /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
+        goto out;
+  
+      key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
+      g_hash_table_replace (inout_reachable, key, key);
+      key = NULL;
+
+      g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes_v (meta_csum_bytes);
+      key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META);
+      g_hash_table_replace (inout_reachable, key, key);
+      key = NULL;
+
+      g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
+      if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
+        goto out;
+
+      if (maxdepth == -1 || maxdepth > 0)
         {
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes_v (parent_csum_bytes);
-          if (!ostree_traverse_commit (repo, tmp_checksum,
-                                       maxdepth > 0 ? maxdepth - 1 : -1,
-                                       inout_reachable, cancellable, error))
-            goto out;
+          g_variant_get_child (commit, 1, "@ay", &parent_csum_bytes);
+          
+          if (g_variant_n_children (parent_csum_bytes) > 0)
+            {
+              g_free (tmp_checksum);
+              tmp_checksum = ostree_checksum_from_bytes_v (parent_csum_bytes);
+              commit_checksum = tmp_checksum;
+              if (maxdepth > 0)
+                maxdepth -= 1;
+              recurse = TRUE;
+            }
         }
+      if (!recurse)
+        break;
     }
 
   ret = TRUE;
