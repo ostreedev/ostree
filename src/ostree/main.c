@@ -48,6 +48,7 @@ static OstreeBuiltin builtins[] = {
   { "remote", ostree_builtin_remote, 0 },
   { "show", ostree_builtin_show, 0 },
   { "unpack", ostree_builtin_unpack, 0 },
+  { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };
 

@@ -44,6 +44,7 @@ gboolean ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **
 gboolean ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error);
 gboolean ostree_builtin_unpack (int argc, char **argv, GFile *repo_path, GError **error);
+gboolean ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GError **error);
 
 G_END_DECLS
 

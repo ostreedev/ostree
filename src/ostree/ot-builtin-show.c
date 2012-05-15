@@ -27,12 +27,12 @@
 
 #include <glib/gi18n.h>
 
-static gboolean print_compose;
+static gboolean print_related;
 static char* print_variant_type;
 static char* print_metadata_key;
 
 static GOptionEntry options[] = {
-  { "print-compose", 0, 0, G_OPTION_ARG_NONE, &print_compose, "If given, show the branches which make up the given compose commit", NULL },
+  { "print-related", 0, 0, G_OPTION_ARG_NONE, &print_related, "If given, show the \"related\" commits", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
   { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
   { NULL }
@@ -132,18 +132,16 @@ show_repo_meta (OstreeRepo  *repo,
 }
 
 static gboolean
-do_print_compose (OstreeRepo  *repo,
+do_print_related (OstreeRepo  *repo,
                   const char *rev,
                   const char *resolved_rev,
                   GError **error)
 {
   gboolean ret = FALSE;
-  const char *branch;
-  const char *branchrev;
+  const char *name;
+  ot_lvariant GVariant *csum_v = NULL;
   ot_lvariant GVariant *variant = NULL;
-  ot_lvariant GVariant *metadata = NULL;
-  ot_lvariant GVariant *compose_contents = NULL;
-  ot_lhash GHashTable *metadata_hash = NULL;
+  ot_lvariant GVariant *related = NULL;
   GVariantIter *viter = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
@@ -151,22 +149,16 @@ do_print_compose (OstreeRepo  *repo,
     goto out;
       
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-  metadata = g_variant_get_child_value (variant, 1);
-  metadata_hash = ot_util_variant_asv_to_hash_table (metadata);
+  related = g_variant_get_child_value (variant, 2);
   
-  compose_contents = g_hash_table_lookup (metadata_hash, "ostree-compose");
-  if (!compose_contents)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Commit %s does not have compose metadata key \"ostree-compose\"", resolved_rev);
-      goto out;
-    }
+  viter = g_variant_iter_new (related);
 
-  g_variant_get_child (compose_contents, 0, "a(ss)", &viter);
-  while (g_variant_iter_next (viter, "(&s&s)", &branch, &branchrev))
+  while (g_variant_iter_loop (viter, "(&s@ay)", &name, &csum_v))
     {
-      g_print ("%s %s\n", branch, branchrev);
+      ot_lfree char *checksum = ostree_checksum_from_bytes_v (csum_v);
+      g_print ("%s %s\n", name, checksum);
     }
+  csum_v = NULL;
 
   ret = TRUE;
  out:
@@ -237,12 +229,12 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
       if (!do_print_metadata_key (repo, resolved_rev, print_metadata_key, error))
         goto out;
     }
-  else if (print_compose)
+  else if (print_related)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
 
-      if (!do_print_compose (repo, rev, resolved_rev, error))
+      if (!do_print_related (repo, rev, resolved_rev, error))
         goto out;
     }
   else if (print_variant_type)
