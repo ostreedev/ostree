@@ -3975,14 +3975,7 @@ ostree_repo_load_variant (OstreeRepo  *self,
                          cancellable, error))
     goto out;
 
-  /* Prefer loose metadata for now */
-  if (object_path != NULL)
-    {
-      if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
-                                TRUE, &ret_variant, error))
-        goto out;
-    }
-  else if (pack_checksum != NULL)
+  if (pack_checksum != NULL)
     {
       if (!ostree_repo_map_pack_file (self, pack_checksum, TRUE, &pack_data, &pack_len,
                                       cancellable, error))
@@ -3993,6 +3986,12 @@ ostree_repo_load_variant (OstreeRepo  *self,
         goto out;
 
       g_variant_get_child (packed_object, 2, "v", &ret_variant);
+    }
+  else if (object_path != NULL)
+    {
+      if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
+                                TRUE, &ret_variant, error))
+        goto out;
     }
   else if (priv->parent_repo)
     {
