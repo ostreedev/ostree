@@ -30,9 +30,11 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_compile_one.py	\
 	src/ostbuild/pyostbuild/builtin_deploy_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_deploy_root.py	\
+	src/ostbuild/pyostbuild/builtin_run_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_import_tree.py	\
 	src/ostbuild/pyostbuild/builtin_pull_components.py	\
 	src/ostbuild/pyostbuild/builtin_privhelper_deploy_qemu.py	\
+	src/ostbuild/pyostbuild/builtin_privhelper_run_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_git_mirror.py	\
 	src/ostbuild/pyostbuild/builtin_prefix.py	\
 	src/ostbuild/pyostbuild/builtin_resolve.py	\

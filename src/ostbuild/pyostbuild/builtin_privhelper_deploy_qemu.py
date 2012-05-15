@@ -93,12 +93,12 @@ class OstbuildPrivhelperDeployQemu(builtins.Builtin):
         try:
             subprocess.check_call(['mount', '-o', 'loop', self.qemu_path, self.mountpoint])
             child_args = ['ostree', '--repo=' + repo_path, 'pull-local', args.srcrepo]
-            child_args.extend(args.targets)
+            child_args.extend(['trees/' + x for x in args.targets])
             run_sync(child_args)
 
             first_target = args.targets[0]
             for target in args.targets:
-                run_sync(['ostree', '--repo=' + repo_path, 'checkout', '--atomic-retarget', target],
+                run_sync(['ostree', '--repo=' + repo_path, 'checkout', '--atomic-retarget', 'trees/'+ target, target],
                          cwd=os.path.join(self.mountpoint, 'ostree'))
             current_link_path = os.path.join(self.mountpoint, 'ostree', 'current')
             os.symlink(first_target, current_link_path + '.tmp')

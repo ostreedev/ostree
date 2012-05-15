@@ -27,39 +27,23 @@ from .ostbuildlog import log, fatal
 from . import ostbuildrc
 from . import privileged_subproc
 
-class OstbuildDeployQemu(builtins.Builtin):
-    name = "deploy-qemu"
-    short_description = "Extract data from shadow repository to qemu"
+class OstbuildRunQemu(builtins.Builtin):
+    name = "run-qemu"
+    short_description = "Run QEMU image"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--prefix')
-        parser.add_argument('--snapshot')
-        parser.add_argument('targets', nargs='*')
+        parser.add_argument('target')
 
         args = parser.parse_args(argv)
-        self.args = args
         
         self.parse_config()
-        self.parse_snapshot(args.prefix, args.snapshot)
-
-        if len(args.targets) > 0:
-            targets = args.targets
-        else:
-            targets = []
-            prefix = self.snapshot['prefix']
-            for target_component_type in ['runtime', 'devel']:
-                for architecture in self.snapshot['architectures']:
-                    name = '%s-%s-%s' % (prefix, architecture, target_component_type)
-                    targets.append(name)
         
         helper = privileged_subproc.PrivilegedSubprocess()
-        shadow_path = os.path.join(self.workdir, 'shadow-repo')
-        child_args = ['ostbuild', 'privhelper-deploy-qemu', shadow_path]
-        child_args.extend(targets)
+        child_args = ['ostbuild', 'privhelper-run-qemu', args.target]
         helper.spawn_sync(child_args)
         
-builtins.register(OstbuildDeployQemu)
+builtins.register(OstbuildRunQemu)

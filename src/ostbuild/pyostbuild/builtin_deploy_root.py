@@ -37,22 +37,31 @@ class OstbuildDeployRoot(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
-        parser.add_argument('--bin-snapshot')
+        parser.add_argument('--snapshot')
+        parser.add_argument('targets', nargs='*')
 
         args = parser.parse_args(argv)
         self.args = args
         
         self.parse_config()
-        self.parse_bin_snapshot(args.prefix, args.bin_snapshot)
+        self.parse_snapshot(args.prefix, args.snapshot)
         
-        target_names = []
-        for target in self.bin_snapshot['targets']:
-            target_names.append(target['name'])
+        if len(args.targets) > 0:
+            targets = args.targets
+        else:
+            targets = []
+            prefix = self.snapshot['prefix']
+            for target_component_type in ['runtime', 'devel']:
+                for architecture in self.snapshot['architectures']:
+                    name = '%s-%s-%s' % (prefix, architecture, target_component_type)
+                    targets.append(name)
 
         helper = privileged_subproc.PrivilegedSubprocess()
         sys_repo = os.path.join(self.ostree_dir, 'repo')
         shadow_path = os.path.join(self.workdir, 'shadow-repo')
-        helper.spawn_sync(['ostree', '--repo=' + sys_repo,
-                           'pull-local', shadow_path])
+        child_args = ['ostree', '--repo=' + sys_repo,
+                      'pull-local', shadow_path]
+        child_args.extend(['trees/' + x for x in targets])
+        helper.spawn_sync(child_args)
         
 builtins.register(OstbuildDeployRoot)

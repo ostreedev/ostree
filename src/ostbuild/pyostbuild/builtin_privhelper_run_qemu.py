@@ -24,42 +24,39 @@ from StringIO import StringIO
 
 from . import builtins
 from .ostbuildlog import log, fatal
+from .subprocess_helpers import run_sync
 from . import ostbuildrc
-from . import privileged_subproc
+from . import fileutil
 
-class OstbuildDeployQemu(builtins.Builtin):
-    name = "deploy-qemu"
-    short_description = "Extract data from shadow repository to qemu"
+class OstbuildPrivhelperRunQemu(builtins.Builtin):
+    name = "privhelper-run-qemu"
+    short_description = "Helper for run-qemu"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--prefix')
-        parser.add_argument('--snapshot')
-        parser.add_argument('targets', nargs='*')
+        parser.add_argument('target')
 
         args = parser.parse_args(argv)
-        self.args = args
-        
-        self.parse_config()
-        self.parse_snapshot(args.prefix, args.snapshot)
 
-        if len(args.targets) > 0:
-            targets = args.targets
-        else:
-            targets = []
-            prefix = self.snapshot['prefix']
-            for target_component_type in ['runtime', 'devel']:
-                for architecture in self.snapshot['architectures']:
-                    name = '%s-%s-%s' % (prefix, architecture, target_component_type)
-                    targets.append(name)
+        if os.geteuid() != 0:
+            fatal("This helper can only be run as root")
+
+        self.ostree_dir = self.find_ostree_dir()
+        self.qemu_path = os.path.join(self.ostree_dir, "ostree-qemu.img")
+
+        release = os.uname()[2]
+
+        qemu = 'qemu-kvm'
+        kernel = '/boot/vmlinuz-%s' % (release, )
+        initramfs = '/boot/initramfs-ostree-%s.img' % (release, )
+        memory = '512M'
+        extra_args = 'root=/dev/sda rd.pymouth=0 ostree=%s' % (args.target, )
+
+        args = [qemu, '-kernel', kernel, '-initrd', initramfs,
+                '-hda', self.qemu_path, '-m', memory, '-append', extra_args]
+        os.execvp(qemu, args)
         
-        helper = privileged_subproc.PrivilegedSubprocess()
-        shadow_path = os.path.join(self.workdir, 'shadow-repo')
-        child_args = ['ostbuild', 'privhelper-deploy-qemu', shadow_path]
-        child_args.extend(targets)
-        helper.spawn_sync(child_args)
-        
-builtins.register(OstbuildDeployQemu)
+builtins.register(OstbuildPrivhelperRunQemu)
