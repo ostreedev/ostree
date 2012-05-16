@@ -23,7 +23,6 @@ import argparse
 
 from . import builtins
 from . import builtin_build
-from . import builtin_branch_prefix
 from . import builtin_checkout
 from . import builtin_chroot_compile_one
 from . import builtin_compile_one
@@ -36,7 +35,6 @@ from . import builtin_run_qemu
 from . import builtin_prefix
 from . import builtin_privhelper_deploy_qemu
 from . import builtin_privhelper_run_qemu
-from . import builtin_pull_components
 from . import builtin_resolve
 
 def usage(ecode):

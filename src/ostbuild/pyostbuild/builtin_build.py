@@ -106,7 +106,7 @@ class OstbuildBuild(builtins.Builtin):
                 return previous_build_version
             else:
                 previous_metadata = json.loads(previous_metadata_text)
-                previous_vcs_version = previous_metadata['revision']
+                previous_vcs_version = previous_metadata.get('revision')
                 if current_vcs_version == previous_vcs_version:
                     log("Metadata differs; VCS version unchanged")
                     if self.buildopts.skip_vcs_matches:
@@ -123,9 +123,12 @@ class OstbuildBuild(builtins.Builtin):
         checkoutdir = os.path.join(self.workdir, 'checkouts')
         component_src = os.path.join(checkoutdir, buildname)
         fileutil.ensure_parent_dir(component_src)
-        run_sync(['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
-                  '--checkoutdir=' + component_src,
-                  '--clean', '--overwrite', basename])
+        child_args = ['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
+                      '--checkoutdir=' + component_src,
+                      '--clean', '--overwrite', basename]
+        if self.args.patches_path:
+            child_args.append('--patches-path=' + self.args.patches_path)
+        run_sync(child_args)
 
         artifact_meta = dict(component)
 
@@ -262,6 +265,7 @@ class OstbuildBuild(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
+        parser.add_argument('--patches-path')
         parser.add_argument('--force-rebuild', action='store_true')
         parser.add_argument('--skip-vcs-matches', action='store_true')
         parser.add_argument('--no-compose', action='store_true')

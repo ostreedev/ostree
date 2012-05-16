@@ -41,6 +41,7 @@ class OstbuildCheckout(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--overwrite', action='store_true')
         parser.add_argument('--prefix')
+        parser.add_argument('--patches-path')
         parser.add_argument('--snapshot')
         parser.add_argument('--checkoutdir')
         parser.add_argument('-a', '--active-tree', action='store_true')
@@ -94,7 +95,10 @@ class OstbuildCheckout(builtins.Builtin):
 
         patches = component.get('patches')
         if patches is not None:
-            (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
+            if self.args.patches_path:
+                (patches_keytype, patches_uri) = ('local', self.args.patches_path)
+            else:
+                (patches_keytype, patches_uri) = buildutil.parse_src_key(patches['src'])
             if patches_keytype == 'git':
                 patches_mirror = buildutil.get_mirrordir(self.mirrordir, patches_keytype, patches_uri)
                 vcs.get_vcs_checkout(self.mirrordir, patches_keytype, patches_uri,

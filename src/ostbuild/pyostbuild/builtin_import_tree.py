@@ -35,18 +35,10 @@ class OstbuildImportTree(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def bin_snapshot_to_src(self, bin_snapshot):
-        del bin_snapshot['00ostree-bin-snapshot-version']
-
-        src_snapshot = dict(bin_snapshot)
-        src_snapshot['00ostree-src-snapshot-version'] = 0
-
-        return src_snapshot
-
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--tree')
-        parser.add_argument('new_prefix')
+        parser.add_argument('--prefix')
 
         args = parser.parse_args(argv)
         self.parse_config()
@@ -63,17 +55,22 @@ class OstbuildImportTree(builtins.Builtin):
             (ref, revision) = line.split(' ', 1)
             ref_to_revision[ref] = revision
 
+        if args.prefix:
+            target_prefix = args.prefix
+        else:
+            target_prefix = self.snapshot['prefix']
+
         (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-import-tree-')
         f = os.fdopen(fd, 'w')
         for (ref, rev) in ref_to_revision.iteritems():
             if ref.startswith('components/'):
                 ref = ref[len('components/'):]
                 (prefix, subref) = ref.split('/', 1)
-                newref = 'components/%s/%s' % (args.new_prefix, subref)
+                newref = 'components/%s/%s' % (target_prefix, subref)
             elif ref.startswith('bases/'):
                 # hack
                 base_key = '/' + self.snapshot['prefix'] + '-'
-                replace_key = '/' + args.new_prefix + '-'
+                replace_key = '/' + target_prefix + '-'
                 newref = ref.replace(base_key, replace_key)
             else:
                 fatal("Unhandled ref %r; expected components/ or bases/" % (ref, ))
@@ -84,10 +81,10 @@ class OstbuildImportTree(builtins.Builtin):
         run_sync(['ostree', '--repo=' + self.repo,
                   'write-refs'], stdin=open(tmppath))
 
-        self.snapshot['prefix'] = args.new_prefix
+        self.snapshot['prefix'] = target_prefix
 
-        run_sync(['ostbuild', 'prefix', args.new_prefix])
-        self.prefix = args.new_prefix
+        run_sync(['ostbuild', 'prefix', target_prefix])
+        self.prefix = target_prefix
 
         db = self.get_src_snapshot_db()
         path = db.store(self.snapshot)
