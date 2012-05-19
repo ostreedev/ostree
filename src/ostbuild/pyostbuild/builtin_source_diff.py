@@ -36,6 +36,39 @@ class OstbuildSourceDiff(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
+    def _diff(self, name, mirrordir, from_revision, to_revision):
+        env = dict(os.environ)
+        env['LANG'] = 'C'
+                
+        spacename = ' ' + name
+
+        proc = subprocess.Popen(['git', 'diff', from_revision, to_revision],
+                                env=env, cwd=mirrordir, stdout=subprocess.PIPE)
+        for line in proc.stdout:
+            if (line.startswith('diff --git ')
+                or line.startswith('--- a/')
+                or line.startswith('+++ b/')
+                or line.startswith('Binary files /dev/null and b/')):
+                line = diff_replace_re.sub(spacename, line)
+                sys.stdout.write(line)
+            else:
+                sys.stdout.write(line)
+        proc.wait()
+
+    def _log(self, opts, name, mirrordir, from_revision, to_revision):
+        env = dict(os.environ)
+        env['LANG'] = 'C'
+                
+        spacename = ' ' + name
+
+        args = ['git', 'log']
+        args.extend(opts)
+        args.append(from_revision + '...' + to_revision)
+        proc = subprocess.Popen(args, env=env, cwd=mirrordir, stdout=subprocess.PIPE)
+        for line in proc.stdout:
+            sys.stdout.write(line)
+        proc.wait()
+
     def _snapshot_from_rev(self, rev):
         self.init_repo()
         text = run_sync_get_output(['ostree', '--repo=' + self.repo,
@@ -45,6 +78,8 @@ class OstbuildSourceDiff(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--log', action='store_true')
+        parser.add_argument('--logp', action='store_true')
         parser.add_argument('--rev-from')
         parser.add_argument('--rev-to')
         parser.add_argument('--snapshot-from')
@@ -99,22 +134,11 @@ class OstbuildSourceDiff(builtins.Builtin):
                 continue
 
             if from_revision != to_revision:
-                env = dict(os.environ)
-                env['LANG'] = 'C'
-                
-                spacename = ' ' + name
-
-                proc = subprocess.Popen(['git', 'diff', from_revision, to_revision],
-                                        env=env, cwd=mirrordir, stdout=subprocess.PIPE)
-                for line in proc.stdout:
-                    if (line.startswith('diff --git ')
-                        or line.startswith('--- a/')
-                        or line.startswith('+++ b/')
-                        or line.startswith('Binary files /dev/null and b/')):
-                        line = diff_replace_re.sub(spacename, line)
-                        sys.stdout.write(line)
-                    else:
-                        sys.stdout.write(line)
-                proc.wait()
+                if args.log:
+                    self._log([], name, mirrordir, from_revision, to_revision)
+                elif args.logp:
+                    self._log(['-p'], name, mirrordir, from_revision, to_revision)
+                else:
+                    self._diff(name, mirrordir, from_revision, to_revision)
 
 builtins.register(OstbuildSourceDiff)
