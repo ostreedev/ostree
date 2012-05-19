@@ -122,12 +122,22 @@ class Builtin(object):
         meta['config-opts'] = config_opts
         return meta
 
-    def get_component(self, name):
-        assert self.snapshot is not None
-        for component in self.snapshot['components']:
+    def find_component_in_snapshot(self, name, snapshot):
+        for component in snapshot['components']:
             if component['name'] == name:
                 return component
-        fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+        return None
+
+    def get_component(self, name, in_snapshot=None):
+        if in_snapshot is None:
+            assert self.snapshot is not None
+            target_snapshot = self.snapshot
+        else:
+            target_snapshot = in_snapshot
+        component = self.find_component_in_snapshot(self, target_snapshot)
+        if component is None:
+            fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+        return component
 
     def get_expanded_component(self, name):
         return self.expand_component(self.get_component(name))
@@ -161,7 +171,9 @@ class Builtin(object):
             self._bin_snapshots = self.create_db('bin-snapshot')
         return self._bin_snapshots
 
-    def _init_repo(self):
+    def init_repo(self):
+        if self.repo is not None:
+            return self.repo
         repo = ostbuildrc.get_key('repo', default=None)
         if repo is not None:
             self.repo = repo
@@ -178,7 +190,7 @@ class Builtin(object):
 
     def parse_snapshot(self, prefix, path):
         self.parse_prefix(prefix)
-        self._init_repo()
+        self.init_repo()
         if path is None:
             latest_path = self.get_src_snapshot_db().get_latest_path()
             if latest_path is None:

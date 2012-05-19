@@ -36,6 +36,7 @@ from . import builtin_prefix
 from . import builtin_privhelper_deploy_qemu
 from . import builtin_privhelper_run_qemu
 from . import builtin_resolve
+from . import builtin_source_diff
 
 def usage(ecode):
     print "Builtins:"
