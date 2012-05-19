@@ -2710,15 +2710,8 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
   gboolean repo_dir_was_empty = FALSE;
   OstreeRepoCommitFilterResult filter_result;
   ot_lobj OstreeRepoFile *repo_dir = NULL;
-  ot_lobj GFileInfo *child_info = NULL;
-  ot_lobj OstreeMutableTree *child_mtree = NULL;
   ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *modified_info = NULL;
-  ot_lobj GFile *child = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GInputStream *file_input = NULL;
-  ot_lfree guchar *child_file_csum = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  ot_lobj GFileInfo *child_info = NULL;
 
   /* We can only reuse checksums directly if there's no modifier */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
@@ -2738,6 +2731,11 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
     }
   else
     {
+      ot_lobj GFileInfo *modified_info = NULL;
+      ot_lvariant GVariant *xattrs = NULL;
+      ot_lfree guchar *child_file_csum = NULL;
+      ot_lfree char *tmp_checksum = NULL;
+
       child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                       cancellable, error);
@@ -2761,10 +2759,9 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
           ostree_mutable_tree_set_metadata_checksum (mtree, tmp_checksum);
-          
-          g_clear_object (&child_info);
-          g_clear_object (&modified_info);
         }
+
+      g_clear_object (&child_info);
     }
 
   if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
@@ -2778,20 +2775,20 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
 
       while ((child_info = g_file_enumerator_next_file (dir_enum, cancellable, &temp_error)) != NULL)
         {
+          ot_lobj GFileInfo *modified_info = NULL;
+          ot_lobj GFile *child = NULL;
+          ot_lobj OstreeMutableTree *child_mtree = NULL;
           const char *name = g_file_info_get_name (child_info);
 
-          g_clear_object (&modified_info);
           g_ptr_array_add (path, (char*)name);
           filter_result = apply_commit_filter (self, modifier, path, child_info, &modified_info);
 
           if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
             {
-              g_clear_object (&child);
               child = g_file_get_child (dir, name);
 
               if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
                 {
-                  g_clear_object (&child_mtree);
                   if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
                     goto out;
 
@@ -2808,9 +2805,13 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                 }
               else
                 {
-                  ot_lobj GInputStream *file_object_input = NULL;
                   guint64 file_obj_length;
                   const char *loose_checksum;
+                  ot_lobj GInputStream *file_input = NULL;
+                  ot_lvariant GVariant *xattrs = NULL;
+                  ot_lobj GInputStream *file_object_input = NULL;
+                  ot_lfree guchar *child_file_csum = NULL;
+                  ot_lfree char *tmp_checksum = NULL;
 
                   loose_checksum = devino_cache_lookup (self, child_info);
 
@@ -2822,8 +2823,7 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                     }
                   else
                     {
-                      g_clear_object (&file_input);
-                      if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
+                     if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
                         {
                           file_input = (GInputStream*)g_file_read (child, cancellable, error);
                           if (!file_input)
@@ -2836,9 +2836,6 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                           if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
                             goto out;
                         }
-
-                      g_free (child_file_csum);
-                      child_file_csum = NULL;
 
                       if (!ostree_raw_file_to_content_stream (file_input,
                                                               modified_info, xattrs,
