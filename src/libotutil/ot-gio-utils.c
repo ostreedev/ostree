@@ -358,6 +358,50 @@ ot_gio_checksum_stream (GInputStream   *in,
   return ot_gio_splice_get_checksum (NULL, in, out_csum, cancellable, error);
 }
 
+static void
+checksum_stream_thread (GSimpleAsyncResult   *result,
+                        GObject              *object,
+                        GCancellable         *cancellable)
+{
+  GError *error = NULL;
+  guchar *csum;
+
+  if (!ot_gio_checksum_stream ((GInputStream*)object, &csum,
+                               cancellable, &error))
+    g_simple_async_result_take_error (result, error);
+  else
+    g_simple_async_result_set_op_res_gpointer (result, csum, g_free);
+}
+
+void
+ot_gio_checksum_stream_async (GInputStream         *in,
+                              int                   io_priority,
+                              GCancellable         *cancellable,
+                              GAsyncReadyCallback   callback,
+                              gpointer              user_data)
+{
+  GSimpleAsyncResult *result;
+
+  result = g_simple_async_result_new ((GObject*) in,
+                                      callback, user_data,
+                                      ot_gio_checksum_stream_async);
+
+  g_simple_async_result_run_in_thread (result, checksum_stream_thread, io_priority, cancellable);
+  g_object_unref (result);
+}
+
+guchar *
+ot_gio_checksum_stream_finish (GInputStream   *in,
+                               GAsyncResult   *result,
+                               GError        **error)
+{
+  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
+
+  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ot_gio_checksum_stream_async);
+  return g_memdup (g_simple_async_result_get_op_res_gpointer (simple), 32);
+
+}
+
 gboolean
 ot_gfile_merge_dirs (GFile    *destination,
                      GFile    *src,

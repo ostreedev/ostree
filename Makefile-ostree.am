@@ -53,6 +53,8 @@ if USE_LIBSOUP_GNOME
 bin_PROGRAMS += ostree-pull
 ostree_pull_SOURCES = src/ostree/ot-main.h \
 	src/ostree/ot-main.c \
+	src/ostree/ostree-fetcher.h \
+	src/ostree/ostree-fetcher.c \
 	src/ostree/ostree-pull.c
 
 ostree_pull_CFLAGS = $(ostree_bin_shared_cflags) $(OT_DEP_SOUP_CFLAGS)
