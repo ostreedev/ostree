@@ -134,9 +134,9 @@ class Builtin(object):
             target_snapshot = self.snapshot
         else:
             target_snapshot = in_snapshot
-        component = self.find_component_in_snapshot(self, target_snapshot)
+        component = self.find_component_in_snapshot(name, target_snapshot)
         if component is None:
-            fatal("Couldn't find component '%s' in manifest" % (component_name, ))
+            fatal("Couldn't find component '%s' in manifest" % (name, ))
         return component
 
     def get_expanded_component(self, name):
