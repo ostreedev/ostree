@@ -192,6 +192,7 @@ class OstbuildBuild(builtins.Builtin):
         devel_name = 'bases/%s' % (base['devel'], )
 
         compose_rootdir = os.path.join(self.workdir, 'roots', target['name'])
+        fileutil.ensure_parent_dir(compose_rootdir)
         if os.path.isdir(compose_rootdir):
             shutil.rmtree(compose_rootdir)
         os.mkdir(compose_rootdir)

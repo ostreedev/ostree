@@ -182,7 +182,7 @@ class Builtin(object):
             if os.path.isdir(shadow_path):
                 self.repo = shadow_path
             else:
-                fatal("No repository configured, and shadow-repo not found.  Use \"ostbuild shadow-repo-init\" to make one")
+                fatal("No repository configured, and shadow-repo not found.  Use \"ostbuild init\" to make one")
 
     def parse_prefix(self, prefix):
         if prefix is not None:
@@ -212,7 +212,6 @@ class Builtin(object):
         repo_path = os.path.join(self.ostree_dir, 'repo')
         if not os.path.isdir(repo_path):
             fatal("Repository '%s' doesn't exist" % (repo_path, ))
-        self.repo = repo_path
         if self.active_branch is None:
             fatal("No \"current\" link found")
         tree_path = os.path.join(self.ostree_dir, self.active_branch)
