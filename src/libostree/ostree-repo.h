@@ -31,22 +31,8 @@ G_BEGIN_DECLS
 #define OSTREE_TYPE_REPO ostree_repo_get_type()
 #define OSTREE_REPO(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), OSTREE_TYPE_REPO, OstreeRepo))
-#define OSTREE_REPO_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST ((klass), OSTREE_TYPE_REPO, OstreeRepoClass))
 #define OSTREE_IS_REPO(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_REPO))
-#define OSTREE_IS_REPO_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE ((klass), OSTREE_TYPE_REPO))
-#define OSTREE_REPO_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), OSTREE_TYPE_REPO, OstreeRepoClass))
-
-struct OstreeRepo {
-  GObject parent;
-};
-
-typedef struct {
-  GObjectClass parent_class;
-} OstreeRepoClass;
 
 GType ostree_repo_get_type (void);
 
