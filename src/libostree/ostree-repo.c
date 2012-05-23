@@ -1215,6 +1215,7 @@ devino_equal (gconstpointer   a,
 
 static gboolean
 scan_loose_devino (OstreeRepo                     *self,
+                   GHashTable                     *devino_cache,
                    GCancellable                   *cancellable,
                    GError                        **error)
 {
@@ -1224,6 +1225,12 @@ scan_loose_devino (OstreeRepo                     *self,
   guint i;
   ot_lptrarray GPtrArray *object_dirs = NULL;
   ot_lobj GFile *objdir = NULL;
+
+  if (priv->parent_repo)
+    {
+      if (!scan_loose_devino (priv->parent_repo, devino_cache, cancellable, error))
+        goto out;
+    }
 
   if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
@@ -1286,8 +1293,7 @@ scan_loose_devino (OstreeRepo                     *self,
           key->dev = g_file_info_get_attribute_uint32 (file_info, "unix::device");
           key->ino = g_file_info_get_attribute_uint64 (file_info, "unix::inode");
           
-          g_hash_table_replace (priv->loose_object_devino_hash, key,
-                                g_string_free (checksum, FALSE));
+          g_hash_table_replace (devino_cache, key, g_string_free (checksum, FALSE));
           g_clear_object (&file_info);
         }
 
@@ -1337,7 +1343,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
       priv->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
     }
   g_hash_table_remove_all (priv->loose_object_devino_hash);
-  if (!scan_loose_devino (self, cancellable, error))
+  if (!scan_loose_devino (self, priv->loose_object_devino_hash, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -4202,6 +4208,47 @@ checkout_file_hardlink (OstreeRepo                  *self,
 }
 
 static gboolean
+find_loose_for_checkout (OstreeRepo             *self,
+                         const char             *checksum,
+                         GFile                 **out_loose_path,
+                         GCancellable           *cancellable,
+                         GError                **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFile *path = NULL;
+  struct stat stbuf;
+
+  do
+    {
+      OstreeRepoPrivate *priv = GET_PRIVATE (self);
+
+      if (priv->mode == OSTREE_REPO_MODE_BARE)
+        path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+      else
+        path = ostree_repo_get_archive_content_path (self, checksum);
+
+      if (lstat (ot_gfile_get_path_cached (path), &stbuf) < 0)
+        {
+          if (errno != ENOENT)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+          self = priv->parent_repo;
+        }
+      else
+        break;
+
+      g_clear_object (&path);
+    } while (self != NULL);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_loose_path, &path);
+ out:
+  return ret;
+}
+
+static gboolean
 checkout_one_file (OstreeRepo                  *self,
                    OstreeRepoCheckoutMode    mode,
                    OstreeRepoCheckoutOverwriteMode    overwrite_mode,
@@ -4214,8 +4261,7 @@ checkout_one_file (OstreeRepo                  *self,
   gboolean ret = FALSE;
   OstreeRepoPrivate *priv = GET_PRIVATE (self);
   const char *checksum;
-  struct stat stbuf;
-  ot_lobj GFile *possible_loose_path = NULL;
+  ot_lobj GFile *loose_path = NULL;
   ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *xattrs = NULL;
 
@@ -4226,19 +4272,18 @@ checkout_one_file (OstreeRepo                  *self,
 
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)src);
 
-  if (priv->mode == OSTREE_REPO_MODE_BARE && mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
+  if ((priv->mode == OSTREE_REPO_MODE_BARE && mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
+      || (priv->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER))
     {
-      possible_loose_path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
-    }
-  else if (priv->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER)
-    {
-      possible_loose_path = ostree_repo_get_archive_content_path (self, checksum);
+      if (!find_loose_for_checkout (self, checksum, &loose_path,
+                                    cancellable, error))
+        goto out;
     }
 
-  if (possible_loose_path && lstat (ot_gfile_get_path_cached (possible_loose_path), &stbuf) >= 0)
+  if (loose_path)
     {
       /* If we found one, we can just hardlink */
-      if (!checkout_file_hardlink (self, mode, overwrite_mode, possible_loose_path, destination,
+      if (!checkout_file_hardlink (self, mode, overwrite_mode, loose_path, destination,
                                    cancellable, error))
         goto out;
     }
