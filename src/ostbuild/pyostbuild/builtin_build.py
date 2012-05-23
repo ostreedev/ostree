@@ -44,21 +44,22 @@ class OstbuildBuild(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _get_ostbuild_chroot_args(self, architecture):
+    def _get_ostbuild_chroot_args(self, architecture, component, component_resultdir):
+        basename = component['name']
         current_machine = os.uname()[4]
         if current_machine != architecture:
             args = ['setarch', architecture]
         else:
             args = []
         args.extend(['ostbuild', 'chroot-compile-one',
-                     '--snapshot=' + self.snapshot_path])
+                     '--snapshot=' + self.snapshot_path,
+                     '--name=' + basename, '--arch=' + architecture,
+                     '--resultdir=' + component_resultdir])
         return args
 
-    def _launch_debug_shell(self, architecture, component, cwd=None):
-        args = self._get_ostbuild_chroot_args(architecture)
-        args.extend(['--arch=' + architecture,
-                     '--name=' + component,
-                     '--debug-shell'])
+    def _launch_debug_shell(self, architecture, component, component_resultdir, cwd=None):
+        args = self._get_ostbuild_chroot_args(architecture, component, component_resultdir)
+        args.append('--debug-shell')
         run_sync(args, cwd=cwd, fatal_on_error=False, keep_stdin=True)
         fatal("Exiting after debug shell")
 
@@ -147,13 +148,11 @@ class OstbuildBuild(builtins.Builtin):
 
         log("Logging to %s" % (log_path, ))
         f = open(log_path, 'w')
-        chroot_args = self._get_ostbuild_chroot_args(architecture)
-        chroot_args.extend(['--name=' + basename, '--arch=' + architecture,
-                            '--resultdir=' + component_resultdir])
+        chroot_args = self._get_ostbuild_chroot_args(architecture, component, component_resultdir)
         if self.buildopts.shell_on_failure:
             ecode = run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src, fatal_on_error=False)
             if ecode != 0:
-                self._launch_debug_shell(architecture, basename, cwd=component_src)
+                self._launch_debug_shell(architecture, component, component_resultdir, cwd=component_src)
         else:
             run_sync_monitor_log_file(chroot_args, log_path, cwd=component_src)
 
