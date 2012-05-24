@@ -67,7 +67,8 @@ class OstbuildResolve(builtins.Builtin):
             name = name.replace('/', '-')
             result['name'] = name
 
-        if 'branch' not in result:
+        branch_or_tag = result.get('branch') or result.get('tag')
+        if branch_or_tag is None:
             result['branch'] = 'master'
 
         return result
@@ -107,9 +108,9 @@ class OstbuildResolve(builtins.Builtin):
                 fatal("Duplicate component name '%s'" % (name, ))
             unique_component_names.add(name)
 
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, component['branch'])
-            revision = buildutil.get_git_version_describe(mirrordir,
-                                                          component['branch'])
+            branch_or_tag = component.get('branch') or component.get('tag')
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, branch_or_tag)
+            revision = buildutil.get_git_version_describe(mirrordir, branch_or_tag)
             component['revision'] = revision
 
         src_db = self.get_src_snapshot_db()

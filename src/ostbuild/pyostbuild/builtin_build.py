@@ -65,7 +65,6 @@ class OstbuildBuild(builtins.Builtin):
 
     def _build_one_component(self, component, architecture):
         basename = component['name']
-        branch = component['branch']
 
         buildname = '%s/%s/%s' % (self.snapshot['prefix'], basename, architecture)
         build_ref = 'components/%s' % (buildname, )

@@ -89,6 +89,11 @@ def parse_src_key(srckey):
     uri = srckey[idx+1:]
     return (keytype, uri)
 
+def get_lastfetch_path(mirrordir, keytype, uri, branch):
+    mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
+    branch_safename = branch.replace('/','_').replace('.', '_')
+    return mirror + '.lastfetch-%s' % (branch_safename, )
+
 def ensure_vcs_mirror(mirrordir, keytype, uri, branch):
     mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
     tmp_mirror = mirror + '.tmp'
@@ -100,8 +105,7 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch):
         os.rename(tmp_mirror, mirror)
     if branch is None:
         return mirror
-    branch_safename = branch.replace('/','_').replace('.', '_')
-    last_fetch_path = mirror + '.lastfetch-%s' % (branch_safename, )
+    last_fetch_path = get_lastfetch_path(mirrordir, keytype, uri, branch)
     if os.path.exists(last_fetch_path):
         f = open(last_fetch_path)
         last_fetch_contents = f.read()
@@ -136,3 +140,14 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch):
         f.write(current_vcs_version + '\n')
         f.close()
     return mirror
+
+def fetch(mirrordir, keytype, uri, branch):
+    mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
+    last_fetch_path = get_lastfetch_path(mirrordir, keytype, uri, branch)
+    run_sync(['git', 'fetch'], cwd=mirror, log_initiation=False) 
+    current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
+    current_vcs_version = current_vcs_version.strip()
+    f = open(last_fetch_path, 'w')
+    f.write(current_vcs_version + '\n')
+    f.close()
+    

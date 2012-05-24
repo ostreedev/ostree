@@ -117,7 +117,8 @@ class OstbuildSourceDiff(builtins.Builtin):
             if keytype == 'local':
                 log("Component %r has local URI" % (name, ))
                 continue
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, from_component['branch'])
+            branch_or_tag = from_component.get('branch') or from_component.get('tag')
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, branch_or_tag)
 
             to_component = self.find_component_in_snapshot(name, to_snap)
             if to_component is None:

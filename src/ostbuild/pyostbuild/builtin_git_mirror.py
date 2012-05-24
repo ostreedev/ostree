@@ -18,7 +18,7 @@
 # ostbuild-compile-one-make wraps systems that implement the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
 
-import os,sys,stat,subprocess,tempfile,re,shutil
+import os,sys,stat,subprocess,tempfile,re,shutil,time
 import argparse
 from StringIO import StringIO
 import json
@@ -40,8 +40,12 @@ class OstbuildGitMirror(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--src-snapshot')
-        parser.add_argument('--start-at')
-        parser.add_argument('--fetch', action='store_true')
+        parser.add_argument('--start-at',
+                            help="Start at the given component")
+        parser.add_argument('--fetch-skip-secs', type=int, default=0,
+                            help="Don't perform a fetch if we have done so in the last N seconds")
+        parser.add_argument('--fetch', action='store_true',
+                            help="Also do a git fetch for components")
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
@@ -64,10 +68,33 @@ class OstbuildGitMirror(builtins.Builtin):
             component = self.get_component(name)
             src = component['src']
             (keytype, uri) = vcs.parse_src_key(src)
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, component['branch'])
+            branch = component.get('branch')
+            tag = component.get('tag')
+            branch_or_tag = branch or tag
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, branch_or_tag)
 
-            if args.fetch:
-                log("Running git fetch for %s" % (name, ))
-                run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
+            if not args.fetch:
+                continue
+
+            if tag is not None:
+                log("Skipping fetch for %s at tag %s" % (name, tag))
+                continue
+
+            curtime = time.time()
+            if args.fetch_skip_secs > 0:
+                last_fetch_path = vcs.get_lastfetch_path(self.mirrordir, keytype, uri, branch_or_tag)
+                try:
+                    stbuf = os.stat(last_fetch_path)
+                except OSError, e:
+                    stbuf = None
+                if stbuf is not None:
+                    mtime = stbuf.st_mtime
+                    delta = curtime - mtime
+                    if delta < args.fetch_skip_secs:
+                        log("Skipping fetch for %s updated in last %d seconds" % (name, delta))
+                        continue
+
+            log("Running git fetch for %s" % (name, ))
+            vcs.fetch(self.mirrordir, keytype, uri, branch_or_tag)
 
 builtins.register(OstbuildGitMirror)
