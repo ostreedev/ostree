@@ -52,6 +52,8 @@ class OstbuildGitMirror(builtins.Builtin):
             components = []
             for component in self.snapshot['components']:
                 components.append(component['name'])
+            if 'patches' in self.snapshot:
+                components.append(self.snapshot['patches']['name'])
             if args.start_at:
                 idx = components.index(args.start_at)
                 components = components[idx:]

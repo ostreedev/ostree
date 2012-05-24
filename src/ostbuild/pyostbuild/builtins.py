@@ -135,6 +135,10 @@ class Builtin(object):
         else:
             target_snapshot = in_snapshot
         component = self.find_component_in_snapshot(name, target_snapshot)
+        if (component is None and 
+            'patches' in self.snapshot and
+            self.snapshot['patches']['name'] == name):
+            return self.snapshot['patches']
         if component is None:
             fatal("Couldn't find component '%s' in manifest" % (name, ))
         return component
