@@ -821,8 +821,6 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
         {
           ot_lfree char *checksum = ostree_checksum_from_bytes_v (parent_csum_v);
 
-          g_printerr ("Acquring parent %s of %s\n", checksum, rev);
-
           if (!fetch_and_store_commit_metadata_recurse (pull_data, parent_depth + 1,
                                                         0, checksum,
                                                         cancellable, error))
