@@ -36,24 +36,41 @@ class OstbuildSourceDiff(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _diff(self, name, mirrordir, from_revision, to_revision):
+    def _diff(self, name, mirrordir, from_revision, to_revision,
+              diffstat=False):
+        diff_replace_re = re.compile(' [ab]')
+
         env = dict(os.environ)
         env['LANG'] = 'C'
                 
         spacename = ' ' + name
 
-        proc = subprocess.Popen(['git', 'diff', from_revision, to_revision],
-                                env=env, cwd=mirrordir, stdout=subprocess.PIPE)
-        for line in proc.stdout:
+        sys.stdout.write('diff of %s revision range %s..%s\n' % (name, from_revision, to_revision))
+        sys.stdout.flush()
+
+        diff_proc = subprocess.Popen(['git', 'diff', from_revision, to_revision],
+                                     env=env, cwd=mirrordir, stdout=subprocess.PIPE)
+        if diffstat:
+            diffstat_proc = subprocess.Popen(['diffstat', '-p0'],
+                                             stdin=subprocess.PIPE,
+                                             stdout=sys.stdout)
+            diff_pipe = diffstat_proc.stdin
+        else:
+            diffstat_proc = None
+            diff_pipe = sys.stdout
+        for line in diff_proc.stdout:
             if (line.startswith('diff --git ')
                 or line.startswith('--- a/')
                 or line.startswith('+++ b/')
                 or line.startswith('Binary files /dev/null and b/')):
                 line = diff_replace_re.sub(spacename, line)
-                sys.stdout.write(line)
+                diff_pipe.write(line)
             else:
-                sys.stdout.write(line)
-        proc.wait()
+                diff_pipe.write(line)
+        diff_proc.wait()
+        if diffstat_proc is not None:
+            diffstat_proc.stdin.close()
+            diffstat_proc.wait()
 
     def _log(self, opts, name, mirrordir, from_revision, to_revision):
         env = dict(os.environ)
@@ -80,6 +97,7 @@ class OstbuildSourceDiff(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--log', action='store_true')
         parser.add_argument('--logp', action='store_true')
+        parser.add_argument('--diffstat', action='store_true')
         parser.add_argument('--rev-from')
         parser.add_argument('--rev-to')
         parser.add_argument('--snapshot-from')
@@ -107,8 +125,6 @@ class OstbuildSourceDiff(builtins.Builtin):
                 from_snap = self._snapshot_from_rev(args.rev_to + '^')
             else:
                 fatal("One of --rev-from/--snapshot-from must be given")
-
-        diff_replace_re = re.compile(' [ab]')
 
         for from_component in from_snap['components']:
             name = from_component['name']
@@ -140,6 +156,7 @@ class OstbuildSourceDiff(builtins.Builtin):
                 elif args.logp:
                     self._log(['-p'], name, mirrordir, from_revision, to_revision)
                 else:
-                    self._diff(name, mirrordir, from_revision, to_revision)
+                    self._diff(name, mirrordir, from_revision, to_revision,
+                               diffstat=args.diffstat)
 
 builtins.register(OstbuildSourceDiff)
