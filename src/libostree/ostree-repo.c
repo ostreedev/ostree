@@ -4120,37 +4120,27 @@ checkout_file_hardlink (OstreeRepo                  *self,
 {
   gboolean ret = FALSE;
   ot_lobj GFile *dir = NULL;
-  ot_lobj GFile *temp_file = NULL;
 
-  if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+  if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
     {
-      dir = g_file_get_parent (destination);
-      if (!ostree_create_temp_hardlink (dir, (GFile*)source, NULL, "link",
-                                        &temp_file, cancellable, error))
-        goto out;
-
-      /* Idiocy, from man rename(2)
-       *
-       * "If oldpath and newpath are existing hard links referring to
-       * the same file, then rename() does nothing, and returns a
-       * success status."
-       *
-       * So we can't make this atomic.  
-       */
-
-      (void) unlink (ot_gfile_get_path_cached (destination));
-
-      if (rename (ot_gfile_get_path_cached (temp_file),
-                  ot_gfile_get_path_cached (destination)) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
+      if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+        { 
+          /* Idiocy, from man rename(2)
+           *
+           * "If oldpath and newpath are existing hard links referring to
+           * the same file, then rename() does nothing, and returns a
+           * success status."
+           *
+           * So we can't make this atomic.  
+           */
+          (void) unlink (ot_gfile_get_path_cached (destination));
+          if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
         }
-      g_clear_object (&temp_file);
-    }
-  else
-    {
-      if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
+      else
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -4159,8 +4149,6 @@ checkout_file_hardlink (OstreeRepo                  *self,
 
   ret = TRUE;
  out:
-  if (temp_file)
-    (void) unlink (ot_gfile_get_path_cached (temp_file));
   return ret;
 }
 
