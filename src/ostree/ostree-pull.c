@@ -30,11 +30,13 @@
 gboolean verbose;
 gboolean opt_prefer_loose;
 gboolean opt_related;
+gint opt_depth;
 
 static GOptionEntry options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
   { "prefer-loose", 0, 0, G_OPTION_ARG_NONE, &opt_prefer_loose, "Download loose objects by default", NULL },
   { "related", 0, 0, G_OPTION_ARG_NONE, &opt_related, "Download related commits", NULL },
+  { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Download parent commits up to this depth (default: 0)", NULL },
   { NULL },
 };
 
@@ -747,7 +749,8 @@ fetch_and_store_tree_metadata_recurse (OtPullData   *pull_data,
 
 static gboolean
 fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
-                                         int           depth,
+                                         int           parent_depth,
+                                         int           related_depth,
                                          const char   *rev,
                                          GCancellable *cancellable,
                                          GError      **error)
@@ -776,7 +779,7 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
   
   g_free (tmp_checksum);
   tmp_checksum = ostree_checksum_from_bytes_v (tree_contents_csum);
-  if (!fetch_and_store_tree_metadata_recurse (pull_data, depth, tmp_checksum,
+  if (!fetch_and_store_tree_metadata_recurse (pull_data, 0, tmp_checksum,
                                               cancellable, error))
     goto out;
 
@@ -785,7 +788,8 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
       const char *name;
       ot_lvariant GVariant *csum_v = NULL;
 
-      if (depth > OSTREE_MAX_RECURSION)
+      if (parent_depth > OSTREE_MAX_RECURSION
+          || related_depth > OSTREE_MAX_RECURSION)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Exceeded maximum recursion");
@@ -799,7 +803,28 @@ fetch_and_store_commit_metadata_recurse (OtPullData   *pull_data,
         {
           ot_lfree char *checksum = ostree_checksum_from_bytes_v (csum_v);
 
-          if (!fetch_and_store_commit_metadata_recurse (pull_data, depth+1, checksum,
+          /* Pass opt_depth here to ensure we aren't fetching parents of related */
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, opt_depth,
+                                                        related_depth + 1, checksum,
+                                                        cancellable, error))
+            goto out;
+        }
+    }
+
+  if (parent_depth < opt_depth)
+    {
+      ot_lvariant GVariant *parent_csum_v = NULL;
+
+      parent_csum_v = g_variant_get_child_value (commit, 1);
+
+      if (g_variant_n_children (parent_csum_v) > 0)
+        {
+          ot_lfree char *checksum = ostree_checksum_from_bytes_v (parent_csum_v);
+
+          g_printerr ("Acquring parent %s of %s\n", checksum, rev);
+
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, parent_depth + 1,
+                                                        0, checksum,
                                                         cancellable, error))
             goto out;
         }
@@ -1298,7 +1323,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     {
       const char *commit = value;
       
-      if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, commit,
+      if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, 0, commit,
                                                     cancellable, error))
         goto out;
     }
@@ -1327,7 +1352,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
           if (!ostree_validate_checksum_string (sha256, error))
             goto out;
 
-          if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, sha256, cancellable, error))
+          if (!fetch_and_store_commit_metadata_recurse (pull_data, 0, 0, sha256, cancellable, error))
             goto out;
          
           g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));
