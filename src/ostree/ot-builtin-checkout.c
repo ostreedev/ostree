@@ -38,7 +38,7 @@ static gboolean opt_from_stdin;
 static char *opt_from_file;
 
 static GOptionEntry options[] = {
-  { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialze extended attributes", NULL },
+  { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "atomic-retarget", 0, 0, G_OPTION_ARG_NONE, &opt_atomic_retarget, "Make a symbolic link for destination, suffix with checksum", NULL },
