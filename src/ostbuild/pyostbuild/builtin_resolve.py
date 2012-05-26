@@ -77,7 +77,7 @@ class OstbuildResolve(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
         parser.add_argument('--fetch-patches', action='store_true')
-        parser.add_argument('components', nargs='*')
+        parser.add_argument('--fetch', action='store_true')
 
         args = parser.parse_args(argv)
         self.args = args
@@ -90,25 +90,35 @@ class OstbuildResolve(builtins.Builtin):
         components = map(self._resolve_component_meta, self.snapshot['components'])
         self.snapshot['components'] = components
 
-        global_patches_meta = self._resolve_component_meta(self.snapshot['patches'])
-        self.snapshot['patches'] = global_patches_meta
-        (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
-        mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
-        if args.fetch_patches:
-            run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
-        revision = buildutil.get_git_version_describe(mirrordir, global_patches_meta['branch'])
-        global_patches_meta['revision'] = revision
-
         unique_component_names = set()
         for component in components:
-            (keytype, uri) = vcs.parse_src_key(component['src'])
             name = component['name']
 
             if name in unique_component_names:
                 fatal("Duplicate component name '%s'" % (name, ))
             unique_component_names.add(name)
 
-            branch_or_tag = component.get('branch') or component.get('tag')
+        global_patches_meta = self._resolve_component_meta(self.snapshot['patches'])
+        self.snapshot['patches'] = global_patches_meta
+        (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
+        mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
+        if args.fetch_patches:
+            run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
+
+        git_mirror_args = ['ostbuild', 'git-mirror']
+        if args.fetch:
+            git_mirror_args.append('--fetch')
+        run_sync(git_mirror_args)
+
+        patch_revision = buildutil.get_git_version_describe(mirrordir, global_patches_meta['branch'])
+        global_patches_meta['revision'] = patch_revision
+
+        for component in components:
+            src = component['src']
+            (keytype, uri) = vcs.parse_src_key(src)
+            branch = component.get('branch')
+            tag = component.get('tag')
+            branch_or_tag = branch or tag
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, branch_or_tag)
             revision = buildutil.get_git_version_describe(mirrordir, branch_or_tag)
             component['revision'] = revision
