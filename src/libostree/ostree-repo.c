@@ -4179,6 +4179,17 @@ find_loose_for_checkout (OstreeRepo             *self,
             }
           self = self->parent_repo;
         }
+      else if (S_ISLNK (stbuf.st_mode))
+        {
+          /* Don't check out symbolic links via hardlink; it's very easy
+           * to hit the maximum number of hardlinks to an inode this way,
+           * especially since right now we have a lot of symbolic links to
+           * busybox.
+           *
+           * fs/ext4/ext4.h:#define EXT4_LINK_MAX		65000
+           */
+          self = self->parent_repo;
+        }
       else
         break;
 
