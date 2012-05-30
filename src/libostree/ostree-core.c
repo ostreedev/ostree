@@ -1304,65 +1304,6 @@ ostree_create_temp_regular_file (GFile            *dir,
 }
 
 gboolean
-ostree_create_temp_hardlink (GFile            *dir,
-                             GFile            *src,
-                             const char       *prefix,
-                             const char       *suffix,
-                             GFile           **out_file,
-                             GCancellable     *cancellable,
-                             GError          **error)
-{
-  gboolean ret = FALSE;
-  int i = 0;
-  ot_lfree char *possible_name = NULL;
-  ot_lobj GFile *possible_file = NULL;
-  GString *tmp_name = NULL;
-
-  tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
-                                prefix, suffix);
-  
-  /* 128 attempts seems reasonable... */
-  for (i = 0; i < 128; i++)
-    {
-      if (g_cancellable_set_error_if_cancelled (cancellable, error))
-        goto out;
-
-      g_free (possible_name);
-      possible_name = subst_xxxxxx (tmp_name->str);
-      g_clear_object (&possible_file);
-      possible_file = g_file_get_child (dir, possible_name);
-
-      if (link (ot_gfile_get_path_cached (src), ot_gfile_get_path_cached (possible_file)) < 0)
-        {
-          if (errno == EEXIST)
-            continue;
-          else
-            {
-              ot_util_set_error_from_errno (error, errno);
-              goto out;
-            }
-        }
-      else
-        {
-          break;
-        }
-    }
-  if (i >= 128)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exhausted 128 attempts to create a temporary file");
-      goto out;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value(out_file, &possible_file);
- out:
-  if (tmp_name)
-    g_string_free (tmp_name, TRUE);
-  return ret;
-}
-
-gboolean
 ostree_read_pack_entry_raw (guchar        *pack_data,
                             guint64        pack_len,
                             guint64        offset,
