@@ -20,12 +20,17 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
+/* for mkdtemp */
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include "ostree.h"
 #include "otutil.h"
 
 #include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <attr/xattr.h>
 
 #define ALIGN_VALUE(this, boundary) \
@@ -1299,6 +1304,40 @@ ostree_create_temp_regular_file (GFile            *dir,
   ret = TRUE;
   ot_transfer_out_value(out_file, &ret_file);
   ot_transfer_out_value(out_stream, &ret_stream);
+ out:
+  return ret;
+}
+
+gboolean
+ostree_create_temp_dir (GFile            *dir,
+                        const char       *prefix,
+                        const char       *suffix,
+                        GFile           **out_file,
+                        GCancellable     *cancellable,
+                        GError          **error)
+{
+  gboolean ret = FALSE;
+  ot_lfree char *template = NULL;
+  ot_lobj GFile *ret_file = NULL;
+
+  if (dir == NULL)
+    dir = g_file_new_for_path (g_get_tmp_dir ());
+
+  template = g_strdup_printf ("%s/%s-XXXXXX-%s",
+                              ot_gfile_get_path_cached (dir),
+                              prefix ? prefix : "tmp",
+                              suffix ? suffix : "tmp");
+  
+  if (mkdtemp (template) == NULL)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret_file = g_file_new_for_path (template);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_file, &ret_file);
  out:
   return ret;
 }

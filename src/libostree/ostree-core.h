@@ -297,6 +297,13 @@ gboolean ostree_create_temp_regular_file (GFile            *dir,
                                           GCancellable     *cancellable,
                                           GError          **error);
 
+gboolean ostree_create_temp_dir (GFile            *dir,
+                                 const char       *prefix,
+                                 const char       *suffix,
+                                 GFile           **out_file,
+                                 GCancellable     *cancellable,
+                                 GError          **error);
+
 gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
                                      guint64           pack_len,
                                      guint64           object_offset,

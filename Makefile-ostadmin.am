@@ -25,5 +25,5 @@ ostadmin_SOURCES = src/ostadmin/main.c \
 	src/ostadmin/ot-admin-main.c \
 	$(NULL)
 
-ostadmin_CFLAGS =  $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/ostadmin -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
-ostadmin_LDADD = libotutil.la $(OT_DEP_GIO_UNIX_LIBS)
+ostadmin_CFLAGS =  $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostadmin -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
+ostadmin_LDADD = libotutil.la libostree.la $(OT_DEP_GIO_UNIX_LIBS)

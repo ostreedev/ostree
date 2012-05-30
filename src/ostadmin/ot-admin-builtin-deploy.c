@@ -23,7 +23,7 @@
 #include "config.h"
 
 #include "ot-admin-builtins.h"
-#include "otutil.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 #include <sys/utsname.h>
@@ -74,12 +74,14 @@ update_initramfs (const char       *release,
   if (!g_file_query_exists (initramfs_file, NULL))
     {
       ot_lptrarray GPtrArray *mkinitramfs_args = NULL;
-      ot_lfree char *tmpdir = NULL;
+      ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
           
-      if ((tmpdir = g_dir_make_tmp ("ostree-initramfs.XXXXXX", error)) == NULL)
+      
+      if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
+                                   cancellable, error))
         goto out;
 
       last_deploy_path = g_build_filename ("/ostree", last_deploy_target, NULL);
@@ -95,7 +97,7 @@ update_initramfs (const char       *release,
                             "--mount-proc", "/proc",
                             "--mount-bind", "/dev", "/dev",
                             "--mount-bind", "/ostree/var", "/var",
-                            "--mount-bind", tmpdir, "/tmp",
+                            "--mount-bind", ot_gfile_get_path_cached (tmpdir), "/tmp",
                             "--mount-bind", "/ostree/modules", "/lib/modules",
                             last_deploy_path,
                             "dracut", "-f", "/tmp/initramfs-ostree.img", release,
@@ -106,13 +108,9 @@ update_initramfs (const char       *release,
       if (!ot_spawn_sync_checked (NULL, (char**)mkinitramfs_args->pdata, NULL,
                                   G_SPAWN_SEARCH_PATH,
                                   NULL, NULL, NULL, NULL, error))
-        {
-          (void) unlink (initramfs_tmp_path);
-          goto out;
-        }
+        goto out;
           
-      initramfs_tmp_path = g_build_filename (tmpdir, "initramfs-ostree.img", NULL);
-      initramfs_tmp_file = g_file_new_for_path (initramfs_tmp_path);
+      initramfs_tmp_file = g_file_get_child (tmpdir, "initramfs-ostree.img");
       initramfs_tmp_info = g_file_query_info (initramfs_tmp_file, OSTREE_GIO_FAST_QUERYINFO,
                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                               cancellable, error);
@@ -131,8 +129,8 @@ update_initramfs (const char       *release,
           
       g_print ("Created: %s\n", ot_gfile_get_path_cached (initramfs_file));
 
-      (void) unlink (initramfs_tmp_path);
-      (void) rmdir (tmpdir);
+      (void) ot_gfile_unlink (initramfs_tmp_file, NULL, NULL);
+      (void) rmdir (ot_gfile_get_path_cached (tmpdir));
     }
 
   ret = TRUE;
