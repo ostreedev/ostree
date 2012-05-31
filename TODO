@@ -1,26 +1,20 @@
 Core
-----
+====
 
 * Documentation
-* Commit a set of modified files on top of previous
-* Multithreaded I/O and checksumming
+* Asynchronous pull
+* Async I/O, multithreaded checksumming
 * GPG signatures on commits
 * Tests of corrupted repositories, more error conditions
 
-Selfhosting (ostree-build)
------------
+Ostbuild 
+========
 
-* Support for building things not already installed
-  - Commit artifacts into root
-  - Compose, commit into updated root
+* Documentation
+* deploy-overwrite
 
-GNOMEOS
--------
+Ostadmin
+========
 
-* "Installer"
-  - Pull username/uid from host
-* Daemon mode / DBus service
-* GRUB management
-* Configuration management
-  - Fixing up programs that modify /etc
-  - Diff of /etc on root switches
+* Documentation
+* Improve GRUB management
