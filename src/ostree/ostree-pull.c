@@ -22,7 +22,7 @@
 
 #include "config.h"
 
-#include <libsoup/soup-gnome.h>
+#include <libsoup/soup.h>
 
 #include "ostree.h"
 #include "ot-main.h"

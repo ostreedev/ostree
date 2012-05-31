@@ -27,7 +27,7 @@ AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from l
 PKG_PROG_PKG_CONFIG
 
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
-SOUP_DEPENDENCY="libsoup-gnome-2.4 >= 2.34.0"
+SOUP_DEPENDENCY="libsoup-2.4 >= 2.34.0"
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
