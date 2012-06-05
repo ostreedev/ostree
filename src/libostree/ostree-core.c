@@ -1840,6 +1840,7 @@ ostree_validate_structureof_pack_superindex (GVariant      *superindex,
   csum_v = NULL;
   bloom = NULL;
 
+  g_variant_iter_free (content_iter);
   g_variant_get_child (superindex, 3, "a(ayay)", &content_iter);
   while (g_variant_iter_loop (content_iter, "(@ay@ay)",
                               &csum_v, &bloom))
