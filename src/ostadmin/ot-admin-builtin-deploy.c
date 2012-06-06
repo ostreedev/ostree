@@ -79,7 +79,6 @@ update_initramfs (const char       *release,
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
           
-      
       if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
                                    cancellable, error))
         goto out;

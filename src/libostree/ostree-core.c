@@ -1323,10 +1323,9 @@ ostree_create_temp_dir (GFile            *dir,
   if (dir == NULL)
     dir = g_file_new_for_path (g_get_tmp_dir ());
 
-  template = g_strdup_printf ("%s/%s-XXXXXX-%s",
+  template = g_strdup_printf ("%s/%s-XXXXXX",
                               ot_gfile_get_path_cached (dir),
-                              prefix ? prefix : "tmp",
-                              suffix ? suffix : "tmp");
+                              prefix ? prefix : "tmp");
   
   if (mkdtemp (template) == NULL)
     {
