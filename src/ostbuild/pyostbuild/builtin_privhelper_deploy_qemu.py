@@ -71,6 +71,8 @@ class OstbuildPrivhelperDeployQemu(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--rootdir',
+                            help="Directory containing OSTree data (default: /ostree)")
         parser.add_argument('srcrepo')
         parser.add_argument('targets', nargs='+')
 
@@ -79,7 +81,10 @@ class OstbuildPrivhelperDeployQemu(builtins.Builtin):
         if os.geteuid() != 0:
             fatal("This helper can only be run as root")
 
-        self.ostree_dir = self.find_ostree_dir()
+        if args.rootdir:
+            self.ostree_dir = args.rootdir
+        else:
+            self.ostree_dir = self.find_ostree_dir()
         self.qemu_path = os.path.join(self.ostree_dir, "ostree-qemu.img")
 
         self.mountpoint = os.path.join(self.ostree_dir, 'ostree-qemu-mnt')
