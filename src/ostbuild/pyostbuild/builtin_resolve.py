@@ -40,39 +40,6 @@ class OstbuildResolve(builtins.Builtin):
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def _resolve_component_meta(self, component_meta):
-        result = dict(component_meta)
-        orig_src = component_meta['src']
-
-        did_expand = False
-        for (vcsprefix, expansion) in self.snapshot['vcsconfig'].iteritems():
-            prefix = vcsprefix + ':'
-            if orig_src.startswith(prefix):
-                result['src'] = expansion + orig_src[len(prefix):]
-                did_expand = True
-                break
-
-        name = component_meta.get('name')
-        if name is None:
-            if did_expand:
-                src = orig_src
-                idx = src.rindex(':')
-                name = src[idx+1:]
-            else:
-                src = result['src']
-                idx = src.rindex('/')
-                name = src[idx+1:]
-            if name.endswith('.git'):
-                name = name[:-4]
-            name = name.replace('/', '-')
-            result['name'] = name
-
-        branch_or_tag = result.get('branch') or result.get('tag')
-        if branch_or_tag is None:
-            result['branch'] = 'master'
-
-        return result
-    
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--manifest', required=True)
@@ -87,7 +54,7 @@ class OstbuildResolve(builtins.Builtin):
         self.snapshot = json.load(open(args.manifest))
         self.prefix = self.snapshot['prefix']
 
-        components = map(self._resolve_component_meta, self.snapshot['components'])
+        components = map(lambda x: buildutil.resolve_component_meta(self.snapshot, x), self.snapshot['components'])
         self.snapshot['components'] = components
 
         unique_component_names = set()
@@ -98,14 +65,14 @@ class OstbuildResolve(builtins.Builtin):
                 fatal("Duplicate component name '%s'" % (name, ))
             unique_component_names.add(name)
 
-        global_patches_meta = self._resolve_component_meta(self.snapshot['patches'])
+        global_patches_meta = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
         self.snapshot['patches'] = global_patches_meta
         (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
         mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
         if args.fetch_patches:
             run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
 
-        git_mirror_args = ['ostbuild', 'git-mirror']
+        git_mirror_args = ['ostbuild', 'git-mirror', '--manifest=' + args.manifest]
         if args.fetch:
             git_mirror_args.append('--fetch')
         run_sync(git_mirror_args)

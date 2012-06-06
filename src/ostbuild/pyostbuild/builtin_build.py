@@ -167,6 +167,7 @@ class OstbuildBuild(builtins.Builtin):
             f = os.fdopen(fd, 'w')
             for path in setuid_files:
                 f.write('+2048 ' + path)
+                f.write('\n')
             f.close()
             args.append('--statoverride=' + statoverride_path)
 

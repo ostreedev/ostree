@@ -39,6 +39,7 @@ class OstbuildGitMirror(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
+        parser.add_argument('--manifest')
         parser.add_argument('--src-snapshot')
         parser.add_argument('--start-at',
                             help="Start at the given component")
@@ -52,7 +53,13 @@ class OstbuildGitMirror(builtins.Builtin):
 
         args = parser.parse_args(argv)
         self.parse_config()
-        self.parse_snapshot(args.prefix, args.src_snapshot)
+        if args.manifest:
+            self.snapshot = json.load(open(args.manifest))
+            components = map(lambda x: buildutil.resolve_component_meta(self.snapshot, x), self.snapshot['components'])
+            self.snapshot['components'] = components
+            self.snapshot['patches'] = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
+        else:
+            self.parse_snapshot(args.prefix, args.src_snapshot)
 
         if len(args.components) == 0:
             components = []

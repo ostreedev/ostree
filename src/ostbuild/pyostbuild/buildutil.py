@@ -22,6 +22,7 @@ import tempfile
 import StringIO
 
 from . import ostbuildrc
+from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync_get_output
 
 BUILD_ENV = {
@@ -47,7 +48,8 @@ def parse_src_key(srckey):
 
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
-    assert keytype == 'git'
+    if keytype != 'git':
+        fatal("Unhandled keytype '%s' for uri '%s'" % (keytype, uri))
     parsed = urlparse.urlsplit(uri)
     return os.path.join(mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
 
@@ -151,3 +153,35 @@ def get_base_user_chroot_args():
     return args
 
     
+def resolve_component_meta(snapshot, component_meta):
+    result = dict(component_meta)
+    orig_src = component_meta['src']
+
+    did_expand = False
+    for (vcsprefix, expansion) in snapshot['vcsconfig'].iteritems():
+        prefix = vcsprefix + ':'
+        if orig_src.startswith(prefix):
+            result['src'] = expansion + orig_src[len(prefix):]
+            did_expand = True
+            break
+
+    name = component_meta.get('name')
+    if name is None:
+        if did_expand:
+            src = orig_src
+            idx = src.rindex(':')
+            name = src[idx+1:]
+        else:
+            src = result['src']
+            idx = src.rindex('/')
+            name = src[idx+1:]
+        if name.endswith('.git'):
+            name = name[:-4]
+        name = name.replace('/', '-')
+        result['name'] = name
+
+    branch_or_tag = result.get('branch') or result.get('tag')
+    if branch_or_tag is None:
+        result['branch'] = 'master'
+
+    return result
