@@ -46,6 +46,8 @@ class OstbuildGitMirror(builtins.Builtin):
                             help="Don't perform a fetch if we have done so in the last N seconds")
         parser.add_argument('--fetch', action='store_true',
                             help="Also do a git fetch for components")
+        parser.add_argument('-k', '--keep-going', action='store_true',
+                            help="Don't exit on fetch failures")
         parser.add_argument('components', nargs='*')
 
         args = parser.parse_args(argv)
@@ -95,6 +97,6 @@ class OstbuildGitMirror(builtins.Builtin):
                         continue
 
             log("Running git fetch for %s" % (name, ))
-            vcs.fetch(self.mirrordir, keytype, uri, branch_or_tag)
+            vcs.fetch(self.mirrordir, keytype, uri, branch_or_tag, keep_going=args.keep_going)
 
 builtins.register(OstbuildGitMirror)
