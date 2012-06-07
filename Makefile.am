@@ -20,6 +20,12 @@ AM_CPPFLAGS = -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_28 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_28
 AM_CFLAGS = $(WARN_CFLAGS)
 
+if BUILD_EMBEDDED_GLIB
+SUBDIRS = embedded-dependencies .
+else
+SUBDIRS = .
+endif
+
 NULL = 
 BUILT_SOURCES =
 MANPAGES =
@@ -33,6 +39,24 @@ noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 privlibdir = $(pkglibdir)
 privlib_LTLIBRARIES =
+
+if BUILD_EMBEDDED_GLIB
+OT_INTERNAL_GIO_UNIX_CFLAGS = \
+	-I$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/include/glib-2.0 \
+	-I$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/include/gio-unix-2.0 \
+	-I$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/glib-2.0/include \
+	$(NULL)
+OT_INTERNAL_GIO_UNIX_LIBS = \
+	$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/libglib-2.0.so \
+	$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/libgthread-2.0.so \
+	$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/libgmodule-2.0.so \
+	$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/libgobject-2.0.so \
+	$(top_builddir)/embedded-dependencies/install-glib/EMBEDGLIB/lib/libgio-2.0.so \
+	$(NULL)
+else
+OT_INTERNAL_GIO_UNIX_CFLAGS = $(OT_DEP_GIO_UNIX_CFLAGS)
+OT_INTERNAL_GIO_UNIX_LIBS = $(OT_DEP_GIO_UNIX_LIBS)
+endif
 
 include Makefile-daemon.am
 include Makefile-otutil.am
@@ -83,3 +107,9 @@ endif
 
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
+
+release-tarball-embedded:
+	git archive --format=tar --prefix=ostree-embeddeps-$(VERSION)/ HEAD > ostree-embeddeps-$(VERSION).tar.tmp
+	tar --append --exclude='.git/*' --transform='s,^embedded-dependencies/,ostree-embeddeps-$(VERSION)/embedded-dependencies/,' --file=ostree-embeddeps-$(VERSION).tar.tmp embedded-dependencies/glib
+	mv ostree-embeddeps-$(VERSION).tar{.tmp,}
+	gzip -f ostree-embeddeps-$(VERSION).tar 

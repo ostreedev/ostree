@@ -36,5 +36,5 @@ EXTRA_DIST += $(triggers_SCRIPTS)
 bin_PROGRAMS += ostree-run-triggers
 
 ostree_run_triggers_SOURCES = src/triggers/ostree-run-triggers.c
-ostree_run_triggers_CFLAGS = $(OT_DEP_GIO_UNIX_CFLAGS)
-ostree_run_triggers_LDFLAGS = $(OT_DEP_GIO_UNIX_LIBS)
+ostree_run_triggers_CFLAGS = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+ostree_run_triggers_LDFLAGS = $(OT_INTERNAL_GIO_UNIX_LIBS)

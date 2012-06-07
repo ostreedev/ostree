@@ -1,0 +1,2 @@
+embedded-glib-download:
+	test -d glib || git clone --depth=1 git://git.gnome.org/glib -b glib-2-32 glib

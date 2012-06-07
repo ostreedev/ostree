@@ -24,5 +24,5 @@ ostreed_SOURCES = src/daemon/ostreed.c \
 	src/daemon/ot-daemon.c \
 	$(NULL)
 
-ostreed_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/daemon -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
-ostreed_LDADD = libotutil.la libostree.la $(OT_DEP_GIO_UNIX_LIBS)
+ostreed_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/daemon -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+ostreed_LDADD = libotutil.la libostree.la $(OT_INTERNAL_GIO_UNIX_LIBS)

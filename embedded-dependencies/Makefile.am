@@ -1,3 +1,5 @@
+# Import GLib into local tree
+#
 # Copyright (C) 2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -15,15 +17,24 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-bin_PROGRAMS += ostadmin
+build-glib/gio/libgio-2.0.la:
+	mkdir -p build-glib
+	(srcdir=$$(cd $(srcdir) && pwd); \
+	 cd build-glib; \
+         $${srcdir}/glib/autogen.sh --prefix=/EMBEDGLIB --disable-introspection --disable-man --disable-gtk-doc && \
+	 $(MAKE))
 
-ostadmin_SOURCES = src/ostadmin/main.c \
-	src/ostadmin/ot-admin-builtins.h \
-	src/ostadmin/ot-admin-builtin-init.c \
-	src/ostadmin/ot-admin-builtin-deploy.c \
-	src/ostadmin/ot-admin-main.h \
-	src/ostadmin/ot-admin-main.c \
-	$(NULL)
+install-glib/EMBEDGLIB/include/glib-2.0/glib.h: build-glib/gio/libgio-2.0.la
+	(top_srcdir=$$(cd $(top_srcdir) && pwd); \
+	 builddir=$$(pwd); \
+	 cd build-glib && \
+         rm -rf install-glib && \
+	 $(MAKE) install DESTDIR=$${builddir}/install-glib)
 
-ostadmin_CFLAGS =  $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostadmin -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
-ostadmin_LDADD = libotutil.la libostree.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+all-local: install-glib/EMBEDGLIB/include/glib-2.0/glib.h
+
+install-exec-local: 
+	echo `pwd`
+	$(MKDIR_P) $(DESTDIR)/$(pkglibdir)
+	install install-glib/EMBEDGLIB/lib/*.so.* $(DESTDIR)/$(pkglibdir)
+

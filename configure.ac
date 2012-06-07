@@ -26,11 +26,18 @@ AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from l
 
 PKG_PROG_PKG_CONFIG
 
-GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
+AC_ARG_ENABLE(embedded-glib,
+	    AS_HELP_STRING([--enable-embedded-glib], [Use embedded GLib copy]),,
+	    enable_embedded_glib=no)
+AM_CONDITIONAL(BUILD_EMBEDDED_GLIB, test x$enable_embedded_glib = xyes)
+if test x$enable_embedded_glib = xyes; then
+  echo "NOTICE: Embedded glib enabled"
+else
+  GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
+  PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
+fi
 SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
-
-PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
 AC_ARG_ENABLE(documentation,
               AC_HELP_STRING([--enable-documentation],
@@ -43,7 +50,6 @@ if test x$enable_documentation = xyes; then
    fi
 fi
 AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
-
 
 AC_ARG_WITH(soup-gnome,
 	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
@@ -86,6 +92,7 @@ AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 AC_CONFIG_FILES([
 Makefile
+embedded-dependencies/Makefile
 ])
 AC_OUTPUT
 
@@ -94,6 +101,7 @@ echo "
     ===============
 
 
+    embedded GLib: $enable_embedded_glib
     libsoup (retrieve remote HTTP repositories): $with_soup_gnome
     libarchive (parse tar files directly): $with_libarchive
 "

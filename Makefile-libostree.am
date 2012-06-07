@@ -46,9 +46,9 @@ libostree_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
 	$(NULL)
 endif
 
-libostree_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_DEP_GIO_UNIX_CFLAGS)
+libostree_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 libostree_la_LDFLAGS = -avoid-version -Bsymbolic-functions
-libostree_la_LIBADD = libotutil.la $(OT_DEP_GIO_UNIX_LIBS)
+libostree_la_LIBADD = libotutil.la $(OT_INTERNAL_GIO_UNIX_LIBS)
 
 if USE_LIBARCHIVE
 libostree_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
