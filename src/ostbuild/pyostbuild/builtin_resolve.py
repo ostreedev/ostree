@@ -42,12 +42,20 @@ class OstbuildResolve(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--manifest', required=True)
-        parser.add_argument('--fetch-patches', action='store_true')
-        parser.add_argument('--fetch', action='store_true')
+        parser.add_argument('--manifest', required=True,
+                            help="Path to manifest file")
+        parser.add_argument('--fetch-patches', action='store_true',
+                            help="Git fetch the patches")
+        parser.add_argument('--fetch', action='store_true',
+                            help="Also perform a git fetch")
+        parser.add_argument('components', nargs='*',
+                            help="List of component names to git fetch")
 
         args = parser.parse_args(argv)
         self.args = args
+
+        if len(args.components) > 0 and not args.fetch:
+            fatal("Can't specify components without --fetch")
         
         self.parse_config()
 
@@ -75,6 +83,7 @@ class OstbuildResolve(builtins.Builtin):
         git_mirror_args = ['ostbuild', 'git-mirror', '--manifest=' + args.manifest]
         if args.fetch:
             git_mirror_args.append('--fetch')
+            git_mirror_args.extend(args.components)
         run_sync(git_mirror_args)
 
         patch_revision = buildutil.get_git_version_describe(mirrordir, global_patches_meta['branch'])
