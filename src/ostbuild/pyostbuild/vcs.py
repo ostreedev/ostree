@@ -144,9 +144,9 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch):
 def fetch(mirrordir, keytype, uri, branch, keep_going=False):
     mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
     last_fetch_path = get_lastfetch_path(mirrordir, keytype, uri, branch)
-    run_sync(['git', 'fetch'], cwd=mirror, log_initiation=False) 
-    current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror,
-                                              none_on_error=keep_going)
+    run_sync(['git', 'fetch'], cwd=mirror, log_initiation=False,
+             none_on_error=keep_going) 
+    current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
     if current_vcs_version is not None:
         current_vcs_version = current_vcs_version.strip()
         f = open(last_fetch_path, 'w')
