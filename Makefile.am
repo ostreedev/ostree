@@ -40,7 +40,6 @@ include Makefile-libostree.am
 include Makefile-ostree.am
 include Makefile-ostadmin.am
 include Makefile-switchroot.am
-include Makefile-ostbuild.am
 include Makefile-triggers.am
 
 #  Docbook generation copied from systemd/Makefile.am
