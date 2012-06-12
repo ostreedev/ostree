@@ -4115,39 +4115,49 @@ checkout_file_hardlink (OstreeRepo                  *self,
                         OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                         GFile                    *source,
                         GFile                    *destination,
+                        gboolean                 *out_was_supported,
                         GCancellable             *cancellable,
                         GError                  **error)
 {
   gboolean ret = FALSE;
+  gboolean ret_was_supported = FALSE;
   ot_lobj GFile *dir = NULL;
 
-  if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
+  if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) != -1)
+    ret_was_supported = TRUE;
+  else if (errno == EMLINK || errno == EXDEV)
     {
-      if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
-        { 
-          /* Idiocy, from man rename(2)
-           *
-           * "If oldpath and newpath are existing hard links referring to
-           * the same file, then rename() does nothing, and returns a
-           * success status."
-           *
-           * So we can't make this atomic.  
-           */
-          (void) unlink (ot_gfile_get_path_cached (destination));
-          if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
-            {
-              ot_util_set_error_from_errno (error, errno);
-              goto out;
-            }
-        }
-      else
+      /* EMLINK and EXDEV shouldn't be fatal; we just can't do the
+       * optimization of hardlinking instead of copying.
+       */
+      ret_was_supported = FALSE;
+    }
+  else if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+    { 
+      /* Idiocy, from man rename(2)
+       *
+       * "If oldpath and newpath are existing hard links referring to
+       * the same file, then rename() does nothing, and returns a
+       * success status."
+       *
+       * So we can't make this atomic.  
+       */
+      (void) unlink (ot_gfile_get_path_cached (destination));
+      if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
+  else
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
 
   ret = TRUE;
+  if (out_was_supported)
+    *out_was_supported = ret_was_supported;
  out:
   return ret;
 }
@@ -4214,6 +4224,7 @@ checkout_one_file (OstreeRepo                  *self,
 {
   gboolean ret = FALSE;
   const char *checksum;
+  gboolean hardlink_supported;
   ot_lobj GFile *loose_path = NULL;
   ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *xattrs = NULL;
@@ -4235,12 +4246,14 @@ checkout_one_file (OstreeRepo                  *self,
 
   if (loose_path)
     {
-      /* If we found one, we can just hardlink */
+      /* If we found one, try hardlinking */
       if (!checkout_file_hardlink (self, mode, overwrite_mode, loose_path, destination,
-                                   cancellable, error))
+                                   &hardlink_supported, cancellable, error))
         goto out;
     }
-  else
+
+  /* Fall back to copy if there's no loose object, or we couldn't hardlink */
+  if (loose_path == NULL || !hardlink_supported)
     {
       if (!ostree_repo_load_file (self, checksum, &input, NULL, &xattrs, cancellable, error))
         goto out;
