@@ -29,6 +29,7 @@ triggers_SCRIPTS = \
 	src/triggers/triggers.d/0070pango.trigger \
 	src/triggers/triggers.d/0080gtk+.trigger \
 	src/triggers/triggers.d/0090desktop-database.trigger \
+	src/triggers/triggers.d/0090fontconfig-cache.trigger \
 	$(NULL)
 EXTRA_DIST += $(triggers_SCRIPTS)
 
