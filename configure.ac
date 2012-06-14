@@ -26,17 +26,38 @@ AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from l
 
 PKG_PROG_PKG_CONFIG
 
-AC_ARG_ENABLE(embedded-glib,
-	    AS_HELP_STRING([--enable-embedded-glib], [Use embedded GLib copy]),,
-	    enable_embedded_glib=no)
-AM_CONDITIONAL(BUILD_EMBEDDED_GLIB, test x$enable_embedded_glib = xyes)
-if test x$enable_embedded_glib = xyes; then
-  echo "NOTICE: Embedded glib enabled"
+AC_ARG_ENABLE(embedded-dependencies,
+	    AS_HELP_STRING([--enable-embedded-dependencies], [Use embedded GLib and libsoup copies]),,
+	    enable_embedded_dependencies=no)
+AM_CONDITIONAL(BUILD_EMBEDDED_DEPENDENCIES, test x$enable_embedded_dependencies = xyes)
+if test x$enable_embedded_dependencies = xyes; then
+  echo "NOTICE: Embedded dependencies (GLib and libsoup) enabled"
+  with_soup=yes
 else
   GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
   PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
+
+  SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
+  AC_ARG_WITH(soup-gnome,
+	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
+	    :, with_soup=maybe)
+  if test x$with_soup != xno; then
+    AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
+    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup_gnome=yes, have_soup_gnome=no)
+    AC_MSG_RESULT([$have_soup_gnome])
+    if test x$have_soup_gnome = xno && test x$with_soup != xmaybe; then
+       AC_MSG_ERROR([libsoup-gnome is enabled but could not be found])
+    fi
+    if test x$have_soup_gnome = xyes; then
+	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
+	with_soup=yes
+    else
+	with_soup=no
+    fi		
+  fi
 fi
-SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
+AM_CONDITIONAL(USE_LIBSOUP_GNOME, test x$enable_embedded_dependencies = xyes || x$with_soup != xno)
+
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
 AC_ARG_ENABLE(documentation,
@@ -50,25 +71,6 @@ if test x$enable_documentation = xyes; then
    fi
 fi
 AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
-
-AC_ARG_WITH(soup-gnome,
-	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
-	    :, with_soup_gnome=maybe)
-if test x$with_soup_gnome != xno; then
-    AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
-    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup_gnome=yes, have_soup_gnome=no)
-    AC_MSG_RESULT([$have_soup_gnome])
-    if test x$have_soup_gnome = xno && test x$with_soup_gnome != xmaybe; then
-       AC_MSG_ERROR([libsoup-gnome is enabled but could not be found])
-    fi
-    if test x$have_soup_gnome = xyes; then
-	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
-	with_soup_gnome=yes
-    else
-	with_soup_gnome=no
-    fi		
-fi
-AM_CONDITIONAL(USE_LIBSOUP_GNOME, test $with_soup_gnome != no)
 
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
@@ -101,7 +103,7 @@ echo "
     ===============
 
 
-    embedded GLib: $enable_embedded_glib
-    libsoup (retrieve remote HTTP repositories): $with_soup_gnome
+    embedded dependencies: $enable_embedded_dependencies
+    libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
 "

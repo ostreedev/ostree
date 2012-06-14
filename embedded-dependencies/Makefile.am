@@ -20,21 +20,40 @@
 build-glib/gio/libgio-2.0.la:
 	mkdir -p build-glib
 	(srcdir=$$(cd $(srcdir) && pwd); \
+	 builddir=$$(pwd); \
 	 cd build-glib; \
-         $${srcdir}/glib/autogen.sh --prefix=/EMBEDGLIB --disable-introspection --disable-man --disable-gtk-doc && \
+         $${srcdir}/glib/autogen.sh --prefix=$${builddir}/EMBEDDEPS --disable-introspection \
+	    --disable-man --disable-gtk-doc && \
 	 $(MAKE))
 
-install-glib/EMBEDGLIB/include/glib-2.0/glib.h: build-glib/gio/libgio-2.0.la
+EMBEDDEPS/include/glib-2.0/glib.h: build-glib/gio/libgio-2.0.la
 	(top_srcdir=$$(cd $(top_srcdir) && pwd); \
 	 builddir=$$(pwd); \
 	 cd build-glib && \
-         rm -rf install-glib && \
-	 $(MAKE) install DESTDIR=$${builddir}/install-glib)
+	 $(MAKE) install)
 
-all-local: install-glib/EMBEDGLIB/include/glib-2.0/glib.h
+build-libsoup/libsoup/libsoup-2.4.la: EMBEDDEPS/include/glib-2.0/glib.h
+	mkdir -p build-libsoup
+	(srcdir=$$(cd $(srcdir) && pwd); \
+	 builddir=$$(pwd); \
+	 cd build-libsoup; \
+	 env PATH=$${builddir}/EMBEDDEPS/bin:$$PATH \
+	     PKG_CONFIG_PATH=$${builddir}/EMBEDDEPS/lib/pkg-config \
+         $${srcdir}/libsoup/autogen.sh --prefix=$${builddir}/EMBEDDEPS --disable-introspection \
+	    --disable-soup-gnome --disable-gtk-doc --disable-tls-check --without-apache-httpd \
+	    --without-ntlm-auth && \
+	 $(MAKE))
+
+EMBEDDEPS/include/libsoup-2.4/libsoup/soup.h: build-libsoup/libsoup/libsoup-2.4.la
+	(top_srcdir=$$(cd $(top_srcdir) && pwd); \
+	 builddir=$$(pwd); \
+	 cd build-libsoup && \
+	 $(MAKE) install)
+
+all-local: EMBEDDEPS/include/libsoup-2.4/libsoup/soup.h
 
 install-exec-local: 
 	echo `pwd`
 	$(MKDIR_P) $(DESTDIR)/$(pkglibdir)
-	install install-glib/EMBEDGLIB/lib/*.so.* $(DESTDIR)/$(pkglibdir)
+	install EMBEDDEPS/lib/*.so.* $(DESTDIR)/$(pkglibdir)
 
