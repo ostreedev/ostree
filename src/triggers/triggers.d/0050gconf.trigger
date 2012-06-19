@@ -22,6 +22,8 @@ if test -x "$(which gconftool-2 2>/dev/null)"; then
     GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source`
     export GCONF_CONFIG_SOURCE
     for f in /etc/gconf/schemas/*.schemas; do
-	gconftool-2 --makefile-install-rule "$f"
+	# The default output is extremely chatty...redirect to
+	# /dev/null here until there's a way to make it quieter.
+	gconftool-2 --makefile-install-rule "$f" >/dev/null
     done
 fi
