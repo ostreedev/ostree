@@ -118,10 +118,10 @@ endif
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
 
-embed_dependency=tar --append --exclude='.git/*' --transform='s,^embedded-dependencies/,ostree-embeddeps-$(VERSION)/embedded-dependencies/,' --file=ostree-embeddeps-$(VERSION).tar.tmp
+embed_dependency=tar -C $(srcdir) --append --exclude='.git/*' --transform='s,^embedded-dependencies/,ostree-embeddeps-$(VERSION)/embedded-dependencies/,' --file=ostree-embeddeps-$(VERSION).tar.tmp
 
 release-tarball-embedded:
-	git archive --format=tar --prefix=ostree-embeddeps-$(VERSION)/ HEAD > ostree-embeddeps-$(VERSION).tar.tmp
+	(cd $(srcdir); git archive --format=tar --prefix=ostree-embeddeps-$(VERSION)/ HEAD) > ostree-embeddeps-$(VERSION).tar.tmp
 	$(embed_dependency) embedded-dependencies/glib
 	$(embed_dependency) embedded-dependencies/libsoup
 	mv ostree-embeddeps-$(VERSION).tar{.tmp,}
