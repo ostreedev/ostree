@@ -91,7 +91,7 @@ ostree_run_triggers_in_root (GFile                  *root,
 
       if (!g_spawn_sync (NULL, (char**)argv->pdata,
                          (char**) ostree_get_sysroot_environ (),
-                         G_SPAWN_SEARCH_PATH | G_SPAWN_STDOUT_TO_DEV_NULL,
+                         G_SPAWN_SEARCH_PATH,
                          NULL, NULL, NULL, NULL, &estatus, error))
         goto out;
 
