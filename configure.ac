@@ -56,7 +56,7 @@ else
     fi		
   fi
 fi
-AM_CONDITIONAL(USE_LIBSOUP_GNOME, test x$enable_embedded_dependencies = xyes || x$with_soup != xno)
+AM_CONDITIONAL(USE_LIBSOUP_GNOME, test x$enable_embedded_dependencies = xyes || test x$with_soup != xno)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
