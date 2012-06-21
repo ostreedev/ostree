@@ -37,7 +37,7 @@ if test -n "$OT_TESTS_VALGRIND"; then
 fi
 
 die () {
-    if test -z "$OT_TESTS_SAVE_TEMPS"; then
+    if test -z "$OT_TESTS_DEBUG"; then
         test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
     else
         echo "Temporary files saved in $test_tmpdir"
