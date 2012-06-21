@@ -189,3 +189,11 @@
    fun:_g_io_module_get_default
    ...
 }
+
+{
+   _dl_allocate_tls
+   Memcheck:Leak
+   ...
+   fun:_dl_allocate_tls
+   ...
+}

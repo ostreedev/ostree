@@ -4212,34 +4212,63 @@ find_loose_for_checkout (OstreeRepo             *self,
   return ret;
 }
 
-static gboolean
-checkout_one_file (OstreeRepo                  *self,
-                   OstreeRepoCheckoutMode    mode,
-                   OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                   OstreeRepoFile           *src,
-                   GFileInfo                *file_info,
-                   GFile                    *destination,
-                   GCancellable             *cancellable,
-                   GError                  **error)
+typedef struct {
+  OstreeRepo               *repo;
+  OstreeRepoCheckoutMode    mode;
+  OstreeRepoCheckoutOverwriteMode    overwrite_mode;
+  GFile                    *destination;
+  OstreeRepoFile           *source;
+  GFileInfo                *source_info;
+  GCancellable             *cancellable;
+
+  gboolean                  caught_error;
+  GError                   *error;
+
+  GSimpleAsyncResult       *result;
+} CheckoutOneFileAsyncData;
+
+static void
+checkout_file_async_data_free (gpointer      data)
 {
-  gboolean ret = FALSE;
+  CheckoutOneFileAsyncData *checkout_data = data;
+
+  g_clear_object (&checkout_data->repo);
+  g_clear_object (&checkout_data->destination);
+  g_clear_object (&checkout_data->source);
+  g_clear_object (&checkout_data->source_info);
+  g_clear_object (&checkout_data->cancellable);
+  g_free (checkout_data);
+}
+
+static void
+checkout_file_thread (GSimpleAsyncResult     *result,
+                      GObject                *src,
+                      GCancellable           *cancellable)
+{
   const char *checksum;
   gboolean hardlink_supported;
+  GError *local_error = NULL;
+  GError **error = &local_error;
   ot_lobj GFile *loose_path = NULL;
   ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *xattrs = NULL;
+  CheckoutOneFileAsyncData *checkout_data;
+
+  checkout_data = g_simple_async_result_get_op_res_gpointer (result);
 
   /* Hack to avoid trying to create device files as a user */
-  if (mode == OSTREE_REPO_CHECKOUT_MODE_USER
-      && g_file_info_get_file_type (file_info) == G_FILE_TYPE_SPECIAL)
-    return TRUE;
+  if (checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
+      && g_file_info_get_file_type (checkout_data->source_info) == G_FILE_TYPE_SPECIAL)
+    goto out;
 
-  checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)src);
+  checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)checkout_data->source);
 
-  if ((self->mode == OSTREE_REPO_MODE_BARE && mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
-      || (self->mode == OSTREE_REPO_MODE_ARCHIVE && mode == OSTREE_REPO_CHECKOUT_MODE_USER))
+  if ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE
+       && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
+      || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
+          && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER))
     {
-      if (!find_loose_for_checkout (self, checksum, &loose_path,
+      if (!find_loose_for_checkout (checkout_data->repo, checksum, &loose_path,
                                     cancellable, error))
         goto out;
     }
@@ -4247,7 +4276,9 @@ checkout_one_file (OstreeRepo                  *self,
   if (loose_path)
     {
       /* If we found one, try hardlinking */
-      if (!checkout_file_hardlink (self, mode, overwrite_mode, loose_path, destination,
+      if (!checkout_file_hardlink (checkout_data->repo, checkout_data->mode,
+                                   checkout_data->overwrite_mode, loose_path,
+                                   checkout_data->destination,
                                    &hardlink_supported, cancellable, error))
         goto out;
     }
@@ -4255,54 +4286,184 @@ checkout_one_file (OstreeRepo                  *self,
   /* Fall back to copy if there's no loose object, or we couldn't hardlink */
   if (loose_path == NULL || !hardlink_supported)
     {
-      if (!ostree_repo_load_file (self, checksum, &input, NULL, &xattrs, cancellable, error))
+      if (!ostree_repo_load_file (checkout_data->repo, checksum, &input, NULL, &xattrs,
+                                  cancellable, error))
         goto out;
 
-      if (!checkout_file_from_input (destination, mode, overwrite_mode, file_info, xattrs, 
+      if (!checkout_file_from_input (checkout_data->destination,
+                                     checkout_data->mode,
+                                     checkout_data->overwrite_mode,
+                                     checkout_data->source_info, xattrs, 
                                      input, cancellable, error))
         goto out;
     }
 
-  ret = TRUE;
  out:
-  return ret;
+  if (local_error)
+    g_simple_async_result_take_error (result, local_error);
 }
 
-gboolean
-ostree_repo_checkout_tree (OstreeRepo               *self,
-                           OstreeRepoCheckoutMode    mode,
-                           OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                           GFile                    *destination,
-                           OstreeRepoFile           *source,
-                           GFileInfo                *source_info,
-                           GCancellable             *cancellable,
-                           GError                  **error)
+static void
+checkout_one_file_async (OstreeRepo                  *self,
+                         OstreeRepoCheckoutMode    mode,
+                         OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                         OstreeRepoFile           *source,
+                         GFileInfo                *source_info,
+                         GFile                    *destination,
+                         GCancellable             *cancellable,
+                         GAsyncReadyCallback       callback,
+                         gpointer                  user_data)
 {
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
+  CheckoutOneFileAsyncData *checkout_data;
 
-  if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
-    goto out;
+  checkout_data = g_new0 (CheckoutOneFileAsyncData, 1);
+  checkout_data->repo = g_object_ref (self);
+  checkout_data->mode = mode;
+  checkout_data->overwrite_mode = overwrite_mode;
+  checkout_data->destination = g_object_ref (destination);
+  checkout_data->source = g_object_ref (source);
+  checkout_data->source_info = g_object_ref (source_info);
+  checkout_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
-  if (!checkout_file_from_input (destination, mode, overwrite_mode, source_info,
-                                 xattrs, NULL,
-                                 cancellable, error))
-    goto out;
+  checkout_data->result = g_simple_async_result_new ((GObject*) self,
+                                                     callback, user_data,
+                                                     checkout_one_file_async);
 
-  ot_clear_gvariant (&xattrs);
+  g_simple_async_result_set_op_res_gpointer (checkout_data->result, checkout_data,
+                                             checkout_file_async_data_free);
 
-  dir_enum = g_file_enumerate_children ((GFile*)source, OSTREE_GIO_FAST_QUERYINFO, 
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
-                                        error);
-  if (!dir_enum)
-    goto out;
+  g_simple_async_result_run_in_thread (checkout_data->result,
+                                       checkout_file_thread, G_PRIORITY_DEFAULT,
+                                       cancellable);
+  g_object_unref (checkout_data->result);
+}
 
-  while ((file_info = g_file_enumerator_next_file (dir_enum, cancellable, &temp_error)) != NULL)
+static gboolean
+checkout_one_file_finish (OstreeRepo               *self,
+                          GAsyncResult             *result,
+                          GError                  **error)
+{
+  GSimpleAsyncResult *simple;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, checkout_one_file_async), FALSE);
+
+  simple = G_SIMPLE_ASYNC_RESULT (result);
+  if (g_simple_async_result_propagate_error (simple, error))
+    return FALSE;
+  return TRUE;
+}
+
+typedef struct {
+  OstreeRepo               *repo;
+  OstreeRepoCheckoutMode    mode;
+  OstreeRepoCheckoutOverwriteMode    overwrite_mode;
+  GFile                    *destination;
+  OstreeRepoFile           *source;
+  GFileInfo                *source_info;
+  GCancellable             *cancellable;
+
+  gboolean                  caught_error;
+  GError                   *error;
+
+  guint                     pending_ops;
+  GMainLoop                *loop;
+  GSimpleAsyncResult       *result;
+} CheckoutTreeAsyncData;
+
+static void
+checkout_tree_async_data_free (gpointer      data)
+{
+  CheckoutTreeAsyncData *checkout_data = data;
+
+  g_clear_object (&checkout_data->repo);
+  g_clear_object (&checkout_data->destination);
+  g_clear_object (&checkout_data->source);
+  g_clear_object (&checkout_data->source_info);
+  g_clear_object (&checkout_data->cancellable);
+  g_free (checkout_data);
+}
+
+static void
+on_tree_async_child_op_complete (CheckoutTreeAsyncData   *data,
+                                 GError                  *local_error)
+{
+  data->pending_ops--;
+
+  if (local_error)
     {
+      if (!data->caught_error)
+        {
+          data->caught_error = TRUE;
+          g_propagate_error (&data->error, local_error);
+        }
+      else
+        g_clear_error (&local_error);
+    }
+
+  if (data->pending_ops != 0)
+    return;
+
+  if (data->caught_error)
+    g_simple_async_result_take_error (data->result, data->error);
+  g_simple_async_result_complete_in_idle (data->result);
+  g_object_unref (data->result);
+}
+
+static void
+on_one_subdir_checked_out (GObject          *src,
+                           GAsyncResult     *result,
+                           gpointer          user_data)
+{
+  CheckoutTreeAsyncData *data = user_data;
+  GError *local_error = NULL;
+
+  if (!ostree_repo_checkout_tree_finish ((OstreeRepo*) src, result, &local_error))
+    goto out;
+
+ out:
+  on_tree_async_child_op_complete (data, local_error);
+}
+
+static void
+on_one_file_checked_out (GObject          *src,
+                         GAsyncResult     *result,
+                         gpointer          user_data)
+{
+  CheckoutTreeAsyncData *data = user_data;
+  GError *local_error = NULL;
+
+  if (!checkout_one_file_finish ((OstreeRepo*) src, result, &local_error))
+    goto out;
+
+ out:
+  on_tree_async_child_op_complete (data, local_error);
+}
+
+static void
+on_got_next_files (GObject          *src,
+                   GAsyncResult     *result,
+                   gpointer          user_data)
+{
+  CheckoutTreeAsyncData *data = user_data;
+  GError *local_error = NULL;
+  GList *files = NULL;
+  GList *iter = NULL;
+
+  files = g_file_enumerator_next_files_finish ((GFileEnumerator*) src, result, &local_error);
+  if (local_error)
+    goto out;
+
+  if (files)
+    {
+      g_file_enumerator_next_files_async ((GFileEnumerator*)src, 50, G_PRIORITY_DEFAULT,
+                                          data->cancellable,
+                                          on_got_next_files, data);
+      data->pending_ops++;
+    }
+
+  for (iter = files; iter; iter = iter->next)
+    {
+      GFileInfo *file_info = iter->data;
       const char *name;
       guint32 type;
       ot_lobj GFile *dest_path = NULL;
@@ -4311,35 +4472,114 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
 
-      dest_path = g_file_get_child (destination, name);
-      src_child = g_file_get_child ((GFile*)source, name);
+      dest_path = g_file_get_child (data->destination, name);
+      src_child = g_file_get_child ((GFile*)data->source, name);
 
       if (type == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_repo_checkout_tree (self, mode, overwrite_mode,
-                                          dest_path, (OstreeRepoFile*)src_child, file_info,
-                                          cancellable, error))
-            goto out;
+          ostree_repo_checkout_tree_async (data->repo,
+                                           data->mode,
+                                           data->overwrite_mode,
+                                           dest_path, (OstreeRepoFile*)src_child, file_info,
+                                           data->cancellable,
+                                           on_one_subdir_checked_out,
+                                           data);
         }
       else
         {
-          if (!checkout_one_file (self, mode, overwrite_mode,
-                                  (OstreeRepoFile*)src_child, file_info, 
-                                  dest_path, cancellable, error))
-            goto out;
+          checkout_one_file_async (data->repo, data->mode,
+                                   data->overwrite_mode,
+                                   (OstreeRepoFile*)src_child, file_info, 
+                                   dest_path, data->cancellable,
+                                   on_one_file_checked_out,
+                                   data);
         }
-
-      g_clear_object (&file_info);
+      data->pending_ops++;
+      g_object_unref (file_info);
     }
-  if (file_info == NULL && temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
+  g_list_free (files);
 
-  ret = TRUE;
  out:
-  return ret;
+  on_tree_async_child_op_complete (data, local_error);
+}
+
+void
+ostree_repo_checkout_tree_async (OstreeRepo               *self,
+                                 OstreeRepoCheckoutMode    mode,
+                                 OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                                 GFile                    *destination,
+                                 OstreeRepoFile           *source,
+                                 GFileInfo                *source_info,
+                                 GCancellable             *cancellable,
+                                 GAsyncReadyCallback       callback,
+                                 gpointer                  user_data)
+{
+  CheckoutTreeAsyncData *checkout_data;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lvariant GVariant *xattrs = NULL;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  GError *local_error = NULL;
+  GError **error = &local_error;
+
+  checkout_data = g_new0 (CheckoutTreeAsyncData, 1);
+  checkout_data->repo = g_object_ref (self);
+  checkout_data->mode = mode;
+  checkout_data->overwrite_mode = overwrite_mode;
+  checkout_data->destination = g_object_ref (destination);
+  checkout_data->source = g_object_ref (source);
+  checkout_data->source_info = g_object_ref (source_info);
+  checkout_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
+  checkout_data->pending_ops++; /* Count this function */
+
+  checkout_data->result = g_simple_async_result_new ((GObject*) self,
+                                                     callback, user_data,
+                                                     ostree_repo_checkout_tree_async);
+
+  g_simple_async_result_set_op_res_gpointer (checkout_data->result, checkout_data,
+                                             checkout_tree_async_data_free);
+
+  if (!ostree_repo_file_get_xattrs (checkout_data->source, &xattrs, NULL, error))
+    goto out;
+
+  if (!checkout_file_from_input (checkout_data->destination,
+                                 checkout_data->mode,
+                                 checkout_data->overwrite_mode,
+                                 checkout_data->source_info,
+                                 xattrs, NULL,
+                                 cancellable, error))
+    goto out;
+
+  ot_clear_gvariant (&xattrs);
+
+  dir_enum = g_file_enumerate_children ((GFile*)checkout_data->source,
+                                        OSTREE_GIO_FAST_QUERYINFO, 
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable, 
+                                        error);
+  if (!dir_enum)
+    goto out;
+
+  g_file_enumerator_next_files_async (dir_enum, 50, G_PRIORITY_DEFAULT, cancellable,
+                                      on_got_next_files, checkout_data);
+  checkout_data->pending_ops++;
+
+ out:
+  on_tree_async_child_op_complete (checkout_data, local_error);
+}
+
+gboolean
+ostree_repo_checkout_tree_finish (OstreeRepo               *self,
+                                  GAsyncResult             *result,
+                                  GError                  **error)
+{
+  GSimpleAsyncResult *simple;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_repo_checkout_tree_async), FALSE);
+
+  simple = G_SIMPLE_ASYNC_RESULT (result);
+  if (g_simple_async_result_propagate_error (simple, error))
+    return FALSE;
+  return TRUE;
 }
 
 gboolean
