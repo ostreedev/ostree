@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2012 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,17 +20,21 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OT_ADMIN_BUILTINS__
-#define __OT_ADMIN_BUILTINS__
+#ifndef __OT_ADMIN_FUNCTIONS__
+#define __OT_ADMIN_FUNCTIONS__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-gboolean ot_admin_builtin_init (int argc, char **argv, GError **error);
-gboolean ot_admin_builtin_deploy (int argc, char **argv, GError **error);
-gboolean ot_admin_builtin_diff (int argc, char **argv, GError **error);
-gboolean ot_admin_builtin_update_kernel (int argc, char **argv, GError **error);
+gboolean ot_admin_ensure_initialized (GFile         *ostree_dir, 
+				      GCancellable  *cancellable,
+				      GError       **error);
+
+gboolean ot_admin_get_current_deployment (GFile           *ostree_dir,
+                                          GFile          **out_deployment,
+                                          GCancellable    *cancellable,
+                                          GError         **error);
 
 G_END_DECLS
 

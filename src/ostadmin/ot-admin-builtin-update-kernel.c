@@ -32,7 +32,7 @@ typedef struct {
   OstreeRepo  *repo;
 } OtAdminUpdateKernel;
 
-static char *opt_ostree_dir;
+static char *opt_ostree_dir = "/ostree";
 
 static GOptionEntry options[] = {
   { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory", NULL },
@@ -70,14 +70,13 @@ copy_modules (const char    *release,
 
 static gboolean
 update_initramfs (const char       *release,
-                  const char       *deploy_target,
+                  const char       *deploy_path,
                   GCancellable     *cancellable,
                   GError          **error)
 {
   gboolean ret = FALSE;
   ot_lfree char *initramfs_name = NULL;
   ot_lobj GFile *initramfs_file = NULL;
-  ot_lfree char *last_deploy_path = NULL;
 
   initramfs_name = g_strconcat ("initramfs-ostree-", release, ".img", NULL);
   initramfs_file = ot_gfile_from_build_path ("/boot", initramfs_name, NULL);
@@ -98,8 +97,6 @@ update_initramfs (const char       *release,
       ostree_vardir = g_build_filename (opt_ostree_dir, "var", NULL);
       ostree_moduledir = g_build_filename (opt_ostree_dir, "modules", NULL);
 
-      last_deploy_path = g_build_filename (opt_ostree_dir, deploy_target, NULL);
-
       mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
        * security flaw, because we've bind-mounted dracut's view
@@ -113,12 +110,12 @@ update_initramfs (const char       *release,
                             "--mount-bind", ostree_vardir, "/var",
                             "--mount-bind", ot_gfile_get_path_cached (tmpdir), "/tmp",
                             "--mount-bind", ostree_moduledir, "/lib/modules",
-                            last_deploy_path,
+                            deploy_path,
                             "dracut", "-f", "/tmp/initramfs-ostree.img", release,
                             NULL);
       g_ptr_array_add (mkinitramfs_args, NULL);
           
-      g_print ("Generating initramfs using %s...\n", last_deploy_path);
+      g_print ("Generating initramfs using %s...\n", deploy_path);
       if (!ot_spawn_sync_checked (NULL, (char**)mkinitramfs_args->pdata, NULL,
                                   G_SPAWN_SEARCH_PATH,
                                   NULL, NULL, NULL, NULL, error))
@@ -277,13 +274,10 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GError **error)
   OtAdminUpdateKernel self_data;
   OtAdminUpdateKernel *self = &self_data;
   gboolean ret = FALSE;
-  const char *deploy_target = NULL;
+  const char *deploy_path = NULL;
   struct utsname utsname;
   const char *release;
   __attribute__((unused)) GCancellable *cancellable = NULL;
-
-  if (!opt_ostree_dir)
-    opt_ostree_dir = "/ostree";
 
   memset (self, 0, sizeof (*self));
 
@@ -294,9 +288,9 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GError **error)
     goto out;
 
   if (argc > 1)
-    deploy_target = argv[1];
+    deploy_path = argv[1];
   else
-    deploy_target = "current";
+    deploy_path = "current";
 
   (void) uname (&utsname);
   
@@ -314,7 +308,7 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GError **error)
   if (!copy_modules (release, cancellable, error))
     goto out;
   
-  if (!update_initramfs (release, deploy_target, cancellable, error))
+  if (!update_initramfs (release, deploy_path, cancellable, error))
     goto out;
   
   if (!update_grub (release, cancellable, error))

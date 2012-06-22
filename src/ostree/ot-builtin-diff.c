@@ -65,7 +65,6 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   GOptionContext *context;
   GCancellable *cancellable = NULL;
-  int i;
   const char *src;
   const char *target;
   ot_lobj OstreeRepo *repo = NULL;

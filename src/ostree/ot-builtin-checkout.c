@@ -30,7 +30,6 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_user_mode;
-static gboolean opt_atomic_retarget;
 static gboolean opt_no_triggers;
 static char *opt_subpath;
 static gboolean opt_union;
@@ -41,88 +40,11 @@ static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
-  { "atomic-retarget", 0, 0, G_OPTION_ARG_NONE, &opt_atomic_retarget, "Make a symbolic link for destination, suffix with checksum", NULL },
   { "no-triggers", 0, 0, G_OPTION_ARG_NONE, &opt_no_triggers, "Don't run triggers", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
   { NULL }
 };
-
-static gboolean
-atomic_symlink_swap (GFile          *dest,
-                     const char     *target,
-                     GCancellable   *cancellable,
-                     GError        **error)
-{
-  gboolean ret = FALSE;
-  ot_lobj GFile *parent = NULL;
-  ot_lfree char *tmp_name = NULL;
-  ot_lobj GFile *tmp_link = NULL;
-
-  parent = g_file_get_parent (dest);
-  /* HACK - should use randomly generated temporary target name */
-  tmp_name = g_strconcat (ot_gfile_get_basename_cached (dest),
-                          "-tmplink", NULL);
-  tmp_link = g_file_get_child (parent, tmp_name);
-  if (symlink (target, ot_gfile_get_path_cached (tmp_link)) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  if (!ot_gfile_rename (tmp_link, dest, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
-parse_commit_from_symlink (GFile        *symlink,
-                           char        **out_commit,
-                           GCancellable  *cancellable,
-                           GError       **error)
-{
-  gboolean ret = FALSE;
-  const char *target;
-  const char *last_dash;
-  const char *checksum;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lfree char *ret_commit = NULL;
-
-  file_info = g_file_query_info (symlink, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
-  if (!file_info)
-    goto out;
-
-  target = g_file_info_get_symlink_target (file_info);
-  if (target == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Not a symbolic link");
-      goto out;
-    }
-
-  last_dash = strrchr (target, '-');
-  if (last_dash == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid existing symlink target; no trailing dash");
-      goto out;
-    }
-  checksum = last_dash + 1;
-
-  if (!ostree_validate_structureof_checksum_string (checksum, error))
-    goto out;
-  
-  ret_commit = g_strdup (checksum);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_commit, &ret_commit);
- out:
-  return ret;
-}
 
 typedef struct {
   gboolean caught_error;
@@ -263,7 +185,10 @@ process_many_checkouts (OstreeRepo         *repo,
 
       if (!process_one_checkout (repo, resolved_commit, subpath, target,
                                  cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Processing tree %s: ", resolved_commit);
+          goto out;
+        }
 
       g_free (revision);
     }
@@ -286,11 +211,9 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   gboolean ret = FALSE;
   const char *commit;
   const char *destination;
-  gboolean skip_checkout;
   ot_lobj OstreeRepo *repo = NULL;
   ot_lfree char *existing_commit = NULL;
   ot_lfree char *resolved_commit = NULL;
-  ot_lfree char *suffixed_destination = NULL;
   ot_lfree char *tmp_destination = NULL;
   ot_lobj GFileInfo *symlink_file_info = NULL;
   ot_lobj GFile *checkout_target = NULL;
@@ -319,13 +242,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
 
   if (opt_from_stdin || opt_from_file)
     {
-      if (opt_atomic_retarget)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "--atomic-retarget may not be used with --from-stdin or --from-file");
-          goto out;
-        }
-
       destination = argv[1];
       checkout_target = g_file_new_for_path (destination);
 
@@ -349,69 +265,18 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
       if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
         goto out;
 
-      if (opt_atomic_retarget)
-        {
-          GError *temp_error = NULL;
+      checkout_target = g_file_new_for_path (destination);
 
-          suffixed_destination = g_strconcat (destination, "-", resolved_commit, NULL);
-          checkout_target = g_file_new_for_path (suffixed_destination);
-          tmp_destination = g_strconcat (suffixed_destination, ".tmp", NULL);
-          checkout_target_tmp = g_file_new_for_path (tmp_destination);
-          symlink_target = g_file_new_for_path (destination);
+      if (!process_one_checkout (repo, resolved_commit, opt_subpath,
+                                 checkout_target_tmp ? checkout_target_tmp : checkout_target,
+                                 cancellable, error))
+        goto out;
 
-          if (!parse_commit_from_symlink (symlink_target, &existing_commit,
-                                          cancellable, &temp_error))
-            {
-              if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-                {
-                  skip_checkout = FALSE;
-                  g_clear_error (&temp_error);
-                }
-              else
-                {
-                  g_propagate_error (error, temp_error);
-                  goto out;
-                }
-            }
-          else
-            {
-              skip_checkout = strcmp (existing_commit, resolved_commit) == 0;
-            }
-        }
-      else
+      if (!opt_no_triggers)
         {
-          checkout_target = g_file_new_for_path (destination);
-          skip_checkout = FALSE;
-        }
-
-      if (skip_checkout)
-        {
-          g_print ("ostree-checkout: Rev %s is already checked out as %s\n", commit, resolved_commit);
-        }
-      else
-        {
-          if (!process_one_checkout (repo, resolved_commit, opt_subpath,
-                                     checkout_target_tmp ? checkout_target_tmp : checkout_target,
-                                     cancellable, error))
+          if (!ostree_run_triggers_in_root (checkout_target_tmp ? checkout_target_tmp : checkout_target,
+                                            cancellable, error))
             goto out;
-
-          if (!opt_no_triggers)
-            {
-              if (!ostree_run_triggers_in_root (checkout_target_tmp ? checkout_target_tmp : checkout_target,
-                                                cancellable, error))
-                goto out;
-            }
-
-          if (opt_atomic_retarget)
-            {
-              if (!ot_gfile_rename (checkout_target_tmp, checkout_target, cancellable, error))
-                goto out;
-              if (!atomic_symlink_swap (symlink_target,
-                                        ot_gfile_get_basename_cached (checkout_target),
-                                        cancellable, error))
-                goto out;
-              g_print ("ostree-checkout: Rev %s checked out as %s\n", commit, resolved_commit);
-            }
         }
     }
 

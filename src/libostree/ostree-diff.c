@@ -97,14 +97,14 @@ diff_item_new (GFile          *a,
   return ret;
 }
 
- static gboolean
- diff_files (GFile           *a,
-             GFileInfo       *a_info,
-             GFile           *b,
-             GFileInfo       *b_info,
-             OstreeDiffItem **out_item,
-             GCancellable    *cancellable,
-             GError         **error)
+static gboolean
+diff_files (GFile           *a,
+            GFileInfo       *a_info,
+            GFile           *b,
+            GFileInfo       *b_info,
+            OstreeDiffItem **out_item,
+            GCancellable    *cancellable,
+            GError         **error)
 {
   gboolean ret = FALSE;
   ot_lfree char *checksum_a = NULL;

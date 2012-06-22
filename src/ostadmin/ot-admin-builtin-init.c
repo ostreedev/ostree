@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include "ot-admin-builtins.h"
+#include "ot-admin-functions.h"
 #include "otutil.h"
 
 #include <glib/gi18n.h>
@@ -49,47 +50,10 @@ ot_admin_builtin_init (int argc, char **argv, GError **error)
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  g_clear_object (&dir);
-  dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
-    goto out;
+  dir = g_file_new_for_path (opt_ostree_dir);
 
-  /* We presently copy over host kernel modules */
-  g_clear_object (&dir);
-  dir = ot_gfile_from_build_path (opt_ostree_dir, "modules", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!ot_admin_ensure_initialized (dir, cancellable, error))
     goto out;
-
-  g_clear_object (&dir);
-  dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", "objects", NULL);
-  if (!g_file_query_exists (dir, NULL))
-    {
-      ot_lfree char *opt_repo_path = g_strdup_printf ("--repo=%s/repo", opt_ostree_dir);
-      const char *child_argv[] = { "ostree", opt_repo_path, "init", NULL };
-
-      if (!ot_spawn_sync_checked (NULL, (char**)child_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
-                                  NULL, NULL, error))
-        {
-          g_prefix_error (error, "Failed to initialize repository: ");
-          goto out;
-        }
-    }
-
-  /* Ensure a few subdirectories of /var exist, since we need them for
-     dracut generation */
-  g_clear_object (&dir);
-  dir = ot_gfile_from_build_path (opt_ostree_dir, "var", "log", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
-    goto out;
-  g_clear_object (&dir);
-  dir = ot_gfile_from_build_path (opt_ostree_dir, "var", "tmp", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
-    goto out;
-  if (chmod (ot_gfile_get_path_cached (dir), 01777) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
 
   g_print ("%s initialized as OSTree root\n", opt_ostree_dir);
 
