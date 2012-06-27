@@ -24,13 +24,29 @@ libsoup_config_opts = --disable-silent-rules --disable-static --disable-gtk-doc 
 	    --disable-introspection --without-gnome --disable-tls-check \
 	    --without-apache-httpd --without-ntlm-auth
 
-build-glib/gio/libgio-2.0.la:
-	mkdir -p build-glib
+build_environment = PATH=$${builddir}/EMBEDDEPS/bin$${PATH:+:$$PATH} \
+	LD_LIBRARY_PATH="$${builddir}/EMBEDDEPS/lib$${LD_LIBRARY_PATH:+:$$LD_LIBRARY_PATH}" \
+	C_INCLUDE_PATH="$${builddir}/EMBEDDEPS/include$${C_INCLUDE_PATH:+:$$C_INCLUDE_PATH}" \
+	LDFLAGS="-L$${builddir}/EMBEDDEPS/lib$${LDFLAGS:+:$$LDFLAGS}" \
+	ACLOCAL_PATH="$${builddir}/EMBEDDEPS/share/aclocal$${ACLOCAL_PATH:+:$$ACLOCAL_PATH}" \
+	ACLOCAL_FLAGS="-I $${builddir}/EMBEDDEPS/share/aclocal$${ACLOCAL_FLAGS:+:$$ACLOCAL_FLAGS}" \
+	PKG_CONFIG_PATH="$${builddir}/EMBEDDEPS/lib/pkgconfig$${PKG_CONFIG_PATH:+:$$PKG_CONFIG_PATH}"
+
+# aclocal aborts if the path doesn't exist yet.  Lame.  Let's also
+# make /bin just because.
+stamp-buildroot: Makefile
+	mkdir -p EMBEDDEPS/bin
+	mkdir -p EMBEDDEPS/share/aclocal
+	touch stamp-buildroot
+
+build-glib/gio/libgio-2.0.la: stamp-buildroot
 	(srcdir=$$(cd $(srcdir) && pwd); \
 	 builddir=$$(pwd); \
-	 cd build-glib; \
-         $${srcdir}/glib/autogen.sh --prefix=$${builddir}/EMBEDDEPS $(glib_config_opts) && \
-	 $(MAKE))
+	 (cd $${srcdir}/glib; env NOCONFIGURE=1 $(build_environment) ./autogen.sh) && \
+	 mkdir -p build-glib && \
+	 cd build-glib && \
+         env $(build_environment) $${srcdir}/glib/configure --prefix=$${builddir}/EMBEDDEPS $(glib_config_opts) && \
+	 env $(build_environment) $(MAKE))
 
 EMBEDDEPS/include/glib-2.0/glib.h: build-glib/gio/libgio-2.0.la
 	(top_srcdir=$$(cd $(top_srcdir) && pwd); \
@@ -39,17 +55,13 @@ EMBEDDEPS/include/glib-2.0/glib.h: build-glib/gio/libgio-2.0.la
 	 $(MAKE) install)
 
 build-libsoup/libsoup/libsoup-2.4.la: EMBEDDEPS/include/glib-2.0/glib.h
-	mkdir -p build-libsoup
 	(srcdir=$$(cd $(srcdir) && pwd); \
 	 builddir=$$(pwd); \
-	 cd build-libsoup; \
-	 env PATH=$${builddir}/EMBEDDEPS/bin:$$PATH \
-	     LD_LIBRARY_PATH=$${builddir}/EMBEDDEPS/lib:$$LD_LIBRARY_PATH \
-	     C_INCLUDE_PATH=$${builddir}/EMBEDDEPS/include:$$C_INCLUDE_PATH \
-	     LDFLAGS=-L$${builddir}/EMBEDDEPS/lib:$$LDFLAGS \
-	     PKG_CONFIG_PATH=$${builddir}/EMBEDDEPS/lib/pkgconfig \
-         $${srcdir}/libsoup/autogen.sh --prefix=$${builddir}/EMBEDDEPS $(libsoup_config_opts) && \
-	 $(MAKE))
+	 (cd $${srcdir}/libsoup; env NOCONFIGURE=1 $(build_environment) ./autogen.sh) && \
+	 mkdir -p build-libsoup && \
+	 cd build-libsoup && \
+	 env $(build_environment) $${srcdir}/libsoup/configure --prefix=$${builddir}/EMBEDDEPS $(libsoup_config_opts) && \
+	 env $(build_environment) $(MAKE))
 
 EMBEDDEPS/include/libsoup-2.4/libsoup/soup.h: build-libsoup/libsoup/libsoup-2.4.la
 	(top_srcdir=$$(cd $(top_srcdir) && pwd); \
