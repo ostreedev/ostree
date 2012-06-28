@@ -32,6 +32,7 @@ typedef enum {
 } OstreeFetcherState;
 
 typedef struct {
+  guint refcount;
   OstreeFetcher *self;
   SoupURI *uri;
 
@@ -52,6 +53,11 @@ typedef struct {
 static void
 pending_uri_free (OstreeFetcherPendingURI *pending)
 {
+  g_assert (pending->refcount > 0);
+  pending->refcount--;
+  if (pending->refcount > 0)
+    return;
+
   g_clear_object (&pending->self);
   g_clear_object (&pending->tmpfile);
   g_clear_object (&pending->request);
@@ -116,10 +122,8 @@ on_request_unqueued (SoupSession  *session,
 {
   OstreeFetcher *self = user_data;
   if (msg == self->sending_message)
-    {
-      self->sending_message = NULL;
-      g_hash_table_remove (self->message_to_request, msg);
-    }
+    self->sending_message = NULL;
+  g_hash_table_remove (self->message_to_request, msg);
 }
 
 static void
@@ -136,7 +140,8 @@ ostree_fetcher_init (OstreeFetcher *self)
   g_signal_connect (self->session, "request-unqueued",
                     G_CALLBACK (on_request_unqueued), self);
   
-  self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref, NULL);
+  self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
+                                                    (GDestroyNotify)pending_uri_free);
 }
 
 OstreeFetcher *
@@ -222,12 +227,14 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
   GError *local_error = NULL;
 
   pending = g_new0 (OstreeFetcherPendingURI, 1);
+  pending->refcount = 1;
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
   pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
   pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
   g_assert_no_error (local_error);
 
+  pending->refcount++;
   g_hash_table_insert (self->message_to_request,
                        soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
                        pending);
@@ -240,7 +247,6 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
 
   soup_request_send_async (pending->request, cancellable,
                            on_request_sent, pending);
-  
 }
 
 GFile *
