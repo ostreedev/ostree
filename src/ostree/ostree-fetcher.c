@@ -58,6 +58,7 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
   if (pending->refcount > 0)
     return;
 
+  soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
   g_clear_object (&pending->tmpfile);
   g_clear_object (&pending->request);
