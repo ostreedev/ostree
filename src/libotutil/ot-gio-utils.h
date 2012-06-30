@@ -96,11 +96,6 @@ guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
                                         GAsyncResult   *result,
                                         GError        **error);
 
-gboolean ot_gfile_merge_dirs (GFile    *destination,
-                              GFile    *src,
-                              GCancellable *cancellable,
-                              GError   **error);
-
 G_END_DECLS
 
 #endif
