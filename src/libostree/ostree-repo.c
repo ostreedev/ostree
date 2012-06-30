@@ -137,7 +137,7 @@ ostree_repo_set_property(GObject         *object,
     {
     case PROP_PATH:
       /* Canonicalize */
-      self->repodir = ot_gfile_new_for_path (ot_gfile_get_path_cached (g_value_get_object (value)));
+      self->repodir = g_file_new_for_path (ot_gfile_get_path_cached (g_value_get_object (value)));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -724,7 +724,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
 
   if (parent_repo_path && parent_repo_path[0])
     {
-      ot_lobj GFile *parent_repo_f = ot_gfile_new_for_path (parent_repo_path);
+      ot_lobj GFile *parent_repo_f = g_file_new_for_path (parent_repo_path);
 
       self->parent_repo = ostree_repo_new (parent_repo_f);
 

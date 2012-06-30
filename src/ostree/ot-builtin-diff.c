@@ -45,7 +45,7 @@ parse_file_or_commit (OstreeRepo  *repo,
       || g_str_has_prefix (arg, "./")
       )
     {
-      ret_file = ot_gfile_new_for_path (arg);
+      ret_file = g_file_new_for_path (arg);
     }
   else
     {
@@ -461,7 +461,7 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
       target = argv[2];
     }
 
-  cwd = ot_gfile_new_for_path (".");
+  cwd = g_file_new_for_path (".");
 
   if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
     goto out;

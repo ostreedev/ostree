@@ -77,7 +77,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   ot_lfree char *contents = NULL;
   char **lines = NULL;
 
-  path = ot_gfile_new_for_path (statoverride_file);
+  path = g_file_new_for_path (statoverride_file);
 
   if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
                              error))
@@ -136,7 +136,7 @@ parse_related_objects_file (GVariant     **out_related_objects,
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(say)"));
   builder_initialized = TRUE;
 
-  path = ot_gfile_new_for_path (opt_related_objects_file);
+  path = g_file_new_for_path (opt_related_objects_file);
 
   if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
                              error))
@@ -262,7 +262,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         }
       else if (metadata_bin_path)
         {
-          metadata_f = ot_gfile_new_for_path (metadata_bin_path);
+          metadata_f = g_file_new_for_path (metadata_bin_path);
           if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), TRUE,
                                     &metadata, error))
             goto out;
@@ -361,7 +361,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   if (argc == 1 && (trees == NULL || trees[0] == NULL))
     {
       char *current_dir = g_get_current_dir ();
-      arg = ot_gfile_new_for_path (current_dir);
+      arg = g_file_new_for_path (current_dir);
       g_free (current_dir);
 
       if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
@@ -392,14 +392,14 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
           g_clear_object (&arg);
           if (strcmp (tree_type, "dir") == 0)
             {
-              arg = ot_gfile_new_for_path (tree);
+              arg = g_file_new_for_path (tree);
               if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
                                                          cancellable, error))
                 goto out;
             }
           else if (strcmp (tree_type, "tar") == 0)
             {
-              arg = ot_gfile_new_for_path (tree);
+              arg = g_file_new_for_path (tree);
               if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
                                                        tar_autocreate_parents,
                                                        cancellable, error))

@@ -69,7 +69,7 @@ ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **
     goto out;
 
   if (argc > 1)
-    f = ot_gfile_new_for_path (argv[1]);
+    f = g_file_new_for_path (argv[1]);
   else
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,

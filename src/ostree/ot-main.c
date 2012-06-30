@@ -118,7 +118,7 @@ ostree_main (int    argc,
     repo = NULL;
 
   if (repo)
-    repo_file = ot_gfile_new_for_path (repo);
+    repo_file = g_file_new_for_path (repo);
 
   slash = strrchr (argv[0], '/');
   if (slash)

@@ -40,8 +40,6 @@ GFile *ot_gfile_from_build_path (const char *first, ...) G_GNUC_NULL_TERMINATED;
 
 GFile *ot_gfile_get_child_strconcat (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
 
-GFile *ot_gfile_new_for_path (const char *path);
-
 const char *ot_gfile_get_path_cached (GFile *file);
 
 const char *ot_gfile_get_basename_cached (GFile *file);

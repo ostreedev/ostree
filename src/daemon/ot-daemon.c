@@ -153,7 +153,7 @@ overlay_dir_thread (gpointer data)
 
   context = g_main_context_new ();
 
-  sysroot_f = ot_gfile_new_for_path ("/sysroot/ostree/current");
+  sysroot_f = g_file_new_for_path ("/sysroot/ostree/current");
 
   g_main_context_push_thread_default (context);
 
@@ -181,7 +181,7 @@ do_op_overlay (OstreeDaemon            *self,
   OverlayDirThreadData *tdata = g_new0 (OverlayDirThreadData, 1);
   
   tdata->op = op;
-  tdata->dir = ot_gfile_new_for_path (dir);
+  tdata->dir = g_file_new_for_path (dir);
 
 #if GLIB_CHECK_VERSION(2,32,0) && !defined(OSTREE_GLIB_TARGET_MIN)
   g_thread_new ("overlay-dir-thread", overlay_dir_thread, tdata);
@@ -316,9 +316,9 @@ ostree_daemon_config (OstreeDaemon *self,
     }
 
   if (is_dummy)
-    self->prefix = ot_gfile_new_for_path (config->dummy_test_path);
+    self->prefix = g_file_new_for_path (config->dummy_test_path);
   else
-    self->prefix = ot_gfile_new_for_path ("/sysroot/ostree");
+    self->prefix = g_file_new_for_path ("/sysroot/ostree");
       
   self->name_id = g_bus_own_name (is_dummy ? G_BUS_TYPE_SESSION : G_BUS_TYPE_SYSTEM,
                                   OSTREE_DAEMON_NAME,

@@ -68,7 +68,7 @@ ostree_run_triggers_in_root (GFile                  *root,
   if (root)
     triggerdir = g_file_resolve_relative_path (root, rel_triggerdir);
   else
-    triggerdir = ot_gfile_new_for_path (rel_triggerdir);
+    triggerdir = g_file_new_for_path (rel_triggerdir);
 
   if (g_file_query_exists (triggerdir, cancellable))
     {

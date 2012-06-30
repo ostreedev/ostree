@@ -229,7 +229,7 @@ process_many_checkouts (OstreeRepo         *repo,
     }
   else
     {
-      ot_lobj GFile *f = ot_gfile_new_for_path (opt_from_file);
+      ot_lobj GFile *f = g_file_new_for_path (opt_from_file);
 
       instream = (GInputStream*)g_file_read (f, cancellable, error);
       if (!instream)
@@ -327,7 +327,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
         }
 
       destination = argv[1];
-      checkout_target = ot_gfile_new_for_path (destination);
+      checkout_target = g_file_new_for_path (destination);
 
       if (!process_many_checkouts (repo, checkout_target, cancellable, error))
         goto out;
@@ -354,10 +354,10 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
           GError *temp_error = NULL;
 
           suffixed_destination = g_strconcat (destination, "-", resolved_commit, NULL);
-          checkout_target = ot_gfile_new_for_path (suffixed_destination);
+          checkout_target = g_file_new_for_path (suffixed_destination);
           tmp_destination = g_strconcat (suffixed_destination, ".tmp", NULL);
-          checkout_target_tmp = ot_gfile_new_for_path (tmp_destination);
-          symlink_target = ot_gfile_new_for_path (destination);
+          checkout_target_tmp = g_file_new_for_path (tmp_destination);
+          symlink_target = g_file_new_for_path (destination);
 
           if (!parse_commit_from_symlink (symlink_target, &existing_commit,
                                           cancellable, &temp_error))
@@ -380,7 +380,7 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
         }
       else
         {
-          checkout_target = ot_gfile_new_for_path (destination);
+          checkout_target = g_file_new_for_path (destination);
           skip_checkout = FALSE;
         }
 

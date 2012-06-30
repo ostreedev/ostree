@@ -220,13 +220,6 @@ ot_gfile_load_contents_utf8 (GFile         *file,
   return ret;
 }
 
-/* Like g_file_new_for_path, but only do local stuff, not GVFS */
-GFile *
-ot_gfile_new_for_path (const char *path)
-{
-  return g_vfs_get_file_for_path (g_vfs_get_local (), path);
-}
-
 const char *
 ot_gfile_get_path_cached (GFile *file)
 {

@@ -135,7 +135,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
     }
 
   src_repo_path = argv[1];
-  src_f = ot_gfile_new_for_path (src_repo_path);
+  src_f = g_file_new_for_path (src_repo_path);
 
   data.src_repo = ostree_repo_new (src_f);
   if (!ostree_repo_check (data.src_repo, error))
