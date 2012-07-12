@@ -77,9 +77,9 @@ struct OstreeFetcher
   SoupSession *session;
   SoupRequester *requester;
 
-  SoupMessage *sending_message;
+  GHashTable *sending_messages; /*  SoupMessage */
 
-  GHashTable *message_to_request;
+  GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
   
   guint64 total_downloaded;
 };
@@ -94,6 +94,9 @@ ostree_fetcher_finalize (GObject *object)
   self = OSTREE_FETCHER (object);
 
   g_clear_object (&self->session);
+
+  g_hash_table_destroy (self->sending_messages);
+  g_hash_table_destroy (self->message_to_request);
 
   G_OBJECT_CLASS (ostree_fetcher_parent_class)->finalize (object);
 }
@@ -113,7 +116,7 @@ on_request_started (SoupSession  *session,
                     gpointer      user_data)
 {
   OstreeFetcher *self = user_data;
-  self->sending_message = msg;
+  g_hash_table_insert (self->sending_messages, msg, g_object_ref (msg));
 }
 
 static void
@@ -122,8 +125,7 @@ on_request_unqueued (SoupSession  *session,
                      gpointer      user_data)
 {
   OstreeFetcher *self = user_data;
-  if (msg == self->sending_message)
-    self->sending_message = NULL;
+  g_hash_table_remove (self->sending_messages, msg);
   g_hash_table_remove (self->message_to_request, msg);
 }
 
@@ -141,6 +143,8 @@ ostree_fetcher_init (OstreeFetcher *self)
   g_signal_connect (self->session, "request-unqueued",
                     G_CALLBACK (on_request_unqueued), self);
   
+  self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
+                                                  (GDestroyNotify)g_object_unref);
   self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
                                                     (GDestroyNotify)pending_uri_free);
 }
@@ -284,37 +288,49 @@ format_size_pair (guint64 start,
 char *
 ostree_fetcher_query_state_text (OstreeFetcher              *self)
 {
-  OstreeFetcherPendingURI *active; 
+  guint n_active;
 
-  if (self->sending_message)
-    active = g_hash_table_lookup (self->message_to_request, self->sending_message);
-  else
-    active = NULL;
-  if (active)
+  n_active = g_hash_table_size (self->sending_messages);
+  if (n_active > 0)
     {
-      ot_lfree char *active_uri = soup_uri_to_string (active->uri, TRUE);
+      GHashTableIter hash_iter;
+      gpointer key, value;
+      GString *buf;
 
-      if (active->tmpfile)
+      buf = g_string_new ("");
+
+      g_string_append_printf (buf, "%u requests", n_active);
+
+      g_hash_table_iter_init (&hash_iter, self->sending_messages);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
-          ot_lobj GFileInfo *file_info = NULL;
+          OstreeFetcherPendingURI *active; 
 
-          file_info = g_file_query_info (active->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                         NULL, NULL);
-          if (file_info)
+          active = g_hash_table_lookup (self->message_to_request, key);
+          g_assert (active != NULL);
+
+          if (active->tmpfile)
             {
-              ot_lfree char *size = format_size_pair (g_file_info_get_size (file_info),
-                                                      active->content_length);
-              return g_strdup_printf ("Downloading %s  [ %s, %.1f KiB downloaded ]",
-                                      active_uri, size, ((double)self->total_downloaded) / 1024);
+              ot_lobj GFileInfo *file_info = NULL;
+
+              file_info = g_file_query_info (active->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                             NULL, NULL);
+              if (file_info)
+                {
+                  ot_lfree char *size = format_size_pair (g_file_info_get_size (file_info),
+                                                          active->content_length);
+                  g_string_append_printf (buf, " [%s]", size);
+                }
+            }
+          else
+            {
+              g_string_append_printf (buf, " [Requesting]");
             }
         }
-      else
-        {
-          return g_strdup_printf ("Requesting %s  [ %.1f KiB downloaded ]",
-                                  active_uri, ((double)self->total_downloaded) / 1024);
-        }
-    }
 
-  return g_strdup_printf ("Idle [ %.1f KiB downloaded ]", ((double)self->total_downloaded) / 1024);
+      return g_string_free (buf, FALSE);
+    }
+  else
+    return g_strdup_printf ("Idle");
 }
