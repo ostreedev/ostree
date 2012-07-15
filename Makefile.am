@@ -68,6 +68,10 @@ OT_INTERNAL_SOUP_CFLAGS = $(OT_DEP_SOUP_CFLAGS)
 OT_INTERNAL_SOUP_LIBS = $(OT_DEP_SOUP_LIBS)
 endif
 
+libgsystem_srcpath := src/libgsystem
+libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libgsystem_libs = $(OT_INTERNAL_GIO_UNIX_LIBS)
+include src/libgsystem/Makefile-libgsystem.am
 include Makefile-daemon.am
 include Makefile-otutil.am
 include Makefile-libostree.am

@@ -22,7 +22,6 @@ noinst_LTLIBRARIES += libotutil.la
 libotutil_la_SOURCES = \
 	src/libotutil/ot-checksum-utils.c \
 	src/libotutil/ot-checksum-utils.h \
-	src/libotutil/ot-local-alloc.c \
 	src/libotutil/ot-local-alloc.h \
 	src/libotutil/ot-opt-utils.c \
 	src/libotutil/ot-opt-utils.h \
@@ -39,5 +38,5 @@ libotutil_la_SOURCES = \
 	src/libotutil/otutil.c \
 	src/libotutil/otutil.h \
 	$(NULL)
-libotutil_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
-libotutil_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS)
+libotutil_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libgsystem -I$(srcdir)/src/libotutil -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libotutil_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS) libgsystem.la

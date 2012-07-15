@@ -24,20 +24,15 @@
 #define __OSTREE_LOCAL_ALLOC_H__
 
 #include <gio/gio.h>
+#include "libgsystem.h"
 
 G_BEGIN_DECLS
 
-void ot_local_free (void *loc);
-void ot_local_obj_unref (void *loc);
-void ot_local_variant_unref (GVariant **loc);
-void ot_local_ptrarray_unref (GPtrArray **loc);
-void ot_local_hashtable_unref (GHashTable **loc);
-
-#define ot_lfree __attribute__ ((cleanup(ot_local_free)))
-#define ot_lobj __attribute__ ((cleanup(ot_local_obj_unref)))
-#define ot_lvariant __attribute__ ((cleanup(ot_local_variant_unref)))
-#define ot_lptrarray __attribute__ ((cleanup(ot_local_ptrarray_unref)))
-#define ot_lhash __attribute__ ((cleanup(ot_local_hashtable_unref)))
+#define ot_lfree __attribute__ ((cleanup(gs_local_free)))
+#define ot_lobj __attribute__ ((cleanup(gs_local_obj_unref)))
+#define ot_lvariant __attribute__ ((cleanup(gs_local_variant_unref)))
+#define ot_lptrarray __attribute__ ((cleanup(gs_local_ptrarray_unref)))
+#define ot_lhash __attribute__ ((cleanup(gs_local_hashtable_unref)))
 
 G_END_DECLS
 
