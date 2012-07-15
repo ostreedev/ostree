@@ -33,8 +33,6 @@ libotutil_la_SOURCES = \
 	src/libotutil/ot-variant-utils.h \
 	src/libotutil/ot-gio-utils.c \
 	src/libotutil/ot-gio-utils.h \
-	src/libotutil/ot-glib-compat.c \
-	src/libotutil/ot-glib-compat.h \
 	src/libotutil/otutil.c \
 	src/libotutil/otutil.h \
 	$(NULL)

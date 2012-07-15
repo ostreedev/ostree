@@ -45,7 +45,6 @@
 
 #include <ot-local-alloc.h>
 #include <ot-gio-utils.h>
-#include <ot-glib-compat.h>
 #include <ot-opt-utils.h>
 #include <ot-unix-utils.h>
 #include <ot-variant-utils.h>

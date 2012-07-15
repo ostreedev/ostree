@@ -39,7 +39,7 @@ if test x$enable_embedded_dependencies = xyes; then
   echo "NOTICE: Embedded dependencies (GLib and libsoup) enabled"
   with_soup=yes
 else
-  GIO_DEPENDENCY="gio-unix-2.0 >= 2.28"
+  GIO_DEPENDENCY="gio-unix-2.0 >= 2.33.4"
   PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
   SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
