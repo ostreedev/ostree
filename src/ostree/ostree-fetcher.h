@@ -49,6 +49,8 @@ OstreeFetcher *ostree_fetcher_new (GFile *tmpdir);
 
 char * ostree_fetcher_query_state_text (OstreeFetcher              *self);
 
+guint64 ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
+
 void ostree_fetcher_request_uri_async (OstreeFetcher         *self,
                                        SoupURI               *uri,
                                        GCancellable          *cancellable,

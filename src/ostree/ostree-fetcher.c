@@ -334,3 +334,9 @@ ostree_fetcher_query_state_text (OstreeFetcher              *self)
   else
     return g_strdup_printf ("Idle");
 }
+
+guint64
+ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
+{
+  return self->total_downloaded;
+}

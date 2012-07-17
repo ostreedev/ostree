@@ -104,6 +104,7 @@ typedef struct {
   gboolean      caught_error;
 
   gboolean      stdout_is_tty;
+  guint         last_padding;
 } OtPullData;
 
 static SoupURI *
@@ -165,7 +166,18 @@ uri_fetch_update_status (gpointer user_data)
 
   fetcher_status = ostree_fetcher_query_state_text (pull_data->fetcher);
   g_string_append (status, fetcher_status);
-  g_print ("%s\n", status->str);
+  if (status->len > pull_data->last_padding)
+    pull_data->last_padding = status->len;
+  else
+    {
+      guint diff = pull_data->last_padding - status->len;
+      while (diff > 0)
+        {
+          g_string_append_c (status, ' ');
+          diff--;
+        }
+    }
+  g_print ("%c8%s", 0x1B, status->str);
 
   g_string_free (status, TRUE);
 
@@ -202,14 +214,22 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 {
   GSource *update_timeout = NULL;
 
-  update_timeout = g_timeout_source_new_seconds (1);
-  g_source_set_callback (update_timeout, uri_fetch_update_status, pull_data, NULL);
-  g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
-  g_source_unref (update_timeout);
+  if (pull_data->stdout_is_tty)
+    {
+      g_print ("%c7", 0x1B);
+      update_timeout = g_timeout_source_new_seconds (1);
+      g_source_set_callback (update_timeout, uri_fetch_update_status, pull_data, NULL);
+      g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
+      g_source_unref (update_timeout);
+    }
   
   g_main_loop_run (pull_data->loop);
 
-  g_source_destroy (update_timeout);
+  if (pull_data->stdout_is_tty)
+    {
+      g_print ("\n");
+      g_source_destroy (update_timeout);
+    }
 }
 
 typedef struct {
@@ -1428,6 +1448,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   SoupURI *summary_uri = NULL;
   GKeyFile *config = NULL;
   char **configured_branches = NULL;
+  guint64 bytes_transferred;
 
   memset (pull_data, 0, sizeof (*pull_data));
 
@@ -1554,6 +1575,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
     goto out;
 
+  g_print ("Analyzing objects needed...\n");
+
   g_hash_table_iter_init (&hash_iter, commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -1619,6 +1642,12 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_clean_cached_remote_pack_data (pull_data->repo, pull_data->remote_name,
                                                   cancellable, error))
     goto out;
+
+  bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+  if (bytes_transferred > 0)
+    {
+      g_print ("%" G_GUINT64_FORMAT " KiB transferred\n", (guint64)(bytes_transferred / 1024.0));
+    }
 
   ret = TRUE;
  out:
