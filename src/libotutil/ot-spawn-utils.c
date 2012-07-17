@@ -25,7 +25,6 @@
 #include "otutil.h"
 
 #include <string.h>
-#include <sys/wait.h>
 
 gboolean
 ot_spawn_sync_checked (const char           *cwd,
@@ -50,27 +49,8 @@ ot_spawn_sync_checked (const char           *cwd,
                      error))
     goto out;
   
-  if (WIFEXITED (exit_status))
-    {
-      if (WEXITSTATUS (exit_status) != 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Exited with code %d", WEXITSTATUS (exit_status));
-          goto out;
-        }
-    }
-  else if (WIFSIGNALED (exit_status))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Killed by signal %d", WTERMSIG (exit_status));
-      goto out;
-    }
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Exited abnormally");
-      goto out;
-    }
+  if (!g_spawn_check_exit_status (exit_status, error))
+    goto out;
 
   ret = TRUE;
  out:
