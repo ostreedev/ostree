@@ -1056,7 +1056,7 @@ stage_object_internal (OstreeRepo         *self,
     (void) unlink (ot_gfile_get_path_cached (temp_file));
   if (raw_temp_file)
     (void) unlink (ot_gfile_get_path_cached (raw_temp_file));
-  ot_clear_checksum (&checksum);
+  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
   return ret;
 }
 

@@ -26,14 +26,6 @@
 #include <gio/gio.h>
 
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
-#define ot_clear_checksum(c) G_STMT_START {     \
-  typeof(c) __tmp_chksum = c;                   \
-  if (__tmp_chksum)                             \
-    {                                           \
-      g_checksum_free (*__tmp_chksum);          \
-      *__tmp_chksum = NULL;                     \
-    }                                           \
-  } G_STMT_END;
 
 #define ot_transfer_out_value(outp, srcp) G_STMT_START {   \
   if (outp)                                                \

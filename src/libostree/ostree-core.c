@@ -563,7 +563,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
   ret = TRUE;
   ot_transfer_out_value (out_csum, &ret_csum);
  out:
-  ot_clear_checksum (&checksum);
+  g_clear_pointer (&checksum, (GDestroyNotify)g_checksum_free);
   return ret;
 }
 

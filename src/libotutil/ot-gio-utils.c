@@ -336,7 +336,7 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
   ret = TRUE;
   ot_transfer_out_value (out_csum, &ret_csum);
  out:
-  ot_clear_checksum (&checksum);
+  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
   return ret;
 }
 
