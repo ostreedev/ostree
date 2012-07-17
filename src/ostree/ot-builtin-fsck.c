@@ -208,13 +208,13 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
 
       g_clear_object (&input);
       g_clear_object (&file_info);
-      ot_clear_gvariant (&xattrs);
+      g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
 
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT
           || objtype == OSTREE_OBJECT_TYPE_DIR_TREE 
           || objtype == OSTREE_OBJECT_TYPE_DIR_META)
         {
-          ot_clear_gvariant (&metadata);
+          g_clear_pointer (&metadata, (GDestroyNotify) g_variant_unref);
           if (!ostree_repo_load_variant (data->repo, objtype,
                                          checksum, &metadata, error))
             {

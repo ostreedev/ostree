@@ -59,8 +59,8 @@ ostree_repo_file_finalize (GObject *object)
 
   self = OSTREE_REPO_FILE (object);
 
-  ot_clear_gvariant (&self->tree_contents);
-  ot_clear_gvariant (&self->tree_metadata);
+  g_clear_pointer (&self->tree_contents, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&self->tree_metadata, (GDestroyNotify) g_variant_unref);
   g_free (self->cached_file_checksum);
   g_free (self->tree_contents_checksum);
   g_free (self->tree_metadata_checksum);
@@ -217,7 +217,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
 
       files_variant = g_variant_get_child_value (self->parent->tree_contents, 0);
       self->index = g_variant_n_children (files_variant) + i;
-      ot_clear_gvariant (&files_variant);
+      g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
 
       g_variant_get_child (container, i, "(&s@ay@ay)",
                            &name, &content_csum_v, &metadata_csum_v);
@@ -331,7 +331,7 @@ ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                      const char     *checksum,
                                      GVariant       *metadata)
 {
-  ot_clear_gvariant (&self->tree_metadata);
+  g_clear_pointer (&self->tree_metadata, (GDestroyNotify) g_variant_unref);
   self->tree_metadata = g_variant_ref (metadata);
   g_free (self->tree_metadata_checksum);
   self->tree_metadata_checksum = g_strdup (checksum);
@@ -396,8 +396,8 @@ ostree_repo_file_get_checksum (OstreeRepoFile  *self)
       g_variant_get_child (files_variant, n,
                            "(@s@ay)", NULL, &csum_bytes);
     }
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
+  g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&dirs_variant, (GDestroyNotify) g_variant_unref);
 
   self->cached_file_checksum = ostree_checksum_from_bytes_v (csum_bytes);
 
@@ -792,9 +792,9 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
       *out_container = ret_container;
       ret_container = NULL;
     }
-  ot_clear_gvariant (&ret_container);
-  ot_clear_gvariant (&files_variant);
-  ot_clear_gvariant (&dirs_variant);
+  g_clear_pointer (&ret_container, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
+  g_clear_pointer (&dirs_variant, (GDestroyNotify) g_variant_unref);
   return i;
 }
 

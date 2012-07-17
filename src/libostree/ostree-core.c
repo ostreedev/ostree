@@ -729,7 +729,7 @@ ostree_set_xattrs (GFile  *f,
       value_data = g_variant_get_fixed_array (value, &value_len, 1);
       
       loop_err = lsetxattr (path, (char*)name, (char*)value_data, value_len, XATTR_REPLACE) < 0;
-      ot_clear_gvariant (&value);
+      g_clear_pointer (&value, (GDestroyNotify) g_variant_unref);
       if (loop_err)
         {
           ot_util_set_error_from_errno (error, errno);

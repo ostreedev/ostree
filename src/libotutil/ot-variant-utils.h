@@ -27,12 +27,6 @@
 
 G_BEGIN_DECLS
 
-#define ot_clear_gvariant(a_v) do { \
-  if (*a_v)                         \
-    g_variant_unref (*a_v);         \
-  *a_v = NULL;                      \
-  } while (0);
-
 #define ot_clear_ptrarray(a_v) do { \
   if (*a_v)                         \
     g_ptr_array_unref (*a_v);         \

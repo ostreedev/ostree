@@ -83,15 +83,15 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
       GVariant *commit_metadata = NULL;
       char *formatted_metadata = NULL;
       
-      ot_clear_gvariant (&commit);
+      g_clear_pointer (&commit, (GDestroyNotify) g_variant_unref);
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, &commit, error))
         goto out;
 
       /* Ignore commit metadata for now */
-      ot_clear_gvariant (&commit_metadata);
-      ot_clear_gvariant (&parent_csum_v);
-      ot_clear_gvariant (&content_csum_v);
-      ot_clear_gvariant (&metadata_csum_v);
+      g_clear_pointer (&commit_metadata, (GDestroyNotify) g_variant_unref);
+      g_clear_pointer (&parent_csum_v, (GDestroyNotify) g_variant_unref);
+      g_clear_pointer (&content_csum_v, (GDestroyNotify) g_variant_unref);
+      g_clear_pointer (&metadata_csum_v, (GDestroyNotify) g_variant_unref);
       g_variant_get (commit, "(@a{sv}@ay@a(say)&s&st@ay@ay)",
                      &commit_metadata, &parent_csum_v, NULL, &subject, &body,
                      &timestamp, &content_csum_v, &metadata_csum_v);
@@ -101,7 +101,7 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
       g_date_time_unref (time_obj);
       time_obj = NULL;
 
-      ot_clear_gvariant (&commit_metadata);
+      g_clear_pointer (&commit_metadata, (GDestroyNotify) g_variant_unref);
       formatted = g_strdup_printf ("commit %s\nSubject: %s\nDate: %s\nMetadata: %s\n\n",
                                    resolved_rev, subject, formatted_date, formatted_metadata);
       g_free (formatted_metadata);

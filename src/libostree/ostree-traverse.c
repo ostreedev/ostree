@@ -76,7 +76,7 @@ traverse_dirtree_internal (OstreeRepo      *repo,
         {
           const char *filename;
       
-          ot_clear_gvariant (&csum_v);
+          g_clear_pointer (&csum_v, (GDestroyNotify) g_variant_unref);
           g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum_v);
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes_v (csum_v);
@@ -91,8 +91,8 @@ traverse_dirtree_internal (OstreeRepo      *repo,
         {
           const char *dirname;
       
-          ot_clear_gvariant (&content_csum_v);
-          ot_clear_gvariant (&metadata_csum_v);
+          g_clear_pointer (&content_csum_v, (GDestroyNotify) g_variant_unref);
+          g_clear_pointer (&metadata_csum_v, (GDestroyNotify) g_variant_unref);
           g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                                &dirname, &content_csum_v, &metadata_csum_v);
       

@@ -2802,7 +2802,7 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
 
                       if (!(modifier && modifier->skip_xattrs))
                         {
-                          ot_clear_gvariant (&xattrs);
+                          g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
                           if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
                             goto out;
                         }
@@ -3751,7 +3751,7 @@ find_object_in_packs (OstreeRepo        *self,
       const char *pack_checksum = index_checksums->pdata[i];
       guint64 offset;
 
-      ot_clear_gvariant (&index_variant);
+      g_clear_pointer (&index_variant, (GDestroyNotify) g_variant_unref);
       if (!ostree_repo_load_pack_index (self, pack_checksum, is_meta, &index_variant,
                                         cancellable, error))
         goto out;
@@ -4549,7 +4549,7 @@ ostree_repo_checkout_tree_async (OstreeRepo               *self,
                                  cancellable, error))
     goto out;
 
-  ot_clear_gvariant (&xattrs);
+  g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
 
   dir_enum = g_file_enumerate_children ((GFile*)checkout_data->source,
                                         OSTREE_GIO_FAST_QUERYINFO, 
