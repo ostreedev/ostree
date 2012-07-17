@@ -347,7 +347,7 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
         g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
     }
 
-  ot_clear_hashtable (&objects);
+  g_clear_pointer (&objects, (GDestroyNotify) g_hash_table_unref);
 
   g_print ("Verifying content integrity of %u commit objects...\n",
            (guint)g_hash_table_size (commits));

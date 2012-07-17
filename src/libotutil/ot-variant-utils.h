@@ -27,12 +27,6 @@
 
 G_BEGIN_DECLS
 
-#define ot_clear_hashtable(a_v) do { \
-  if (*a_v)                         \
-    g_hash_table_unref (*a_v);         \
-  *a_v = NULL;                      \
-  } while (0);
-
 GVariant *ot_gvariant_new_bytearray (const guchar   *data,
                                      gsize           len);
 

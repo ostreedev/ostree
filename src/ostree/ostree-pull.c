@@ -1660,7 +1660,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
-  ot_clear_hashtable (&pull_data->file_checksums_to_fetch);
+  g_clear_pointer (&pull_data->file_checksums_to_fetch, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->cached_meta_pack_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->cached_data_pack_indexes, (GDestroyNotify) g_ptr_array_unref);
   if (summary_uri)
