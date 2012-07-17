@@ -116,8 +116,8 @@ ostree_repo_finalize (GObject *object)
     g_hash_table_destroy (self->loose_object_devino_hash);
   if (self->config)
     g_key_file_free (self->config);
-  ot_clear_ptrarray (&self->cached_meta_indexes);
-  ot_clear_ptrarray (&self->cached_content_indexes);
+  g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_hash_table_destroy (self->cached_pack_index_mappings);
   g_hash_table_destroy (self->cached_pack_data_mappings);
   g_mutex_clear (&self->cache_lock);
@@ -2025,12 +2025,12 @@ ostree_repo_regenerate_pack_index (OstreeRepo       *self,
   GVariantBuilder *meta_index_content_builder = NULL;
   GVariantBuilder *data_index_content_builder = NULL;
 
-  ot_clear_ptrarray (&self->cached_meta_indexes);
-  ot_clear_ptrarray (&self->cached_content_indexes);
+  g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
 
   superindex_path = g_file_get_child (self->pack_dir, "index");
 
-  ot_clear_ptrarray (&pack_indexes);
+  g_clear_pointer (&pack_indexes, (GDestroyNotify) g_ptr_array_unref);
   if (!list_pack_indexes_from_dir (self, TRUE, &pack_indexes,
                                    cancellable, error))
     goto out;
@@ -2039,7 +2039,7 @@ ostree_repo_regenerate_pack_index (OstreeRepo       *self,
                              cancellable, error))
     goto out;
 
-  ot_clear_ptrarray (&pack_indexes);
+  g_clear_pointer (&pack_indexes, (GDestroyNotify) g_ptr_array_unref);
   if (!list_pack_indexes_from_dir (self, FALSE, &pack_indexes,
                                    cancellable, error))
     goto out;
@@ -2366,7 +2366,7 @@ ostree_repo_clean_cached_remote_pack_data (OstreeRepo       *self,
         goto out;
     }
 
-  ot_clear_ptrarray (&data_files);
+  g_clear_pointer (&data_files, (GDestroyNotify) g_ptr_array_unref);
   if (!list_files_in_dir_matching (cache_path,
                                    "ostdatapack-", ".data",
                                    &data_files, 
