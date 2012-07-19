@@ -28,6 +28,10 @@
 #include <glib/gi18n.h>
 #include <sys/utsname.h>
 
+typedef struct {
+  OstreeRepo  *repo;
+} OtAdminDeploy;
+
 static gboolean opt_checkout_only;
 
 static GOptionEntry options[] = {
@@ -37,7 +41,7 @@ static GOptionEntry options[] = {
 
 static gboolean
 update_initramfs (const char       *release,
-                  const char       *last_deploy_target,
+                  const char       *deploy_target,
                   GCancellable     *cancellable,
                   GError          **error)
 {
@@ -83,7 +87,7 @@ update_initramfs (const char       *release,
                                    cancellable, error))
         goto out;
 
-      last_deploy_path = g_build_filename ("/ostree", last_deploy_target, NULL);
+      last_deploy_path = g_build_filename ("/ostree", deploy_target, NULL);
 
       mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
@@ -256,7 +260,7 @@ update_grub (const char         *release,
 }
 
 static gboolean
-update_current (const char         *last_deploy_target,
+update_current (const char         *deploy_target,
                 GCancellable       *cancellable,
                 GError            **error)
 {
@@ -267,7 +271,7 @@ update_current (const char         *last_deploy_target,
   tmp_symlink = g_build_filename ("/ostree", "tmp-current", NULL);
   (void) unlink (tmp_symlink);
 
-  if (symlink (last_deploy_target, tmp_symlink) < 0)
+  if (symlink (deploy_target, tmp_symlink) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
@@ -280,7 +284,40 @@ update_current (const char         *last_deploy_target,
       goto out;
     }
 
-  g_print ("/ostree/current set to %s\n", last_deploy_target);
+  g_print ("/ostree/current set to %s\n", deploy_target);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+do_checkout (OtAdminDeploy     *self,
+             const char        *deploy_target,
+             const char        *revision,
+             GCancellable      *cancellable,
+             GError           **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFile *deploy_path = NULL;
+  ot_lobj GFile *deploy_parent = NULL;
+  ot_lfree char *tree_ref = NULL;
+  ot_lptrarray GPtrArray *checkout_args = NULL;
+
+  deploy_path = ot_gfile_from_build_path ("/ostree", deploy_target, NULL);
+  deploy_parent = g_file_get_parent (deploy_path);
+  if (!ot_gfile_ensure_directory (deploy_parent, TRUE, error))
+    goto out;
+
+  checkout_args = g_ptr_array_new ();
+  ot_ptrarray_add_many (checkout_args, "ostree", "--repo=/ostree/repo",
+                        "checkout", "--atomic-retarget", revision ? revision : deploy_target,
+                        ot_gfile_get_path_cached (deploy_path), NULL);
+  g_ptr_array_add (checkout_args, NULL);
+
+  if (!ot_spawn_sync_checked ("/ostree", (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
+                              NULL, NULL, NULL, NULL, error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -291,12 +328,16 @@ gboolean
 ot_admin_builtin_deploy (int argc, char **argv, GError **error)
 {
   GOptionContext *context;
+  OtAdminDeploy self_data;
+  OtAdminDeploy *self = &self_data;
   gboolean ret = FALSE;
-  int i;
-  const char *last_deploy_target = NULL;
+  const char *deploy_target = NULL;
+  const char *revision = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("- Perform checkouts, ensure initramfs is generated");
+  memset (self, 0, sizeof (*self));
+
+  context = g_option_context_new ("NAME [REVISION] - Check out revision NAME (or REVISION as NAME)");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -304,29 +345,16 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
 
   if (argc < 3)
     {
-      ot_util_usage_error (context, "At least one REV must be specified", error);
+      ot_util_usage_error (context, "NAME must be specified", error);
       goto out;
     }
+    
+  deploy_target = argv[2];
+  if (argc > 3)
+    revision = argv[3];
 
-  for (i = 2; i < argc; i++)
-    {
-      const char *deploy_target = argv[i];
-      ot_lfree char *tree_ref = NULL;
-      ot_lptrarray GPtrArray *checkout_args = NULL;
-
-      tree_ref = g_strconcat ("trees/", deploy_target, NULL);
-
-      checkout_args = g_ptr_array_new ();
-      ot_ptrarray_add_many (checkout_args, "ostree", "--repo=/ostree/repo",
-                            "checkout", "--atomic-retarget", tree_ref, deploy_target, NULL);
-      g_ptr_array_add (checkout_args, NULL);
-
-      if (!ot_spawn_sync_checked ("/ostree", (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                                  NULL, NULL, NULL, NULL, error))
-        goto out;
-
-      last_deploy_target = deploy_target;
-    }
+  if (!do_checkout (self, deploy_target, revision, cancellable, error))
+    goto out;
 
   if (!opt_checkout_only)
     {
@@ -345,14 +373,14 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
       
       release = utsname.release;
 
-      if (!update_initramfs (release, last_deploy_target, cancellable, error))
+      if (!update_initramfs (release, deploy_target, cancellable, error))
         goto out;
 
       if (!update_grub (release, cancellable, error))
         goto out;
     }
 
-  if (!update_current (last_deploy_target, cancellable, error))
+  if (!update_current (deploy_target, cancellable, error))
     goto out;
 
   ret = TRUE;
