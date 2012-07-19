@@ -1145,6 +1145,7 @@ ostree_create_file_from_input (GFile            *dest_file,
       if (lchown (dest_path, uid, gid) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "lchown(%u, %u) failed: ", uid, gid);
           goto out;
         }
     }
@@ -1154,6 +1155,7 @@ ostree_create_file_from_input (GFile            *dest_file,
       if (chmod (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "chmod(%u) failed: ", mode);
           goto out;
         }
     }
