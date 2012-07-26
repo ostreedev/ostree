@@ -1602,7 +1602,11 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
         goto out;
 
-      if (original_rev && strcmp (sha256, original_rev) == 0)
+      /* Only skip traversal if depth == 0; otherwise, we have to
+       * handle the case where the user specified a bigger depth than
+       * they originally did.
+       */
+      if (original_rev && strcmp (sha256, original_rev) == 0 && opt_depth == 0)
         {
           g_print ("No changes in %s\n", remote_ref);
         }
