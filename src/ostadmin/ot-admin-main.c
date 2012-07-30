@@ -100,6 +100,13 @@ ot_admin_main (int    argc,
   if (argc < 2)
     return usage (argv, builtins, 1);
 
+  if (geteuid () != 0)
+    {
+      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "ostadmin: Can only be run as root");
+      goto out;
+    }
+
   cmd = argv[1];
 
   builtin = builtins;
