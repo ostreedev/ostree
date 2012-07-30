@@ -16,5 +16,14 @@ mkdir -p m4
 
 autoreconf --force --install --verbose
 
+# Fetch submodules if needed
+if test ! -f src/libgsystem/README;
+then
+  echo "+ Setting up submodules"
+  git submodule init
+fi
+git submodule update
+
+
 cd $olddir
 test -n "$NOCONFIGURE" || "$srcdir/configure" "$@"
