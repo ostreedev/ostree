@@ -1,20 +1,6 @@
-Core
-====
-
 * Documentation
-* Asynchronous pull
-* Async I/O, multithreaded checksumming
+* ostree-pull: Asynchronous metadata fetch too
+* ostree-commit: multithreaded/async (basically compute sha256 in parallel)
 * GPG signatures on commits
 * Tests of corrupted repositories, more error conditions
-
-Ostbuild 
-========
-
-* Documentation
-* deploy-overwrite
-
-Ostadmin
-========
-
-* Documentation
 * Improve GRUB management
