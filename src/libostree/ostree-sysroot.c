@@ -95,21 +95,8 @@ ostree_run_triggers_in_root (GFile                  *root,
                          NULL, NULL, NULL, NULL, &estatus, error))
         goto out;
 
-      if (WIFEXITED (estatus))
-        {
-          if (WEXITSTATUS (estatus) != 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Trigger process exited with code %d", (int)WEXITSTATUS (estatus));
-              goto out;
-            }
-        }
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Trigger process failed due to signal");
-          goto out;
-        }
+      if (!g_spawn_check_exit_status (estatus, error))
+        goto out;
     }
 
   ret = TRUE;
