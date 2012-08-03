@@ -33,8 +33,10 @@ typedef struct {
 } OtAdminDeploy;
 
 static gboolean opt_checkout_only;
+static char *opt_ostree_dir;
 
 static GOptionEntry options[] = {
+  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory", NULL },
   { "checkout-only", 0, 0, G_OPTION_ARG_NONE, &opt_checkout_only, "Don't generate initramfs or update bootloader", NULL },
   { NULL }
 };
@@ -52,7 +54,7 @@ update_initramfs (const char       *release,
   ot_lobj GFile *initramfs_file = NULL;
   ot_lfree char *last_deploy_path = NULL;
 
-  dest_modules_file = ot_gfile_from_build_path ("/ostree/modules", release, NULL);
+  dest_modules_file = ot_gfile_from_build_path (opt_ostree_dir, "modules", release, NULL);
   dest_modules_parent = g_file_get_parent (dest_modules_file);
   if (!ot_gfile_ensure_directory (dest_modules_parent, FALSE, error))
     goto out;
@@ -80,6 +82,8 @@ update_initramfs (const char       *release,
       ot_lptrarray GPtrArray *mkinitramfs_args = NULL;
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
+      ot_lfree char *ostree_vardir = NULL;
+      ot_lfree char *ostree_moduledir = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
           
@@ -87,7 +91,10 @@ update_initramfs (const char       *release,
                                    cancellable, error))
         goto out;
 
-      last_deploy_path = g_build_filename ("/ostree", deploy_target, NULL);
+      ostree_vardir = g_build_filename (opt_ostree_dir, "var", NULL);
+      ostree_moduledir = g_build_filename (opt_ostree_dir, "modules", NULL);
+
+      last_deploy_path = g_build_filename (opt_ostree_dir, deploy_target, NULL);
 
       mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
@@ -99,9 +106,9 @@ update_initramfs (const char       *release,
                             "--mount-readonly", "/",
                             "--mount-proc", "/proc",
                             "--mount-bind", "/dev", "/dev",
-                            "--mount-bind", "/ostree/var", "/var",
+                            "--mount-bind", ostree_vardir, "/var",
                             "--mount-bind", ot_gfile_get_path_cached (tmpdir), "/tmp",
-                            "--mount-bind", "/ostree/modules", "/lib/modules",
+                            "--mount-bind", ostree_moduledir, "/lib/modules",
                             last_deploy_path,
                             "dracut", "-f", "/tmp/initramfs-ostree.img", release,
                             NULL);
@@ -268,7 +275,7 @@ update_current (const char         *deploy_target,
   ot_lfree char *tmp_symlink = NULL;
   ot_lfree char *current_name = NULL;
 
-  tmp_symlink = g_build_filename ("/ostree", "tmp-current", NULL);
+  tmp_symlink = g_build_filename (opt_ostree_dir, "tmp-current", NULL);
   (void) unlink (tmp_symlink);
 
   if (symlink (deploy_target, tmp_symlink) < 0)
@@ -277,14 +284,14 @@ update_current (const char         *deploy_target,
       goto out;
     }
 
-  current_name = g_build_filename ("/ostree", "current", NULL);
+  current_name = g_build_filename (opt_ostree_dir, "current", NULL);
   if (rename (tmp_symlink, current_name) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  g_print ("/ostree/current set to %s\n", deploy_target);
+  g_print ("%s set to %s\n", current_name, deploy_target);
 
   ret = TRUE;
  out:
@@ -302,20 +309,25 @@ do_checkout (OtAdminDeploy     *self,
   ot_lobj GFile *deploy_path = NULL;
   ot_lobj GFile *deploy_parent = NULL;
   ot_lfree char *tree_ref = NULL;
+  ot_lfree char *repo_path = NULL;
+  ot_lfree char *repo_arg = NULL;
   ot_lptrarray GPtrArray *checkout_args = NULL;
 
-  deploy_path = ot_gfile_from_build_path ("/ostree", deploy_target, NULL);
+  repo_path = g_build_filename (opt_ostree_dir, "repo", NULL);
+  repo_arg = g_strconcat ("--repo=", repo_path, NULL);
+
+  deploy_path = ot_gfile_from_build_path (opt_ostree_dir, deploy_target, NULL);
   deploy_parent = g_file_get_parent (deploy_path);
   if (!ot_gfile_ensure_directory (deploy_parent, TRUE, error))
     goto out;
 
   checkout_args = g_ptr_array_new ();
-  ot_ptrarray_add_many (checkout_args, "ostree", "--repo=/ostree/repo",
+  ot_ptrarray_add_many (checkout_args, "ostree", repo_arg,
                         "checkout", "--atomic-retarget", revision ? revision : deploy_target,
                         ot_gfile_get_path_cached (deploy_path), NULL);
   g_ptr_array_add (checkout_args, NULL);
 
-  if (!ot_spawn_sync_checked ("/ostree", (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
+  if (!ot_spawn_sync_checked (opt_ostree_dir, (char**)checkout_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
                               NULL, NULL, NULL, NULL, error))
     goto out;
 
@@ -334,6 +346,9 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   const char *deploy_target = NULL;
   const char *revision = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
+
+  if (!opt_ostree_dir)
+    opt_ostree_dir = "/ostree";
 
   memset (self, 0, sizeof (*self));
 
