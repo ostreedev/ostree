@@ -392,5 +392,96 @@ ot_gio_checksum_stream_finish (GInputStream   *in,
 
   g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ot_gio_checksum_stream_async);
   return g_memdup (g_simple_async_result_get_op_res_gpointer (simple), 32);
-
 }
+
+/**
+ * ot_gio_shutil_cp_al_or_fallback:
+ * @src: Source path
+ * @dest: Destination path
+ * @cancellable:
+ * @error:
+ *
+ * Recursively copy path @src (which must be a directory) to the
+ * target @dest.  If possible, hardlinks are used; if a hardlink is
+ * not possible, a regular copy is created.  Any existing files are
+ * overwritten.
+ *
+ * Returns: %TRUE on success
+ */
+gboolean
+ot_gio_shutil_cp_al_or_fallback (GFile         *src,
+                                 GFile         *dest,
+                                 GCancellable  *cancellable,
+                                 GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFileEnumerator *enumerator = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  GError *temp_error = NULL;
+
+  enumerator = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO,
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, error);
+  if (!enumerator)
+    goto out;
+
+  if (!ot_gfile_ensure_directory (dest, FALSE, error))
+    goto out;
+
+  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+    {
+      const char *name = g_file_info_get_name (file_info);
+      ot_lobj GFile *src_child = g_file_get_child (src, name);
+      ot_lobj GFile *dest_child = g_file_get_child (dest, name);
+
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          if (!ot_gfile_ensure_directory (dest_child, FALSE, error))
+            goto out;
+
+          /* Can't do this even though we'd like to; it fails with an error about
+           * setting standard::type not being supported =/
+           *
+           if (!g_file_set_attributes_from_info (dest_child, file_info, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+           cancellable, error))
+           goto out;
+          */
+          if (chmod (ot_gfile_get_path_cached (dest_child),
+                     g_file_info_get_attribute_uint32 (file_info, "unix::mode")) == -1)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+
+          if (!ot_gio_shutil_cp_al_or_fallback (src_child, dest_child, cancellable, error))
+            goto out;
+        }
+      else
+        {
+          (void) unlink (ot_gfile_get_path_cached (dest_child));
+          if (link (ot_gfile_get_path_cached (src_child), ot_gfile_get_path_cached (dest_child)) == -1)
+            {
+              if (!(errno == EMLINK || errno == EXDEV))
+                {
+                  ot_util_set_error_from_errno (error, errno);
+                  goto out;
+                }
+              if (!g_file_copy (src_child, dest_child,
+                                G_FILE_COPY_OVERWRITE | G_FILE_COPY_ALL_METADATA | G_FILE_COPY_NOFOLLOW_SYMLINKS,
+                                cancellable, NULL, NULL, error))
+                goto out;
+            }
+        }
+      g_clear_object (&file_info);
+    }
+  if (temp_error)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+

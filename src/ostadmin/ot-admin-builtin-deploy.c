@@ -32,14 +32,45 @@ typedef struct {
   OstreeRepo  *repo;
 } OtAdminDeploy;
 
-static gboolean opt_checkout_only;
+static gboolean opt_no_initramfs;
+static gboolean opt_no_bootloader;
 static char *opt_ostree_dir;
 
 static GOptionEntry options[] = {
   { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory", NULL },
-  { "checkout-only", 0, 0, G_OPTION_ARG_NONE, &opt_checkout_only, "Don't generate initramfs or update bootloader", NULL },
+  { "no-initramfs", 0, 0, G_OPTION_ARG_NONE, &opt_no_initramfs, "Don't generate initramfs", NULL },
+  { "no-bootloader", 0, 0, G_OPTION_ARG_NONE, &opt_no_bootloader, "Don't update bootloader", NULL },
   { NULL }
 };
+
+static gboolean
+copy_modules (const char    *release,
+              GCancellable  *cancellable,
+              GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFile *src_modules_file = NULL;
+  ot_lobj GFile *dest_modules_parent = NULL;
+  ot_lobj GFile *dest_modules_file = NULL;
+  
+  src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
+  dest_modules_file = ot_gfile_from_build_path (opt_ostree_dir, "modules", release, NULL);
+  dest_modules_parent = g_file_get_parent (dest_modules_file);
+  if (!ot_gfile_ensure_directory (dest_modules_parent, FALSE, error))
+    goto out;
+
+  if (!g_file_query_exists (dest_modules_file, cancellable))
+    {
+      if (!ot_gio_shutil_cp_al_or_fallback (src_modules_file, dest_modules_file, cancellable, error))
+        goto out;
+    }
+      
+  ret = TRUE;
+ out:
+  if (error)
+    g_prefix_error (error, "Error copying kernel modules: ");
+  return ret;
+}
 
 static gboolean
 update_initramfs (const char       *release,
@@ -48,33 +79,10 @@ update_initramfs (const char       *release,
                   GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *dest_modules_parent = NULL;
-  ot_lobj GFile *dest_modules_file = NULL;
   ot_lfree char *initramfs_name = NULL;
   ot_lobj GFile *initramfs_file = NULL;
   ot_lfree char *last_deploy_path = NULL;
 
-  dest_modules_file = ot_gfile_from_build_path (opt_ostree_dir, "modules", release, NULL);
-  dest_modules_parent = g_file_get_parent (dest_modules_file);
-  if (!ot_gfile_ensure_directory (dest_modules_parent, FALSE, error))
-    goto out;
-  if (!g_file_query_exists (dest_modules_file, NULL))
-    {
-      ot_lptrarray GPtrArray *cp_args = NULL;
-      ot_lobj GFile *src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
-          
-      cp_args = g_ptr_array_new ();
-      ot_ptrarray_add_many (cp_args, "cp", "-al", ot_gfile_get_path_cached (src_modules_file),
-                            ot_gfile_get_path_cached (dest_modules_file), NULL);
-      g_ptr_array_add (cp_args, NULL);
-
-      g_print ("Copying kernel modules from %s\n", ot_gfile_get_path_cached (src_modules_file));
-      if (!ot_spawn_sync_checked (NULL, (char**)cp_args->pdata, NULL,
-                                  G_SPAWN_SEARCH_PATH,
-                                  NULL, NULL, NULL, NULL, error))
-        goto out;
-    }
-      
   initramfs_name = g_strconcat ("initramfs-ostree-", release, ".img", NULL);
   initramfs_file = ot_gfile_from_build_path ("/boot", initramfs_name, NULL);
   if (!g_file_query_exists (initramfs_file, NULL))
@@ -345,6 +353,8 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   gboolean ret = FALSE;
   const char *deploy_target = NULL;
   const char *revision = NULL;
+  struct utsname utsname;
+  const char *release;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
   if (!opt_ostree_dir)
@@ -371,26 +381,28 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   if (!do_checkout (self, deploy_target, revision, cancellable, error))
     goto out;
 
-  if (!opt_checkout_only)
+  (void) uname (&utsname);
+  
+  if (strcmp (utsname.sysname, "Linux") != 0)
     {
-
-      struct utsname utsname;
-      const char *release;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unsupported machine %s", utsname.sysname);
+      goto out;
+    }
   
-      (void) uname (&utsname);
+  release = utsname.release;
   
-      if (strcmp (utsname.sysname, "Linux") != 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unsupported machine %s", utsname.sysname);
-          goto out;
-        }
-      
-      release = utsname.release;
-
+  if (!copy_modules (release, cancellable, error))
+    goto out;
+  
+  if (!opt_no_initramfs)
+    {
       if (!update_initramfs (release, deploy_target, cancellable, error))
         goto out;
-
+    }
+  
+  if (!opt_no_bootloader)
+    {
       if (!update_grub (release, cancellable, error))
         goto out;
     }

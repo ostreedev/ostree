@@ -96,6 +96,12 @@ guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
                                         GAsyncResult   *result,
                                         GError        **error);
 
+gboolean ot_gio_shutil_cp_al_or_fallback (GFile         *src,
+                                          GFile         *dest,
+                                          GCancellable  *cancellable,
+                                          GError       **error);
+
+
 G_END_DECLS
 
 #endif
