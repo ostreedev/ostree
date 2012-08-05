@@ -173,6 +173,8 @@ run_triggers (GCancellable   *cancellable,
     {
       const char *basename;
       GFile *trigger_path = triggers->pdata[i];
+      guint64 start_time;
+      guint64 end_time;
 
       g_free (path);
       path = g_file_get_path (trigger_path);
@@ -182,9 +184,13 @@ run_triggers (GCancellable   *cancellable,
       else
         basename = path;
 
-      g_print ("ostree-run-triggers: %s\n", basename);
+      start_time = g_get_monotonic_time ();
+      g_print ("ostree-run-triggers: Starting: %s\n", basename);
       if (!run_trigger (path, cancellable, error))
         goto out;
+      end_time = g_get_monotonic_time ();
+      g_print ("ostree-run-triggers: Completed %s in %.2f seconds\n", basename,
+               (double) (end_time - start_time) / (double)G_USEC_PER_SEC);
     }
 
   ret = TRUE;
