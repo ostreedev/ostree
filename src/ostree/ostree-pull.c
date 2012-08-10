@@ -1672,7 +1672,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   return ret;
 }
 
-static OstreeBuiltin builtins[] = {
+static OstreeCommand commands[] = {
   { "pull", ostree_builtin_pull, 0 },
   { NULL }
 };
@@ -1681,5 +1681,5 @@ int
 main (int    argc,
       char **argv)
 {
-  return ostree_main (argc, argv, builtins);
+  return ostree_main (argc, argv, commands);
 }

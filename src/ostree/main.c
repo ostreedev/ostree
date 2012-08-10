@@ -30,7 +30,7 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 
-static OstreeBuiltin builtins[] = {
+static OstreeCommand commands[] = {
   { "cat", ostree_builtin_cat, 0 },
   { "config", ostree_builtin_config, 0 },
   { "checkout", ostree_builtin_checkout, 0 },
@@ -44,6 +44,7 @@ static OstreeBuiltin builtins[] = {
   { "prune", ostree_builtin_prune, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
   { "pack", ostree_builtin_pack, 0 },
+  { "pull", NULL, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "remote", ostree_builtin_remote, 0 },
@@ -94,7 +95,7 @@ main (int    argc,
   GError *error = NULL;
   int ret;
 
-  ret = ostree_run (argc, argv, builtins, &error);
+  ret = ostree_run (argc, argv, commands, &error);
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
     {
       g_clear_error (&error);
@@ -102,7 +103,7 @@ main (int    argc,
     }
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    ostree_usage (argv, builtins, TRUE);
+    ostree_usage (argv, commands, TRUE);
 
   if (error != NULL)
     {

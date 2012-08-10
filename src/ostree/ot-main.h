@@ -31,10 +31,10 @@ typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GFile *repo_path, GError **error);
   int flags; /* OstreeBuiltinFlags */
-} OstreeBuiltin;
+} OstreeCommand;
 
-int ostree_main (int    argc, char **argv, OstreeBuiltin  *builtins);
+int ostree_main (int    argc, char **argv, OstreeCommand  *commands);
 
-int ostree_run (int    argc, char **argv, OstreeBuiltin  *builtins, GError **error);
+int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
-int ostree_usage (char **argv, OstreeBuiltin *builtins, gboolean is_error);
+int ostree_usage (char **argv, OstreeCommand *commands, gboolean is_error);

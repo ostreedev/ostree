@@ -30,9 +30,11 @@
 #include "otutil.h"
 
 int
-ostree_usage (char **argv, OstreeBuiltin *builtins, gboolean is_error)
+ostree_usage (char **argv,
+              OstreeCommand *commands,
+              gboolean is_error)
 {
-  OstreeBuiltin *builtin = builtins;
+  OstreeCommand *command = commands;
   void (*print_func) (const gchar *format, ...);
 
   if (is_error)
@@ -44,10 +46,10 @@ ostree_usage (char **argv, OstreeBuiltin *builtins, gboolean is_error)
               argv[0]);
   print_func ("Builtin commands:\n");
 
-  while (builtin->name)
+  while (command->name)
     {
-      print_func ("  %s\n", builtin->name);
-      builtin++;
+      print_func ("  %s\n", command->name);
+      command++;
     }
   return (is_error ? 1 : 0);
 }
@@ -75,10 +77,10 @@ prep_builtin_argv (const char *builtin,
 int
 ostree_run (int    argc,
             char **argv,
-            OstreeBuiltin  *builtins,
+            OstreeCommand *commands,
             GError **res_error)
 {
-  OstreeBuiltin *builtin;
+  OstreeCommand *command;
   GError *error = NULL;
   int cmd_argc;
   char **cmd_argv = NULL;
@@ -99,7 +101,7 @@ ostree_run (int    argc,
   g_set_prgname (argv[0]);
 
   if (argc < 2)
-    return ostree_usage (argv, builtins, 1);
+    return ostree_usage (argv, commands, TRUE);
 
   am_root = getuid () == 0;
   have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
@@ -140,32 +142,32 @@ ostree_run (int    argc,
       cmd = argv[arg_off-1];
     }
 
-  builtin = builtins;
-  while (builtin->name)
+  command = commands;
+  while (command->name)
     {
-      if (g_strcmp0 (cmd, builtin->name) == 0)
+      if (g_strcmp0 (cmd, command->name) == 0)
         break;
-      builtin++;
+      command++;
     }
 
-  if (!builtin->name)
+  if (!command->fn)
     {
       ot_lfree char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
       g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, msg);
       goto out;
     }
 
-  if (repo == NULL && !(builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+  if (repo == NULL && !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
       g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "Command requires a --repo argument");
-      ostree_usage (argv, builtins, TRUE);
+      ostree_usage (argv, commands, TRUE);
       goto out;
     }
   
   prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
 
-  if (!builtin->fn (cmd_argc, cmd_argv, repo_file, &error))
+  if (!command->fn (cmd_argc, cmd_argv, repo_file, &error))
     goto out;
 
  out:
@@ -182,15 +184,15 @@ ostree_run (int    argc,
 int
 ostree_main (int    argc,
              char **argv,
-             OstreeBuiltin  *builtins)
+             OstreeCommand *commands)
 {
   GError *error = NULL;
   int ret;
 
-  ret = ostree_run (argc, argv, builtins, &error);
+  ret = ostree_run (argc, argv, commands, &error);
 
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    ostree_usage (argv, builtins, TRUE);
+    ostree_usage (argv, commands, TRUE);
 
   if (error)
     {
