@@ -35,3 +35,6 @@ typedef struct {
 
 int ostree_main (int    argc, char **argv, OstreeBuiltin  *builtins);
 
+int ostree_run (int    argc, char **argv, OstreeBuiltin  *builtins, GError **error);
+
+int ostree_usage (char **argv, OstreeBuiltin *builtins, gboolean is_error);

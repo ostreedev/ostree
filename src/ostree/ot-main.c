@@ -29,8 +29,8 @@
 #include "ot-main.h"
 #include "otutil.h"
 
-static int
-usage (char **argv, OstreeBuiltin *builtins, gboolean is_error)
+int
+ostree_usage (char **argv, OstreeBuiltin *builtins, gboolean is_error)
 {
   OstreeBuiltin *builtin = builtins;
   void (*print_func) (const gchar *format, ...);
@@ -72,17 +72,11 @@ prep_builtin_argv (const char *builtin,
   *out_argv = cmd_argv;
 }
 
-static void
-set_error_print_usage (GError **error, OstreeBuiltin *builtins, const char *msg, char **argv)
-{
-  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, msg);
-  usage (argv, builtins, TRUE);
-}
-
 int
-ostree_main (int    argc,
-             char **argv,
-             OstreeBuiltin  *builtins)
+ostree_run (int    argc,
+            char **argv,
+            OstreeBuiltin  *builtins,
+            GError **res_error)
 {
   OstreeBuiltin *builtin;
   GError *error = NULL;
@@ -105,7 +99,7 @@ ostree_main (int    argc,
   g_set_prgname (argv[0]);
 
   if (argc < 2)
-    return usage (argv, builtins, 1);
+    return ostree_usage (argv, builtins, 1);
 
   am_root = getuid () == 0;
   have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
@@ -157,13 +151,15 @@ ostree_main (int    argc,
   if (!builtin->name)
     {
       ot_lfree char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
-      set_error_print_usage (&error, builtins, msg, argv);
+      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, msg);
       goto out;
     }
 
   if (repo == NULL && !(builtin->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      set_error_print_usage (&error, builtins, "Command requires a --repo argument", argv);
+      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Command requires a --repo argument");
+      ostree_usage (argv, builtins, TRUE);
       goto out;
     }
   
@@ -177,9 +173,30 @@ ostree_main (int    argc,
   g_clear_object (&repo_file);
   if (error)
     {
-      g_printerr ("%s\n", error->message);
-      g_clear_error (&error);
+      g_propagate_error (res_error, error);
       return 1;
     }
   return 0;
+}
+
+int
+ostree_main (int    argc,
+             char **argv,
+             OstreeBuiltin  *builtins)
+{
+  GError *error = NULL;
+  int ret;
+
+  ret = ostree_run (argc, argv, builtins, &error);
+
+  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
+    ostree_usage (argv, builtins, TRUE);
+
+  if (error)
+    {
+      g_printerr ("%s\n", error->message);
+      g_error_free (error);
+    }
+
+  return ret;
 }
