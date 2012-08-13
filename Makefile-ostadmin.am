@@ -21,6 +21,7 @@ ostadmin_SOURCES = src/ostadmin/main.c \
 	src/ostadmin/ot-admin-builtins.h \
 	src/ostadmin/ot-admin-builtin-init.c \
 	src/ostadmin/ot-admin-builtin-deploy.c \
+	src/ostadmin/ot-admin-builtin-update-kernel.c \
 	src/ostadmin/ot-admin-main.h \
 	src/ostadmin/ot-admin-main.c \
 	$(NULL)

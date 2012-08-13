@@ -29,6 +29,7 @@ G_BEGIN_DECLS
 
 gboolean ot_admin_builtin_init (int argc, char **argv, GError **error);
 gboolean ot_admin_builtin_deploy (int argc, char **argv, GError **error);
+gboolean ot_admin_builtin_update_kernel (int argc, char **argv, GError **error);
 
 G_END_DECLS
 

@@ -32,6 +32,7 @@
 static OtAdminBuiltin builtins[] = {
   { "deploy", ot_admin_builtin_deploy, 0 },
   { "init", ot_admin_builtin_init, 0 },
+  { "update-kernel", ot_admin_builtin_update_kernel, 0 },
   { NULL }
 };
 
