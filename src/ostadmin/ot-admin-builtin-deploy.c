@@ -368,15 +368,15 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc < 3)
+  if (argc < 2)
     {
       ot_util_usage_error (context, "NAME must be specified", error);
       goto out;
     }
     
-  deploy_target = argv[2];
-  if (argc > 3)
-    revision = argv[3];
+  deploy_target = argv[1];
+  if (argc > 2)
+    revision = argv[2];
 
   if (!do_checkout (self, deploy_target, revision, cancellable, error))
     goto out;

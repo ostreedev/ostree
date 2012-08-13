@@ -61,14 +61,15 @@ prep_builtin_argv (const char *builtin,
 {
   int i;
   char **cmd_argv;
-  
-  cmd_argv = g_new0 (char *, argc + 2);
-  
-  cmd_argv[0] = (char*)builtin;
-  for (i = 0; i < argc; i++)
-    cmd_argv[i+1] = argv[i];
-  cmd_argv[i+1] = NULL;
-  *out_argc = argc+1;
+
+  /* Should be argc - 1 + 1, to account for
+     the first argument (removed) and for NULL pointer */
+  cmd_argv = g_new0 (char *, argc);
+
+  for (i = 0; i < argc-1; i++)
+    cmd_argv[i] = argv[i+1];
+  cmd_argv[i] = NULL;
+  *out_argc = argc-1;
   *out_argv = cmd_argv;
 }
 
@@ -123,7 +124,7 @@ ot_admin_main (int    argc,
       goto out;
     }
 
-  prep_builtin_argv (cmd, argc-1, argv+1, &cmd_argc, &cmd_argv);
+  prep_builtin_argv (cmd, argc, argv, &cmd_argc, &cmd_argv);
 
   if (!builtin->fn (cmd_argc, cmd_argv, &error))
     goto out;
