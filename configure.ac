@@ -97,6 +97,13 @@ AS_IF([ test x$with_libarchive != xno ], [
 ])
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
+AC_ARG_ENABLE(kernel-updates,
+              AS_HELP_STRING([--enable-kernel-updates],
+	      [Install configuration scripts to handle kernel updates
+	       in the host system]), ,
+	      enable_kernel_updates=yes)
+AM_CONDITIONAL(ENABLE_KERNEL_UPDATES, test $enable_kernel_updates != no)
+
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
@@ -111,4 +118,5 @@ echo "
     embedded dependencies: $enable_embedded_dependencies
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
+    kernel updates integration: $enable_kernel_updates
 "

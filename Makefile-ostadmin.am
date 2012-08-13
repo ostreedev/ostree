@@ -28,3 +28,16 @@ ostadmin_SOURCES = src/ostadmin/main.c \
 
 ostadmin_CFLAGS =  $(AM_CFLAGS) -I$(srcdir)/src/libgsystem -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostadmin -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 ostadmin_LDADD = libgsystem.la libotutil.la libostree.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+
+if ENABLE_KERNEL_UPDATES
+
+grub2dir = $(sysconfdir)/grub.d
+grub2_SCRIPTS = src/ostadmin/grub2/15_ostree
+
+kernelpostinstdir = $(sysconfdir)/kernel/postinst.d
+kernelpostinst_SCRIPTS = src/ostadmin/kernel/15_ostree_update
+
+kernelprermdir = $(sysconfdir)/kernel/prerm.d
+kernelprerm_SCRIPTS = src/ostadmin/kernel/15_ostree_remove
+
+endif

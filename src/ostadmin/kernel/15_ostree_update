@@ -1,0 +1,10 @@
+#!/bin/sh
+
+version=$1
+
+if [ -z "$version" ]; then
+    echo "$0: kernel version required"
+    exit 1
+fi
+
+ostadmin update-kernel current/ ${version}
