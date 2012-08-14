@@ -49,7 +49,7 @@ ostree_bin_shared_ldadd = libotutil.la libostree.la
 ostree_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 ostree_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
-if USE_LIBSOUP_GNOME
+if USE_LIBSOUP
 bin_PROGRAMS += ostree-pull
 ostree_pull_SOURCES = src/ostree/ot-main.h \
 	src/ostree/ot-main.c \

@@ -35,33 +35,33 @@ AC_ARG_ENABLE(embedded-dependencies,
 	    AS_HELP_STRING([--enable-embedded-dependencies], [Use embedded GLib and libsoup copies]),,
 	    enable_embedded_dependencies=no)
 AM_CONDITIONAL(BUILD_EMBEDDED_DEPENDENCIES, test x$enable_embedded_dependencies = xyes)
-if test x$enable_embedded_dependencies = xyes; then
+AS_IF([test x$enable_embedded_dependencies = xyes], [
   echo "NOTICE: Embedded dependencies (GLib and libsoup) enabled"
   with_soup=yes
-else
+], [
   GIO_DEPENDENCY="gio-unix-2.0 >= 2.33.4"
   PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
   SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
-  AC_ARG_WITH(soup-gnome,
-	    AS_HELP_STRING([--without-soup-gnome], [Do not use libsoup-gnome (implies no pull support)]),
-	    :, with_soup=maybe)
-  if test x$with_soup != xno; then
+  AC_ARG_WITH(soup,
+	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
+	    [], [with_soup=check])
+  AS_IF([test x$with_soup != xno ], [
     AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
-    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup_gnome=yes, have_soup_gnome=no)
-    AC_MSG_RESULT([$have_soup_gnome])
-    if test x$have_soup_gnome = xno && test x$with_soup != xmaybe; then
-       AC_MSG_ERROR([libsoup-gnome is enabled but could not be found])
-    fi
-    if test x$have_soup_gnome = xyes; then
+    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
+    AC_MSG_RESULT([$have_soup])
+    AS_IF([ test x$have_soup = xno && test x$with_soup != xcheck], [
+       AC_MSG_ERROR([libsoup is enabled but could not be found])
+    ])
+    AS_IF([test x$have_soup = xyes], [
 	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
 	with_soup=yes
-    else
+    ], [
 	with_soup=no
-    fi		
-  fi
-fi
-AM_CONDITIONAL(USE_LIBSOUP_GNOME, test x$enable_embedded_dependencies = xyes || test x$with_soup != xno)
+    ])
+  ])
+])
+AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
@@ -80,21 +80,21 @@ AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
-if test x$with_libarchive != xno; then
+AS_IF([ test x$with_libarchive != xno ], [
     AC_MSG_CHECKING([for $LIBARCHIVE_DEPENDENCY])
     PKG_CHECK_EXISTS($LIBARCHIVE_DEPENDENCY, have_libarchive=yes, have_libarchive=no)
     AC_MSG_RESULT([$have_libarchive])
-    if test x$have_libarchive = xno && test x$with_libarchive != xmaybe; then
+    AS_IF([ test x$have_libarchive = xno && test x$with_libarchive != xmaybe ], [
        AC_MSG_ERROR([libarchive is enabled but could not be found])
-    fi
-    if test x$have_libarchive = xyes; then
+    ])
+    AS_IF([ test x$have_libarchive = xyes], [
         AC_DEFINE(HAVE_LIBARCHIVE, 1, [Define if we have libarchive.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBARCHIVE, $LIBARCHIVE_DEPENDENCY)
 	with_libarchive=yes
-    else
+    ], [
 	with_libarchive=no
-    fi		
-fi
+    ])
+])
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 AC_CONFIG_FILES([
