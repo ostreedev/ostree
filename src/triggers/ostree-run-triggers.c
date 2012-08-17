@@ -76,7 +76,7 @@ compare_files_by_basename (gconstpointer  ap,
                            gconstpointer  bp)
 {
   GFile *a = *(GFile**)ap;
-  GFile *b = *(GFile**)ap;
+  GFile *b = *(GFile**)bp;
   char *name_a, *name_b;
   int c;
 
