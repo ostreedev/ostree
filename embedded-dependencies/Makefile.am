@@ -29,7 +29,7 @@ build_environment = PATH=$${builddir}/EMBEDDEPS/bin$${PATH:+:$$PATH} \
 	C_INCLUDE_PATH="$${builddir}/EMBEDDEPS/include$${C_INCLUDE_PATH:+:$$C_INCLUDE_PATH}" \
 	LDFLAGS="-L$${builddir}/EMBEDDEPS/lib$${LDFLAGS:+:$$LDFLAGS}" \
 	ACLOCAL_PATH="$${builddir}/EMBEDDEPS/share/aclocal$${ACLOCAL_PATH:+:$$ACLOCAL_PATH}" \
-	ACLOCAL_FLAGS="-I $${builddir}/EMBEDDEPS/share/aclocal$${ACLOCAL_FLAGS:+:$$ACLOCAL_FLAGS}" \
+	ACLOCAL_FLAGS="-I $${builddir}/EMBEDDEPS/share/aclocal $${ACLOCAL_FLAGS}" \
 	PKG_CONFIG_PATH="$${builddir}/EMBEDDEPS/lib/pkgconfig$${PKG_CONFIG_PATH:+:$$PKG_CONFIG_PATH}"
 
 # aclocal aborts if the path doesn't exist yet.  Lame.  Let's also

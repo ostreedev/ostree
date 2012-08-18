@@ -8,12 +8,12 @@ can then be installed on older operating systems.
 To create one, use:
 
 $ cd embedded-dependencies
-$ make -f Makefile.bootstrap embedded-glib-download
+$ make -f Makefile.bootstrap embedded-deps-download
 $ cd ..
 $ make release-tarball-embedded
 
 To build it:
 
-$ ./configure --enable-embedded-glib ...
+$ ./configure --enable-embedded-dependencies ...
 
 as usual.

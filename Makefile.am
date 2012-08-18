@@ -122,11 +122,32 @@ endif
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
 
-embed_dependency=tar -C $(srcdir) --append --exclude='.git/*' --transform='s,^embedded-dependencies/,ostree-embeddeps-$(VERSION)/embedded-dependencies/,' --file=ostree-embeddeps-$(VERSION).tar.tmp
+embed_dependency=tar -C $(srcdir) --append --exclude='.git/*' --transform="s,^embedded-dependencies/,ostree-embeddeps-$${GITVERSION}/embedded-dependencies/," --file=$${TARFILE_TMP}
+
+git_version_rpm = $$(git describe | sed -e 's,-,\.,g' -e 's,^v,,')
 
 release-tarball-embedded:
-	(cd $(srcdir); git archive --format=tar --prefix=ostree-embeddeps-$(VERSION)/ HEAD) > ostree-embeddeps-$(VERSION).tar.tmp
-	$(embed_dependency) embedded-dependencies/glib
-	$(embed_dependency) embedded-dependencies/libsoup
-	mv ostree-embeddeps-$(VERSION).tar{.tmp,}
-	gzip -f ostree-embeddeps-$(VERSION).tar 
+	set -x; \
+	GITVERSION=$(git_version_rpm); export GITVERSION; \
+	TARFILE_TMP=ostree-embeddeps-$${GITVERSION}.tar.tmp; \
+	REV=$$(git rev-parse HEAD); \
+	echo "Archiving ostree at $${REV}"; \
+	(cd $(srcdir); git archive --format=tar --prefix=ostree-embeddeps-$${GITVERSION}/ $${REV}) > $${TARFILE_TMP}; \
+	(cd $$(git rev-parse --show-toplevel); git submodule status) | while read line; do \
+	  rev=$$(echo $$line | cut -f 1 -d ' '); path=$$(echo $$line | cut -f 2 -d ' '); \
+	  echo "Archiving $${path} at $${rev}"; \
+	  (cd $(srcdir)/$$path; git archive --format=tar --prefix=ostree-embeddeps-$${GITVERSION}/$$path/ $${rev}) > submodule.tar; \
+	  tar -A -f $${TARFILE_TMP} submodule.tar; \
+	  rm submodule.tar; \
+	done; \
+	echo "Archiving glib"; \
+	$(embed_dependency) embedded-dependencies/glib; \
+	echo "Archiving libsoup"; \
+	$(embed_dependency) embedded-dependencies/libsoup; \
+	mv ostree-embeddeps-$${GITVERSION}.tar{.tmp,}; \
+	gzip -f ostree-embeddeps-$${GITVERSION}.tar 
+
+srpm-embedded:
+	GITVERSION=$(git_version_rpm); export GITVERSION; \
+	(sed -e "s,^Version:.*,Version: $${GITVERSION}," $(srcdir)/packages/ostree.spec.in) > ostree.spec
+	$(srcdir)/packages/rpmbuild-cwd -bs ostree.spec
