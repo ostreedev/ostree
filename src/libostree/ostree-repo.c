@@ -4125,9 +4125,9 @@ checkout_file_hardlink (OstreeRepo                  *self,
 
   if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) != -1)
     ret_was_supported = TRUE;
-  else if (errno == EMLINK || errno == EXDEV)
+  else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
     {
-      /* EMLINK and EXDEV shouldn't be fatal; we just can't do the
+      /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
        * optimization of hardlinking instead of copying.
        */
       ret_was_supported = FALSE;
