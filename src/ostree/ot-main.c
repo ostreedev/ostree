@@ -122,6 +122,9 @@ ostree_run (int    argc,
   else
     binname = argv[0];
 
+  if (g_str_has_prefix (binname, "lt-"))
+    binname += 3;
+
   if (g_str_has_prefix (binname, "ostree-"))
     {
       cmd = strchr (binname, '-');
