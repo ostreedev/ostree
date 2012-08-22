@@ -201,6 +201,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
         {
           pull_data->caught_error = TRUE;
           g_propagate_error (pull_data->async_error, error);
+          g_main_loop_quit (pull_data->loop);
         }
       else
         {
