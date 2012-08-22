@@ -31,15 +31,15 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 
-#define OT_DEFAULT_PACK_SIZE_BYTES (50*1024*1024)
 #define OT_GZIP_COMPRESSION_LEVEL (8)
 
 static gboolean opt_analyze_only;
 static gboolean opt_metadata_only;
+static gboolean opt_content_only;
 static gboolean opt_reindex_only;
 static gboolean opt_delete_all_loose;
 static gboolean opt_keep_all_loose;
-static char* opt_pack_size;
+static char* opt_pack_size = "50m";
 static char* opt_int_compression;
 static char* opt_ext_compression;
 
@@ -50,10 +50,11 @@ typedef enum {
 } OtCompressionType;
 
 static GOptionEntry options[] = {
-  { "pack-size", 0, 0, G_OPTION_ARG_STRING, &opt_pack_size, "Maximum uncompressed size of packfiles in bytes; may be suffixed with k, m, or g", "BYTES" },
+  { "pack-size", 0, 0, G_OPTION_ARG_STRING, &opt_pack_size, "Maximum uncompressed size of packfiles in bytes; may be suffixed with k, m, or g (default: 50m)", "BYTES" },
   { "internal-compression", 0, 0, G_OPTION_ARG_STRING, &opt_int_compression, "Compress objects using COMPRESSION", "COMPRESSION" },
   { "external-compression", 0, 0, G_OPTION_ARG_STRING, &opt_ext_compression, "Compress entire packfiles using COMPRESSION", "COMPRESSION" },
   { "metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_metadata_only, "Only pack metadata objects", NULL },
+  { "content-only", 0, 0, G_OPTION_ARG_NONE, &opt_content_only, "Only pack content objects", NULL },
   { "analyze-only", 0, 0, G_OPTION_ARG_NONE, &opt_analyze_only, "Just analyze current state", NULL },
   { "reindex-only", 0, 0, G_OPTION_ARG_NONE, &opt_reindex_only, "Regenerate pack index", NULL },
   { "delete-all-loose", 0, 0, G_OPTION_ARG_NONE, &opt_delete_all_loose, "Delete all loose objects (default: delete unreferenced loose)", NULL },
@@ -517,7 +518,8 @@ create_pack_file (OtRepackData        *data,
   if (!ostree_repo_regenerate_pack_index (data->repo, cancellable, error))
     goto out;
 
-  g_print ("Created pack file '%s' with %u objects\n", g_checksum_get_string (pack_checksum), objects->len);
+  g_print ("Created %s pack file '%s' with %u objects\n", is_meta ? "metadata" : "content",
+           g_checksum_get_string (pack_checksum), objects->len);
 
   if (!opt_keep_all_loose)
     {
@@ -680,7 +682,6 @@ cluster_objects_stupidly (OtRepackData      *data,
 
 static gboolean
 parse_size_spec_with_suffix (const char *spec,
-                             guint64     default_value,
                              guint64    *out_size,
                              GError    **error)
 {
@@ -688,44 +689,36 @@ parse_size_spec_with_suffix (const char *spec,
   char *endptr = NULL;
   guint64 ret_size;
 
-  if (spec == NULL)
-    {
-      ret_size = default_value;
-      endptr = NULL;
-    }
-  else
-    {
-      ret_size = g_ascii_strtoull (spec, &endptr, 10);
+  ret_size = g_ascii_strtoull (spec, &endptr, 10);
   
-      if (endptr && *endptr)
-        {
-          char suffix = *endptr;
+  if (endptr && *endptr)
+    {
+      char suffix = *endptr;
       
-          switch (suffix)
-            {
-            case 'k':
-            case 'K':
-              {
-                ret_size *= 1024;
-                break;
-              }
-            case 'm':
-            case 'M':
-              {
-                ret_size *= (1024 * 1024);
-                break;
-              }
-            case 'g':
-            case 'G':
-              {
-                ret_size *= (1024 * 1024 * 1024);
-                break;
-              }
-            default:
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid size suffix '%c'", suffix);
-              goto out;
-            }
+      switch (suffix)
+        {
+        case 'k':
+        case 'K':
+          {
+            ret_size *= 1024;
+            break;
+          }
+        case 'm':
+        case 'M':
+          {
+            ret_size *= (1024 * 1024);
+            break;
+          }
+        case 'g':
+        case 'G':
+          {
+            ret_size *= (1024 * 1024 * 1024);
+            break;
+          }
+        default:
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid size suffix '%c'", suffix);
+          goto out;
         }
     }
 
@@ -810,7 +803,7 @@ do_stats_gather_loose (OtRepackData  *data,
       else if (is_loose)
         {
           if (!(opt_metadata_only && !OSTREE_OBJECT_TYPE_IS_META(objtype))
-              || OSTREE_OBJECT_TYPE_IS_META (objtype))
+              && !(opt_content_only && OSTREE_OBJECT_TYPE_IS_META(objtype)))
             {
               GVariant *copy = g_variant_ref (serialized_key);
               g_hash_table_replace (ret_loose, copy, copy);
@@ -933,6 +926,13 @@ ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **error)
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
+  if (opt_metadata_only && opt_content_only)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "--content-only cannot be specified with --metadata-only");
+      goto out;
+    }
+
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
@@ -940,7 +940,7 @@ ostree_builtin_pack (int argc, char **argv, GFile *repo_path, GError **error)
   data.repo = repo;
   data.error = error;
 
-  if (!parse_size_spec_with_suffix (opt_pack_size, OT_DEFAULT_PACK_SIZE_BYTES, &data.pack_size, error))
+  if (!parse_size_spec_with_suffix (opt_pack_size, &data.pack_size, error))
     goto out;
   /* Default internal compression to gzip */
   if (!parse_compression_string (opt_int_compression ? opt_int_compression : "gzip", &data.int_compression, error))
