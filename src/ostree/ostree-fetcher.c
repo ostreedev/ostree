@@ -187,12 +187,23 @@ on_request_sent (GObject        *object,
 {
   OstreeFetcherPendingURI *pending = user_data;
   GError *local_error = NULL;
+  ot_lobj SoupMessage *msg = NULL;
 
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
                                                    result, &local_error);
+  msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
+
   if (!pending->request_body)
     {
       pending->state = OSTREE_FETCHER_STATE_COMPLETE;
+      g_simple_async_result_take_error (pending->result, local_error);
+      g_simple_async_result_complete (pending->result);
+    }
+  else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
+    {
+      g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Server returned status %u: %s",
+                   msg->status_code, soup_status_get_phrase (msg->status_code));
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);
     }
