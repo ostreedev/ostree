@@ -21,6 +21,9 @@
  */
 
 /**
+ * See:
+ * https://mail.gnome.org/archives/ostree-list/2012-August/msg00021.html
+ *
  * DESIGN:
  *
  * Pull refs
@@ -64,13 +67,13 @@
 #include "ostree-fetcher.h"
 
 gboolean verbose;
-gboolean opt_prefer_loose;
+gint opt_packfile_threshold = 66;
 gboolean opt_related;
 gint opt_depth;
 
 static GOptionEntry options[] = {
   { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
-  { "prefer-loose", 0, 0, G_OPTION_ARG_NONE, &opt_prefer_loose, "Download loose objects by default", NULL },
+  { "packfile-threshold", 't', 0, G_OPTION_ARG_INT, &opt_packfile_threshold, "Only download packfiles if more than PERCENT objects are needed (default: 66)", "PERCENT" },
   { "related", 0, 0, G_OPTION_ARG_NONE, &opt_related, "Download related commits", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Download parent commits up to this depth (default: 0)", NULL },
   { NULL },
@@ -1250,7 +1253,7 @@ fetch_content (OtPullData           *pull_data,
                                        cancellable, error))
         goto out;
 
-      if (remote_pack_checksum && !opt_prefer_loose)
+      if (remote_pack_checksum)
         {
           files_to_fetch = g_hash_table_lookup (data_packs_to_fetch, remote_pack_checksum);
           if (files_to_fetch == NULL)
@@ -1268,6 +1271,36 @@ fetch_content (OtPullData           *pull_data,
           char *key = g_strdup (checksum);
           g_hash_table_insert (loose_files, key, key);
           n_objects_to_fetch++;
+        }
+    }
+
+  g_hash_table_iter_init (&hash_iter, data_packs_to_fetch);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *pack_checksum = key;
+      GPtrArray *files = value;
+      ot_lvariant GVariant *mapped_pack = NULL;
+      ot_lvariant GVariant *content_list = NULL;
+      gboolean fetch;
+
+      if (!ostree_repo_map_cached_remote_pack_index (pull_data->repo, pull_data->remote_name,
+                                                     pack_checksum, FALSE,
+                                                     &mapped_pack,
+                                                     cancellable, error))
+        goto out;
+      
+      content_list = g_variant_get_child_value (mapped_pack, 2);
+
+      fetch = (((double)files->len) / g_variant_n_children (content_list)) > ((double)opt_packfile_threshold / 100);
+      if (!fetch)
+        {
+          guint i;
+          for (i = 0; i < files->len; i++)
+            {
+              g_hash_table_insert (loose_files, files->pdata[i], files->pdata[i]);
+              files->pdata[i] = NULL;  /* steal data */
+            }
+          g_hash_table_iter_remove (&hash_iter);
         }
     }
 
