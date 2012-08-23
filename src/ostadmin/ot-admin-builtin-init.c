@@ -27,7 +27,11 @@
 
 #include <glib/gi18n.h>
 
+static char *opt_ostree_dir = "/ostree";
+
 static GOptionEntry options[] = {
+  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
+  { NULL }
 };
 
 
@@ -46,14 +50,15 @@ ot_admin_builtin_init (int argc, char **argv, GError **error)
     goto out;
 
   g_clear_object (&dir);
-  dir = g_file_new_for_path ("/ostree/repo");
+  dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
   g_clear_object (&dir);
-  dir = g_file_new_for_path ("/ostree/repo/objects");
+  dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
     {
-      const char *child_argv[] = { "ostree", "--repo=/ostree/repo", "init", NULL };
+      ot_lfree char *opt_repo_path = g_strdup_printf ("--repo=%s/repo", opt_ostree_dir);
+      const char *child_argv[] = { "ostree", opt_repo_path, "init", NULL };
 
       if (!ot_spawn_sync_checked (NULL, (char**)child_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
                                   NULL, NULL, error))
@@ -66,18 +71,20 @@ ot_admin_builtin_init (int argc, char **argv, GError **error)
   /* Ensure a few subdirectories of /var exist, since we need them for
      dracut generation */
   g_clear_object (&dir);
-  dir = g_file_new_for_path ("/ostree/var/log");
+  dir = ot_gfile_from_build_path (opt_ostree_dir, "var", "log", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
   g_clear_object (&dir);
-  dir = g_file_new_for_path ("/ostree/var/tmp");
+  dir = ot_gfile_from_build_path (opt_ostree_dir, "var", "tmp", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
-  if (chmod ("/ostree/var/tmp", 01777) < 0)
+  if (chmod (ot_gfile_get_path_cached (dir), 01777) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
+
+  g_print ("%s initialized as OSTree root\n", opt_ostree_dir);
 
   ret = TRUE;
  out:
