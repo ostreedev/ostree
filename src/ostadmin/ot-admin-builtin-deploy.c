@@ -32,10 +32,10 @@ typedef struct {
 } OtAdminDeploy;
 
 static gboolean opt_no_kernel;
-static char *opt_ostree_dir;
+static char *opt_ostree_dir = "/ostree";
 
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory", NULL },
+  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
   { "no-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_no_kernel, "Don't update kernel related config (initramfs, bootloader)", NULL },
   { NULL }
 };
@@ -145,9 +145,6 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
   const char *deploy_target = NULL;
   const char *revision = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
-
-  if (!opt_ostree_dir)
-    opt_ostree_dir = "/ostree";
 
   memset (self, 0, sizeof (*self));
 
