@@ -97,11 +97,15 @@ AS_IF([ test x$with_libarchive != xno ], [
 ])
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
+AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel],
+      [kernel_updates_default=yes],
+      [kernel_updates_default=no])
+
 AC_ARG_ENABLE(kernel-updates,
               AS_HELP_STRING([--enable-kernel-updates],
 	      [Install configuration scripts to handle kernel updates
 	       in the host system]), ,
-	      enable_kernel_updates=yes)
+	      enable_kernel_updates=${kernel_updates_default})
 AM_CONDITIONAL(ENABLE_KERNEL_UPDATES, test $enable_kernel_updates != no)
 
 AC_CONFIG_FILES([
