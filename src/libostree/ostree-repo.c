@@ -2611,20 +2611,6 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return serialized_tree;
 }
 
-static GFileInfo *
-create_modified_file_info (GFileInfo               *info,
-                           OstreeRepoCommitModifier *modifier)
-{
-  GFileInfo *ret;
-
-  if (!modifier)
-    return (GFileInfo*)g_object_ref (info);
-
-  ret = g_file_info_dup (info);
-  
-  return ret;
-}
-
 static OstreeRepoCommitFilterResult
 apply_commit_filter (OstreeRepo            *self,
                      OstreeRepoCommitModifier *modifier,
@@ -2935,6 +2921,20 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
 }
 
 #ifdef HAVE_LIBARCHIVE
+
+static GFileInfo *
+create_modified_file_info (GFileInfo               *info,
+                           OstreeRepoCommitModifier *modifier)
+{
+  GFileInfo *ret;
+
+  if (!modifier)
+    return (GFileInfo*)g_object_ref (info);
+
+  ret = g_file_info_dup (info);
+  
+  return ret;
+}
 
 static void
 propagate_libarchive_error (GError      **error,
