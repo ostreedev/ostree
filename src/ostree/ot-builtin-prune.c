@@ -93,7 +93,8 @@ prune_loose_object (OtPruneData    *data,
         }
       else
         {
-          g_print ("Unreachable: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
+          if (verbose)
+            g_print ("Unreachable: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
         }
       data->n_unreachable++;
     }

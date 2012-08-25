@@ -44,7 +44,7 @@ traverse_dirtree_internal (OstreeRepo      *repo,
 {
   gboolean ret = FALSE;
   int n, i;
-  ot_lvariant GVariant *key;
+  ot_lvariant GVariant *key = NULL;
   ot_lvariant GVariant *tree = NULL;
   ot_lvariant GVariant *files_variant = NULL;
   ot_lvariant GVariant *dirs_variant = NULL;
@@ -60,8 +60,11 @@ traverse_dirtree_internal (OstreeRepo      *repo,
       goto out;
     }
 
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &tree, error))
+  if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_DIR_TREE, dirtree_checksum, &tree, error))
     goto out;
+
+  if (!tree)
+    return TRUE;
 
   key = ostree_object_name_serialize (dirtree_checksum, OSTREE_OBJECT_TYPE_DIR_TREE);
   if (!g_hash_table_lookup (inout_reachable, key))
@@ -126,6 +129,12 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
                                     inout_reachable, cancellable, error);
 }
 
+/**
+ * ostree_traverse_commit:
+ *
+ * Add to @inout_reachable all objects reachable from
+ * @commit_checksum, traversing @maxdepth parent commits.
+ */
 gboolean
 ostree_traverse_commit (OstreeRepo      *repo,
                         const char      *commit_checksum,
@@ -147,8 +156,14 @@ ostree_traverse_commit (OstreeRepo      *repo,
       ot_lvariant GVariant *commit = NULL;
 
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
+      if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
         goto out;
+
+      /* Just return if the parent isn't found; we do expect most
+       * people to have partial repositories.
+       */
+      if (!commit)
+        break;
   
       key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
       g_hash_table_replace (inout_reachable, key, key);

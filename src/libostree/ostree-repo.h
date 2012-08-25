@@ -149,6 +149,12 @@ gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         GVariant     **out_variant,
                                         GError       **error);
 
+gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
+                                                  OstreeObjectType expected_type,
+                                                  const char    *sha256, 
+                                                  GVariant     **out_variant,
+                                                  GError       **error);
+
 gboolean      ostree_repo_load_pack_index (OstreeRepo    *self,
                                            const char    *pack_checksum, 
                                            gboolean       is_meta,
