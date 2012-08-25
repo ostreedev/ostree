@@ -1567,12 +1567,17 @@ ostree_repo_list_all_refs (OstreeRepo       *repo,
 {
   gboolean ret = FALSE;
   ot_lhash GHashTable *ret_all_refs = NULL;
-  ot_lobj GFile *heads_dir = NULL;
+  ot_lobj GFile *dir = NULL;
 
   ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  heads_dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/heads");
-  if (!enumerate_refs_recurse (repo, heads_dir, heads_dir, ret_all_refs, cancellable, error))
+  dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/heads");
+  if (!enumerate_refs_recurse (repo, dir, dir, ret_all_refs, cancellable, error))
+    goto out;
+
+  g_clear_object (&dir);
+  dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/remotes");
+  if (!enumerate_refs_recurse (repo, dir, dir, ret_all_refs, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -3912,12 +3917,13 @@ ostree_repo_load_variant_c (OstreeRepo          *self,
   return ret;
 }
 
-gboolean
-ostree_repo_load_variant (OstreeRepo  *self,
-                          OstreeObjectType  objtype,
-                          const char    *sha256, 
-                          GVariant     **out_variant,
-                          GError       **error)
+static gboolean
+load_variant_internal (OstreeRepo       *self,
+                       OstreeObjectType  objtype,
+                       const char       *sha256, 
+                       gboolean          error_if_not_found,
+                       GVariant        **out_variant,
+                       GError          **error)
 {
   gboolean ret = FALSE;
   guchar *pack_data;
@@ -3959,7 +3965,7 @@ ostree_repo_load_variant (OstreeRepo  *self,
       if (!ostree_repo_load_variant (self->parent_repo, objtype, sha256, &ret_variant, error))
         goto out;
     }
-  else
+  else if (error_if_not_found)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "No such metadata object %s.%s",
@@ -3972,6 +3978,42 @@ ostree_repo_load_variant (OstreeRepo  *self,
  out:
   return ret;
 }
+
+/**
+ * ostree_repo_load_variant_if_exists:
+ * 
+ * Attempt to load the metadata object @sha256 of type @objtype if it
+ * exists, storing the result in @out_variant.  If it doesn't exist,
+ * %NULL is returned.
+ */
+gboolean
+ostree_repo_load_variant_if_exists (OstreeRepo       *self,
+                                    OstreeObjectType  objtype,
+                                    const char       *sha256, 
+                                    GVariant        **out_variant,
+                                    GError          **error)
+{
+  return load_variant_internal (self, objtype, sha256, FALSE,
+                                out_variant, error);
+}
+
+/**
+ * ostree_repo_load_variant:
+ * 
+ * Load the metadata object @sha256 of type @objtype, storing the
+ * result in @out_variant.
+ */
+gboolean
+ostree_repo_load_variant (OstreeRepo       *self,
+                          OstreeObjectType  objtype,
+                          const char       *sha256, 
+                          GVariant        **out_variant,
+                          GError          **error)
+{
+  return load_variant_internal (self, objtype, sha256, TRUE,
+                                out_variant, error);
+}
+
 
 /**
  * ostree_repo_list_objects:
