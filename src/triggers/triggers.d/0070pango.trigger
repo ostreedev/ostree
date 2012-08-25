@@ -20,6 +20,10 @@
 # Boston, MA 02111-1307, USA.
 
 if test -x "$(which pango-querymodules 2>/dev/null)"; then
-    DEST=/etc/pango/pango.modules
-    pango-querymodules --system > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}
+    # Support both old and new pango-querymodules; see
+    # http://git.gnome.org/browse/pango/commit/?id=9bbb992671140b840bedb4339f6c326a2ae2c072
+    if ! pango-querymodules --system --update-cache; then
+	DEST=/etc/pango/pango.modules
+	pango-querymodules --system > ${DEST}.tmp && mv ${DEST}.tmp ${DEST}
+    fi
 fi
