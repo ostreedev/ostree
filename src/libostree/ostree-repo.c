@@ -943,6 +943,11 @@ stage_object_internal (OstreeRepo         *self,
                */
               src_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
               target_mode = src_mode & (S_IRWXU | S_IRWXG | S_IRWXO | S_IFMT);
+              /* However, do ensure that archive mode files are
+               * readable by all users.  This is important for serving
+               * files via HTTP.
+               */
+              target_mode |= (S_IRUSR | S_IRGRP | S_IROTH);
               
               if (chmod (ot_gfile_get_path_cached (raw_temp_file), target_mode) < 0)
                 {
