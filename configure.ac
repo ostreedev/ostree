@@ -27,6 +27,11 @@ AC_SUBST(WARN_CFLAGS)
 LT_PREREQ([2.2.4])
 LT_INIT([disable-static])
 
+AC_ARG_ENABLE(triggers-only,
+	    AS_HELP_STRING([--enable-triggers-only], [Only build and install triggers]),,
+	    enable_triggers_only=no)
+AM_CONDITIONAL(TRIGGERS_ONLY, test x$enable_triggers_only != xno)
+
 AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from libattr])])
 
 PKG_PROG_PKG_CONFIG
@@ -46,6 +51,9 @@ AS_IF([test x$enable_embedded_dependencies = xyes], [
   AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
 	    [], [with_soup=check])
+  if test x$enable_triggers_only != xno; then
+    with_soup=no
+  fi
   AS_IF([test x$with_soup != xno ], [
     AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
     PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
@@ -59,7 +67,7 @@ AS_IF([test x$enable_embedded_dependencies = xyes], [
     ], [
 	with_soup=no
     ])
-  ])
+  ], [ with_soup=no ])
 ])
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 
@@ -69,6 +77,9 @@ AC_ARG_ENABLE(documentation,
               AC_HELP_STRING([--enable-documentation],
                              [build documentation]),,
               enable_documentation=yes)
+if test x$enable_triggers_only != xno; then
+   enable_documentation=no
+fi
 if test x$enable_documentation = xyes; then
    AC_PATH_PROG([XSLTPROC], [xsltproc])
    if test x$XSLTPROC = x; then
@@ -80,7 +91,7 @@ AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
-AS_IF([ test x$with_libarchive != xno ], [
+AS_IF([ test x$with_libarchive != xno && test x$enable_triggers_only != xno ], [
     AC_MSG_CHECKING([for $LIBARCHIVE_DEPENDENCY])
     PKG_CHECK_EXISTS($LIBARCHIVE_DEPENDENCY, have_libarchive=yes, have_libarchive=no)
     AC_MSG_RESULT([$have_libarchive])
@@ -94,10 +105,10 @@ AS_IF([ test x$with_libarchive != xno ], [
     ], [
 	with_libarchive=no
     ])
-])
+], [ with_libarchive=no ])
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
-AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel],
+AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel && test x$enable_triggers_only != xno ],
       [kernel_updates_default=yes],
       [kernel_updates_default=no])
 
@@ -119,8 +130,10 @@ echo "
     ===============
 
 
+    triggers only: $enable_triggers_only
     embedded dependencies: $enable_embedded_dependencies
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
+    documentation: $enable_documentation
     kernel updates integration: $enable_kernel_updates
 "

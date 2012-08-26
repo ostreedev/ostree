@@ -17,7 +17,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+if !TRIGGERS_ONLY
 libexec_PROGRAMS += ostreed
+endif
 
 ostreed_SOURCES = src/daemon/ostreed.c \
 	src/daemon/ot-daemon.h \

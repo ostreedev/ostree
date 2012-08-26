@@ -17,7 +17,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+if !TRIGGERS_ONLY
 privlib_LTLIBRARIES += libostree.la
+endif
 
 libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-core.c \
@@ -56,4 +58,4 @@ libostree_la_LIBADD += $(OT_DEP_LIBARCHIVE_LIBS)
 endif
 
 install-data-hook:
-	rm $(DESTDIR)$(privlibdir)/libostree.la
+	rm -f $(DESTDIR)$(privlibdir)/libostree.la
