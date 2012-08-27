@@ -812,12 +812,8 @@ ensure_file_data_synced (GFile         *file,
   gboolean ret = FALSE;
   int fd = -1;
 
-  fd = g_open (ot_gfile_get_path_cached (file), O_RDONLY | O_NOATIME | O_CLOEXEC | O_LARGEFILE, 0);
-  if (fd < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+  if (!ot_unix_open_noatime (ot_gfile_get_path_cached (file), &fd, error))
+    goto out;
 
   if (!ot_unix_fdatasync (fd, error))
     goto out;

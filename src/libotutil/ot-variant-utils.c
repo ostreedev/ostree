@@ -118,10 +118,15 @@ ot_util_variant_map (GFile              *src,
   const char *path = NULL;
   ot_lvariant GVariant *ret_variant = NULL;
   GMappedFile *mfile = NULL;
+  int fd;
 
   path = ot_gfile_get_path_cached (src);
-  mfile = g_mapped_file_new (path, FALSE, error);
+  if (!ot_unix_open_noatime (path, &fd, error))
+    goto out;
+  mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
   if (!mfile)
+    goto out;
+  if (!ot_unix_close (fd, error))
     goto out;
 
   ret_variant = g_variant_new_from_data (type,

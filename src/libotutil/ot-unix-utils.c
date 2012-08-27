@@ -22,13 +22,17 @@
 
 #include "config.h"
 
+#define _GNU_SOURCE
+
 #include "otutil.h"
 
 #include <gio/gio.h>
+#include <glib/gstdio.h>
 #include <gio/gunixoutputstream.h>
 
 #include <string.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -223,5 +227,31 @@ ot_unix_close (int fd, GError **error)
       ot_util_set_error_from_errno (error, errno);
       return FALSE;
     }
+  return TRUE;
+}
+
+/**
+ * ot_unix_open_noatime:
+ *
+ * Open a file for reading, using O_NOATIME if possible.
+ */
+gboolean
+ot_unix_open_noatime (const char    *path,
+                      int           *out_fd,
+                      GError       **error)
+{
+  int fd;
+
+#ifdef O_NOATIME
+  fd = g_open (path, O_RDONLY | O_NOATIME | O_CLOEXEC, 0);
+  if (fd == -1 && errno == EPERM)
+#endif
+    fd = g_open (path, O_RDONLY | O_CLOEXEC, 0);
+  if (fd == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      return FALSE;
+    }
+  *out_fd = fd;
   return TRUE;
 }
