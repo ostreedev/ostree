@@ -69,7 +69,7 @@ OT_INTERNAL_SOUP_LIBS = $(OT_DEP_SOUP_LIBS)
 endif
 
 libgsystem_srcpath := src/libgsystem
-libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libgsystem
 libgsystem_libs = $(OT_INTERNAL_GIO_UNIX_LIBS)
 if !TRIGGERS_ONLY
 include src/libgsystem/Makefile-libgsystem.am
