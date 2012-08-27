@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <dirent.h>
 
 gboolean
@@ -183,4 +184,44 @@ ot_util_fatal_gerror (GError *error)
 {
   g_assert (error != NULL);
   ot_util_fatal_literal (error->message);
+}
+
+/**
+ * ot_unix_fdatasync:
+ *
+ * Like fdatasync(), but uses #GError, and handles EINTR.
+ */
+gboolean
+ot_unix_fdatasync (int fd, GError **error)
+{
+  int result;
+  do
+    result = fdatasync (fd);
+  while (G_UNLIKELY (result != 0 && errno == EINTR));
+  if (result != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+/**
+ * ot_unix_close:
+ *
+ * Like close(), but uses #GError, and handles EINTR.
+ */
+gboolean
+ot_unix_close (int fd, GError **error)
+{
+  int result;
+  do
+    result = close (fd);
+  while (G_UNLIKELY (result != 0 && errno == EINTR));
+  if (result != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      return FALSE;
+    }
+  return TRUE;
 }

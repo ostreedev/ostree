@@ -30,6 +30,7 @@
 
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
+#include <glib/gstdio.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -797,10 +798,46 @@ ostree_repo_get_archive_content_path (OstreeRepo    *self,
   return g_file_resolve_relative_path (self->repodir, path);
 }
 
+/**
+ * ensure_file_data_synced:
+ *
+ * Ensure that in case of a power cut, these files have the data we
+ * want.   See http://lwn.net/Articles/322823/
+ */
+static gboolean
+ensure_file_data_synced (GFile         *file,
+                         GCancellable  *cancellable,
+                         GError       **error)
+{
+  gboolean ret = FALSE;
+  int fd = -1;
+
+  fd = g_open (ot_gfile_get_path_cached (file), O_RDONLY | O_NOATIME | O_CLOEXEC | O_LARGEFILE, 0);
+  if (fd < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (!ot_unix_fdatasync (fd, error))
+    goto out;
+
+  if (!ot_unix_close (fd, error))
+    goto out;
+  fd = -1;
+
+  ret = TRUE;
+ out:
+  if (fd != -1)
+    (void) close (fd);
+  return ret;
+}
+
 static gboolean
 commit_loose_object_impl (OstreeRepo        *self,
                           GFile             *tempfile_path,
                           GFile             *dest,
+                          gboolean           is_regular,
                           GCancellable      *cancellable,
                           GError           **error)
 {
@@ -810,8 +847,14 @@ commit_loose_object_impl (OstreeRepo        *self,
   parent = g_file_get_parent (dest);
   if (!ot_gfile_ensure_directory (parent, FALSE, error))
     goto out;
+
+  if (is_regular)
+    {
+      if (!ensure_file_data_synced (tempfile_path, cancellable, error))
+        goto out;
+    }
   
-  if (link (ot_gfile_get_path_cached (tempfile_path), ot_gfile_get_path_cached (dest)) < 0)
+  if (rename (ot_gfile_get_path_cached (tempfile_path), ot_gfile_get_path_cached (dest)) < 0)
     {
       if (errno != EEXIST)
         {
@@ -822,7 +865,6 @@ commit_loose_object_impl (OstreeRepo        *self,
         }
     }
 
-  (void) unlink (ot_gfile_get_path_cached (tempfile_path));
   ret = TRUE;
  out:
   return ret;
@@ -833,6 +875,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                              const char        *checksum,
                              OstreeObjectType   objtype,
                              GFile             *tempfile_path,
+                             gboolean           is_regular,
                              GCancellable      *cancellable,
                              GError           **error)
 {
@@ -841,7 +884,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
 
   dest_file = ostree_repo_get_object_path (self, checksum, objtype);
 
-  if (!commit_loose_object_impl (self, tempfile_path, dest_file,
+  if (!commit_loose_object_impl (self, tempfile_path, dest_file, is_regular,
                                  cancellable, error))
     goto out;
 
@@ -879,6 +922,7 @@ stage_object_internal (OstreeRepo         *self,
   GChecksum *checksum = NULL;
   gboolean staged_raw_file = FALSE;
   gboolean staged_archive_file = FALSE;
+  gboolean temp_file_is_regular;
 
   if (out_csum)
     {
@@ -899,6 +943,8 @@ stage_object_internal (OstreeRepo         *self,
                                         &file_input, &file_info, &xattrs,
                                         cancellable, error))
         goto out;
+
+      temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
 
       if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE)
         {
@@ -973,8 +1019,9 @@ stage_object_internal (OstreeRepo         *self,
                                                &temp_file,
                                                cancellable, error))
         goto out;
+      temp_file_is_regular = TRUE;
     }
-          
+
   if (!checksum)
     actual_checksum = expected_checksum;
   else
@@ -1012,6 +1059,7 @@ stage_object_internal (OstreeRepo         *self,
           ot_lobj GInputStream *file_input = NULL;
           ot_lobj GFileInfo *file_info = NULL;
           ot_lvariant GVariant *xattrs = NULL;
+          gboolean is_regular;
               
           if (!ostree_content_file_parse (temp_file, FALSE, &file_input,
                                           &file_info, &xattrs,
@@ -1025,8 +1073,10 @@ stage_object_internal (OstreeRepo         *self,
                                                    cancellable, error))
             goto out;
 
+          is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
+
           if (!commit_loose_object_trusted (self, actual_checksum, objtype, 
-                                            raw_temp_file, cancellable, error))
+                                            raw_temp_file, is_regular, cancellable, error))
             goto out;
           g_clear_object (&raw_temp_file);
         }
@@ -1039,13 +1089,13 @@ stage_object_internal (OstreeRepo         *self,
 
               archive_content_dest = ostree_repo_get_archive_content_path (self, actual_checksum);
                                                                    
-              if (!commit_loose_object_impl (self, raw_temp_file, archive_content_dest,
+              if (!commit_loose_object_impl (self, raw_temp_file, archive_content_dest, TRUE,
                                              cancellable, error))
                 goto out;
               g_clear_object (&raw_temp_file);
             }
-          if (!commit_loose_object_trusted (self, actual_checksum, objtype, 
-                                            temp_file, cancellable, error))
+          if (!commit_loose_object_trusted (self, actual_checksum, objtype, temp_file, temp_file_is_regular,
+                                            cancellable, error))
             goto out;
           g_clear_object (&temp_file);
         }
