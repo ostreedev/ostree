@@ -171,6 +171,14 @@ ostree_traverse_commit (OstreeRepo      *repo,
 
       g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
       g_free (tmp_checksum);
+      if (G_UNLIKELY (g_variant_n_children (meta_csum_bytes) == 0))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Corrupted commit '%s'; invalid tree metadata",
+                       commit_checksum);
+          goto out;
+        }
+
       tmp_checksum = ostree_checksum_from_bytes_v (meta_csum_bytes);
       key = ostree_object_name_serialize (tmp_checksum, OSTREE_OBJECT_TYPE_DIR_META);
       g_hash_table_replace (inout_reachable, key, key);
@@ -178,6 +186,14 @@ ostree_traverse_commit (OstreeRepo      *repo,
 
       g_variant_get_child (commit, 6, "@ay", &content_csum_bytes);
       g_free (tmp_checksum);
+      if (G_UNLIKELY (g_variant_n_children (content_csum_bytes) == 0))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Corrupted commit '%s'; invalid tree content",
+                       commit_checksum);
+          goto out;
+        }
+
       tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
       if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
         goto out;
