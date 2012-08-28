@@ -153,3 +153,20 @@ srpm-embedded:
 	GITVERSION=$(git_version_rpm); export GITVERSION; \
 	(sed -e "s,^Version:.*,Version: $${GITVERSION}," $(srcdir)/packages/ostree.spec.in) > ostree.spec
 	$(srcdir)/packages/rpmbuild-cwd -bs ostree.spec
+
+dist-snapshot:
+	set -x; \
+	GITVERSION=$(git_version_rpm); export GITVERSION; \
+	TARFILE_TMP=ostree-$${GITVERSION}.tar.tmp; \
+	REV=$$(git rev-parse HEAD); \
+	echo "Archiving ostree at $${REV}"; \
+	(cd $(srcdir); git archive --format=tar --prefix=ostree-$${GITVERSION}/ $${REV}) > $${TARFILE_TMP}; \
+	(cd $$(git rev-parse --show-toplevel); git submodule status) | while read line; do \
+	  rev=$$(echo $$line | cut -f 1 -d ' '); path=$$(echo $$line | cut -f 2 -d ' '); \
+	  echo "Archiving $${path} at $${rev}"; \
+	  (cd $(srcdir)/$$path; git archive --format=tar --prefix=ostree-$${GITVERSION}/$$path/ $${rev}) > submodule.tar; \
+	  tar -A -f $${TARFILE_TMP} submodule.tar; \
+	  rm submodule.tar; \
+	done; \
+	mv ostree-$${GITVERSION}.tar{.tmp,}; \
+	gzip -f ostree-$${GITVERSION}.tar 
