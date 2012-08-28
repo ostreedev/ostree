@@ -91,7 +91,11 @@ AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
-AS_IF([ test x$with_libarchive != xno && test x$enable_triggers_only != xno ], [
+if test x$enable_triggers_only != xno; then
+	with_libarchive=no
+fi
+
+AS_IF([ test x$with_libarchive != xno ], [
     AC_MSG_CHECKING([for $LIBARCHIVE_DEPENDENCY])
     PKG_CHECK_EXISTS($LIBARCHIVE_DEPENDENCY, have_libarchive=yes, have_libarchive=no)
     AC_MSG_RESULT([$have_libarchive])
