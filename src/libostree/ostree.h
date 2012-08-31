@@ -30,5 +30,6 @@
 #include <ostree-repo-file.h>
 #include <ostree-traverse.h>
 #include <ostree-sysroot.h>
+#include <ostree-diff.h>
 
 #endif
