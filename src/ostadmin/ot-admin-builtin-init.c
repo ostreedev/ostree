@@ -53,6 +53,13 @@ ot_admin_builtin_init (int argc, char **argv, GError **error)
   dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
+
+  /* We presently copy over host kernel modules */
+  g_clear_object (&dir);
+  dir = ot_gfile_from_build_path (opt_ostree_dir, "modules", NULL);
+  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+    goto out;
+
   g_clear_object (&dir);
   dir = ot_gfile_from_build_path (opt_ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
