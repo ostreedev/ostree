@@ -40,6 +40,8 @@ GFile *ot_gfile_from_build_path (const char *first, ...) G_GNUC_NULL_TERMINATED;
 
 GFile *ot_gfile_get_child_strconcat (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
 
+GFile *ot_gfile_get_child_build_path (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
+
 const char *ot_gfile_get_path_cached (GFile *file);
 
 const char *ot_gfile_get_basename_cached (GFile *file);
@@ -50,6 +52,11 @@ gboolean ot_gfile_rename (GFile          *src,
                           GFile          *dest,
                           GCancellable   *cancellable,
                           GError        **error);
+
+gboolean ot_gfile_hardlink (GFile          *src,
+                            GFile          *dest,
+                            GCancellable   *cancellable,
+                            GError        **error);
 
 gboolean ot_gfile_unlink (GFile          *path,
                           GCancellable   *cancellable,
@@ -96,11 +103,19 @@ guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
                                         GAsyncResult   *result,
                                         GError        **error);
 
+gboolean ot_gio_shutil_cp_a (GFile         *src,
+                             GFile         *dest,
+                             GCancellable  *cancellable,
+                             GError       **error);
+
 gboolean ot_gio_shutil_cp_al_or_fallback (GFile         *src,
                                           GFile         *dest,
                                           GCancellable  *cancellable,
                                           GError       **error);
 
+gboolean ot_gio_shutil_rm_rf (GFile        *path,
+                              GCancellable *cancellable,
+                              GError      **error);
 
 G_END_DECLS
 
