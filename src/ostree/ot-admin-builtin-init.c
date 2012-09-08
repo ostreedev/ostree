@@ -28,16 +28,12 @@
 
 #include <glib/gi18n.h>
 
-static char *opt_ostree_dir = "/ostree";
-
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
   { NULL }
 };
 
-
 gboolean
-ot_admin_builtin_init (int argc, char **argv, GError **error)
+ot_admin_builtin_init (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -50,12 +46,10 @@ ot_admin_builtin_init (int argc, char **argv, GError **error)
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  dir = g_file_new_for_path (opt_ostree_dir);
-
-  if (!ot_admin_ensure_initialized (dir, cancellable, error))
+  if (!ot_admin_ensure_initialized (ostree_dir, cancellable, error))
     goto out;
 
-  g_print ("%s initialized as OSTree root\n", opt_ostree_dir);
+  g_print ("%s initialized as OSTree root\n", ot_gfile_get_path_cached (ostree_dir));
 
   ret = TRUE;
  out:

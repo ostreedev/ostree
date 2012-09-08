@@ -35,10 +35,8 @@ typedef struct {
 
 static gboolean opt_no_kernel;
 static gboolean opt_force;
-static char *opt_ostree_dir = "/ostree";
 
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
   { "no-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_no_kernel, "Don't update kernel related config (initramfs, bootloader)", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite any existing deployment", NULL },
   { NULL }
@@ -195,27 +193,30 @@ ensure_unlinked (GFile         *path,
  */
 static gboolean
 copy_one_config_file (OtAdminDeploy      *self,
+                      GFile              *orig_etc,
                       GFile              *modified_etc,
                       GFile              *new_etc,
-                      GFile              *file,
+                      GFile              *src,
                       GCancellable       *cancellable,
                       GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *target_file = NULL;
-  ot_lobj GFile *target_parent = NULL;
-  ot_lfree char *path = NULL;
+  ot_lobj GFile *dest = NULL;
+  ot_lobj GFile *parent = NULL;
+  ot_lfree char *relative_path = NULL;
+  ot_lobj GFile *modified_path = NULL;
+  
+  relative_path = g_file_get_relative_path (orig_etc, src);
+  modified_path = g_file_resolve_relative_path (modified_etc, relative_path);
+  dest = g_file_resolve_relative_path (new_etc, relative_path);
 
-  path = g_file_get_relative_path (modified_etc, file);
-  g_assert (path);
-  target_file = g_file_resolve_relative_path (new_etc, path);
-  target_parent = g_file_get_parent (target_file);
+  parent = g_file_get_parent (dest);
 
   /* FIXME actually we need to copy permissions and xattrs */
-  if (!ot_gfile_ensure_directory (target_parent, TRUE, error))
+  if (!ot_gfile_ensure_directory (parent, TRUE, error))
     goto out;
 
-  if (!g_file_copy (file, target_file, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
+  if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
                     cancellable, NULL, NULL, error))
     goto out;
 
@@ -251,7 +252,7 @@ merge_etc_changes (OtAdminDeploy  *self,
   ot_lptrarray GPtrArray *added = NULL;
   guint i;
 
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 
@@ -287,14 +288,23 @@ merge_etc_changes (OtAdminDeploy  *self,
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
-      if (!copy_one_config_file (self, modified_etc, new_etc, diff->src,
+      ot_lfree char *relative_path = NULL;
+      ot_lobj GFile *modified_path = NULL;
+      ot_lobj GFile *target_path = NULL;
+      
+      relative_path = g_file_get_relative_path (orig_etc, diff->src);
+      modified_path = g_file_resolve_relative_path (modified_etc, relative_path);
+      target_path = g_file_resolve_relative_path (new_etc, relative_path);
+
+      if (!copy_one_config_file (self, orig_etc, modified_etc, new_etc, diff->src,
                                  cancellable, error))
         goto out;
     }
   for (i = 0; i < added->len; i++)
     {
       GFile *file = added->pdata[i];
-      if (!copy_one_config_file (self, modified_etc, new_etc, file,
+
+      if (!copy_one_config_file (self, orig_etc, modified_etc, new_etc, file,
                                  cancellable, error))
         goto out;
     }
@@ -505,8 +515,9 @@ do_update_kernel (OtAdminDeploy     *self,
   ot_lptrarray GPtrArray *args = NULL;
 
   args = g_ptr_array_new ();
-  ot_ptrarray_add_many (args, "ostadmin", "update-kernel",
+  ot_ptrarray_add_many (args, "ostree", "admin",
                         "--ostree-dir", ot_gfile_get_path_cached (self->ostree_dir),
+                        "update-kernel",
                         ot_gfile_get_path_cached (deploy_path), NULL);
   g_ptr_array_add (args, NULL);
 
@@ -522,7 +533,7 @@ do_update_kernel (OtAdminDeploy     *self,
 
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   OtAdminDeploy self_data;
@@ -549,7 +560,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GError **error)
       goto out;
     }
 
-  self->ostree_dir = g_file_new_for_path (opt_ostree_dir);
+  self->ostree_dir = g_object_ref (ostree_dir);
 
   if (!ot_admin_ensure_initialized (self->ostree_dir, cancellable, error))
     goto out;

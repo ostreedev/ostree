@@ -31,6 +31,7 @@
 #include "ot-builtins.h"
 
 static OstreeCommand commands[] = {
+  { "admin", ostree_builtin_admin, OSTREE_BUILTIN_FLAG_NO_REPO },
   { "cat", ostree_builtin_cat, 0 },
   { "commit", ostree_builtin_commit, 0 },
   { "config", ostree_builtin_config, 0 },

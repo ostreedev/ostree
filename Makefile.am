@@ -78,7 +78,6 @@ include Makefile-daemon.am
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
-include Makefile-ostadmin.am
 include Makefile-switchroot.am
 include Makefile-triggers.am
 

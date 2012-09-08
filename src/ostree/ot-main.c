@@ -54,12 +54,12 @@ ostree_usage (char **argv,
   return (is_error ? 1 : 0);
 }
 
-static void
-prep_builtin_argv (const char *builtin,
-                   int argc,
-                   char **argv,
-                   int *out_argc,
-                   char ***out_argv)
+void
+ostree_prep_builtin_argv (const char  *builtin,
+                          int          argc,
+                          char       **argv,
+                          int         *out_argc,
+                          char      ***out_argv)
 {
   int i;
   char **cmd_argv;
@@ -165,7 +165,7 @@ ostree_run (int    argc,
       goto out;
     }
   
-  prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
+  ostree_prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
 
   if (!command->fn (cmd_argc, cmd_argv, repo_file, &error))
     goto out;

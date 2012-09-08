@@ -29,20 +29,18 @@
 #include <sys/utsname.h>
 
 typedef struct {
-  OstreeRepo  *repo;
+  GFile       *ostree_dir;
 } OtAdminUpdateKernel;
 
-static char *opt_ostree_dir = "/ostree";
-
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory", NULL },
   { NULL }
 };
 
 static gboolean
-copy_modules (const char    *release,
-              GCancellable  *cancellable,
-              GError       **error)
+copy_modules (OtAdminUpdateKernel *self,
+              const char          *release,
+              GCancellable        *cancellable,
+              GError             **error)
 {
   gboolean ret = FALSE;
   ot_lobj GFile *src_modules_file = NULL;
@@ -50,7 +48,7 @@ copy_modules (const char    *release,
   ot_lobj GFile *dest_modules_file = NULL;
   
   src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
-  dest_modules_file = ot_gfile_from_build_path (opt_ostree_dir, "modules", release, NULL);
+  dest_modules_file = ot_gfile_get_child_build_path (self->ostree_dir, "modules", release, NULL);
   dest_modules_parent = g_file_get_parent (dest_modules_file);
   if (!ot_gfile_ensure_directory (dest_modules_parent, FALSE, error))
     goto out;
@@ -69,10 +67,11 @@ copy_modules (const char    *release,
 }
 
 static gboolean
-update_initramfs (const char       *release,
-                  const char       *deploy_path,
-                  GCancellable     *cancellable,
-                  GError          **error)
+update_initramfs (OtAdminUpdateKernel  *self,
+                  const char           *release,
+                  const char           *deploy_path,
+                  GCancellable         *cancellable,
+                  GError              **error)
 {
   gboolean ret = FALSE;
   ot_lfree char *initramfs_name = NULL;
@@ -85,8 +84,8 @@ update_initramfs (const char       *release,
       ot_lptrarray GPtrArray *mkinitramfs_args = NULL;
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
-      ot_lfree char *ostree_vardir = NULL;
-      ot_lfree char *ostree_moduledir = NULL;
+      ot_lfree GFile *ostree_vardir = NULL;
+      ot_lfree GFile *ostree_moduledir = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
           
@@ -94,8 +93,8 @@ update_initramfs (const char       *release,
                                    cancellable, error))
         goto out;
 
-      ostree_vardir = g_build_filename (opt_ostree_dir, "var", NULL);
-      ostree_moduledir = g_build_filename (opt_ostree_dir, "modules", NULL);
+      ostree_vardir = g_file_get_child (self->ostree_dir, "var");
+      ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
 
       mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
@@ -107,9 +106,9 @@ update_initramfs (const char       *release,
                             "--mount-readonly", "/",
                             "--mount-proc", "/proc",
                             "--mount-bind", "/dev", "/dev",
-                            "--mount-bind", ostree_vardir, "/var",
+                            "--mount-bind", ot_gfile_get_path_cached (ostree_vardir), "/var",
                             "--mount-bind", ot_gfile_get_path_cached (tmpdir), "/tmp",
-                            "--mount-bind", ostree_moduledir, "/lib/modules",
+                            "--mount-bind", ot_gfile_get_path_cached (ostree_moduledir), "/lib/modules",
                             deploy_path,
                             "dracut", "-f", "/tmp/initramfs-ostree.img", release,
                             NULL);
@@ -188,10 +187,11 @@ grep_literal (GFile              *f,
 }
 
 static gboolean
-get_kernel_path_from_release (const char         *release,
-                              GFile             **out_path,
-                              GCancellable       *cancellable,
-                              GError            **error)
+get_kernel_path_from_release (OtAdminUpdateKernel  *self,
+                              const char           *release,
+                              GFile               **out_path,
+                              GCancellable         *cancellable,
+                              GError              **error)
 {
   gboolean ret = FALSE;
   ot_lfree char *name = NULL;
@@ -211,9 +211,10 @@ get_kernel_path_from_release (const char         *release,
 }
 
 static gboolean
-update_grub (const char         *release,
-             GCancellable       *cancellable,
-             GError            **error)
+update_grub (OtAdminUpdateKernel  *self,
+             const char           *release,
+             GCancellable         *cancellable,
+             GError              **error)
 {
   gboolean ret = FALSE;
   ot_lobj GFile *grub_path = g_file_new_for_path ("/boot/grub/grub.conf");
@@ -232,7 +233,8 @@ update_grub (const char         *release,
           ot_lfree char *initramfs_arg = NULL;
           ot_lobj GFile *kernel_path = NULL;
 
-          if (!get_kernel_path_from_release (release, &kernel_path, cancellable, error))
+          if (!get_kernel_path_from_release (self, release, &kernel_path,
+                                             cancellable, error))
             goto out;
 
           if (kernel_path == NULL)
@@ -268,7 +270,7 @@ update_grub (const char         *release,
 }
 
 gboolean
-ot_admin_builtin_update_kernel (int argc, char **argv, GError **error)
+ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   OtAdminUpdateKernel self_data;
@@ -304,18 +306,21 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GError **error)
   release = utsname.release;
   if (argc > 2)
     release = argv[2];
+
+  self->ostree_dir = g_object_ref (ostree_dir);
   
-  if (!copy_modules (release, cancellable, error))
+  if (!copy_modules (self, release, cancellable, error))
     goto out;
   
-  if (!update_initramfs (release, deploy_path, cancellable, error))
+  if (!update_initramfs (self, release, deploy_path, cancellable, error))
     goto out;
   
-  if (!update_grub (release, cancellable, error))
+  if (!update_grub (self, release, cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
+  g_clear_object (&self->ostree_dir);
   if (context)
     g_option_context_free (context);
   return ret;

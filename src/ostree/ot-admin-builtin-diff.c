@@ -28,19 +28,15 @@
 
 #include <glib/gi18n.h>
 
-static char *opt_ostree_dir = "/ostree";
-
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
   { NULL }
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj GFile *ostree_dir = NULL;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deployment = NULL;
   ot_lobj GFile *deploy_parent = NULL;
@@ -58,7 +54,6 @@ ot_admin_builtin_diff (int argc, char **argv, GError **error)
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  ostree_dir = g_file_new_for_path (opt_ostree_dir); 
   repo_path = g_file_get_child (ostree_dir, "repo");
 
   if (argc > 1)
@@ -84,7 +79,7 @@ ot_admin_builtin_diff (int argc, char **argv, GError **error)
                                                ot_gfile_get_basename_cached (deployment),
                                                "-etc", NULL);
   
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   if (!ostree_diff_dirs (orig_etc_path, new_etc_path, modified, removed, added,
@@ -95,7 +90,6 @@ ot_admin_builtin_diff (int argc, char **argv, GError **error)
 
   ret = TRUE;
  out:
-  g_clear_object (&ostree_dir);
   if (context)
     g_option_context_free (context);
   return ret;

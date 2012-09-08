@@ -23,6 +23,7 @@ endif
 
 ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtins.h \
+	src/ostree/ot-builtin-admin.c \
 	src/ostree/ot-builtin-cat.c \
 	src/ostree/ot-builtin-config.c \
 	src/ostree/ot-builtin-checkout.c \
@@ -45,6 +46,16 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-main.c \
 	$(NULL)
 
+# Admin subcommand
+ostree_SOURCES += \
+	src/ostree/ot-admin-builtin-init.c \
+	src/ostree/ot-admin-builtin-diff.c \
+	src/ostree/ot-admin-builtin-deploy.c \
+	src/ostree/ot-admin-builtin-update-kernel.c \
+	src/ostree/ot-admin-functions.h \
+	src/ostree/ot-admin-functions.c \
+	$(NULL)
+
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libgsystem -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree  -DLOCALEDIR=\"$(datadir)/locale\"
 ostree_bin_shared_ldadd = libotutil.la libostree.la
 
@@ -64,3 +75,16 @@ ostree_pull_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_SOUP_LIBS)
 endif
 
 MANPAGES += doc/ostree.1
+
+if ENABLE_KERNEL_UPDATES
+
+grub2dir = $(sysconfdir)/grub.d
+grub2_SCRIPTS = src/ostree/grub2/15_ostree
+
+kernelpostinstdir = $(sysconfdir)/kernel/postinst.d
+kernelpostinst_SCRIPTS = src/ostree/kernel/15_ostree_update
+
+kernelprermdir = $(sysconfdir)/kernel/prerm.d
+kernelprerm_SCRIPTS = src/ostree/kernel/15_ostree_remove
+
+endif
