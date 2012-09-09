@@ -64,6 +64,8 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
 
   context = g_option_context_new ("[OPTIONS] SUBCOMMAND - Run an administrative subcommand");
   g_option_context_add_main_entries (context, options, NULL);
+  /* Skip subcommand options */
+  g_option_context_set_ignore_unknown_options (context, TRUE);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
