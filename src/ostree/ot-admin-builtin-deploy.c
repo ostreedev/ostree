@@ -204,10 +204,9 @@ copy_one_config_file (OtAdminDeploy      *self,
   ot_lobj GFile *dest = NULL;
   ot_lobj GFile *parent = NULL;
   ot_lfree char *relative_path = NULL;
-  ot_lobj GFile *modified_path = NULL;
   
-  relative_path = g_file_get_relative_path (orig_etc, src);
-  modified_path = g_file_resolve_relative_path (modified_etc, relative_path);
+  relative_path = g_file_get_relative_path (modified_etc, src);
+  g_assert (relative_path);
   dest = g_file_resolve_relative_path (new_etc, relative_path);
 
   parent = g_file_get_parent (dest);
@@ -288,15 +287,8 @@ merge_etc_changes (OtAdminDeploy  *self,
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
-      ot_lfree char *relative_path = NULL;
-      ot_lobj GFile *modified_path = NULL;
-      ot_lobj GFile *target_path = NULL;
-      
-      relative_path = g_file_get_relative_path (orig_etc, diff->src);
-      modified_path = g_file_resolve_relative_path (modified_etc, relative_path);
-      target_path = g_file_resolve_relative_path (new_etc, relative_path);
 
-      if (!copy_one_config_file (self, orig_etc, modified_etc, new_etc, diff->src,
+      if (!copy_one_config_file (self, orig_etc, modified_etc, new_etc, diff->target,
                                  cancellable, error))
         goto out;
     }
