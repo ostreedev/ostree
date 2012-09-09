@@ -84,8 +84,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
       ot_lptrarray GPtrArray *mkinitramfs_args = NULL;
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
-      ot_lfree GFile *ostree_vardir = NULL;
-      ot_lfree GFile *ostree_moduledir = NULL;
+      ot_lobj GFile *ostree_vardir = NULL;
+      ot_lobj GFile *ostree_moduledir = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
           
