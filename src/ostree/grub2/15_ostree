@@ -27,7 +27,7 @@ export TEXTDOMAIN=grub
 export TEXTDOMAINDIR="${datarootdir}/locale"
 
 CLASS="--class gnu-linux --class gnu --class os --class ostree"
-OS="GNOME OS (Ostree)"
+OS="$(cat /ostree/current-etc/system-release)"
 
 # loop-AES arranges things so that /dev/loop/X can be our root device, but
 # the initrds that Linux uses don't like that.
