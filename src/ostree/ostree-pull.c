@@ -1460,6 +1460,35 @@ repo_get_string_key_inherit (OstreeRepo          *repo,
 }
 
 static gboolean
+load_remote_repo_config (OtPullData    *pull_data,
+                         GKeyFile     **out_keyfile,
+                         GCancellable  *cancellable,
+                         GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lfree char *contents = NULL;
+  GKeyFile *ret_keyfile = NULL;
+  SoupURI *target_uri = NULL;
+
+  target_uri = suburi_new (pull_data->base_uri, "config", NULL);
+  
+  if (!fetch_uri_contents_utf8 (pull_data, target_uri, &contents,
+                                cancellable, error))
+    goto out;
+
+  ret_keyfile = g_key_file_new ();
+  if (!g_key_file_load_from_data (ret_keyfile, contents, strlen (contents),
+                                  0, error))
+    goto out;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_keyfile, &ret_keyfile);
+ out:
+  g_clear_pointer (&ret_keyfile, (GDestroyNotify) g_key_file_unref);
+  return ret;
+}
+
+static gboolean
 ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
@@ -1468,6 +1497,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
+  OstreeRepoMode remote_repo_mode;
   ot_lfree char *remote_key = NULL;
   ot_lobj OstreeRepo *repo = NULL;
   ot_lfree char *path = NULL;
@@ -1477,10 +1507,12 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lhash GHashTable *updated_refs = NULL;
   ot_lhash GHashTable *commits_to_fetch = NULL;
   ot_lfree char *branch_rev = NULL;
+  ot_lfree char *remote_mode_str = NULL;
   OtPullData pull_data_real;
   OtPullData *pull_data = &pull_data_real;
   SoupURI *summary_uri = NULL;
   GKeyFile *config = NULL;
+  GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
   guint64 bytes_transferred;
 
@@ -1524,6 +1556,26 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Failed to parse url '%s'", baseurl);
       goto out;
+    }
+
+  if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
+    goto out;
+
+  if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
+                                          &remote_mode_str, error))
+    goto out;
+
+  if (!ostree_repo_mode_from_string (remote_mode_str, &remote_repo_mode, error))
+    goto out;
+
+  switch (remote_repo_mode)
+    {
+    case OSTREE_REPO_MODE_ARCHIVE:
+      break;
+    default:
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Can't pull from archives with mode \"%s\"",
+                   remote_mode_str);
     }
 
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
@@ -1701,6 +1753,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   g_clear_pointer (&pull_data->file_checksums_to_fetch, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->cached_meta_pack_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->cached_data_pack_indexes, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
   if (summary_uri)
     soup_uri_free (summary_uri);
   return ret;

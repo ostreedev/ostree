@@ -587,6 +587,31 @@ ostree_repo_write_config (OstreeRepo *self,
 }
 
 gboolean
+ostree_repo_mode_from_string (const char      *mode,
+                              OstreeRepoMode  *out_mode,
+                              GError         **error)
+{
+  gboolean ret = FALSE;
+  OstreeRepoMode ret_mode;
+
+  if (strcmp (mode, "bare") == 0)
+    ret_mode = OSTREE_REPO_MODE_BARE;
+  else if (strcmp (mode, "archive") == 0)
+    ret_mode = OSTREE_REPO_MODE_ARCHIVE;
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid mode '%s' in repository configuration", mode);
+      goto out;
+    }
+
+  ret = TRUE;
+  *out_mode = ret_mode;
+ out:
+  return ret;
+}
+
+gboolean
 ostree_repo_check (OstreeRepo *self, GError **error)
 {
   gboolean ret = FALSE;
@@ -641,16 +666,8 @@ ostree_repo_check (OstreeRepo *self, GError **error)
                                               "bare", &mode, error))
         goto out;
 
-      if (strcmp (mode, "bare") == 0)
-        self->mode = OSTREE_REPO_MODE_BARE;
-      else if (strcmp (mode, "archive") == 0)
-        self->mode = OSTREE_REPO_MODE_ARCHIVE;
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid mode '%s' in repository configuration", mode);
-          goto out;
-        }
+      if (!ostree_repo_mode_from_string (mode, &self->mode, error))
+        goto out;
     }
 
   if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",

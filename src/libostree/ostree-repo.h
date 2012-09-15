@@ -47,6 +47,10 @@ typedef enum {
   OSTREE_REPO_MODE_ARCHIVE
 } OstreeRepoMode;
 
+gboolean       ostree_repo_mode_from_string (const char      *mode,
+                                             OstreeRepoMode  *out_mode,
+                                             GError         **error);
+
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
 GFile *       ostree_repo_get_tmpdir (OstreeRepo  *self);
