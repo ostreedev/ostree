@@ -26,48 +26,4 @@ echo '1..11'
 setup_test_repository "archive"
 echo "ok setup"
 
-$OSTREE checkout test2 checkout-test2
-echo "ok checkout"
-
-cd checkout-test2
-assert_has_file firstfile
-assert_has_file baz/cow
-assert_file_has_content baz/cow moo
-assert_has_file baz/deeper/ohyeah
-echo "ok content"
-
-cd ${test_tmpdir}
-mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init
-${CMD_PREFIX} ostree --repo=repo2 pull-local repo
-echo "ok local clone"
-
-cd ${test_tmpdir}
-${CMD_PREFIX} ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
-cd test2-checkout-from-local-clone
-assert_file_has_content baz/cow moo
-echo "ok local clone checkout"
-
-$OSTREE checkout -U test2 checkout-user-test2
-echo "ok user checkout"
-
-cd ${test_tmpdir}/checkout-test2
-$OSTREE commit -b test2-uid0 -s 'UID 0 test' --owner-uid=0 --owner-gid=0
-echo "ok uid0 commit"
-
-cd ${test_tmpdir}
-$OSTREE ls test2-uid0 /firstfile > uid0-ls-output.txt
-assert_file_has_content uid0-ls-output.txt "-00664 0 0      6 /firstfile" 
-echo "ok uid0 ls"
-
-$OSTREE checkout -U test2-uid0 checkout-user-test2-uid0
-echo "ok user checkout from uid 0"
-
-cd ${test_tmpdir}
-$OSTREE cat test2 /baz/cow > cow-contents
-assert_file_has_content cow-contents "moo"
-echo "ok cat-file"
-
-cd ${test_tmpdir}
-$OSTREE fsck
-echo "ok fsck"
+. ${SRCDIR}/archive-test.sh

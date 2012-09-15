@@ -23,7 +23,7 @@ echo "1..28"
 
 . libtest.sh
 
-setup_test_repository "regular"
+setup_test_repository "bare"
 echo "ok setup"
 
 $OSTREE checkout test2 checkout-test2

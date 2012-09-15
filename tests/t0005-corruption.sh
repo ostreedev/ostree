@@ -23,7 +23,7 @@ echo "1..1"
 
 . libtest.sh
 
-setup_test_repository "regular"
+setup_test_repository "bare"
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile

@@ -21,10 +21,9 @@ set -e
 
 . libtest.sh
 
-echo '1..2'
+echo '1..11'
 
-setup_test_repository "regular"
-$OSTREE remote add origin http://example.com/ostree/gnome
-echo "ok remote add"
-assert_file_has_content $test_tmpdir/repo/config "example.com"
-echo "ok config"
+setup_test_repository "archive-z"
+echo "ok setup"
+
+. ${SRCDIR}/archive-test.sh

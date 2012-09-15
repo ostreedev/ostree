@@ -75,8 +75,8 @@ setup_test_repository () {
     cd repo
     ot_repo="--repo=`pwd`"
     export OSTREE="${CMD_PREFIX} ostree ${ot_repo}"
-    if test "$mode" = "archive"; then
-	$OSTREE init --archive
+    if test -n "$mode"; then
+	$OSTREE init --mode=${mode}
     else
 	$OSTREE init
     fi
@@ -110,11 +110,13 @@ setup_test_repository () {
 }
 
 setup_fake_remote_repo1() {
+    mode=$1
+    shift
     oldpwd=`pwd`
     mkdir ostree-srv
     cd ostree-srv
     mkdir gnomerepo
-    ${CMD_PREFIX} ostree --repo=gnomerepo init --archive
+    ${CMD_PREFIX} ostree --repo=gnomerepo init --mode=$mode
     mkdir gnomerepo-files
     cd gnomerepo-files 
     echo first > firstfile

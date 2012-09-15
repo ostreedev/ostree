@@ -127,7 +127,8 @@ void ostree_object_from_string (const char *str,
                                 OstreeObjectType *out_objtype);
 
 char *ostree_get_relative_object_path (const char        *checksum,
-                                       OstreeObjectType   type);
+                                       OstreeObjectType   type,
+                                       gboolean           compressed);
 
 char *ostree_get_relative_archive_content_path (const char        *checksum);
 
@@ -168,6 +169,12 @@ ostree_content_stream_parse (GInputStream           *input,
                              GVariant              **out_xattrs,
                              GCancellable           *cancellable,
                              GError                **error);
+
+gboolean ostree_zlib_content_stream_open (GInputStream           *input,
+                                          guint64                *out_len,
+                                          GInputStream          **out_uncompressed,
+                                          GCancellable           *cancellable,
+                                          GError                **error);
 
 gboolean ostree_content_file_parse (GFile                  *content_path,
                                     gboolean                trusted,

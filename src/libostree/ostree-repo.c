@@ -582,6 +582,8 @@ ostree_repo_mode_from_string (const char      *mode,
     ret_mode = OSTREE_REPO_MODE_BARE;
   else if (strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE;
+  else if (strcmp (mode, "archive-z") == 0)
+    ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z;
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -837,6 +839,7 @@ stage_object (OstreeRepo         *self,
   gboolean ret = FALSE;
   const char *actual_checksum;
   gboolean do_commit;
+  OstreeRepoMode repo_mode;
   ot_lobj GFileInfo *temp_info = NULL;
   ot_lobj GFile *temp_file = NULL;
   ot_lobj GFile *raw_temp_file = NULL;
@@ -863,6 +866,8 @@ stage_object (OstreeRepo         *self,
         goto out;
     }
 
+  repo_mode = ostree_repo_get_mode (self);
+
   if (out_csum)
     {
       checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -870,7 +875,40 @@ stage_object (OstreeRepo         *self,
         checksum_input = ostree_checksum_input_stream_new (input, checksum);
     }
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
+  if (objtype == OSTREE_OBJECT_TYPE_FILE
+      && repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z)
+    {
+      gssize bytes_written;
+      guint64 len_be;
+      ot_lobj GOutputStream *raw_out_stream = NULL;
+      ot_lobj GConverter *zlib_compressor = NULL;
+      ot_lobj GOutputStream *compressed_out_stream = NULL;
+
+      if (!ostree_create_temp_regular_file (self->tmp_dir,
+                                            ostree_object_type_to_string (objtype), NULL,
+                                            &temp_file, &raw_out_stream,
+                                            cancellable, error))
+        goto out;
+
+      len_be = GUINT64_TO_BE (file_object_length);
+      if (!g_output_stream_write_all (raw_out_stream, (const guchar*) &len_be,
+                                      sizeof (guint64), NULL, cancellable, error))
+        goto out;
+      
+      zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9);
+      compressed_out_stream = g_converter_output_stream_new (raw_out_stream, zlib_compressor);
+      
+      bytes_written = g_output_stream_splice (compressed_out_stream,
+                                              checksum_input ? (GInputStream*)checksum_input : input,
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                              cancellable, error);
+      if (bytes_written < 0)
+        goto out;
+      
+      staged_raw_file = TRUE;
+      temp_file_is_regular = TRUE;
+    }
+  else if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       ot_lobj GInputStream *file_input = NULL;
       ot_lobj GFileInfo *file_info = NULL;
@@ -884,7 +922,7 @@ stage_object (OstreeRepo         *self,
 
       temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
 
-      if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE)
+      if (repo_mode == OSTREE_REPO_MODE_BARE)
         {
           if (!ostree_create_temp_file_from_input (self->tmp_dir,
                                                    ostree_object_type_to_string (objtype), NULL,
@@ -894,12 +932,12 @@ stage_object (OstreeRepo         *self,
             goto out;
           staged_raw_file = TRUE;
         }
-      else
+      else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE)
         {
           ot_lvariant GVariant *file_meta = NULL;
           ot_lobj GInputStream *file_meta_input = NULL;
           ot_lobj GFileInfo *archive_content_file_info = NULL;
-
+          
           file_meta = ostree_file_header_new (file_info, xattrs);
           file_meta_input = ot_variant_read (file_meta);
 
@@ -947,6 +985,8 @@ stage_object (OstreeRepo         *self,
               staged_archive_file = TRUE;
             }
         }
+      else
+        g_assert_not_reached ();
     }
   else
     {
@@ -1127,6 +1167,7 @@ scan_loose_devino (OstreeRepo                     *self,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   guint i;
+  OstreeRepoMode repo_mode;
   ot_lptrarray GPtrArray *object_dirs = NULL;
   ot_lobj GFile *objdir = NULL;
 
@@ -1135,6 +1176,10 @@ scan_loose_devino (OstreeRepo                     *self,
       if (!scan_loose_devino (self->parent_repo, devino_cache, cancellable, error))
         goto out;
     }
+
+  repo_mode = ostree_repo_get_mode (self);
+  if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z)
+    return TRUE;
 
   if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
@@ -1154,7 +1199,7 @@ scan_loose_devino (OstreeRepo                     *self,
         goto out;
 
       dirname = ot_gfile_get_basename_cached (objdir);
-  
+
       while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
         {
           const char *name;
@@ -1172,9 +1217,9 @@ scan_loose_devino (OstreeRepo                     *self,
               continue;
             }
       
-          if (!((ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE
+          if (!((repo_mode == OSTREE_REPO_MODE_ARCHIVE
                  && g_str_has_suffix (name, ".filecontent"))
-                || (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_BARE
+                || (repo_mode == OSTREE_REPO_MODE_BARE
                     && g_str_has_suffix (name, ".file"))))
             {
               g_clear_object (&file_info);
@@ -1358,14 +1403,17 @@ stage_directory_meta (OstreeRepo   *self,
 }
 
 GFile *
-ostree_repo_get_object_path (OstreeRepo  *self,
-                             const char    *checksum,
-                             OstreeObjectType type)
+ostree_repo_get_object_path (OstreeRepo       *self,
+                             const char       *checksum,
+                             OstreeObjectType  type)
 {
   char *relpath;
   GFile *ret;
+  gboolean compressed;
 
-  relpath = ostree_get_relative_object_path (checksum, type);
+  compressed = (type == OSTREE_OBJECT_TYPE_FILE
+                && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z);
+  relpath = ostree_get_relative_object_path (checksum, type, compressed);
   ret = g_file_resolve_relative_path (self->repodir, relpath);
   g_free (relpath);
  
@@ -1572,7 +1620,8 @@ ostree_repo_write_ref (OstreeRepo  *self,
   if (!write_checksum_file (dir, name, rev, error))
     goto out;
 
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE
+      || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z)
     {
       if (!write_ref_summary (self, NULL, error))
         goto out;
@@ -2483,6 +2532,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                        GError            **error)
 {
   gboolean ret = FALSE;
+  OstreeRepoMode repo_mode;
   ot_lvariant GVariant *file_data = NULL;
   ot_lobj GFile *loose_path = NULL;
   ot_lobj GFileInfo *content_loose_info = NULL;
@@ -2494,65 +2544,92 @@ ostree_repo_load_file (OstreeRepo         *self,
                          cancellable, error))
     goto out;
 
+  repo_mode = ostree_repo_get_mode (self);
+
   if (loose_path)
     {
-      if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE)
+      switch (repo_mode)
         {
-          ot_lvariant GVariant *archive_meta = NULL;
+        case OSTREE_REPO_MODE_ARCHIVE:
+          {
+            ot_lvariant GVariant *archive_meta = NULL;
 
-          if (!ot_util_variant_map (loose_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-                                    TRUE, &archive_meta, error))
-            goto out;
+            if (!ot_util_variant_map (loose_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT,
+                                      TRUE, &archive_meta, error))
+              goto out;
 
-          if (!ostree_file_header_parse (archive_meta, &ret_file_info, &ret_xattrs,
-                                         error))
-            goto out;
+            if (!ostree_file_header_parse (archive_meta, &ret_file_info, &ret_xattrs,
+                                           error))
+              goto out;
 
-          if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
-            {
-              ot_lobj GFile *archive_content_path = NULL;
-              ot_lobj GFileInfo *content_info = NULL;
+            if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
+              {
+                ot_lobj GFile *archive_content_path = NULL;
+                ot_lobj GFileInfo *content_info = NULL;
 
-              archive_content_path = ostree_repo_get_archive_content_path (self, checksum);
-              content_info = g_file_query_info (archive_content_path, OSTREE_GIO_FAST_QUERYINFO,
-                                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                cancellable, error);
-              if (!content_info)
-                goto out;
-
-              if (out_input)
-                {
-                  ret_input = (GInputStream*)g_file_read (archive_content_path, cancellable, error);
-                  if (!ret_input)
-                    goto out;
-                }
-              g_file_info_set_size (ret_file_info, g_file_info_get_size (content_info));
-            }
-        }
-      else
-        {
-          ret_file_info = g_file_query_info (loose_path, OSTREE_GIO_FAST_QUERYINFO,
-                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                             cancellable, error);
-          if (!ret_file_info)
-            goto out;
-
-          if (out_xattrs)
-            {
-              if (!ostree_get_xattrs_for_file (loose_path, &ret_xattrs,
-                                               cancellable, error))
-                goto out;
-            }
-
-          if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
-            {
-              ret_input = (GInputStream*) g_file_read (loose_path, cancellable, error);
-              if (!ret_input)
-                {
-                  g_prefix_error (error, "Error opening loose file object %s: ", ot_gfile_get_path_cached (loose_path));
+                archive_content_path = ostree_repo_get_archive_content_path (self, checksum);
+                content_info = g_file_query_info (archive_content_path, OSTREE_GIO_FAST_QUERYINFO,
+                                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                  cancellable, error);
+                if (!content_info)
                   goto out;
-                }
-            }
+
+                if (out_input)
+                  {
+                    ret_input = (GInputStream*)g_file_read (archive_content_path, cancellable, error);
+                    if (!ret_input)
+                      goto out;
+                  }
+                g_file_info_set_size (ret_file_info, g_file_info_get_size (content_info));
+              }
+          }
+          break;
+        case OSTREE_REPO_MODE_ARCHIVE_Z:
+          {
+            ot_lobj GInputStream *file_in = NULL;
+            ot_lobj GInputStream *uncomp_input = NULL;
+            guint64 uncompressed_len;
+
+            file_in = (GInputStream*)g_file_read (loose_path, cancellable, error);
+            if (!file_in)
+              goto out;
+
+            if (!ostree_zlib_content_stream_open (file_in, &uncompressed_len, &uncomp_input, 
+                                                  cancellable, error))
+              goto out;
+
+            if (!ostree_content_stream_parse (uncomp_input, uncompressed_len, TRUE,
+                                              &ret_input, &ret_file_info, &ret_xattrs,
+                                              cancellable, error))
+              goto out;
+          }
+          break;
+        case OSTREE_REPO_MODE_BARE:
+          {
+            ret_file_info = g_file_query_info (loose_path, OSTREE_GIO_FAST_QUERYINFO,
+                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                               cancellable, error);
+            if (!ret_file_info)
+              goto out;
+
+            if (out_xattrs)
+              {
+                if (!ostree_get_xattrs_for_file (loose_path, &ret_xattrs,
+                                                 cancellable, error))
+                  goto out;
+              }
+
+            if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
+              {
+                ret_input = (GInputStream*) g_file_read (loose_path, cancellable, error);
+                if (!ret_input)
+                  {
+                    g_prefix_error (error, "Error opening loose file object %s: ", ot_gfile_get_path_cached (loose_path));
+                    goto out;
+                  }
+              }
+          }
+          break;
         }
     }
   else if (self->parent_repo)

@@ -23,7 +23,7 @@ echo "1..7"
 
 . libtest.sh
 
-setup_test_repository "regular"
+setup_test_repository "bare"
 cd ${test_tmpdir}
 mkdir foo
 cd foo

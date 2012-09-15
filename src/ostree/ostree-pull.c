@@ -80,6 +80,7 @@ static GOptionEntry options[] = {
 typedef struct {
   OstreeRepo   *repo;
   char         *remote_name;
+  OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
   SoupURI      *base_uri;
 
@@ -332,7 +333,8 @@ fetch_loose_object (OtPullData  *pull_data,
   ot_lobj GFile *ret_temp_path = NULL;
   SoupURI *obj_uri = NULL;
 
-  objpath = ostree_get_relative_object_path (checksum, objtype);
+  objpath = ostree_get_relative_object_path (checksum, objtype,
+                                             pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z);
   obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
   
   if (!fetch_uri (pull_data, obj_uri, ostree_object_type_to_string (objtype), &ret_temp_path,
@@ -639,6 +641,7 @@ content_fetch_on_checksum_complete (GObject        *object,
   GError **error = &local_error;
   guint64 length;
   GCancellable *cancellable = NULL;
+  gboolean compressed;
   ot_lfree guchar *csum;
   ot_lvariant GVariant *file_meta = NULL;
   ot_lobj GFileInfo *file_info = NULL;
@@ -651,25 +654,6 @@ content_fetch_on_checksum_complete (GObject        *object,
   if (!csum)
     goto out;
 
-  if (!ot_util_variant_map (data->meta_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, FALSE,
-                            &file_meta, error))
-    goto out;
-  
-  if (!ostree_file_header_parse (file_meta, &file_info, &xattrs, error))
-    goto out;
-
-  if (data->content_path)
-    {
-      content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
-      if (!content_input)
-        goto out;
-    }
-
-  if (!ostree_raw_file_to_content_stream (content_input, file_info, xattrs,
-                                          &file_object_input, &length,
-                                          cancellable, error))
-    goto out;
-
   checksum = ostree_checksum_from_bytes (csum);
 
   if (strcmp (checksum, data->checksum) != 0)
@@ -678,6 +662,39 @@ content_fetch_on_checksum_complete (GObject        *object,
                    "Corrupted object %s (actual checksum is %s)",
                    data->checksum, checksum);
       goto out;
+    }
+
+  compressed = data->pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
+
+  if (compressed)
+    {
+      content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
+      if (!content_input)
+        goto out;
+      if (!ostree_zlib_content_stream_open (content_input, &length, &file_object_input, 
+                                            cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!ot_util_variant_map (data->meta_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, TRUE,
+                                &file_meta, error))
+        goto out;
+  
+      if (!ostree_file_header_parse (file_meta, &file_info, &xattrs, error))
+        goto out;
+
+      if (data->content_path)
+        {
+          content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
+          if (!content_input)
+            goto out;
+        }
+      
+      if (!ostree_raw_file_to_content_stream (content_input, file_info, xattrs,
+                                              &file_object_input, &length,
+                                              cancellable, error))
+        goto out;
     }
 
   if (!ostree_repo_stage_content_trusted (data->pull_data->repo, checksum,
@@ -702,6 +719,7 @@ content_fetch_on_complete (GObject        *object,
   OtFetchOneContentItemData *data = user_data;
   GError *local_error = NULL;
   GError **error = &local_error;
+  gboolean compressed;
   GCancellable *cancellable = NULL;
   gboolean was_content_fetch = FALSE;
   gboolean need_content_fetch = FALSE;
@@ -711,6 +729,7 @@ content_fetch_on_complete (GObject        *object,
   ot_lobj GInputStream *file_object_input = NULL;
   ot_lvariant GVariant *xattrs = NULL;
 
+  compressed = data->pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
   was_content_fetch = data->fetching_content;
 
   if (was_content_fetch)
@@ -752,7 +771,25 @@ content_fetch_on_complete (GObject        *object,
         }
     }
 
-  if (!need_content_fetch)
+  if (!need_content_fetch && compressed)
+    {
+      ot_lobj GInputStream *uncomp_input = NULL;
+      guint64 uncompressed_len;
+
+      g_assert (data->content_path != NULL);
+      content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
+      if (!content_input)
+        goto out;
+
+      if (!ostree_zlib_content_stream_open (content_input, &uncompressed_len, &uncomp_input, 
+                                            cancellable, error))
+        goto out;
+      
+      data->pull_data->outstanding_checksum_requests++;
+      ot_gio_checksum_stream_async (uncomp_input, G_PRIORITY_DEFAULT, NULL,
+                                    content_fetch_on_checksum_complete, data);
+    }
+  else if (!need_content_fetch)
     {
       if (data->content_path)
         {
@@ -806,20 +843,24 @@ enqueue_loose_meta_requests (OtPullData *pull_data)
       ot_lfree char *objpath = NULL;
       SoupURI *obj_uri = NULL;
       OtFetchOneContentItemData *one_item_data;
+      gboolean compressed = pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
           
       one_item_data = g_new0 (OtFetchOneContentItemData, 1);
       one_item_data->pull_data = pull_data;
       one_item_data->checksum = g_strdup (checksum);
-      one_item_data->fetching_content = FALSE;
+      one_item_data->fetching_content = compressed;
           
-      objpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE);
+      objpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE, compressed);
       obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
 
       ostree_fetcher_request_uri_async (pull_data->fetcher, obj_uri, cancellable,
                                         content_fetch_on_complete, one_item_data);
       soup_uri_free (obj_uri);
 
-      pull_data->outstanding_filemeta_requests++;
+      if (compressed)
+        pull_data->outstanding_filecontent_requests++;
+      else
+        pull_data->outstanding_filemeta_requests++;
       g_hash_table_iter_remove (&hash_iter);
 
       /* Don't let too many requests queue up; when we're fetching
@@ -1026,9 +1067,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
-  OstreeRepoMode remote_repo_mode;
   ot_lfree char *remote_key = NULL;
   ot_lobj OstreeRepo *repo = NULL;
+  ot_lfree char *remote_config_content = NULL;
   ot_lfree char *path = NULL;
   ot_lfree char *baseurl = NULL;
   ot_lfree char *summary_data = NULL;
@@ -1094,12 +1135,13 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
                                           &remote_mode_str, error))
     goto out;
 
-  if (!ostree_repo_mode_from_string (remote_mode_str, &remote_repo_mode, error))
+  if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
     goto out;
 
-  switch (remote_repo_mode)
+  switch (pull_data->remote_mode)
     {
     case OSTREE_REPO_MODE_ARCHIVE:
+    case OSTREE_REPO_MODE_ARCHIVE_Z:
       break;
     default:
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

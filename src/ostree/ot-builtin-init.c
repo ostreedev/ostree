@@ -27,10 +27,12 @@
 
 #include <glib/gi18n.h>
 
-static gboolean archive;
+static gboolean opt_archive;
+static char *opt_mode = NULL;
 
 static GOptionEntry options[] = {
-  { "archive", 0, 0, G_OPTION_ARG_NONE, &archive, "Initialize repository as archive", NULL },
+  { "archive", 0, 0, G_OPTION_ARG_NONE, &opt_archive, "Initialize repository as archive", NULL },
+  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive, archive-z)", NULL },
   { NULL }
 };
 
@@ -44,6 +46,7 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
   __attribute__ ((unused)) GCancellable *cancellable = NULL;
+  const char *mode_str = "bare";
   ot_lobj GFile *child = NULL;
   ot_lobj GFile *grandchild = NULL;
   ot_lobj OstreeRepo *repo = NULL;
@@ -58,7 +61,16 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
   child = g_file_get_child (repo_path, "config");
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
-  g_string_append_printf (config_data, "mode=%s\n", archive ? "archive" : "bare");
+  if (opt_archive)
+    mode_str = "archive";
+  else if (opt_mode)
+    {
+      OstreeRepoMode mode;
+      if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
+        goto out;
+      mode_str = opt_mode;
+    }
+  g_string_append_printf (config_data, "mode=%s\n", mode_str);
   if (!g_file_replace_contents (child,
                                 config_data->str,
                                 config_data->len,

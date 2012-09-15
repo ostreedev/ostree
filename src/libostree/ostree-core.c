@@ -472,6 +472,34 @@ ostree_content_stream_parse (GInputStream           *input,
 }
 
 gboolean
+ostree_zlib_content_stream_open (GInputStream           *input,
+                                 guint64                *out_len,
+                                 GInputStream          **out_uncompressed,
+                                 GCancellable           *cancellable,
+                                 GError                **error)
+{
+  gboolean ret = FALSE;
+  guint64 uncompressed_len;
+  ot_lobj GConverter *zlib_decomp = NULL;
+  ot_lobj GInputStream *uncomp_input = NULL;
+
+  if (!g_input_stream_read_all (input, &uncompressed_len, sizeof (guint64),
+                                NULL, cancellable, error))
+    goto out;
+
+  uncompressed_len = GUINT64_FROM_BE (uncompressed_len);
+  zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
+  uncomp_input = g_converter_input_stream_new (input, zlib_decomp);
+
+  if (out_len)
+    *out_len = uncompressed_len;
+  ot_transfer_out_value (out_uncompressed, &uncomp_input);
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
 ostree_content_file_parse (GFile                  *content_path,
                            gboolean                trusted,
                            GInputStream          **out_input,
@@ -909,8 +937,9 @@ ostree_checksum_bytes_peek (GVariant *bytes)
 }
 
 char *
-ostree_get_relative_object_path (const char *checksum,
-                                 OstreeObjectType type)
+ostree_get_relative_object_path (const char         *checksum,
+                                 OstreeObjectType    type,
+                                 gboolean            compressed)
 {
   GString *path;
 
@@ -923,6 +952,8 @@ ostree_get_relative_object_path (const char *checksum,
   g_string_append (path, checksum + 2);
   g_string_append_c (path, '.');
   g_string_append (path, ostree_object_type_to_string (type));
+  if (!OSTREE_OBJECT_TYPE_IS_META (type) && compressed)
+    g_string_append (path, "z");
 
   return g_string_free (path, FALSE);
 }
