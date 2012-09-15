@@ -20,30 +20,30 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UTIL_H__
-#define __OSTREE_UTIL_H__
+#ifndef __OSTREE_KEYFILE_UTILS_H__
+#define __OSTREE_KEYFILE_UTILS_H__
 
 #include <gio/gio.h>
 
-#define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
+G_BEGIN_DECLS
 
-#define ot_transfer_out_value(outp, srcp) G_STMT_START {   \
-  if (outp)                                                \
-    {                                                      \
-      *outp = *srcp;                                       \
-      *(srcp) = NULL;                                      \
-    }                                                      \
-  } G_STMT_END;
+gboolean
+ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
+                                     const char    *section,
+                                     const char    *value,
+                                     gboolean       default_value,
+                                     gboolean      *out_bool,
+                                     GError       **error);
 
-#include <ot-local-alloc.h>
-#include <ot-keyfile-utils.h>
-#include <ot-gio-utils.h>
-#include <ot-opt-utils.h>
-#include <ot-unix-utils.h>
-#include <ot-variant-utils.h>
-#include <ot-spawn-utils.h>
-#include <ot-checksum-utils.h>
 
-void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED; 
+gboolean
+ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
+                                   const char    *section,
+                                   const char    *value,
+                                   const char    *default_value,
+                                   char         **out_value,
+                                   GError       **error);
+
+G_END_DECLS
 
 #endif

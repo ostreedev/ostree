@@ -586,72 +586,6 @@ ostree_repo_write_config (OstreeRepo *self,
   return ret;
 }
 
-static gboolean
-keyfile_get_boolean_with_default (GKeyFile      *keyfile,
-                                  const char    *section,
-                                  const char    *value,
-                                  gboolean       default_value,
-                                  gboolean      *out_bool,
-                                  GError       **error)
-{
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  gboolean ret_bool;
-
-  ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
-  if (temp_error)
-    {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          ret_bool = default_value;
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-
-  ret = TRUE;
-  *out_bool = ret_bool;
- out:
-  return ret;
-}
-
-static gboolean
-keyfile_get_value_with_default (GKeyFile      *keyfile,
-                                const char    *section,
-                                const char    *value,
-                                const char    *default_value,
-                                char         **out_value,
-                                GError       **error)
-{
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  ot_lfree char *ret_value;
-
-  ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
-  if (temp_error)
-    {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          ret_value = g_strdup (default_value);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value(out_value, &ret_value);
- out:
-  return ret;
-}
-                                
 gboolean
 ostree_repo_check (OstreeRepo *self, GError **error)
 {
@@ -695,16 +629,16 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
 
-  if (!keyfile_get_boolean_with_default (self->config, "core", "archive",
-                                         FALSE, &is_archive, error))
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "archive",
+                                            FALSE, &is_archive, error))
     goto out;
   
   if (is_archive)
     self->mode = OSTREE_REPO_MODE_ARCHIVE;
   else
     {
-      if (!keyfile_get_value_with_default (self->config, "core", "mode",
-                                           "bare", &mode, error))
+      if (!ot_keyfile_get_value_with_default (self->config, "core", "mode",
+                                              "bare", &mode, error))
         goto out;
 
       if (strcmp (mode, "bare") == 0)
@@ -719,8 +653,8 @@ ostree_repo_check (OstreeRepo *self, GError **error)
         }
     }
 
-  if (!keyfile_get_value_with_default (self->config, "core", "parent",
-                                       NULL, &parent_repo_path, error))
+  if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
+                                          NULL, &parent_repo_path, error))
     goto out;
 
   if (parent_repo_path && parent_repo_path[0])
