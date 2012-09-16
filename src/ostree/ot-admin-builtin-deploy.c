@@ -47,7 +47,8 @@ static GOptionEntry options[] = {
  *
  * Atomically swap the /ostree/current symbolic link to point to a new
  * path.  If successful, the old current will be saved as
- * /ostree/previous.
+ * /ostree/previous, and /ostree/current-etc will be a link to the
+ * current /etc subdirectory.
  *
  * Unless the new-current equals current, in which case, do nothing.
  */
@@ -60,18 +61,23 @@ update_current (OtAdminDeploy      *self,
 {
   gboolean ret = FALSE;
   ot_lobj GFile *current_path = NULL;
+  ot_lobj GFile *current_etc_path = NULL;
   ot_lobj GFile *previous_path = NULL;
   ot_lobj GFile *tmp_current_path = NULL;
+  ot_lobj GFile *tmp_current_etc_path = NULL;
   ot_lobj GFile *tmp_previous_path = NULL;
   ot_lobj GFileInfo *previous_info = NULL;
   ot_lfree char *relative_current = NULL;
+  ot_lfree char *relative_current_etc = NULL;
   ot_lfree char *relative_previous = NULL;
 
   current_path = g_file_get_child (self->ostree_dir, "current");
+  current_etc_path = g_file_get_child (self->ostree_dir, "current-etc");
   previous_path = g_file_get_child (self->ostree_dir, "previous");
 
   relative_current = g_file_get_relative_path (self->ostree_dir, deploy_target);
   g_assert (relative_current);
+  relative_current_etc = g_strconcat (relative_current, "-etc", NULL);
 
   if (current_deployment)
     {
@@ -105,7 +111,18 @@ update_current (OtAdminDeploy      *self,
       goto out;
     }
 
+  tmp_current_etc_path = g_file_get_child (self->ostree_dir, "tmp-current-etc");
+  (void) ot_gfile_unlink (tmp_current_etc_path, NULL, NULL);
+  if (symlink (relative_current_etc, ot_gfile_get_path_cached (tmp_current_etc_path)) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   if (!ot_gfile_rename (tmp_current_path, current_path,
+                        cancellable, error))
+    goto out;
+  if (!ot_gfile_rename (tmp_current_etc_path, current_etc_path,
                         cancellable, error))
     goto out;
 
@@ -314,7 +331,7 @@ merge_etc_changes (OtAdminDeploy  *self,
  *
  * Merge configuration changes from the old deployment, if any.
  *
- * Update the OSTREE_DIR/current and OSTREE_DIR/previous symbolic
+ * Update the OSTREE_DIR/current{,-etc} and OSTREE_DIR/previous symbolic
  * links.
  */
 static gboolean
