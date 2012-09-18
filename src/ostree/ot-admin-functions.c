@@ -65,12 +65,14 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
         }
     }
 
-  /* Ensure a few subdirectories of /var exist, since we need them for
-     dracut generation */
+  /* Ensure core subdirectories of /var exist, since we need them for
+   * dracut generation, and the host will want them too.
+   */
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "log", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
+
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "tmp", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
@@ -79,6 +81,22 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
+    }
+
+  g_clear_object (&dir);
+  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "lib", NULL);
+  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+    goto out;
+
+  g_clear_object (&dir);
+  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "run", NULL);
+  if (!g_file_test (ot_gfile_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
+    {
+      if (symlink ("../run", ot_gfile_get_path_cached (dir)) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
     }
 
   ret = TRUE;
