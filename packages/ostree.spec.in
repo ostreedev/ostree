@@ -78,11 +78,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/ostree
 %{_bindir}/ostree-pull
 %{_bindir}/ostree-run-triggers
-%{_bindir}/ostadmin
 %{_sbindir}/ostree-switch-root
-%dir %{_libdir}/ostree
-%{_libdir}/ostree
 %{_libexecdir}/ostreed
+%dir %{_libdir}/ostree
+%{_libdir}/ostree/*.so
 %dir %{_libexecdir}/ostree
-%{_libexecdir}/ostree
+%dir %{_libexecdir}/ostree/triggers.d
+%{_libexecdir}/ostree/triggers.d/*
 %{_mandir}/man1/*.gz
