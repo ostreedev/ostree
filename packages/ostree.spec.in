@@ -1,3 +1,13 @@
+# Define this if we want to build with embedded dependencies
+# for e.g. RHEL6
+%define enable_embedded_dependencies 0
+
+%if 0%{?enable_embedded_dependencies}
+%define build_name ostree-embeddeps
+%else
+%define build_name ostree
+%endif
+
 %if 0%{?rhel}
 # HACK to fix building on RHEL6; find_debuginfo is crashing, not sure
 # why
@@ -9,7 +19,7 @@ Name: ostree
 Version: 2012.8
 Release: 1%{?dist}
 #VCS: git:git://git.gnome.org/ostree
-Source0: http://ftp.gnome.org/pub/GNOME/sources/ostree/%{version}/ostree-embeddeps-%{version}.tar.gz
+Source0: http://ftp.gnome.org/pub/GNOME/sources/ostree/%{version}/%{build_name}-%{version}.tar.gz
 License: LGPLv2+
 URL: http://live.gnome.org/OSTree
 # We always run autogen.sh
@@ -20,6 +30,7 @@ BuildRequires: libattr-devel
 BuildRequires: gtk-doc
 
 # Embedded GLib dependencies
+%if 0%{?enable_embedded_dependencies}
 BuildRequires: glibc-devel
 BuildRequires: pkgconfig(libffi)
 BuildRequires: python-devel
@@ -30,18 +41,29 @@ BuildRequires: pkgconfig(libselinux)
 BuildRequires: gnome-common
 BuildRequires: intltool
 BuildRequires: pkgconfig(libxml-2.0)
+%else
+BuildRequires: pkgconfig(gio-unix-2.0)
+BuildRequires: pkgconfig(libsoup-2.4)
+%endif
 
 %description
 See http://live.gnome.org/OSTree
 
 %prep
-%setup -q -n ostree-embeddeps-%{version}
+%setup -q -n %{build_name}-%{version}
 
 %build
 env NOCONFIGURE=1 ./autogen.sh
-%configure --disable-silent-rules --enable-embedded-dependencies \
+%if 0%{?enable_embedded_dependencies}
+%define embedded_dependencies_option --enable-embedded-dependencies
+%else
+%define embedded_dependencies_option %{nil}
+%endif
+
+%configure --disable-silent-rules \
 	   --enable-documentation \
-	   --disable-libarchive
+	   --disable-libarchive \
+	   %{embedded_dependencies_option}
 make %{?_smp_mflags}
 
 %install

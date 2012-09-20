@@ -148,9 +148,9 @@ release-tarball-embedded:
 	mv ostree-embeddeps-$${GITVERSION}.tar{.tmp,}; \
 	gzip -f ostree-embeddeps-$${GITVERSION}.tar 
 
-srpm-embedded:
+srpm:
 	GITVERSION=$(git_version_rpm); export GITVERSION; \
-	(sed -e "s,^Version:.*,Version: $${GITVERSION}," $(srcdir)/packages/ostree.spec.in) > ostree.spec
+	$(srcdir)/packages/substitute-gitversion.sh $(srcdir)/packages/ostree.spec.in > ostree.spec
 	$(srcdir)/packages/rpmbuild-cwd -bs ostree.spec
 
 dist-snapshot:
