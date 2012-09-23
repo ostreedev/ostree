@@ -94,6 +94,7 @@ ostree_fetcher_finalize (GObject *object)
   self = OSTREE_FETCHER (object);
 
   g_clear_object (&self->session);
+  g_clear_object (&self->tmpdir);
 
   g_hash_table_destroy (self->sending_messages);
   g_hash_table_destroy (self->message_to_request);

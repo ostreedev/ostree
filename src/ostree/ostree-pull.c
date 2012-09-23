@@ -1013,6 +1013,7 @@ load_remote_repo_config (OtPullData    *pull_data,
   ot_transfer_out_value (out_keyfile, &ret_keyfile);
  out:
   g_clear_pointer (&ret_keyfile, (GDestroyNotify) g_key_file_unref);
+  g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
   return ret;
 }
 
