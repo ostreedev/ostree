@@ -45,17 +45,16 @@ import_one_object (OtLocalCloneData *data,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GFile *content_path = NULL;
   ot_lobj GFileInfo *archive_info = NULL;
-  ot_lvariant GVariant *metadata = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GInputStream *input = NULL;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      ot_lobj GInputStream *file_object = NULL;
       guint64 length;
+      ot_lobj GInputStream *file_object = NULL;
+      ot_lobj GInputStream *input = NULL;
+      ot_lobj GFileInfo *file_info = NULL;
+      ot_lvariant GVariant *xattrs = NULL;
 
       if (!ostree_repo_load_file (data->src_repo, checksum,
                                   &input, &file_info, &xattrs,
@@ -67,22 +66,21 @@ import_one_object (OtLocalCloneData *data,
                                               cancellable, error))
         goto out;
 
-      if (!ostree_repo_stage_file_object_trusted (data->dest_repo, checksum,
-                                                  file_object, length,
-                                                  cancellable, error))
+      if (!ostree_repo_stage_content_trusted (data->dest_repo, checksum,
+                                              file_object, length,
+                                              cancellable, error))
         goto out;
     }
   else
     {
+      ot_lvariant GVariant *metadata = NULL;
+
       if (!ostree_repo_load_variant (data->src_repo, objtype, checksum, &metadata,
                                      error))
         goto out;
 
-      input = ot_variant_read (metadata);
-
-      if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype,
-                                             checksum, input,
-                                             cancellable, error))
+      if (!ostree_repo_stage_metadata_trusted (data->dest_repo, objtype, checksum, metadata,
+                                               cancellable, error))
         goto out;
     }
 

@@ -359,7 +359,6 @@ fetch_and_store_metadata (OtPullData          *pull_data,
   gboolean is_stored;
   ot_lvariant GVariant *ret_variant = NULL;
   ot_lobj GFile *temp_path = NULL;
-  ot_lobj GInputStream *input = NULL;
   ot_lvariant GVariant *metadata = NULL;
 
   g_assert (OSTREE_OBJECT_TYPE_IS_META (objtype));
@@ -370,15 +369,32 @@ fetch_and_store_metadata (OtPullData          *pull_data,
       
   if (!is_stored)
     {
+      ot_lvariant GVariant *tmp_metadata = NULL;
+      const GVariantType *vtype;
+  
       if (!fetch_loose_object (pull_data, checksum, objtype, &temp_path, cancellable, error))
         goto out;
-      
-      input = (GInputStream*)g_file_read (temp_path, cancellable, error);
-      if (!input)
-        goto out;
 
-      if (!ostree_repo_stage_object (pull_data->repo, objtype, checksum, input,
-                                     cancellable, error))
+      switch (objtype)
+        {
+        case OSTREE_OBJECT_TYPE_DIR_TREE:
+          vtype = OSTREE_TREE_GVARIANT_FORMAT;
+          break;
+        case OSTREE_OBJECT_TYPE_DIR_META:
+          vtype = OSTREE_DIRMETA_GVARIANT_FORMAT;
+          break;
+        case OSTREE_OBJECT_TYPE_COMMIT:
+          vtype = OSTREE_COMMIT_GVARIANT_FORMAT;
+          break;
+        default:
+          g_assert_not_reached ();
+        }
+
+      if (!ot_util_variant_map (temp_path, vtype, FALSE, &tmp_metadata, error))
+        goto out;
+      
+      if (!ostree_repo_stage_metadata (pull_data->repo, objtype, checksum, tmp_metadata, NULL,
+                                       cancellable, error))
         goto out;
     }
 
@@ -664,9 +680,9 @@ content_fetch_on_checksum_complete (GObject        *object,
       goto out;
     }
 
-  if (!ostree_repo_stage_file_object_trusted (data->pull_data->repo, checksum,
-                                              file_object_input, length,
-                                              cancellable, error))
+  if (!ostree_repo_stage_content_trusted (data->pull_data->repo, checksum,
+                                          file_object_input, length,
+                                          cancellable, error))
     goto out;
 
  out:

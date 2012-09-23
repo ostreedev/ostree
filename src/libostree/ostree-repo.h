@@ -94,33 +94,35 @@ gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       GCancellable         *cancellable,
                                       GError              **error);
 
-gboolean      ostree_repo_stage_object (OstreeRepo       *self,
-                                        OstreeObjectType  objtype,
-                                        const char       *expected_checksum,
-                                        GInputStream     *content,
-                                        GCancellable     *cancellable,
-                                        GError          **error);
+gboolean      ostree_repo_stage_metadata (OstreeRepo        *self,
+                                          OstreeObjectType   objtype,
+                                          const char        *expected_checksum,
+                                          GVariant          *object,
+                                          guchar           **out_csum,
+                                          GCancellable      *cancellable,
+                                          GError           **error);
 
-gboolean      ostree_repo_stage_file_object (OstreeRepo       *self,
-                                             const char       *expected_checksum,
-                                             GInputStream     *content,
-                                             guint64           content_length,
-                                             GCancellable     *cancellable,
-                                             GError          **error);
+gboolean      ostree_repo_stage_content (OstreeRepo       *self,
+                                         const char       *expected_checksum,
+                                         GInputStream     *content,
+                                         guint64           content_length,
+                                         guchar          **out_csum,
+                                         GCancellable     *cancellable,
+                                         GError          **error);
 
-gboolean      ostree_repo_stage_object_trusted (OstreeRepo   *self,
-                                                OstreeObjectType objtype,
-                                                const char   *checksum,
-                                                GInputStream     *content,
-                                                GCancellable *cancellable,
-                                                GError      **error);
+gboolean      ostree_repo_stage_metadata_trusted (OstreeRepo        *self,
+                                                  OstreeObjectType   objtype,
+                                                  const char        *checksum,
+                                                  GVariant          *object,
+                                                  GCancellable      *cancellable,
+                                                  GError           **error);
 
-gboolean      ostree_repo_stage_file_object_trusted (OstreeRepo   *self,
-                                                     const char   *checksum,
-                                                     GInputStream     *content,
-                                                     guint64           content_length,
-                                                     GCancellable *cancellable,
-                                                     GError      **error);
+gboolean      ostree_repo_stage_content_trusted (OstreeRepo       *self,
+                                                 const char       *checksum,
+                                                 GInputStream     *content,
+                                                 guint64           content_length,
+                                                 GCancellable     *cancellable,
+                                                 GError          **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *rev,
