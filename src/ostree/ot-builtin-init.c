@@ -43,7 +43,7 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
+  __attribute__ ((unused)) GCancellable *cancellable = NULL;
   ot_lobj GFile *child = NULL;
   ot_lobj GFile *grandchild = NULL;
   ot_lobj OstreeRepo *repo = NULL;
@@ -108,9 +108,6 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
 
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
-    goto out;
-
-  if (!ostree_repo_regenerate_pack_index (repo, cancellable, error))
     goto out;
 
   ret = TRUE;

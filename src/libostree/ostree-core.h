@@ -87,48 +87,6 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
-/* Pack super index
- * s - OSTv0SUPERPACKINDEX
- * a{sv} - Metadata
- * a(ayay) - metadata packs (pack file checksum, bloom filter)
- * a(ayay) - data packs (pack file checksum, bloom filter)
- */
-#define OSTREE_PACK_SUPER_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(ayay)a(ayay))")
-
-/* Pack index
- * s - OSTv0PACKINDEX
- * a{sv} - Metadata
- * a(yayt) - (objtype, checksum, offset into packfile)
- */
-#define OSTREE_PACK_INDEX_VARIANT_FORMAT G_VARIANT_TYPE ("(sa{sv}a(yayt))")
-
-typedef enum {
-  OSTREE_PACK_FILE_ENTRY_FLAG_NONE = 0,
-  OSTREE_PACK_FILE_ENTRY_FLAG_GZIP = (1 << 0)
-} OstreePackFileEntryFlag;
-
-/* Data Pack files
- * s - OSTv0PACKDATAFILE
- * a{sv} - Metadata
- * t - number of entries
- *
- * Repeating pair of:
- * <padding to alignment of 8>
- * ( ayy(uuuusa(ayay))ay) ) - checksum, flags, file meta, data
- */
-#define OSTREE_PACK_DATA_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(ayy(uuuusa(ayay))ay)")
-
-/* Meta Pack files
- * s - OSTv0PACKMETAFILE
- * a{sv} - Metadata
- * t - number of entries
- *
- * Repeating pair of:
- * <padding to alignment of 8>
- * ( yayv ) - objtype, checksum, data
- */
-#define OSTREE_PACK_META_FILE_VARIANT_FORMAT G_VARIANT_TYPE ("(yayv)")
-
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
 gboolean ostree_validate_checksum_string (const char *sha256,
@@ -172,16 +130,6 @@ char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type);
 
 char *ostree_get_relative_archive_content_path (const char        *checksum);
-
-char *ostree_get_pack_index_name (gboolean        is_meta,
-                                  const char     *checksum);
-char *ostree_get_pack_data_name (gboolean        is_meta,
-                                 const char     *checksum);
-
-char *ostree_get_relative_pack_index_path (gboolean        is_meta,
-                                           const char     *checksum);
-char *ostree_get_relative_pack_data_path (gboolean        is_meta,
-                                          const char     *checksum);
 
 gboolean ostree_get_xattrs_for_file (GFile         *f,
                                      GVariant     **out_xattrs,
@@ -304,27 +252,6 @@ gboolean ostree_create_temp_dir (GFile            *dir,
                                  GCancellable     *cancellable,
                                  GError          **error);
 
-gboolean ostree_read_pack_entry_raw (guchar           *pack_data,
-                                     guint64           pack_len,
-                                     guint64           object_offset,
-                                     gboolean          trusted,
-                                     gboolean          is_meta,
-                                     GVariant        **out_entry,
-                                     GCancellable     *cancellable,
-                                     GError          **error);
-
-gboolean ostree_parse_file_pack_entry (GVariant       *pack_entry,
-                                       GInputStream  **out_input,
-                                       GFileInfo     **out_info,
-                                       GVariant      **out_xattrs,
-                                       GCancellable   *cancellable,
-                                       GError        **error);
-
-gboolean ostree_pack_index_search (GVariant            *index,
-                                   GVariant           *csum_bytes,
-                                   OstreeObjectType    objtype,
-                                   guint64            *out_offset);
-
 /** VALIDATION **/
 
 gboolean ostree_validate_structureof_objtype (guchar    objtype,
@@ -347,11 +274,5 @@ gboolean ostree_validate_structureof_dirtree (GVariant      *index,
 
 gboolean ostree_validate_structureof_dirmeta (GVariant      *index,
                                               GError       **error);
-
-gboolean ostree_validate_structureof_pack_index (GVariant      *index,
-                                                 GError       **error);
-
-gboolean ostree_validate_structureof_pack_superindex (GVariant      *superindex,
-                                                      GError       **error);
 
 #endif /* _OSTREE_REPO */

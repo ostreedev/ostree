@@ -21,7 +21,7 @@ set -e
 
 . libtest.sh
 
-echo '1..22'
+echo '1..11'
 
 setup_test_repository "archive"
 echo "ok setup"
@@ -69,44 +69,5 @@ assert_file_has_content cow-contents "moo"
 echo "ok cat-file"
 
 cd ${test_tmpdir}
-$OSTREE pack
-echo "ok pack"
-
-cd ${test_tmpdir}
 $OSTREE fsck
 echo "ok fsck"
-
-$OSTREE checkout test2 checkout-test2-from-packed
-echo "ok checkout union 1"
-
-cd ${test_tmpdir}
-$OSTREE fsck
-echo "ok fsck"
-
-$OSTREE pack --analyze-only
-echo "ok pack analyze"
-
-$OSTREE unpack
-echo "ok unpack"
-
-cd ${test_tmpdir}
-$OSTREE fsck
-echo "ok fsck"
-
-cd ${test_tmpdir}
-$OSTREE checkout test2 checkout-test2-from-unpacked
-echo "ok checkout union 2"
-
-$OSTREE pack --metadata-only
-echo "ok pack metadata"
-
-$OSTREE fsck
-echo "ok fsck"
-
-cd ${test_tmpdir}
-rm -rf checkout-test2
-$OSTREE checkout test2 checkout-test2
-echo "ok checkout metadata-packed"
-
-$OSTREE unpack
-echo "ok unpack"

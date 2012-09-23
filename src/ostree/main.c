@@ -42,14 +42,12 @@ static OstreeCommand commands[] = {
   { "init", ostree_builtin_init, 0 },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
-  { "pack", ostree_builtin_pack, 0 },
   { "prune", ostree_builtin_prune, 0 },
   { "pull", NULL, 0 },
   { "pull-local", ostree_builtin_pull_local, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
-  { "unpack", ostree_builtin_unpack, 0 },
   { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };

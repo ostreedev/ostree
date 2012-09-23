@@ -67,7 +67,7 @@ import_one_object (OtLocalCloneData *data,
                                               cancellable, error))
         goto out;
 
-      if (!ostree_repo_stage_file_object_trusted (data->dest_repo, checksum, FALSE,
+      if (!ostree_repo_stage_file_object_trusted (data->dest_repo, checksum,
                                                   file_object, length,
                                                   cancellable, error))
         goto out;
@@ -81,7 +81,7 @@ import_one_object (OtLocalCloneData *data,
       input = ot_variant_read (metadata);
 
       if (!ostree_repo_stage_object_trusted (data->dest_repo, objtype,
-                                             checksum, FALSE, input,
+                                             checksum, input,
                                              cancellable, error))
         goto out;
     }

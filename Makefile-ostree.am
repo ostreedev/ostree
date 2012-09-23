@@ -37,8 +37,6 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-ls.c \
 	src/ostree/ot-builtin-prune.c \
 	src/ostree/ot-builtin-remote.c \
-	src/ostree/ot-builtin-pack.c \
-	src/ostree/ot-builtin-unpack.c \
 	src/ostree/ot-builtin-rev-parse.c \
 	src/ostree/ot-builtin-show.c \
 	src/ostree/ot-builtin-write-refs.c \
