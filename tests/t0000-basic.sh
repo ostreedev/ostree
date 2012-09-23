@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..30"
+echo "1..28"
 
 . libtest.sh
 
@@ -198,19 +198,6 @@ cmp union-files-count{,.new}
 cd checkout-test2-union
 assert_file_has_content ./yet/another/tree/green "leaf"
 echo "ok checkout union 1"
-
-cd ${test_tmpdir}
-$OSTREE checkout --atomic-retarget test2 checkout-atomic-test2
-cd checkout-atomic-test2
-assert_file_has_content ./yet/another/tree/green "leaf"
-echo "ok checkout atomic"
-
-cd ${test_tmpdir}
-rm -rf test2
-$OSTREE checkout --atomic-retarget test2
-cd test2
-assert_file_has_content ./yet/another/tree/green "leaf"
-echo "ok checkout short form"
 
 cd ${test_tmpdir}
 rm -rf shadow-repo
