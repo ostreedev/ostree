@@ -122,7 +122,7 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_diff_dirs (srcf, targetf, modified, removed, added, cancellable, error))
     goto out;
 
-  ostree_diff_print (srcf, modified, removed, added);
+  ostree_diff_print (targetf, modified, removed, added);
 
   ret = TRUE;
  out:
