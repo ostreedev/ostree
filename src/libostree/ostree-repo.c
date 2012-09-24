@@ -2576,7 +2576,7 @@ ostree_repo_load_file (OstreeRepo         *self,
 
                 if (out_input)
                   {
-                    ret_input = (GInputStream*)g_file_read (archive_content_path, cancellable, error);
+                    ret_input = (GInputStream*)gs_file_read_noatime (archive_content_path, cancellable, error);
                     if (!ret_input)
                       goto out;
                   }
@@ -2590,7 +2590,7 @@ ostree_repo_load_file (OstreeRepo         *self,
             ot_lobj GInputStream *uncomp_input = NULL;
             guint64 uncompressed_len;
 
-            file_in = (GInputStream*)g_file_read (loose_path, cancellable, error);
+            file_in = (GInputStream*)gs_file_read_noatime (loose_path, cancellable, error);
             if (!file_in)
               goto out;
 
@@ -2621,7 +2621,7 @@ ostree_repo_load_file (OstreeRepo         *self,
 
             if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
               {
-                ret_input = (GInputStream*) g_file_read (loose_path, cancellable, error);
+                ret_input = (GInputStream*) gs_file_read_noatime (loose_path, cancellable, error);
                 if (!ret_input)
                   {
                     g_prefix_error (error, "Error opening loose file object %s: ", ot_gfile_get_path_cached (loose_path));

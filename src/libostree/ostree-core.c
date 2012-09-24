@@ -516,7 +516,7 @@ ostree_content_file_parse (GFile                  *content_path,
   ot_lobj GFileInfo *ret_file_info = NULL;
   ot_lvariant GVariant *ret_xattrs = NULL;
 
-  file_input = (GInputStream*)g_file_read (content_path, cancellable, error);
+  file_input = (GInputStream*)gs_file_read_noatime (content_path, cancellable, error);
   if (!file_input)
     goto out;
 
