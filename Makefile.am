@@ -40,6 +40,8 @@ noinst_PROGRAMS =
 privlibdir = $(pkglibdir)
 privlib_LTLIBRARIES =
 
+EXTRA_DIST += autogen.sh COPYING.GPL COPYING.LGPL README.md
+
 if BUILD_EMBEDDED_DEPENDENCIES
 OT_INTERNAL_GIO_UNIX_CFLAGS = \
 	-I$(top_builddir)/embedded-dependencies/EMBEDDEPS/include/glib-2.0 \
