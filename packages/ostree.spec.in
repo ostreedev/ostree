@@ -29,6 +29,8 @@ BuildRequires: libattr-devel
 # For docs
 BuildRequires: gtk-doc
 
+Requires: linux-user-chroot
+
 # Embedded GLib dependencies
 %if 0%{?enable_embedded_dependencies}
 BuildRequires: glibc-devel
@@ -80,6 +82,14 @@ rm -rf $RPM_BUILD_ROOT
 %{_libexecdir}/ostreed
 %dir %{_libdir}/ostree
 %{_libdir}/ostree/*.so
+%if 0%{?enable_embedded_dependencies}
+%{_libdir}/ostree/libglib*.so*
+%{_libdir}/ostree/libgmodule*.so*
+%{_libdir}/ostree/libgobject*.so*
+%{_libdir}/ostree/libgthread*.so*
+%{_libdir}/ostree/libgio*.so*
+%{_libdir}/ostree/libsoup*.so*
+%endif
 %dir %{_libexecdir}/ostree
 %dir %{_libexecdir}/ostree/triggers.d
 %{_libexecdir}/ostree/triggers.d/*
