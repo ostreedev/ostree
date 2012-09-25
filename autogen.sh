@@ -21,8 +21,8 @@ if test ! -f src/libgsystem/README;
 then
   echo "+ Setting up submodules"
   git submodule init
+  git submodule update
 fi
-git submodule update
 
 autoreconf --force --install --verbose
 
