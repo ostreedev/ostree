@@ -63,6 +63,20 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lobj GFile *ostree_dir = NULL;
 
   context = g_option_context_new ("[OPTIONS] SUBCOMMAND - Run an administrative subcommand");
+
+  {
+    GString *s = g_string_new ("Subcommands:\n");
+
+    subcommand = admin_subcommands;
+    while (subcommand->name)
+      {
+        g_string_append_printf (s, "  %s\n", subcommand->name);
+        subcommand++;
+      }
+    g_option_context_set_description (context, s->str);
+    g_string_free (s, TRUE);
+  }
+    
   g_option_context_add_main_entries (context, options, NULL);
   /* Skip subcommand options */
   g_option_context_set_ignore_unknown_options (context, TRUE);
