@@ -88,6 +88,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
       ot_lobj GFile *ostree_moduledir = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
+      ot_lobj GFile *dracut_log_path = NULL;
+      ot_lobj GOutputStream *tmp_log_out = NULL;
           
       if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
                                    cancellable, error))
@@ -95,6 +97,15 @@ update_initramfs (OtAdminUpdateKernel  *self,
 
       ostree_vardir = g_file_get_child (self->ostree_dir, "var");
       ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
+
+      dracut_log_path = ot_gfile_get_child_build_path (ostree_vardir, "log", "dracut.log", NULL);
+      tmp_log_out = (GOutputStream*)g_file_replace (dracut_log_path, NULL, FALSE,
+                                                    G_FILE_CREATE_REPLACE_DESTINATION,
+                                                    cancellable, error);
+      if (!tmp_log_out)
+        goto out;
+      if (!g_output_stream_close (tmp_log_out, cancellable, error))
+        goto out;
 
       mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
