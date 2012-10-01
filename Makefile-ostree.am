@@ -75,10 +75,14 @@ endif
 
 MANPAGES += doc/ostree.1
 
-if ENABLE_KERNEL_UPDATES
+if ENABLE_GRUB2_HOOK
 
 grub2dir = $(sysconfdir)/grub.d
 grub2_SCRIPTS = src/ostree/grub2/15_ostree
+
+endif
+
+if ENABLE_KERNEL_UPDATES
 
 kernelpostinstdir = $(sysconfdir)/kernel/postinst.d
 kernelpostinst_SCRIPTS = src/ostree/kernel/15_ostree_update

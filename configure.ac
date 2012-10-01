@@ -112,7 +112,7 @@ AS_IF([ test x$with_libarchive != xno ], [
 ], [ with_libarchive=no ])
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
-AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel && test x$enable_triggers_only != xno ],
+AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel && test x$enable_triggers_only != xyes ],
       [kernel_updates_default=yes],
       [kernel_updates_default=no])
 
@@ -122,6 +122,16 @@ AC_ARG_ENABLE(kernel-updates,
 	       in the host system]), ,
 	      enable_kernel_updates=${kernel_updates_default})
 AM_CONDITIONAL(ENABLE_KERNEL_UPDATES, test $enable_kernel_updates != no)
+
+AS_IF([test x$cross_compiling != xyes && test -d /etc/grub.d && test x$enable_triggers_only != xyes ],
+      [grub2_hook_default=yes],
+      [grub2_hook_default=no])
+
+AC_ARG_ENABLE(grub2-hook,
+              AS_HELP_STRING([--enable-grub2-hook],
+	      [Install GRUB2 hook]), ,
+	      enable_grub2_hook=${grub2_hook_default})
+AM_CONDITIONAL(ENABLE_GRUB2_HOOK, test $enable_grub2_hook != no)
 
 AC_CONFIG_FILES([
 Makefile
@@ -140,4 +150,5 @@ echo "
     libarchive (parse tar files directly): $with_libarchive
     documentation: $enable_documentation
     kernel updates integration: $enable_kernel_updates
+    GRUB2 hook: $enable_grub2_hook
 "
