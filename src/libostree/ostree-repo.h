@@ -103,6 +103,19 @@ gboolean      ostree_repo_stage_metadata (OstreeRepo        *self,
                                           GCancellable      *cancellable,
                                           GError           **error);
 
+void          ostree_repo_stage_metadata_async (OstreeRepo              *self,
+                                                OstreeObjectType         objtype,
+                                                const char              *expected_checksum,
+                                                GVariant                *object,
+                                                GCancellable            *cancellable,
+                                                GAsyncReadyCallback      callback,
+                                                gpointer                 user_data);
+
+gboolean      ostree_repo_stage_metadata_finish (OstreeRepo        *self,
+                                                 GAsyncResult      *result,
+                                                 guchar           **out_checksum,
+                                                 GError           **error);
+
 gboolean      ostree_repo_stage_content (OstreeRepo       *self,
                                          const char       *expected_checksum,
                                          GInputStream     *content,

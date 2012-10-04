@@ -760,7 +760,28 @@ idle_queue_content_request (gpointer user_data)
 typedef struct {
   OtPullData  *pull_data;
   GVariant *object;
+  GFile *temp_path;
 } IdleFetchMetadataObjectData;
+
+static void
+on_metadata_staged (GObject           *object,
+                    GAsyncResult      *result,
+                    gpointer           user_data)
+{
+  IdleFetchMetadataObjectData *fetch_data = user_data;
+  OtPullData *pull_data = fetch_data->pull_data;
+
+  pull_data->n_fetched_metadata++;
+
+  ot_worker_queue_push (pull_data->metadata_objects_to_scan,
+                        g_variant_ref (fetch_data->object));
+  ot_worker_queue_release (pull_data->metadata_objects_to_scan);
+
+  (void) ot_gfile_unlink (fetch_data->temp_path, NULL, NULL);
+  g_object_unref (fetch_data->temp_path);
+  g_variant_unref (fetch_data->object);
+  g_free (fetch_data);
+}
 
 static void
 meta_fetch_on_complete (GObject           *object,
@@ -769,38 +790,33 @@ meta_fetch_on_complete (GObject           *object,
 {
   IdleFetchMetadataObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  ot_lobj GFile *temp_path = NULL;
   ot_lvariant GVariant *metadata = NULL;
   const char *checksum;
   OstreeObjectType objtype;
   GError *local_error = NULL;
   GError **error = &local_error;
 
-  temp_path = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object, result, error);
-  if (!temp_path)
+  fetch_data->temp_path = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object, result, error);
+  if (!fetch_data->temp_path)
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
 
-  if (!ot_util_variant_map (temp_path, ostree_metadata_variant_type (objtype),
+  if (!ot_util_variant_map (fetch_data->temp_path, ostree_metadata_variant_type (objtype),
                             FALSE, &metadata, error))
     goto out;
 
-  if (!ostree_repo_stage_metadata (pull_data->repo, objtype, checksum, metadata, (guchar**)NULL, 
-                                   pull_data->cancellable, error))
-    goto out;
-
-  pull_data->n_fetched_metadata++;
-
-  ot_worker_queue_push (pull_data->metadata_objects_to_scan,
-                        g_variant_ref (fetch_data->object));
-  ot_worker_queue_release (pull_data->metadata_objects_to_scan);
+  ostree_repo_stage_metadata_async (pull_data->repo, objtype, checksum, metadata,
+                                    pull_data->cancellable,
+                                    on_metadata_staged, fetch_data);
 
  out:
-  (void) ot_gfile_unlink (temp_path, NULL, NULL);
   throw_async_error (pull_data, local_error);
-  g_variant_unref (fetch_data->object);
-  g_free (fetch_data);
+  if (local_error)
+    {
+      g_variant_unref (fetch_data->object);
+      g_free (fetch_data);
+    }
 }
 
 static gboolean

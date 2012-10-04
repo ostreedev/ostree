@@ -1383,6 +1383,101 @@ ostree_repo_stage_metadata_trusted (OstreeRepo         *self,
                        cancellable, error);
 }
 
+typedef struct {
+  OstreeRepo *repo;
+  OstreeObjectType objtype;
+  char *expected_checksum;
+  GVariant *object;
+  GCancellable *cancellable;
+  GSimpleAsyncResult *result;
+  
+  guchar *result_csum;
+} StageMetadataAsyncData;
+
+static void
+stage_metadata_async_data_free (gpointer user_data)
+{
+  StageMetadataAsyncData *data = user_data;
+
+  g_clear_object (&data->repo);
+  g_clear_object (&data->cancellable);
+  g_variant_unref (data->object);
+  g_free (data->result_csum);
+  g_free (data->expected_checksum);
+  g_free (data);
+}
+
+static void
+stage_metadata_thread (GSimpleAsyncResult  *res,
+                       GObject             *object,
+                       GCancellable        *cancellable)
+{
+  GError *error = NULL;
+  StageMetadataAsyncData *data;
+
+  data = g_simple_async_result_get_op_res_gpointer (res);
+  if (!ostree_repo_stage_metadata (data->repo, data->objtype, data->expected_checksum,
+                                   data->object,
+                                   &data->result_csum,
+                                   cancellable, &error))
+    g_simple_async_result_take_error (res, error);
+}
+
+/**
+ * ostree_repo_stage_metadata_async:
+ * 
+ * Asynchronously store the metadata object @variant.  If provided,
+ * the checksum @expected_checksum will be verified.
+ */
+void          
+ostree_repo_stage_metadata_async (OstreeRepo               *self,
+                                  OstreeObjectType          objtype,
+                                  const char               *expected_checksum,
+                                  GVariant                 *object,
+                                  GCancellable             *cancellable,
+                                  GAsyncReadyCallback       callback,
+                                  gpointer                  user_data)
+{
+  StageMetadataAsyncData *asyncdata;
+
+  asyncdata = g_new0 (StageMetadataAsyncData, 1);
+  asyncdata->repo = g_object_ref (self);
+  asyncdata->objtype = objtype;
+  asyncdata->expected_checksum = g_strdup (expected_checksum);
+  asyncdata->object = g_variant_ref (object);
+  asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
+
+  asyncdata->result = g_simple_async_result_new ((GObject*) self,
+                                                 callback, user_data,
+                                                 ostree_repo_stage_metadata_async);
+
+  g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
+                                             stage_metadata_async_data_free);
+  g_simple_async_result_run_in_thread (asyncdata->result, stage_metadata_thread, G_PRIORITY_DEFAULT, cancellable);
+  g_object_unref (asyncdata->result);
+}
+
+gboolean
+ostree_repo_stage_metadata_finish (OstreeRepo        *self,
+                                   GAsyncResult      *result,
+                                   guchar           **out_csum,
+                                   GError           **error)
+{
+  GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
+  StageMetadataAsyncData *data;
+
+  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_stage_metadata_async);
+
+  if (g_simple_async_result_propagate_error (simple, error))
+    return FALSE;
+
+  data = g_simple_async_result_get_op_res_gpointer (simple);
+  /* Transfer ownership */
+  *out_csum = data->result_csum;
+  data->result_csum = NULL;
+  return TRUE;
+}
+
 static gboolean
 stage_directory_meta (OstreeRepo   *self,
                       GFileInfo    *file_info,
