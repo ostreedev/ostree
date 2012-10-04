@@ -100,6 +100,7 @@ typedef struct {
   guint         n_fetched_metadata;
   guint         outstanding_uri_requests;
 
+  GQueue        queued_filemeta;
   GThread      *metadata_scan_thread;
   OtWorkerQueue  *metadata_objects_to_scan;
   GHashTable   *scanned_metadata; /* Maps object name to itself */
@@ -586,6 +587,33 @@ content_fetch_on_checksum_complete (GObject        *object,
 static void
 content_fetch_on_complete (GObject        *object,
                            GAsyncResult   *result,
+                           gpointer        user_data);
+
+static void
+process_one_file_request (OtFetchOneContentItemData *data)
+{
+  OtPullData *pull_data = data->pull_data;
+  const char *checksum = data->checksum;
+  gboolean compressed = pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
+  ot_lfree char *objpath = NULL;
+  SoupURI *obj_uri = NULL;
+
+  objpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE, compressed);
+  obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
+      
+  ostree_fetcher_request_uri_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
+                                    content_fetch_on_complete, data);
+  soup_uri_free (obj_uri);
+  
+  if (compressed)
+    pull_data->outstanding_filecontent_requests++;
+  else
+    pull_data->outstanding_filemeta_requests++;
+}
+
+static void
+content_fetch_on_complete (GObject        *object,
+                           GAsyncResult   *result,
                            gpointer        user_data) 
 {
   OtFetchOneContentItemData *data = user_data;
@@ -690,6 +718,16 @@ content_fetch_on_complete (GObject        *object,
                                     content_fetch_on_checksum_complete, data);
     }
 
+  while (data->pull_data->outstanding_filemeta_requests < 10)
+    {
+      OtFetchOneContentItemData *queued_data = g_queue_pop_head (&data->pull_data->queued_filemeta);
+
+      if (!queued_data)
+        break;
+
+      process_one_file_request (queued_data);
+    }
+
  out:
   if (was_content_fetch)
     data->pull_data->outstanding_filecontent_requests--;
@@ -703,23 +741,17 @@ idle_queue_content_request (gpointer user_data)
 {
   OtFetchOneContentItemData *data = user_data;
   OtPullData *pull_data = data->pull_data;
-  const char *checksum = data->checksum;
-  ot_lfree char *objpath = NULL;
-  SoupURI *obj_uri = NULL;
-  gboolean compressed = pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
-          
-  objpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE, compressed);
-  obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
-
-  ostree_fetcher_request_uri_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
-                                    content_fetch_on_complete, data);
-  soup_uri_free (obj_uri);
-
-  if (compressed)
-    pull_data->outstanding_filecontent_requests++;
+  
+  /* Don't allow file meta requests to back up everything else */
+  if (pull_data->outstanding_filemeta_requests > 10)
+    {
+      g_queue_push_tail (&pull_data->queued_filemeta, data);
+    }
   else
-    pull_data->outstanding_filemeta_requests++;
-
+    {
+      process_one_file_request (data);
+    }
+      
   ot_worker_queue_release (pull_data->metadata_objects_to_scan);
   
   return FALSE;
