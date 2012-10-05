@@ -79,10 +79,31 @@ ot_worker_queue_hold (OtWorkerQueue  *queue)
   g_atomic_int_inc (&queue->holds);
 }
 
+static gboolean
+invoke_idle_callback (gpointer user_data)
+{
+  OtWorkerQueue *queue = user_data;
+  queue->idle_callback (queue->idle_data);
+  return FALSE;
+}
+
 void
 ot_worker_queue_release (OtWorkerQueue  *queue)
 {
-  g_atomic_int_add (&queue->holds, -1);
+  if (!g_atomic_int_dec_and_test (&queue->holds))
+    return;
+
+  g_mutex_lock (&queue->mutex);
+
+  if (!g_queue_peek_tail_link (&queue->queue))
+    {
+      if (queue->idle_callback)
+        g_main_context_invoke (queue->idle_context,
+                               invoke_idle_callback,
+                               queue);
+    }
+
+  g_mutex_unlock (&queue->mutex);
 }
 
 void
@@ -93,14 +114,6 @@ ot_worker_queue_push (OtWorkerQueue *queue,
   g_queue_push_head (&queue->queue, data);
   g_cond_signal (&queue->cond);
   g_mutex_unlock (&queue->mutex);
-}
-
-static gboolean
-invoke_idle_callback (gpointer user_data)
-{
-  OtWorkerQueue *queue = user_data;
-  queue->idle_callback (queue->idle_data);
-  return FALSE;
 }
 
 static gpointer
