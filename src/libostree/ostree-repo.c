@@ -1276,6 +1276,7 @@ devino_cache_lookup (OstreeRepo           *self,
 
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
+                                 gboolean        enable_commit_hardlink_scan,
                                  GCancellable   *cancellable,
                                  GError        **error)
 {
@@ -1285,13 +1286,14 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   self->in_transaction = TRUE;
 
-  if (!self->loose_object_devino_hash)
+  if (enable_commit_hardlink_scan)
     {
-      self->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
+      if (!self->loose_object_devino_hash)
+        self->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
+      g_hash_table_remove_all (self->loose_object_devino_hash);
+      if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
+        goto out;
     }
-  g_hash_table_remove_all (self->loose_object_devino_hash);
-  if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
-    goto out;
 
   ret = TRUE;
  out:

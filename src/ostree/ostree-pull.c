@@ -1333,7 +1333,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
         }
     }
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, NULL, error))
+  if (!ostree_repo_prepare_transaction (pull_data->repo, FALSE, NULL, error))
     goto out;
 
   pull_data->metadata_scan_active = TRUE;

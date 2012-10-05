@@ -196,7 +196,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   g_print ("%u objects to copy\n", g_hash_table_size (objects_to_copy));
 
-  if (!ostree_repo_prepare_transaction (data.dest_repo, cancellable, error))
+  if (!ostree_repo_prepare_transaction (data.dest_repo, FALSE, cancellable, error))
     goto out;
   
   g_hash_table_iter_init (&hash_iter, objects_to_copy);
