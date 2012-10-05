@@ -109,7 +109,9 @@ typedef struct {
   guint         n_fetched_content;
   guint         outstanding_filemeta_requests;
   guint         outstanding_filecontent_requests;
-  guint         outstanding_checksum_requests;
+  guint         outstanding_content_stage_requests;
+
+  guint64       previous_total_downloaded;
 
   GError      **async_error;
   gboolean      caught_error;
@@ -185,18 +187,31 @@ uri_fetch_update_status (gpointer user_data)
   OtPullData *pull_data = user_data;
   ot_lfree char *fetcher_status;
   GString *status;
+  guint64 current_bytes_transferred;
+  guint64 delta_bytes_transferred;
  
   status = g_string_new ("");
 
-  g_string_append_printf (status, "%u/%u metadata %u/%u content fetched; ",
+  if (pull_data->metadata_scan_active)
+    g_string_append_printf (status, "scan: %u metadata; ",
+                            g_atomic_int_get (&pull_data->n_scanned_metadata));
+
+  g_string_append_printf (status, "fetch: %u/%u metadata %u/%u content; ",
                           g_atomic_int_get (&pull_data->n_fetched_metadata),
                           g_atomic_int_get (&pull_data->n_requested_metadata),
                           pull_data->n_fetched_content,
                           g_atomic_int_get (&pull_data->n_requested_content));
 
-  if (pull_data->outstanding_checksum_requests > 0)
-    g_string_append_printf (status, "Calculating %u checksums; ",
-                            pull_data->outstanding_checksum_requests);
+  current_bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+  delta_bytes_transferred = current_bytes_transferred - pull_data->previous_total_downloaded;
+  pull_data->previous_total_downloaded = current_bytes_transferred;
+
+  if (delta_bytes_transferred < 1024)
+    g_string_append_printf (status, "%u B/s; ", 
+                            (guint)delta_bytes_transferred);
+  else
+    g_string_append_printf (status, "%.1f KiB/s; ", 
+                            (double)delta_bytes_transferred / 1024);
 
   fetcher_status = ostree_fetcher_query_state_text (pull_data->fetcher);
   g_string_append (status, fetcher_status);
@@ -245,7 +260,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
       pull_data->outstanding_uri_requests == 0 &&
       pull_data->outstanding_filemeta_requests == 0 &&
       pull_data->outstanding_filecontent_requests == 0 &&
-      pull_data->outstanding_checksum_requests == 0)
+      pull_data->outstanding_content_stage_requests == 0)
     g_main_loop_quit (pull_data->loop);
   throw_async_error (pull_data, error);
 }
@@ -507,79 +522,27 @@ destroy_fetch_one_content_item_data (OtFetchOneContentItemData *data)
 }
 
 static void
-content_fetch_on_checksum_complete (GObject        *object,
-                                    GAsyncResult   *result,
-                                    gpointer        user_data)
+content_fetch_on_stage_complete (GObject        *object,
+                                 GAsyncResult   *result,
+                                 gpointer        user_data)
 {
   OtFetchOneContentItemData *data = user_data;
   GError *local_error = NULL;
   GError **error = &local_error;
-  guint64 length;
-  GCancellable *cancellable = NULL;
-  gboolean compressed;
-  ot_lfree guchar *csum;
-  ot_lvariant GVariant *file_meta = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GInputStream *content_input = NULL;
-  ot_lobj GInputStream *file_object_input = NULL;
-  ot_lfree char *checksum;
+  ot_lfree guchar *csum = NULL;
+  ot_lfree char *checksum = NULL;
 
-  csum = ot_gio_checksum_stream_finish ((GInputStream*)object, result, error);
-  if (!csum)
+  if (!ostree_repo_stage_content_finish ((OstreeRepo*)object, result, 
+                                         &csum, error))
     goto out;
 
   checksum = ostree_checksum_from_bytes (csum);
 
-  if (strcmp (checksum, data->checksum) != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted object %s (actual checksum is %s)",
-                   data->checksum, checksum);
-      goto out;
-    }
-
-  compressed = data->pull_data->remote_mode == OSTREE_REPO_MODE_ARCHIVE_Z;
-
-  if (compressed)
-    {
-      content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
-      if (!content_input)
-        goto out;
-      if (!ostree_zlib_content_stream_open (content_input, &length, &file_object_input, 
-                                            cancellable, error))
-        goto out;
-    }
-  else
-    {
-      if (!ot_util_variant_map (data->meta_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT, TRUE,
-                                &file_meta, error))
-        goto out;
-  
-      if (!ostree_file_header_parse (file_meta, &file_info, &xattrs, error))
-        goto out;
-
-      if (data->content_path)
-        {
-          content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
-          if (!content_input)
-            goto out;
-        }
-      
-      if (!ostree_raw_file_to_content_stream (content_input, file_info, xattrs,
-                                              &file_object_input, &length,
-                                              cancellable, error))
-        goto out;
-    }
-
-  if (!ostree_repo_stage_content_trusted (data->pull_data->repo, checksum,
-                                          file_object_input, length,
-                                          cancellable, error))
-    goto out;
+  g_assert (strcmp (checksum, data->checksum) == 0);
 
   data->pull_data->n_fetched_content++;
  out:
-  data->pull_data->outstanding_checksum_requests--;
+  data->pull_data->outstanding_content_stage_requests--;
   check_outstanding_requests_handle_error (data->pull_data, local_error);
   destroy_fetch_one_content_item_data (data);
 }
@@ -623,6 +586,7 @@ content_fetch_on_complete (GObject        *object,
   GCancellable *cancellable = NULL;
   gboolean was_content_fetch = FALSE;
   gboolean need_content_fetch = FALSE;
+  guint64 length;
   ot_lvariant GVariant *file_meta = NULL;
   ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GInputStream *content_input = NULL;
@@ -674,20 +638,21 @@ content_fetch_on_complete (GObject        *object,
   if (!need_content_fetch && compressed)
     {
       ot_lobj GInputStream *uncomp_input = NULL;
-      guint64 uncompressed_len;
 
       g_assert (data->content_path != NULL);
       content_input = (GInputStream*)g_file_read (data->content_path, cancellable, error);
       if (!content_input)
         goto out;
 
-      if (!ostree_zlib_content_stream_open (content_input, &uncompressed_len, &uncomp_input, 
+      if (!ostree_zlib_content_stream_open (content_input, &length, &uncomp_input, 
                                             cancellable, error))
         goto out;
-      
-      data->pull_data->outstanding_checksum_requests++;
-      ot_gio_checksum_stream_async (uncomp_input, G_PRIORITY_DEFAULT, NULL,
-                                    content_fetch_on_checksum_complete, data);
+
+      data->pull_data->outstanding_content_stage_requests++;
+      ostree_repo_stage_content_async (data->pull_data->repo, data->checksum,
+                                       uncomp_input, length,
+                                       cancellable,
+                                       content_fetch_on_stage_complete, data);
     }
   else if (!need_content_fetch)
     {
@@ -709,13 +674,15 @@ content_fetch_on_complete (GObject        *object,
         }
 
       if (!ostree_raw_file_to_content_stream (content_input, file_info, xattrs,
-                                              &file_object_input, NULL,
+                                              &file_object_input, &length,
                                               cancellable, error))
         goto out;
 
-      data->pull_data->outstanding_checksum_requests++;
-      ot_gio_checksum_stream_async (file_object_input, G_PRIORITY_DEFAULT, NULL,
-                                    content_fetch_on_checksum_complete, data);
+      data->pull_data->outstanding_content_stage_requests++;
+      ostree_repo_stage_content_async (data->pull_data->repo, data->checksum,
+                                       file_object_input, length,
+                                       cancellable,
+                                       content_fetch_on_stage_complete, data);
     }
 
   while (data->pull_data->outstanding_filemeta_requests < 10)

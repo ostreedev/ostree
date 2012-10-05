@@ -113,7 +113,7 @@ void          ostree_repo_stage_metadata_async (OstreeRepo              *self,
 
 gboolean      ostree_repo_stage_metadata_finish (OstreeRepo        *self,
                                                  GAsyncResult      *result,
-                                                 guchar           **out_checksum,
+                                                 guchar           **out_csum,
                                                  GError           **error);
 
 gboolean      ostree_repo_stage_content (OstreeRepo       *self,
@@ -137,6 +137,19 @@ gboolean      ostree_repo_stage_content_trusted (OstreeRepo       *self,
                                                  guint64           content_length,
                                                  GCancellable     *cancellable,
                                                  GError          **error);
+
+void          ostree_repo_stage_content_async (OstreeRepo              *self,
+                                               const char              *expected_checksum,
+                                               GInputStream            *object,
+                                               guint64                  file_object_length,
+                                               GCancellable            *cancellable,
+                                               GAsyncReadyCallback      callback,
+                                               gpointer                 user_data);
+
+gboolean      ostree_repo_stage_content_finish (OstreeRepo        *self,
+                                                GAsyncResult      *result,
+                                                guchar           **out_csum,
+                                                GError           **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *rev,

@@ -82,6 +82,7 @@ struct OstreeFetcher
   GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
   
   guint64 total_downloaded;
+  guint total_requests;
 };
 
 G_DEFINE_TYPE (OstreeFetcher, ostree_fetcher, G_TYPE_OBJECT)
@@ -243,6 +244,8 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
   OstreeFetcherPendingURI *pending;
   GError *local_error = NULL;
 
+  self->total_requests++;
+
   pending = g_new0 (OstreeFetcherPendingURI, 1);
   pending->refcount = 1;
   pending->self = g_object_ref (self);
@@ -351,4 +354,10 @@ guint64
 ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
   return self->total_downloaded;
+}
+
+guint
+ostree_fetcher_get_n_requests (OstreeFetcher       *self)
+{
+  return self->total_requests;
 }
