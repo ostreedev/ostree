@@ -1185,6 +1185,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
   guint64 bytes_transferred;
+  guint64 start_time;
+  guint64 end_time;
 
   memset (pull_data, 0, sizeof (*pull_data));
 
@@ -1213,6 +1215,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       ot_util_usage_error (context, "REMOTE must be specified", error);
       goto out;
     }
+
+  start_time = g_get_monotonic_time ();
 
   pull_data->stdout_is_tty = isatty (1);
 
@@ -1406,6 +1410,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
       g_print ("remote %s is now %s\n", remote_ref, checksum);
     }
 
+  end_time = g_get_monotonic_time ();
+
   bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
   if (bytes_transferred > 0)
     {
@@ -1414,10 +1420,11 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
         shift = 1;
       else
         shift = 1024;
-      g_print ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred\n", 
+      g_print ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds\n", 
                pull_data->n_fetched_metadata, pull_data->n_fetched_content,
                (guint64)(bytes_transferred / shift),
-               shift == 1 ? "B" : "KiB");
+               shift == 1 ? "B" : "KiB",
+               (guint) ((end_time - start_time) / G_USEC_PER_SEC));
     }
 
   ret = TRUE;
