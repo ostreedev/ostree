@@ -50,6 +50,7 @@ struct OstreeRepo {
   GFile *local_heads_dir;
   GFile *remote_heads_dir;
   GFile *objects_dir;
+  GFile *uncompressed_objects_dir;
   GFile *remote_cache_dir;
   GFile *config_file;
 
@@ -64,9 +65,11 @@ struct OstreeRepo {
   gboolean inited;
   gboolean in_transaction;
   GHashTable *loose_object_devino_hash;
+  GHashTable *updated_uncompressed_dirs;
 
   GKeyFile *config;
   OstreeRepoMode mode;
+  gboolean enable_uncompressed_cache;
 
   OstreeRepo *parent_repo;
 };
@@ -104,10 +107,13 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->local_heads_dir);
   g_clear_object (&self->remote_heads_dir);
   g_clear_object (&self->objects_dir);
+  g_clear_object (&self->uncompressed_objects_dir);
   g_clear_object (&self->remote_cache_dir);
   g_clear_object (&self->config_file);
   if (self->loose_object_devino_hash)
     g_hash_table_destroy (self->loose_object_devino_hash);
+  if (self->updated_uncompressed_dirs)
+    g_hash_table_destroy (self->updated_uncompressed_dirs);
   if (self->config)
     g_key_file_free (self->config);
   g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
@@ -177,6 +183,7 @@ ostree_repo_constructor (GType                  gtype,
   self->remote_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/remotes");
   
   self->objects_dir = g_file_get_child (self->repodir, "objects");
+  self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
   self->remote_cache_dir = g_file_get_child (self->repodir, "remote-cache");
   self->config_file = g_file_get_child (self->repodir, "config");
 
@@ -674,6 +681,10 @@ ostree_repo_check (OstreeRepo *self, GError **error)
         }
     }
 
+  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
+                                            TRUE, &self->enable_uncompressed_cache, error))
+    goto out;
+
   self->inited = TRUE;
   
   ret = TRUE;
@@ -1094,18 +1105,35 @@ get_loose_object_dirs (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
+  GFile *object_dir_to_scan;
   ot_lptrarray GPtrArray *ret_object_dirs = NULL;
   ot_lobj GFileEnumerator *enumerator = NULL;
   ot_lobj GFileInfo *file_info = NULL;
 
   ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  enumerator = g_file_enumerate_children (self->objects_dir, OSTREE_GIO_FAST_QUERYINFO, 
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z)
+    object_dir_to_scan = self->uncompressed_objects_dir;
+  else
+    object_dir_to_scan = self->objects_dir;
+
+  enumerator = g_file_enumerate_children (object_dir_to_scan, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           cancellable, 
-                                          error);
+                                          &temp_error);
   if (!enumerator)
-    goto out;
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          ret = TRUE;
+          ot_transfer_out_value (out_object_dirs, &ret_object_dirs);
+        }
+      else
+        g_propagate_error (error, temp_error);
+
+      goto out;
+    }
 
   while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
     {
@@ -1178,8 +1206,6 @@ scan_loose_devino (OstreeRepo                     *self,
     }
 
   repo_mode = ostree_repo_get_mode (self);
-  if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z)
-    return TRUE;
 
   if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
@@ -1207,6 +1233,7 @@ scan_loose_devino (OstreeRepo                     *self,
           guint32 type;
           OstreeDevIno *key;
           GString *checksum;
+          gboolean skip;
 
           name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
           type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
@@ -1217,14 +1244,20 @@ scan_loose_devino (OstreeRepo                     *self,
               continue;
             }
       
-          if (!((repo_mode == OSTREE_REPO_MODE_ARCHIVE
-                 && g_str_has_suffix (name, ".filecontent"))
-                || (repo_mode == OSTREE_REPO_MODE_BARE
-                    && g_str_has_suffix (name, ".file"))))
+          switch (repo_mode)
             {
-              g_clear_object (&file_info);
-              continue;
+            case OSTREE_REPO_MODE_ARCHIVE:
+              skip = !g_str_has_suffix (name, ".filecontent");
+              break;
+            case OSTREE_REPO_MODE_ARCHIVE_Z:
+              skip = !g_str_has_suffix (name, ".filez");
+              break;
+            case OSTREE_REPO_MODE_BARE:
+              skip = !g_str_has_suffix (name, ".file");
+              break;
             }
+          if (skip)
+            continue;
 
           dot = strrchr (name, '.');
           g_assert (dot);
@@ -1512,6 +1545,20 @@ ostree_repo_get_object_path (OstreeRepo       *self,
                 && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z);
   relpath = ostree_get_relative_object_path (checksum, type, compressed);
   ret = g_file_resolve_relative_path (self->repodir, relpath);
+  g_free (relpath);
+ 
+  return ret;
+}
+
+static GFile *
+get_uncompressed_object_cache_path (OstreeRepo       *self,
+                                    const char       *checksum)
+{
+  char *relpath;
+  GFile *ret;
+
+  relpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE, FALSE);
+  ret = g_file_resolve_relative_path (self->uncompressed_objects_dir, relpath);
   g_free (relpath);
  
   return ret;
@@ -3208,10 +3255,29 @@ find_loose_for_checkout (OstreeRepo             *self,
 
   do
     {
-      if (self->mode == OSTREE_REPO_MODE_BARE)
-        path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
-      else
-        path = ostree_repo_get_archive_content_path (self, checksum);
+      switch (self->mode)
+        {
+        case OSTREE_REPO_MODE_BARE:
+          path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+          break;
+        case OSTREE_REPO_MODE_ARCHIVE:
+          path = ostree_repo_get_archive_content_path (self, checksum);
+          break;
+        case OSTREE_REPO_MODE_ARCHIVE_Z:
+          {
+            if (self->enable_uncompressed_cache)
+              path = get_uncompressed_object_cache_path (self, checksum);
+            else
+              path = NULL;
+          }
+          break;
+        }
+
+      if (!path)
+        {
+          self = self->parent_repo;
+          continue;
+        }
 
       if (lstat (ot_gfile_get_path_cached (path), &stbuf) < 0)
         {
@@ -3279,6 +3345,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                       GCancellable           *cancellable)
 {
   const char *checksum;
+  OstreeRepo *repo;
   gboolean hardlink_supported;
   GError *local_error = NULL;
   GError **error = &local_error;
@@ -3288,6 +3355,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
   CheckoutOneFileAsyncData *checkout_data;
 
   checkout_data = g_simple_async_result_get_op_res_gpointer (result);
+  repo = checkout_data->repo;
 
   /* Hack to avoid trying to create device files as a user */
   if (checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
@@ -3296,14 +3364,71 @@ checkout_file_thread (GSimpleAsyncResult     *result,
 
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)checkout_data->source);
 
+  /* We can only do hardlinks in these scenarios */
   if ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE
        && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
+          && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+      || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z
           && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER))
     {
       if (!find_loose_for_checkout (checkout_data->repo, checksum, &loose_path,
                                     cancellable, error))
         goto out;
+    }
+  /* Also, if we're archive-z and we didn't find an object, uncompress it now,
+   * stick it in the cache, and then hardlink to that.
+   */
+  if (loose_path == NULL
+      && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z
+      && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
+      && repo->enable_uncompressed_cache)
+    {
+      ot_lobj GFile *objdir = NULL;
+
+      loose_path = get_uncompressed_object_cache_path (repo, checksum);
+      if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
+                                  cancellable, error))
+        goto out;
+
+      objdir = g_file_get_parent (loose_path);
+      if (!ot_gfile_ensure_directory (objdir, TRUE, error))
+        goto out;
+
+      /* Use UNION_FILES to make this last-one-wins thread behavior
+       * for now; we lose deduplication potentially, but oh well
+       */ 
+      if (!checkout_file_from_input (loose_path,
+                                     OSTREE_REPO_CHECKOUT_MODE_USER,
+                                     OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
+                                     checkout_data->source_info, xattrs, 
+                                     input, cancellable, error))
+        goto out;
+
+      /* Store the 2-byte objdir prefix (e.g. e3) in a set.  The basic
+       * idea here is that if we had to unpack an object, it's very
+       * likely we're replacing some other object, so we may need a GC.
+       *
+       * This model ensures that we do work roughly proportional to
+       * the size of the changes.  For example, we don't scan any
+       * directories if we didn't modify anything, meaning you can
+       * checkout the same tree multiple times very quickly.
+       *
+       * This is also scale independent; we don't hardcode e.g. looking
+       * at 1000 objects.
+       *
+       * The downside is that if we're unlucky, we may not free
+       * an object for quite some time.
+       */
+      g_mutex_lock (&repo->cache_lock);
+      {
+        gpointer key = GUINT_TO_POINTER ((g_ascii_xdigit_value (checksum[0]) << 4) + 
+                                         g_ascii_xdigit_value (checksum[1]));
+        if (repo->updated_uncompressed_dirs == NULL)
+          repo->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
+        g_hash_table_insert (repo->updated_uncompressed_dirs, key, key);
+      }
+      g_mutex_unlock (&repo->cache_lock);
     }
 
   if (loose_path)
@@ -3613,6 +3738,73 @@ ostree_repo_checkout_tree_finish (OstreeRepo               *self,
   if (g_simple_async_result_propagate_error (simple, error))
     return FALSE;
   return TRUE;
+}
+
+/**
+ * ostree_repo_checkout_gc:
+ *
+ * Call this after finishing a succession of checkout operations; it
+ * will delete any currently-unused uncompressed objects from the
+ * cache.
+ */
+gboolean
+ostree_repo_checkout_gc (OstreeRepo        *self,
+                         GCancellable      *cancellable,
+                         GError           **error)
+{
+  gboolean ret = FALSE;
+  ot_lhash GHashTable *to_clean_dirs = NULL;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_mutex_lock (&self->cache_lock);
+  to_clean_dirs = self->updated_uncompressed_dirs;
+  self->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
+  g_mutex_unlock (&self->cache_lock);
+
+  if (to_clean_dirs)
+    g_hash_table_iter_init (&iter, to_clean_dirs);
+  while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
+    {
+      GError *temp_error = NULL;
+      ot_lobj GFile *objdir = NULL;
+      ot_lobj GFileInfo *file_info = NULL;
+      ot_lobj GFileEnumerator *enumerator = NULL;
+      ot_lfree char *objdir_name = NULL;
+
+      objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
+      objdir = ot_gfile_get_child_build_path (self->uncompressed_objects_dir, "objects",
+                                              objdir_name, NULL);
+
+      enumerator = g_file_enumerate_children (objdir, "standard::name,standard::type,unix::inode,unix::nlink", 
+                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                              cancellable, 
+                                              error);
+      if (!enumerator)
+        goto out;
+  
+      while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+        {
+          guint32 nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
+          if (nlinks == 1)
+            {
+              ot_lobj GFile *objpath = NULL;
+              objpath = ot_gfile_get_child_build_path (objdir, g_file_info_get_name (file_info), NULL);
+              if (!ot_gfile_unlink (objpath, cancellable, error))
+                goto out;
+            }
+          g_object_unref (file_info);
+        }
+      if (temp_error != NULL)
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 gboolean

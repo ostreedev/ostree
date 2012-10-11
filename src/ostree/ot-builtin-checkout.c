@@ -280,6 +280,9 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
         }
     }
 
+  if (!ostree_repo_checkout_gc (repo, cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   if (context)
