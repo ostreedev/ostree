@@ -57,9 +57,11 @@ ot_gfile_ensure_directory (GFile     *dir,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
 
- again:
   if (with_parents)
-    ret = g_file_make_directory_with_parents (dir, NULL, &temp_error);
+    {
+      ot_lobj GFile *parent = g_file_get_parent (dir);
+      ret = ot_gfile_ensure_directory (parent, TRUE, &temp_error);
+    }
   else
     ret = g_file_make_directory (dir, NULL, &temp_error);
   if (!ret)
@@ -72,11 +74,6 @@ ot_gfile_ensure_directory (GFile     *dir,
       else
         g_clear_error (&temp_error);
     }
-  /* Work around glib bug where if multiple threads/processes race in
-   * _with_parents, it can error out early
-   */
-  if (with_parents && !g_file_query_exists (dir, NULL))
-    goto again;
 
   ret = TRUE;
  out:
