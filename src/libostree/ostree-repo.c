@@ -3346,6 +3346,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
 {
   const char *checksum;
   OstreeRepo *repo;
+  gboolean is_symlink;
   gboolean hardlink_supported;
   GError *local_error = NULL;
   GError **error = &local_error;
@@ -3362,15 +3363,15 @@ checkout_file_thread (GSimpleAsyncResult     *result,
       && g_file_info_get_file_type (checkout_data->source_info) == G_FILE_TYPE_SPECIAL)
     goto out;
 
+  is_symlink = g_file_info_get_file_type (checkout_data->source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
+
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)checkout_data->source);
 
   /* We can only do hardlinks in these scenarios */
-  if ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE
-       && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
-      || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE
-          && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
-      || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z
-          && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER))
+  if (!is_symlink &&
+      ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
+       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)))
     {
       if (!find_loose_for_checkout (checkout_data->repo, checksum, &loose_path,
                                     cancellable, error))
@@ -3379,7 +3380,8 @@ checkout_file_thread (GSimpleAsyncResult     *result,
   /* Also, if we're archive-z and we didn't find an object, uncompress it now,
    * stick it in the cache, and then hardlink to that.
    */
-  if (loose_path == NULL
+  if (!is_symlink
+      && loose_path == NULL
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z
       && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
       && repo->enable_uncompressed_cache)
