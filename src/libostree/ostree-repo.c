@@ -3141,12 +3141,14 @@ checkout_file_from_input (GFile          *file,
 
       xattrs = NULL;
     }
+  else
+    temp_info = g_object_ref (finfo);
 
   if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
     {
-      if (g_file_info_get_file_type (temp_info ? temp_info : finfo) == G_FILE_TYPE_DIRECTORY)
+      if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
+          if (!ostree_create_file_from_input (file, temp_info,
                                               xattrs, input,
                                               cancellable, &temp_error))
             {
@@ -3165,11 +3167,10 @@ checkout_file_from_input (GFile          *file,
         {
           dir = g_file_get_parent (file);
           if (!ostree_create_temp_file_from_input (dir, NULL, "checkout",
-                                                   temp_info ? temp_info : finfo,
-                                                   xattrs, input, &temp_file, 
+                                                   temp_info, xattrs, input, &temp_file, 
                                                    cancellable, error))
             goto out;
-          
+
           if (rename (ot_gfile_get_path_cached (temp_file), ot_gfile_get_path_cached (file)) < 0)
             {
               ot_util_set_error_from_errno (error, errno);
@@ -3179,8 +3180,14 @@ checkout_file_from_input (GFile          *file,
     }
   else
     {
-      if (!ostree_create_file_from_input (file, temp_info ? temp_info : finfo,
+      if (!ostree_create_file_from_input (file, temp_info,
                                           xattrs, input, cancellable, error))
+        goto out;
+    }
+
+  if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
+    {
+      if (!ensure_file_data_synced (file, cancellable, error))
         goto out;
     }
 
