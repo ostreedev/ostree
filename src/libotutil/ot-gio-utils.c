@@ -57,19 +57,27 @@ ot_gfile_ensure_directory (GFile     *dir,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
 
-  if (with_parents)
+  if (!g_file_make_directory (dir, NULL, &temp_error))
     {
-      ot_lobj GFile *parent = g_file_get_parent (dir);
-      if (parent)
-        ret = ot_gfile_ensure_directory (parent, TRUE, &temp_error);
-      else
-        ret = TRUE;
-    }
-  else
-    ret = g_file_make_directory (dir, NULL, &temp_error);
-  if (!ret)
-    {
-      if (!g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+      if (with_parents &&
+          g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          ot_lobj GFile *parent = NULL;
+
+          g_clear_error (&temp_error);
+
+          parent = g_file_get_parent (dir);
+          if (parent)
+            {
+              if (!ot_gfile_ensure_directory (parent, TRUE, error))
+                goto out;
+              if (!g_file_make_directory (dir, NULL, error))
+                goto out;
+            }
+          else
+            g_assert_not_reached ();
+        }
+      else if (!g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
         {
           g_propagate_error (error, temp_error);
           goto out;
