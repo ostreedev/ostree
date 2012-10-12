@@ -60,7 +60,10 @@ ot_gfile_ensure_directory (GFile     *dir,
   if (with_parents)
     {
       ot_lobj GFile *parent = g_file_get_parent (dir);
-      ret = ot_gfile_ensure_directory (parent, TRUE, &temp_error);
+      if (parent)
+        ret = ot_gfile_ensure_directory (parent, TRUE, &temp_error);
+      else
+        ret = TRUE;
     }
   else
     ret = g_file_make_directory (dir, NULL, &temp_error);
