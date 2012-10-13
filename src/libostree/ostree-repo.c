@@ -3412,7 +3412,10 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                                      OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
                                      checkout_data->source_info, xattrs, 
                                      input, cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Unpacking loose object %s: ", checksum);
+          goto out;
+        }
 
       /* Store the 2-byte objdir prefix (e.g. e3) in a set.  The basic
        * idea here is that if we had to unpack an object, it's very
@@ -3447,7 +3450,11 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                                    checkout_data->overwrite_mode, loose_path,
                                    checkout_data->destination,
                                    &hardlink_supported, cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Hardlinking loose object %s to %s: ", checksum,
+                          ot_gfile_get_path_cached (checkout_data->destination));
+          goto out;
+        }
     }
 
   /* Fall back to copy if there's no loose object, or we couldn't hardlink */
