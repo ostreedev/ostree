@@ -3402,7 +3402,11 @@ checkout_file_thread (GSimpleAsyncResult     *result,
 
       objdir = g_file_get_parent (loose_path);
       if (!ot_gfile_ensure_directory (objdir, TRUE, error))
-        goto out;
+        {
+          g_prefix_error (error, "Creating cache directory %s: ",
+                          ot_gfile_get_path_cached (objdir));
+          goto out;
+        }
 
       /* Use UNION_FILES to make this last-one-wins thread behavior
        * for now; we lose deduplication potentially, but oh well
@@ -3469,7 +3473,11 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                                      checkout_data->overwrite_mode,
                                      checkout_data->source_info, xattrs, 
                                      input, cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Copying object %s to %s: ", checksum,
+                          ot_gfile_get_path_cached (checkout_data->destination));
+          goto out;
+        }
     }
 
  out:
