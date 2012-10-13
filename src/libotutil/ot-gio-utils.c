@@ -71,11 +71,9 @@ ot_gfile_ensure_directory (GFile     *dir,
             {
               if (!ot_gfile_ensure_directory (parent, TRUE, error))
                 goto out;
-              if (!g_file_make_directory (dir, NULL, error))
-                goto out;
             }
-          else
-            g_assert_not_reached ();
+          if (!g_file_make_directory (dir, NULL, error))
+            goto out;
         }
       else if (!g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
         {
