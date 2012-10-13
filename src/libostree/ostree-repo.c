@@ -3235,6 +3235,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
+      ret_was_supported = TRUE;
     }
   else
     {
