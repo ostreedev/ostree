@@ -3552,7 +3552,10 @@ typedef struct {
 
   DIR                      *dir_handle;
 
+  gboolean                  dir_enumeration_complete;
   guint                     pending_ops;
+  guint                     pending_file_ops;
+  GPtrArray                *pending_dirs;
   GMainLoop                *loop;
   GSimpleAsyncResult       *result;
 } CheckoutTreeAsyncData;
@@ -3567,6 +3570,8 @@ checkout_tree_async_data_free (gpointer      data)
   g_clear_object (&checkout_data->source);
   g_clear_object (&checkout_data->source_info);
   g_clear_object (&checkout_data->cancellable);
+  if (checkout_data->pending_dirs)
+    g_ptr_array_unref (checkout_data->pending_dirs);
   if (checkout_data->dir_handle)
     (void) closedir (checkout_data->dir_handle);
   g_free (checkout_data);
@@ -3614,6 +3619,52 @@ on_one_subdir_checked_out (GObject          *src,
 }
 
 static void
+process_pending_dirs (CheckoutTreeAsyncData *data)
+{
+  guint i;
+
+  g_assert (data->dir_enumeration_complete);
+  g_assert (data->pending_file_ops == 0);
+
+  /* Don't hold a FD open while we're processing
+   * recursive calls, otherwise we can pretty easily
+   * hit the max of 1024 fds =(
+   */
+  if (data->dir_handle)
+    {
+      (void) closedir (data->dir_handle);
+      data->dir_handle = NULL;
+    }
+
+  if (data->pending_dirs != NULL)
+    {
+      for (i = 0; i < data->pending_dirs->len; i++)
+        {
+          GFileInfo *file_info = data->pending_dirs->pdata[i];
+          const char *name;
+          ot_lobj GFile *dest_path = NULL;
+          ot_lobj GFile *src_child = NULL;
+
+          name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
+
+          dest_path = g_file_get_child (data->destination, name);
+          src_child = g_file_get_child ((GFile*)data->source, name);
+
+          ostree_repo_checkout_tree_async (data->repo,
+                                           data->mode,
+                                           data->overwrite_mode,
+                                           dest_path, (OstreeRepoFile*)src_child, file_info,
+                                           data->cancellable,
+                                           on_one_subdir_checked_out,
+                                           data);
+          data->pending_ops++;
+        }
+      g_ptr_array_set_size (data->pending_dirs, 0);
+      on_tree_async_child_op_complete (data, NULL);
+    }
+}
+
+static void
 on_one_file_checked_out (GObject          *src,
                          GAsyncResult     *result,
                          gpointer          user_data)
@@ -3625,6 +3676,9 @@ on_one_file_checked_out (GObject          *src,
     goto out;
 
  out:
+  data->pending_file_ops--;
+  if (data->dir_enumeration_complete && data->pending_file_ops == 0)
+    process_pending_dirs (data);
   on_tree_async_child_op_complete (data, local_error);
 }
 
@@ -3642,7 +3696,9 @@ on_got_next_files (GObject          *src,
   if (local_error)
     goto out;
 
-  if (files)
+  if (!files)
+    data->dir_enumeration_complete = TRUE;
+  else
     {
       g_file_enumerator_next_files_async ((GFileEnumerator*)src, 50, G_PRIORITY_DEFAULT,
                                           data->cancellable,
@@ -3650,42 +3706,47 @@ on_got_next_files (GObject          *src,
       data->pending_ops++;
     }
 
+  if (data->dir_enumeration_complete && data->pending_file_ops == 0)
+    process_pending_dirs (data);
+
   for (iter = files; iter; iter = iter->next)
     {
       GFileInfo *file_info = iter->data;
       const char *name;
       guint32 type;
-      ot_lobj GFile *dest_path = NULL;
-      ot_lobj GFile *src_child = NULL;
 
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
 
-      dest_path = g_file_get_child (data->destination, name);
-      src_child = g_file_get_child ((GFile*)data->source, name);
+      if (type != G_FILE_TYPE_DIRECTORY)
+        {
+          ot_lobj GFile *dest_path = NULL;
+          ot_lobj GFile *src_child = NULL;
 
-      if (type == G_FILE_TYPE_DIRECTORY)
-        {
-          ostree_repo_checkout_tree_async (data->repo,
-                                           data->mode,
-                                           data->overwrite_mode,
-                                           dest_path, (OstreeRepoFile*)src_child, file_info,
-                                           data->cancellable,
-                                           on_one_subdir_checked_out,
-                                           data);
-        }
-      else
-        {
+          dest_path = g_file_get_child (data->destination, name);
+          src_child = g_file_get_child ((GFile*)data->source, name);
+
           checkout_one_file_async (data->repo, data->mode,
                                    data->overwrite_mode,
                                    (OstreeRepoFile*)src_child, file_info, 
                                    dest_path, dirfd(data->dir_handle),
                                    data->cancellable, on_one_file_checked_out,
                                    data);
+          data->pending_file_ops++;
+          data->pending_ops++;
         }
-      data->pending_ops++;
+      else
+        {
+          if (data->pending_dirs == NULL)
+            {
+              data->pending_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+              data->pending_ops++;
+            }
+          g_ptr_array_add (data->pending_dirs, g_object_ref (file_info));
+        }
       g_object_unref (file_info);
     }
+
   g_list_free (files);
 
  out:
