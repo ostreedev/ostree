@@ -589,8 +589,8 @@ ostree_repo_mode_from_string (const char      *mode,
     ret_mode = OSTREE_REPO_MODE_BARE;
   else if (strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE;
-  else if (strcmp (mode, "archive-z") == 0)
-    ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z;
+  else if (strcmp (mode, "archive-z2") == 0)
+    ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -886,46 +886,13 @@ stage_object (OstreeRepo         *self,
         checksum_input = ostree_checksum_input_stream_new (input, checksum);
     }
 
-  if (objtype == OSTREE_OBJECT_TYPE_FILE
-      && repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z)
-    {
-      gssize bytes_written;
-      guint64 len_be;
-      ot_lobj GOutputStream *raw_out_stream = NULL;
-      ot_lobj GConverter *zlib_compressor = NULL;
-      ot_lobj GOutputStream *compressed_out_stream = NULL;
-
-      if (!ostree_create_temp_regular_file (self->tmp_dir,
-                                            ostree_object_type_to_string (objtype), NULL,
-                                            &temp_file, &raw_out_stream,
-                                            cancellable, error))
-        goto out;
-
-      len_be = GUINT64_TO_BE (file_object_length);
-      if (!g_output_stream_write_all (raw_out_stream, (const guchar*) &len_be,
-                                      sizeof (guint64), NULL, cancellable, error))
-        goto out;
-      
-      zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9);
-      compressed_out_stream = g_converter_output_stream_new (raw_out_stream, zlib_compressor);
-      
-      bytes_written = g_output_stream_splice (compressed_out_stream,
-                                              checksum_input ? (GInputStream*)checksum_input : input,
-                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                              cancellable, error);
-      if (bytes_written < 0)
-        goto out;
-      
-      staged_raw_file = TRUE;
-      temp_file_is_regular = TRUE;
-    }
-  else if (objtype == OSTREE_OBJECT_TYPE_FILE)
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       ot_lobj GInputStream *file_input = NULL;
       ot_lobj GFileInfo *file_info = NULL;
       ot_lvariant GVariant *xattrs = NULL;
 
-      if (!ostree_content_stream_parse (checksum_input ? (GInputStream*)checksum_input : input,
+      if (!ostree_content_stream_parse (FALSE, checksum_input ? (GInputStream*)checksum_input : input,
                                         file_object_length, FALSE,
                                         &file_input, &file_info, &xattrs,
                                         cancellable, error))
@@ -942,6 +909,40 @@ stage_object (OstreeRepo         *self,
                                                    cancellable, error))
             goto out;
           staged_raw_file = TRUE;
+        }
+      else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+        {
+          ot_lvariant GVariant *file_meta = NULL;
+          ot_lobj GOutputStream *temp_out = NULL;
+          ot_lobj GConverter *zlib_compressor = NULL;
+          ot_lobj GOutputStream *compressed_out_stream = NULL;
+
+          if (!ostree_create_temp_regular_file (self->tmp_dir,
+                                                ostree_object_type_to_string (objtype), NULL,
+                                                &temp_file, &temp_out,
+                                                cancellable, error))
+            goto out;
+          temp_file_is_regular = TRUE;
+
+          file_meta = ostree_zlib_file_header_new (file_info, xattrs);
+
+          if (!ostree_write_variant_with_size (temp_out, file_meta, 0, NULL, NULL,
+                                               cancellable, error))
+            goto out;
+
+          if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+            {
+              zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9);
+              compressed_out_stream = g_converter_output_stream_new (temp_out, zlib_compressor);
+              
+              if (g_output_stream_splice (compressed_out_stream, file_input,
+                                          G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                          cancellable, error) < 0)
+                goto out;
+            }
+
+          if (!g_output_stream_close (temp_out, cancellable, error))
+            goto out;
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE)
         {
@@ -1043,7 +1044,7 @@ stage_object (OstreeRepo         *self,
           ot_lvariant GVariant *xattrs = NULL;
           gboolean is_regular;
               
-          if (!ostree_content_file_parse (temp_file, FALSE, &file_input,
+          if (!ostree_content_file_parse (FALSE, temp_file, FALSE, &file_input,
                                           &file_info, &xattrs,
                                           cancellable, error))
             goto out;
@@ -1112,7 +1113,7 @@ get_loose_object_dirs (OstreeRepo       *self,
 
   ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z)
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2)
     object_dir_to_scan = self->uncompressed_objects_dir;
   else
     object_dir_to_scan = self->objects_dir;
@@ -1249,7 +1250,7 @@ scan_loose_devino (OstreeRepo                     *self,
             case OSTREE_REPO_MODE_ARCHIVE:
               skip = !g_str_has_suffix (name, ".filecontent");
               break;
-            case OSTREE_REPO_MODE_ARCHIVE_Z:
+            case OSTREE_REPO_MODE_ARCHIVE_Z2:
               skip = !g_str_has_suffix (name, ".filez");
               break;
             case OSTREE_REPO_MODE_BARE:
@@ -1542,7 +1543,7 @@ ostree_repo_get_object_path (OstreeRepo       *self,
   gboolean compressed;
 
   compressed = (type == OSTREE_OBJECT_TYPE_FILE
-                && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z);
+                && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2);
   relpath = ostree_get_relative_object_path (checksum, type, compressed);
   ret = g_file_resolve_relative_path (self->repodir, relpath);
   g_free (relpath);
@@ -1860,7 +1861,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
     goto out;
 
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE
-      || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z)
+      || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
       if (!write_ref_summary (self, NULL, error))
         goto out;
@@ -2823,23 +2824,12 @@ ostree_repo_load_file (OstreeRepo         *self,
               }
           }
           break;
-        case OSTREE_REPO_MODE_ARCHIVE_Z:
+        case OSTREE_REPO_MODE_ARCHIVE_Z2:
           {
-            ot_lobj GInputStream *file_in = NULL;
-            ot_lobj GInputStream *uncomp_input = NULL;
-            guint64 uncompressed_len;
-
-            file_in = (GInputStream*)gs_file_read_noatime (loose_path, cancellable, error);
-            if (!file_in)
-              goto out;
-
-            if (!ostree_zlib_content_stream_open (file_in, &uncompressed_len, &uncomp_input, 
-                                                  cancellable, error))
-              goto out;
-
-            if (!ostree_content_stream_parse (uncomp_input, uncompressed_len, TRUE,
-                                              &ret_input, &ret_file_info, &ret_xattrs,
-                                              cancellable, error))
+            if (!ostree_content_file_parse (TRUE, loose_path, TRUE,
+                                            out_input ? &ret_input : NULL,
+                                            &ret_file_info, &ret_xattrs,
+                                            cancellable, error))
               goto out;
           }
           break;
@@ -3277,7 +3267,7 @@ find_loose_for_checkout (OstreeRepo             *self,
         case OSTREE_REPO_MODE_ARCHIVE:
           path = ostree_repo_get_archive_content_path (self, checksum);
           break;
-        case OSTREE_REPO_MODE_ARCHIVE_Z:
+        case OSTREE_REPO_MODE_ARCHIVE_Z2:
           {
             if (self->enable_uncompressed_cache)
               path = get_uncompressed_object_cache_path (self, checksum);
@@ -3385,7 +3375,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
   if (!is_symlink &&
       ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
        || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
-       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)))
+       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)))
     {
       if (!find_loose_for_checkout (checkout_data->repo, checksum, &loose_path,
                                     cancellable, error))
@@ -3396,7 +3386,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
    */
   if (!is_symlink
       && loose_path == NULL
-      && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z
+      && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
       && repo->enable_uncompressed_cache)
     {

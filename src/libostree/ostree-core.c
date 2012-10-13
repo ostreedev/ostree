@@ -28,6 +28,8 @@
 #include "ostree.h"
 #include "otutil.h"
 
+#include <gio/gfiledescriptorbased.h>
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -239,6 +241,41 @@ ostree_file_header_new (GFileInfo         *file_info,
   return ret;
 }
 
+GVariant *
+ostree_zlib_file_header_new (GFileInfo         *file_info,
+                             GVariant          *xattrs)
+{
+  guint64 size;
+  guint32 uid;
+  guint32 gid;
+  guint32 mode;
+  guint32 rdev;
+  const char *symlink_target;
+  GVariant *ret;
+  ot_lvariant GVariant *tmp_xattrs = NULL;
+
+  size = g_file_info_get_size (file_info);
+  uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
+  gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
+  mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+  rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
+
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
+    symlink_target = g_file_info_get_symlink_target (file_info);
+  else
+    symlink_target = "";
+
+  if (xattrs == NULL)
+    tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+
+  ret = g_variant_new ("(tuuuus@a(ayay))",
+                       GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
+                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), GUINT32_TO_BE (rdev),
+                       symlink_target, xattrs ? xattrs : tmp_xattrs);
+  g_variant_ref_sink (ret);
+  return ret;
+}
+
 static gboolean
 write_padding (GOutputStream    *output,
                guint             alignment,
@@ -390,7 +427,8 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
 }
 
 gboolean
-ostree_content_stream_parse (GInputStream           *input,
+ostree_content_stream_parse (gboolean                compressed,
+                             GInputStream           *input,
                              guint64                 input_length,
                              gboolean                trusted,
                              GInputStream          **out_input,
@@ -439,18 +477,29 @@ ostree_content_stream_parse (GInputStream           *input,
   if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read,
                                 cancellable, error))
     goto out;
-  file_header = g_variant_new_from_data (OSTREE_FILE_HEADER_GVARIANT_FORMAT,
+  file_header = g_variant_new_from_data (compressed ? OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : OSTREE_FILE_HEADER_GVARIANT_FORMAT,
                                          buf, archive_header_size, trusted,
                                          g_free, buf);
   buf = NULL;
 
-  if (!ostree_file_header_parse (file_header,
-                                 out_file_info ? &ret_file_info : NULL,
-                                 out_xattrs ? &ret_xattrs : NULL,
-                                 error))
-    goto out;
-  if (ret_file_info)
-    g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
+  if (compressed)
+    {
+      if (!ostree_zlib_file_header_parse (file_header,
+                                          out_file_info ? &ret_file_info : NULL,
+                                          out_xattrs ? &ret_xattrs : NULL,
+                                          error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_file_header_parse (file_header,
+                                     out_file_info ? &ret_file_info : NULL,
+                                     out_xattrs ? &ret_xattrs : NULL,
+                                     error))
+        goto out;
+      if (ret_file_info)
+        g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
+    }
   
   if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
       && out_input)
@@ -459,7 +508,13 @@ ostree_content_stream_parse (GInputStream           *input,
        * assuming the caller doesn't seek, this should be fine.  We might
        * want to wrap it though in a non-seekable stream.
        **/
-      ret_input = g_object_ref (input);
+      if (compressed)
+        {
+          ot_lobj GConverter *zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
+          ret_input = g_converter_input_stream_new (input, zlib_decomp);
+        }
+      else
+        ret_input = g_object_ref (input);
     }
 
   ret = TRUE;
@@ -468,39 +523,11 @@ ostree_content_stream_parse (GInputStream           *input,
   ot_transfer_out_value (out_xattrs, &ret_xattrs);
  out:
   return ret;
-
 }
 
 gboolean
-ostree_zlib_content_stream_open (GInputStream           *input,
-                                 guint64                *out_len,
-                                 GInputStream          **out_uncompressed,
-                                 GCancellable           *cancellable,
-                                 GError                **error)
-{
-  gboolean ret = FALSE;
-  guint64 uncompressed_len;
-  ot_lobj GConverter *zlib_decomp = NULL;
-  ot_lobj GInputStream *uncomp_input = NULL;
-
-  if (!g_input_stream_read_all (input, &uncompressed_len, sizeof (guint64),
-                                NULL, cancellable, error))
-    goto out;
-
-  uncompressed_len = GUINT64_FROM_BE (uncompressed_len);
-  zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
-  uncomp_input = g_converter_input_stream_new (input, zlib_decomp);
-
-  if (out_len)
-    *out_len = uncompressed_len;
-  ot_transfer_out_value (out_uncompressed, &uncomp_input);
-  ret = TRUE;
- out:
-  return ret;
-}
-
-gboolean
-ostree_content_file_parse (GFile                  *content_path,
+ostree_content_file_parse (gboolean                compressed,
+                           GFile                  *content_path,
                            gboolean                trusted,
                            GInputStream          **out_input,
                            GFileInfo             **out_file_info,
@@ -510,6 +537,7 @@ ostree_content_file_parse (GFile                  *content_path,
 {
   gboolean ret = FALSE;
   guint64 length;
+  struct stat stbuf;
   ot_lobj GInputStream *file_input = NULL;
   ot_lobj GInputStream *ret_input = NULL;
   ot_lobj GFileInfo *content_file_info = NULL;
@@ -520,15 +548,15 @@ ostree_content_file_parse (GFile                  *content_path,
   if (!file_input)
     goto out;
 
-  content_file_info = g_file_input_stream_query_info ((GFileInputStream*)file_input,
-                                                      OSTREE_GIO_FAST_QUERYINFO,
-                                                      cancellable, error);
-  if (!content_file_info)
-    goto out;
+  if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)file_input), &stbuf) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
 
-  length = g_file_info_get_size (content_file_info);
+  length = stbuf.st_size;
 
-  if (!ostree_content_stream_parse (file_input, length, trusted,
+  if (!ostree_content_stream_parse (compressed, file_input, length, trusted,
                                     out_input ? &ret_input : NULL,
                                     &ret_file_info, &ret_xattrs,
                                     cancellable, error))
@@ -997,6 +1025,67 @@ ostree_file_header_parse (GVariant         *metadata,
   rdev = GUINT32_FROM_BE (rdev);
 
   ret_file_info = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
+  g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", S_ISLNK (mode));
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (ret_file_info, "unix::mode", mode);
+
+  if (S_ISREG (mode))
+    {
+      ;
+    }
+  else if (S_ISLNK (mode))
+    {
+      g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
+    }
+  else if (S_ISCHR (mode) || S_ISBLK (mode))
+    {
+      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", rdev);
+    }
+  else if (S_ISFIFO (mode))
+    {
+      ;
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted archive file; invalid mode %u", mode);
+      goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value(out_file_info, &ret_file_info);
+  ot_transfer_out_value(out_xattrs, &ret_xattrs);
+ out:
+  return ret;
+}
+
+gboolean
+ostree_zlib_file_header_parse (GVariant         *metadata,
+                               GFileInfo       **out_file_info,
+                               GVariant        **out_xattrs,
+                               GError          **error)
+{
+  gboolean ret = FALSE;
+  guint64 size;
+  guint32 uid, gid, mode, rdev;
+  const char *symlink_target;
+  ot_lobj GFileInfo *ret_file_info = NULL;
+  ot_lvariant GVariant *ret_xattrs = NULL;
+
+  g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
+                 &uid, &gid, &mode, &rdev,
+                 &symlink_target, &ret_xattrs);
+
+  size = GUINT64_FROM_BE (size);
+  uid = GUINT32_FROM_BE (uid);
+  gid = GUINT32_FROM_BE (gid);
+  mode = GUINT32_FROM_BE (mode);
+  rdev = GUINT32_FROM_BE (rdev);
+
+  ret_file_info = g_file_info_new ();
+  g_file_info_set_size (ret_file_info, size);
   g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
   g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", S_ISLNK (mode));
   g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);

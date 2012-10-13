@@ -87,6 +87,21 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
+/*
+ * filez objects:
+ * <BE guint32 containing variant length>
+ * t - size
+ * u - uid
+ * u - gid
+ * u - mode
+ * u - rdev
+ * s - symlink target 
+ * a(ayay) - xattrs
+ * ---
+ * zlib-compressed data
+ */
+#define OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(tuuuusa(ayay))")
+
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
 gboolean ostree_validate_checksum_string (const char *sha256,
@@ -145,9 +160,6 @@ gboolean ostree_map_metadata_file (GFile                       *file,
                                    GVariant                   **out_variant,
                                    GError                     **error);
 
-GVariant *ostree_file_header_new (GFileInfo         *file_info,
-                                  GVariant          *xattrs);
-
 gboolean ostree_write_variant_with_size (GOutputStream      *output,
                                          GVariant           *variant,
                                          guint64             alignment_offset,
@@ -156,12 +168,23 @@ gboolean ostree_write_variant_with_size (GOutputStream      *output,
                                          GCancellable       *cancellable,
                                          GError            **error);
 
+GVariant *ostree_file_header_new (GFileInfo         *file_info,
+                                  GVariant          *xattrs);
+GVariant *ostree_zlib_file_header_new (GFileInfo         *file_info,
+                                       GVariant          *xattrs);
+
 gboolean ostree_file_header_parse (GVariant         *data,
                                    GFileInfo       **out_file_info,
                                    GVariant        **out_xattrs,
                                    GError          **error);
+gboolean ostree_zlib_file_header_parse (GVariant         *data,
+                                        GFileInfo       **out_file_info,
+                                        GVariant        **out_xattrs,
+                                        GError          **error);
+
 gboolean
-ostree_content_stream_parse (GInputStream           *input,
+ostree_content_stream_parse (gboolean                compressed,
+                             GInputStream           *input,
                              guint64                 input_length,
                              gboolean                trusted,
                              GInputStream          **out_input,
@@ -170,13 +193,8 @@ ostree_content_stream_parse (GInputStream           *input,
                              GCancellable           *cancellable,
                              GError                **error);
 
-gboolean ostree_zlib_content_stream_open (GInputStream           *input,
-                                          guint64                *out_len,
-                                          GInputStream          **out_uncompressed,
-                                          GCancellable           *cancellable,
-                                          GError                **error);
-
-gboolean ostree_content_file_parse (GFile                  *content_path,
+gboolean ostree_content_file_parse (gboolean                compressed,
+                                    GFile                  *content_path,
                                     gboolean                trusted,
                                     GInputStream          **out_input,
                                     GFileInfo             **out_file_info,

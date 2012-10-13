@@ -45,7 +45,7 @@ GFile *       ostree_repo_get_path (OstreeRepo  *self);
 typedef enum {
   OSTREE_REPO_MODE_BARE,
   OSTREE_REPO_MODE_ARCHIVE,
-  OSTREE_REPO_MODE_ARCHIVE_Z
+  OSTREE_REPO_MODE_ARCHIVE_Z2
 } OstreeRepoMode;
 
 gboolean       ostree_repo_mode_from_string (const char      *mode,

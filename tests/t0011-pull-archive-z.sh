@@ -23,6 +23,6 @@ set -e
 
 echo '1..2'
 
-setup_fake_remote_repo1 "archive-z"
+setup_fake_remote_repo1 "archive-z2"
 
 . ${SRCDIR}/pull-test.sh
