@@ -3171,6 +3171,12 @@ checkout_file_from_input (GFile          *file,
                                                    cancellable, error))
             goto out;
 
+          if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
+            {
+              if (!ensure_file_data_synced (temp_file, cancellable, error))
+                goto out;
+            }
+
           if (rename (ot_gfile_get_path_cached (temp_file), ot_gfile_get_path_cached (file)) < 0)
             {
               ot_util_set_error_from_errno (error, errno);
@@ -3183,12 +3189,12 @@ checkout_file_from_input (GFile          *file,
       if (!ostree_create_file_from_input (file, temp_info,
                                           xattrs, input, cancellable, error))
         goto out;
-    }
 
-  if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
-    {
-      if (!ensure_file_data_synced (file, cancellable, error))
-        goto out;
+      if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
+        {
+          if (!ensure_file_data_synced (temp_file, cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
