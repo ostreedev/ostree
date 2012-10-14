@@ -1106,7 +1106,7 @@ get_loose_object_dirs (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  GFile *object_dir_to_scan;
+  ot_lobj GFile *object_dir_to_scan;
   ot_lptrarray GPtrArray *ret_object_dirs = NULL;
   ot_lobj GFileEnumerator *enumerator = NULL;
   ot_lobj GFileInfo *file_info = NULL;
@@ -1114,9 +1114,9 @@ get_loose_object_dirs (OstreeRepo       *self,
   ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2)
-    object_dir_to_scan = self->uncompressed_objects_dir;
+    object_dir_to_scan = g_file_get_child (self->uncompressed_objects_dir, "objects");
   else
-    object_dir_to_scan = self->objects_dir;
+    object_dir_to_scan = g_object_ref (self->objects_dir);
 
   enumerator = g_file_enumerate_children (object_dir_to_scan, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1146,7 +1146,7 @@ get_loose_object_dirs (OstreeRepo       *self,
       
       if (strlen (name) == 2 && type == G_FILE_TYPE_DIRECTORY)
         {
-          GFile *objdir = g_file_get_child (self->objects_dir, name);
+          GFile *objdir = g_file_get_child (object_dir_to_scan, name);
           g_ptr_array_add (ret_object_dirs, objdir);  /* transfer ownership */
         }
       g_clear_object (&file_info);
@@ -1251,8 +1251,6 @@ scan_loose_devino (OstreeRepo                     *self,
               skip = !g_str_has_suffix (name, ".filecontent");
               break;
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
-              skip = !g_str_has_suffix (name, ".filez");
-              break;
             case OSTREE_REPO_MODE_BARE:
               skip = !g_str_has_suffix (name, ".file");
               break;
