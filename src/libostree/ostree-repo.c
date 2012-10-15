@@ -3180,7 +3180,7 @@ checkout_file_from_input (GFile          *file,
 
       if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
         {
-          if (!ensure_file_data_synced (temp_file, cancellable, error))
+          if (!ensure_file_data_synced (file, cancellable, error))
             goto out;
         }
     }
