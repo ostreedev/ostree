@@ -3196,6 +3196,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
                         OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                         GFile                    *source,
                         GFile                    *destination,
+                        int                       dirfd,
                         gboolean                 *out_was_supported,
                         GCancellable             *cancellable,
                         GError                  **error)
@@ -3204,7 +3205,11 @@ checkout_file_hardlink (OstreeRepo                  *self,
   gboolean ret_was_supported = FALSE;
   ot_lobj GFile *dir = NULL;
 
-  if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) != -1)
+  if (dirfd != -1 &&
+      linkat (-1, ot_gfile_get_path_cached (source),
+              dirfd, ot_gfile_get_basename_cached (destination), 0) != -1)
+    ret_was_supported = TRUE;
+  else if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) != -1)
     ret_was_supported = TRUE;
   else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
     {
@@ -3318,6 +3323,7 @@ typedef struct {
   OstreeRepoCheckoutMode    mode;
   OstreeRepoCheckoutOverwriteMode    overwrite_mode;
   GFile                    *destination;
+  int                       dirfd;
   OstreeRepoFile           *source;
   GFileInfo                *source_info;
   GCancellable             *cancellable;
@@ -3447,7 +3453,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
       /* If we found one, try hardlinking */
       if (!checkout_file_hardlink (checkout_data->repo, checkout_data->mode,
                                    checkout_data->overwrite_mode, loose_path,
-                                   checkout_data->destination,
+                                   checkout_data->destination, checkout_data->dirfd,
                                    &hardlink_supported, cancellable, error))
         {
           g_prefix_error (error, "Hardlinking loose object %s to %s: ", checksum,
@@ -3487,6 +3493,7 @@ checkout_one_file_async (OstreeRepo                  *self,
                          OstreeRepoFile           *source,
                          GFileInfo                *source_info,
                          GFile                    *destination,
+                         int                       dirfd,
                          GCancellable             *cancellable,
                          GAsyncReadyCallback       callback,
                          gpointer                  user_data)
@@ -3498,6 +3505,7 @@ checkout_one_file_async (OstreeRepo                  *self,
   checkout_data->mode = mode;
   checkout_data->overwrite_mode = overwrite_mode;
   checkout_data->destination = g_object_ref (destination);
+  checkout_data->dirfd = dirfd;
   checkout_data->source = g_object_ref (source);
   checkout_data->source_info = g_object_ref (source_info);
   checkout_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
@@ -3542,6 +3550,8 @@ typedef struct {
   gboolean                  caught_error;
   GError                   *error;
 
+  DIR                      *dir_handle;
+
   guint                     pending_ops;
   GMainLoop                *loop;
   GSimpleAsyncResult       *result;
@@ -3557,6 +3567,8 @@ checkout_tree_async_data_free (gpointer      data)
   g_clear_object (&checkout_data->source);
   g_clear_object (&checkout_data->source_info);
   g_clear_object (&checkout_data->cancellable);
+  if (checkout_data->dir_handle)
+    (void) closedir (checkout_data->dir_handle);
   g_free (checkout_data);
 }
 
@@ -3667,8 +3679,8 @@ on_got_next_files (GObject          *src,
           checkout_one_file_async (data->repo, data->mode,
                                    data->overwrite_mode,
                                    (OstreeRepoFile*)src_child, file_info, 
-                                   dest_path, data->cancellable,
-                                   on_one_file_checked_out,
+                                   dest_path, dirfd(data->dir_handle),
+                                   data->cancellable, on_one_file_checked_out,
                                    data);
         }
       data->pending_ops++;
@@ -3725,6 +3737,13 @@ ostree_repo_checkout_tree_async (OstreeRepo               *self,
                                  xattrs, NULL,
                                  cancellable, error))
     goto out;
+
+  checkout_data->dir_handle = opendir (ot_gfile_get_path_cached (checkout_data->destination));
+  if (!checkout_data->dir_handle)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
 
   g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
 
