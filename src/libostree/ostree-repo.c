@@ -1254,6 +1254,8 @@ scan_loose_devino (OstreeRepo                     *self,
             case OSTREE_REPO_MODE_BARE:
               skip = !g_str_has_suffix (name, ".file");
               break;
+            default:
+              g_assert_not_reached ();
             }
           if (skip)
             continue;
