@@ -194,3 +194,24 @@ ot_admin_get_current_deployment (GFile           *ostree_dir,
   return query_symlink_target_allow_noent (current_path, out_deployment,
                                            cancellable, error);
 }
+
+/**
+ * ot_admin_get_previous_deployment:
+ * 
+ * Returns in @out_deployment the full file path of the current
+ * deployment that the /ostree/previous symbolic link points to, or
+ * %NULL if none.
+ */
+gboolean
+ot_admin_get_previous_deployment (GFile           *ostree_dir,
+                                 GFile          **out_deployment,
+                                 GCancellable    *cancellable,
+                                 GError         **error)
+{
+  ot_lobj GFile *previous_path = NULL;
+
+  previous_path = g_file_get_child (ostree_dir, "previous");
+
+  return query_symlink_target_allow_noent (previous_path, out_deployment,
+                                           cancellable, error);
+}

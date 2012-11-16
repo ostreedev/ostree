@@ -35,6 +35,10 @@ gboolean ot_admin_get_current_deployment (GFile           *ostree_dir,
                                           GFile          **out_deployment,
                                           GCancellable    *cancellable,
                                           GError         **error);
+gboolean ot_admin_get_previous_deployment (GFile           *ostree_dir,
+                                           GFile          **out_deployment,
+                                           GCancellable    *cancellable,
+                                           GError         **error);
 
 G_END_DECLS
 
