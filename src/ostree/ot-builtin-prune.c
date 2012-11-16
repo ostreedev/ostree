@@ -46,6 +46,7 @@ typedef struct {
   guint n_reachable_content;
   guint n_unreachable_meta;
   guint n_unreachable_content;
+  guint64 freed_bytes;
 } OtPruneData;
 
 static gboolean
@@ -67,8 +68,17 @@ maybe_prune_loose_object (OtPruneData    *data,
     {
       if (!opt_no_prune)
         {
+          ot_lobj GFileInfo *info = NULL;
+
+          if ((info = g_file_query_info (objf, OSTREE_GIO_FAST_QUERYINFO,
+                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                         cancellable, error)) == NULL)
+            goto out;
+
           if (!ot_gfile_unlink (objf, cancellable, error))
             goto out;
+
+          data->freed_bytes += g_file_info_get_size (info);
         }
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         data->n_unreachable_meta++;
@@ -176,8 +186,13 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 
   g_print ("Total reachable: %u meta, %u content\n",
            data.n_reachable_meta, data.n_reachable_content);
-  g_print ("Total unreachable: %u meta, %u content\n",
-           data.n_unreachable_meta, data.n_unreachable_content);
+  if (opt_no_prune)
+    g_print ("Total unreachable: %u meta, %u content\n",
+             data.n_unreachable_meta, data.n_unreachable_content);
+  else
+    g_print ("Freed %" G_GUINT64_FORMAT " bytes from %u meta, %u content objects\n",
+             data.freed_bytes, data.n_unreachable_meta, data.n_unreachable_content);
+    
 
   ret = TRUE;
  out:
