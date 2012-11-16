@@ -343,6 +343,8 @@ deploy_tree (OtAdminDeploy     *self,
              GError           **error)
 {
   gboolean ret = FALSE;
+  const char *current_deployment_ref = "deployment/current";
+  const char *previous_deployment_ref = "deployment/previous";
   ot_lobj GFile *deploy_dir = NULL;
   ot_lfree char *deploy_target_fullname = NULL;
   ot_lfree char *deploy_target_fullname_tmp = NULL;
@@ -353,6 +355,7 @@ deploy_tree (OtAdminDeploy     *self,
   ot_lobj GFile *deploy_target_default_etc_path = NULL;
   ot_lobj GFile *deploy_parent = NULL;
   ot_lobj GFile *previous_deployment = NULL;
+  ot_lfree char *previous_deployment_revision = NULL;
   ot_lobj GFile *previous_deployment_etc = NULL;
   ot_lobj GFile *previous_deployment_etc_default = NULL;
   ot_lobj OstreeRepoFile *root = NULL;
@@ -445,6 +448,10 @@ deploy_tree (OtAdminDeploy     *self,
         g_clear_object (&previous_deployment_etc);
       else
         previous_deployment_etc_default = g_file_get_child (previous_deployment, "etc");
+
+      if (!ostree_repo_resolve_rev (self->repo, current_deployment_ref, TRUE,
+                                    &previous_deployment_revision, error))
+        goto out;
     }
 
 
@@ -499,6 +506,19 @@ deploy_tree (OtAdminDeploy     *self,
         goto out;
     }
 
+  /* Write out a ref so that any "ostree prune" on the raw repo
+   * doesn't GC the currently deployed tree.
+   */
+  if (!ostree_repo_write_ref (self->repo, NULL, current_deployment_ref,
+                              resolved_commit, error))
+    goto out;
+  if (previous_deployment_revision != NULL)
+    {
+      if (!ostree_repo_write_ref (self->repo, NULL, previous_deployment_ref,
+                                  previous_deployment_revision, error))
+        goto out;
+    }
+
   if (!update_current (self, previous_deployment, deploy_target_path,
                        cancellable, error))
     goto out;
@@ -539,7 +559,6 @@ do_update_kernel (OtAdminDeploy     *self,
  out:
   return ret;
 }
-
 
 gboolean
 ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **error)
