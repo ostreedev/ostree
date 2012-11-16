@@ -104,6 +104,76 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
   return ret;
 }
 
+static gboolean
+query_file_info_allow_noent (GFile         *path,
+                             GFileInfo    **out_info,
+                             GCancellable  *cancellable,
+                             GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFileInfo *ret_file_info = NULL;
+  GError *temp_error = NULL;
+
+  ret_file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
+                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                     cancellable, &temp_error);
+  if (!ret_file_info)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_info, &ret_file_info);
+ out:
+  return ret;
+}
+
+static gboolean
+query_symlink_target_allow_noent (GFile         *path,
+                                  GFile        **out_target,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lobj GFile *ret_target = NULL;
+  ot_lobj GFile *path_parent = NULL;
+
+  if (!query_file_info_allow_noent (path, &file_info,
+                                    cancellable, error))
+    goto out;
+
+  path_parent = g_file_get_parent (path);
+
+  if (file_info != NULL)
+    {
+      const char *target;
+      
+      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_SYMBOLIC_LINK)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Not a symbolic link");
+          goto out;
+        }
+      target = g_file_info_get_symlink_target (file_info);
+      g_assert (target);
+      ret_target = g_file_resolve_relative_path (path_parent, target);
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_target, &ret_target);
+ out:
+  return ret;
+}
+
 /**
  * ot_admin_get_current_deployment:
  * 
@@ -117,46 +187,10 @@ ot_admin_get_current_deployment (GFile           *ostree_dir,
                                  GCancellable    *cancellable,
                                  GError         **error)
 {
-  gboolean ret = FALSE;
   ot_lobj GFile *current_path = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GFile *ret_deployment = NULL;
-  GError *temp_error = NULL;
 
   current_path = g_file_get_child (ostree_dir, "current");
 
-  file_info = g_file_query_info (current_path, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, &temp_error);
-  if (!file_info)
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-  else
-    {
-      const char *target;
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_SYMBOLIC_LINK)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Not a symbolic link");
-          goto out;
-        }
-      target = g_file_info_get_symlink_target (file_info);
-      g_assert (target);
-      ret_deployment = g_file_resolve_relative_path (ostree_dir, target);
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_deployment, &ret_deployment);
- out:
-  return ret;
+  return query_symlink_target_allow_noent (current_path, out_deployment,
+                                           cancellable, error);
 }
-
