@@ -28,37 +28,14 @@
 #include <glib/gi18n.h>
 #include <glib/gprintf.h>
 
-static gboolean verbose;
-static gboolean delete;
-static int depth = -1;
+static gboolean opt_no_prune;
+static int opt_depth = -1;
 
 static GOptionEntry options[] = {
-  { "verbose", 0, 0, G_OPTION_ARG_NONE, &verbose, "Display progress", NULL },
-  { "depth", 0, 0, G_OPTION_ARG_INT, &depth, "Only traverse commit objects by this count", NULL },
-  { "delete", 0, 0, G_OPTION_ARG_NONE, &delete, "Remove no longer reachable objects", NULL },
+  { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Only traverse commit objects by this count", NULL },
+  { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Only display unreachable objects; don't delete", NULL },
   { NULL }
 };
-
-static void
-log_verbose (const char  *fmt,
-             ...) G_GNUC_PRINTF (1, 2);
-
-static void
-log_verbose (const char  *fmt,
-             ...)
-{
-  va_list args;
-
-  if (!verbose)
-    return;
-
-  va_start (args, fmt);
-  
-  g_vprintf (fmt, args);
-  g_print ("\n");
-
-  va_end (args);
-}
 
 typedef struct {
   OstreeRepo *repo;
@@ -66,7 +43,6 @@ typedef struct {
   guint n_reachable;
   guint n_unreachable;
 } OtPruneData;
-
 
 static gboolean
 prune_loose_object (OtPruneData    *data,
@@ -85,16 +61,10 @@ prune_loose_object (OtPruneData    *data,
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
-      if (delete)
+      if (!opt_no_prune)
         {
           if (!ot_gfile_unlink (objf, cancellable, error))
             goto out;
-          g_print ("Deleted: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
-        }
-      else
-        {
-          if (verbose)
-            g_print ("Unreachable: %s.%s\n", checksum, ostree_object_type_to_string (objtype));
         }
       data->n_unreachable++;
     }
@@ -143,11 +113,10 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *name = key;
       const char *checksum = value;
 
-      log_verbose ("Computing reachable, currently %u total, from %s: %s", g_hash_table_size (data.reachable), name, checksum);
-      if (!ostree_traverse_commit (repo, checksum, depth, data.reachable, cancellable, error))
+      // g_print ("Computing reachable, currently %u total, from %s: %s\n", g_hash_table_size (data.reachable), name, checksum);
+      if (!ostree_traverse_commit (repo, checksum, opt_depth, data.reachable, cancellable, error))
         goto out;
     }
 
