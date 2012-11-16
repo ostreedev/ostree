@@ -155,6 +155,11 @@ ostree_traverse_commit (OstreeRepo      *repo,
       ot_lvariant GVariant *key = NULL;
       ot_lvariant GVariant *commit = NULL;
 
+      key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
+
+      if (g_hash_table_contains (inout_reachable, key))
+        break;
+
       /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
       if (!ostree_repo_load_variant_if_exists (repo, OSTREE_OBJECT_TYPE_COMMIT, commit_checksum, &commit, error))
         goto out;
@@ -165,8 +170,7 @@ ostree_traverse_commit (OstreeRepo      *repo,
       if (!commit)
         break;
   
-      key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
-      g_hash_table_replace (inout_reachable, key, key);
+      g_hash_table_add (inout_reachable, key);
       key = NULL;
 
       g_variant_get_child (commit, 7, "@ay", &meta_csum_bytes);
