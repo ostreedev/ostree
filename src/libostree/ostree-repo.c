@@ -54,11 +54,7 @@ struct OstreeRepo {
   GFile *remote_cache_dir;
   GFile *config_file;
 
-#if GLIB_CHECK_VERSION(2,32,0) && !defined(OSTREE_GLIB_TARGET_MIN)
   GMutex cache_lock;
-#else
-  GMutex *cache_lock;
-#endif
   GPtrArray *cached_meta_indexes;
   GPtrArray *cached_content_indexes;
 
