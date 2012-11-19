@@ -37,6 +37,10 @@ gboolean ot_spawn_sync_checked (const char           *cwd,
                                 char                **stderr_data,
                                 GError              **error);
 
+GThreadPool * ot_thread_pool_new_nproc (GFunc     func,
+                                        gpointer  user_data);
+                                        
+
 G_END_DECLS
 
 #endif

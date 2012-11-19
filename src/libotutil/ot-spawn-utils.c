@@ -56,3 +56,25 @@ ot_spawn_sync_checked (const char           *cwd,
  out:
   return ret;
 }
+
+/**
+ * ot_thread_pool_new_nproc:
+ *
+ * Like g_thread_pool_new (), but choose number of threads appropriate
+ * for CPU bound workers automatically.  Also aborts on error.
+ */
+GThreadPool *
+ot_thread_pool_new_nproc (GFunc     func,
+                          gpointer  user_data)
+{
+  long nproc_onln;
+  GThreadPool *ret;
+  GError *local_error = NULL;
+
+  nproc_onln = sysconf (_SC_NPROCESSORS_ONLN);
+  if (G_UNLIKELY (nproc_onln == -1 && errno == EINVAL))
+    nproc_onln = 2;
+  ret = g_thread_pool_new (func, user_data, (int)nproc_onln, FALSE, &local_error);
+  g_assert_no_error (local_error);
+  return ret;
+}
