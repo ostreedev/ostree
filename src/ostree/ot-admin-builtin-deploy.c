@@ -548,6 +548,8 @@ do_update_kernel (OtAdminDeploy     *self,
                         "--ostree-dir", ot_gfile_get_path_cached (self->ostree_dir),
                         "update-kernel",
                         ot_gfile_get_path_cached (deploy_path), NULL);
+  if (opt_no_kernel)
+    g_ptr_array_add (args, "--modules-only");
   g_ptr_array_add (args, NULL);
 
   if (!ot_spawn_sync_checked (ot_gfile_get_path_cached (self->ostree_dir),
@@ -606,11 +608,8 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **erro
                     cancellable, error))
     goto out;
 
-  if (!opt_no_kernel)
-    {
-      if (!do_update_kernel (self, deploy_path, cancellable, error))
-        goto out;
-    }
+  if (!do_update_kernel (self, deploy_path, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:

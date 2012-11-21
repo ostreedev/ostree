@@ -32,7 +32,10 @@ typedef struct {
   GFile       *ostree_dir;
 } OtAdminUpdateKernel;
 
+static gboolean opt_modules_only;
+
 static GOptionEntry options[] = {
+  { "modules-only", 0, 0, G_OPTION_ARG_NONE, &opt_modules_only, "Only copy kernel modules", NULL },
   { NULL }
 };
 
@@ -322,12 +325,15 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError
   
   if (!copy_modules (self, release, cancellable, error))
     goto out;
-  
-  if (!update_initramfs (self, release, deploy_path, cancellable, error))
-    goto out;
-  
-  if (!update_grub (self, release, cancellable, error))
-    goto out;
+
+  if (!opt_modules_only)
+    {
+      if (!update_initramfs (self, release, deploy_path, cancellable, error))
+        goto out;
+      
+      if (!update_grub (self, release, cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:
