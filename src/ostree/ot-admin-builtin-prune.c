@@ -143,12 +143,12 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
                                                      "-etc", NULL);
       
       g_print ("Deleting deployment %s\n", gs_file_get_path_cached (deployment));
-      if (!ot_gio_shutil_rm_rf (deployment, cancellable, error))
+      if (!gs_shutil_rm_rf (deployment, cancellable, error))
         goto out;
       /* Note - not atomic; we may be leaving the -etc directory around
        * if this fails in the middle =/
        */
-      if (!ot_gio_shutil_rm_rf (deployment_etc, cancellable, error))
+      if (!gs_shutil_rm_rf (deployment_etc, cancellable, error))
         goto out;
     }
   

@@ -399,7 +399,7 @@ deploy_tree (OtAdminDeploy     *self,
   deploy_target_etc_path = g_file_resolve_relative_path (deploy_dir, deploy_target_etc_name);
 
   /* Delete any previous temporary data */
-  if (!ot_gio_shutil_rm_rf (deploy_target_path_tmp, cancellable, error))
+  if (!gs_shutil_rm_rf (deploy_target_path_tmp, cancellable, error))
     goto out;
 
   existing_checkout_info = g_file_query_info (deploy_target_path, OSTREE_GIO_FAST_QUERYINFO,
@@ -409,9 +409,9 @@ deploy_tree (OtAdminDeploy     *self,
     {
       if (opt_force)
         {
-          if (!ot_gio_shutil_rm_rf (deploy_target_path, cancellable, error))
+          if (!gs_shutil_rm_rf (deploy_target_path, cancellable, error))
             goto out;
-          if (!ot_gio_shutil_rm_rf (deploy_target_etc_path, cancellable, error))
+          if (!gs_shutil_rm_rf (deploy_target_etc_path, cancellable, error))
             goto out;
           
           skip_checkout = FALSE;
@@ -482,11 +482,11 @@ deploy_tree (OtAdminDeploy     *self,
 
       deploy_target_default_etc_path = ot_gfile_get_child_strconcat (deploy_target_path_tmp, "etc", NULL);
 
-      if (!ot_gio_shutil_rm_rf (deploy_target_etc_path, cancellable, error))
+      if (!gs_shutil_rm_rf (deploy_target_etc_path, cancellable, error))
         goto out;
 
-      if (!ot_gio_shutil_cp_a (deploy_target_default_etc_path, deploy_target_etc_path,
-                               cancellable, error))
+      if (!gs_shutil_cp_a (deploy_target_default_etc_path, deploy_target_etc_path,
+                           cancellable, error))
         goto out;
 
       g_print ("ostadmin: Created %s\n", gs_file_get_path_cached (deploy_target_etc_path));

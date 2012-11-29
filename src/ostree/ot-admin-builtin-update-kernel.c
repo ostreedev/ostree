@@ -58,7 +58,7 @@ copy_modules (OtAdminUpdateKernel *self,
 
   if (!g_file_query_exists (dest_modules_file, cancellable))
     {
-      if (!ot_gio_shutil_cp_al_or_fallback (src_modules_file, dest_modules_file, cancellable, error))
+      if (!gs_shutil_cp_al_or_fallback (src_modules_file, dest_modules_file, cancellable, error))
         goto out;
     }
       
