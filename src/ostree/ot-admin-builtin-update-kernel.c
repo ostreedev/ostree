@@ -53,7 +53,7 @@ copy_modules (OtAdminUpdateKernel *self,
   src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
   dest_modules_file = ot_gfile_get_child_build_path (self->ostree_dir, "modules", release, NULL);
   dest_modules_parent = g_file_get_parent (dest_modules_file);
-  if (!ot_gfile_ensure_directory (dest_modules_parent, FALSE, error))
+  if (!gs_file_ensure_directory (dest_modules_parent, FALSE, cancellable, error))
     goto out;
 
   if (!g_file_query_exists (dest_modules_file, cancellable))

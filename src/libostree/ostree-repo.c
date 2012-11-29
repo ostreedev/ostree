@@ -477,7 +477,7 @@ write_checksum_file (GFile *parentdir,
     {
       child = g_file_get_child (parent, (char*)components->pdata[i]);
 
-      if (!ot_gfile_ensure_directory (child, FALSE, error))
+      if (!gs_file_ensure_directory (child, FALSE, NULL, error))
         goto out;
 
       g_clear_object (&parent);
@@ -622,7 +622,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
 
-  if (!ot_gfile_ensure_directory (self->pending_dir, FALSE, error))
+  if (!gs_file_ensure_directory (self->pending_dir, FALSE, NULL, error))
     goto out;
   
   self->config = g_key_file_new ();
@@ -785,7 +785,7 @@ commit_loose_object_impl (OstreeRepo        *self,
   ot_lobj GFile *parent = NULL;
 
   parent = g_file_get_parent (dest);
-  if (!ot_gfile_ensure_directory (parent, FALSE, error))
+  if (!gs_file_ensure_directory (parent, FALSE, cancellable, error))
     goto out;
 
   if (is_regular)
@@ -1849,7 +1849,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
     {
       dir = g_file_get_child (self->remote_heads_dir, remote);
 
-      if (!ot_gfile_ensure_directory (dir, FALSE, error))
+      if (!gs_file_ensure_directory (dir, FALSE, NULL, error))
         goto out;
     }
 
@@ -3400,7 +3400,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
         goto out;
 
       objdir = g_file_get_parent (loose_path);
-      if (!ot_gfile_ensure_directory (objdir, TRUE, error))
+      if (!gs_file_ensure_directory (objdir, TRUE, cancellable, error))
         {
           g_prefix_error (error, "Creating cache directory %s: ",
                           gs_file_get_path_cached (objdir));

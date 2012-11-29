@@ -229,7 +229,7 @@ copy_one_config_file (OtAdminDeploy      *self,
   parent = g_file_get_parent (dest);
 
   /* FIXME actually we need to copy permissions and xattrs */
-  if (!ot_gfile_ensure_directory (parent, TRUE, error))
+  if (!gs_file_ensure_directory (parent, TRUE, cancellable, error))
     goto out;
 
   if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
@@ -392,7 +392,7 @@ deploy_tree (OtAdminDeploy     *self,
   deploy_target_path_tmp = g_file_resolve_relative_path (deploy_dir, deploy_target_fullname_tmp);
 
   deploy_parent = g_file_get_parent (deploy_target_path);
-  if (!ot_gfile_ensure_directory (deploy_parent, TRUE, error))
+  if (!gs_file_ensure_directory (deploy_parent, TRUE, cancellable, error))
     goto out;
 
   deploy_target_etc_name = g_strconcat (deploy_target, "-", resolved_commit, "-etc", NULL);

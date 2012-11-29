@@ -42,8 +42,6 @@ GFile *ot_gfile_get_child_strconcat (GFile *parent, const char *first, ...) G_GN
 
 GFile *ot_gfile_get_child_build_path (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
 
-gboolean ot_gfile_ensure_directory (GFile *dir, gboolean with_parents, GError **error);
-
 gboolean ot_gfile_load_contents_utf8 (GFile         *file,
                                       char         **contents_out,
                                       char         **etag_out,

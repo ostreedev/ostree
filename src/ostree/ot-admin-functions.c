@@ -36,17 +36,17 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
 
   g_clear_object (&dir);
   dir = g_file_get_child (ostree_dir, "repo");
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);
   dir = g_file_get_child (ostree_dir, "deploy");
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);
   dir = g_file_get_child (ostree_dir, "modules");
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);
@@ -70,12 +70,12 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
    */
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "log", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "tmp", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
   if (chmod (gs_file_get_path_cached (dir), 01777) < 0)
     {
@@ -85,7 +85,7 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
 
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "lib", NULL);
-  if (!ot_gfile_ensure_directory (dir, TRUE, error))
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);

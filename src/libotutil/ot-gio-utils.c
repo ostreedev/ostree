@@ -49,45 +49,6 @@ ot_gfile_type_for_mode (guint32 mode)
     return G_FILE_TYPE_UNKNOWN;
 }
 
-gboolean
-ot_gfile_ensure_directory (GFile     *dir,
-                           gboolean   with_parents, 
-                           GError   **error)
-{
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-
-  if (!g_file_make_directory (dir, NULL, &temp_error))
-    {
-      if (with_parents &&
-          g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          ot_lobj GFile *parent = NULL;
-
-          g_clear_error (&temp_error);
-
-          parent = g_file_get_parent (dir);
-          if (parent)
-            {
-              if (!ot_gfile_ensure_directory (parent, TRUE, error))
-                goto out;
-            }
-          if (!ot_gfile_ensure_directory (dir, FALSE, error))
-            goto out;
-        }
-      else if (!g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-      else
-        g_clear_error (&temp_error);
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
 
 GFile *
 ot_gfile_from_build_path (const char *first, ...)
@@ -220,7 +181,7 @@ cp_internal (GFile         *src,
   if (!enumerator)
     goto out;
 
-  if (!ot_gfile_ensure_directory (dest, FALSE, error))
+  if (!gs_file_ensure_directory (dest, FALSE, cancellable, error))
     goto out;
 
   while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
@@ -231,7 +192,7 @@ cp_internal (GFile         *src,
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ot_gfile_ensure_directory (dest_child, FALSE, error))
+          if (!gs_file_ensure_directory (dest_child, FALSE, cancellable, error))
             goto out;
 
           /* Can't do this even though we'd like to; it fails with an error about
