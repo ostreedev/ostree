@@ -42,13 +42,6 @@ GFile *ot_gfile_get_child_strconcat (GFile *parent, const char *first, ...) G_GN
 
 GFile *ot_gfile_get_child_build_path (GFile *parent, const char *first, ...) G_GNUC_NULL_TERMINATED;
 
-gboolean ot_gfile_load_contents_utf8 (GFile         *file,
-                                      char         **contents_out,
-                                      char         **etag_out,
-                                      GCancellable  *cancellable,
-                                      GError       **error);
-
-
 gboolean ot_gio_shutil_cp_a (GFile         *src,
                              GFile         *dest,
                              GCancellable  *cancellable,

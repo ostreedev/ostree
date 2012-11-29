@@ -133,36 +133,6 @@ ot_gfile_get_child_build_path (GFile      *parent,
   return g_file_resolve_relative_path (parent, path);
 }
 
-gboolean
-ot_gfile_load_contents_utf8 (GFile         *file,
-                             char         **out_contents,
-                             char         **out_etag,
-                             GCancellable  *cancellable,
-                             GError       **error)
-{
-  gboolean ret = FALSE;
-  gsize len;
-  ot_lfree char *ret_contents = NULL;
-  ot_lfree char *ret_etag = NULL;
-
-  if (!g_file_load_contents (file, cancellable, &ret_contents, &len, &ret_etag, error))
-    goto out;
-  if (!g_utf8_validate (ret_contents, len, NULL))
-    {
-      g_set_error (error,
-                   G_IO_ERROR,
-                   G_IO_ERROR_INVALID_DATA,
-                   "Invalid UTF-8");
-      goto out;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_contents, &ret_contents);
-  ot_transfer_out_value (out_etag, &ret_etag);
- out:
-  return ret;
-}
-
 static gboolean
 cp_internal (GFile         *src,
              GFile         *dest,

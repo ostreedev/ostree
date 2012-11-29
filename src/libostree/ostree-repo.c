@@ -233,7 +233,7 @@ parse_rev_file (OstreeRepo     *self,
   GError *temp_error = NULL;
   ot_lfree char *rev = NULL;
 
-  if (!ot_gfile_load_contents_utf8 (f, &rev, NULL, NULL, &temp_error))
+  if ((rev = gs_file_load_contents_utf8 (f, NULL, &temp_error)) == NULL)
     goto out;
 
   if (rev == NULL)
@@ -419,7 +419,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
 
       if (child)
         {
-          if (!ot_gfile_load_contents_utf8 (child, &ret_rev, NULL, NULL, &temp_error))
+          if ((ret_rev = gs_file_load_contents_utf8 (child, NULL, &temp_error)) == NULL)
             {
               g_propagate_error (error, temp_error);
               g_prefix_error (error, "Couldn't open ref '%s': ", gs_file_get_path_cached (child));
