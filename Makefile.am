@@ -75,6 +75,7 @@ libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libgsystem
 libgsystem_libs = $(OT_INTERNAL_GIO_UNIX_LIBS)
 if !TRIGGERS_ONLY
 include src/libgsystem/Makefile-libgsystem.am
+noinst_LTLIBRARIES += libgsystem.la
 endif
 include Makefile-daemon.am
 include Makefile-otutil.am
