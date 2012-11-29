@@ -378,11 +378,11 @@ ostree_diff_print (GFile          *base,
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
-      g_print ("M    %s\n", ot_gfile_get_path_cached (diff->src));
+      g_print ("M    %s\n", gs_file_get_path_cached (diff->src));
     }
   for (i = 0; i < removed->len; i++)
     {
-      g_print ("D    %s\n", ot_gfile_get_path_cached (removed->pdata[i]));
+      g_print ("D    %s\n", gs_file_get_path_cached (removed->pdata[i]));
     }
   for (i = 0; i < added->len; i++)
     {
@@ -395,6 +395,6 @@ ostree_diff_print (GFile          *base,
           g_free (relpath);
         }
       else
-        g_print ("A    %s\n", ot_gfile_get_path_cached (added_f));
+        g_print ("A    %s\n", gs_file_get_path_cached (added_f));
     }
 }

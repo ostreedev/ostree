@@ -120,9 +120,9 @@ update_initramfs (OtAdminUpdateKernel  *self,
                             "--mount-readonly", "/",
                             "--mount-proc", "/proc",
                             "--mount-bind", "/dev", "/dev",
-                            "--mount-bind", ot_gfile_get_path_cached (ostree_vardir), "/var",
-                            "--mount-bind", ot_gfile_get_path_cached (tmpdir), "/tmp",
-                            "--mount-bind", ot_gfile_get_path_cached (ostree_moduledir), "/lib/modules",
+                            "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
+                            "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp",
+                            "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules",
                             deploy_path,
                             "dracut", "-f", "/tmp/initramfs-ostree.img", release,
                             NULL);
@@ -151,10 +151,10 @@ update_initramfs (OtAdminUpdateKernel  *self,
       if (!g_file_copy (initramfs_tmp_file, initramfs_file, 0, cancellable, NULL, NULL, error))
         goto out;
           
-      g_print ("Created: %s\n", ot_gfile_get_path_cached (initramfs_file));
+      g_print ("Created: %s\n", gs_file_get_path_cached (initramfs_file));
 
-      (void) ot_gfile_unlink (initramfs_tmp_file, NULL, NULL);
-      (void) rmdir (ot_gfile_get_path_cached (tmpdir));
+      (void) gs_file_unlink (initramfs_tmp_file, NULL, NULL);
+      (void) rmdir (gs_file_get_path_cached (tmpdir));
     }
 
   ret = TRUE;
@@ -259,7 +259,7 @@ update_grub (OtAdminUpdateKernel  *self,
             }
 
           grubby_args = g_ptr_array_new ();
-          add_kernel_arg = g_strconcat ("--add-kernel=", ot_gfile_get_path_cached (kernel_path), NULL);
+          add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (kernel_path), NULL);
           initramfs_arg = g_strconcat ("--initrd=", "/boot/initramfs-ostree-", release, ".img", NULL);
           ot_ptrarray_add_many (grubby_args, "grubby", "--grub", add_kernel_arg, initramfs_arg,
                                 "--copy-default", "--title=OSTree", NULL);

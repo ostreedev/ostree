@@ -114,7 +114,7 @@ ot_util_variant_map (GFile              *src,
   GMappedFile *mfile = NULL;
   int fd;
 
-  path = ot_gfile_get_path_cached (src);
+  path = gs_file_get_path_cached (src);
   if (!ot_unix_open_noatime (path, &fd, error))
     goto out;
   mfile = g_mapped_file_new_from_fd (fd, FALSE, error);

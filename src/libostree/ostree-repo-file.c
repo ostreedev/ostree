@@ -105,7 +105,7 @@ set_error_noent (GFile *self, GError **error)
 {
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                "No such file or directory: %s",
-               ot_gfile_get_path_cached (self));
+               gs_file_get_path_cached (self));
   return FALSE;
 }
 
@@ -473,7 +473,7 @@ ostree_repo_file_get_uri (GFile *file)
   char *uri_path;
   char *ret;
 
-  path = ot_gfile_get_path_cached (file);
+  path = gs_file_get_path_cached (file);
   uri_path = g_filename_to_uri (path, NULL, NULL);
   g_assert (g_str_has_prefix (uri_path, "file://"));
   ret = g_strconcat ("ostree://", self->commit, uri_path+strlen("file://"), NULL);
@@ -565,8 +565,8 @@ ostree_repo_file_prefix_matches (GFile *parent,
   const char *parent_path;
   const char *descendant_path;
 
-  parent_path = ot_gfile_get_path_cached (parent);
-  descendant_path = ot_gfile_get_path_cached (descendant);
+  parent_path = gs_file_get_path_cached (parent);
+  descendant_path = gs_file_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))
     return TRUE;
@@ -581,8 +581,8 @@ ostree_repo_file_get_relative_path (GFile *parent,
   const char *parent_path;
   const char *descendant_path;
 
-  parent_path = ot_gfile_get_path_cached (parent);
-  descendant_path = ot_gfile_get_path_cached (descendant);
+  parent_path = gs_file_get_path_cached (parent);
+  descendant_path = gs_file_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
   
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))

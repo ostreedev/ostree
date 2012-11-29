@@ -62,7 +62,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
       if (!g_file_query_exists (deployment, NULL))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Deployment %s doesn't exist", ot_gfile_get_path_cached (deployment));
+                       "Deployment %s doesn't exist", gs_file_get_path_cached (deployment));
           goto out;
         }
     }
@@ -76,7 +76,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
   orig_etc_path = g_file_resolve_relative_path (deployment, "etc");
   deploy_parent = g_file_get_parent (deployment);
   new_etc_path = ot_gfile_get_child_strconcat (deploy_parent,
-                                               ot_gfile_get_basename_cached (deployment),
+                                               gs_file_get_basename_cached (deployment),
                                                "-etc", NULL);
   
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);

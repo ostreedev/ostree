@@ -131,7 +131,7 @@ ostree_repo_set_property(GObject         *object,
     {
     case PROP_PATH:
       /* Canonicalize */
-      self->repodir = g_file_new_for_path (ot_gfile_get_path_cached (g_value_get_object (value)));
+      self->repodir = g_file_new_for_path (gs_file_get_path_cached (g_value_get_object (value)));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -422,7 +422,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
           if (!ot_gfile_load_contents_utf8 (child, &ret_rev, NULL, NULL, &temp_error))
             {
               g_propagate_error (error, temp_error);
-              g_prefix_error (error, "Couldn't open ref '%s': ", ot_gfile_get_path_cached (child));
+              g_prefix_error (error, "Couldn't open ref '%s': ", gs_file_get_path_cached (child));
               goto out;
             }
 
@@ -614,11 +614,11 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   if (self->inited)
     return TRUE;
 
-  if (!g_file_test (ot_gfile_get_path_cached (self->objects_dir), G_FILE_TEST_IS_DIR))
+  if (!g_file_test (gs_file_get_path_cached (self->objects_dir), G_FILE_TEST_IS_DIR))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Couldn't find objects directory '%s'",
-                   ot_gfile_get_path_cached (self->objects_dir));
+                   gs_file_get_path_cached (self->objects_dir));
       goto out;
     }
 
@@ -626,7 +626,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
     goto out;
   
   self->config = g_key_file_new ();
-  if (!g_key_file_load_from_file (self->config, ot_gfile_get_path_cached (self->config_file), 0, error))
+  if (!g_key_file_load_from_file (self->config, gs_file_get_path_cached (self->config_file), 0, error))
     {
       g_prefix_error (error, "Couldn't parse config file: ");
       goto out;
@@ -672,7 +672,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       if (!ostree_repo_check (self->parent_repo, error))
         {
           g_prefix_error (error, "While checking parent repository '%s': ",
-                          ot_gfile_get_path_cached (parent_repo_f));
+                          gs_file_get_path_cached (parent_repo_f));
           goto out;
         }
     }
@@ -756,7 +756,7 @@ ensure_file_data_synced (GFile         *file,
   gboolean ret = FALSE;
   int fd = -1;
 
-  if (!ot_unix_open_noatime (ot_gfile_get_path_cached (file), &fd, error))
+  if (!ot_unix_open_noatime (gs_file_get_path_cached (file), &fd, error))
     goto out;
 
   if (!ot_unix_fdatasync (fd, error))
@@ -794,13 +794,13 @@ commit_loose_object_impl (OstreeRepo        *self,
         goto out;
     }
   
-  if (rename (ot_gfile_get_path_cached (tempfile_path), ot_gfile_get_path_cached (dest)) < 0)
+  if (rename (gs_file_get_path_cached (tempfile_path), gs_file_get_path_cached (dest)) < 0)
     {
       if (errno != EEXIST)
         {
           ot_util_set_error_from_errno (error, errno);
           g_prefix_error (error, "Storing file '%s': ",
-                          ot_gfile_get_path_cached (dest));
+                          gs_file_get_path_cached (dest));
           goto out;
         }
     }
@@ -979,7 +979,7 @@ stage_object (OstreeRepo         *self,
                */
               target_mode |= (S_IRUSR | S_IRGRP | S_IROTH);
               
-              if (chmod (ot_gfile_get_path_cached (raw_temp_file), target_mode) < 0)
+              if (chmod (gs_file_get_path_cached (raw_temp_file), target_mode) < 0)
                 {
                   ot_util_set_error_from_errno (error, errno);
                   goto out;
@@ -1087,9 +1087,9 @@ stage_object (OstreeRepo         *self,
   ot_transfer_out_value(out_csum, &ret_csum);
  out:
   if (temp_file)
-    (void) unlink (ot_gfile_get_path_cached (temp_file));
+    (void) unlink (gs_file_get_path_cached (temp_file));
   if (raw_temp_file)
-    (void) unlink (ot_gfile_get_path_cached (raw_temp_file));
+    (void) unlink (gs_file_get_path_cached (raw_temp_file));
   g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
   return ret;
 }
@@ -1221,7 +1221,7 @@ scan_loose_devino (OstreeRepo                     *self,
       if (!enumerator)
         goto out;
 
-      dirname = ot_gfile_get_basename_cached (objdir);
+      dirname = gs_file_get_basename_cached (objdir);
 
       while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
         {
@@ -2572,7 +2572,7 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
   a = archive_read_new ();
   archive_read_support_compression_all (a);
   archive_read_support_format_all (a);
-  if (archive_read_open_filename (a, ot_gfile_get_path_cached (archive_f), 8192) != ARCHIVE_OK)
+  if (archive_read_open_filename (a, gs_file_get_path_cached (archive_f), 8192) != ARCHIVE_OK)
     {
       propagate_libarchive_error (error, a);
       goto out;
@@ -2662,7 +2662,7 @@ list_loose_object_dir (OstreeRepo             *self,
   ot_lobj GFileInfo *file_info = NULL;
   GString *checksum = NULL;
 
-  dirname = ot_gfile_get_basename_cached (dir);
+  dirname = gs_file_get_basename_cached (dir);
 
   /* We're only querying name */
   enumerator = g_file_enumerate_children (dir, "standard::name,standard::type", 
@@ -2849,7 +2849,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                 ret_input = (GInputStream*) gs_file_read_noatime (loose_path, cancellable, error);
                 if (!ret_input)
                   {
-                    g_prefix_error (error, "Error opening loose file object %s: ", ot_gfile_get_path_cached (loose_path));
+                    g_prefix_error (error, "Error opening loose file object %s: ", gs_file_get_path_cached (loose_path));
                     goto out;
                   }
               }
@@ -2896,7 +2896,7 @@ repo_find_object (OstreeRepo           *self,
 
   object_path = ostree_repo_get_object_path (self, checksum, objtype);
   
-  if (lstat (ot_gfile_get_path_cached (object_path), &stbuf) == 0)
+  if (lstat (gs_file_get_path_cached (object_path), &stbuf) == 0)
     {
       ret_stored_path = object_path;
       object_path = NULL; /* Transfer ownership */
@@ -3163,7 +3163,7 @@ checkout_file_from_input (GFile          *file,
                 goto out;
             }
 
-          if (rename (ot_gfile_get_path_cached (temp_file), ot_gfile_get_path_cached (file)) < 0)
+          if (rename (gs_file_get_path_cached (temp_file), gs_file_get_path_cached (file)) < 0)
             {
               ot_util_set_error_from_errno (error, errno);
               goto out;
@@ -3204,10 +3204,10 @@ checkout_file_hardlink (OstreeRepo                  *self,
   ot_lobj GFile *dir = NULL;
 
   if (dirfd != -1 &&
-      linkat (-1, ot_gfile_get_path_cached (source),
-              dirfd, ot_gfile_get_basename_cached (destination), 0) != -1)
+      linkat (-1, gs_file_get_path_cached (source),
+              dirfd, gs_file_get_basename_cached (destination), 0) != -1)
     ret_was_supported = TRUE;
-  else if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) != -1)
+  else if (link (gs_file_get_path_cached (source), gs_file_get_path_cached (destination)) != -1)
     ret_was_supported = TRUE;
   else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
     {
@@ -3226,8 +3226,8 @@ checkout_file_hardlink (OstreeRepo                  *self,
        *
        * So we can't make this atomic.  
        */
-      (void) unlink (ot_gfile_get_path_cached (destination));
-      if (link (ot_gfile_get_path_cached (source), ot_gfile_get_path_cached (destination)) < 0)
+      (void) unlink (gs_file_get_path_cached (destination));
+      if (link (gs_file_get_path_cached (source), gs_file_get_path_cached (destination)) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -3284,7 +3284,7 @@ find_loose_for_checkout (OstreeRepo             *self,
           continue;
         }
 
-      if (lstat (ot_gfile_get_path_cached (path), &stbuf) < 0)
+      if (lstat (gs_file_get_path_cached (path), &stbuf) < 0)
         {
           if (errno != ENOENT)
             {
@@ -3403,7 +3403,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
       if (!ot_gfile_ensure_directory (objdir, TRUE, error))
         {
           g_prefix_error (error, "Creating cache directory %s: ",
-                          ot_gfile_get_path_cached (objdir));
+                          gs_file_get_path_cached (objdir));
           goto out;
         }
 
@@ -3455,7 +3455,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                                    &hardlink_supported, cancellable, error))
         {
           g_prefix_error (error, "Hardlinking loose object %s to %s: ", checksum,
-                          ot_gfile_get_path_cached (checkout_data->destination));
+                          gs_file_get_path_cached (checkout_data->destination));
           goto out;
         }
     }
@@ -3474,7 +3474,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
                                      input, cancellable, error))
         {
           g_prefix_error (error, "Copying object %s to %s: ", checksum,
-                          ot_gfile_get_path_cached (checkout_data->destination));
+                          gs_file_get_path_cached (checkout_data->destination));
           goto out;
         }
     }
@@ -3797,7 +3797,7 @@ ostree_repo_checkout_tree_async (OstreeRepo               *self,
                                  cancellable, error))
     goto out;
 
-  checkout_data->dir_handle = opendir (ot_gfile_get_path_cached (checkout_data->destination));
+  checkout_data->dir_handle = opendir (gs_file_get_path_cached (checkout_data->destination));
   if (!checkout_data->dir_handle)
     {
       ot_util_set_error_from_errno (error, errno);
@@ -3887,7 +3887,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
             {
               ot_lobj GFile *objpath = NULL;
               objpath = ot_gfile_get_child_build_path (objdir, g_file_info_get_name (file_info), NULL);
-              if (!ot_gfile_unlink (objpath, cancellable, error))
+              if (!gs_file_unlink (objpath, cancellable, error))
                 goto out;
             }
           g_object_unref (file_info);

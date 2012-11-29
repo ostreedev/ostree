@@ -111,7 +111,7 @@ print_one_file_text (GFile     *f,
       g_variant_unref (xattrs);
     }
 
-  g_string_append (buf, ot_gfile_get_path_cached (f));
+  g_string_append (buf, gs_file_get_path_cached (f));
 
   if (type == G_FILE_TYPE_SYMBOLIC_LINK)
     g_string_append_printf (buf, " -> %s", g_file_info_get_attribute_byte_string (file_info, "standard::symlink-target"));
@@ -130,7 +130,7 @@ print_one_file_binary (GFile     *f,
   if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)f, NULL))
     g_assert_not_reached ();
 
-  path = ot_gfile_get_path_cached (f);
+  path = gs_file_get_path_cached (f);
 
   fwrite (path, 1, strlen (path), stdout);
   fwrite ("\0", 1, 1, stdout);

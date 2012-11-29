@@ -85,17 +85,17 @@ update_current (OtAdminDeploy      *self,
 
       if (g_file_equal (current_deployment, deploy_target))
         {
-          g_print ("ostadmin: %s already points to %s\n", ot_gfile_get_path_cached (current_path),
+          g_print ("ostadmin: %s already points to %s\n", gs_file_get_path_cached (current_path),
                    relative_current);
           return TRUE;
         }
 
       tmp_previous_path = g_file_get_child (self->ostree_dir, "tmp-previous");
-      (void) ot_gfile_unlink (tmp_previous_path, NULL, NULL);
+      (void) gs_file_unlink (tmp_previous_path, NULL, NULL);
 
       relative_previous = g_file_get_relative_path (self->ostree_dir, current_deployment);
       g_assert (relative_previous);
-      if (symlink (relative_previous, ot_gfile_get_path_cached (tmp_previous_path)) < 0)
+      if (symlink (relative_previous, gs_file_get_path_cached (tmp_previous_path)) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -103,37 +103,37 @@ update_current (OtAdminDeploy      *self,
     }
 
   tmp_current_path = g_file_get_child (self->ostree_dir, "tmp-current");
-  (void) ot_gfile_unlink (tmp_current_path, NULL, NULL);
+  (void) gs_file_unlink (tmp_current_path, NULL, NULL);
 
-  if (symlink (relative_current, ot_gfile_get_path_cached (tmp_current_path)) < 0)
+  if (symlink (relative_current, gs_file_get_path_cached (tmp_current_path)) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
   tmp_current_etc_path = g_file_get_child (self->ostree_dir, "tmp-current-etc");
-  (void) ot_gfile_unlink (tmp_current_etc_path, NULL, NULL);
-  if (symlink (relative_current_etc, ot_gfile_get_path_cached (tmp_current_etc_path)) < 0)
+  (void) gs_file_unlink (tmp_current_etc_path, NULL, NULL);
+  if (symlink (relative_current_etc, gs_file_get_path_cached (tmp_current_etc_path)) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
 
-  if (!ot_gfile_rename (tmp_current_path, current_path,
-                        cancellable, error))
+  if (!gs_file_rename (tmp_current_path, current_path,
+                       cancellable, error))
     goto out;
-  if (!ot_gfile_rename (tmp_current_etc_path, current_etc_path,
-                        cancellable, error))
+  if (!gs_file_rename (tmp_current_etc_path, current_etc_path,
+                       cancellable, error))
     goto out;
 
   if (tmp_previous_path)
     {
-      if (!ot_gfile_rename (tmp_previous_path, previous_path,
-                            cancellable, error))
+      if (!gs_file_rename (tmp_previous_path, previous_path,
+                           cancellable, error))
         goto out;
     }
 
-  g_print ("ostadmin: %s set to %s\n", ot_gfile_get_path_cached (current_path),
+  g_print ("ostadmin: %s set to %s\n", gs_file_get_path_cached (current_path),
            relative_current);
 
   ret = TRUE;
@@ -173,7 +173,7 @@ on_checkout_complete (GObject         *object,
 /**
  * ensure_unlinked:
  *
- * Like ot_gfile_unlink(), but return successfully if the file doesn't
+ * Like gs_file_unlink(), but return successfully if the file doesn't
  * exist.
  */
 static gboolean
@@ -184,7 +184,7 @@ ensure_unlinked (GFile         *path,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
 
-  if (!ot_gfile_unlink (path, cancellable, &temp_error))
+  if (!gs_file_unlink (path, cancellable, &temp_error))
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -438,7 +438,7 @@ deploy_tree (OtAdminDeploy     *self,
       ot_lfree char *etc_name;
       ot_lobj GFile *parent;
 
-      etc_name = g_strconcat (ot_gfile_get_basename_cached (previous_deployment), "-etc", NULL);
+      etc_name = g_strconcat (gs_file_get_basename_cached (previous_deployment), "-etc", NULL);
       parent = g_file_get_parent (previous_deployment);
 
       previous_deployment_etc = g_file_get_child (parent, etc_name);
@@ -460,7 +460,7 @@ deploy_tree (OtAdminDeploy     *self,
       ProcessOneCheckoutData checkout_data;
 
       g_print ("ostadmin: Creating deployment %s\n",
-               ot_gfile_get_path_cached (deploy_target_path));
+               gs_file_get_path_cached (deploy_target_path));
 
       memset (&checkout_data, 0, sizeof (checkout_data));
       checkout_data.loop = g_main_loop_new (NULL, TRUE);
@@ -489,7 +489,7 @@ deploy_tree (OtAdminDeploy     *self,
                                cancellable, error))
         goto out;
 
-      g_print ("ostadmin: Created %s\n", ot_gfile_get_path_cached (deploy_target_etc_path));
+      g_print ("ostadmin: Created %s\n", gs_file_get_path_cached (deploy_target_etc_path));
 
       if (previous_deployment_etc)
         {
@@ -501,8 +501,8 @@ deploy_tree (OtAdminDeploy     *self,
       else
         g_print ("ostadmin: No previous deployment; therefore, no configuration changes to merge\n");
 
-      if (!ot_gfile_rename (deploy_target_path_tmp, deploy_target_path,
-                            cancellable, error))
+      if (!gs_file_rename (deploy_target_path_tmp, deploy_target_path,
+                           cancellable, error))
         goto out;
     }
 
@@ -545,14 +545,14 @@ do_update_kernel (OtAdminDeploy     *self,
 
   args = g_ptr_array_new ();
   ot_ptrarray_add_many (args, "ostree", "admin",
-                        "--ostree-dir", ot_gfile_get_path_cached (self->ostree_dir),
+                        "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
                         "update-kernel",
-                        ot_gfile_get_path_cached (deploy_path), NULL);
+                        gs_file_get_path_cached (deploy_path), NULL);
   if (opt_no_kernel)
     g_ptr_array_add (args, "--modules-only");
   g_ptr_array_add (args, NULL);
 
-  if (!ot_spawn_sync_checked (ot_gfile_get_path_cached (self->ostree_dir),
+  if (!ot_spawn_sync_checked (gs_file_get_path_cached (self->ostree_dir),
                               (char**)args->pdata, NULL, G_SPAWN_SEARCH_PATH,
                               NULL, NULL, NULL, NULL, error))
     goto out;

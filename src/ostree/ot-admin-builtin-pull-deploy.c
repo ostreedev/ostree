@@ -147,12 +147,12 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
   subproc_args = g_ptr_array_new ();
   {
     ot_lfree char *repo_arg = g_strconcat ("--repo=",
-                                           ot_gfile_get_path_cached (repo_path),
+                                           gs_file_get_path_cached (repo_path),
                                            NULL);
     ot_ptrarray_add_many (subproc_args, "ostree", "pull", repo_arg, remote_name, NULL);
     g_ptr_array_add (subproc_args, NULL);
 
-    if (!ot_spawn_sync_checked (ot_gfile_get_path_cached (ostree_dir),
+    if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
                                 (char**)subproc_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
                                 NULL, NULL, NULL, NULL, error))
       goto out;
@@ -163,13 +163,13 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
   subproc_args = g_ptr_array_new ();
   {
     ot_lfree char *opt_ostree_dir_arg = g_strconcat ("--ostree-dir=",
-                                                     ot_gfile_get_path_cached (ostree_dir),
+                                                     gs_file_get_path_cached (ostree_dir),
                                                      NULL);
     ot_ptrarray_add_many (subproc_args, "ostree", "admin", opt_ostree_dir_arg, "deploy",
                           deploy_name, NULL);
     g_ptr_array_add (subproc_args, NULL);
 
-    if (!ot_spawn_sync_checked (ot_gfile_get_path_cached (ostree_dir),
+    if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
                                 (char**)subproc_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
                                 NULL, NULL, NULL, NULL, error))
       goto out;

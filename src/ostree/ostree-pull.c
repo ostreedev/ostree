@@ -373,7 +373,7 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
   if (tmpf)
-    (void) unlink (ot_gfile_get_path_cached (tmpf));
+    (void) unlink (gs_file_get_path_cached (tmpf));
   return ret;
 }
 
@@ -512,10 +512,10 @@ static void
 destroy_fetch_one_content_item_data (OtFetchOneContentItemData *data)
 {
   if (data->meta_path)
-    (void) ot_gfile_unlink (data->meta_path, NULL, NULL);
+    (void) gs_file_unlink (data->meta_path, NULL, NULL);
   g_clear_object (&data->meta_path);
   if (data->content_path)
-    (void) ot_gfile_unlink (data->content_path, NULL, NULL);
+    (void) gs_file_unlink (data->content_path, NULL, NULL);
   g_clear_object (&data->content_path);
   g_free (data->checksum);
   g_free (data);
@@ -749,7 +749,7 @@ on_metadata_staged (GObject           *object,
                         g_variant_ref (fetch_data->object));
   ot_worker_queue_release (pull_data->metadata_objects_to_scan);
 
-  (void) ot_gfile_unlink (fetch_data->temp_path, NULL, NULL);
+  (void) gs_file_unlink (fetch_data->temp_path, NULL, NULL);
   g_object_unref (fetch_data->temp_path);
   g_variant_unref (fetch_data->object);
   g_free (fetch_data);

@@ -75,7 +75,7 @@ maybe_prune_loose_object (OtPruneData    *data,
                                          cancellable, error)) == NULL)
             goto out;
 
-          if (!ot_gfile_unlink (objf, cancellable, error))
+          if (!gs_file_unlink (objf, cancellable, error))
             goto out;
 
           data->freed_bytes += g_file_info_get_size (info);

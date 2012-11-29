@@ -172,65 +172,6 @@ ot_gfile_get_child_build_path (GFile      *parent,
   return g_file_resolve_relative_path (parent, path);
 }
 
-/**
- * ot_gfile_unlink:
- * @path: Path to file
- * @cancellable: a #GCancellable
- * @error: a #GError
- *
- * Like g_file_delete(), except this function does not follow Unix
- * symbolic links, and will delete a symbolic link even if it's
- * pointing to a nonexistent file.  In other words, this function
- * merely wraps the raw Unix function unlink().
- *
- * Returns: %TRUE on success, %FALSE on error
- */
-gboolean
-ot_gfile_unlink (GFile          *path,
-                 GCancellable   *cancellable,
-                 GError        **error)
-{
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return FALSE;
-
-  if (unlink (ot_gfile_get_path_cached (path)) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      return FALSE;
-    }
-  return TRUE;
-}
-
-/**
- * ot_gfile_rename:
- * @from: Current path
- * @to: New path
- * @cancellable: a #GCancellable
- * @error: a #GError
- *
- * This function wraps the raw Unix function rename().
- *
- * Returns: %TRUE on success, %FALSE on error
- */
-gboolean
-ot_gfile_rename (GFile          *from,
-                 GFile          *to,
-                 GCancellable   *cancellable,
-                 GError        **error)
-{
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    return FALSE;
-
-  if (rename (ot_gfile_get_path_cached (from),
-              ot_gfile_get_path_cached (to)) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      return FALSE;
-    }
-  return TRUE;
-
-}
-
 gboolean
 ot_gfile_load_contents_utf8 (GFile         *file,
                              char         **out_contents,
@@ -259,35 +200,6 @@ ot_gfile_load_contents_utf8 (GFile         *file,
   ot_transfer_out_value (out_etag, &ret_etag);
  out:
   return ret;
-}
-
-const char *
-ot_gfile_get_path_cached (GFile *file)
-{
-  const char *path;
-
-  path = g_object_get_data ((GObject*)file, "ostree-file-path");
-  if (!path)
-    {
-      path = g_file_get_path (file);
-      g_object_set_data_full ((GObject*)file, "ostree-file-path", (char*)path, (GDestroyNotify)g_free);
-    }
-  return path;
-}
-
-
-const char *
-ot_gfile_get_basename_cached (GFile *file)
-{
-  const char *name;
-
-  name = g_object_get_data ((GObject*)file, "ostree-file-name");
-  if (!name)
-    {
-      name = g_file_get_basename (file);
-      g_object_set_data_full ((GObject*)file, "ostree-file-name", (char*)name, (GDestroyNotify)g_free);
-    }
-  return name;
 }
 
 gboolean
@@ -474,7 +386,7 @@ cp_internal (GFile         *src,
            cancellable, error))
            goto out;
           */
-          if (chmod (ot_gfile_get_path_cached (dest_child),
+          if (chmod (gs_file_get_path_cached (dest_child),
                      g_file_info_get_attribute_uint32 (file_info, "unix::mode")) == -1)
             {
               ot_util_set_error_from_errno (error, errno);
@@ -487,10 +399,10 @@ cp_internal (GFile         *src,
       else
         {
           gboolean did_link = FALSE;
-          (void) unlink (ot_gfile_get_path_cached (dest_child));
+          (void) unlink (gs_file_get_path_cached (dest_child));
           if (use_hardlinks)
             {
-              if (link (ot_gfile_get_path_cached (src_child), ot_gfile_get_path_cached (dest_child)) == -1)
+              if (link (gs_file_get_path_cached (src_child), gs_file_get_path_cached (dest_child)) == -1)
                 {
                   if (!(errno == EMLINK || errno == EXDEV))
                     {
@@ -611,7 +523,7 @@ ot_gio_shutil_rm_rf (GFile        *path,
         }
       else
         {
-          if (!ot_gfile_unlink (subpath, cancellable, error))
+          if (!gs_file_unlink (subpath, cancellable, error))
             goto out;
         }
       g_clear_object (&file_info);

@@ -49,7 +49,7 @@ ot_admin_builtin_init (int argc, char **argv, GFile *ostree_dir, GError **error)
   if (!ot_admin_ensure_initialized (ostree_dir, cancellable, error))
     goto out;
 
-  g_print ("%s initialized as OSTree root\n", ot_gfile_get_path_cached (ostree_dir));
+  g_print ("%s initialized as OSTree root\n", gs_file_get_path_cached (ostree_dir));
 
   ret = TRUE;
  out:

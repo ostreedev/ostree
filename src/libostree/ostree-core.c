@@ -169,7 +169,7 @@ ostree_get_xattrs_for_file (GFile         *f,
   GVariantBuilder builder;
   gboolean builder_initialized = FALSE;
 
-  path = ot_gfile_get_path_cached (f);
+  path = gs_file_get_path_cached (f);
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
   builder_initialized = TRUE;
@@ -769,7 +769,7 @@ ostree_set_xattrs (GFile  *f,
   gboolean ret = FALSE;
   int i, n;
 
-  path = ot_gfile_get_path_cached (f);
+  path = gs_file_get_path_cached (f);
 
   n = g_variant_n_children (xattrs);
   for (i = 0; i < n; i++)
@@ -1146,11 +1146,11 @@ ostree_create_file_from_input (GFile            *dest_file,
     {
       mode = S_IFREG | 0664;
     }
-  dest_path = ot_gfile_get_path_cached (dest_file);
+  dest_path = gs_file_get_path_cached (dest_file);
 
   if (S_ISDIR (mode))
     {
-      if (mkdir (ot_gfile_get_path_cached (dest_file), mode) < 0)
+      if (mkdir (gs_file_get_path_cached (dest_file), mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -1302,7 +1302,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
   ot_lfree guchar *ret_csum = NULL;
   GString *tmp_name = NULL;
 
-  tmp_name = create_tmp_string (ot_gfile_get_path_cached (dir),
+  tmp_name = create_tmp_string (gs_file_get_path_cached (dir),
                                 prefix, suffix);
   
   /* 128 attempts seems reasonable... */
@@ -1394,7 +1394,7 @@ ostree_create_temp_dir (GFile            *dir,
     dir = g_file_new_for_path (g_get_tmp_dir ());
 
   template = g_strdup_printf ("%s/%s-XXXXXX",
-                              ot_gfile_get_path_cached (dir),
+                              gs_file_get_path_cached (dir),
                               prefix ? prefix : "tmp");
   
   if (mkdtemp (template) == NULL)

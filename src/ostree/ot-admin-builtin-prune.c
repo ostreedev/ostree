@@ -139,10 +139,10 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
         continue;
 
       parent = g_file_get_parent (deployment);
-      deployment_etc = ot_gfile_get_child_strconcat (parent, ot_gfile_get_basename_cached (deployment),
+      deployment_etc = ot_gfile_get_child_strconcat (parent, gs_file_get_basename_cached (deployment),
                                                      "-etc", NULL);
       
-      g_print ("Deleting deployment %s\n", ot_gfile_get_path_cached (deployment));
+      g_print ("Deleting deployment %s\n", gs_file_get_path_cached (deployment));
       if (!ot_gio_shutil_rm_rf (deployment, cancellable, error))
         goto out;
       /* Note - not atomic; we may be leaving the -etc directory around
@@ -159,13 +159,13 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
       ot_lptrarray GPtrArray *prune_argv = NULL;
       ot_lfree char *repo_arg = NULL;
 
-      repo_arg = g_strconcat ("--repo=", ot_gfile_get_path_cached (repo_path), NULL);
+      repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
 
       prune_argv = g_ptr_array_new ();
       ot_ptrarray_add_many (prune_argv, "ostree", repo_arg, "prune", "--refs-only", "--depth=0", NULL);
       g_ptr_array_add (prune_argv, NULL);
       
-      if (!ot_spawn_sync_checked (ot_gfile_get_path_cached (ostree_dir),
+      if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
                                   (char**)prune_argv->pdata, NULL, G_SPAWN_SEARCH_PATH,
                                   NULL, NULL, NULL, NULL, error))
         goto out;

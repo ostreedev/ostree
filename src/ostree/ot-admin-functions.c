@@ -54,7 +54,7 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
   if (!g_file_query_exists (dir, NULL))
     {
       ot_lfree char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
-                                                      ot_gfile_get_path_cached (ostree_dir));
+                                                      gs_file_get_path_cached (ostree_dir));
       const char *child_argv[] = { "ostree", opt_repo_arg, "init", NULL };
 
       if (!ot_spawn_sync_checked (NULL, (char**)child_argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL,
@@ -77,7 +77,7 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "tmp", NULL);
   if (!ot_gfile_ensure_directory (dir, TRUE, error))
     goto out;
-  if (chmod (ot_gfile_get_path_cached (dir), 01777) < 0)
+  if (chmod (gs_file_get_path_cached (dir), 01777) < 0)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
@@ -90,9 +90,9 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
 
   g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "var", "run", NULL);
-  if (!g_file_test (ot_gfile_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
+  if (!g_file_test (gs_file_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
     {
-      if (symlink ("../run", ot_gfile_get_path_cached (dir)) < 0)
+      if (symlink ("../run", gs_file_get_path_cached (dir)) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;

@@ -84,7 +84,7 @@ ostree_run_triggers_in_root (GFile                  *root,
           g_ptr_array_add (argv, "--mount-bind");
           g_ptr_array_add (argv, "/dev");
           g_ptr_array_add (argv, "/dev");
-          g_ptr_array_add (argv, (char*)ot_gfile_get_path_cached (root));
+          g_ptr_array_add (argv, (char*)gs_file_get_path_cached (root));
         }
       g_ptr_array_add (argv, "ostree-run-triggers");
       g_ptr_array_add (argv, NULL);
