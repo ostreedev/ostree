@@ -29,6 +29,41 @@ G_BEGIN_DECLS
 
 guchar *ot_csum_from_gchecksum (GChecksum *checksum);
 
+gboolean ot_gio_write_update_checksum (GOutputStream  *out,
+                                       gconstpointer   data,
+                                       gsize           len,
+                                       gsize          *out_bytes_written,
+                                       GChecksum      *checksum,
+                                       GCancellable   *cancellable,
+                                       GError        **error);
+
+gboolean ot_gio_splice_get_checksum (GOutputStream  *out,
+                                     GInputStream   *in,
+                                     guchar        **out_csum,
+                                     GCancellable   *cancellable,
+                                     GError        **error);
+
+gboolean ot_gio_splice_update_checksum (GOutputStream  *out,
+                                        GInputStream   *in,
+                                        GChecksum      *checksum,
+                                        GCancellable   *cancellable,
+                                        GError        **error);
+
+gboolean ot_gio_checksum_stream (GInputStream   *in,
+                                 guchar        **out_csum,
+                                 GCancellable   *cancellable,
+                                 GError        **error);
+
+void ot_gio_checksum_stream_async (GInputStream         *in,
+                                   int                   io_priority,
+                                   GCancellable         *cancellable,
+                                   GAsyncReadyCallback   callback,
+                                   gpointer              user_data);
+
+guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
+                                        GAsyncResult   *result,
+                                        GError        **error);
+
 G_END_DECLS
 
 #endif
