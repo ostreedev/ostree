@@ -53,11 +53,6 @@ gboolean ot_gfile_rename (GFile          *src,
                           GCancellable   *cancellable,
                           GError        **error);
 
-gboolean ot_gfile_hardlink (GFile          *src,
-                            GFile          *dest,
-                            GCancellable   *cancellable,
-                            GError        **error);
-
 gboolean ot_gfile_unlink (GFile          *path,
                           GCancellable   *cancellable,
                           GError        **error);
