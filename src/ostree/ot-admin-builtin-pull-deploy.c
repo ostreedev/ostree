@@ -153,8 +153,8 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
     g_ptr_array_add (subproc_args, NULL);
 
     if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                (char**)subproc_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                                NULL, NULL, NULL, NULL, error))
+                                (char**)subproc_args->pdata,
+                                cancellable, error))
       goto out;
     
     g_clear_pointer (&subproc_args, (GDestroyNotify)g_ptr_array_unref);
@@ -170,8 +170,8 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
     g_ptr_array_add (subproc_args, NULL);
 
     if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                (char**)subproc_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                                NULL, NULL, NULL, NULL, error))
+                                (char**)subproc_args->pdata,
+                                cancellable, error))
       goto out;
   }
 

@@ -166,8 +166,8 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
       g_ptr_array_add (prune_argv, NULL);
       
       if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                  (char**)prune_argv->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                                  NULL, NULL, NULL, NULL, error))
+                                  (char**)prune_argv->pdata,
+                                  cancellable, error))
         goto out;
     }
 

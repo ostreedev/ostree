@@ -29,27 +29,21 @@
 gboolean
 ot_spawn_sync_checked (const char           *cwd,
                        char                **argv,
-                       char                **envp,
-                       GSpawnFlags           flags,
-                       GSpawnChildSetupFunc  child_setup,
-                       gpointer              user_data,
-                       char                **stdout_data,
-                       char                **stderr_data,
+                       GCancellable         *cancellable,
                        GError              **error)
 {
   gboolean ret = FALSE;
-  gint exit_status;
-  char *ret_stdout_data = NULL;
-  char *ret_stderr_data = NULL;
+  gs_lobj GSSubprocessContext *context = NULL;
+  gs_lobj GSSubprocess *proc = NULL;
 
-  if (!g_spawn_sync (cwd, argv, envp, flags, child_setup, user_data,
-                     stdout_data ? &ret_stdout_data : NULL,
-                     stderr_data ? &ret_stderr_data : NULL,
-                     &exit_status,
-                     error))
+  context = gs_subprocess_context_new (argv);
+  if (cwd)
+    gs_subprocess_context_set_cwd (context, cwd);
+
+  if ((proc = gs_subprocess_new (context, error)) == NULL)
     goto out;
   
-  if (!g_spawn_check_exit_status (exit_status, error))
+  if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
     goto out;
 
   ret = TRUE;

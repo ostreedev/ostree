@@ -29,12 +29,7 @@ G_BEGIN_DECLS
 
 gboolean ot_spawn_sync_checked (const char           *cwd,
                                 char                **argv,
-                                char                **envp,
-                                GSpawnFlags           flags,
-                                GSpawnChildSetupFunc  child_setup,
-                                gpointer              user_data,
-                                char                **stdout_data,
-                                char                **stderr_data,
+                                GCancellable         *cancellable,
                                 GError              **error);
 
 GThreadPool * ot_thread_pool_new_nproc (GFunc     func,

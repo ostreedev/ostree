@@ -129,9 +129,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
       g_ptr_array_add (mkinitramfs_args, NULL);
           
       g_print ("Generating initramfs using %s...\n", deploy_path);
-      if (!ot_spawn_sync_checked (NULL, (char**)mkinitramfs_args->pdata, NULL,
-                                  G_SPAWN_SEARCH_PATH,
-                                  NULL, NULL, NULL, NULL, error))
+      if (!ot_spawn_sync_checked (NULL, (char**)mkinitramfs_args->pdata,
+                                  cancellable, error))
         goto out;
           
       initramfs_tmp_file = g_file_get_child (tmpdir, "initramfs-ostree.img");
@@ -266,8 +265,8 @@ update_grub (OtAdminUpdateKernel  *self,
           g_ptr_array_add (grubby_args, NULL);
 
           g_print ("Adding OSTree grub entry...\n");
-          if (!ot_spawn_sync_checked (NULL, (char**)grubby_args->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                                      NULL, NULL, NULL, NULL, error))
+          if (!ot_spawn_sync_checked (NULL, (char**)grubby_args->pdata,
+                                      cancellable, error))
             goto out;
         } 
       else

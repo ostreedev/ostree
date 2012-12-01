@@ -553,8 +553,7 @@ do_update_kernel (OtAdminDeploy     *self,
   g_ptr_array_add (args, NULL);
 
   if (!ot_spawn_sync_checked (gs_file_get_path_cached (self->ostree_dir),
-                              (char**)args->pdata, NULL, G_SPAWN_SEARCH_PATH,
-                              NULL, NULL, NULL, NULL, error))
+                              (char**)args->pdata, cancellable, error))
     goto out;
 
   ret = TRUE;
