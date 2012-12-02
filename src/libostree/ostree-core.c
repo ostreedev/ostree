@@ -540,28 +540,45 @@ ostree_content_file_parse (gboolean                compressed,
   struct stat stbuf;
   ot_lobj GInputStream *file_input = NULL;
   ot_lobj GInputStream *ret_input = NULL;
-  ot_lobj GFileInfo *content_file_info = NULL;
   ot_lobj GFileInfo *ret_file_info = NULL;
   ot_lvariant GVariant *ret_xattrs = NULL;
 
-  file_input = (GInputStream*)gs_file_read_noatime (content_path, cancellable, error);
-  if (!file_input)
-    goto out;
-
-  if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)file_input), &stbuf) < 0)
+  if (out_input)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+      file_input = (GInputStream*)gs_file_read_noatime (content_path, cancellable, error);
+      if (!file_input)
+        goto out;
+      
+      if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)file_input), &stbuf) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
 
-  length = stbuf.st_size;
+      length = stbuf.st_size;
+    }
+  else
+    {
+      GMappedFile *mmaped;
+      GBytes *bytes;
+
+      mmaped = gs_file_map_noatime (content_path, cancellable, error);
+      if (!mmaped)
+        goto out;
+      bytes = g_mapped_file_get_bytes (mmaped);
+      g_mapped_file_unref (mmaped);
+      mmaped = NULL;
+      file_input = g_memory_input_stream_new_from_bytes (bytes);
+      length = g_bytes_get_size (bytes);
+      g_bytes_unref (bytes);
+    }
 
   if (!ostree_content_stream_parse (compressed, file_input, length, trusted,
                                     out_input ? &ret_input : NULL,
                                     &ret_file_info, &ret_xattrs,
                                     cancellable, error))
     goto out;
-
+      
   ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
