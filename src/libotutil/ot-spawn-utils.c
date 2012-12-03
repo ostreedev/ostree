@@ -33,8 +33,8 @@ ot_spawn_sync_checked (const char           *cwd,
                        GError              **error)
 {
   gboolean ret = FALSE;
-  gs_lobj GSSubprocessContext *context = NULL;
-  gs_lobj GSSubprocess *proc = NULL;
+  gs_unref_object GSSubprocessContext *context = NULL;
+  gs_unref_object GSSubprocess *proc = NULL;
 
   context = gs_subprocess_context_new (argv);
   if (cwd)
