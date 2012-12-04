@@ -30,12 +30,19 @@
 
 typedef struct {
   GFile       *ostree_dir;
+  const char  *deploy_path;
+  GFile       *kernel_path;
+  char        *release;
 } OtAdminUpdateKernel;
 
 static gboolean opt_modules_only;
+static gboolean opt_host_kernel;
+static char * opt_release;
 
 static GOptionEntry options[] = {
   { "modules-only", 0, 0, G_OPTION_ARG_NONE, &opt_modules_only, "Only copy kernel modules", NULL },
+  { "host-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_host_kernel, "Use currently booted kernel, not kernel from tree", NULL },
+  { "release", 0, 0, G_OPTION_ARG_STRING, &opt_release, "With host kernel, use this release", NULL },
   { NULL }
 };
 
@@ -49,7 +56,7 @@ copy_modules (OtAdminUpdateKernel *self,
   ot_lobj GFile *src_modules_file = NULL;
   ot_lobj GFile *dest_modules_parent = NULL;
   ot_lobj GFile *dest_modules_file = NULL;
-  
+
   src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
   dest_modules_file = ot_gfile_get_child_build_path (self->ostree_dir, "modules", release, NULL);
   dest_modules_parent = g_file_get_parent (dest_modules_file);
@@ -70,20 +77,116 @@ copy_modules (OtAdminUpdateKernel *self,
 }
 
 static gboolean
+get_kernel_from_boot (GFile         *path,
+                      GFile        **out_kernel,
+                      GCancellable  *cancellable,
+                      GError       **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFileEnumerator *dir_enum = NULL;
+  ot_lobj GFileInfo *file_info = NULL;
+  ot_lobj GFile *ret_kernel = NULL;
+
+  dir_enum = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        NULL, error);
+  if (!dir_enum)
+    goto out;
+
+  while ((file_info = g_file_enumerator_next_file (dir_enum, cancellable, error)) != NULL)
+    {
+      const char *name;
+
+      name = g_file_info_get_name (file_info);
+
+      if (!g_str_has_prefix (name, "vmlinuz-"))
+        continue;
+
+      ret_kernel = g_file_get_child (path, name);
+      break;
+    }
+
+  ot_transfer_out_value (out_kernel, &ret_kernel);
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+setup_kernel (OtAdminUpdateKernel *self,
+              GCancellable        *cancellable,
+              GError             **error)
+{
+  gboolean ret = FALSE;
+  ot_lobj GFile *deploy_path = NULL;
+  ot_lobj GFile *deploy_boot_path = NULL;
+  ot_lobj GFile *src_kernel_path = NULL;
+  ot_lobj GFile *host_boot = NULL;
+  ot_lfree char *prefix = NULL;
+  const char *release = NULL;
+  const char *kernel_name = NULL;
+
+  deploy_path = g_file_new_for_path (self->deploy_path);
+  deploy_boot_path = g_file_get_child (deploy_path, "boot"); 
+
+  if (!get_kernel_from_boot (deploy_boot_path, &src_kernel_path,
+                             cancellable, error))
+    goto out;
+  if (src_kernel_path == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No kernel found in %s", gs_file_get_path_cached (deploy_boot_path));
+      goto out;
+    }
+
+  host_boot = g_file_new_for_path ("/boot/ostree");
+  if (!gs_file_ensure_directory (host_boot, TRUE, cancellable, error))
+    goto out;
+
+  kernel_name = gs_file_get_basename_cached (src_kernel_path);
+  release = strchr (kernel_name, '-');
+  if (release == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid kernel name %s, no - found", gs_file_get_path_cached (src_kernel_path));
+      goto out;
+    }
+
+  self->release = g_strdup (release + 1);
+  prefix = g_strndup (kernel_name, release - kernel_name);
+  self->kernel_path = ot_gfile_get_child_strconcat (host_boot, prefix, "-", self->release, NULL);
+
+  if (!g_file_copy (src_kernel_path, self->kernel_path,
+                    G_FILE_COPY_OVERWRITE | G_FILE_COPY_ALL_METADATA | G_FILE_COPY_NOFOLLOW_SYMLINKS,
+                    cancellable, NULL, NULL, error))
+    goto out;
+
+  g_print ("ostadmin: Deploying kernel %s\n", gs_file_get_path_cached (self->kernel_path));
+      
+  ret = TRUE;
+ out:
+  if (error)
+    g_prefix_error (error, "Error copying kernel: ");
+  return ret;
+}
+
+static gboolean
 update_initramfs (OtAdminUpdateKernel  *self,
-                  const char           *release,
-                  const char           *deploy_path,
                   GCancellable         *cancellable,
                   GError              **error)
 {
   gboolean ret = FALSE;
+  const char *deploy_path = self->deploy_path;
   ot_lfree char *initramfs_name = NULL;
   ot_lobj GFile *initramfs_file = NULL;
 
-  initramfs_name = g_strconcat ("initramfs-ostree-", release, ".img", NULL);
-  initramfs_file = ot_gfile_from_build_path ("/boot", initramfs_name, NULL);
+  initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
+
+  initramfs_file = ot_gfile_from_build_path ("/boot", "ostree", initramfs_name, NULL);
   if (!g_file_query_exists (initramfs_file, NULL))
     {
+      gs_unref_ptrarray GPtrArray *mkinitramfs_args = NULL;
+      gs_unref_object GSSubprocess *proc = NULL;
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
       ot_lobj GFile *ostree_vardir = NULL;
@@ -98,7 +201,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
         goto out;
 
       ostree_vardir = g_file_get_child (self->ostree_dir, "var");
-      ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
+      if (opt_host_kernel)
+        ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
 
       dracut_log_path = ot_gfile_get_child_build_path (ostree_vardir, "log", "dracut.log", NULL);
       tmp_log_out = (GOutputStream*)g_file_replace (dracut_log_path, NULL, FALSE,
@@ -113,20 +217,28 @@ update_initramfs (OtAdminUpdateKernel  *self,
        * security flaw, because we've bind-mounted dracut's view
        * of /tmp to the securely-created tmpdir above.
        */
+      ot_ptrarray_add_many (mkinitramfs_args,
+                            "linux-user-chroot",
+                            "--mount-readonly", "/",
+                            "--mount-proc", "/proc",
+                            "--mount-bind", "/dev", "/dev",
+                            "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
+                            "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp", NULL);
+      if (ostree_moduledir)
+        ot_ptrarray_add_many (mkinitramfs_args, "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules", NULL);
+      ot_ptrarray_add_many (mkinitramfs_args, deploy_path,
+                            "dracut", "-f", "/tmp/initramfs-ostree.img", self->release,
+                            NULL);
+      g_ptr_array_add (mkinitramfs_args, NULL);
+      
       g_print ("Generating initramfs using %s...\n", deploy_path);
-      if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
-                                          cancellable, error,
-                                          "linux-user-chroot",
-                                          "--mount-readonly", "/",
-                                          "--mount-proc", "/proc",
-                                          "--mount-bind", "/dev", "/dev",
-                                          "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
-                                          "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp",
-                                          "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules",
-                                          deploy_path,
-                                          "dracut", "-f", "/tmp/initramfs-ostree.img", release,
-                                          
-                                          NULL))
+      proc = gs_subprocess_new_simple_argv ((gchar**)mkinitramfs_args->pdata,
+                                            GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                            GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                            cancellable, error);
+      if (!proc)
+        goto out;
+      if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
         goto out;
           
       initramfs_tmp_file = g_file_get_child (tmpdir, "initramfs-ostree.img");
@@ -221,7 +333,6 @@ get_kernel_path_from_release (OtAdminUpdateKernel  *self,
 
 static gboolean
 update_grub (OtAdminUpdateKernel  *self,
-             const char           *release,
              GCancellable         *cancellable,
              GError              **error)
 {
@@ -241,19 +352,25 @@ update_grub (OtAdminUpdateKernel  *self,
           ot_lfree char *initramfs_arg = NULL;
           ot_lobj GFile *kernel_path = NULL;
 
-          if (!get_kernel_path_from_release (self, release, &kernel_path,
-                                             cancellable, error))
-            goto out;
-
-          if (kernel_path == NULL)
+          if (!self->kernel_path)
             {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Couldn't find kernel for release %s", release);
-              goto out;
+              if (!get_kernel_path_from_release (self, self->release, &kernel_path,
+                                                 cancellable, error))
+                goto out;
+
+              if (kernel_path == NULL)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Couldn't find kernel for release %s", self->release);
+                  goto out;
+                }
             }
+          else
+            kernel_path = g_object_ref (self->kernel_path);
 
           add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (kernel_path), NULL);
-          initramfs_arg = g_strconcat ("--initrd=", "/boot/initramfs-ostree-", release, ".img", NULL);
+          initramfs_arg = g_strconcat ("--initrd=", "/boot/ostree/initramfs-", self->release, ".img", NULL);
+
           g_print ("Adding OSTree grub entry...\n");
           if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
                                               cancellable, error,
@@ -281,54 +398,70 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError
   OtAdminUpdateKernel self_data;
   OtAdminUpdateKernel *self = &self_data;
   gboolean ret = FALSE;
-  const char *deploy_path = NULL;
   struct utsname utsname;
-  const char *release;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
+  GCancellable *cancellable = NULL;
 
   memset (self, 0, sizeof (*self));
 
-  context = g_option_context_new ("[OSTREE_REVISION [KERNEL_RELEASE]] - Update kernel and regenerate initial ramfs");
+  context = g_option_context_new ("[OSTREE_REVISION - Update kernel and regenerate initial ramfs");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
   if (argc > 1)
-    deploy_path = argv[1];
+    self->deploy_path = argv[1];
   else
-    deploy_path = "current";
+    self->deploy_path = "current";
 
-  (void) uname (&utsname);
-  
-  if (strcmp (utsname.sysname, "Linux") != 0)
+  if (opt_release && !opt_host_kernel)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unsupported machine %s", utsname.sysname);
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "May not specify a kernel release without --host-kernel");
       goto out;
     }
+  else if (!opt_release && opt_host_kernel)
+    {
+      (void) uname (&utsname);
   
-  release = utsname.release;
-  if (argc > 2)
-    release = argv[2];
+      if (strcmp (utsname.sysname, "Linux") != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unsupported machine %s", utsname.sysname);
+          goto out;
+        }
+      
+      opt_release = utsname.release;
+    }
 
   self->ostree_dir = g_object_ref (ostree_dir);
   
-  if (!copy_modules (self, release, cancellable, error))
-    goto out;
+  if (opt_host_kernel)
+    {
+      if (!copy_modules (self, opt_release, cancellable, error))
+        goto out;
+      self->release = g_strdup (opt_release);
+    }
+  else
+    {
+      if (!setup_kernel (self, cancellable, error))
+        goto out;
+    }
 
   if (!opt_modules_only)
     {
-      if (!update_initramfs (self, release, deploy_path, cancellable, error))
+      if (!update_initramfs (self, cancellable, error))
         goto out;
       
-      if (!update_grub (self, release, cancellable, error))
+      if (!update_grub (self, cancellable, error))
         goto out;
     }
 
   ret = TRUE;
  out:
   g_clear_object (&self->ostree_dir);
+  g_clear_object (&self->kernel_path);
+  g_free (self->release);
   if (context)
     g_option_context_free (context);
   return ret;

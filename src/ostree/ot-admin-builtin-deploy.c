@@ -35,9 +35,11 @@ typedef struct {
 
 static gboolean opt_no_kernel;
 static gboolean opt_force;
+static gboolean opt_host_kernel;
 
 static GOptionEntry options[] = {
   { "no-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_no_kernel, "Don't update kernel related config (initramfs, bootloader)", NULL },
+  { "host-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_host_kernel, "Use currently booted kernel, not kernel from tree", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite any existing deployment", NULL },
   { NULL }
 };
@@ -579,16 +581,27 @@ do_update_kernel (OtAdminDeploy     *self,
                   GError           **error)
 {
   gboolean ret = FALSE;
+  gs_unref_object GSSubprocess *proc = NULL;
+  gs_unref_ptrarray GPtrArray *args = NULL;
 
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (self->ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
-                                      cancellable, error,
-                                      "ostree", "admin",
-                                      "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
-                                      "update-kernel",
-                                      gs_file_get_path_cached (deploy_path),
-                                      opt_no_kernel ? "--modules-only" : NULL,
-                                      NULL))
+  args = g_ptr_array_new ();
+  ot_ptrarray_add_many (args, "ostree", "admin",
+                        "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
+                        "update-kernel",
+                        gs_file_get_path_cached (deploy_path), NULL);
+  if (opt_no_kernel)
+    g_ptr_array_add (args, "--modules-only");
+  if (opt_host_kernel)
+    g_ptr_array_add (args, "--host-kernel");
+  g_ptr_array_add (args, NULL);
+
+  proc = gs_subprocess_new_simple_argv ((char**)args->pdata,
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                        cancellable, error);
+  if (!proc)
+    goto out;
+  if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
     goto out;
 
   ret = TRUE;

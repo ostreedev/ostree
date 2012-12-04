@@ -20,6 +20,7 @@
 triggersdir = $(libexecdir)/ostree/triggers.d
 triggers_SCRIPTS = \
 	src/triggers/triggers.d/0001ldconfig.trigger \
+	src/triggers/triggers.d/0005depmod.trigger \
 	src/triggers/triggers.d/0010mime-database.trigger \
 	src/triggers/triggers.d/0020dconf.trigger \
 	src/triggers/triggers.d/0030glib.trigger \
