@@ -218,6 +218,7 @@ copy_one_config_file (OtAdminDeploy      *self,
                       GError            **error)
 {
   gboolean ret = FALSE;
+  ot_lobj GFileInfo *src_info = NULL;
   ot_lobj GFile *dest = NULL;
   ot_lobj GFile *parent = NULL;
   ot_lfree char *relative_path = NULL;
@@ -226,15 +227,52 @@ copy_one_config_file (OtAdminDeploy      *self,
   g_assert (relative_path);
   dest = g_file_resolve_relative_path (new_etc, relative_path);
 
-  parent = g_file_get_parent (dest);
-
-  /* FIXME actually we need to copy permissions and xattrs */
-  if (!gs_file_ensure_directory (parent, TRUE, cancellable, error))
+  src_info = g_file_query_info (src, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                cancellable, error);
+  if (!src_info)
     goto out;
 
-  if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
-                    cancellable, NULL, NULL, error))
-    goto out;
+  if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_DIRECTORY)
+    {
+      ot_lobj GFileEnumerator *src_enum = NULL;
+      ot_lobj GFileInfo *child_info = NULL;
+      GError *temp_error = NULL;
+
+      /* FIXME actually we need to copy permissions and xattrs */
+      if (!gs_file_ensure_directory (dest, TRUE, cancellable, error))
+        goto out;
+
+      src_enum = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO,
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            cancellable, error);
+
+      while ((child_info = g_file_enumerator_next_file (src_enum, cancellable, error)) != NULL)
+        {
+          ot_lobj GFile *child = g_file_get_child (src, g_file_info_get_name (child_info));
+
+          if (!copy_one_config_file (self, orig_etc, modified_etc, new_etc, child,
+                                     cancellable, error))
+            goto out;
+        }
+      g_clear_object (&child_info);
+      if (temp_error != NULL)
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+  else
+    {
+      parent = g_file_get_parent (dest);
+
+      /* FIXME actually we need to copy permissions and xattrs */
+      if (!gs_file_ensure_directory (parent, TRUE, cancellable, error))
+        goto out;
+      
+      if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
+                        cancellable, NULL, NULL, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:
