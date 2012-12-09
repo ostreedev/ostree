@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 gboolean ot_admin_builtin_init (int argc, char **argv, GFile *ostree_dir, GError **error);
+gboolean ot_admin_builtin_init_fs (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError **error);

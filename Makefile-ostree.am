@@ -47,6 +47,7 @@ ostree_SOURCES = src/ostree/main.c \
 # Admin subcommand
 ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-init.c \
+	src/ostree/ot-admin-builtin-init-fs.c \
 	src/ostree/ot-admin-builtin-diff.c \
 	src/ostree/ot-admin-builtin-deploy.c \
 	src/ostree/ot-admin-builtin-prune.c \
