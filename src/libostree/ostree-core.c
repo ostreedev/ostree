@@ -1260,12 +1260,14 @@ ostree_create_file_from_input (GFile            *dest_file,
   return ret;
 }
 
-static GString *
-create_tmp_string (const char *dirpath,
-                   const char *prefix,
-                   const char *suffix)
+static char *
+create_tmp_name (const char *dirpath,
+                 const char *prefix,
+                 const char *suffix)
 {
+  static const char table[] = "ABCEDEFGHIJKLMNOPQRSTUVWXYZabcedefghijklmnopqrstuvwxyz0123456789";
   GString *tmp_name = NULL;
+  guint i;
 
   if (!prefix)
     prefix = "tmp";
@@ -1275,29 +1277,15 @@ create_tmp_string (const char *dirpath,
   tmp_name = g_string_new (dirpath);
   g_string_append_c (tmp_name, '/');
   g_string_append (tmp_name, prefix);
-  g_string_append (tmp_name, "-XXXXXXXXXXXX.");
-  g_string_append (tmp_name, suffix);
-
-  return tmp_name;
-}
-
-static char *
-subst_xxxxxx (const char *string)
-{
-  static const char table[] = "ABCEDEFGHIJKLMNOPQRSTUVWXYZabcedefghijklmnopqrstuvwxyz0123456789";
-  char *ret = g_strdup (string);
-  guint8 *xxxxxx = (guint8*)strstr (ret, "XXXXXX");
-
-  g_assert (xxxxxx != NULL);
-
-  while (*xxxxxx == 'X')
+  for (i = 0; i < 8; i++)
     {
       int offset = g_random_int_range (0, sizeof (table) - 1);
-      *xxxxxx = (guint8)table[offset];
-      xxxxxx++;
+      g_string_append_c (tmp_name, (guint8)table[offset]);
     }
+  g_string_append_c (tmp_name, '.');
+  g_string_append (tmp_name, suffix);
 
-  return ret;
+  return g_string_free (tmp_name, FALSE);
 }
 
 gboolean
@@ -1314,22 +1302,19 @@ ostree_create_temp_file_from_input (GFile            *dir,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   int i = 0;
-  ot_lfree char *possible_name = NULL;
   ot_lobj GFile *possible_file = NULL;
   ot_lfree guchar *ret_csum = NULL;
-  GString *tmp_name = NULL;
 
-  tmp_name = create_tmp_string (gs_file_get_path_cached (dir),
-                                prefix, suffix);
-  
   /* 128 attempts seems reasonable... */
   for (i = 0; i < 128; i++)
     {
+      ot_lfree char *possible_name = NULL;
+
       if (g_cancellable_set_error_if_cancelled (cancellable, error))
         goto out;
 
-      g_free (possible_name);
-      possible_name = subst_xxxxxx (tmp_name->str);
+      possible_name = create_tmp_name (gs_file_get_path_cached (dir),
+                                       prefix, suffix);
       g_clear_object (&possible_file);
       possible_file = g_file_get_child (dir, possible_name);
       
@@ -1362,8 +1347,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
   ret = TRUE;
   ot_transfer_out_value(out_file, &possible_file);
  out:
-  if (tmp_name)
-    g_string_free (tmp_name, TRUE);
   return ret;
 }
 
