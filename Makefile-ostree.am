@@ -22,8 +22,10 @@ bin_PROGRAMS += ostree
 endif
 
 ostree_SOURCES = src/ostree/main.c \
-	src/ostree/ot-builtins.h \
+	src/ostree/ostree-curl-fetcher.h \
+	src/ostree/ostree-curl-fetcher.c \
 	src/ostree/ot-builtin-admin.c \
+	src/ostree/ot-builtins.h \
 	src/ostree/ot-builtin-cat.c \
 	src/ostree/ot-builtin-config.c \
 	src/ostree/ot-builtin-checkout.c \
@@ -46,12 +48,14 @@ ostree_SOURCES = src/ostree/main.c \
 
 # Admin subcommand
 ostree_SOURCES += \
-	src/ostree/ot-admin-builtin-init.c \
 	src/ostree/ot-admin-builtin-init-fs.c \
 	src/ostree/ot-admin-builtin-diff.c \
 	src/ostree/ot-admin-builtin-deploy.c \
 	src/ostree/ot-admin-builtin-prune.c \
 	src/ostree/ot-admin-builtin-pull-deploy.c \
+	src/ostree/ot-admin-builtin-os-init.c \
+	src/ostree/ot-admin-builtin-install.c \
+	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtin-update-kernel.c \
 	src/ostree/ot-admin-builtins.h \
 	src/ostree/ot-admin-functions.h \

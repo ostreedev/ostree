@@ -33,6 +33,7 @@ typedef struct {
   const char  *deploy_path;
   GFile       *kernel_path;
   char        *release;
+  char        *osname;
 } OtAdminUpdateKernel;
 
 static gboolean opt_modules_only;
@@ -200,7 +201,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
                                    cancellable, error))
         goto out;
 
-      ostree_vardir = g_file_get_child (self->ostree_dir, "var");
+      ostree_vardir = ot_gfile_get_child_build_path (self->ostree_dir, "deploy",
+                                                     self->osname, "var", NULL);
       if (opt_host_kernel)
         ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
 
@@ -213,6 +215,7 @@ update_initramfs (OtAdminUpdateKernel  *self,
       if (!g_output_stream_close (tmp_log_out, cancellable, error))
         goto out;
 
+      mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
        * security flaw, because we've bind-mounted dracut's view
        * of /tmp to the securely-created tmpdir above.
@@ -403,14 +406,22 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError
 
   memset (self, 0, sizeof (*self));
 
-  context = g_option_context_new ("[OSTREE_REVISION - Update kernel and regenerate initial ramfs");
+  context = g_option_context_new ("OSNAME DEPLOY_PATH - Update kernel and regenerate initial ramfs");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc > 1)
-    self->deploy_path = argv[1];
+  if (argc < 2)
+    {
+      ot_util_usage_error (context, "OSNAME must be specified", error);
+      goto out;
+    }
+
+  self->osname = g_strdup (argv[1]);
+
+  if (argc > 2)
+    self->deploy_path = argv[2];
   else
     self->deploy_path = "current";
 

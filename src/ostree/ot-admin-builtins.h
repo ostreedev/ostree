@@ -27,13 +27,15 @@
 
 G_BEGIN_DECLS
 
-gboolean ot_admin_builtin_init (int argc, char **argv, GFile *ostree_dir, GError **error);
+gboolean ot_admin_builtin_os_init (int argc, char **argv, GFile *ostree_dir, GError **error);
+gboolean ot_admin_builtin_install (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_init_fs (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError **error);
+gboolean ot_admin_builtin_upgrade (int argc, char **argv, GFile *ostree_dir, GError **error);
 
 G_END_DECLS
 

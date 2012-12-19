@@ -31,6 +31,8 @@
 typedef struct {
   OstreeRepo  *repo;
   GFile *ostree_dir;
+  char  *osname;
+  GFile *osname_dir;
 } OtAdminDeploy;
 
 static gboolean opt_no_kernel;
@@ -63,21 +65,18 @@ update_current (OtAdminDeploy      *self,
 {
   gboolean ret = FALSE;
   ot_lobj GFile *current_path = NULL;
-  ot_lobj GFile *current_etc_path = NULL;
   ot_lobj GFile *previous_path = NULL;
   ot_lobj GFile *tmp_current_path = NULL;
-  ot_lobj GFile *tmp_current_etc_path = NULL;
   ot_lobj GFile *tmp_previous_path = NULL;
   ot_lobj GFileInfo *previous_info = NULL;
   ot_lfree char *relative_current = NULL;
   ot_lfree char *relative_current_etc = NULL;
   ot_lfree char *relative_previous = NULL;
 
-  current_path = g_file_get_child (self->ostree_dir, "current");
-  current_etc_path = g_file_get_child (self->ostree_dir, "current-etc");
-  previous_path = g_file_get_child (self->ostree_dir, "previous");
+  current_path = g_file_get_child (self->osname_dir, "current");
+  previous_path = g_file_get_child (self->osname_dir, "previous");
 
-  relative_current = g_file_get_relative_path (self->ostree_dir, deploy_target);
+  relative_current = g_file_get_relative_path (self->osname_dir, deploy_target);
   g_assert (relative_current);
   relative_current_etc = g_strconcat (relative_current, "-etc", NULL);
 
@@ -92,10 +91,10 @@ update_current (OtAdminDeploy      *self,
           return TRUE;
         }
 
-      tmp_previous_path = g_file_get_child (self->ostree_dir, "tmp-previous");
+      tmp_previous_path = g_file_get_child (self->osname_dir, "tmp-previous");
       (void) gs_file_unlink (tmp_previous_path, NULL, NULL);
 
-      relative_previous = g_file_get_relative_path (self->ostree_dir, current_deployment);
+      relative_previous = g_file_get_relative_path (self->osname_dir, current_deployment);
       g_assert (relative_previous);
       if (symlink (relative_previous, gs_file_get_path_cached (tmp_previous_path)) < 0)
         {
@@ -104,7 +103,7 @@ update_current (OtAdminDeploy      *self,
         }
     }
 
-  tmp_current_path = g_file_get_child (self->ostree_dir, "tmp-current");
+  tmp_current_path = g_file_get_child (self->osname_dir, "tmp-current");
   (void) gs_file_unlink (tmp_current_path, NULL, NULL);
 
   if (symlink (relative_current, gs_file_get_path_cached (tmp_current_path)) < 0)
@@ -113,18 +112,7 @@ update_current (OtAdminDeploy      *self,
       goto out;
     }
 
-  tmp_current_etc_path = g_file_get_child (self->ostree_dir, "tmp-current-etc");
-  (void) gs_file_unlink (tmp_current_etc_path, NULL, NULL);
-  if (symlink (relative_current_etc, gs_file_get_path_cached (tmp_current_etc_path)) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
   if (!gs_file_rename (tmp_current_path, current_path,
-                       cancellable, error))
-    goto out;
-  if (!gs_file_rename (tmp_current_etc_path, current_etc_path,
                        cancellable, error))
     goto out;
 
@@ -367,7 +355,7 @@ merge_etc_changes (OtAdminDeploy  *self,
  * deploy_tree:
  *
  * Look up @revision in the repository, and check it out in
- * OSTREE_DIR/deploy/DEPLOY_TARGET.
+ * OSTREE_DIR/deploy/OS/DEPLOY_TARGET.
  *
  * Merge configuration changes from the old deployment, if any.
  *
@@ -383,9 +371,8 @@ deploy_tree (OtAdminDeploy     *self,
              GError           **error)
 {
   gboolean ret = FALSE;
-  const char *current_deployment_ref = "deployment/current";
-  const char *previous_deployment_ref = "deployment/previous";
-  ot_lobj GFile *deploy_dir = NULL;
+  gs_free char *current_deployment_ref = NULL;
+  gs_free char *previous_deployment_ref = NULL;
   ot_lfree char *deploy_target_fullname = NULL;
   ot_lfree char *deploy_target_fullname_tmp = NULL;
   ot_lobj GFile *deploy_target_path = NULL;
@@ -410,7 +397,16 @@ deploy_tree (OtAdminDeploy     *self,
   if (!revision)
     revision = deploy_target;
 
-  deploy_dir = g_file_get_child (self->ostree_dir, "deploy");
+  current_deployment_ref = g_strdup_printf ("deployment/%s/current", self->osname);
+  previous_deployment_ref = g_strdup_printf ("deployment/%s/previous", self->osname);
+
+  if (!g_file_query_exists (self->osname_dir, cancellable))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No OS \"%s\" found in \"%s\"", self->osname,
+                   gs_file_get_path_cached (self->osname_dir));
+      goto out;
+    }
 
   if (!ostree_repo_resolve_rev (self->repo, revision, FALSE, &resolved_commit, error))
     goto out;
@@ -426,17 +422,17 @@ deploy_tree (OtAdminDeploy     *self,
     goto out;
 
   deploy_target_fullname = g_strconcat (deploy_target, "-", resolved_commit, NULL);
-  deploy_target_path = g_file_resolve_relative_path (deploy_dir, deploy_target_fullname);
+  deploy_target_path = g_file_resolve_relative_path (self->osname_dir, deploy_target_fullname);
 
   deploy_target_fullname_tmp = g_strconcat (deploy_target_fullname, ".tmp", NULL);
-  deploy_target_path_tmp = g_file_resolve_relative_path (deploy_dir, deploy_target_fullname_tmp);
+  deploy_target_path_tmp = g_file_resolve_relative_path (self->osname_dir, deploy_target_fullname_tmp);
 
   deploy_parent = g_file_get_parent (deploy_target_path);
   if (!gs_file_ensure_directory (deploy_parent, TRUE, cancellable, error))
     goto out;
 
   deploy_target_etc_name = g_strconcat (deploy_target, "-", resolved_commit, "-etc", NULL);
-  deploy_target_etc_path = g_file_resolve_relative_path (deploy_dir, deploy_target_etc_name);
+  deploy_target_etc_path = g_file_resolve_relative_path (self->osname_dir, deploy_target_etc_name);
 
   /* Delete any previous temporary data */
   if (!gs_shutil_rm_rf (deploy_target_path_tmp, cancellable, error))
@@ -470,7 +466,7 @@ deploy_tree (OtAdminDeploy     *self,
       goto out;
     }
 
-  if (!ot_admin_get_current_deployment (self->ostree_dir, &previous_deployment,
+  if (!ot_admin_get_current_deployment (self->ostree_dir, self->osname, &previous_deployment,
                                         cancellable, error))
     goto out;
   if (previous_deployment)
@@ -588,6 +584,7 @@ do_update_kernel (OtAdminDeploy     *self,
   ot_ptrarray_add_many (args, "ostree", "admin",
                         "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
                         "update-kernel",
+                        self->osname,
                         gs_file_get_path_cached (deploy_path), NULL);
   if (opt_no_kernel)
     g_ptr_array_add (args, "--modules-only");
@@ -618,22 +615,23 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **erro
   gboolean ret = FALSE;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deploy_path = NULL;
+  const char *osname = NULL;
   const char *deploy_target = NULL;
   const char *revision = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
   memset (self, 0, sizeof (*self));
 
-  context = g_option_context_new ("NAME [REVISION] - Check out revision NAME (or REVISION as NAME)");
+  context = g_option_context_new ("OSNAME TREENAME [REVISION] - In operating system OS, check out revision TREENAME (or REVISION as TREENAME)");
 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc < 2)
+  if (argc < 3)
     {
-      ot_util_usage_error (context, "NAME must be specified", error);
+      ot_util_usage_error (context, "OSNAME and TREENAME must be specified", error);
       goto out;
     }
 
@@ -647,10 +645,13 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **erro
   if (!ostree_repo_check (self->repo, error))
     goto out;
 
-  deploy_target = argv[1];
-  if (argc > 2)
-    revision = argv[2];
+  osname = argv[1];
+  deploy_target = argv[2];
+  if (argc > 3)
+    revision = argv[3];
 
+  self->osname = g_strdup (osname);
+  self->osname_dir = ot_gfile_get_child_build_path (self->ostree_dir, "deploy", osname, NULL);
   if (!deploy_tree (self, deploy_target, revision, &deploy_path,
                     cancellable, error))
     goto out;
@@ -661,7 +662,9 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **erro
   ret = TRUE;
  out:
   g_clear_object (&self->repo);
+  g_free (self->osname);
   g_clear_object (&self->ostree_dir);
+  g_clear_object (&self->osname_dir);
   if (context)
     g_option_context_free (context);
   return ret;

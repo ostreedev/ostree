@@ -43,9 +43,11 @@ typedef struct {
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
-  { "init", ot_admin_builtin_init },
+  { "os-init", ot_admin_builtin_os_init },
   { "init-fs", ot_admin_builtin_init_fs },
   { "deploy", ot_admin_builtin_deploy },
+  { "install", ot_admin_builtin_install },
+  { "upgrade", ot_admin_builtin_upgrade },
   { "pull-deploy", ot_admin_builtin_pull_deploy },
   { "prune", ot_admin_builtin_prune },
   { "update-kernel", ot_admin_builtin_update_kernel },

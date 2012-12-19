@@ -37,6 +37,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
+  const char *osname;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deployment = NULL;
   ot_lobj GFile *deploy_parent = NULL;
@@ -47,7 +48,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
   ot_lobj GFile *new_etc_path = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("[NAME] - Diff configuration for revision NAME");
+  context = g_option_context_new ("OSNAME [REVISION] - Diff configuration for OSNAME");
 
   g_option_context_add_main_entries (context, options, NULL);
 
@@ -56,9 +57,17 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
   
   repo_path = g_file_get_child (ostree_dir, "repo");
 
-  if (argc > 1)
+  if (argc < 2)
     {
-      deployment = ot_gfile_get_child_build_path (ostree_dir, "deploy", argv[1], NULL);
+      ot_util_usage_error (context, "OSNAME must be specified", error);
+      goto out;
+    }
+
+  osname = argv[1];
+
+  if (argc > 2)
+    {
+      deployment = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, argv[2], NULL);
       if (!g_file_query_exists (deployment, NULL))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -68,7 +77,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
     }
   else
     {
-      if (!ot_admin_get_current_deployment (ostree_dir, &deployment,
+      if (!ot_admin_get_current_deployment (ostree_dir, osname, &deployment,
                                             cancellable, error))
         goto out;
     }

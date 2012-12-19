@@ -153,17 +153,20 @@ main(int argc, char *argv[])
   const char *initramfs_move_mounts[] = { "/dev", "/proc", "/sys", "/run", NULL };
   const char *toproot_bind_mounts[] = { "/home", "/root", "/tmp", NULL };
   const char *ostree_bind_mounts[] = { "/var", NULL };
-  /* ostree_readonly_bind_mounts /lib/modules -> modules */
   const char *readonly_bind_mounts[] = { "/bin", "/lib", "/sbin", "/usr",
 					 NULL };
   const char *root_mountpoint = NULL;
   const char *ostree_target = NULL;
   const char *ostree_subinit = NULL;
+  const char *p = NULL;
+  char *ostree_osname = NULL;
   char ostree_target_path[PATH_MAX];
+  char *deploy_path = NULL;
   char srcpath[PATH_MAX];
   char destpath[PATH_MAX];
   struct stat stbuf;
   char **init_argv = NULL;
+  size_t len;
   int initramfs_fd;
   int i;
   int before_init_argc = 0;
@@ -183,6 +186,14 @@ main(int argc, char *argv[])
   ostree_subinit = argv[3];
   before_init_argc++;
 
+  p = strchr (ostree_target, '/');
+  if (p == NULL)
+    {
+      fprintf (stderr, "Malformed OSTree target %s; expected OSNAME/TREENAME\n", ostree_target);
+      exit (1);
+    }
+  ostree_osname = strndup (ostree_target, p - ostree_target);
+
   /* For now, we just remount the root filesystem read/write.  This is
    * kind of ugly, but to do this properly we'd basically have to have
    * to be fully integrated into the init process.
@@ -193,7 +204,7 @@ main(int argc, char *argv[])
       exit (1);
     }
 
-  snprintf (destpath, sizeof(destpath), "%s/ostree/%s",
+  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s",
 	    root_mountpoint, ostree_target);
   if (stat (destpath, &stbuf) < 0)
     {
@@ -204,7 +215,7 @@ main(int argc, char *argv[])
   for (i = 0; initramfs_move_mounts[i] != NULL; i++)
     {
       const char *path = initramfs_move_mounts[i];
-      snprintf (destpath, sizeof(destpath), "%s/ostree/%s%s", root_mountpoint, ostree_target, path);
+      snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s%s", root_mountpoint, ostree_target, path);
       if (mount (path, destpath, NULL, MS_MOVE, NULL) < 0)
 	{
 	  perrorv ("failed to move mount of %s to %s", path, destpath);
@@ -247,45 +258,38 @@ main(int argc, char *argv[])
    * so we no longer refer to root_mountpoint.
    */
 
-  snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_target);
+  snprintf (destpath, sizeof(destpath), "/ostree/deploy/%s", ostree_target);
   fprintf (stderr, "Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
     {
       perrorv ("Second stat of ostree root '%s' failed: ", destpath);
       exit (1);
     }
-  if (S_ISLNK (stbuf.st_mode))
+  if (!S_ISLNK (stbuf.st_mode))
     {
-      if (readlink (destpath, ostree_target_path, PATH_MAX) < 0)
-	{
-	  perrorv ("readlink(%s) failed: ", destpath);
-	  exit (1);
-	}
-      fprintf (stderr, "Resolved OSTree target to: %s\n", ostree_target_path);
+      fprintf (stderr, "OSTree target is not a symbolic link: %s\n", destpath);
+      exit (1);
     }
-  else
+  if (readlink (destpath, ostree_target_path, PATH_MAX) < 0)
     {
-      strncpy (ostree_target_path, ostree_target, PATH_MAX);
-      fprintf (stderr, "OSTree target is: %s\n", ostree_target_path);
+      perrorv ("readlink(%s) failed: ", destpath);
+      exit (1);
     }
-  
-  snprintf (destpath, sizeof(destpath), "/ostree/%s/sysroot", ostree_target_path);
+  len = strlen (ostree_target_path);
+  if (ostree_target_path[len-1] == '/')
+    ostree_target_path[len-1] = '\0';
+  fprintf (stderr, "Resolved OSTree target to: %s\n", ostree_target_path);
+  asprintf (&deploy_path, "/ostree/deploy/%s/%s", ostree_osname, ostree_target_path);
+
+  snprintf (destpath, sizeof(destpath), "%s/sysroot", deploy_path);
   if (mount ("/", destpath, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("Failed to bind mount / to '%s'", destpath);
       exit (1);
     }
 
-  snprintf (srcpath, sizeof(srcpath), "/ostree/%s-etc", ostree_target_path);
-  snprintf (destpath, sizeof(destpath), "/ostree/%s/etc", ostree_target_path);
-  if (mount (srcpath, destpath, NULL, MS_BIND, NULL) < 0)
-    {
-      perrorv ("Failed to bind mount '%s' to '%s'", srcpath, destpath);
-      exit (1);
-    }
-
-  snprintf (srcpath, sizeof(srcpath), "%s", "/ostree/var");
-  snprintf (destpath, sizeof(destpath), "/ostree/%s/var", ostree_target_path);
+  snprintf (srcpath, sizeof(srcpath), "%s-etc", deploy_path);
+  snprintf (destpath, sizeof(destpath), "%s/etc", deploy_path);
   if (mount (srcpath, destpath, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("Failed to bind mount '%s' to '%s'", srcpath, destpath);
@@ -294,7 +298,7 @@ main(int argc, char *argv[])
 
   for (i = 0; toproot_bind_mounts[i] != NULL; i++)
     {
-      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_target, toproot_bind_mounts[i]);
+      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, toproot_bind_mounts[i]);
       if (mount (toproot_bind_mounts[i], destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
@@ -304,8 +308,8 @@ main(int argc, char *argv[])
 
   for (i = 0; ostree_bind_mounts[i] != NULL; i++)
     {
-      snprintf (srcpath, sizeof(srcpath), "/ostree/%s", ostree_bind_mounts[i]);
-      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_target_path, ostree_bind_mounts[i]);
+      snprintf (srcpath, sizeof(srcpath), "/ostree/deploy/%s%s", ostree_osname, ostree_bind_mounts[i]);
+      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, ostree_bind_mounts[i]);
       if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
@@ -315,7 +319,7 @@ main(int argc, char *argv[])
 
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
     {
-      snprintf (destpath, sizeof(destpath), "/ostree/%s%s", ostree_target_path, readonly_bind_mounts[i]);
+      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, readonly_bind_mounts[i]);
       if (mount (destpath, destpath, NULL, MS_BIND, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
@@ -328,19 +332,9 @@ main(int argc, char *argv[])
 	}
     }
 
-  /* This should come after we've bind mounted /lib */
-  snprintf (srcpath, sizeof(srcpath), "/ostree/modules");
-  snprintf (destpath, sizeof(destpath), "/ostree/%s/lib/modules", ostree_target_path);
-  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+  if (chroot (deploy_path) < 0)
     {
-      perrorv ("failed to bind mount %s to %s", srcpath, destpath);
-      exit (1);
-    }
-
-  snprintf (destpath, sizeof(destpath), "/ostree/%s", ostree_target_path);
-  if (chroot (destpath) < 0)
-    {
-      perrorv ("failed to change root to '%s'", destpath);
+      perrorv ("failed to change root to '%s'", deploy_path);
       exit (1);
     }
 

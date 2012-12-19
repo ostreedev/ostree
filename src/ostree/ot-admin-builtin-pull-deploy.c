@@ -36,13 +36,13 @@ static GOptionEntry options[] = {
 };
 
 static char *
-parse_deploy_name_from_path (GFile   *ostree_dir,
+parse_deploy_name_from_path (GFile   *osdir,
                              GFile   *path)
 {
-  ot_lobj GFile *deploy_dir = g_file_get_child (ostree_dir, "deploy");
-  ot_lfree char *relpath = g_file_get_relative_path (deploy_dir, path);
+  ot_lfree char *relpath = g_file_get_relative_path (osdir, path);
   const char *last_dash;
 
+  g_assert (relpath);
   last_dash = strrchr (relpath, '-');
   if (!last_dash)
     g_error ("Failed to parse deployment name %s", relpath);
@@ -50,80 +50,37 @@ parse_deploy_name_from_path (GFile   *ostree_dir,
   return g_strndup (relpath, last_dash - relpath);
 }
 
-static char *
-remote_name_from_path (GKeyFile    *repo_config,
-                       const char  *deploy_path)
-{
-  const char *group_prefix = "remote \"";
-  char **groups = NULL;
-  char **group_iter = NULL;
-  char *ret = NULL;
-
-  groups = g_key_file_get_groups (repo_config, NULL);
-  for (group_iter = groups; *group_iter; group_iter++)
-    {
-      const char *group = *group_iter;
-      char **configured_branches = NULL;
-      char **branch_iter = NULL;
-      gboolean found = FALSE;
-
-      if (!(g_str_has_prefix (group, group_prefix)
-            && g_str_has_suffix (group, "\"")))
-        continue;
-
-      configured_branches = g_key_file_get_string_list (repo_config, group, "branches", NULL, NULL);
-      if (!configured_branches)
-        continue;
-
-      for (branch_iter = configured_branches; *branch_iter; branch_iter++)
-        {
-          const char *branch = *branch_iter;
-
-          if (!strcmp (branch, deploy_path))
-            {
-              found = TRUE;
-              break;
-            }
-        }
-      
-      if (found)
-        break;
-    }
-
-  if (*group_iter)
-    {
-      const char *group = *group_iter;
-      size_t len;
-      ret = g_strdup (group + strlen (group_prefix));
-      len = strlen (ret);
-      g_assert (len > 0 && ret[len-1] == '\"');
-      ret[len-1] = '\0';
-    }
-  g_strfreev (groups);
-  return ret;
-}
-
 gboolean
 ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
+  const char *osname;
   ot_lobj GFile *repo_path = NULL;
-  ot_lobj OstreeRepo *repo = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lfree char *deploy_name = NULL;
+  ot_lobj GFile *deploy_dir = NULL;
+  ot_lobj GFile *os_dir = NULL;
   ot_lfree char *remote_name = NULL;
   ot_lptrarray GPtrArray *subproc_args = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new (" - Upgrade and redeploy current tree");
+  context = g_option_context_new ("OSNAME - Upgrade and redeploy current tree");
 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_get_current_deployment (ostree_dir, &current_deployment,
+  if (argc < 2)
+    {
+      ot_util_usage_error (context, "OSNAME must be specified", error);
+      goto out;
+    }
+
+  osname = argv[1];
+
+  if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
                                         cancellable, error))
     goto out;
 
@@ -134,15 +91,13 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
       goto out;
     }
 
-  deploy_name = parse_deploy_name_from_path (ostree_dir, current_deployment);
+  deploy_dir = g_file_get_child (ostree_dir, "deploy");
+  os_dir = g_file_get_child (deploy_dir, osname);
+  g_print ("%s\n%s\n", gs_file_get_path_cached (os_dir),
+           gs_file_get_path_cached (current_deployment));
+  deploy_name = parse_deploy_name_from_path (os_dir, current_deployment);
 
   repo_path = g_file_get_child (ostree_dir, "repo");
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
-    goto out;
-
-  remote_name = remote_name_from_path (ostree_repo_get_config (repo),
-                                       deploy_name);
 
   {
     ot_lfree char *repo_arg = g_strconcat ("--repo=",
@@ -152,7 +107,7 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
                                         GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
                                         cancellable, error,
-                                        "ostree", "pull", repo_arg, remote_name, NULL))
+                                        "ostree", "pull", repo_arg, osname, NULL))
       goto out;
   }
 
@@ -163,7 +118,7 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
                                         GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
                                         cancellable, error,
-                                        "ostree", "admin", opt_ostree_dir_arg, "deploy",
+                                        "ostree", "admin", opt_ostree_dir_arg, "deploy", osname,
                                         deploy_name, NULL))
       goto out;
   }

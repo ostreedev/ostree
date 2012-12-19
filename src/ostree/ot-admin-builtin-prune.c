@@ -103,29 +103,38 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
   GOptionContext *context;
   gboolean ret = FALSE;
   guint i;
+  const char *osname;
   ot_lobj GFile *repo_path = NULL;
+  ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lobj GFile *previous_deployment = NULL;
   ot_lptrarray GPtrArray *deployments = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("- Delete untagged deployments and repository objects");
+  context = g_option_context_new ("OSNAME - Delete untagged deployments and repository objects");
 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (ostree_dir, cancellable, error))
-    goto out;
+  if (argc < 2)
+    {
+      ot_util_usage_error (context, "OSNAME must be specified", error);
+      goto out;
+    }
+
+  osname = argv[1];
+
+  deploy_dir = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, NULL);
 
   deployments = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  if (!list_deployments (ostree_dir, deployments, cancellable, error))
+  if (!list_deployments (deploy_dir, deployments, cancellable, error))
     goto out;
 
-  if (!ot_admin_get_current_deployment (ostree_dir, &current_deployment,
+  if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
                                         cancellable, error));
-  if (!ot_admin_get_previous_deployment (ostree_dir, &previous_deployment,
+  if (!ot_admin_get_previous_deployment (ostree_dir, osname, &previous_deployment,
                                          cancellable, error));
 
   for (i = 0; i < deployments->len; i++)

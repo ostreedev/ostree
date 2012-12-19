@@ -45,11 +45,6 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
     goto out;
 
   g_clear_object (&dir);
-  dir = g_file_get_child (ostree_dir, "modules");
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-
-  g_clear_object (&dir);
   dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
     {
@@ -61,40 +56,6 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
                                           "ostree", opt_repo_arg, "init", NULL))
         {
           g_prefix_error (error, "Failed to initialize repository: ");
-          goto out;
-        }
-    }
-
-  /* Ensure core subdirectories of /var exist, since we need them for
-   * dracut generation, and the host will want them too.
-   */
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "log", NULL);
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "tmp", NULL);
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-  if (chmod (gs_file_get_path_cached (dir), 01777) < 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "lib", NULL);
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (ostree_dir, "var", "run", NULL);
-  if (!g_file_test (gs_file_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
-    {
-      if (symlink ("../run", gs_file_get_path_cached (dir)) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -183,13 +144,15 @@ query_symlink_target_allow_noent (GFile         *path,
  */
 gboolean
 ot_admin_get_current_deployment (GFile           *ostree_dir,
+                                 const char      *osname,
                                  GFile          **out_deployment,
                                  GCancellable    *cancellable,
                                  GError         **error)
 {
   ot_lobj GFile *current_path = NULL;
 
-  current_path = g_file_get_child (ostree_dir, "current");
+  current_path = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname,
+                                                "current", NULL);
 
   return query_symlink_target_allow_noent (current_path, out_deployment,
                                            cancellable, error);
@@ -204,13 +167,15 @@ ot_admin_get_current_deployment (GFile           *ostree_dir,
  */
 gboolean
 ot_admin_get_previous_deployment (GFile           *ostree_dir,
-                                 GFile          **out_deployment,
-                                 GCancellable    *cancellable,
-                                 GError         **error)
+                                  const char      *osname,
+                                  GFile          **out_deployment,
+                                  GCancellable    *cancellable,
+                                  GError         **error)
 {
   ot_lobj GFile *previous_path = NULL;
 
-  previous_path = g_file_get_child (ostree_dir, "previous");
+  previous_path = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname,
+                                                 "previous", NULL);
 
   return query_symlink_target_allow_noent (previous_path, out_deployment,
                                            cancellable, error);

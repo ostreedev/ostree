@@ -26,6 +26,8 @@
 #include "ot-admin-functions.h"
 #include "otutil.h"
 
+#include <unistd.h>
+#include <stdlib.h>
 #include <glib/gi18n.h>
 
 static GOptionEntry options[] = {
@@ -33,23 +35,43 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_init (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_upgrade (int argc, char **argv, GFile *ostree_dir, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj GFile *dir = NULL;
+  const char *osname = NULL;
+  gs_free char *ostree_dir_arg = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("- Initialize /ostree directory");
+  context = g_option_context_new ("OSNAME - pull, deploy, and prune");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (ostree_dir, cancellable, error))
+  if (argc < 2)
+    {
+      ot_util_usage_error (context, "OSNAME must be specified", error);
+      goto out;
+    }
+
+  osname = argv[1];
+
+  ostree_dir_arg = g_strconcat ("--ostree-dir=",
+                                gs_file_get_path_cached (ostree_dir),
+                                NULL);
+
+  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      cancellable, error,
+                                      "ostree", "admin", ostree_dir_arg, "pull-deploy", osname, NULL))
     goto out;
 
-  g_print ("%s initialized as OSTree root\n", gs_file_get_path_cached (ostree_dir));
+  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      cancellable, error,
+                                      "ostree", "admin", ostree_dir_arg, "prune", osname, NULL))
+    goto out;
 
   ret = TRUE;
  out:

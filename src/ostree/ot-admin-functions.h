@@ -32,10 +32,12 @@ gboolean ot_admin_ensure_initialized (GFile         *ostree_dir,
 				      GError       **error);
 
 gboolean ot_admin_get_current_deployment (GFile           *ostree_dir,
+                                          const char      *osname,
                                           GFile          **out_deployment,
                                           GCancellable    *cancellable,
                                           GError         **error);
 gboolean ot_admin_get_previous_deployment (GFile           *ostree_dir,
+                                           const char      *osname,
                                            GFile          **out_deployment,
                                            GCancellable    *cancellable,
                                            GError         **error);
