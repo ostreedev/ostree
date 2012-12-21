@@ -1367,9 +1367,12 @@ ostree_create_temp_regular_file (GFile            *dir,
                                            &ret_file, cancellable, error))
     goto out;
   
-  ret_stream = (GOutputStream*)g_file_append_to (ret_file, 0, cancellable, error);
-  if (ret_stream == NULL)
-    goto out;
+  if (out_stream)
+    {
+      ret_stream = (GOutputStream*)g_file_append_to (ret_file, 0, cancellable, error);
+      if (ret_stream == NULL)
+        goto out;
+    }
   
   ret = TRUE;
   ot_transfer_out_value(out_file, &ret_file);
