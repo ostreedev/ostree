@@ -40,7 +40,7 @@ ot_spawn_sync_checked (const char           *cwd,
   if (cwd)
     gs_subprocess_context_set_cwd (context, cwd);
 
-  if ((proc = gs_subprocess_new (context, error)) == NULL)
+  if ((proc = gs_subprocess_new (context, cancellable, error)) == NULL)
     goto out;
   
   if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
