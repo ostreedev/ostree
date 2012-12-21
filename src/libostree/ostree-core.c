@@ -1260,6 +1260,29 @@ ostree_create_file_from_input (GFile            *dest_file,
   return ret;
 }
 
+static const char *
+get_default_tmp_prefix (void)
+{
+  static char *tmpprefix = NULL;
+
+  if (g_once_init_enter (&tmpprefix))
+    {
+      const char *prgname = g_get_prgname ();
+      const char *p;
+      char *prefix;
+
+      p = strrchr (prgname, '/');
+      if (p)
+        prgname = p + 1;
+
+      prefix = g_strdup_printf ("tmp-%s%u-", prgname, getuid ());
+      
+      g_once_init_leave (&tmpprefix, prefix);
+    }
+
+  return tmpprefix;
+}
+
 static char *
 create_tmp_name (const char *dirpath,
                  const char *prefix,
@@ -1270,7 +1293,7 @@ create_tmp_name (const char *dirpath,
   guint i;
 
   if (!prefix)
-    prefix = "tmp";
+    prefix = get_default_tmp_prefix ();
   if (!suffix)
     suffix = "tmp";
 
