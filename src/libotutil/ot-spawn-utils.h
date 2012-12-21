@@ -27,11 +27,6 @@
 
 G_BEGIN_DECLS
 
-gboolean ot_spawn_sync_checked (const char           *cwd,
-                                char                **argv,
-                                GCancellable         *cancellable,
-                                GError              **error);
-
 GThreadPool * ot_thread_pool_new_nproc (GFunc     func,
                                         gpointer  user_data);
                                         

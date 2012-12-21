@@ -156,18 +156,15 @@ ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error
 
   if (!opt_no_repo_prune)
     {
-      ot_lptrarray GPtrArray *prune_argv = NULL;
       ot_lfree char *repo_arg = NULL;
 
       repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
-
-      prune_argv = g_ptr_array_new ();
-      ot_ptrarray_add_many (prune_argv, "ostree", repo_arg, "prune", "--refs-only", "--depth=0", NULL);
-      g_ptr_array_add (prune_argv, NULL);
       
-      if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                  (char**)prune_argv->pdata,
-                                  cancellable, error))
+      if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                          GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                          cancellable, error,
+                                          "ostree", repo_arg, "prune", "--refs-only",
+                                          "--depth=0", NULL))
         goto out;
     }
 

@@ -84,7 +84,6 @@ update_initramfs (OtAdminUpdateKernel  *self,
   initramfs_file = ot_gfile_from_build_path ("/boot", initramfs_name, NULL);
   if (!g_file_query_exists (initramfs_file, NULL))
     {
-      ot_lptrarray GPtrArray *mkinitramfs_args = NULL;
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
       ot_lobj GFile *ostree_vardir = NULL;
@@ -110,27 +109,24 @@ update_initramfs (OtAdminUpdateKernel  *self,
       if (!g_output_stream_close (tmp_log_out, cancellable, error))
         goto out;
 
-      mkinitramfs_args = g_ptr_array_new ();
       /* Note: the hardcoded /tmp path below is not actually a
        * security flaw, because we've bind-mounted dracut's view
        * of /tmp to the securely-created tmpdir above.
        */
-      ot_ptrarray_add_many (mkinitramfs_args,
-                            "linux-user-chroot",
-                            "--mount-readonly", "/",
-                            "--mount-proc", "/proc",
-                            "--mount-bind", "/dev", "/dev",
-                            "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
-                            "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp",
-                            "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules",
-                            deploy_path,
-                            "dracut", "-f", "/tmp/initramfs-ostree.img", release,
-                            NULL);
-      g_ptr_array_add (mkinitramfs_args, NULL);
-          
       g_print ("Generating initramfs using %s...\n", deploy_path);
-      if (!ot_spawn_sync_checked (NULL, (char**)mkinitramfs_args->pdata,
-                                  cancellable, error))
+      if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                          cancellable, error,
+                                          "linux-user-chroot",
+                                          "--mount-readonly", "/",
+                                          "--mount-proc", "/proc",
+                                          "--mount-bind", "/dev", "/dev",
+                                          "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
+                                          "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp",
+                                          "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules",
+                                          deploy_path,
+                                          "dracut", "-f", "/tmp/initramfs-ostree.img", release,
+                                          
+                                          NULL))
         goto out;
           
       initramfs_tmp_file = g_file_get_child (tmpdir, "initramfs-ostree.img");
@@ -241,7 +237,6 @@ update_grub (OtAdminUpdateKernel  *self,
 
       if (!have_grub_entry)
         {
-          ot_lptrarray GPtrArray *grubby_args = NULL;
           ot_lfree char *add_kernel_arg = NULL;
           ot_lfree char *initramfs_arg = NULL;
           ot_lobj GFile *kernel_path = NULL;
@@ -257,16 +252,13 @@ update_grub (OtAdminUpdateKernel  *self,
               goto out;
             }
 
-          grubby_args = g_ptr_array_new ();
           add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (kernel_path), NULL);
           initramfs_arg = g_strconcat ("--initrd=", "/boot/initramfs-ostree-", release, ".img", NULL);
-          ot_ptrarray_add_many (grubby_args, "grubby", "--grub", add_kernel_arg, initramfs_arg,
-                                "--copy-default", "--title=OSTree", NULL);
-          g_ptr_array_add (grubby_args, NULL);
-
           g_print ("Adding OSTree grub entry...\n");
-          if (!ot_spawn_sync_checked (NULL, (char**)grubby_args->pdata,
-                                      cancellable, error))
+          if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                              cancellable, error,
+                                              "grubby", "--grub", add_kernel_arg, initramfs_arg,
+                                              "--copy-default", "--title=OSTree", NULL))
             goto out;
         } 
       else

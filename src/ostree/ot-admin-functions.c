@@ -55,9 +55,10 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
     {
       ot_lfree char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
                                                       gs_file_get_path_cached (ostree_dir));
-      const char *child_argv[] = { "ostree", opt_repo_arg, "init", NULL };
 
-      if (!ot_spawn_sync_checked (NULL, (char**)child_argv, cancellable, error))
+      if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                          cancellable, error,
+                                          "ostree", opt_repo_arg, "init", NULL))
         {
           g_prefix_error (error, "Failed to initialize repository: ");
           goto out;

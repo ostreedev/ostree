@@ -579,19 +579,16 @@ do_update_kernel (OtAdminDeploy     *self,
                   GError           **error)
 {
   gboolean ret = FALSE;
-  ot_lptrarray GPtrArray *args = NULL;
 
-  args = g_ptr_array_new ();
-  ot_ptrarray_add_many (args, "ostree", "admin",
-                        "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
-                        "update-kernel",
-                        gs_file_get_path_cached (deploy_path), NULL);
-  if (opt_no_kernel)
-    g_ptr_array_add (args, "--modules-only");
-  g_ptr_array_add (args, NULL);
-
-  if (!ot_spawn_sync_checked (gs_file_get_path_cached (self->ostree_dir),
-                              (char**)args->pdata, cancellable, error))
+  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (self->ostree_dir),
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      cancellable, error,
+                                      "ostree", "admin",
+                                      "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
+                                      "update-kernel",
+                                      gs_file_get_path_cached (deploy_path),
+                                      opt_no_kernel ? "--modules-only" : NULL,
+                                      NULL))
     goto out;
 
   ret = TRUE;

@@ -144,34 +144,27 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError *
   remote_name = remote_name_from_path (ostree_repo_get_config (repo),
                                        deploy_name);
 
-  subproc_args = g_ptr_array_new ();
   {
     ot_lfree char *repo_arg = g_strconcat ("--repo=",
                                            gs_file_get_path_cached (repo_path),
                                            NULL);
-    ot_ptrarray_add_many (subproc_args, "ostree", "pull", repo_arg, remote_name, NULL);
-    g_ptr_array_add (subproc_args, NULL);
 
-    if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                (char**)subproc_args->pdata,
-                                cancellable, error))
+    if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                        cancellable, error,
+                                        "ostree", "pull", repo_arg, remote_name, NULL))
       goto out;
-    
-    g_clear_pointer (&subproc_args, (GDestroyNotify)g_ptr_array_unref);
   }
 
-  subproc_args = g_ptr_array_new ();
   {
     ot_lfree char *opt_ostree_dir_arg = g_strconcat ("--ostree-dir=",
                                                      gs_file_get_path_cached (ostree_dir),
                                                      NULL);
-    ot_ptrarray_add_many (subproc_args, "ostree", "admin", opt_ostree_dir_arg, "deploy",
-                          deploy_name, NULL);
-    g_ptr_array_add (subproc_args, NULL);
-
-    if (!ot_spawn_sync_checked (gs_file_get_path_cached (ostree_dir),
-                                (char**)subproc_args->pdata,
-                                cancellable, error))
+    if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                        cancellable, error,
+                                        "ostree", "admin", opt_ostree_dir_arg, "deploy",
+                                        deploy_name, NULL))
       goto out;
   }
 

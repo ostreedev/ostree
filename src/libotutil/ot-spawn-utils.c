@@ -26,31 +26,6 @@
 
 #include <string.h>
 
-gboolean
-ot_spawn_sync_checked (const char           *cwd,
-                       char                **argv,
-                       GCancellable         *cancellable,
-                       GError              **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GSSubprocessContext *context = NULL;
-  gs_unref_object GSSubprocess *proc = NULL;
-
-  context = gs_subprocess_context_new (argv);
-  if (cwd)
-    gs_subprocess_context_set_cwd (context, cwd);
-
-  if ((proc = gs_subprocess_new (context, cancellable, error)) == NULL)
-    goto out;
-  
-  if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 /**
  * ot_thread_pool_new_nproc:
  *
