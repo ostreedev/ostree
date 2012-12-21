@@ -65,8 +65,10 @@ update_current (OtAdminDeploy      *self,
 {
   gboolean ret = FALSE;
   ot_lobj GFile *current_path = NULL;
+  ot_lobj GFile *current_etc_path = NULL;
   ot_lobj GFile *previous_path = NULL;
   ot_lobj GFile *tmp_current_path = NULL;
+  ot_lobj GFile *tmp_current_etc_path = NULL;
   ot_lobj GFile *tmp_previous_path = NULL;
   ot_lobj GFileInfo *previous_info = NULL;
   ot_lfree char *relative_current = NULL;
@@ -74,6 +76,7 @@ update_current (OtAdminDeploy      *self,
   ot_lfree char *relative_previous = NULL;
 
   current_path = g_file_get_child (self->osname_dir, "current");
+  current_etc_path = g_file_get_child (self->osname_dir, "current-etc");
   previous_path = g_file_get_child (self->osname_dir, "previous");
 
   relative_current = g_file_get_relative_path (self->osname_dir, deploy_target);
@@ -112,7 +115,18 @@ update_current (OtAdminDeploy      *self,
       goto out;
     }
 
+  tmp_current_etc_path = g_file_get_child (self->osname_dir, "tmp-current-etc");
+  (void) gs_file_unlink (tmp_current_etc_path, NULL, NULL);
+  if (symlink (relative_current_etc, gs_file_get_path_cached (tmp_current_etc_path)) < 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   if (!gs_file_rename (tmp_current_path, current_path,
+                       cancellable, error))
+    goto out;
+  if (!gs_file_rename (tmp_current_etc_path, current_etc_path,
                        cancellable, error))
     goto out;
 
