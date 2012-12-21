@@ -35,6 +35,7 @@ struct OtWorkerQueue {
 
   char *thread_name;
   
+  gboolean complete;
   gboolean destroyed;
 
   GThread *worker;
@@ -71,6 +72,7 @@ void
 ot_worker_queue_start (OtWorkerQueue  *queue)
 {
   queue->worker = g_thread_new (queue->thread_name, ot_worker_queue_thread_main, queue);
+  ot_worker_queue_push (queue, queue); /* Self marks end of (initial) queue */
 }
 
 void
@@ -129,7 +131,8 @@ ot_worker_queue_thread_main (gpointer user_data)
 
       while (!g_queue_peek_tail_link (&queue->queue))
         {
-          if (queue->idle_callback && g_atomic_int_get (&queue->holds) == 0)
+          if (queue->idle_callback && queue->complete &&
+              g_atomic_int_get (&queue->holds) == 0)
             g_main_context_invoke (queue->idle_context,
                                    invoke_idle_callback,
                                    queue);
@@ -143,7 +146,10 @@ ot_worker_queue_thread_main (gpointer user_data)
       if (!item)
         break;
 
-      queue->work_func (item, queue->work_data);
+      if (item == queue)
+        queue->complete = TRUE;
+      else
+        queue->work_func (item, queue->work_data);
     }
 
   return NULL;
