@@ -42,6 +42,10 @@ gboolean ot_admin_get_previous_deployment (GFile           *ostree_dir,
                                            GCancellable    *cancellable,
                                            GError         **error);
 
+gboolean ot_admin_get_sysroot_from_proc_cmdline (GFile        **out_deploy_target,
+                                                 GCancellable  *cancellable,
+                                                 GError       **error);
+
 G_END_DECLS
 
 #endif

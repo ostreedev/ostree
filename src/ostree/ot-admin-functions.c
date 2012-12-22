@@ -180,3 +180,41 @@ ot_admin_get_previous_deployment (GFile           *ostree_dir,
   return query_symlink_target_allow_noent (previous_path, out_deployment,
                                            cancellable, error);
 }
+
+gboolean
+ot_admin_get_sysroot_from_proc_cmdline (GFile        **out_deploy_target,
+                                        GCancellable  *cancellable,
+                                        GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *proc_cmdline = g_file_new_for_path ("/proc/cmdline");
+  gs_unref_object GFile *ret_deploy_target = NULL;
+  gs_free char *contents = NULL;
+  gsize contents_len;
+  char **cmdline_argv = NULL;
+  char **iter;
+
+  if (!g_file_load_contents (proc_cmdline, cancellable, &contents, &contents_len, NULL,
+                             error))
+    goto out;
+
+  cmdline_argv = g_strsplit (contents, " ", -1);
+  
+  for (iter = cmdline_argv; *iter; iter++)
+    {
+      const char *arg = *iter;
+      if (strncmp (arg, "ostree=", 7) == 0)
+        {
+          gs_free char *subpath = g_strdup (arg + 7);
+          gs_unref_object GFile *deploydir = g_file_new_for_path ("/sysroot/ostree/deploy");
+          ret_deploy_target = g_file_resolve_relative_path (deploydir, subpath);
+          break;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_deploy_target, &ret_deploy_target);
+ out:
+  g_strfreev (cmdline_argv);
+  return ret;
+}

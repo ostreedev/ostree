@@ -34,6 +34,7 @@ gboolean ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GErr
 gboolean ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error);
+gboolean ot_admin_builtin_run_triggers (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError **error);
 gboolean ot_admin_builtin_upgrade (int argc, char **argv, GFile *ostree_dir, GError **error);
 
