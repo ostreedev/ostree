@@ -31,7 +31,6 @@ typedef struct OtWorkerQueue OtWorkerQueue;
 
 typedef void (*OtWorkerQueueFunc) (gpointer data,
                                    gpointer user_data);
-typedef void (*OtWorkerQueueIdleFunc) (gpointer user_data);
 
 OtWorkerQueue *ot_worker_queue_new (const char         *thread_name,
                                     OtWorkerQueueFunc   func,
@@ -39,13 +38,7 @@ OtWorkerQueue *ot_worker_queue_new (const char         *thread_name,
 
 void ot_worker_queue_start (OtWorkerQueue  *queue);
 
-void ot_worker_queue_hold (OtWorkerQueue  *queue);
-void ot_worker_queue_release (OtWorkerQueue  *queue);
-
-void ot_worker_queue_set_idle_callback (OtWorkerQueue          *queue,
-                                        GMainContext           *context,
-                                        OtWorkerQueueIdleFunc   idle_callback,
-                                        gpointer                data);
+gboolean ot_worker_queue_is_idle (OtWorkerQueue          *queue);
 
 void ot_worker_queue_push (OtWorkerQueue      *queue,
                            gpointer            data);

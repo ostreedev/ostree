@@ -31,21 +31,16 @@ struct OtWorkerQueue {
   GCond cond;
   GQueue queue;
 
-  volatile gint holds;
-
   char *thread_name;
   
   gboolean complete;
+  gboolean is_idle;
   gboolean destroyed;
 
   GThread *worker;
 
   OtWorkerQueueFunc work_func;
   OtWorkerQueueFunc work_data;
-  
-  GMainContext *idle_context;
-  OtWorkerQueueIdleFunc idle_callback;
-  gpointer idle_data;
 };
 
 static gpointer
@@ -61,6 +56,8 @@ ot_worker_queue_new (const char          *thread_name,
   g_cond_init (&queue->cond);
   g_queue_init (&queue->queue);
 
+  queue->is_idle = TRUE;
+
   queue->thread_name = g_strdup (thread_name);
   queue->work_func = func;
   queue->work_data = data;
@@ -72,40 +69,6 @@ void
 ot_worker_queue_start (OtWorkerQueue  *queue)
 {
   queue->worker = g_thread_new (queue->thread_name, ot_worker_queue_thread_main, queue);
-  ot_worker_queue_push (queue, queue); /* Self marks end of (initial) queue */
-}
-
-void
-ot_worker_queue_hold (OtWorkerQueue  *queue)
-{
-  g_atomic_int_inc (&queue->holds);
-}
-
-static gboolean
-invoke_idle_callback (gpointer user_data)
-{
-  OtWorkerQueue *queue = user_data;
-  queue->idle_callback (queue->idle_data);
-  return FALSE;
-}
-
-void
-ot_worker_queue_release (OtWorkerQueue  *queue)
-{
-  if (!g_atomic_int_dec_and_test (&queue->holds))
-    return;
-
-  g_mutex_lock (&queue->mutex);
-
-  if (!g_queue_peek_tail_link (&queue->queue))
-    {
-      if (queue->idle_callback)
-        g_main_context_invoke (queue->idle_context,
-                               invoke_idle_callback,
-                               queue);
-    }
-
-  g_mutex_unlock (&queue->mutex);
 }
 
 void
@@ -114,6 +77,7 @@ ot_worker_queue_push (OtWorkerQueue *queue,
 {
   g_mutex_lock (&queue->mutex);
   g_queue_push_head (&queue->queue, data);
+  queue->is_idle = FALSE;
   g_cond_signal (&queue->cond);
   g_mutex_unlock (&queue->mutex);
 }
@@ -131,11 +95,7 @@ ot_worker_queue_thread_main (gpointer user_data)
 
       while (!g_queue_peek_tail_link (&queue->queue))
         {
-          if (queue->idle_callback && queue->complete &&
-              g_atomic_int_get (&queue->holds) == 0)
-            g_main_context_invoke (queue->idle_context,
-                                   invoke_idle_callback,
-                                   queue);
+          queue->is_idle = TRUE;
           g_cond_wait (&queue->cond, &queue->mutex);
         }
 
@@ -146,27 +106,20 @@ ot_worker_queue_thread_main (gpointer user_data)
       if (!item)
         break;
 
-      if (item == queue)
-        queue->complete = TRUE;
-      else
-        queue->work_func (item, queue->work_data);
+      queue->work_func (item, queue->work_data);
     }
 
   return NULL;
 }
 
-void
-ot_worker_queue_set_idle_callback (OtWorkerQueue *queue,
-                                   GMainContext  *context,
-                                   OtWorkerQueueIdleFunc idle_callback,
-                                   gpointer       data)
+gboolean
+ot_worker_queue_is_idle (OtWorkerQueue *queue)
 {
-  g_assert (!queue->worker);
-  if (!context)
-    context = g_main_context_default ();
-  queue->idle_context = g_main_context_ref (context);
-  queue->idle_callback = idle_callback;
-  queue->idle_data = data;
+  gboolean ret;
+  g_mutex_lock (&queue->mutex);
+  ret = queue->is_idle;
+  g_mutex_unlock (&queue->mutex);
+  return ret;
 }
 
 void
@@ -180,7 +133,6 @@ ot_worker_queue_unref (OtWorkerQueue *queue)
 
   g_free (queue->thread_name);
 
-  g_main_context_unref (queue->idle_context);
   g_mutex_clear (&queue->mutex);
   g_cond_clear (&queue->cond);
   g_queue_clear (&queue->queue);
