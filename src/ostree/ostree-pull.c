@@ -111,6 +111,8 @@ typedef struct {
   guint         outstanding_filecontent_requests;
   guint         outstanding_content_stage_requests;
 
+  gboolean      have_previous_bytes;
+  guint64       previous_bytes_sec;
   guint64       previous_total_downloaded;
 
   GError      **async_error;
@@ -188,6 +190,7 @@ uri_fetch_update_status (gpointer user_data)
   ot_lfree char *fetcher_status;
   GString *status;
   guint64 current_bytes_transferred;
+  guint64 current_delta_bytes_transferred;
   guint64 delta_bytes_transferred;
  
   status = g_string_new ("");
@@ -203,7 +206,16 @@ uri_fetch_update_status (gpointer user_data)
                           g_atomic_int_get (&pull_data->n_requested_content));
 
   current_bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
-  delta_bytes_transferred = current_bytes_transferred - pull_data->previous_total_downloaded;
+  current_delta_bytes_transferred = current_bytes_transferred - pull_data->previous_total_downloaded;
+
+  if (pull_data->have_previous_bytes)
+    delta_bytes_transferred = (guint64)(0.5 * current_delta_bytes_transferred + 0.5 * pull_data->previous_bytes_sec);
+  else
+    {
+      pull_data->have_previous_bytes = TRUE;
+      delta_bytes_transferred = current_delta_bytes_transferred;
+    }
+  pull_data->previous_bytes_sec = delta_bytes_transferred;
   pull_data->previous_total_downloaded = current_bytes_transferred;
 
   if (delta_bytes_transferred < 1024)
