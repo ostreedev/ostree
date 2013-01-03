@@ -31,15 +31,17 @@
 #include <glib/gi18n.h>
 
 static char *opt_ostree_dir = "/ostree";
+static char *opt_boot_dir = "/boot";
 
 static GOptionEntry options[] = {
   { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
+  { "boot-dir", 0, 0, G_OPTION_ARG_STRING, &opt_boot_dir, "Path to system boot directory (default: /boot)", NULL },
   { NULL }
 };
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, GFile *ostree_dir, GError **error);
+  gboolean (*fn) (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
@@ -65,8 +67,10 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
   const char *subcommand_name;
   OstreeAdminCommand *subcommand;
   int subcmd_argc;
+  OtAdminBuiltinOpts admin_opts;
   char **subcmd_argv = NULL;
   ot_lobj GFile *ostree_dir = NULL;
+  ot_lobj GFile *boot_dir = NULL;
 
   context = g_option_context_new ("[OPTIONS] SUBCOMMAND - Run an administrative subcommand");
 
@@ -113,10 +117,13 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   ostree_dir = g_file_new_for_path (opt_ostree_dir);
+  boot_dir = g_file_new_for_path (opt_boot_dir);
 
   ostree_prep_builtin_argv (subcommand_name, argc-2, argv+2, &subcmd_argc, &subcmd_argv);
 
-  if (!subcommand->fn (subcmd_argc, subcmd_argv, ostree_dir, error))
+  admin_opts.ostree_dir = ostree_dir;
+  admin_opts.boot_dir = boot_dir;
+  if (!subcommand->fn (subcmd_argc, subcmd_argv, &admin_opts, error))
     goto out;
  
   ret = TRUE;

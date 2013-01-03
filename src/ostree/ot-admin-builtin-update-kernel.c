@@ -29,7 +29,9 @@
 #include <sys/utsname.h>
 
 typedef struct {
+  OtAdminBuiltinOpts *admin_opts;
   GFile       *ostree_dir;
+  GFile       *boot_ostree_dir;
   const char  *deploy_path;
   GFile       *kernel_path;
   char        *release;
@@ -122,7 +124,6 @@ setup_kernel (OtAdminUpdateKernel *self,
   ot_lobj GFile *deploy_path = NULL;
   ot_lobj GFile *deploy_boot_path = NULL;
   ot_lobj GFile *src_kernel_path = NULL;
-  ot_lobj GFile *host_boot = NULL;
   ot_lfree char *prefix = NULL;
   const char *release = NULL;
   const char *kernel_name = NULL;
@@ -140,8 +141,7 @@ setup_kernel (OtAdminUpdateKernel *self,
       goto out;
     }
 
-  host_boot = g_file_new_for_path ("/boot/ostree");
-  if (!gs_file_ensure_directory (host_boot, TRUE, cancellable, error))
+  if (!gs_file_ensure_directory (self->boot_ostree_dir, TRUE, cancellable, error))
     goto out;
 
   kernel_name = gs_file_get_basename_cached (src_kernel_path);
@@ -155,7 +155,7 @@ setup_kernel (OtAdminUpdateKernel *self,
 
   self->release = g_strdup (release + 1);
   prefix = g_strndup (kernel_name, release - kernel_name);
-  self->kernel_path = ot_gfile_get_child_strconcat (host_boot, prefix, "-", self->release, NULL);
+  self->kernel_path = ot_gfile_get_child_strconcat (self->boot_ostree_dir, prefix, "-", self->release, NULL);
 
   if (!g_file_copy (src_kernel_path, self->kernel_path,
                     G_FILE_COPY_OVERWRITE | G_FILE_COPY_ALL_METADATA | G_FILE_COPY_NOFOLLOW_SYMLINKS,
@@ -183,7 +183,7 @@ update_initramfs (OtAdminUpdateKernel  *self,
 
   initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
 
-  initramfs_file = ot_gfile_from_build_path ("/boot", "ostree", initramfs_name, NULL);
+  initramfs_file = g_file_get_child (self->boot_ostree_dir, initramfs_name);
   if (!g_file_query_exists (initramfs_file, NULL))
     {
       gs_unref_ptrarray GPtrArray *mkinitramfs_args = NULL;
@@ -324,7 +324,7 @@ get_kernel_path_from_release (OtAdminUpdateKernel  *self,
   /* TODO - replace this with grubby code */
 
   name = g_strconcat ("vmlinuz-", release, NULL);
-  possible_path = ot_gfile_from_build_path ("/boot", name, NULL);
+  possible_path = g_file_get_child (self->admin_opts->boot_dir, name);
   if (!g_file_query_exists (possible_path, cancellable))
     g_clear_object (&possible_path);
 
@@ -340,7 +340,7 @@ update_grub (OtAdminUpdateKernel  *self,
              GError              **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *grub_path = g_file_new_for_path ("/boot/grub/grub.conf");
+  ot_lobj GFile *grub_path = g_file_resolve_relative_path (self->admin_opts->boot_dir, "grub/grub.conf");
 
   if (g_file_query_exists (grub_path, cancellable))
     {
@@ -353,7 +353,9 @@ update_grub (OtAdminUpdateKernel  *self,
         {
           ot_lfree char *add_kernel_arg = NULL;
           ot_lfree char *initramfs_arg = NULL;
+          ot_lfree char *initramfs_name = NULL;
           ot_lobj GFile *kernel_path = NULL;
+          ot_lobj GFile *initramfs_path = NULL;
 
           if (!self->kernel_path)
             {
@@ -371,8 +373,11 @@ update_grub (OtAdminUpdateKernel  *self,
           else
             kernel_path = g_object_ref (self->kernel_path);
 
+          initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
+          initramfs_path = g_file_get_child (self->boot_ostree_dir, initramfs_name);
+
           add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (kernel_path), NULL);
-          initramfs_arg = g_strconcat ("--initrd=", "/boot/ostree/initramfs-", self->release, ".img", NULL);
+          initramfs_arg = g_strconcat ("--initrd=", gs_file_get_path_cached (initramfs_path), NULL);
 
           g_print ("Adding OSTree grub entry...\n");
           if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
@@ -395,16 +400,19 @@ update_grub (OtAdminUpdateKernel  *self,
 }
 
 gboolean
-ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   OtAdminUpdateKernel self_data;
   OtAdminUpdateKernel *self = &self_data;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   gboolean ret = FALSE;
   struct utsname utsname;
   GCancellable *cancellable = NULL;
 
   memset (self, 0, sizeof (*self));
+
+  self->admin_opts = admin_opts;
 
   context = g_option_context_new ("OSNAME DEPLOY_PATH - Update kernel and regenerate initial ramfs");
   g_option_context_add_main_entries (context, options, NULL);
@@ -446,6 +454,7 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError
     }
 
   self->ostree_dir = g_object_ref (ostree_dir);
+  self->boot_ostree_dir = g_file_get_child (admin_opts->boot_dir, "ostree");
   
   if (opt_host_kernel)
     {
@@ -471,6 +480,7 @@ ot_admin_builtin_update_kernel (int argc, char **argv, GFile *ostree_dir, GError
   ret = TRUE;
  out:
   g_clear_object (&self->ostree_dir);
+  g_clear_object (&self->boot_ostree_dir);
   g_clear_object (&self->kernel_path);
   g_free (self->release);
   if (context)

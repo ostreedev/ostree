@@ -35,7 +35,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_run_triggers (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_run_triggers (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

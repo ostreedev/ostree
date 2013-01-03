@@ -51,11 +51,12 @@ parse_deploy_name_from_path (GFile   *osdir,
 }
 
 gboolean
-ot_admin_builtin_pull_deploy (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lfree char *deploy_name = NULL;

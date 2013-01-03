@@ -33,11 +33,12 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_os_init (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname = NULL;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *dir = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;

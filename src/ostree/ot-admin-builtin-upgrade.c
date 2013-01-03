@@ -35,10 +35,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_upgrade (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   const char *osname = NULL;
   gs_free char *ostree_dir_arg = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;

@@ -30,6 +30,7 @@
 
 typedef struct {
   OstreeRepo  *repo;
+  OtAdminBuiltinOpts *admin_opts;
   GFile *ostree_dir;
   char  *osname;
   GFile *osname_dir;
@@ -621,7 +622,7 @@ do_update_kernel (OtAdminDeploy     *self,
 }
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   OtAdminDeploy self_data;
@@ -649,7 +650,8 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *ostree_dir, GError **erro
       goto out;
     }
 
-  self->ostree_dir = g_object_ref (ostree_dir);
+  self->admin_opts = admin_opts;
+  self->ostree_dir = g_object_ref (admin_opts->ostree_dir);
 
   if (!ot_admin_ensure_initialized (self->ostree_dir, cancellable, error))
     goto out;

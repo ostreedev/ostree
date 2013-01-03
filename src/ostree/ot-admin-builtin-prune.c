@@ -98,12 +98,13 @@ list_deployments (GFile        *from_dir,
 }
 
 gboolean
-ot_admin_builtin_prune (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   guint i;
   const char *osname;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *current_deployment = NULL;

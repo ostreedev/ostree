@@ -33,11 +33,12 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deployment = NULL;
   ot_lobj GFile *deploy_parent = NULL;

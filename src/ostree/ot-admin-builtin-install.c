@@ -62,7 +62,7 @@ on_keyfile_retrieved (GObject       *obj,
 }
 
 gboolean
-ot_admin_builtin_install (int argc, char **argv, GFile *ostree_dir, GError **error)
+ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   OtAdminBuiltinInstall self_data;
   OtAdminBuiltinInstall *self = &self_data;
@@ -70,6 +70,7 @@ ot_admin_builtin_install (int argc, char **argv, GFile *ostree_dir, GError **err
   gboolean ret = FALSE;
   const char *keyfile_arg = NULL;
   const char *treename_arg = NULL;
+  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *osdir = NULL;
   ot_lobj GFile *dest_osconfig_path = NULL;
