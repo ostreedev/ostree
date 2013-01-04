@@ -742,37 +742,6 @@ ostree_repo_get_archive_content_path (OstreeRepo    *self,
   return g_file_resolve_relative_path (self->repodir, path);
 }
 
-/**
- * ensure_file_data_synced:
- *
- * Ensure that in case of a power cut, these files have the data we
- * want.   See http://lwn.net/Articles/322823/
- */
-static gboolean
-ensure_file_data_synced (GFile         *file,
-                         GCancellable  *cancellable,
-                         GError       **error)
-{
-  gboolean ret = FALSE;
-  int fd = -1;
-
-  if (!ot_unix_open_noatime (gs_file_get_path_cached (file), &fd, error))
-    goto out;
-
-  if (!ot_unix_fdatasync (fd, error))
-    goto out;
-
-  if (!ot_unix_close (fd, error))
-    goto out;
-  fd = -1;
-
-  ret = TRUE;
- out:
-  if (fd != -1)
-    (void) close (fd);
-  return ret;
-}
-
 static gboolean
 commit_loose_object_impl (OstreeRepo        *self,
                           GFile             *tempfile_path,
@@ -790,7 +759,10 @@ commit_loose_object_impl (OstreeRepo        *self,
 
   if (is_regular)
     {
-      if (!ensure_file_data_synced (tempfile_path, cancellable, error))
+      /* Ensure that in case of a power cut, these files have the data we
+       * want.   See http://lwn.net/Articles/322823/
+       */
+      if (!gs_file_sync_data (tempfile_path, cancellable, error))
         goto out;
     }
   
@@ -3159,7 +3131,7 @@ checkout_file_from_input (GFile          *file,
 
           if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
             {
-              if (!ensure_file_data_synced (temp_file, cancellable, error))
+              if (!gs_file_sync_data (temp_file, cancellable, error))
                 goto out;
             }
 
@@ -3178,7 +3150,7 @@ checkout_file_from_input (GFile          *file,
 
       if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
         {
-          if (!ensure_file_data_synced (file, cancellable, error))
+          if (!gs_file_sync_data (file, cancellable, error))
             goto out;
         }
     }
