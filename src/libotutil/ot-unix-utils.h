@@ -55,8 +55,6 @@ gboolean ot_unix_open (const char *path,
                        int        *out_fd,
                        GError    **error);
 
-gboolean ot_unix_close (int fd, GError **error);
-
 gboolean ot_unix_open_noatime (const char *path, int *out_fd, GError **error);
 
 G_END_DECLS
