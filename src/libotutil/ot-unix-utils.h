@@ -49,14 +49,6 @@ gboolean ot_util_path_split_validate (const char *path, GPtrArray **out_componen
 
 void ot_util_set_error_from_errno (GError **error, gint saved_errno);
 
-gboolean ot_unix_open (const char *path, 
-                       int         flags,
-                       mode_t      mode,
-                       int        *out_fd,
-                       GError    **error);
-
-gboolean ot_unix_open_noatime (const char *path, int *out_fd, GError **error);
-
 G_END_DECLS
 
 #endif
