@@ -38,11 +38,9 @@ typedef struct {
 
 static gboolean opt_no_kernel;
 static gboolean opt_force;
-static gboolean opt_host_kernel;
 
 static GOptionEntry options[] = {
   { "no-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_no_kernel, "Don't update kernel related config (initramfs, bootloader)", NULL },
-  { "host-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_host_kernel, "Use currently booted kernel, not kernel from tree", NULL },
   { "force", 0, 0, G_OPTION_ARG_NONE, &opt_force, "Overwrite any existing deployment", NULL },
   { NULL }
 };
@@ -602,10 +600,6 @@ do_update_kernel (OtAdminDeploy     *self,
                         "update-kernel",
                         self->osname,
                         gs_file_get_path_cached (deploy_path), NULL);
-  if (opt_no_kernel)
-    g_ptr_array_add (args, "--modules-only");
-  if (opt_host_kernel)
-    g_ptr_array_add (args, "--host-kernel");
   g_ptr_array_add (args, NULL);
 
   proc = gs_subprocess_new_simple_argv ((char**)args->pdata,
@@ -673,8 +667,11 @@ ot_admin_builtin_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, 
                     cancellable, error))
     goto out;
 
-  if (!do_update_kernel (self, deploy_path, cancellable, error))
-    goto out;
+  if (!opt_no_kernel)
+    {
+      if (!do_update_kernel (self, deploy_path, cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:

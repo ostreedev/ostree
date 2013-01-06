@@ -38,46 +38,9 @@ typedef struct {
   char        *osname;
 } OtAdminUpdateKernel;
 
-static gboolean opt_modules_only;
-static gboolean opt_host_kernel;
-static char * opt_release;
-
 static GOptionEntry options[] = {
-  { "modules-only", 0, 0, G_OPTION_ARG_NONE, &opt_modules_only, "Only copy kernel modules", NULL },
-  { "host-kernel", 0, 0, G_OPTION_ARG_NONE, &opt_host_kernel, "Use currently booted kernel, not kernel from tree", NULL },
-  { "release", 0, 0, G_OPTION_ARG_STRING, &opt_release, "With host kernel, use this release", NULL },
   { NULL }
 };
-
-static gboolean
-copy_modules (OtAdminUpdateKernel *self,
-              const char          *release,
-              GCancellable        *cancellable,
-              GError             **error)
-{
-  gboolean ret = FALSE;
-  ot_lobj GFile *src_modules_file = NULL;
-  ot_lobj GFile *dest_modules_parent = NULL;
-  ot_lobj GFile *dest_modules_file = NULL;
-
-  src_modules_file = ot_gfile_from_build_path ("/lib/modules", release, NULL);
-  dest_modules_file = ot_gfile_get_child_build_path (self->ostree_dir, "modules", release, NULL);
-  dest_modules_parent = g_file_get_parent (dest_modules_file);
-  if (!gs_file_ensure_directory (dest_modules_parent, FALSE, cancellable, error))
-    goto out;
-
-  if (!g_file_query_exists (dest_modules_file, cancellable))
-    {
-      if (!gs_shutil_cp_al_or_fallback (src_modules_file, dest_modules_file, cancellable, error))
-        goto out;
-    }
-      
-  ret = TRUE;
- out:
-  if (error)
-    g_prefix_error (error, "Error copying kernel modules: ");
-  return ret;
-}
 
 static gboolean
 get_kernel_from_boot (GFile         *path,
@@ -201,8 +164,6 @@ update_initramfs (OtAdminUpdateKernel  *self,
 
       ostree_vardir = ot_gfile_get_child_build_path (self->ostree_dir, "deploy",
                                                      self->osname, "var", NULL);
-      if (opt_host_kernel)
-        ostree_moduledir = g_file_get_child (self->ostree_dir, "modules");
 
       dracut_log_path = ot_gfile_get_child_build_path (ostree_vardir, "log", "dracut.log", NULL);
       tmp_log_out = (GOutputStream*)g_file_replace (dracut_log_path, NULL, FALSE,
@@ -325,30 +286,6 @@ grep_literal (GFile              *f,
 }
 
 static gboolean
-get_kernel_path_from_release (OtAdminUpdateKernel  *self,
-                              const char           *release,
-                              GFile               **out_path,
-                              GCancellable         *cancellable,
-                              GError              **error)
-{
-  gboolean ret = FALSE;
-  ot_lfree char *name = NULL;
-  ot_lobj GFile *possible_path = NULL;
-
-  /* TODO - replace this with grubby code */
-
-  name = g_strconcat ("vmlinuz-", release, NULL);
-  possible_path = g_file_get_child (self->admin_opts->boot_dir, name);
-  if (!g_file_query_exists (possible_path, cancellable))
-    g_clear_object (&possible_path);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_path, &possible_path);
-  /*  out: */
-  return ret;
-}
-
-static gboolean
 update_grub (OtAdminUpdateKernel  *self,
              GCancellable         *cancellable,
              GError              **error)
@@ -368,29 +305,12 @@ update_grub (OtAdminUpdateKernel  *self,
           ot_lfree char *add_kernel_arg = NULL;
           ot_lfree char *initramfs_arg = NULL;
           ot_lfree char *initramfs_name = NULL;
-          ot_lobj GFile *kernel_path = NULL;
           ot_lobj GFile *initramfs_path = NULL;
-
-          if (!self->kernel_path)
-            {
-              if (!get_kernel_path_from_release (self, self->release, &kernel_path,
-                                                 cancellable, error))
-                goto out;
-
-              if (kernel_path == NULL)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Couldn't find kernel for release %s", self->release);
-                  goto out;
-                }
-            }
-          else
-            kernel_path = g_object_ref (self->kernel_path);
 
           initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
           initramfs_path = g_file_get_child (self->boot_ostree_dir, initramfs_name);
 
-          add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (kernel_path), NULL);
+          add_kernel_arg = g_strconcat ("--add-kernel=", gs_file_get_path_cached (self->kernel_path), NULL);
           initramfs_arg = g_strconcat ("--initrd=", gs_file_get_path_cached (initramfs_path), NULL);
 
           g_print ("Adding OSTree grub entry...\n");
@@ -421,7 +341,6 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
   OtAdminUpdateKernel *self = &self_data;
   GFile *ostree_dir = admin_opts->ostree_dir;
   gboolean ret = FALSE;
-  struct utsname utsname;
   GCancellable *cancellable = NULL;
 
   memset (self, 0, sizeof (*self));
@@ -447,49 +366,17 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
   else
     self->deploy_path = "current";
 
-  if (opt_release && !opt_host_kernel)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "May not specify a kernel release without --host-kernel");
-      goto out;
-    }
-  else if (!opt_release && opt_host_kernel)
-    {
-      (void) uname (&utsname);
-  
-      if (strcmp (utsname.sysname, "Linux") != 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unsupported machine %s", utsname.sysname);
-          goto out;
-        }
-      
-      opt_release = utsname.release;
-    }
-
   self->ostree_dir = g_object_ref (ostree_dir);
   self->boot_ostree_dir = g_file_get_child (admin_opts->boot_dir, "ostree");
   
-  if (opt_host_kernel)
-    {
-      if (!copy_modules (self, opt_release, cancellable, error))
-        goto out;
-      self->release = g_strdup (opt_release);
-    }
-  else
-    {
-      if (!setup_kernel (self, cancellable, error))
-        goto out;
-    }
+  if (!setup_kernel (self, cancellable, error))
+    goto out;
 
-  if (!opt_modules_only)
-    {
-      if (!update_initramfs (self, cancellable, error))
-        goto out;
+  if (!update_initramfs (self, cancellable, error))
+    goto out;
       
-      if (!update_grub (self, cancellable, error))
-        goto out;
-    }
+  if (!update_grub (self, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
