@@ -256,8 +256,24 @@ update_initramfs (OtAdminUpdateKernel  *self,
           goto out;
         }
 
+      if (!gs_file_chmod (initramfs_tmp_file, 0644, cancellable, error))
+        {
+          g_prefix_error (error, "Failed to chmod initramfs: ");
+          goto out;
+        }
+
       if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, initramfs_file, cancellable, error))
         goto out;
+      
+      /* In the fuse case, we need to chown after copying */
+      if (getuid () != 0)
+        {
+          if (!gs_file_chown (initramfs_file, 0, 0, cancellable, error))
+            {
+              g_prefix_error (error, "Failed to chown initramfs: ");
+              goto out;
+            }
+        }
           
       g_print ("Created: %s\n", gs_file_get_path_cached (initramfs_file));
 
