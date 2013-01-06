@@ -116,10 +116,13 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
     ot_lfree char *opt_ostree_dir_arg = g_strconcat ("--ostree-dir=",
                                                      gs_file_get_path_cached (ostree_dir),
                                                      NULL);
+    ot_lfree char *opt_boot_dir_arg = g_strconcat ("--boot-dir=",
+                                                     gs_file_get_path_cached (admin_opts->boot_dir),
+                                                     NULL);
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
                                         GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
                                         cancellable, error,
-                                        "ostree", "admin", opt_ostree_dir_arg, "deploy", osname,
+                                        "ostree", "admin", opt_ostree_dir_arg, opt_boot_dir_arg, "deploy", osname,
                                         deploy_name, NULL))
       goto out;
   }

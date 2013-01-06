@@ -598,6 +598,7 @@ do_update_kernel (OtAdminDeploy     *self,
   args = g_ptr_array_new ();
   ot_ptrarray_add_many (args, "ostree", "admin",
                         "--ostree-dir", gs_file_get_path_cached (self->ostree_dir),
+                        "--boot-dir", gs_file_get_path_cached (self->admin_opts->boot_dir),
                         "update-kernel",
                         self->osname,
                         gs_file_get_path_cached (deploy_path), NULL);
