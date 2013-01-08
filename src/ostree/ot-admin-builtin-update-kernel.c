@@ -38,7 +38,10 @@ typedef struct {
   char        *osname;
 } OtAdminUpdateKernel;
 
+static gboolean opt_no_bootloader;
+
 static GOptionEntry options[] = {
+  { "no-bootloader", 0, 0, G_OPTION_ARG_NONE, &opt_no_bootloader, "Don't update bootloader", NULL },
   { NULL }
 };
 
@@ -377,8 +380,11 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
   if (!update_initramfs (self, cancellable, error))
     goto out;
       
-  if (!update_grub (self, cancellable, error))
-    goto out;
+  if (!opt_no_bootloader)
+    {
+      if (!update_grub (self, cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:
