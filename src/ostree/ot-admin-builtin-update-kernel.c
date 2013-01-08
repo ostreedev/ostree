@@ -120,7 +120,8 @@ setup_kernel (OtAdminUpdateKernel *self,
   prefix = g_strndup (kernel_name, release - kernel_name);
   self->kernel_path = ot_gfile_get_child_strconcat (self->boot_ostree_dir, prefix, "-", self->release, NULL);
 
-  if (!gs_file_linkcopy_sync_data (src_kernel_path, self->kernel_path, cancellable, error))
+  if (!gs_file_linkcopy_sync_data (src_kernel_path, self->kernel_path, G_FILE_COPY_OVERWRITE,
+                                   cancellable, error))
     goto out;
 
   g_print ("ostadmin: Deploying kernel %s\n", gs_file_get_path_cached (self->kernel_path));
@@ -223,7 +224,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
           goto out;
         }
 
-      if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, initramfs_file, cancellable, error))
+      if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, initramfs_file, G_FILE_COPY_OVERWRITE,
+                                       cancellable, error))
         goto out;
       
       /* In the fuse case, we need to chown after copying */
