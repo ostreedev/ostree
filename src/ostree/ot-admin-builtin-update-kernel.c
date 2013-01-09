@@ -32,7 +32,7 @@ typedef struct {
   OtAdminBuiltinOpts *admin_opts;
   GFile       *ostree_dir;
   GFile       *boot_ostree_dir;
-  const char  *deploy_path;
+  GFile       *deploy_path;
   GFile       *kernel_path;
   char        *release;
   char        *osname;
@@ -87,15 +87,13 @@ setup_kernel (OtAdminUpdateKernel *self,
               GError             **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *deploy_path = NULL;
   ot_lobj GFile *deploy_boot_path = NULL;
   ot_lobj GFile *src_kernel_path = NULL;
   ot_lfree char *prefix = NULL;
   const char *release = NULL;
   const char *kernel_name = NULL;
 
-  deploy_path = g_file_new_for_path (self->deploy_path);
-  deploy_boot_path = g_file_get_child (deploy_path, "boot"); 
+  deploy_boot_path = g_file_get_child (self->deploy_path, "boot"); 
 
   if (!get_kernel_from_boot (deploy_boot_path, &src_kernel_path,
                              cancellable, error))
@@ -142,7 +140,6 @@ update_initramfs (OtAdminUpdateKernel  *self,
                   GError              **error)
 {
   gboolean ret = FALSE;
-  const char *deploy_path = self->deploy_path;
   ot_lfree char *initramfs_name = NULL;
   ot_lobj GFile *initramfs_file = NULL;
 
@@ -156,7 +153,6 @@ update_initramfs (OtAdminUpdateKernel  *self,
       ot_lobj GFile *tmpdir = NULL;
       ot_lfree char *initramfs_tmp_path = NULL;
       ot_lobj GFile *ostree_vardir = NULL;
-      ot_lobj GFile *ostree_moduledir = NULL;
       ot_lobj GFile *initramfs_tmp_file = NULL;
       ot_lobj GFileInfo *initramfs_tmp_info = NULL;
       ot_lobj GFile *dracut_log_path = NULL;
@@ -190,14 +186,12 @@ update_initramfs (OtAdminUpdateKernel  *self,
                             "--mount-bind", "/dev", "/dev",
                             "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
                             "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp", NULL);
-      if (ostree_moduledir)
-        ot_ptrarray_add_many (mkinitramfs_args, "--mount-bind", gs_file_get_path_cached (ostree_moduledir), "/lib/modules", NULL);
-      ot_ptrarray_add_many (mkinitramfs_args, deploy_path,
-                            "dracut", "-f", "/tmp/initramfs-ostree.img", self->release,
+      ot_ptrarray_add_many (mkinitramfs_args, gs_file_get_path_cached (self->deploy_path),
+                            "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img", self->release,
                             NULL);
       g_ptr_array_add (mkinitramfs_args, NULL);
       
-      g_print ("Generating initramfs using %s...\n", deploy_path);
+      g_print ("Generating initramfs using %s...\n", gs_file_get_path_cached (self->deploy_path));
       proc = gs_subprocess_new_simple_argv ((gchar**)mkinitramfs_args->pdata,
                                             GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                             GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
@@ -243,8 +237,8 @@ update_initramfs (OtAdminUpdateKernel  *self,
           
       g_print ("Created: %s\n", gs_file_get_path_cached (initramfs_file));
 
-      (void) gs_file_unlink (initramfs_tmp_file, NULL, NULL);
-      (void) rmdir (gs_file_get_path_cached (tmpdir));
+      if (!gs_shutil_rm_rf (tmpdir, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
@@ -352,7 +346,7 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
 
   self->admin_opts = admin_opts;
 
-  context = g_option_context_new ("OSNAME DEPLOY_PATH - Update kernel and regenerate initial ramfs");
+  context = g_option_context_new ("OSNAME [DEPLOY_PATH] - Update kernel and regenerate initial ramfs");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -367,9 +361,12 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
   self->osname = g_strdup (argv[1]);
 
   if (argc > 2)
-    self->deploy_path = argv[2];
+    self->deploy_path = g_file_new_for_path (argv[2]);
   else
-    self->deploy_path = "current";
+    {
+      ot_lobj GFile *osdir = ot_gfile_get_child_build_path (admin_opts->ostree_dir, "deploy", self->osname, NULL);
+      self->deploy_path = g_file_get_child (osdir, "current");
+    }
 
   self->ostree_dir = g_object_ref (ostree_dir);
   self->boot_ostree_dir = g_file_get_child (admin_opts->boot_dir, "ostree");
