@@ -96,6 +96,9 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
       goto out;
     }
 
+  if (!ot_admin_ensure_initialized (admin_opts->ostree_dir, cancellable, error))
+    goto out;
+
   self->loop = g_main_loop_new (NULL, TRUE);
 
   keyfile_arg = argv[1];
