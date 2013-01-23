@@ -24,6 +24,8 @@
 #define __OSTREE_UTIL_H__
 
 #include <gio/gio.h>
+#include <libgsystem.h>
+#include <gsystem-local-alloc.h>
 
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
 
