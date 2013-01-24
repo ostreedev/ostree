@@ -171,7 +171,7 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
       repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
       
       if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                          GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                          GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                           cancellable, error,
                                           "ostree", repo_arg, "prune", "--refs-only",
                                           "--depth=0", NULL))

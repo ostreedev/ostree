@@ -106,7 +106,7 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
                                            NULL);
 
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                        GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
                                         "ostree", "pull", repo_arg, osname, NULL))
       goto out;
@@ -120,7 +120,7 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
                                                      gs_file_get_path_cached (admin_opts->boot_dir),
                                                      NULL);
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                        GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
                                         "ostree", "admin", opt_ostree_dir_arg, opt_boot_dir_arg, "deploy", osname,
                                         deploy_name, NULL))

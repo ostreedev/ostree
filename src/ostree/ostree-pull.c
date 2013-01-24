@@ -118,7 +118,6 @@ typedef struct {
   GError      **async_error;
   gboolean      caught_error;
 
-  gboolean      stdout_is_tty;
   guint         last_padding;
 } OtPullData;
 
@@ -238,7 +237,8 @@ uri_fetch_update_status (gpointer user_data)
           diff--;
         }
     }
-  g_print ("%c8%s", 0x1B, status->str);
+
+  gs_console_begin_status_line (gs_console_get (), status->str, NULL, NULL);
 
   g_string_free (status, TRUE);
 
@@ -289,10 +289,14 @@ static gboolean
 run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 {
   GSource *update_timeout = NULL;
+  GSConsole *console;
 
-  if (pull_data->stdout_is_tty)
+  console = gs_console_get ();
+
+  if (console)
     {
-      g_print ("%c7", 0x1B);
+      gs_console_begin_status_line (console, "", NULL, NULL);
+
       update_timeout = g_timeout_source_new_seconds (1);
       g_source_set_callback (update_timeout, uri_fetch_update_status, pull_data, NULL);
       g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
@@ -301,9 +305,9 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
   
   g_main_loop_run (pull_data->loop);
 
-  if (pull_data->stdout_is_tty)
+  if (console)
     {
-      g_print ("\n");
+      gs_console_end_status_line (console, NULL, NULL);
       g_source_destroy (update_timeout);
     }
 
@@ -1231,8 +1235,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   start_time = g_get_monotonic_time ();
-
-  pull_data->stdout_is_tty = isatty (1);
 
   pull_data->remote_name = g_strdup (argv[1]);
   pull_data->fetcher = ostree_fetcher_new (ostree_repo_get_tmpdir (pull_data->repo));

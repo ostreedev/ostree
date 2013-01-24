@@ -134,7 +134,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
                                 NULL);
 
   if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                       "ostree", "admin", ostree_dir_arg, "os-init", osname, NULL))
     goto out;
@@ -172,7 +172,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
       goto out;
     
     if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                        GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
                                         "ostree", repoarg, "remote", "add",
                                         osname, repourl, tree_to_deploy, NULL))
@@ -180,13 +180,13 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   }
 
   if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                         "ostree", "pull", repoarg, osname, NULL))
     goto out;
 
   if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                       "ostree", "admin", ostree_dir_arg, "deploy", osname,
                                       tree_to_deploy, NULL))
