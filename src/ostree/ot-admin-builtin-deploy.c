@@ -404,6 +404,7 @@ deploy_tree (OtAdminDeploy     *self,
   ot_lfree char *checkout_target_name = NULL;
   ot_lfree char *checkout_target_tmp_name = NULL;
   ot_lfree char *resolved_commit = NULL;
+  gs_free char *resolved_previous_commit = NULL;
   GError *temp_error = NULL;
   gboolean skip_checkout;
 
@@ -422,6 +423,8 @@ deploy_tree (OtAdminDeploy     *self,
     }
 
   if (!ostree_repo_resolve_rev (self->repo, revision, FALSE, &resolved_commit, error))
+    goto out;
+  if (!ostree_repo_resolve_rev (self->repo, revision, TRUE, &resolved_previous_commit, error))
     goto out;
 
   root = (OstreeRepoFile*)ostree_repo_file_new_root (self->repo, resolved_commit);
@@ -561,7 +564,10 @@ deploy_tree (OtAdminDeploy     *self,
   if (!ostree_repo_write_ref (self->repo, NULL, current_deployment_ref,
                               resolved_commit, error))
     goto out;
-  if (previous_deployment_revision != NULL)
+  /* Only overwrite previous if it's different from what we're deploying now.
+   */
+  if (resolved_previous_commit != NULL
+      && strcmp (resolved_previous_commit, resolved_commit) != 0)
     {
       if (!ostree_repo_write_ref (self->repo, NULL, previous_deployment_ref,
                                   previous_deployment_revision, error))
