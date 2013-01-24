@@ -117,8 +117,6 @@ typedef struct {
 
   GError      **async_error;
   gboolean      caught_error;
-
-  guint         last_padding;
 } OtPullData;
 
 typedef struct {
@@ -226,17 +224,6 @@ uri_fetch_update_status (gpointer user_data)
 
   fetcher_status = ostree_fetcher_query_state_text (pull_data->fetcher);
   g_string_append (status, fetcher_status);
-  if (status->len > pull_data->last_padding)
-    pull_data->last_padding = status->len;
-  else
-    {
-      guint diff = pull_data->last_padding - status->len;
-      while (diff > 0)
-        {
-          g_string_append_c (status, ' ');
-          diff--;
-        }
-    }
 
   gs_console_begin_status_line (gs_console_get (), status->str, NULL, NULL);
 
