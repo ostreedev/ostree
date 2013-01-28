@@ -277,13 +277,18 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
           g_timeout_add_seconds (1, idle_print_status, data);
           idle_print_status (data);
         }
+      else
+        {
+          g_print ("Copying %d objects...\n", data->n_objects_to_check);
+        }
       
       g_main_loop_run (data->loop);
 
-      idle_print_status (data);
-      
       if (console)
-        gs_console_end_status_line (console, NULL, NULL);
+        {
+          idle_print_status (data);
+          gs_console_end_status_line (console, NULL, NULL);
+        }
     }
 
   if (!ostree_repo_commit_transaction (data->dest_repo, NULL, error))
