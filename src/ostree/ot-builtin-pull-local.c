@@ -37,7 +37,6 @@ typedef struct {
   OstreeRepo *dest_repo;
   GThreadPool *threadpool;
   GMainLoop *loop;
-  gboolean stdout_is_tty;
   int n_objects_to_check;
   volatile int n_objects_checked;
   volatile int n_objects_copied;
@@ -136,11 +135,13 @@ static gboolean
 idle_print_status (gpointer user_data)
 {
   OtLocalCloneData *data = user_data;
+  gs_free char *str = NULL;
 
-  g_print ("%c8pull: %d/%d scanned, %d objects copied", 0x1B,
-           g_atomic_int_get (&data->n_objects_checked),
-           data->n_objects_to_check,
-           g_atomic_int_get (&data->n_objects_copied));
+  str = g_strdup_printf ("pull: %d/%d scanned, %d objects copied",
+                         g_atomic_int_get (&data->n_objects_checked),
+                         data->n_objects_to_check,
+                         g_atomic_int_get (&data->n_objects_copied));
+  gs_console_begin_status_line (gs_console_get (), str, NULL, NULL);
 
   return TRUE;
 }
@@ -155,6 +156,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   int i;
   GHashTableIter hash_iter;
   gpointer key, value;
+  GSConsole *console;
   ot_lhash GHashTable *objects = NULL;
   ot_lobj GFile *src_f = NULL;
   ot_lobj GFile *src_repo_dir = NULL;
@@ -199,7 +201,6 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   data->threadpool = ot_thread_pool_new_nproc (import_one_object_thread, data);
   data->loop = g_main_loop_new (NULL, TRUE);
-  data->stdout_is_tty = isatty (1);
 
   src_repo_dir = g_object_ref (ostree_repo_get_path (data->src_repo));
   dest_repo_dir = g_object_ref (ostree_repo_get_path (data->dest_repo));
@@ -268,9 +269,11 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   if (data->n_objects_to_check > 0)
     {
-      if (data->stdout_is_tty)
+      console = gs_console_get ();
+
+      if (console)
         {
-          g_print ("%c7", 0x1B);
+          gs_console_begin_status_line (console, "", NULL, NULL);
           g_timeout_add_seconds (1, idle_print_status, data);
           idle_print_status (data);
         }
@@ -279,8 +282,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
       idle_print_status (data);
       
-      if (data->stdout_is_tty)
-        g_print ("\n");
+      if (console)
+        gs_console_end_status_line (console, NULL, NULL);
     }
 
   if (!ostree_repo_commit_transaction (data->dest_repo, NULL, error))
