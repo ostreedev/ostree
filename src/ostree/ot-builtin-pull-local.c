@@ -162,6 +162,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   ot_lobj GFile *src_dir = NULL;
   ot_lobj GFile *dest_dir = NULL;
   ot_lhash GHashTable *refs_to_clone = NULL;
+  ot_lhash GHashTable *commits_to_clone = NULL;
   ot_lhash GHashTable *source_objects = NULL;
   ot_lhash GHashTable *objects_to_copy = NULL;
   OtLocalCloneData datav;
@@ -211,16 +212,24 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   else
     {
       refs_to_clone = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+      commits_to_clone = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
       for (i = 2; i < argc; i++)
         {
           const char *ref = argv[i];
           char *rev;
           
-          if (!ostree_repo_resolve_rev (data->src_repo, ref, FALSE, &rev, error))
-            goto out;
+          if (ostree_validate_checksum_string (ref, NULL))
+            {
+              g_hash_table_insert (commits_to_clone, (char*)ref, (char*) ref);
+            }
+          else
+            {
+              if (!ostree_repo_resolve_rev (data->src_repo, ref, FALSE, &rev, error))
+                goto out;
           
-          /* Transfer ownership of rev */
-          g_hash_table_insert (refs_to_clone, g_strdup (ref), rev);
+              /* Transfer ownership of rev */
+              g_hash_table_insert (refs_to_clone, g_strdup (ref), rev);
+            }
         }
     }
 
@@ -232,6 +241,15 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *checksum = value;
+
+      if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
+        goto out;
+    }
+
+  g_hash_table_iter_init (&hash_iter, commits_to_clone);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *checksum = key;
 
       if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
         goto out;
