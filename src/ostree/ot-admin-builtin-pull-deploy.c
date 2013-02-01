@@ -50,13 +50,68 @@ parse_deploy_name_from_path (GFile   *osdir,
   return g_strndup (relpath, last_dash - relpath);
 }
 
+static gboolean
+ensure_remote_branch (OstreeRepo    *repo,
+                      const char    *remote,
+                      const char    *branch,
+                      GCancellable  *cancellable,
+                      GError       **error)
+{
+  gboolean ret = FALSE;
+  gchar **iter = NULL;
+  gsize len;
+  gs_free char *remote_key = NULL;
+  gs_unref_ptrarray GPtrArray *new_branches = NULL;
+  GKeyFile *config = NULL;
+  gchar **branches = NULL;
+  gboolean have_branch = FALSE;
+  
+  config = ostree_repo_copy_config (repo);
+  remote_key = g_strdup_printf ("remote \"%s\"", remote);
+
+  new_branches = g_ptr_array_new ();
+
+  branches = g_key_file_get_string_list (config, remote_key, "branches", &len, error);
+  if (!branches)
+    goto out;
+
+  for (iter = branches; *iter; iter++)
+    {
+      char *item = *iter;
+      if (!have_branch)
+        have_branch = strcmp (item, branch) == 0;
+      g_ptr_array_add (new_branches, item);
+    }
+
+  if (!have_branch)
+    {
+      g_ptr_array_add (new_branches, (char*)branch);
+      g_key_file_set_string_list (config, remote_key, "branches",
+                                  (const char *const *)new_branches->pdata,
+                                  new_branches->len);
+      
+      if (!ostree_repo_write_config (repo, config, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (config)
+    g_key_file_free (config);
+  if (branches)
+    g_strfreev (branches);
+  return ret;
+}
+
 gboolean
 ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname;
+  const char *target;
   GFile *ostree_dir = admin_opts->ostree_dir;
+  ot_lobj OstreeRepo *repo = NULL;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lfree char *deploy_name = NULL;
@@ -81,24 +136,39 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
 
   osname = argv[1];
 
-  if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
-                                        cancellable, error))
-    goto out;
+  repo_path = g_file_get_child (ostree_dir, "repo");
 
-  if (!current_deployment)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No current deployment");
-      goto out;
-    }
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
+    goto out;
 
   deploy_dir = g_file_get_child (ostree_dir, "deploy");
   os_dir = g_file_get_child (deploy_dir, osname);
-  g_print ("%s\n%s\n", gs_file_get_path_cached (os_dir),
-           gs_file_get_path_cached (current_deployment));
-  deploy_name = parse_deploy_name_from_path (os_dir, current_deployment);
 
-  repo_path = g_file_get_child (ostree_dir, "repo");
+  if (argc > 2)
+    {
+      target = argv[2];
+      if (!ensure_remote_branch (repo, osname, target,
+                                cancellable, error))
+        goto out;
+      
+      deploy_name = g_strdup (target);
+    }
+  else
+    {
+      if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
+                                            cancellable, error))
+        goto out;
+      
+      if (!current_deployment)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "No current deployment");
+          goto out;
+        }
+      
+      deploy_name = parse_deploy_name_from_path (os_dir, current_deployment);
+    }
 
   {
     ot_lfree char *repo_arg = g_strconcat ("--repo=",
