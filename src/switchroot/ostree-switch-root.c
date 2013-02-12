@@ -153,8 +153,7 @@ main(int argc, char *argv[])
   const char *initramfs_move_mounts[] = { "/dev", "/proc", "/sys", "/run", NULL };
   const char *toproot_bind_mounts[] = { "/home", "/root", "/tmp", NULL };
   const char *ostree_bind_mounts[] = { "/var", NULL };
-  const char *readonly_bind_mounts[] = { "/bin", "/lib", "/sbin", "/usr",
-					 NULL };
+  const char *readonly_bind_mounts[] = { "/usr", NULL };
   const char *root_mountpoint = NULL;
   const char *ostree_target = NULL;
   const char *ostree_subinit = NULL;
@@ -194,16 +193,6 @@ main(int argc, char *argv[])
     }
   ostree_osname = strndup (ostree_target, p - ostree_target);
 
-  /* For now, we just remount the root filesystem read/write.  This is
-   * kind of ugly, but to do this properly we'd basically have to have
-   * to be fully integrated into the init process.
-   */
-  if (mount (NULL, root_mountpoint, NULL, MS_MGC_VAL|MS_REMOUNT, NULL) < 0)
-    {
-      perrorv ("Failed to remount %s read/write", root_mountpoint);
-      exit (1);
-    }
-
   snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s",
 	    root_mountpoint, ostree_target);
   if (stat (destpath, &stbuf) < 0)
@@ -211,6 +200,20 @@ main(int argc, char *argv[])
       perrorv ("Invalid ostree root '%s'", destpath);
       exit (1);
     }
+
+  /* Work-around for a kernel bug: for some reason the kernel
+   * refuses switching root if any file systems are mounted
+   * MS_SHARED. Hence remount them MS_PRIVATE here as a
+   * work-around.
+   *
+   * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
+  if (mount(NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
+    {
+      perrorv ("mount(/, MS_PRIVATE): ");
+      exit (1);
+    }
+
+  initramfs_fd = open ("/", O_RDONLY);
 
   for (i = 0; initramfs_move_mounts[i] != NULL; i++)
     {
@@ -223,42 +226,7 @@ main(int argc, char *argv[])
 	}
     }
 
-  if (chdir (root_mountpoint) < 0)
-    {
-      perrorv ("failed to chdir to %s", root_mountpoint);
-      exit (1);
-    }
-
-  initramfs_fd = open ("/", O_RDONLY);
-
-  if (mount (root_mountpoint, "/", NULL, MS_MOVE, NULL) < 0)
-    {
-      perrorv ("failed move %s to /", root_mountpoint);
-      return -1;
-    }
-
-  if (chroot (".") < 0)
-    {
-      perrorv ("failed to chroot to .");
-      exit (1);
-    }
-  
-  if (initramfs_fd >= 0)
-    {
-      cleanup_pid = fork ();
-      if (cleanup_pid == 0)
-	{
-	  recursive_remove (initramfs_fd);
-	  exit (0);
-	}
-      close (initramfs_fd);
-    }
-
-  /* From this point on we're chrooted into the real root filesystem,
-   * so we no longer refer to root_mountpoint.
-   */
-
-  snprintf (destpath, sizeof(destpath), "/ostree/deploy/%s", ostree_target);
+  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s", root_mountpoint, ostree_target);
   fprintf (stderr, "Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
     {
@@ -279,12 +247,20 @@ main(int argc, char *argv[])
   if (ostree_target_path[len-1] == '/')
     ostree_target_path[len-1] = '\0';
   fprintf (stderr, "Resolved OSTree target to: %s\n", ostree_target_path);
-  asprintf (&deploy_path, "/ostree/deploy/%s/%s", ostree_osname, ostree_target_path);
+  asprintf (&deploy_path, "%s/ostree/deploy/%s/%s", root_mountpoint,
+	    ostree_osname, ostree_target_path);
+  
+  /* Make deploy_path a bind mount, so we can move it later */
+  if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
+    {
+      perrorv ("failed to initial bind mount %s", deploy_path);
+      exit (1);
+    }
 
   snprintf (destpath, sizeof(destpath), "%s/sysroot", deploy_path);
-  if (mount ("/", destpath, NULL, MS_BIND, NULL) < 0)
+  if (mount (root_mountpoint, destpath, NULL, MS_BIND, NULL) < 0)
     {
-      perrorv ("Failed to bind mount / to '%s'", destpath);
+      perrorv ("Failed to bind mount %s to '%s'", root_mountpoint, destpath);
       exit (1);
     }
 
@@ -298,8 +274,9 @@ main(int argc, char *argv[])
 
   for (i = 0; toproot_bind_mounts[i] != NULL; i++)
     {
+      snprintf (srcpath, sizeof(srcpath), "%s%s", root_mountpoint, toproot_bind_mounts[i]);
       snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, toproot_bind_mounts[i]);
-      if (mount (toproot_bind_mounts[i], destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
+      if (mount (srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
 	  exit (1);
@@ -308,7 +285,8 @@ main(int argc, char *argv[])
 
   for (i = 0; ostree_bind_mounts[i] != NULL; i++)
     {
-      snprintf (srcpath, sizeof(srcpath), "/ostree/deploy/%s%s", ostree_osname, ostree_bind_mounts[i]);
+      snprintf (srcpath, sizeof(srcpath), "%s/ostree/deploy/%s%s", root_mountpoint,
+		ostree_osname, ostree_bind_mounts[i]);
       snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, ostree_bind_mounts[i]);
       if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
 	{
@@ -332,7 +310,19 @@ main(int argc, char *argv[])
 	}
     }
 
-  if (chroot (deploy_path) < 0)
+  if (chdir (deploy_path) < 0)
+    {
+      perrorv ("failed to chdir to subroot (initial)");
+      exit (1);
+    }
+
+  if (mount (deploy_path, "/", NULL, MS_MOVE, NULL) < 0)
+    {
+      perrorv ("failed to MS_MOVE %s to /", deploy_path);
+      exit (1);
+    }
+
+  if (chroot (".") < 0)
     {
       perrorv ("failed to change root to '%s'", deploy_path);
       exit (1);
@@ -340,8 +330,19 @@ main(int argc, char *argv[])
 
   if (chdir ("/") < 0)
     {
-      perrorv ("failed to chdir to subroot");
+      perrorv ("failed to chdir to / (after MS_MOVE of /)");
       exit (1);
+    }
+
+  if (initramfs_fd >= 0)
+    {
+      cleanup_pid = fork ();
+      if (cleanup_pid == 0)
+	{
+	  recursive_remove (initramfs_fd);
+	  exit (0);
+	}
+      close (initramfs_fd);
     }
 
   init_argv = malloc (sizeof (char*)*((argc-before_init_argc)+2));
