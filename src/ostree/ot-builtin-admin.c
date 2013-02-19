@@ -24,13 +24,14 @@
 
 #include "ot-builtins.h"
 #include "ot-admin-builtins.h"
+#include "ot-admin-functions.h"
 #include "ot-main.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
 
 #include <glib/gi18n.h>
 
-static char *opt_ostree_dir = "/ostree";
+static char *opt_ostree_dir = NULL;
 static char *opt_boot_dir = "/boot";
 
 static GOptionEntry options[] = {
@@ -116,7 +117,15 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
-  ostree_dir = g_file_new_for_path (opt_ostree_dir);
+  if (opt_ostree_dir != NULL)
+    {
+      ostree_dir = g_file_new_for_path (opt_ostree_dir);
+    }
+  else
+    {
+      if (!ot_admin_get_default_ostree_dir (&ostree_dir, cancellable, error))
+        goto out;
+    }
   boot_dir = g_file_new_for_path (opt_boot_dir);
 
   ostree_prep_builtin_argv (subcommand_name, argc-2, argv+2, &subcmd_argc, &subcmd_argv);

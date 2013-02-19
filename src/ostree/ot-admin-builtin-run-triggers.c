@@ -48,21 +48,7 @@ ot_admin_builtin_run_triggers (int argc, char **argv, OtAdminBuiltinOpts *admin_
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc >= 2)
-    {
-      rootdir = g_file_new_for_path (argv[1]);
-    }
-  else
-    {
-      if (!ot_admin_get_sysroot_from_proc_cmdline (&rootdir, cancellable, error))
-        goto out;
-      if (rootdir == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "No ostree= kernel argument found");
-          goto out;
-        }
-    }
+  rootdir = g_file_new_for_path (argv[1]);
   
   if (!ostree_run_triggers_in_root (rootdir, cancellable, error))
     goto out;
