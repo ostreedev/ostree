@@ -160,7 +160,6 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   int i;
   GHashTableIter hash_iter;
   gpointer key, value;
-  GSConsole *console;
   ot_lhash GHashTable *objects = NULL;
   ot_lobj GFile *src_f = NULL;
   ot_lobj GFile *src_repo_dir = NULL;
@@ -276,7 +275,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
       data->console = gs_console_get ();
 
       if (data->console)
-        gs_console_begin_status_line (console, "", NULL, NULL);
+        gs_console_begin_status_line (data->console, "", NULL, NULL);
 
       g_timeout_add_seconds (1, idle_print_status, data);
       idle_print_status (data);
@@ -285,7 +284,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
       idle_print_status (data);
       if (data->console)
-        gs_console_end_status_line (console, NULL, NULL);
+        gs_console_end_status_line (data->console, NULL, NULL);
     }
 
   if (!ostree_repo_commit_transaction (data->dest_repo, NULL, error))
