@@ -241,22 +241,28 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   source_objects = ostree_traverse_new_reachable ();
 
-  g_hash_table_iter_init (&hash_iter, refs_to_clone);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  if (refs_to_clone)
     {
-      const char *checksum = value;
-
-      if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
-        goto out;
+      g_hash_table_iter_init (&hash_iter, refs_to_clone);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *checksum = value;
+          
+          if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
+            goto out;
+        }
     }
 
-  g_hash_table_iter_init (&hash_iter, commits_to_clone);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  if (commits_to_clone)
     {
-      const char *checksum = key;
+      g_hash_table_iter_init (&hash_iter, commits_to_clone);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *checksum = key;
 
-      if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
-        goto out;
+          if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
+            goto out;
+        }
     }
 
   if (!ostree_repo_prepare_transaction (data->dest_repo, FALSE, cancellable, error))
