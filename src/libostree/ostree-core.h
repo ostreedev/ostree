@@ -113,6 +113,9 @@ GVariant *ostree_checksum_to_bytes_v (const char *checksum);
 char * ostree_checksum_from_bytes (const guchar *bytes);
 char * ostree_checksum_from_bytes_v (GVariant *bytes);
 
+void ostree_checksum_inplace_from_bytes (const guchar *bytes,
+                                         char         *buf);
+
 const guchar *ostree_checksum_bytes_peek (GVariant *bytes);
 
 int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);

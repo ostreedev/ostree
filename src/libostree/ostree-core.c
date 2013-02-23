@@ -948,23 +948,27 @@ ostree_checksum_to_bytes_v (const char *checksum)
   return ot_gvariant_new_bytearray ((guchar*)result, 32);
 }
 
-char *
-ostree_checksum_from_bytes (const guchar *csum)
+void
+ostree_checksum_inplace_from_bytes (const guchar *csum,
+                                    char         *buf)
 {
   static const gchar hexchars[] = "0123456789abcdef";
-  char *ret;
   guint i, j;
 
-  ret = g_malloc (65);
-  
   for (i = 0, j = 0; i < 32; i++, j += 2)
     {
       guchar byte = csum[i];
-      ret[j] = hexchars[byte >> 4];
-      ret[j+1] = hexchars[byte & 0xF];
+      buf[j] = hexchars[byte >> 4];
+      buf[j+1] = hexchars[byte & 0xF];
     }
-  ret[j] = '\0';
+  buf[j] = '\0';
+}
 
+char *
+ostree_checksum_from_bytes (const guchar *csum)
+{
+  char *ret = g_malloc (65);
+  ostree_checksum_inplace_from_bytes (csum, ret);
   return ret;
 }
 

@@ -816,7 +816,7 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   ot_lvariant GVariant *tree_child_metadata = NULL;
   ot_lvariant GVariant *content_csum_v = NULL;
   ot_lvariant GVariant *meta_csum_v = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  char tmp_checksum[65];
   GFileAttributeMatcher *matcher = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
@@ -833,8 +833,8 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   if (n < c)
     {
       g_variant_get_child (files_variant, n, "(&s@ay)", &name, &content_csum_v);
-      g_free (tmp_checksum);
-      tmp_checksum = ostree_checksum_from_bytes_v (content_csum_v);
+      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (content_csum_v),
+                                          tmp_checksum);
 
       if (!ostree_repo_load_file (self->repo, tmp_checksum, NULL, &ret_info, NULL,
                                   cancellable, error))
@@ -850,8 +850,8 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
         {
           g_variant_get_child (dirs_variant, n, "(&s@ay@ay)",
                                &name, NULL, &meta_csum_v);
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes_v (meta_csum_v);
+          ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (meta_csum_v),
+                                              tmp_checksum);
 
           if (!query_child_info_dir (self->repo, tmp_checksum,
                                      matcher, flags, &ret_info,
