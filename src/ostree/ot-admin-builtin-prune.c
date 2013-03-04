@@ -35,67 +35,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static gboolean
-list_deployments (GFile        *from_dir,
-                  GPtrArray    *inout_deployments,
-                  GCancellable *cancellable,
-                  GError      **error)
-{
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-
-  dir_enum = g_file_enumerate_children (from_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, error);
-  if (!dir_enum)
-    goto out;
-
-  while ((file_info = g_file_enumerator_next_file (dir_enum, cancellable, error)) != NULL)
-    {
-      const char *name;
-      ot_lobj GFile *child = NULL;
-      ot_lobj GFile *possible_etc = NULL;
-      ot_lobj GFile *possible_usr = NULL;
-
-      name = g_file_info_get_name (file_info);
-
-      if (g_str_has_suffix (name, "-etc"))
-        goto next;
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
-        goto next;
-
-      child = g_file_get_child (from_dir, name);
-
-      possible_etc = ot_gfile_get_child_strconcat (from_dir, name, "-etc", NULL);
-      /* Bit of a hack... */
-      possible_usr = g_file_get_child (child, "usr");
-
-      if (g_file_query_exists (possible_etc, cancellable))
-        g_ptr_array_add (inout_deployments, g_file_get_child (from_dir, name));
-      else if (g_file_query_exists (possible_usr, cancellable))
-        goto next;
-      else
-        {
-          if (!list_deployments (child, inout_deployments,
-                                 cancellable, error))
-            goto out;
-        }
-
-    next:
-      g_clear_object (&file_info);
-    }
-  if (temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
 
 gboolean
 ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
@@ -109,7 +48,9 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lobj GFile *previous_deployment = NULL;
+  ot_lobj GFile *active_deployment = NULL;
   ot_lptrarray GPtrArray *deployments = NULL;
+  gs_free char *active_osname = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("OSNAME - Delete untagged deployments and repository objects");
@@ -127,16 +68,16 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 
   osname = argv[1];
 
-  deploy_dir = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, NULL);
-
-  deployments = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  if (!list_deployments (deploy_dir, deployments, cancellable, error))
+  if (!ot_admin_list_deployments (ostree_dir, osname, &deployments,
+                                  cancellable, error))
     goto out;
 
   if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
                                         cancellable, error));
   if (!ot_admin_get_previous_deployment (ostree_dir, osname, &previous_deployment,
                                          cancellable, error));
+  if (!ot_admin_get_active_deployment (ostree_dir, &active_osname, &active_deployment,
+                                       cancellable, error));
 
   for (i = 0; i < deployments->len; i++)
     {
@@ -145,7 +86,8 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
       ot_lobj GFile *parent = NULL;
 
       if ((current_deployment && g_file_equal (deployment, current_deployment))
-          || (previous_deployment && g_file_equal (deployment, previous_deployment)))
+          || (previous_deployment && g_file_equal (deployment, previous_deployment))
+          || (active_deployment && g_file_equal (deployment, active_deployment)))
         continue;
 
       parent = g_file_get_parent (deployment);

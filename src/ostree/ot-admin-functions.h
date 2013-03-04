@@ -42,6 +42,18 @@ gboolean ot_admin_get_previous_deployment (GFile           *ostree_dir,
                                            GCancellable    *cancellable,
                                            GError         **error);
 
+gboolean ot_admin_list_deployments (GFile               *ostree_dir,
+                                    const char          *osname,
+                                    GPtrArray          **out_deployments,
+                                    GCancellable        *cancellable,
+                                    GError             **error);
+
+gboolean ot_admin_get_active_deployment (GFile           *ostree_dir,
+                                         char           **out_osname,
+                                         GFile          **out_deployment,
+                                         GCancellable    *cancellable,
+                                         GError         **error);
+
 gboolean ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
                                           GCancellable  *cancellable,
                                           GError       **error);
