@@ -510,6 +510,7 @@ deploy_tree (OtAdminDeploy     *self,
   if (!skip_checkout)
     {
       ProcessOneCheckoutData checkout_data;
+      ot_lobj GFile *triggers_run_path = NULL;
 
       g_print ("ostadmin: Creating deployment %s\n",
                gs_file_get_path_cached (deploy_target_path));
@@ -529,8 +530,13 @@ deploy_tree (OtAdminDeploy     *self,
       if (checkout_data.caught_error)
         goto out;
 
-      if (!ostree_run_triggers_in_root (deploy_target_path_tmp, cancellable, error))
-        goto out;
+      triggers_run_path = g_file_resolve_relative_path (deploy_target_path_tmp, "usr/share/ostree/triggers-run");
+
+      if (!g_file_query_exists (triggers_run_path, NULL))
+        {
+          if (!ostree_run_triggers_in_root (deploy_target_path_tmp, cancellable, error))
+            goto out;
+        }
 
       deploy_target_default_etc_path = ot_gfile_get_child_strconcat (deploy_target_path_tmp, "etc", NULL);
 
