@@ -406,7 +406,7 @@ ot_admin_get_active_deployment (GFile           *ostree_dir,
           guint32 deploy_dev;
           guint64 deploy_inode;
           
-          deployment_info = g_file_query_info (rootfs_path, OSTREE_GIO_FAST_QUERYINFO,
+          deployment_info = g_file_query_info (deployment, OSTREE_GIO_FAST_QUERYINFO,
                                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                cancellable, error);
           if (!deployment_info)
