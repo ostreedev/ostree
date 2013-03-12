@@ -54,7 +54,8 @@ gboolean ostree_diff_dirs (GFile          *a,
                            GCancellable   *cancellable,
                            GError        **error);
 
-void ostree_diff_print (GFile          *base,
+void ostree_diff_print (GFile          *a,
+                        GFile          *b,
                         GPtrArray      *modified,
                         GPtrArray      *removed,
                         GPtrArray      *added);

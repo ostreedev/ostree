@@ -367,8 +367,25 @@ ostree_diff_dirs (GFile          *a,
   return ret;
 }
 
+static void
+print_diff_item (char        prefix,
+                 GFile      *base,
+                 GFile      *file)
+{
+  if (g_file_is_native (file))
+    {
+      gs_free char *relpath = g_file_get_relative_path (base, file);
+      g_print ("%c    %s\n", prefix, relpath);
+    }
+  else
+    {
+      g_print ("%c    %s\n", prefix, gs_file_get_path_cached (file));
+    }
+}
+
 void
-ostree_diff_print (GFile          *base,
+ostree_diff_print (GFile          *a,
+                   GFile          *b,
                    GPtrArray      *modified,
                    GPtrArray      *removed,
                    GPtrArray      *added)
@@ -378,23 +395,16 @@ ostree_diff_print (GFile          *base,
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
-      g_print ("M    %s\n", gs_file_get_path_cached (diff->src));
+      print_diff_item ('M', a, diff->src);
     }
   for (i = 0; i < removed->len; i++)
     {
-      g_print ("D    %s\n", gs_file_get_path_cached (removed->pdata[i]));
+      GFile *removed_file = removed->pdata[i];
+      print_diff_item ('D', a, removed_file);
     }
   for (i = 0; i < added->len; i++)
     {
       GFile *added_f = added->pdata[i];
-      if (g_file_is_native (added_f))
-        {
-          char *relpath = g_file_get_relative_path (base, added_f);
-          g_assert (relpath != NULL);
-          g_print ("A    /%s\n", relpath);
-          g_free (relpath);
-        }
-      else
-        g_print ("A    %s\n", gs_file_get_path_cached (added_f));
+      print_diff_item ('A', b, added_f);
     }
 }

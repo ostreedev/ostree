@@ -96,7 +96,7 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
                          cancellable, error))
     goto out;
 
-  ostree_diff_print (new_etc_path, modified, removed, added);
+  ostree_diff_print (orig_etc_path, new_etc_path, modified, removed, added);
 
   ret = TRUE;
  out:
