@@ -48,13 +48,15 @@ static GOptionEntry options[] = {
 static gboolean
 get_kernel_from_boot (GFile         *path,
                       GFile        **out_kernel,
+                      GFile        **out_initramfs,
                       GCancellable  *cancellable,
                       GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GFile *ret_kernel = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_object GFile *ret_kernel = NULL;
+  gs_unref_object GFile *ret_initramfs = NULL;
 
   dir_enum = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -68,99 +70,51 @@ get_kernel_from_boot (GFile         *path,
 
       name = g_file_info_get_name (file_info);
 
-      if (!g_str_has_prefix (name, "vmlinuz-"))
-        continue;
-
-      ret_kernel = g_file_get_child (path, name);
-      break;
+      if (ret_kernel == NULL && g_str_has_prefix (name, "vmlinuz-"))
+        ret_kernel = g_file_get_child (path, name);
+      else if (ret_initramfs == NULL && g_str_has_prefix (name, "initramfs-"))
+        ret_initramfs = g_file_get_child (path, name);
+      
+      if (ret_kernel && ret_initramfs)
+        break;
     }
 
   ot_transfer_out_value (out_kernel, &ret_kernel);
+  ot_transfer_out_value (out_initramfs, &ret_initramfs);
   ret = TRUE;
  out:
   return ret;
 }
 
+/* generate_initramfs:
+ *
+ * If there isn't an initramfs in place where we expect one to be, run
+ * dracut.  This is really legacy - we now expect trees to come with
+ * pregenerated initramfs images.
+ */ 
 static gboolean
-setup_kernel (OtAdminUpdateKernel *self,
-              GCancellable        *cancellable,
-              GError             **error)
+generate_initramfs (OtAdminUpdateKernel  *self,
+                    GFile               **out_initramfs_path,
+                    GCancellable         *cancellable,
+                    GError              **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *deploy_boot_path = NULL;
-  ot_lobj GFile *src_kernel_path = NULL;
-  ot_lfree char *prefix = NULL;
-  const char *release = NULL;
-  const char *kernel_name = NULL;
+  gs_unref_ptrarray GPtrArray *mkinitramfs_args = NULL;
+  gs_unref_object GSSubprocess *proc = NULL;
+  gs_unref_object GFile *tmpdir = NULL;
+  gs_free char *initramfs_tmp_path = NULL;
+  gs_unref_object GFile *ostree_vardir = NULL;
+  gs_unref_object GFileInfo *initramfs_tmp_info = NULL;
+  gs_unref_object GFile *dracut_log_path = NULL;
+  gs_unref_object GOutputStream *tmp_log_out = NULL;
+  gs_unref_object GFile *initramfs_tmp_file = NULL;
+  gs_unref_object GFile *ret_initramfs_path = NULL;
 
-  deploy_boot_path = g_file_get_child (self->deploy_path, "boot"); 
-
-  if (!get_kernel_from_boot (deploy_boot_path, &src_kernel_path,
-                             cancellable, error))
+  ret_initramfs_path = g_file_get_child (self->boot_ostree_dir, "initramfs.tmp");
+  
+  if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
+                               cancellable, error))
     goto out;
-  if (src_kernel_path == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No kernel found in %s", gs_file_get_path_cached (deploy_boot_path));
-      goto out;
-    }
-
-  if (!gs_file_ensure_directory (self->boot_ostree_dir, TRUE, cancellable, error))
-    goto out;
-
-  kernel_name = gs_file_get_basename_cached (src_kernel_path);
-  release = strchr (kernel_name, '-');
-  if (release == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid kernel name %s, no - found", gs_file_get_path_cached (src_kernel_path));
-      goto out;
-    }
-
-  self->release = g_strdup (release + 1);
-  prefix = g_strndup (kernel_name, release - kernel_name);
-  self->kernel_path = ot_gfile_get_child_strconcat (self->boot_ostree_dir, prefix, "-", self->release, NULL);
-
-  if (!gs_file_linkcopy_sync_data (src_kernel_path, self->kernel_path, G_FILE_COPY_OVERWRITE,
-                                   cancellable, error))
-    goto out;
-
-  g_print ("ostadmin: Deploying kernel %s\n", gs_file_get_path_cached (self->kernel_path));
-      
-  ret = TRUE;
- out:
-  if (error)
-    g_prefix_error (error, "Error copying kernel: ");
-  return ret;
-}
-
-static gboolean
-update_initramfs (OtAdminUpdateKernel  *self,
-                  GCancellable         *cancellable,
-                  GError              **error)
-{
-  gboolean ret = FALSE;
-  ot_lfree char *initramfs_name = NULL;
-  ot_lobj GFile *initramfs_file = NULL;
-
-  initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
-
-  initramfs_file = g_file_get_child (self->boot_ostree_dir, initramfs_name);
-  if (!g_file_query_exists (initramfs_file, NULL))
-    {
-      gs_unref_ptrarray GPtrArray *mkinitramfs_args = NULL;
-      gs_unref_object GSSubprocess *proc = NULL;
-      ot_lobj GFile *tmpdir = NULL;
-      ot_lfree char *initramfs_tmp_path = NULL;
-      ot_lobj GFile *ostree_vardir = NULL;
-      ot_lobj GFile *initramfs_tmp_file = NULL;
-      ot_lobj GFileInfo *initramfs_tmp_info = NULL;
-      ot_lobj GFile *dracut_log_path = NULL;
-      ot_lobj GOutputStream *tmp_log_out = NULL;
-          
-      if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
-                                   cancellable, error))
-        goto out;
 
       ostree_vardir = ot_gfile_get_child_build_path (self->ostree_dir, "deploy",
                                                      self->osname, "var", NULL);
@@ -221,27 +175,15 @@ update_initramfs (OtAdminUpdateKernel  *self,
           goto out;
         }
 
-      if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, initramfs_file, G_FILE_COPY_OVERWRITE,
-                                       cancellable, error))
+      if (!gs_file_rename (initramfs_tmp_file, ret_initramfs_path,
+                           cancellable, error))
         goto out;
-      
-      /* In the fuse case, we need to chown after copying */
-      if (getuid () != 0)
-        {
-          if (!gs_file_chown (initramfs_file, 0, 0, cancellable, error))
-            {
-              g_prefix_error (error, "Failed to chown initramfs: ");
-              goto out;
-            }
-        }
-          
-      g_print ("Created: %s\n", gs_file_get_path_cached (initramfs_file));
 
       if (!gs_shutil_rm_rf (tmpdir, cancellable, error))
         goto out;
-    }
 
   ret = TRUE;
+  ot_transfer_out_value (out_initramfs_path, &ret_initramfs_path);
  out:
   return ret;
 }
@@ -255,8 +197,8 @@ grep_literal (GFile              *f,
 {
   gboolean ret = FALSE;
   gboolean ret_matches = FALSE;
-  ot_lobj GInputStream *in = NULL;
-  ot_lobj GDataInputStream *datain = NULL;
+  gs_unref_object GInputStream *in = NULL;
+  gs_unref_object GDataInputStream *datain = NULL;
   ot_lfree char *line = NULL;
 
   in = (GInputStream*)g_file_read (f, cancellable, error);
@@ -290,7 +232,7 @@ update_grub (OtAdminUpdateKernel  *self,
              GError              **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *grub_path = g_file_resolve_relative_path (self->admin_opts->boot_dir, "grub/grub.conf");
+  gs_unref_object GFile *grub_path = g_file_resolve_relative_path (self->admin_opts->boot_dir, "grub/grub.conf");
 
   if (g_file_query_exists (grub_path, cancellable))
     {
@@ -304,7 +246,7 @@ update_grub (OtAdminUpdateKernel  *self,
           ot_lfree char *add_kernel_arg = NULL;
           ot_lfree char *initramfs_arg = NULL;
           ot_lfree char *initramfs_name = NULL;
-          ot_lobj GFile *initramfs_path = NULL;
+          gs_unref_object GFile *initramfs_path = NULL;
 
           initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
           initramfs_path = g_file_get_child (self->boot_ostree_dir, initramfs_name);
@@ -335,11 +277,19 @@ update_grub (OtAdminUpdateKernel  *self,
 gboolean
 ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
+  gboolean ret = FALSE;
   GOptionContext *context;
   OtAdminUpdateKernel self_data;
   OtAdminUpdateKernel *self = &self_data;
   GFile *ostree_dir = admin_opts->ostree_dir;
-  gboolean ret = FALSE;
+  gs_unref_object GFile *deploy_boot_path = NULL;
+  gs_unref_object GFile *src_kernel_path = NULL;
+  gs_unref_object GFile *src_initramfs_path = NULL;
+  gs_free char *prefix = NULL;
+  gs_free char *initramfs_name = NULL;
+  gs_unref_object GFile *expected_initramfs_path = NULL;
+  const char *release = NULL;
+  const char *kernel_name = NULL;
   GCancellable *cancellable = NULL;
 
   memset (self, 0, sizeof (*self));
@@ -364,18 +314,79 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
     self->deploy_path = g_file_new_for_path (argv[2]);
   else
     {
-      ot_lobj GFile *osdir = ot_gfile_get_child_build_path (admin_opts->ostree_dir, "deploy", self->osname, NULL);
+      gs_unref_object GFile *osdir = ot_gfile_get_child_build_path (admin_opts->ostree_dir, "deploy", self->osname, NULL);
       self->deploy_path = g_file_get_child (osdir, "current");
     }
 
   self->ostree_dir = g_object_ref (ostree_dir);
   self->boot_ostree_dir = g_file_get_child (admin_opts->boot_dir, "ostree");
-  
-  if (!setup_kernel (self, cancellable, error))
+
+  deploy_boot_path = g_file_get_child (self->deploy_path, "boot"); 
+
+  if (!get_kernel_from_boot (deploy_boot_path, &src_kernel_path, &src_initramfs_path,
+                             cancellable, error))
     goto out;
 
-  if (!update_initramfs (self, cancellable, error))
+  if (src_kernel_path == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No kernel found in %s", gs_file_get_path_cached (deploy_boot_path));
+      goto out;
+    }
+
+  if (!gs_file_ensure_directory (self->boot_ostree_dir, TRUE, cancellable, error))
     goto out;
+
+  kernel_name = gs_file_get_basename_cached (src_kernel_path);
+  release = strchr (kernel_name, '-');
+  if (release == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid kernel name %s, no - found", gs_file_get_path_cached (src_kernel_path));
+      goto out;
+    }
+
+  self->release = g_strdup (release + 1);
+  prefix = g_strndup (kernel_name, release - kernel_name);
+  self->kernel_path = ot_gfile_get_child_strconcat (self->boot_ostree_dir, prefix, "-", self->release, NULL);
+
+  if (!g_file_query_exists(self->kernel_path, NULL))
+    {
+      if (!gs_file_linkcopy_sync_data (src_kernel_path, self->kernel_path, G_FILE_COPY_OVERWRITE,
+                                       cancellable, error))
+        goto out;
+      g_print ("ostadmin: Deployed kernel %s\n", gs_file_get_path_cached (self->kernel_path));
+    }
+
+  initramfs_name = g_strconcat ("initramfs-", self->release, ".img", NULL);
+  expected_initramfs_path = g_file_get_child (self->boot_ostree_dir, initramfs_name);
+
+  if (!g_file_query_exists (expected_initramfs_path, NULL))
+    {
+      if (src_initramfs_path == NULL)
+        {
+          if (!generate_initramfs (self, &src_initramfs_path,
+                                   cancellable, error))
+            goto out;
+
+        }
+      
+      if (!gs_file_linkcopy_sync_data (src_initramfs_path, expected_initramfs_path, G_FILE_COPY_OVERWRITE,
+                                       cancellable, error))
+        goto out;
+      
+      /* In the fuse case, we need to chown after copying */
+      if (getuid () != 0)
+        {
+          if (!gs_file_chown (expected_initramfs_path, 0, 0, cancellable, error))
+            {
+              g_prefix_error (error, "Failed to chown initramfs: ");
+              goto out;
+            }
+        }
+
+      g_print ("Deployed initramfs: %s\n", gs_file_get_path_cached (expected_initramfs_path));
+    }
       
   if (!opt_no_bootloader)
     {
