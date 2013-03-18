@@ -96,6 +96,13 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
       goto out;
     }
 
+  if (admin_opts->ostree_dir == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No existing /ostree found; use --ostree-dir");
+      goto out;
+    }
+
   if (!ot_admin_ensure_initialized (admin_opts->ostree_dir, cancellable, error))
     goto out;
 

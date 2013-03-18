@@ -440,6 +440,9 @@ ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
   gboolean ret = FALSE;
   gs_unref_object GFile *possible_ostree_dir = NULL;
   gs_unref_object GFile *ret_ostree_dir = NULL;
+  gs_unref_object GFile *host_usr = NULL;
+
+  host_usr = g_file_new_for_path ("/usr");
 
   if (ret_ostree_dir == NULL)
     {
@@ -452,7 +455,11 @@ ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
     {
       g_clear_object (&possible_ostree_dir);
       possible_ostree_dir = g_file_new_for_path ("/ostree");
-      if (g_file_query_exists (possible_ostree_dir, NULL))
+      /* If there's also /usr, we assume we're outside an ostree root
+       * and thus should use /ostree.
+       */
+      if (g_file_query_exists (possible_ostree_dir, NULL) ||
+          g_file_query_exists (host_usr, NULL))
         ret_ostree_dir = g_object_ref (possible_ostree_dir);
     }
 
