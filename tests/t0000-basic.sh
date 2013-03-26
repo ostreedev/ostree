@@ -102,7 +102,7 @@ echo afile > oh-look-a-file
 $OSTREE diff test2 ./ > ${test_tmpdir}/diff-test2-2
 rm oh-look-a-file
 cd ${test_tmpdir}
-assert_file_has_content diff-test2-2 'A */oh-look-a-file$'
+assert_file_has_content diff-test2-2 'A *oh-look-a-file$'
 echo "ok diff cwd"
 
 cd ${test_tmpdir}/checkout-test2-4
