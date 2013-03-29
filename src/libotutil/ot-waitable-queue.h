@@ -20,30 +20,27 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_WORKER_QUEUE_H__
-#define __OSTREE_WORKER_QUEUE_H__
+#ifndef __OSTREE_WAITABLE_QUEUE_H__
+#define __OSTREE_WAITABLE_QUEUE_H__
 
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-typedef struct OtWorkerQueue OtWorkerQueue;
+typedef struct OtWaitableQueue OtWaitableQueue;
 
-typedef void (*OtWorkerQueueFunc) (gpointer data,
-                                   gpointer user_data);
+OtWaitableQueue *ot_waitable_queue_new (void);
 
-OtWorkerQueue *ot_worker_queue_new (const char         *thread_name,
-                                    OtWorkerQueueFunc   func,
-                                    gpointer            data);
+void ot_waitable_queue_push (OtWaitableQueue      *queue,
+                             gpointer              data);
 
-void ot_worker_queue_start (OtWorkerQueue  *queue);
+GSource *ot_waitable_queue_create_source (OtWaitableQueue   *queue);
 
-gboolean ot_worker_queue_is_idle (OtWorkerQueue          *queue);
+gboolean ot_waitable_queue_pop (OtWaitableQueue *queue,
+                                gpointer        *out_val);
 
-void ot_worker_queue_push (OtWorkerQueue      *queue,
-                           gpointer            data);
-
-void ot_worker_queue_unref (OtWorkerQueue *queue);
+void ot_waitable_queue_ref (OtWaitableQueue *queue);
+void ot_waitable_queue_unref (OtWaitableQueue *queue);
 
 G_END_DECLS
 
