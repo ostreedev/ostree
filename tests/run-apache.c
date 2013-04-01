@@ -134,7 +134,7 @@ main (int     argc,
 
   httpd_argv = g_ptr_array_new ();
   g_ptr_array_add (httpd_argv, "httpd");
-  g_ptr_array_add (httpd_argv, "-X");
+  g_ptr_array_add (httpd_argv, "-DFOREGROUND");
   g_ptr_array_add (httpd_argv, "-f");
   g_ptr_array_add (httpd_argv, argv[1]);
   g_ptr_array_add (httpd_argv, "-C");
