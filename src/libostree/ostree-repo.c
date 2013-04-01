@@ -1067,26 +1067,18 @@ stage_object (OstreeRepo         *self,
 }
 
 static gboolean
-get_loose_object_dirs (OstreeRepo       *self,
-                       GPtrArray       **out_object_dirs,
-                       GCancellable     *cancellable,
-                       GError          **error)
+append_object_dirs_from (OstreeRepo          *self,
+                         GFile               *dir,
+                         GPtrArray           *object_dirs,
+                         GCancellable        *cancellable,
+                         GError             **error)
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lobj GFile *object_dir_to_scan;
-  ot_lptrarray GPtrArray *ret_object_dirs = NULL;
-  ot_lobj GFileEnumerator *enumerator = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
+  gs_unref_object GFileEnumerator *enumerator = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
 
-  ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-
-  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2)
-    object_dir_to_scan = g_file_get_child (self->uncompressed_objects_dir, "objects");
-  else
-    object_dir_to_scan = g_object_ref (self->objects_dir);
-
-  enumerator = g_file_enumerate_children (object_dir_to_scan, OSTREE_GIO_FAST_QUERYINFO, 
+  enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           cancellable, 
                                           &temp_error);
@@ -1096,7 +1088,6 @@ get_loose_object_dirs (OstreeRepo       *self,
         {
           g_clear_error (&temp_error);
           ret = TRUE;
-          ot_transfer_out_value (out_object_dirs, &ret_object_dirs);
         }
       else
         g_propagate_error (error, temp_error);
@@ -1114,8 +1105,8 @@ get_loose_object_dirs (OstreeRepo       *self,
       
       if (strlen (name) == 2 && type == G_FILE_TYPE_DIRECTORY)
         {
-          GFile *objdir = g_file_get_child (object_dir_to_scan, name);
-          g_ptr_array_add (ret_object_dirs, objdir);  /* transfer ownership */
+          GFile *objdir = g_file_get_child (g_file_enumerator_get_container (enumerator), name);
+          g_ptr_array_add (object_dirs, objdir);  /* transfer ownership */
         }
       g_clear_object (&file_info);
     }
@@ -1125,6 +1116,34 @@ get_loose_object_dirs (OstreeRepo       *self,
       goto out;
     }
   if (!g_file_enumerator_close (enumerator, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+get_loose_object_dirs (OstreeRepo       *self,
+                       GPtrArray       **out_object_dirs,
+                       GCancellable     *cancellable,
+                       GError          **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_ptrarray GPtrArray *ret_object_dirs = NULL;
+
+  ret_object_dirs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    {
+      gs_unref_object GFile *cachedir = g_file_get_child (self->uncompressed_objects_dir, "objects");
+      if (!append_object_dirs_from (self, cachedir, ret_object_dirs,
+                                    cancellable, error))
+        goto out;
+    }
+
+  if (!append_object_dirs_from (self, self->objects_dir, ret_object_dirs,
+                                cancellable, error))
     goto out;
 
   ret = TRUE;
