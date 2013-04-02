@@ -90,6 +90,8 @@ grub2_SCRIPTS = src/ostree/grub2/15_ostree
 
 endif
 
+EXTRA_DIST += src/ostree/grub2/15_ostree
+
 if ENABLE_KERNEL_UPDATES
 
 kernelpostinstdir = $(sysconfdir)/kernel/postinst.d
@@ -99,3 +101,7 @@ kernelprermdir = $(sysconfdir)/kernel/prerm.d
 kernelprerm_SCRIPTS = src/ostree/kernel/15_ostree_remove
 
 endif
+
+EXTRA_DIST += src/ostree/kernel/15_ostree_update \
+              src/ostree/kernel/15_ostree_remove \
+              $(NULL)
