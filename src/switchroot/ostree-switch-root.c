@@ -247,8 +247,8 @@ main(int argc, char *argv[])
   if (ostree_target_path[len-1] == '/')
     ostree_target_path[len-1] = '\0';
   fprintf (stderr, "Resolved OSTree target to: %s\n", ostree_target_path);
-  asprintf (&deploy_path, "%s/ostree/deploy/%s/%s", root_mountpoint,
-	    ostree_osname, ostree_target_path);
+  (void) asprintf (&deploy_path, "%s/ostree/deploy/%s/%s", root_mountpoint,
+		   ostree_osname, ostree_target_path);
   
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
