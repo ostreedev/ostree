@@ -116,5 +116,8 @@ ot_waitable_queue_unref (OtWaitableQueue *queue)
 GSource *
 ot_waitable_queue_create_source (OtWaitableQueue   *queue)
 {
-  return g_unix_fd_source_new (queue->fd, G_IO_IN);
+  GIOChannel *iochan = g_io_channel_unix_new (queue->fd);
+  GSource *source = g_io_create_watch (iochan, G_IO_IN);
+  g_io_channel_unref (iochan);
+  return source;
 }
