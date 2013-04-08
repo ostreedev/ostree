@@ -109,6 +109,7 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   ot_lhash GHashTable *objects = NULL;
   ot_lobj OstreeRepo *repo = NULL;
   ot_lhash GHashTable *all_refs = NULL;
+  gs_free char *formatted_freed_size = NULL;
   OtPruneData data;
 
   memset (&data, 0, sizeof (data));
@@ -184,15 +185,16 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
         goto out;
     }
 
+  formatted_freed_size = g_format_size_full (data.freed_bytes, 0);
+
   g_print ("Total reachable: %u meta, %u content\n",
            data.n_reachable_meta, data.n_reachable_content);
   if (opt_no_prune)
     g_print ("Total unreachable: %u meta, %u content\n",
              data.n_unreachable_meta, data.n_unreachable_content);
   else
-    g_print ("Freed %" G_GUINT64_FORMAT " bytes from %u meta, %u content objects\n",
-             data.freed_bytes, data.n_unreachable_meta, data.n_unreachable_content);
-    
+    g_print ("Freed %s from %u meta, %u content objects\n",
+             formatted_freed_size, data.n_unreachable_meta, data.n_unreachable_content);
 
   ret = TRUE;
  out:
