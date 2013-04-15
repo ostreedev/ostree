@@ -175,10 +175,11 @@ generate_initramfs (OtAdminUpdateKernel  *self,
           goto out;
         }
 
-      if (!gs_file_rename (initramfs_tmp_file, ret_initramfs_path,
-                           cancellable, error))
+      if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, ret_initramfs_path,
+                                       G_FILE_COPY_OVERWRITE,
+                                       cancellable, error))
         goto out;
-
+      
       if (!gs_shutil_rm_rf (tmpdir, cancellable, error))
         goto out;
 
