@@ -121,7 +121,7 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
   ot_lptrarray GPtrArray *subproc_args = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("OSNAME - Upgrade and redeploy current tree");
+  context = g_option_context_new ("OSNAME [TREE] - Ensure TREE (default current) is in list of remotes, then download and deploy");
 
   g_option_context_add_main_entries (context, options, NULL);
 
