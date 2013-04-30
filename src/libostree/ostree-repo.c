@@ -3194,6 +3194,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
   gboolean ret_was_supported = FALSE;
   ot_lobj GFile *dir = NULL;
 
+ again:
   if (dirfd != -1 &&
       linkat (-1, gs_file_get_path_cached (source),
               dirfd, gs_file_get_basename_cached (destination), 0) != -1)
@@ -3218,11 +3219,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
        * So we can't make this atomic.  
        */
       (void) unlink (gs_file_get_path_cached (destination));
-      if (link (gs_file_get_path_cached (source), gs_file_get_path_cached (destination)) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
+      goto again;
       ret_was_supported = TRUE;
     }
   else
