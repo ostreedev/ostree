@@ -31,7 +31,7 @@ G_BEGIN_DECLS
  * readlink().  Other things require opening the file, or also
  * stat()ing the parent directory.
  */
-#define OSTREE_GIO_FAST_QUERYINFO ("standard::name,standard::type,standard::size,standard::is-symlink,standard::symlink-target,standard::is-hidden," \
+#define OSTREE_GIO_FAST_QUERYINFO ("standard::name,standard::type,standard::size,standard::is-symlink,standard::symlink-target," \
                                    "unix::device,unix::inode,unix::mode,unix::uid,unix::gid,unix::rdev")
 
 GFileType ot_gfile_type_for_mode (guint32 mode);
