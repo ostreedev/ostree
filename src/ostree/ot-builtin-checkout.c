@@ -30,6 +30,7 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_user_mode;
+static gboolean opt_allow_noent;
 static gboolean opt_no_triggers;
 static char *opt_subpath;
 static gboolean opt_union;
@@ -40,6 +41,7 @@ static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
+  { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "no-triggers", 0, 0, G_OPTION_ARG_NONE, &opt_no_triggers, "Don't run triggers", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
@@ -89,6 +91,7 @@ process_one_checkout (OstreeRepo           *repo,
 {
   gboolean ret = FALSE;
   ProcessOneCheckoutData data;
+  GError *tmp_error = NULL;
   ot_lobj OstreeRepoFile *root = NULL;
   ot_lobj OstreeRepoFile *subtree = NULL;
   ot_lobj GFileInfo *file_info = NULL;
@@ -106,9 +109,21 @@ process_one_checkout (OstreeRepo           *repo,
 
   file_info = g_file_query_info ((GFile*)subtree, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
+                                 cancellable, &tmp_error);
   if (!file_info)
-    goto out;
+    {
+      if (opt_allow_noent
+          && g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&tmp_error);
+          ret = TRUE;
+        }
+      else
+        {
+          g_propagate_error (error, tmp_error);
+        }
+      goto out;
+    }
 
   data.loop = g_main_loop_new (NULL, TRUE);
   data.error = error;

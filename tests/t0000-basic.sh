@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..28"
+echo "1..30"
 
 . libtest.sh
 
@@ -208,3 +208,14 @@ rm -rf test2-checkout
 parent_rev_test2=$(ostree --repo=repo rev-parse test2)
 ${CMD_PREFIX} ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-checkout
 echo "ok checkout from shadow repo"
+
+cd ${test_tmpdir}
+rm -f expected-fail
+$OSTREE checkout test2 --subpath /enoent 2>/dev/null || touch expected-fail
+assert_has_file expected-fail
+echo "ok subdir enoent"
+
+cd ${test_tmpdir}
+$OSTREE checkout test2 --allow-noent --subpath /enoent 2>/dev/null
+echo "ok subdir noent"
+
