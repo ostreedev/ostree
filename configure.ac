@@ -33,6 +33,12 @@ AC_ARG_ENABLE(triggers-only,
 	    enable_triggers_only=no)
 AM_CONDITIONAL(TRIGGERS_ONLY, test x$enable_triggers_only != xno)
 
+AC_ARG_ENABLE(installed_tests,
+              AS_HELP_STRING([--enable-installed-tests],
+                             [Install test programs (default: no)]),,
+              [enable_installed_tests=no])
+AM_CONDITIONAL(BUILDOPT_INSTALL_TESTS, test x$enable_installed_tests = xyes)
+
 AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from libattr])])
 
 PKG_PROG_PKG_CONFIG

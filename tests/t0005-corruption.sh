@@ -21,7 +21,7 @@ set -e
 
 echo "1..1"
 
-. libtest.sh
+. $(dirname $0)/libtest.sh
 
 setup_test_repository "bare"
 $OSTREE checkout test2 checkout-test2

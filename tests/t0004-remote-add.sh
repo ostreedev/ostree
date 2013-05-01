@@ -19,7 +19,7 @@
 
 set -e
 
-. libtest.sh
+. $(dirname $0)/libtest.sh
 
 echo '1..2'
 

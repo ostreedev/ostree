@@ -19,10 +19,10 @@
 
 set -e
 
-. libtest.sh
-
-echo '1..2'
+. $(dirname $0)/libtest.sh
 
 setup_fake_remote_repo1 "archive-z2"
+
+echo '1..2'
 
 . ${SRCDIR}/pull-test.sh

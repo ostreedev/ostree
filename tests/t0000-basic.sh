@@ -21,7 +21,7 @@ set -e
 
 echo "1..30"
 
-. libtest.sh
+. $(dirname $0)/libtest.sh
 
 setup_test_repository "bare"
 echo "ok setup"
@@ -218,4 +218,3 @@ echo "ok subdir enoent"
 cd ${test_tmpdir}
 $OSTREE checkout test2 --allow-noent --subpath /enoent 2>/dev/null
 echo "ok subdir noent"
-

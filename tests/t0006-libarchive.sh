@@ -21,7 +21,7 @@ set -e
 
 echo "1..7"
 
-. libtest.sh
+. $(dirname $0)/libtest.sh
 
 setup_test_repository "bare"
 cd ${test_tmpdir}

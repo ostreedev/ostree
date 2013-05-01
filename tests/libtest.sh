@@ -17,14 +17,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-cd `dirname $0`
-SRCDIR=`pwd`
-cd -
-TMPDIR=${TMPDIR:-/tmp}
-export TMPDIR
-test_tmpdir=`mktemp -d "$TMPDIR/ostree-tests.XXXXXXXXXX"`
-cd "$test_tmpdir"
-touch "$test_tmpdir/.test$$"
+SRCDIR=$(dirname $0)
+test_tmpdir=$(pwd)
 
 export G_DEBUG=fatal-warnings
 
@@ -35,14 +29,6 @@ fi
 if test -n "$OT_TESTS_VALGRIND"; then
     CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
 fi
-
-die () {
-    if test -z "$OT_TESTS_DEBUG"; then
-        test -f "$test_tmpdir/.test$$" && rm -rf "$test_tmpdir"
-    else
-        echo "Temporary files saved in $test_tmpdir"
-    fi
-}
 
 assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
@@ -110,6 +96,9 @@ setup_test_repository () {
 }
 
 setup_fake_remote_repo1() {
+    if ! test -x ${SRCDIR}/run-apache; then
+	exit 77
+    fi
     mode=$1
     shift
     oldpwd=`pwd`
@@ -170,5 +159,3 @@ EOF
 
     export OSTREE="ostree --repo=repo"
 }
-
-trap 'die' EXIT

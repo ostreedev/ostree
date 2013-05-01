@@ -84,6 +84,8 @@ include Makefile-libostree.am
 include Makefile-ostree.am
 include Makefile-switchroot.am
 include Makefile-triggers.am
+include Makefile-tests.am
+
 
 #  Docbook generation copied from systemd/Makefile.am
 #

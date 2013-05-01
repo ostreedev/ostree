@@ -1,0 +1,49 @@
+# Makefile for tests code
+#
+# Copyright (C) 2013 Colin Walters <walters@verbum.org>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+
+if BUILDOPT_INSTALL_TESTS
+insttestdir=$(pkglibexecdir)/installed-tests
+testfiles = t0000-basic \
+	t0001-archive \
+	t0002-archivez \
+	t0003-log \
+	t0004-remote-add \
+	t0005-corruption \
+	t0006-libarchive \
+	t0011-pull-archive-z \
+	$(NULL)
+insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
+
+insttest_DATA = tests/archive-test.sh \
+	tests/pull-test.sh \
+	tests/libtest.sh \
+	$(NULL)
+
+%.test: tests/%.sh Makefile
+	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
+	 echo 'Exec=$(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
+	 echo 'Type=session' >> $@.tmp; \
+	 echo 'Output=TAP' >> $@.tmp; \
+	 mv $@.tmp $@)
+
+testmetadir = $(datadir)/installed-tests/$(PACKAGE)
+testmeta_DATA = $(testfiles:=.test)
+
+endif
