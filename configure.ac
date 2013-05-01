@@ -28,6 +28,9 @@ AC_SUBST(WARN_CFLAGS)
 LT_PREREQ([2.2.4])
 LT_INIT([disable-static])
 
+OSTREE_FEATURES=""
+AC_SUBST([OSTREE_FEATURES])
+
 AC_ARG_ENABLE(triggers-only,
 	    AS_HELP_STRING([--enable-triggers-only], [Only build and install triggers]),,
 	    enable_triggers_only=no)
@@ -70,12 +73,14 @@ AS_IF([test x$enable_embedded_dependencies = xyes], [
     ])
     AS_IF([test x$have_soup = xyes], [
 	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
+        AC_DEFINE(HAVE_LIBSOUP, 1, [Define if we have libsoup.pc])
 	with_soup=yes
     ], [
 	with_soup=no
     ])
   ], [ with_soup=no ])
 ])
+if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
@@ -117,6 +122,7 @@ AS_IF([ test x$with_libarchive != xno ], [
 	with_libarchive=no
     ])
 ], [ with_libarchive=no ])
+if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarchive"; fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel && test x$enable_triggers_only != xyes ],

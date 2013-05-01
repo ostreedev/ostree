@@ -29,6 +29,13 @@
 #include "ot-main.h"
 #include "otutil.h"
 
+static gboolean opt_version;
+
+static GOptionEntry main_options[] = {
+  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Display version", NULL },
+  { NULL }
+};
+
 int
 ostree_usage (char **argv,
               OstreeCommand *commands,
@@ -80,6 +87,7 @@ ostree_run (int    argc,
             OstreeCommand *commands,
             GError **res_error)
 {
+  GOptionContext *optcontext;
   OstreeCommand *command;
   GError *error = NULL;
   int cmd_argc;
@@ -103,6 +111,19 @@ ostree_run (int    argc,
 
   if (argc < 2)
     return ostree_usage (argv, commands, TRUE);
+
+  optcontext = g_option_context_new ("COMMAND [OPTIONS...]");
+  g_option_context_add_main_entries (optcontext, main_options, NULL);
+  g_option_context_set_ignore_unknown_options (optcontext, TRUE);
+
+  if (!g_option_context_parse (optcontext, &argc, &argv, &error))
+    goto out;
+
+  if (opt_version)
+    {
+      g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
+      return 0;
+    }
 
   have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
 

@@ -19,6 +19,10 @@
 
 set -e
 
+if ! ostree --version | grep -q -e '\+libarchive'; then
+    exit 77
+fi
+
 echo "1..7"
 
 . $(dirname $0)/libtest.sh
