@@ -377,7 +377,7 @@ ot_admin_get_active_deployment (GFile           *ostree_dir,
   if (!ot_admin_get_booted_os (&ret_osname, NULL, cancellable, error))
     goto out;
 
-  if (ret_osname != NULL)
+  if (ret_osname != NULL && out_deployment != NULL)
     {
       gs_unref_object GFile *rootfs_path = NULL;
       gs_unref_object GFileInfo *rootfs_info = NULL;

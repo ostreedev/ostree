@@ -40,23 +40,33 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   GOptionContext *context;
   gboolean ret = FALSE;
   GFile *ostree_dir = admin_opts->ostree_dir;
+  gs_free char *booted_osname = NULL;
   const char *osname = NULL;
   gs_free char *ostree_dir_arg = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("OSNAME - pull, deploy, and prune");
+  context = g_option_context_new ("[OSNAME] - pull, deploy, and prune");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc < 2)
+  if (argc > 1)
     {
-      ot_util_usage_error (context, "OSNAME must be specified", error);
-      goto out;
+      osname = argv[1];
     }
-
-  osname = argv[1];
+  else
+    {
+      if (!ot_admin_get_active_deployment (NULL, &booted_osname, NULL, cancellable, error))
+        goto out;
+      if (booted_osname == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Not in an active OSTree system; must specify OSNAME");
+          goto out;
+        }
+      osname = booted_osname;
+    }
 
   ostree_dir_arg = g_strconcat ("--ostree-dir=",
                                 gs_file_get_path_cached (ostree_dir),
