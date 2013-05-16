@@ -31,6 +31,11 @@ gboolean ot_admin_ensure_initialized (GFile         *ostree_dir,
 				      GCancellable  *cancellable,
 				      GError       **error);
 
+gboolean ot_admin_get_booted_os (char        **out_osname,
+                                 char        **out_tree,
+                                 GCancellable *cancellable,
+                                 GError      **error);
+
 gboolean ot_admin_get_current_deployment (GFile           *ostree_dir,
                                           const char      *osname,
                                           GFile          **out_deployment,
@@ -57,6 +62,18 @@ gboolean ot_admin_get_active_deployment (GFile           *ostree_dir,
 gboolean ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
                                           GCancellable  *cancellable,
                                           GError       **error);
+
+gboolean ot_admin_pull (GFile         *ostree_dir,
+                        const char    *osname,
+                        GCancellable  *cancellable,
+                        GError       **error);
+
+void
+ot_admin_parse_deploy_name (GFile   *ostree_dir,
+                            const char *osname,
+                            GFile   *deployment,
+                            char   **out_name,
+                            char   **out_rev);
 
 G_END_DECLS
 

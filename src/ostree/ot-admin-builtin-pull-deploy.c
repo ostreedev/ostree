@@ -35,21 +35,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static char *
-parse_deploy_name_from_path (GFile   *osdir,
-                             GFile   *path)
-{
-  ot_lfree char *relpath = g_file_get_relative_path (osdir, path);
-  const char *last_dash;
-
-  g_assert (relpath);
-  last_dash = strrchr (relpath, '-');
-  if (!last_dash)
-    g_error ("Failed to parse deployment name %s", relpath);
-  
-  return g_strndup (relpath, last_dash - relpath);
-}
-
 static gboolean
 ensure_remote_branch (OstreeRepo    *repo,
                       const char    *remote,
@@ -116,7 +101,6 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
   ot_lobj GFile *current_deployment = NULL;
   ot_lfree char *deploy_name = NULL;
   ot_lobj GFile *deploy_dir = NULL;
-  ot_lobj GFile *os_dir = NULL;
   ot_lfree char *remote_name = NULL;
   ot_lptrarray GPtrArray *subproc_args = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
@@ -142,9 +126,6 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  deploy_dir = g_file_get_child (ostree_dir, "deploy");
-  os_dir = g_file_get_child (deploy_dir, osname);
-
   if (argc > 2)
     {
       target = argv[2];
@@ -167,20 +148,12 @@ ot_admin_builtin_pull_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_o
           goto out;
         }
       
-      deploy_name = parse_deploy_name_from_path (os_dir, current_deployment);
+      ot_admin_parse_deploy_name (ostree_dir, osname, current_deployment,
+                                  &deploy_name, NULL);
     }
 
-  {
-    ot_lfree char *repo_arg = g_strconcat ("--repo=",
-                                           gs_file_get_path_cached (repo_path),
-                                           NULL);
-
-    if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                        cancellable, error,
-                                        "ostree", "pull", repo_arg, osname, NULL))
-      goto out;
-  }
+  if (!ot_admin_pull (ostree_dir, osname, cancellable, error))
+    goto out;
 
   {
     ot_lfree char *opt_ostree_dir_arg = g_strconcat ("--ostree-dir=",

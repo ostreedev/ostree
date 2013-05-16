@@ -24,13 +24,17 @@
 
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ostree.h"
 #include "otutil.h"
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <glib/gi18n.h>
 
+static gboolean opt_reboot;
+
 static GOptionEntry options[] = {
+  { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
   { NULL }
 };
 
@@ -42,6 +46,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   GFile *ostree_dir = admin_opts->ostree_dir;
   gs_free char *booted_osname = NULL;
   const char *osname = NULL;
+  gs_unref_object GFile *deployment = NULL;
+  gs_unref_object GFile *repo_path = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *deploy_name = NULL;
+  gs_free char *current_rev = NULL;
+  gs_free char *new_rev = NULL;
   gs_free char *ostree_dir_arg = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
@@ -57,7 +67,8 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
     }
   else
     {
-      if (!ot_admin_get_active_deployment (NULL, &booted_osname, NULL, cancellable, error))
+      if (!ot_admin_get_booted_os (&booted_osname, NULL,
+                                   cancellable, error))
         goto out;
       if (booted_osname == NULL)
         {
@@ -67,15 +78,18 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
         }
       osname = booted_osname;
     }
+  
+  if (!ot_admin_get_current_deployment (ostree_dir, osname, &deployment,
+                                        cancellable, error))
+    goto out;
+
+  ot_admin_parse_deploy_name (ostree_dir, osname, deployment, &deploy_name, &current_rev);
 
   ostree_dir_arg = g_strconcat ("--ostree-dir=",
                                 gs_file_get_path_cached (ostree_dir),
                                 NULL);
-
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                      cancellable, error,
-                                      "ostree", "admin", ostree_dir_arg, "pull-deploy", osname, NULL))
+  
+  if (!ot_admin_pull (ostree_dir, osname, cancellable, error))
     goto out;
 
   if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
@@ -83,6 +97,26 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
                                       cancellable, error,
                                       "ostree", "admin", ostree_dir_arg, "prune", osname, NULL))
     goto out;
+
+  if (opt_reboot)
+    {
+      repo_path = g_file_get_child (ostree_dir, "repo");
+
+      repo = ostree_repo_new (repo_path);
+      if (!ostree_repo_check (repo, error))
+        goto out;
+
+      if (!ostree_repo_resolve_rev (repo, deploy_name, TRUE, &new_rev,
+                                    error))
+        goto out;
+
+      if (strcmp (current_rev, new_rev) != 0 && opt_reboot)
+        {
+          gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                         cancellable, error,
+                                         "systemctl", "reboot", NULL);
+        }
+    }
 
   ret = TRUE;
  out:

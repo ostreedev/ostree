@@ -313,11 +313,11 @@ ot_admin_list_deployments (GFile               *ostree_dir,
   return ret;
 }
 
-static gboolean
-ot_admin_get_booted_os (char   **out_osname,
-                        char   **out_tree,
+gboolean
+ot_admin_get_booted_os (char        **out_osname,
+                        char        **out_tree,
                         GCancellable *cancellable,
-                        GError **error)
+                        GError      **error)
 {
   gboolean ret = FALSE;
   gs_free char *ret_osname = NULL;
@@ -466,4 +466,44 @@ ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
   ret = TRUE;
   ot_transfer_out_value (out_ostree_dir, &ret_ostree_dir);
   return ret;
+}
+
+gboolean
+ot_admin_pull (GFile         *ostree_dir,
+               const char    *osname,
+               GCancellable  *cancellable,
+               GError       **error)
+{
+  gs_unref_object GFile *repo_path = g_file_get_child (ostree_dir, "repo");
+  gs_free char *repo_arg = g_strconcat ("--repo=",
+                                        gs_file_get_path_cached (repo_path),
+                                        NULL);
+
+  return gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                        cancellable, error,
+                                        "ostree", "pull", repo_arg, osname, NULL);
+}
+
+void
+ot_admin_parse_deploy_name (GFile       *ostree_dir,
+                            const char  *osname,
+                            GFile       *deployment,
+                            char       **out_name,
+                            char       **out_rev)
+{
+  gs_unref_object GFile *deploy_dir = g_file_get_child (ostree_dir, "deploy");
+  gs_unref_object GFile *os_dir = g_file_get_child (deploy_dir, osname);
+  gs_free char *relpath = g_file_get_relative_path (os_dir, deployment);
+  const char *last_dash;
+
+  g_assert (relpath);
+  last_dash = strrchr (relpath, '-');
+  if (!last_dash)
+    g_error ("Failed to parse deployment name %s", relpath);
+  
+  if (out_name)
+    *out_name = g_strndup (relpath, last_dash - relpath);
+  if (out_rev)
+    *out_rev = g_strdup (last_dash + 1);
 }
