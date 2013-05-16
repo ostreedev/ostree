@@ -89,8 +89,10 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
                                 gs_file_get_path_cached (ostree_dir),
                                 NULL);
   
-  if (!ot_admin_pull (ostree_dir, osname, cancellable, error))
-    goto out;
+  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
+                                      cancellable, error,
+                                      "ostree", "admin", ostree_dir_arg, "pull-deploy", osname, NULL))
 
   if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
                                       GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
