@@ -6,6 +6,8 @@
 
 * GPG signatures on commits
 
+* Investigate pack files and HTTP range requests
+
 * Tests of corrupted repositories, more error conditions
 
 * Improve GRUB management: Assocate kernels with their deployments
