@@ -307,6 +307,8 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
   g_debug ("pull: scan: %u fetching: %u staging: %u",
            !pull_data->metadata_scan_idle, !current_fetch_idle, !current_stage_idle);
 
+  throw_async_error (pull_data, error);
+
   /* This is true in the phase when we're fetching refs */
   if (pull_data->metadata_objects_to_scan == NULL)
     {
@@ -318,8 +320,6 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
     {
       g_main_loop_quit (pull_data->loop);
     }
-
-  throw_async_error (pull_data, error);
 }
 
 static gboolean
