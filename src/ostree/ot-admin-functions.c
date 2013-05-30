@@ -482,7 +482,7 @@ ot_admin_pull (GFile         *ostree_dir,
   return gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
                                         GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
-                                        "ostree", "pull", repo_arg, osname, NULL);
+                                        "ostree", repo_arg, "pull", osname, NULL);
 }
 
 void

@@ -43,7 +43,7 @@ static OstreeCommand commands[] = {
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
   { "prune", ostree_builtin_prune, 0 },
-  { "pull", NULL, 0 },
+  { "pull", ostree_builtin_pull, 0 },
   { "pull-local", ostree_builtin_pull_local, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
@@ -51,40 +51,6 @@ static OstreeCommand commands[] = {
   { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };
-
-static int
-exec_external (int      argc,
-               char   **argv,
-               GError **error)
-{
-  gchar *command;
-  gchar *tmp;
-  int errn;
-
-  command = g_strdup_printf ("ostree-%s", argv[1]);
-
-  tmp = argv[1];
-  argv[1] = command;
-
-  execvp (command, argv + 1);
-
-  errn = errno;
-  argv[1] = tmp;
-  g_free (command);
-
-  if (errn == ENOENT)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Unknown command: '%s'", argv[1]);
-    }
-  else
-    {
-      g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (errn),
-                   "Failed to execute command: %s", g_strerror (errn));
-    }
-
-  return 1;
-}
 
 int
 main (int    argc,
@@ -94,12 +60,6 @@ main (int    argc,
   int ret;
 
   ret = ostree_run (argc, argv, commands, &error);
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    {
-      g_clear_error (&error);
-      ret = exec_external (argc, argv, &error);
-    }
-
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
     ostree_usage (argv, commands, TRUE);
 

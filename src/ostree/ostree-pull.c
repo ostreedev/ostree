@@ -70,6 +70,7 @@
 
 #include "ostree.h"
 #include "ot-main.h"
+#include "ot-builtins.h"
 
 #include "ostree-fetcher.h"
 
@@ -1170,7 +1171,7 @@ load_remote_repo_config (OtPullData    *pull_data,
   return ret;
 }
 
-static gboolean
+gboolean
 ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
@@ -1468,16 +1469,4 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (summary_uri)
     soup_uri_free (summary_uri);
   return ret;
-}
-
-static OstreeCommand commands[] = {
-  { "pull", ostree_builtin_pull, 0 },
-  { NULL }
-};
-
-int
-main (int    argc,
-      char **argv)
-{
-  return ostree_main (argc, argv, commands);
 }
