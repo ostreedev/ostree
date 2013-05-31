@@ -86,109 +86,6 @@ get_kernel_from_boot (GFile         *path,
   return ret;
 }
 
-/* generate_initramfs:
- *
- * If there isn't an initramfs in place where we expect one to be, run
- * dracut.  This is really legacy - we now expect trees to come with
- * pregenerated initramfs images.
- */ 
-static gboolean
-generate_initramfs (OtAdminUpdateKernel  *self,
-                    GFile               **out_initramfs_path,
-                    GCancellable         *cancellable,
-                    GError              **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *mkinitramfs_args = NULL;
-  gs_unref_object GSSubprocess *proc = NULL;
-  gs_unref_object GFile *tmpdir = NULL;
-  gs_free char *initramfs_tmp_path = NULL;
-  gs_unref_object GFile *ostree_vardir = NULL;
-  gs_unref_object GFileInfo *initramfs_tmp_info = NULL;
-  gs_unref_object GFile *dracut_log_path = NULL;
-  gs_unref_object GOutputStream *tmp_log_out = NULL;
-  gs_unref_object GFile *initramfs_tmp_file = NULL;
-  gs_unref_object GFile *ret_initramfs_path = NULL;
-
-  ret_initramfs_path = g_file_get_child (self->boot_ostree_dir, "initramfs.tmp");
-  
-  if (!ostree_create_temp_dir (NULL, "ostree-initramfs", NULL, &tmpdir,
-                               cancellable, error))
-    goto out;
-
-      ostree_vardir = ot_gfile_get_child_build_path (self->ostree_dir, "deploy",
-                                                     self->osname, "var", NULL);
-
-      dracut_log_path = ot_gfile_get_child_build_path (ostree_vardir, "log", "dracut.log", NULL);
-      tmp_log_out = (GOutputStream*)g_file_replace (dracut_log_path, NULL, FALSE,
-                                                    G_FILE_CREATE_REPLACE_DESTINATION,
-                                                    cancellable, error);
-      if (!tmp_log_out)
-        goto out;
-      if (!g_output_stream_close (tmp_log_out, cancellable, error))
-        goto out;
-
-      mkinitramfs_args = g_ptr_array_new ();
-      /* Note: the hardcoded /tmp path below is not actually a
-       * security flaw, because we've bind-mounted dracut's view
-       * of /tmp to the securely-created tmpdir above.
-       */
-      ot_ptrarray_add_many (mkinitramfs_args,
-                            "linux-user-chroot",
-                            "--mount-readonly", "/",
-                            "--mount-proc", "/proc",
-                            "--mount-bind", "/dev", "/dev",
-                            "--mount-bind", gs_file_get_path_cached (ostree_vardir), "/var",
-                            "--mount-bind", gs_file_get_path_cached (tmpdir), "/tmp", NULL);
-      ot_ptrarray_add_many (mkinitramfs_args, gs_file_get_path_cached (self->deploy_path),
-                            "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img", self->release,
-                            NULL);
-      g_ptr_array_add (mkinitramfs_args, NULL);
-      
-      g_print ("Generating initramfs using %s...\n", gs_file_get_path_cached (self->deploy_path));
-      proc = gs_subprocess_new_simple_argv ((gchar**)mkinitramfs_args->pdata,
-                                            GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                            GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                            cancellable, error);
-      if (!proc)
-        goto out;
-      if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
-        goto out;
-          
-      initramfs_tmp_file = g_file_get_child (tmpdir, "initramfs-ostree.img");
-      initramfs_tmp_info = g_file_query_info (initramfs_tmp_file, OSTREE_GIO_FAST_QUERYINFO,
-                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                              cancellable, error);
-      if (!initramfs_tmp_info)
-        goto out;
-
-      if (g_file_info_get_size (initramfs_tmp_info) == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Initramfs generation failed, check dracut.log");
-          goto out;
-        }
-
-      if (!gs_file_chmod (initramfs_tmp_file, 0644, cancellable, error))
-        {
-          g_prefix_error (error, "Failed to chmod initramfs: ");
-          goto out;
-        }
-
-      if (!gs_file_linkcopy_sync_data (initramfs_tmp_file, ret_initramfs_path,
-                                       G_FILE_COPY_OVERWRITE,
-                                       cancellable, error))
-        goto out;
-      
-      if (!gs_shutil_rm_rf (tmpdir, cancellable, error))
-        goto out;
-
-  ret = TRUE;
-  ot_transfer_out_value (out_initramfs_path, &ret_initramfs_path);
- out:
-  return ret;
-}
-
 static gboolean
 grep_literal (GFile              *f,
               const char         *string,
@@ -364,14 +261,6 @@ ot_admin_builtin_update_kernel (int argc, char **argv, OtAdminBuiltinOpts *admin
 
   if (!g_file_query_exists (expected_initramfs_path, NULL))
     {
-      if (src_initramfs_path == NULL)
-        {
-          if (!generate_initramfs (self, &src_initramfs_path,
-                                   cancellable, error))
-            goto out;
-
-        }
-      
       if (!gs_file_linkcopy_sync_data (src_initramfs_path, expected_initramfs_path, G_FILE_COPY_OVERWRITE,
                                        cancellable, error))
         goto out;
