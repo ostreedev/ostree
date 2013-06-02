@@ -17,8 +17,11 @@
 
 if !TRIGGERS_ONLY
 sbin_PROGRAMS += ostree-switch-root
+sbin_PROGRAMS += ostree-prepare-root
 endif
 
-ostree_switch_root_SOURCES = src/switchroot/ostree-switch-root.c
+ostree_prepare_root_SOURCES = src/switchroot/ostree-prepare-root.c
+ostree_prepare_root_CFLAGS = $(AM_CFLAGS)
 
+ostree_switch_root_SOURCES = src/switchroot/ostree-switch-root.c
 ostree_switch_root_CFLAGS = $(AM_CFLAGS)
