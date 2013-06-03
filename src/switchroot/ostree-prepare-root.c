@@ -64,6 +64,46 @@ perrorv (const char *format, ...)
   return 0;
 }
 
+static void
+parse_ostree_cmdline (char **out_osname,
+		      char **out_tree)
+{
+  FILE *f = fopen("/proc/cmdline", "r");
+  char *cmdline = NULL;
+  const char *iter;
+  size_t len;
+  if (!f)
+    return;
+  if (getline (&cmdline, &len, f) < 0)
+    return;
+
+  iter = cmdline;
+  while (iter != NULL)
+    {
+      const char *next = strchr (iter, ' ');
+      const char *next_nonspc = next;
+      while (*next_nonspc == ' ')
+	next_nonspc += 1;
+      if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
+        {
+          const char *slash = strchr (iter, '/');
+          if (slash)
+            {
+              const char *start = iter + strlen ("ostree=");
+              *out_osname = strndup (start, slash - start);
+              if (next)
+                *out_tree = strndup (slash + 1, next - slash - 1);
+              else
+                *out_tree = strdup (slash + 1);
+              break;
+            }
+        }
+      iter = next_nonspc;
+    }
+
+  free (cmdline);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -71,9 +111,8 @@ main(int argc, char *argv[])
   const char *ostree_bind_mounts[] = { "/var", NULL };
   const char *readonly_bind_mounts[] = { "/usr", NULL };
   const char *root_mountpoint = NULL;
-  const char *ostree_target = NULL;
-  const char *p = NULL;
   char *ostree_osname = NULL;
+  char *ostree_target = NULL;
   char ostree_target_path[PATH_MAX];
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
@@ -81,7 +120,6 @@ main(int argc, char *argv[])
   struct stat stbuf;
   size_t len;
   int i;
-  int before_init_argc = 0;
 
   if (argc < 3)
     {
@@ -89,33 +127,34 @@ main(int argc, char *argv[])
       exit (1);
     }
 
-  before_init_argc++;
   root_mountpoint = argv[1];
-  before_init_argc++;
-  ostree_target = argv[2];
-  before_init_argc++;
 
-  p = strchr (ostree_target, '/');
-  if (p == NULL || p == ostree_target)
-    {
-      fprintf (stderr, "Malformed OSTree target %s; expected OSNAME/TREENAME\n", ostree_target);
-      exit (1);
-    }
-  ostree_osname = strndup (ostree_target, p - ostree_target);
+  parse_ostree_cmdline (&ostree_osname, &ostree_target);
 
-  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s",
-	    root_mountpoint, ostree_target);
-  if (stat (destpath, &stbuf) < 0)
+  if (!ostree_osname)
     {
-      perrorv ("Invalid OSTree root '%s'", destpath);
+      fprintf (stderr, "No OSTree target; expected ostree=OSNAME/TREENAME\n");
       exit (1);
     }
 
-  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s", root_mountpoint, ostree_target);
+  /* Work-around for a kernel bug: for some reason the kernel
+   * refuses switching root if any file systems are mounted
+   * MS_SHARED. Hence remount them MS_PRIVATE here as a
+   * work-around.
+   *
+   * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
+  if (mount (NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
+    {
+      perrorv ("Failed to make \"/\" private mount: %m");
+      exit (1);
+    }
+
+  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s/%s",
+	    root_mountpoint, ostree_osname, ostree_target);
   fprintf (stderr, "Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
     {
-      perrorv ("Second stat of OSTree root '%s' failed: ", destpath);
+      perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
       exit (1);
     }
   if (!S_ISLNK (stbuf.st_mode))
@@ -193,6 +232,16 @@ main(int argc, char *argv[])
 	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
 	  exit (1);
 	}
+    }
+
+  /* This is a bit hacky - move our deployment to /sysroot, since
+   * systemd's initrd-switch-root target hardcodes looking for it
+   * there.
+   */
+  if (mount (deploy_path, root_mountpoint, NULL, MS_MOVE, NULL) < 0)
+    {
+      perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+      exit (1);
     }
   
   exit (0);
