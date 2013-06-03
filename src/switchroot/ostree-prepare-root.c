@@ -82,7 +82,7 @@ parse_ostree_cmdline (char **out_osname,
     {
       const char *next = strchr (iter, ' ');
       const char *next_nonspc = next;
-      while (*next_nonspc == ' ')
+      while (next_nonspc && *next_nonspc == ' ')
 	next_nonspc += 1;
       if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
         {
@@ -121,9 +121,9 @@ main(int argc, char *argv[])
   size_t len;
   int i;
 
-  if (argc < 3)
+  if (argc < 2)
     {
-      fprintf (stderr, "usage: ostree-prepare-root SYSROOT OSTREE\n");
+      fprintf (stderr, "usage: ostree-prepare-root SYSROOT\n");
       exit (1);
     }
 
