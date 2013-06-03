@@ -146,6 +146,12 @@ AC_ARG_ENABLE(grub2-hook,
 	      enable_grub2_hook=${grub2_hook_default})
 AM_CONDITIONAL(ENABLE_GRUB2_HOOK, test $enable_grub2_hook != no)
 
+AC_ARG_WITH(dracut,
+            AS_HELP_STRING([--with-dracut],
+                           [Install dracut module (default: no)]),,
+              [with_dracut=no])
+AM_CONDITIONAL(BUILDOPT_DRACUT, test x$with_dracut = xyes)
+
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
@@ -164,4 +170,5 @@ echo "
     documentation: $enable_documentation
     kernel updates integration: $enable_kernel_updates
     GRUB2 hook: $enable_grub2_hook
+    dracut: $with_dracut
 "

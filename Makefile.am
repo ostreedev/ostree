@@ -86,6 +86,7 @@ include Makefile-ostree.am
 include Makefile-switchroot.am
 include Makefile-triggers.am
 include Makefile-tests.am
+include Makefile-dracut.am
 
 
 #  Docbook generation copied from systemd/Makefile.am
