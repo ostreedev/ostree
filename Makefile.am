@@ -29,6 +29,7 @@ SUBDIRS = .
 endif
 
 NULL = 
+INSTALL_DATA_HOOKS =
 BUILT_SOURCES =
 MANPAGES =
 CLEANFILES =
@@ -88,6 +89,7 @@ include Makefile-triggers.am
 include Makefile-tests.am
 include Makefile-dracut.am
 
+install-data-hook: $(INSTALL_DATA_HOOKS)
 
 #  Docbook generation copied from systemd/Makefile.am
 #

@@ -59,5 +59,6 @@ libostree_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
 libostree_la_LIBADD += $(OT_DEP_LIBARCHIVE_LIBS)
 endif
 
-install-data-hook:
+INSTALL_DATA_HOOKS += install-libostree-data-hook
+install-libostree-data-hook: 
 	rm -f $(DESTDIR)$(privlibdir)/libostree.la

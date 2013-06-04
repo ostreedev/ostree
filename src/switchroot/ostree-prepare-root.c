@@ -39,30 +39,7 @@
 #include <ctype.h>
 #include <dirent.h>
 
-static int
-perrorv (const char *format, ...) __attribute__ ((format (printf, 1, 2)));
-
-static int
-perrorv (const char *format, ...)
-{
-  va_list args;
-  char buf[PATH_MAX];
-  char *p;
-
-  p = strerror_r (errno, buf, sizeof (buf));
-
-  va_start (args, format);
-
-  vfprintf (stderr, format, args);
-  fprintf (stderr, ": %s\n", p);
-  fflush (stderr);
-
-  va_end (args);
-
-  sleep (3);
-	
-  return 0;
-}
+#include "ostree-mount-util.h"
 
 static void
 parse_ostree_cmdline (char **out_osname,
@@ -76,6 +53,9 @@ parse_ostree_cmdline (char **out_osname,
     return;
   if (getline (&cmdline, &len, f) < 0)
     return;
+
+  if (cmdline[len-1] == '\n')
+    cmdline[len-1] = '\0';
 
   iter = cmdline;
   while (iter != NULL)
