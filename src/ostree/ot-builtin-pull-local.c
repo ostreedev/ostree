@@ -44,6 +44,12 @@ typedef struct {
 } OtLocalCloneData;
 
 static gboolean
+termination_condition (OtLocalCloneData  *self)
+{
+  return g_atomic_int_get (&self->n_objects_checked) == self->n_objects_to_check;
+}
+
+static gboolean
 import_one_object (OtLocalCloneData *data,
                    const char   *checksum,
                    OstreeObjectType objtype,
@@ -123,8 +129,9 @@ import_one_object_thread (gpointer   object,
     }
   
  out:
-  if (g_atomic_int_add (&data->n_objects_checked, 1) == data->n_objects_to_check - 1)
-    g_main_loop_quit (data->loop);
+  g_atomic_int_add (&data->n_objects_checked, 1);
+  if (termination_condition (data))
+    g_main_context_wakeup (NULL);
   if (local_error != NULL)
     {
       g_printerr ("%s\n", local_error->message);
@@ -203,7 +210,6 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
     goto out;
 
   data->threadpool = ot_thread_pool_new_nproc (import_one_object_thread, data);
-  data->loop = g_main_loop_new (NULL, TRUE);
 
   src_repo_dir = g_object_ref (ostree_repo_get_path (data->src_repo));
   dest_repo_dir = g_object_ref (ostree_repo_get_path (data->dest_repo));
@@ -286,7 +292,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
       g_timeout_add_seconds (1, idle_print_status, data);
       idle_print_status (data);
 
-      g_main_loop_run (data->loop);
+      while (!termination_condition (data))
+        g_main_context_iteration (NULL, TRUE);
 
       idle_print_status (data);
       if (data->console)
@@ -311,7 +318,6 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   ret = TRUE;
  out:
   g_clear_pointer (&data->threadpool, (GDestroyNotify) g_thread_pool_free);
-  g_clear_pointer (&data->loop, (GDestroyNotify) g_main_loop_unref);
   if (data->src_repo)
     g_object_unref (data->src_repo);
   if (data->dest_repo)
