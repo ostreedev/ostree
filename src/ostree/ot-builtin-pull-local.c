@@ -268,11 +268,11 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   if (!ostree_repo_prepare_transaction (data->dest_repo, FALSE, cancellable, error))
     goto out;
 
+  data->n_objects_to_check = g_hash_table_size (source_objects);
   g_hash_table_iter_init (&hash_iter, source_objects);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       GVariant *serialized_key = key;
-      data->n_objects_to_check++;
       g_thread_pool_push (data->threadpool, g_variant_ref (serialized_key), NULL);
     }
 
