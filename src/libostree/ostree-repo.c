@@ -1069,7 +1069,6 @@ append_object_dirs_from (OstreeRepo          *self,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   gs_unref_object GFileEnumerator *enumerator = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1088,10 +1087,17 @@ append_object_dirs_from (OstreeRepo          *self,
       goto out;
     }
 
-  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+  while (TRUE)
     {
+      GFileInfo *file_info;
       const char *name;
       guint32 type;
+
+      if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
+                                       NULL, error))
+        goto out;
+      if (file_info == NULL)
+        break;
 
       name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
       type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
@@ -1101,15 +1107,7 @@ append_object_dirs_from (OstreeRepo          *self,
           GFile *objdir = g_file_get_child (g_file_enumerator_get_container (enumerator), name);
           g_ptr_array_add (object_dirs, objdir);  /* transfer ownership */
         }
-      g_clear_object (&file_info);
     }
-  if (file_info == NULL && temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
-  if (!g_file_enumerator_close (enumerator, cancellable, error))
-    goto out;
 
   ret = TRUE;
  out:
@@ -1174,7 +1172,6 @@ scan_loose_devino (OstreeRepo                     *self,
                    GError                        **error)
 {
   gboolean ret = FALSE;
-  GError *temp_error = NULL;
   guint i;
   OstreeRepoMode repo_mode;
   ot_lptrarray GPtrArray *object_dirs = NULL;
@@ -1207,7 +1204,7 @@ scan_loose_devino (OstreeRepo                     *self,
 
       dirname = gs_file_get_basename_cached (objdir);
 
-      while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+      while (TRUE)
         {
           const char *name;
           const char *dot;
@@ -1216,14 +1213,17 @@ scan_loose_devino (OstreeRepo                     *self,
           GString *checksum;
           gboolean skip;
 
+          if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
+                                           NULL, error))
+            goto out;
+          if (file_info == NULL)
+            break;
+
           name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
           type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
 
           if (type == G_FILE_TYPE_DIRECTORY)
-            {
-              g_clear_object (&file_info);
-              continue;
-            }
+            continue;
       
           switch (repo_mode)
             {
@@ -1244,10 +1244,7 @@ scan_loose_devino (OstreeRepo                     *self,
           g_assert (dot);
 
           if ((dot - name) != 62)
-            {
-              g_clear_object (&file_info);
-              continue;
-            }
+            continue;
                   
           checksum = g_string_new (dirname);
           g_string_append_len (checksum, name, 62);
@@ -1257,16 +1254,7 @@ scan_loose_devino (OstreeRepo                     *self,
           key->ino = g_file_info_get_attribute_uint64 (file_info, "unix::inode");
           
           g_hash_table_replace (devino_cache, key, g_string_free (checksum, FALSE));
-          g_clear_object (&file_info);
         }
-
-      if (temp_error != NULL)
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-      if (!g_file_enumerator_close (enumerator, NULL, error))
-        goto out;
     }
 
   ret = TRUE;
@@ -1700,10 +1688,7 @@ enumerate_refs_recurse (OstreeRepo    *repo,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
   ot_lobj GFileEnumerator *enumerator = NULL;
-  ot_lobj GFile *child = NULL;
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1711,10 +1696,17 @@ enumerate_refs_recurse (OstreeRepo    *repo,
   if (!enumerator)
     goto out;
 
-  while ((file_info = g_file_enumerator_next_file (enumerator, cancellable, &temp_error)) != NULL)
+  while (TRUE)
     {
-      g_clear_object (&child);
-      child = g_file_get_child (dir, g_file_info_get_name (file_info));
+      GFileInfo *file_info = NULL;
+      GFile *child = NULL;
+
+      if (!gs_file_enumerator_iterate (enumerator, &file_info, &child,
+                                       NULL, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
           if (!enumerate_refs_recurse (repo, base, child, refs, cancellable, error))
@@ -1732,13 +1724,6 @@ enumerate_refs_recurse (OstreeRepo    *repo,
 
           g_hash_table_insert (refs, g_file_get_relative_path (base, child), contents);
         }
-
-      g_clear_object (&file_info);
-    }
-  if (temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
     }
 
   ret = TRUE;
@@ -2026,7 +2011,6 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                                    GError              **error)
 {
   gboolean ret = FALSE;
-  GError *temp_error = NULL;
   gboolean repo_dir_was_empty = FALSE;
   OstreeRepoCommitFilterResult filter_result;
   ot_lobj OstreeRepoFile *repo_dir = NULL;
@@ -2093,13 +2077,21 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
       if (!dir_enum)
         goto out;
 
-      while ((child_info = g_file_enumerator_next_file (dir_enum, cancellable, &temp_error)) != NULL)
+      while (TRUE)
         {
-          ot_lobj GFileInfo *modified_info = NULL;
-          ot_lobj GFile *child = NULL;
-          ot_lobj OstreeMutableTree *child_mtree = NULL;
-          const char *name = g_file_info_get_name (child_info);
+          GFileInfo *child_info;
+          gs_unref_object GFile *child = NULL;
+          gs_unref_object GFileInfo *modified_info = NULL;
+          gs_unref_object OstreeMutableTree *child_mtree = NULL;
+          const char *name;
+          
+          if (!gs_file_enumerator_iterate (dir_enum, &child_info, NULL,
+                                           cancellable, error))
+            goto out;
+          if (child_info == NULL)
+            break;
 
+          name = g_file_info_get_name (child_info);
           g_ptr_array_add (path, (char*)name);
           filter_result = apply_commit_filter (self, modifier, path, child_info, &modified_info);
 
@@ -2176,13 +2168,6 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
 
               g_ptr_array_remove_index (path, path->len - 1);
             }
-
-          g_clear_object (&child_info);
-        }
-      if (temp_error != NULL)
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
         }
     }
 
