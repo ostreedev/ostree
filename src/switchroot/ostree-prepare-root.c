@@ -180,10 +180,16 @@ main(int argc, char *argv[])
     {
       snprintf (srcpath, sizeof(srcpath), "%s%s", root_mountpoint, toproot_bind_mounts[i]);
       snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, toproot_bind_mounts[i]);
-      if (mount (srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
+      /* Only do these bind mounts if the target exists and is a real directory,
+       * not a symbolic link.
+       */
+      if (lstat (destpath, &stbuf) == 0 && S_ISDIR(stbuf.st_mode))
 	{
-	  perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
-	  exit (1);
+	  if (mount (srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
+	    {
+	      perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
+	      exit (1);
+	    }
 	}
     }
 
