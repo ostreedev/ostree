@@ -23,7 +23,7 @@
 #include "config.h"
 
 #include "ot-builtins.h"
-#include "ostree.h"
+#include "ostree-prune.h"
 
 #include <glib/gi18n.h>
 #include <glib/gprintf.h>
@@ -39,80 +39,18 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-typedef struct {
-  OstreeRepo *repo;
-  GHashTable *reachable;
-  guint n_reachable_meta;
-  guint n_reachable_content;
-  guint n_unreachable_meta;
-  guint n_unreachable_content;
-  guint64 freed_bytes;
-} OtPruneData;
-
-static gboolean
-maybe_prune_loose_object (OtPruneData    *data,
-                          const char    *checksum,
-                          OstreeObjectType objtype,
-                          GCancellable    *cancellable,
-                          GError         **error)
-{
-  gboolean ret = FALSE;
-  ot_lvariant GVariant *key = NULL;
-  ot_lobj GFile *objf = NULL;
-
-  key = ostree_object_name_serialize (checksum, objtype);
-
-  objf = ostree_repo_get_object_path (data->repo, checksum, objtype);
-
-  if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
-    {
-      if (!opt_no_prune)
-        {
-          ot_lobj GFileInfo *info = NULL;
-
-          if ((info = g_file_query_info (objf, OSTREE_GIO_FAST_QUERYINFO,
-                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                         cancellable, error)) == NULL)
-            goto out;
-
-          if (!gs_file_unlink (objf, cancellable, error))
-            goto out;
-
-          data->freed_bytes += g_file_info_get_size (info);
-        }
-      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-        data->n_unreachable_meta++;
-      else
-        data->n_unreachable_content++;
-    }
-  else
-    {
-      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-        data->n_reachable_meta++;
-      else
-        data->n_reachable_content++;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 gboolean
 ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  GHashTableIter hash_iter;
-  gpointer key, value;
   GCancellable *cancellable = NULL;
-  ot_lhash GHashTable *objects = NULL;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lhash GHashTable *all_refs = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *formatted_freed_size = NULL;
-  OtPruneData data;
-
-  memset (&data, 0, sizeof (data));
+  OstreePruneFlags pruneflags = 0;
+  gint n_objects_total;
+  gint n_objects_pruned;
+  guint64 objsize_total;
 
   context = g_option_context_new ("- Search for unreachable objects");
   g_option_context_add_main_entries (context, options, NULL);
@@ -124,82 +62,30 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  data.repo = repo;
-  data.reachable = ostree_traverse_new_reachable ();
-
   if (opt_refs_only)
-    {
-      if (!ostree_repo_list_all_refs (repo, &all_refs, cancellable, error))
-        goto out;
-      
-      g_hash_table_iter_init (&hash_iter, all_refs);
-      
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
-        {
-          const char *checksum = value;
-          
-          // g_print ("Computing reachable, currently %u total, from %s: %s\n", g_hash_table_size (data.reachable), name, checksum);
-          if (!ostree_traverse_commit (repo, checksum, opt_depth, data.reachable, cancellable, error))
-            goto out;
-        }
-    }
+    pruneflags |= OSTREE_PRUNE_FLAGS_REFS_ONLY;
+  if (opt_no_prune)
+    pruneflags |= OSTREE_PRUNE_FLAGS_NO_PRUNE;
 
-  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects, cancellable, error))
+  if (!ostree_prune (repo, pruneflags, opt_depth,
+                     &n_objects_total, &n_objects_pruned, &objsize_total,
+                     cancellable, error))
     goto out;
 
-  if (!opt_refs_only)
-    {
-      g_hash_table_iter_init (&hash_iter, objects);
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
-        {
-          GVariant *serialized_key = key;
-          const char *checksum;
-          OstreeObjectType objtype;
+  formatted_freed_size = g_format_size_full (objsize_total, 0);
 
-          ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-
-          if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
-            continue;
-          
-          if (!ostree_traverse_commit (repo, checksum, opt_depth, data.reachable, cancellable, error))
-            goto out;
-        }
-    }
-
-  g_hash_table_iter_init (&hash_iter, objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      GVariant *serialized_key = key;
-      GVariant *objdata = value;
-      const char *checksum;
-      OstreeObjectType objtype;
-      gboolean is_loose;
-      
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-      g_variant_get_child (objdata, 0, "b", &is_loose);
-
-      if (!is_loose)
-        continue;
-
-      if (!maybe_prune_loose_object (&data, checksum, objtype, cancellable, error))
-        goto out;
-    }
-
-  formatted_freed_size = g_format_size_full (data.freed_bytes, 0);
-
-  g_print ("Total reachable: %u meta, %u content\n",
-           data.n_reachable_meta, data.n_reachable_content);
-  if (opt_no_prune)
-    g_print ("Total unreachable: %u meta, %u content\n",
-             data.n_unreachable_meta, data.n_unreachable_content);
+  g_print ("Total objects: %u\n", n_objects_total);
+  if (n_objects_pruned == 0)
+    g_print ("No unreachable objects\n");
+  else if (pruneflags & OSTREE_PRUNE_FLAGS_NO_PRUNE)
+    g_print ("Would delete: %u objects, freeing %s bytes\n",
+             n_objects_pruned, formatted_freed_size);
   else
-    g_print ("Freed %s from %u meta, %u content objects\n",
-             formatted_freed_size, data.n_unreachable_meta, data.n_unreachable_content);
+    g_print ("Deleted %u objects, %s bytes freed\n",
+             n_objects_pruned, formatted_freed_size);
 
   ret = TRUE;
  out:
-  if (data.reachable)
-    g_hash_table_unref (data.reachable);
   if (context)
     g_option_context_free (context);
   return ret;

@@ -24,6 +24,8 @@ endif
 ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ostree-curl-fetcher.h \
 	src/ostree/ostree-curl-fetcher.c \
+	src/ostree/ostree-prune.h \
+	src/ostree/ostree-prune.c \
 	src/ostree/ot-builtin-admin.c \
 	src/ostree/ot-builtins.h \
 	src/ostree/ot-builtin-cat.c \
