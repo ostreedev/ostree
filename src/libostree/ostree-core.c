@@ -61,25 +61,85 @@ ostree_validate_checksum_string (const char *sha256,
   return ostree_validate_structureof_checksum_string (sha256, error);
 }
 
+#define OSTREE_REF_FRAGMENT_REGEXP "[-_\\w\\d]+"
+#define OSTREE_REF_REGEXP "(?:" OSTREE_REF_FRAGMENT_REGEXP "/)*" OSTREE_REF_FRAGMENT_REGEXP
+
+gboolean
+ostree_parse_refspec (const char   *refspec,
+                      char        **out_remote,
+                      char        **out_ref,
+                      GError      **error)
+{
+  gboolean ret = FALSE;
+  GMatchInfo *match = NULL;
+  char *remote;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^(" OSTREE_REF_FRAGMENT_REGEXP ":)?(" OSTREE_REF_REGEXP ")$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, refspec, 0, &match))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid refspec %s", refspec);
+      goto out;
+    }
+
+  remote = g_match_info_fetch (match, 1);
+  if (*remote == '\0')
+    {
+      g_clear_pointer (&remote, g_free);
+    }
+  else
+    {
+      /* Trim the : */
+      remote[strlen(remote)-1] = '\0';
+    }
+
+  ret = TRUE;
+  *out_remote = remote;
+  *out_ref = g_match_info_fetch (match, 2);
+ out:
+  if (match)
+    g_match_info_unref (match);
+  return ret;
+}
+
 gboolean
 ostree_validate_rev (const char *rev,
                      GError **error)
 {
   gboolean ret = FALSE;
-  ot_lptrarray GPtrArray *components = NULL;
+  gs_unref_ptrarray GPtrArray *components = NULL;
+  GMatchInfo *match = NULL;
 
-  if (!ot_util_path_split_validate (rev, &components, error))
-    goto out;
+  static gsize regex_initialized;
+  static GRegex *regex;
 
-  if (components->len == 0)
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^" OSTREE_REF_REGEXP "$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, rev, 0, &match))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid empty rev");
+                   "Invalid ref name %s", rev);
       goto out;
     }
 
   ret = TRUE;
  out:
+  if (match)
+    g_match_info_unref (match);
   return ret;
 }
 

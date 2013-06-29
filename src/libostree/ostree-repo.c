@@ -284,7 +284,7 @@ parse_rev_file (OstreeRepo     *self,
 }
 
 static gboolean
-find_rev_in_remotes (OstreeRepo         *self,
+find_ref_in_remotes (OstreeRepo         *self,
                      const char         *rev,
                      GFile             **out_file,
                      GError            **error)
@@ -325,111 +325,189 @@ find_rev_in_remotes (OstreeRepo         *self,
   return ret;
 }
 
-gboolean
-ostree_repo_resolve_rev (OstreeRepo     *self,
-                         const char     *rev,
-                         gboolean        allow_noent,
-                         char          **sha256,
-                         GError        **error)
+static gboolean
+resolve_refspec (OstreeRepo     *self,
+                 const char     *remote,
+                 const char     *ref,
+                 gboolean        allow_noent,
+                 char          **out_rev,
+                 GError        **error);
+
+static gboolean
+resolve_refspec_fallback (OstreeRepo     *self,
+                          const char     *remote,
+                          const char     *ref,
+                          gboolean        allow_noent,
+                          char          **out_rev,
+                          GCancellable   *cancellable,
+                          GError        **error)
 {
   gboolean ret = FALSE;
+  gs_free char *ret_rev = NULL;
+
+  if (self->parent_repo)
+    {
+      if (!resolve_refspec (self->parent_repo, remote, ref,
+                            allow_noent, &ret_rev, error))
+        goto out;
+    }
+  else if (!allow_noent)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Refspec '%s%s%s' not found",
+                   remote ? remote : "",
+                   remote ? ":" : "",
+                   ref);
+      goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_rev, &ret_rev);
+ out:
+  return ret;
+}
+
+static gboolean
+resolve_refspec (OstreeRepo     *self,
+                 const char     *remote,
+                 const char     *ref,
+                 gboolean        allow_noent,
+                 char          **out_rev,
+                 GError        **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((unused)) GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
   ot_lfree char *tmp = NULL;
   ot_lfree char *tmp2 = NULL;
   ot_lfree char *ret_rev = NULL;
   ot_lobj GFile *child = NULL;
   ot_lobj GFile *origindir = NULL;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lvariant GVariant *parent_csum_v = NULL;
   
-  g_return_val_if_fail (rev != NULL, FALSE);
-
-  if (!ostree_validate_rev (rev, error))
-    goto out;
+  g_return_val_if_fail (ref != NULL, FALSE);
 
   /* We intentionally don't allow a ref that looks like a checksum */
-  if (ostree_validate_checksum_string (rev, NULL))
+  if (ostree_validate_checksum_string (ref, NULL))
     {
-      ret_rev = g_strdup (rev);
+      ret_rev = g_strdup (ref);
     }
-  else if (g_str_has_suffix (rev, "^"))
+  else if (remote != NULL)
     {
-      tmp = g_strdup (rev);
-      tmp[strlen(tmp) - 1] = '\0';
-
-      if (!ostree_repo_resolve_rev (self, tmp, allow_noent, &tmp2, error))
-        goto out;
-
-      if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, tmp2, &commit, error))
-        goto out;
-      
-      g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
-      if (g_variant_n_children (parent_csum_v) == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Commit %s has no parent", tmp2);
-          goto out;
-        }
-      ret_rev = ostree_checksum_from_bytes_v (parent_csum_v);
+      child = ot_gfile_resolve_path_printf (self->remote_heads_dir, "%s/%s",
+                                            remote, ref);
+      if (!g_file_query_exists (child, NULL))
+        g_clear_object (&child);
     }
   else
     {
-      child = g_file_resolve_relative_path (self->local_heads_dir, rev);
+      child = g_file_resolve_relative_path (self->local_heads_dir, ref);
 
       if (!g_file_query_exists (child, NULL))
         {
           g_clear_object (&child);
 
-          child = g_file_resolve_relative_path (self->remote_heads_dir, rev);
+          child = g_file_resolve_relative_path (self->remote_heads_dir, ref);
 
           if (!g_file_query_exists (child, NULL))
             {
               g_clear_object (&child);
               
-              if (!find_rev_in_remotes (self, rev, &child, error))
+              if (!find_ref_in_remotes (self, ref, &child, error))
                 goto out;
-              
-              if (child == NULL)
-                {
-                  if (self->parent_repo)
-                    {
-                      if (!ostree_repo_resolve_rev (self->parent_repo, rev,
-                                                    allow_noent, &ret_rev,
-                                                    error))
-                        goto out;
-                    }
-                  else if (!allow_noent)
-                    {
-                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Rev '%s' not found", rev);
-                      goto out;
-                    }
-                  else
-                    g_clear_object (&child);
-                }
             }
-        }
-
-      if (child)
-        {
-          if ((ret_rev = gs_file_load_contents_utf8 (child, NULL, &temp_error)) == NULL)
-            {
-              g_propagate_error (error, temp_error);
-              g_prefix_error (error, "Couldn't open ref '%s': ", gs_file_get_path_cached (child));
-              goto out;
-            }
-
-          g_strchomp (ret_rev);
-          if (!ostree_validate_checksum_string (ret_rev, error))
-            goto out;
         }
     }
 
-  ot_transfer_out_value(sha256, &ret_rev);
+  if (child)
+    {
+      if ((ret_rev = gs_file_load_contents_utf8 (child, NULL, &temp_error)) == NULL)
+        {
+          g_propagate_error (error, temp_error);
+          g_prefix_error (error, "Couldn't open ref '%s': ", gs_file_get_path_cached (child));
+          goto out;
+        }
+
+      g_strchomp (ret_rev);
+      if (!ostree_validate_checksum_string (ret_rev, error))
+        goto out;
+    }
+  else
+    {
+      if (!resolve_refspec_fallback (self, remote, ref, allow_noent,
+                                     &ret_rev, cancellable, error))
+        goto out;
+    }
+
+  ot_transfer_out_value (out_rev, &ret_rev);
   ret = TRUE;
  out:
   return ret;
 }
+
+gboolean
+ostree_repo_resolve_rev (OstreeRepo     *self,
+                         const char     *refspec,
+                         gboolean        allow_noent,
+                         char          **out_rev,
+                         GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *ret_rev = NULL;
+
+  g_return_val_if_fail (refspec != NULL, FALSE);
+
+  if (ostree_validate_checksum_string (refspec, NULL))
+    {
+      ret_rev = g_strdup (refspec);
+    }
+  else
+    {
+      if (g_str_has_suffix (refspec, "^"))
+        {
+          gs_free char *parent_refspec = NULL;
+          gs_free char *parent_rev = NULL;
+          gs_unref_variant GVariant *commit = NULL;
+          gs_unref_variant GVariant *parent_csum_v = NULL;
+
+          parent_refspec = g_strdup (refspec);
+          parent_refspec[strlen(parent_refspec) - 1] = '\0';
+
+          if (!ostree_repo_resolve_rev (self, parent_refspec, allow_noent, &parent_rev, error))
+            goto out;
+          
+          if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, parent_rev,
+                                         &commit, error))
+            goto out;
+      
+          g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
+          if (g_variant_n_children (parent_csum_v) == 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Commit %s has no parent", parent_rev);
+              goto out;
+            }
+          ret_rev = ostree_checksum_from_bytes_v (parent_csum_v);
+        }
+      else
+        {
+          gs_free char *remote = NULL;
+          gs_free char *ref = NULL;
+
+          if (!ostree_parse_refspec (refspec, &remote, &ref, error))
+            goto out;
+          
+          if (!resolve_refspec (self, remote, ref, allow_noent,
+                                &ret_rev, error))
+            goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_rev, &ret_rev);
+ out:
+  return ret;
+}
+
 
 static gboolean
 write_checksum_file (GFile *parentdir,
@@ -1831,6 +1909,27 @@ ostree_repo_write_ref (OstreeRepo  *self,
       if (!write_ref_summary (self, NULL, error))
         goto out;
     }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ostree_repo_write_refspec (OstreeRepo  *self,
+                           const char  *refspec,
+                           const char  *rev,
+                           GError     **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *remote = NULL;
+  gs_free char *ref = NULL;
+
+  if (!ostree_parse_refspec (refspec, &remote, &ref, error))
+    goto out;
+
+  if (!ostree_repo_write_ref (self, remote, ref, rev, error))
+    goto out;
 
   ret = TRUE;
  out:

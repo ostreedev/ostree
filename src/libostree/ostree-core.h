@@ -122,6 +122,11 @@ int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
+gboolean ostree_parse_refspec (const char *refspec,
+                               char      **out_remote,
+                               char      **out_ref,
+                               GError    **error);
+
 void ostree_checksum_update_meta (GChecksum *checksum, GFileInfo *file_info, GVariant  *xattrs);
 
 const char * ostree_object_type_to_string (OstreeObjectType objtype);

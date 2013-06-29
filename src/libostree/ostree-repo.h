@@ -153,7 +153,7 @@ gboolean      ostree_repo_stage_content_finish (OstreeRepo        *self,
                                                 GError           **error);
 
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
-                                       const char  *rev,
+                                       const char  *refspec,
                                        gboolean     allow_noent,
                                        char       **out_resolved,
                                        GError     **error);
@@ -163,6 +163,11 @@ gboolean      ostree_repo_write_ref (OstreeRepo  *self,
                                      const char  *name,
                                      const char  *rev,
                                      GError     **error);
+
+gboolean      ostree_repo_write_refspec (OstreeRepo  *self,
+                                         const char  *refspec,
+                                         const char  *rev,
+                                         GError     **error);
 
 gboolean      ostree_repo_list_all_refs (OstreeRepo       *repo,
                                          GHashTable      **out_all_refs,
