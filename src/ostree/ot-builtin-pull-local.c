@@ -28,7 +28,10 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+static char *opt_remote;
+
 static GOptionEntry options[] = {
+  { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { NULL }
 };
 
@@ -310,8 +313,9 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
     {
       const char *name = key;
       const char *checksum = value;
-
-      if (!ostree_repo_write_ref (data->dest_repo, NULL, name, checksum, error))
+        
+      if (!ostree_repo_write_ref (data->dest_repo, opt_remote, name, checksum,
+                                  error))
         goto out;
     }
 

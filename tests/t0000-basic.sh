@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..30"
+echo "1..31"
 
 . $(dirname $0)/libtest.sh
 
@@ -218,3 +218,11 @@ echo "ok subdir enoent"
 cd ${test_tmpdir}
 $OSTREE checkout test2 --allow-noent --subpath /enoent 2>/dev/null
 echo "ok subdir noent"
+
+cd ${test_tmpdir}
+mkdir repo3
+${CMD_PREFIX} ostree --repo=repo3 init
+${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
+ostree --repo=repo3 rev-parse aremote/test2
+echo "ok pull-local with --remote arg"
+
