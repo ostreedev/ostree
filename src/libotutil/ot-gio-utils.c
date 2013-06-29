@@ -132,3 +132,210 @@ ot_gfile_get_child_build_path (GFile      *parent,
 
   return g_file_resolve_relative_path (parent, path);
 }
+
+GFile *
+ot_gfile_resolve_path_printf (GFile       *path,
+                              const char  *format,
+                              ...)
+{
+  va_list args;
+  gs_free char *relpath = NULL;
+
+  va_start (args, format);
+  relpath = g_strdup_vprintf (format, args);
+  va_end (args);
+
+  return g_file_resolve_relative_path (path, relpath);
+}
+
+
+gboolean
+ot_gfile_get_symlink_target_from_info (GFile             *path,
+                                       GFileInfo         *file_info,
+                                       GFile            **out_target,
+                                       GCancellable      *cancellable,
+                                       GError           **error)
+{
+  gboolean ret = FALSE;
+  const char *target;
+  gs_unref_object GFile *path_parent = NULL;
+  gs_unref_object GFile *ret_target = NULL;
+
+  if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_SYMBOLIC_LINK)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Not a symbolic link");
+      goto out;
+    }
+
+  path_parent = g_file_get_parent (path);
+  target = g_file_info_get_symlink_target (file_info);
+  g_assert (target);
+  ret_target = g_file_resolve_relative_path (path_parent, target);
+
+  ret = TRUE;
+ out:
+  ot_transfer_out_value (out_target, &ret_target);
+  return ret;
+}
+
+gboolean
+ot_gfile_query_info_allow_noent (GFile                *path,
+                                 const char           *queryopts,
+                                 GFileQueryInfoFlags   flags,
+                                 GFileInfo           **out_info,
+                                 GCancellable         *cancellable,
+                                 GError              **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  GError *temp_error = NULL;
+
+  ret_file_info = g_file_query_info (path, queryopts, flags,
+                                     cancellable, &temp_error);
+  if (!ret_file_info)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_info, &ret_file_info);
+ out:
+  return ret;
+}
+
+gboolean
+ot_gfile_query_symlink_target_allow_noent (GFile          *path,
+                                           GFile         **out_target,
+                                           GCancellable   *cancellable,
+                                           GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_object GFile *ret_target = NULL;
+
+  if (!ot_gfile_query_info_allow_noent (path, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        &file_info,
+                                        cancellable, error))
+    goto out;
+
+  if (file_info != NULL)
+    {
+      if (!ot_gfile_get_symlink_target_from_info (path, file_info, &ret_target,
+                                                  cancellable, error))
+        goto out;
+    }
+  
+  ret = TRUE;
+  ot_transfer_out_value (out_target, &ret_target);
+ out:
+  return ret;
+}
+
+gboolean
+ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
+                                         char          **out_contents,
+                                         GCancellable   *cancellable,
+                                         GError        **error)
+{
+  gboolean ret = TRUE;
+  GError *temp_error = NULL;
+  gs_free char *ret_contents = NULL;
+
+  ret_contents = gs_file_load_contents_utf8 (path, cancellable, &temp_error);
+  if (!ret_contents)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_contents, &ret_contents);
+ out:
+  return ret;
+}
+
+/**
+ * ot_gfile_ensure_unlinked:
+ *
+ * Like gs_file_unlink(), but return successfully if the file doesn't
+ * exist.
+ */
+gboolean
+ot_gfile_ensure_unlinked (GFile         *path,
+                          GCancellable  *cancellable,
+                          GError       **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+
+  if (!gs_file_unlink (path, cancellable, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
+ * ot_gfile_atomic_symlink_swap:
+ * @path: Replace the contents of this symbolic link
+ * @target: New symbolic link target
+ * @cancellable:
+ * @error
+ *
+ * Create a new temporary symbolic link, then use the Unix rename()
+ * function to atomically replace @path with the new symbolic link.
+ * Do not use this function inside directories such as /tmp as it uses
+ * a predicatable file name.
+ */
+gboolean
+ot_gfile_atomic_symlink_swap (GFile          *path,
+                              const char     *target,
+                              GCancellable   *cancellable,
+                              GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *parent = g_file_get_parent (path);
+  gs_free char *tmpname = g_strconcat (gs_file_get_basename_cached (path), ".tmp", NULL);
+  gs_unref_object GFile *tmppath = g_file_get_child (parent, tmpname);
+
+  if (!ot_gfile_ensure_unlinked (tmppath, cancellable, error))
+    goto out;
+  
+  if (!g_file_make_symbolic_link (tmppath, target, cancellable, error))
+    goto out;
+
+  if (!gs_file_rename (tmppath, path, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
