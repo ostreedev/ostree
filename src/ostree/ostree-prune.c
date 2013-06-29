@@ -110,7 +110,8 @@ ostree_prune (OstreeRepo        *repo,
 
   if (refs_only)
     {
-      if (!ostree_repo_list_all_refs (repo, &all_refs, cancellable, error))
+      if (!ostree_repo_list_refs (repo, NULL, &all_refs,
+                                  cancellable, error))
         goto out;
       
       g_hash_table_iter_init (&hash_iter, all_refs);

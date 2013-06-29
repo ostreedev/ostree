@@ -219,7 +219,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   if (argc == 2)
     {
-      if (!ostree_repo_list_all_refs (data->src_repo, &refs_to_clone, cancellable, error))
+      if (!ostree_repo_list_refs (data->src_repo, NULL, &refs_to_clone,
+                                  cancellable, error))
         goto out;
     }
   else

@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..32"
+echo "1..33"
 
 . $(dirname $0)/libtest.sh
 
@@ -33,6 +33,12 @@ $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
 $OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
 echo "ok rev-parse"
+
+$OSTREE refs > reflist
+assert_file_has_content reflist '^test2$'
+rm reflist
+
+echo "ok refs"
 
 cd checkout-test2
 assert_has_file firstfile

@@ -1759,6 +1759,7 @@ create_empty_gvariant_dict (void)
 
 static gboolean
 enumerate_refs_recurse (OstreeRepo    *repo,
+                        const char    *remote,
                         GFile         *base,
                         GFile         *dir,
                         GHashTable    *refs,
@@ -1787,20 +1788,32 @@ enumerate_refs_recurse (OstreeRepo    *repo,
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!enumerate_refs_recurse (repo, base, child, refs, cancellable, error))
+          if (!enumerate_refs_recurse (repo, remote, base, child, refs, cancellable, error))
             goto out;
         }
       else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
           char *contents;
+          char *relpath;
           gsize len;
+          GString *refname;
 
           if (!g_file_load_contents (child, cancellable, &contents, &len, NULL, error))
             goto out;
 
           g_strchomp (contents);
 
-          g_hash_table_insert (refs, g_file_get_relative_path (base, child), contents);
+          refname = g_string_new ("");
+          if (remote)
+            {
+              g_string_append (refname, remote);
+              g_string_append_c (refname, ':');
+            }
+          relpath = g_file_get_relative_path (base, child);
+          g_string_append (refname, relpath);
+          g_free (relpath);
+          
+          g_hash_table_insert (refs, g_string_free (refname, FALSE), contents);
         }
     }
 
@@ -1810,25 +1823,71 @@ enumerate_refs_recurse (OstreeRepo    *repo,
 }
 
 gboolean
-ostree_repo_list_all_refs (OstreeRepo       *repo,
-                           GHashTable      **out_all_refs,
-                           GCancellable     *cancellable,
-                           GError          **error)
+ostree_repo_list_refs (OstreeRepo       *repo,
+                       const char       *refspec_prefix,
+                       GHashTable      **out_all_refs,
+                       GCancellable     *cancellable,
+                       GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lhash GHashTable *ret_all_refs = NULL;
-  ot_lobj GFile *dir = NULL;
+  gs_unref_hashtable GHashTable *ret_all_refs = NULL;
+  gs_free char *remote = NULL;
+  gs_free char *ref_prefix = NULL;
 
   ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/heads");
-  if (!enumerate_refs_recurse (repo, dir, dir, ret_all_refs, cancellable, error))
-    goto out;
+  if (refspec_prefix)
+    {
+      gs_unref_object GFile *dir = NULL;
+      gs_unref_object GFile *child = NULL;
 
-  g_clear_object (&dir);
-  dir = g_file_resolve_relative_path (ostree_repo_get_path (repo), "refs/remotes");
-  if (!enumerate_refs_recurse (repo, dir, dir, ret_all_refs, cancellable, error))
-    goto out;
+      if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
+        goto out;
+
+      if (remote)
+        dir = g_file_get_child (repo->remote_heads_dir, remote);
+      else
+        dir = g_object_ref (repo->local_heads_dir);
+
+      child = g_file_resolve_relative_path (dir, ref_prefix);
+
+      if (!enumerate_refs_recurse (repo, remote, child, child,
+                                   ret_all_refs,
+                                   cancellable, error))
+        goto out;
+    }
+  else
+    {
+      gs_unref_object GFileEnumerator *remote_enumerator = NULL;
+
+      if (!enumerate_refs_recurse (repo, NULL, repo->local_heads_dir, repo->local_heads_dir,
+                                   ret_all_refs,
+                                   cancellable, error))
+        goto out;
+
+      remote_enumerator = g_file_enumerate_children (repo->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                                     0,
+                                                     cancellable, error);
+
+      while (TRUE)
+        {
+          GFileInfo *info;
+          GFile *child;
+          const char *name;
+
+          if (!gs_file_enumerator_iterate (remote_enumerator, &info, &child,
+                                           cancellable, error))
+            goto out;
+          if (!info)
+            break;
+
+          name = g_file_info_get_name (info);
+          if (!enumerate_refs_recurse (repo, name, child, child,
+                                       ret_all_refs,
+                                       cancellable, error))
+            goto out;
+        }
+    }
 
   ret = TRUE;
   ot_transfer_out_value (out_all_refs, &ret_all_refs);
@@ -1850,7 +1909,7 @@ write_ref_summary (OstreeRepo      *self,
   ot_lobj GOutputStream *out = NULL;
   ot_lfree char *buf = NULL;
 
-  if (!ostree_repo_list_all_refs (self, &all_refs, cancellable, error))
+  if (!ostree_repo_list_refs (self, NULL, &all_refs, cancellable, error))
     goto out;
 
   summary_path = g_file_resolve_relative_path (ostree_repo_get_path (self),

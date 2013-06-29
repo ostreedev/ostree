@@ -169,10 +169,11 @@ gboolean      ostree_repo_write_refspec (OstreeRepo  *self,
                                          const char  *rev,
                                          GError     **error);
 
-gboolean      ostree_repo_list_all_refs (OstreeRepo       *repo,
-                                         GHashTable      **out_all_refs,
-                                         GCancellable     *cancellable,
-                                         GError          **error);
+gboolean      ostree_repo_list_refs (OstreeRepo       *repo,
+                                     const char       *refspec_prefix,
+                                     GHashTable      **out_all_refs,
+                                     GCancellable     *cancellable,
+                                     GError          **error);
 
 gboolean      ostree_repo_load_variant_c (OstreeRepo  *self,
                                           OstreeObjectType expected_type,

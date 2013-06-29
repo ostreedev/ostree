@@ -42,6 +42,7 @@ static OstreeCommand commands[] = {
   { "init", ostree_builtin_init, 0 },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
+  { "refs", ostree_builtin_refs, 0 },
   { "prune", ostree_builtin_prune, 0 },
   { "pull", ostree_builtin_pull, 0 },
   { "pull-local", ostree_builtin_pull_local, 0 },
