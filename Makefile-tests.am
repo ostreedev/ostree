@@ -28,6 +28,7 @@ testfiles = t0000-basic \
 	t0005-corruption \
 	t0006-libarchive \
 	t0011-pull-archive-z \
+	t0015-admin-deploy \
 	$(NULL)
 insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
 

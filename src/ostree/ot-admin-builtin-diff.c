@@ -28,7 +28,10 @@
 
 #include <glib/gi18n.h>
 
+static char *opt_osname;
+
 static GOptionEntry options[] = {
+  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Specify operating system root to use", NULL },
   { NULL }
 };
 
@@ -37,57 +40,55 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  const char *osname;
-  GFile *ostree_dir = admin_opts->ostree_dir;
+  gs_free char *booted_osname = NULL;
   ot_lobj GFile *repo_path = NULL;
-  ot_lobj GFile *deployment = NULL;
+  gs_unref_object OtDeployment *deployment = NULL;
+  gs_unref_object GFile *deployment_dir = NULL;
   ot_lobj GFile *deploy_parent = NULL;
   ot_lptrarray GPtrArray *modified = NULL;
   ot_lptrarray GPtrArray *removed = NULL;
   ot_lptrarray GPtrArray *added = NULL;
+  gs_unref_ptrarray GPtrArray *deployments = NULL;
   ot_lobj GFile *orig_etc_path = NULL;
   ot_lobj GFile *new_etc_path = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
+  int bootversion;
 
-  context = g_option_context_new ("OSNAME [REVISION] - Diff configuration for OSNAME");
+  context = g_option_context_new ("Diff current /etc configuration versus default");
 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  repo_path = g_file_get_child (ostree_dir, "repo");
+  repo_path = g_file_resolve_relative_path (admin_opts->sysroot, "ostree/repo");
 
-  if (argc < 2)
+  if (!ot_admin_list_deployments (admin_opts->sysroot, &bootversion, &deployments,
+                                  cancellable, error))
     {
-      ot_util_usage_error (context, "OSNAME must be specified", error);
+      g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  osname = argv[1];
-
-  if (argc > 2)
+  if (!ot_admin_require_deployment_or_osname (admin_opts->sysroot, deployments,
+                                              opt_osname, &deployment,
+                                              cancellable, error))
+    goto out;
+  if (deployment != NULL)
+    opt_osname = (char*)ot_deployment_get_osname (deployment);
+  if (deployment == NULL)
+    deployment = ot_admin_get_merge_deployment (deployments, opt_osname, deployment, NULL);
+  if (deployment == NULL)
     {
-      deployment = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, argv[2], NULL);
-      if (!g_file_query_exists (deployment, NULL))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Deployment %s doesn't exist", gs_file_get_path_cached (deployment));
-          goto out;
-        }
-    }
-  else
-    {
-      if (!ot_admin_get_current_deployment (ostree_dir, osname, &deployment,
-                                            cancellable, error))
-        goto out;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No deployment for OS '%s'", opt_osname);
+      goto out;
     }
 
-  orig_etc_path = g_file_resolve_relative_path (deployment, "etc");
-  deploy_parent = g_file_get_parent (deployment);
-  new_etc_path = ot_gfile_get_child_strconcat (deploy_parent,
-                                               gs_file_get_basename_cached (deployment),
-                                               "-etc", NULL);
+  deployment_dir = ot_admin_get_deployment_directory (admin_opts->sysroot, deployment);
+
+  orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
+  new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");
   
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);

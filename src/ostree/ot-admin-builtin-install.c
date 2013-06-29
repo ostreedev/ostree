@@ -70,7 +70,6 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   gboolean ret = FALSE;
   const char *keyfile_arg = NULL;
   const char *treename_arg = NULL;
-  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *osdir = NULL;
   ot_lobj GFile *dest_osconfig_path = NULL;
@@ -96,14 +95,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
       goto out;
     }
 
-  if (admin_opts->ostree_dir == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No existing /ostree found; use --ostree-dir");
-      goto out;
-    }
-
-  if (!ot_admin_ensure_initialized (admin_opts->ostree_dir, cancellable, error))
+  if (!ot_admin_ensure_initialized (admin_opts->sysroot, cancellable, error))
     goto out;
 
   self->loop = g_main_loop_new (NULL, TRUE);
@@ -136,11 +128,11 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 
   osname = g_key_file_get_string (keyfile, "os", "Name", error);
 
-  ostree_dir_arg = g_strconcat ("--ostree-dir=",
-                                gs_file_get_path_cached (ostree_dir),
+  ostree_dir_arg = g_strconcat ("--sysroot=",
+                                gs_file_get_path_cached (admin_opts->sysroot),
                                 NULL);
 
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+  if (!gs_subprocess_simple_run_sync (NULL,
                                       GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                       "ostree", "admin", ostree_dir_arg, "os-init", osname, NULL))
@@ -157,7 +149,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
         goto out;
     }
 
-  osdir = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, NULL);
+  osdir = ot_gfile_get_child_build_path (admin_opts->sysroot, "ostree", "deploy", osname, NULL);
   dest_osconfig_path = ot_gfile_get_child_strconcat (osdir, osname, ".cfg", NULL);
 
   if (!g_file_copy (self->osconfig_path, dest_osconfig_path, G_FILE_COPY_OVERWRITE | G_FILE_COPY_TARGET_DEFAULT_PERMS,
@@ -168,7 +160,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
     goto out;
 
   repoarg = g_strconcat ("--repo=",
-                         gs_file_get_path_cached (ostree_dir), "/repo",
+                         gs_file_get_path_cached (admin_opts->sysroot), "/ostree/repo",
                          NULL);
 
   {
@@ -178,7 +170,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
     if (!repourl)
       goto out;
     
-    if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+    if (!gs_subprocess_simple_run_sync (NULL,
                                         GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
                                         "ostree", repoarg, "remote", "add",
@@ -186,13 +178,13 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
       goto out;
   }
 
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+  if (!gs_subprocess_simple_run_sync (NULL,
                                       GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                         "ostree", "pull", repoarg, osname, NULL))
     goto out;
 
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+  if (!gs_subprocess_simple_run_sync (NULL,
                                       GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                       cancellable, error,
                                       "ostree", "admin", ostree_dir_arg, "deploy", osname,

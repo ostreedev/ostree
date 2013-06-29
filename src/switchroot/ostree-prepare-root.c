@@ -41,18 +41,19 @@
 
 #include "ostree-mount-util.h"
 
-static void
-parse_ostree_cmdline (char **out_osname,
-		      char **out_tree)
+static char *
+parse_ostree_cmdline (void)
 {
   FILE *f = fopen("/proc/cmdline", "r");
   char *cmdline = NULL;
   const char *iter;
+  char *ret = NULL;
   size_t len;
+
   if (!f)
-    return;
+    return NULL;
   if (getline (&cmdline, &len, f) < 0)
-    return;
+    return NULL;
 
   if (cmdline[len-1] == '\n')
     cmdline[len-1] = '\0';
@@ -66,39 +67,30 @@ parse_ostree_cmdline (char **out_osname,
 	next_nonspc += 1;
       if (strncmp (iter, "ostree=", strlen ("ostree=")) == 0)
         {
-          const char *slash = strchr (iter, '/');
-          if (slash)
-            {
-              const char *start = iter + strlen ("ostree=");
-              *out_osname = strndup (start, slash - start);
-              if (next)
-                *out_tree = strndup (slash + 1, next - slash - 1);
-              else
-                *out_tree = strdup (slash + 1);
-              break;
-            }
+	  const char *start = iter + strlen ("ostree=");
+	  if (next)
+	    ret = strndup (start, next - start);
+	  else
+	    ret = strdup (start);
+	  break;
         }
       iter = next_nonspc;
     }
 
   free (cmdline);
+  return ret;
 }
 
 int
 main(int argc, char *argv[])
 {
-  const char *toproot_bind_mounts[] = { "/home", "/root", "/tmp", NULL };
-  const char *ostree_bind_mounts[] = { "/var", NULL };
   const char *readonly_bind_mounts[] = { "/usr", NULL };
   const char *root_mountpoint = NULL;
-  char *ostree_osname = NULL;
   char *ostree_target = NULL;
-  char ostree_target_path[PATH_MAX];
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
   char destpath[PATH_MAX];
   struct stat stbuf;
-  size_t len;
   int i;
 
   if (argc < 2)
@@ -108,15 +100,39 @@ main(int argc, char *argv[])
     }
 
   root_mountpoint = argv[1];
-
-  parse_ostree_cmdline (&ostree_osname, &ostree_target);
-
-  if (!ostree_osname)
+  if (strcmp (root_mountpoint, "/sysroot") != 0)
     {
-      fprintf (stderr, "No OSTree target; expected ostree=OSNAME/TREENAME\n");
+      fprintf (stderr, "ostree-prepare-root: Expected /sysroot\n");
       exit (1);
     }
 
+  ostree_target = parse_ostree_cmdline ();
+  if (!ostree_target)
+    {
+      fprintf (stderr, "No OSTree target; expected ostree=/ostree/boot.N/...\n");
+      exit (1);
+    }
+
+  snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
+  fprintf (stderr, "Examining %s\n", destpath);
+  if (lstat (destpath, &stbuf) < 0)
+    {
+      perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
+      exit (1);
+    }
+  if (!S_ISLNK (stbuf.st_mode))
+    {
+      fprintf (stderr, "OSTree target is not a symbolic link: %s\n", destpath);
+      exit (1);
+    }
+  deploy_path = realpath (destpath, NULL);
+  if (deploy_path == NULL)
+    {
+      perrorv ("realpath(%s) failed: ", destpath);
+      exit (1);
+    }
+  fprintf (stderr, "Resolved OSTree target to: %s\n", deploy_path);
+  
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
    * MS_SHARED. Hence remount them MS_PRIVATE here as a
@@ -129,31 +145,6 @@ main(int argc, char *argv[])
       exit (1);
     }
 
-  snprintf (destpath, sizeof(destpath), "%s/ostree/deploy/%s/%s",
-	    root_mountpoint, ostree_osname, ostree_target);
-  fprintf (stderr, "Examining %s\n", destpath);
-  if (lstat (destpath, &stbuf) < 0)
-    {
-      perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
-      exit (1);
-    }
-  if (!S_ISLNK (stbuf.st_mode))
-    {
-      fprintf (stderr, "OSTree target is not a symbolic link: %s\n", destpath);
-      exit (1);
-    }
-  if (readlink (destpath, ostree_target_path, PATH_MAX) < 0)
-    {
-      perrorv ("readlink(%s) failed: ", destpath);
-      exit (1);
-    }
-  len = strlen (ostree_target_path);
-  if (ostree_target_path[len-1] == '/')
-    ostree_target_path[len-1] = '\0';
-  fprintf (stderr, "Resolved OSTree target to: %s\n", ostree_target_path);
-  (void) asprintf (&deploy_path, "%s/ostree/deploy/%s/%s", root_mountpoint,
-		   ostree_osname, ostree_target_path);
-  
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
     {
@@ -168,41 +159,12 @@ main(int argc, char *argv[])
       exit (1);
     }
 
-  snprintf (srcpath, sizeof(srcpath), "%s-etc", deploy_path);
-  snprintf (destpath, sizeof(destpath), "%s/etc", deploy_path);
-  if (mount (srcpath, destpath, NULL, MS_BIND, NULL) < 0)
+  snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
+  snprintf (destpath, sizeof(destpath), "%s/var", deploy_path);
+  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
     {
-      perrorv ("Failed to bind mount '%s' to '%s'", srcpath, destpath);
+      perrorv ("failed to bind mount %s to %s", srcpath, destpath);
       exit (1);
-    }
-
-  for (i = 0; toproot_bind_mounts[i] != NULL; i++)
-    {
-      snprintf (srcpath, sizeof(srcpath), "%s%s", root_mountpoint, toproot_bind_mounts[i]);
-      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, toproot_bind_mounts[i]);
-      /* Only do these bind mounts if the target exists and is a real directory,
-       * not a symbolic link.
-       */
-      if (lstat (destpath, &stbuf) == 0 && S_ISDIR(stbuf.st_mode))
-	{
-	  if (mount (srcpath, destpath, NULL, MS_BIND & ~MS_RDONLY, NULL) < 0)
-	    {
-	      perrorv ("failed to bind mount (class:toproot) %s to %s", toproot_bind_mounts[i], destpath);
-	      exit (1);
-	    }
-	}
-    }
-
-  for (i = 0; ostree_bind_mounts[i] != NULL; i++)
-    {
-      snprintf (srcpath, sizeof(srcpath), "%s/ostree/deploy/%s%s", root_mountpoint,
-		ostree_osname, ostree_bind_mounts[i]);
-      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, ostree_bind_mounts[i]);
-      if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
-	{
-	  perrorv ("failed to bind mount (class:bind) %s to %s", srcpath, destpath);
-	  exit (1);
-	}
     }
 
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)

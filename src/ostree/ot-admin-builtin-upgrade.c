@@ -24,6 +24,7 @@
 
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ot-admin-deploy.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -32,8 +33,10 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_reboot;
+static char *opt_osname;
 
 static GOptionEntry options[] = {
+  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Specify operating system root to use", NULL },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
   { NULL }
 };
@@ -41,79 +44,108 @@ static GOptionEntry options[] = {
 gboolean
 ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
-  GOptionContext *context;
   gboolean ret = FALSE;
-  GFile *ostree_dir = admin_opts->ostree_dir;
-  gs_free char *booted_osname = NULL;
-  const char *osname = NULL;
-  gs_unref_object GFile *deployment = NULL;
-  gs_unref_object GFile *repo_path = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
-  gs_free char *deploy_name = NULL;
-  gs_free char *current_rev = NULL;
-  gs_free char *new_rev = NULL;
-  gs_free char *ostree_dir_arg = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
+  GOptionContext *context;
+  GFile *sysroot = admin_opts->sysroot;
+  gs_free char *booted_osname = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_object GFile *repo_path = NULL;
+  gs_free char *origin_refspec = NULL;
+  gs_free char *origin_remote = NULL;
+  gs_free char *origin_ref = NULL;
+  gs_free char *new_revision = NULL;
+  gs_unref_object GFile *deployment_path = NULL;
+  gs_unref_object GFile *deployment_origin_path = NULL;
+  gs_unref_object OtDeployment *booted_deployment = NULL;
+  gs_unref_object OtDeployment *merge_deployment = NULL;
+  gs_unref_ptrarray GPtrArray *current_deployments = NULL;
+  gs_unref_ptrarray GPtrArray *new_deployments = NULL;
+  gs_unref_object OtDeployment *new_deployment = NULL;
+  gs_free char *ostree_dir_arg = NULL;
+  int current_bootversion;
+  int new_bootversion;
+  GKeyFile *origin;
 
-  context = g_option_context_new ("[OSNAME] - pull, deploy, and prune");
+  context = g_option_context_new ("Construct new tree from current origin and deploy it, if it changed");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc > 1)
+  if (!ot_admin_list_deployments (admin_opts->sysroot, &current_bootversion,
+                                  &current_deployments,
+                                  cancellable, error))
     {
-      osname = argv[1];
+      g_prefix_error (error, "While listing deployments: ");
+      goto out;
+    }
+
+  if (!ot_admin_require_deployment_or_osname (admin_opts->sysroot, current_deployments,
+                                              opt_osname,
+                                              &booted_deployment,
+                                              cancellable, error))
+    goto out;
+  if (!opt_osname)
+    opt_osname = (char*)ot_deployment_get_osname (booted_deployment);
+  merge_deployment = ot_admin_get_merge_deployment (current_deployments, opt_osname,
+                                                    booted_deployment,
+                                                    NULL);
+
+  deployment_path = ot_admin_get_deployment_directory (admin_opts->sysroot, merge_deployment);
+  deployment_origin_path = ot_admin_get_deployment_origin_path (deployment_path);
+
+  repo_path = g_file_resolve_relative_path (admin_opts->sysroot, "ostree/repo");
+  repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (repo, error))
+    goto out;
+
+  origin = ot_deployment_get_origin (merge_deployment);
+  if (!origin)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No origin known for current deployment");
+      goto out;
+    }
+  origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+  if (!origin_refspec)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No origin/refspec in current deployment origin; cannot upgrade via ostree");
+      goto out;
+    }
+  if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
+    goto out;
+
+  if (origin_remote)
+    {
+      g_print ("Fetching remote %s ref %s\n", origin_remote, origin_ref);
+      if (!ot_admin_pull (admin_opts->sysroot, origin_remote, origin_ref,
+                          cancellable, error))
+        goto out;
+    }
+
+  if (!ostree_repo_resolve_rev (repo, origin_ref, FALSE, &new_revision,
+                                error))
+    goto out;
+
+  if (strcmp (ot_deployment_get_csum (merge_deployment), new_revision) == 0)
+    {
+      g_print ("Refspec %s is unchanged\n", origin_refspec);
     }
   else
     {
-      if (!ot_admin_get_booted_os (&booted_osname, NULL,
-                                   cancellable, error))
-        goto out;
-      if (booted_osname == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Not in an active OSTree system; must specify OSNAME");
-          goto out;
-        }
-      osname = booted_osname;
-    }
-  
-  if (!ot_admin_get_current_deployment (ostree_dir, osname, &deployment,
-                                        cancellable, error))
-    goto out;
-
-  ot_admin_parse_deploy_name (ostree_dir, osname, deployment, &deploy_name, &current_rev);
-
-  ostree_dir_arg = g_strconcat ("--ostree-dir=",
-                                gs_file_get_path_cached (ostree_dir),
-                                NULL);
-  
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                      cancellable, error,
-                                      "ostree", "admin", ostree_dir_arg, "pull-deploy", osname, NULL))
-    goto out;
-
-  if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
-                                      GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                      cancellable, error,
-                                      "ostree", "admin", ostree_dir_arg, "prune", osname, NULL))
-    goto out;
-
-  if (opt_reboot)
-    {
-      repo_path = g_file_get_child (ostree_dir, "repo");
-
-      repo = ostree_repo_new (repo_path);
-      if (!ostree_repo_check (repo, error))
+      gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
+      if (!ot_admin_deploy (admin_opts->sysroot,
+                            current_bootversion, current_deployments,
+                            opt_osname, new_revision, origin,
+                            NULL, FALSE,
+                            booted_deployment, merge_deployment,
+                            &new_deployment, &new_bootversion, &new_deployments,
+                            cancellable, error))
         goto out;
 
-      if (!ostree_repo_resolve_rev (repo, deploy_name, TRUE, &new_rev,
-                                    error))
-        goto out;
-
-      if (strcmp (current_rev, new_rev) != 0 && opt_reboot)
+      if (opt_reboot && g_file_equal (sysroot, real_sysroot))
         {
           gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                          cancellable, error,

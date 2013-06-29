@@ -38,7 +38,6 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname = NULL;
-  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *dir = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
@@ -49,7 +48,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (ostree_dir, cancellable, error))
+  if (!ot_admin_ensure_initialized (admin_opts->sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)
@@ -60,7 +59,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 
   osname = argv[1];
 
-  deploy_dir = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, NULL);
+  deploy_dir = ot_gfile_get_child_build_path (admin_opts->sysroot, "ostree", "deploy", osname, NULL);
 
   /* Ensure core subdirectories of /var exist, since we need them for
    * dracut generation, and the host will want them too.  Note that at

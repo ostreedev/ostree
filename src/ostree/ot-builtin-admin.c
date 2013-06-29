@@ -31,12 +31,10 @@
 
 #include <glib/gi18n.h>
 
-static char *opt_ostree_dir = NULL;
-static char *opt_boot_dir = "/boot";
+static char *opt_sysroot = "/";
 
 static GOptionEntry options[] = {
-  { "ostree-dir", 0, 0, G_OPTION_ARG_STRING, &opt_ostree_dir, "Path to OSTree root directory (default: /ostree)", NULL },
-  { "boot-dir", 0, 0, G_OPTION_ARG_STRING, &opt_boot_dir, "Path to system boot directory (default: /boot)", NULL },
+  { "sysroot", 0, 0, G_OPTION_ARG_STRING, &opt_sysroot, "Path to root directory (default: /)", NULL },
   { NULL }
 };
 
@@ -51,9 +49,8 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "deploy", ot_admin_builtin_deploy },
   { "install", ot_admin_builtin_install },
   { "upgrade", ot_admin_builtin_upgrade },
-  { "pull-deploy", ot_admin_builtin_pull_deploy },
   { "prune", ot_admin_builtin_prune },
-  { "update-kernel", ot_admin_builtin_update_kernel },
+  { "status", ot_admin_builtin_status },
   { "config-diff", ot_admin_builtin_diff },
   { "run-triggers", ot_admin_builtin_run_triggers },
   { NULL, NULL }
@@ -70,8 +67,6 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
   int subcmd_argc;
   OtAdminBuiltinOpts admin_opts;
   char **subcmd_argv = NULL;
-  ot_lobj GFile *ostree_dir = NULL;
-  ot_lobj GFile *boot_dir = NULL;
 
   context = g_option_context_new ("[OPTIONS] SUBCOMMAND - Run an administrative subcommand");
 
@@ -117,21 +112,9 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
       goto out;
     }
 
-  if (opt_ostree_dir != NULL)
-    {
-      ostree_dir = g_file_new_for_path (opt_ostree_dir);
-    }
-  else
-    {
-      if (!ot_admin_get_default_ostree_dir (&ostree_dir, cancellable, error))
-        goto out;
-    }
-  boot_dir = g_file_new_for_path (opt_boot_dir);
-
   ostree_prep_builtin_argv (subcommand_name, argc-2, argv+2, &subcmd_argc, &subcmd_argv);
 
-  admin_opts.ostree_dir = ostree_dir;
-  admin_opts.boot_dir = boot_dir;
+  admin_opts.sysroot = g_file_new_for_path (opt_sysroot);
   if (!subcommand->fn (subcmd_argc, subcmd_argv, &admin_opts, error))
     goto out;
  

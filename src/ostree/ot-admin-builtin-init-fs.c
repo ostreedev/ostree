@@ -75,8 +75,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
     goto out;
   g_clear_object (&child);
 
-  child = g_file_get_child (dir, "ostree");
-  if (!ot_admin_ensure_initialized (child, cancellable, error))
+  if (!ot_admin_ensure_initialized (dir, cancellable, error))
     goto out;
 
   ret = TRUE;

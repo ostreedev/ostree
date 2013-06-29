@@ -34,8 +34,16 @@ assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
 }
 
+assert_not_streq () {
+    (! test "$1" = "$2") || (echo 1>&2 "$1 == $2"; exit 1)
+}
+
 assert_has_file () {
     test -f "$1" || (echo 1>&2 "Couldn't find '$1'"; exit 1)
+}
+
+assert_has_dir () {
+    test -d "$1" || (echo 1>&2 "Couldn't find '$1'"; exit 1)
 }
 
 assert_not_has_file () {
@@ -47,6 +55,12 @@ assert_not_has_file () {
 assert_not_file_has_content () {
     if grep -q -e "$2" "$1"; then
 	echo 1>&2 "File '$1' incorrectly matches regexp '$2'"; exit 1
+    fi
+}
+
+assert_not_has_dir () {
+    if test -d "$1"; then
+	echo 1>&2 "Directory '$1' exists"; exit 1
     fi
 }
 
@@ -135,4 +149,87 @@ setup_fake_remote_repo1() {
     cd ${oldpwd} 
 
     export OSTREE="ostree --repo=repo"
+}
+
+setup_os_repository () {
+    mode=$1
+    shift
+
+    oldpwd=`pwd`
+
+    cd ${test_tmpdir}
+    mkdir testos-repo
+    if test -n "$mode"; then
+	ostree --repo=testos-repo init --mode=${mode}
+    else
+	ostree --repo=testos-repo init
+    fi
+
+    cd ${test_tmpdir}
+    mkdir osdata
+    cd osdata
+    mkdir -p boot usr/bin usr/lib/modules/3.6.0 usr/share usr/etc
+    echo "a kernel" > boot/vmlinuz-3.6.0
+    echo "an initramfs" > boot/initramfs-3.6.0
+    echo "a kernel module" > usr/lib/modules/3.6.0/foofs.ko
+    bootcsum=$(cat boot/vmlinuz-3-6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko | sha256sum | cut -f 1 -d ' ')
+    export bootcsum
+    mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
+    mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
+    
+    echo "an executable" > usr/bin/sh
+    echo "some shared data" > usr/share/langs.txt
+    echo "a library" > usr/lib/libfoo.so.0
+    ln -s usr/bin bin
+cat > usr/etc/os-release <<EOF
+NAME=TestOS
+VERSION=42
+ID=testos
+VERSION_ID=42
+PRETTY_NAME="TestOS 42"
+EOF
+    echo "a config file" > usr/etc/aconfigfile
+    mkdir -p usr/etc/NetworkManager
+    echo "a default daemon file" > usr/etc/NetworkManager/nm.conf
+
+    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+    
+    echo "a new executable" > usr/bin/sh
+    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+
+    ostree --repo=${test_tmpdir}/testos-repo fsck -q
+
+    cd ${test_tmpdir}
+    mkdir sysroot
+    ostree admin --sysroot=sysroot init-fs sysroot
+    ostree admin --sysroot=sysroot os-init testos
+
+    # Stub syslinux configuration
+    mkdir -p sysroot/boot/loader.0
+    ln -s loader.0 sysroot/boot/loader
+    touch sysroot/boot/loader/syslinux.cfg
+    # And a compatibility symlink
+    mkdir -p sysroot/boot/syslinux
+    ln -s ../loader/syslinux.cfg sysroot/boot/syslinux/syslinux.cfg
+}
+
+os_repository_new_commit ()
+{
+    cd ${test_tmpdir}/osdata
+    rm boot/*
+    echo "new: a kernel" > boot/vmlinuz-3.6.0
+    echo "new: an initramfs" > boot/initramfs-3.6.0
+    echo "new: a kernel module" > usr/lib/modules/3.6.0/foofs.ko
+    echo "new: another kernel module" > usr/lib/modules/3.6.0/othermod.ko
+    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko usr/lib/modules/3.6.0/othermod.ko | sha256sum | cut -f 1 -d ' ')
+    export bootcsum
+    mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
+    mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
+
+    echo "a new default config file" > usr/etc/a-new-default-config-file
+    mkdir -p usr/etc/new-default-dir
+    echo "a new default dir and file" > usr/etc/new-default-dir/moo
+
+    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+    cd ${test_tmpdir}
 }

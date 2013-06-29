@@ -41,15 +41,12 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  guint i;
   const char *osname;
-  GFile *ostree_dir = admin_opts->ostree_dir;
   ot_lobj GFile *repo_path = NULL;
   ot_lobj GFile *deploy_dir = NULL;
   ot_lobj GFile *current_deployment = NULL;
   ot_lobj GFile *previous_deployment = NULL;
   ot_lobj GFile *active_deployment = NULL;
-  ot_lptrarray GPtrArray *deployments = NULL;
   gs_free char *active_osname = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
@@ -68,43 +65,10 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 
   osname = argv[1];
 
-  if (!ot_admin_list_deployments (ostree_dir, osname, &deployments,
-                                  cancellable, error))
+  if (!ot_admin_cleanup (admin_opts->sysroot, cancellable, error))
     goto out;
 
-  if (!ot_admin_get_current_deployment (ostree_dir, osname, &current_deployment,
-                                        cancellable, error));
-  if (!ot_admin_get_previous_deployment (ostree_dir, osname, &previous_deployment,
-                                         cancellable, error));
-  if (!ot_admin_get_active_deployment (ostree_dir, &active_osname, &active_deployment,
-                                       cancellable, error));
-
-  for (i = 0; i < deployments->len; i++)
-    {
-      GFile *deployment = deployments->pdata[i];
-      ot_lobj GFile *deployment_etc = NULL;
-      ot_lobj GFile *parent = NULL;
-
-      if ((current_deployment && g_file_equal (deployment, current_deployment))
-          || (previous_deployment && g_file_equal (deployment, previous_deployment))
-          || (active_deployment && g_file_equal (deployment, active_deployment)))
-        continue;
-
-      parent = g_file_get_parent (deployment);
-      deployment_etc = ot_gfile_get_child_strconcat (parent, gs_file_get_basename_cached (deployment),
-                                                     "-etc", NULL);
-      
-      g_print ("Deleting deployment %s\n", gs_file_get_path_cached (deployment));
-      if (!gs_shutil_rm_rf (deployment, cancellable, error))
-        goto out;
-      /* Note - not atomic; we may be leaving the -etc directory around
-       * if this fails in the middle =/
-       */
-      if (!gs_shutil_rm_rf (deployment_etc, cancellable, error))
-        goto out;
-    }
-  
-  repo_path = g_file_get_child (ostree_dir, "repo");
+  repo_path = g_file_resolve_relative_path (admin_opts->sysroot, "ostree/repo");
 
   if (!opt_no_repo_prune)
     {
@@ -112,7 +76,7 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 
       repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
       
-      if (!gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+      if (!gs_subprocess_simple_run_sync (NULL,
                                           GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                           cancellable, error,
                                           "ostree", repo_arg, "prune", "--refs-only",

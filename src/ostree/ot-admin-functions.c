@@ -20,19 +20,118 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
+#define _GNU_SOURCE
 #include "config.h"
 
 #include "ot-admin-functions.h"
+#include "ot-deployment.h"
+#include "ot-config-parser.h"
+#include "ot-bootloader-syslinux.h"
 #include "otutil.h"
 #include "ostree-core.h"
+#include "ostree-prune.h"
+#include "libgsystem.h"
+
+/*
+ * Modify @arg which should be of the form key=value to make @arg just
+ * contain key.  Return a pointer to the start of value.
+ */
+char *
+ot_admin_split_keyeq (char *arg)
+{
+  char *eq;
+      
+  eq = strchr (arg, '=');
+  if (eq)
+    {
+      /* Note key/val are in one malloc block,
+       * so we don't free val...
+       */
+      *eq = '\0';
+      return eq+1;
+    }
+  else
+    {
+      /* ...and this allows us to insert a constant
+       * string.
+       */
+      return "";
+    }
+}
+
+OtOrderedHash *
+ot_admin_parse_kernel_args (const char *options)
+{
+  OtOrderedHash *ret;
+  char **args;
+  char **iter;
+
+  ret = ot_ordered_hash_new ();
+
+  if (!options)
+    return ret;
+  
+  args = g_strsplit (options, " ", -1);
+  for (iter = args; *iter; iter++)
+    {
+      char *arg = *iter;
+      char *val;
+      
+      val = ot_admin_split_keyeq (arg);
+
+      g_ptr_array_add (ret->order, arg);
+      g_hash_table_insert (ret->table, arg, val);
+    }
+
+  return ret;
+}
+
+char *
+ot_admin_kernel_arg_string_serialize (OtOrderedHash *ohash)
+{
+  guint i;
+  GString *buf = g_string_new ("");
+  gboolean first = TRUE;
+
+  for (i = 0; i < ohash->order->len; i++)
+    {
+      const char *key = ohash->order->pdata[i];
+      const char *val = g_hash_table_lookup (ohash->table, key);
+
+      g_assert (val != NULL);
+
+      if (first)
+        first = FALSE;
+      else
+        g_string_append_c (buf, ' ');
+
+      if (*val)
+        g_string_append_printf (buf, "%s=%s", key, val);
+      else
+        g_string_append (buf, key);
+    }
+
+  return g_string_free (buf, FALSE);
+}
+
+
+static void
+match_info_cleanup (void *loc)
+{
+  GMatchInfo **match = (GMatchInfo**)loc;
+  if (*match) g_match_info_unref (*match);
+}
 
 gboolean
-ot_admin_ensure_initialized (GFile         *ostree_dir,
+ot_admin_ensure_initialized (GFile         *sysroot,
                              GCancellable  *cancellable,
                              GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *dir = NULL;
+  gs_unref_object GFile *dir = NULL;
+  gs_unref_object GFile *ostree_dir = NULL;
+
+  ostree_dir = g_file_get_child (sysroot, "ostree");
 
   g_clear_object (&dir);
   dir = g_file_get_child (ostree_dir, "repo");
@@ -65,25 +164,506 @@ ot_admin_ensure_initialized (GFile         *ostree_dir,
   return ret;
 }
 
-static gboolean
-query_file_info_allow_noent (GFile         *path,
-                             GFileInfo    **out_info,
-                             GCancellable  *cancellable,
-                             GError       **error)
+gboolean
+ot_admin_check_os (GFile         *sysroot, 
+                   const char    *osname,
+                   GCancellable  *cancellable,
+                   GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileInfo *ret_file_info = NULL;
+  gs_unref_object GFile *osdir = NULL;
+
+  osdir = ot_gfile_resolve_path_printf (sysroot, "ostree/deploy/%s/var", osname);
+  if (!g_file_query_exists (osdir, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No such OS '%s', use os-init to create it", osname);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+parse_bootlink (const char    *bootlink,
+                int           *out_entry_bootversion,
+                char         **out_osname,
+                char         **out_bootcsum,
+                int           *out_treebootserial,
+                GError       **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
+  gs_free char *bootversion_str = NULL;
+  gs_free char *treebootserial_str = NULL;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^/ostree/boot.([01])/([^/]+)/([^/]+)/([0-9]+)$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, bootlink, 0, &match))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid ostree= argument '%s', expected ostree=/ostree/boot.BOOTVERSION/OSNAME/BOOTCSUM/TREESERIAL", bootlink);
+      goto out;
+    }
+    
+  bootversion_str = g_match_info_fetch (match, 1);
+  *out_entry_bootversion = (int)g_ascii_strtoll (bootversion_str, NULL, 10);
+  *out_osname = g_match_info_fetch (match, 2);
+  *out_bootcsum = g_match_info_fetch (match, 3);
+  treebootserial_str = g_match_info_fetch (match, 4);
+  *out_treebootserial = (int)g_ascii_strtoll (treebootserial_str, NULL, 10);
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+parse_deploy_path_name (const char *name,
+                        char      **out_csum,
+                        int        *out_serial,
+                        GError    **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
+  gs_free char *serial_str = NULL;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^([0-9a-f]+)\\.([0-9]+)$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, name, 0, &match))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid deploy name '%s', expected CHECKSUM.TREESERIAL", name);
+      goto out;
+    }
+
+  *out_csum = g_match_info_fetch (match, 1);
+  serial_str = g_match_info_fetch (match, 2);
+  *out_serial = (int)g_ascii_strtoll (serial_str, NULL, 10);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+GFile *
+ot_admin_get_deployment_origin_path (GFile   *deployment_path)
+{
+  gs_unref_object GFile *deployment_parent = g_file_get_parent (deployment_path);
+  return ot_gfile_resolve_path_printf (deployment_parent,
+                                       "%s.origin",
+                                       gs_file_get_path_cached (deployment_path));
+}
+
+static gboolean
+parse_origin (GFile           *sysroot,
+              GFile           *deployment_path,
+              GKeyFile       **out_origin,
+              GCancellable    *cancellable,
+              GError         **error)
+{
+  gboolean ret = FALSE;
+  GKeyFile *ret_origin = NULL;
+  gs_unref_object GFile *origin_path = ot_admin_get_deployment_origin_path (deployment_path);
+  gs_free char *origin_contents = NULL;
+  
+  if (!ot_gfile_load_contents_utf8_allow_noent (origin_path, &origin_contents,
+                                                cancellable, error))
+    goto out;
+
+  if (origin_contents)
+    {
+      ret_origin = g_key_file_new ();
+      if (!g_key_file_load_from_data (ret_origin, origin_contents, -1, 0, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_origin, &ret_origin);
+ out:
+  if (error)
+    g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (origin_path));
+  if (ret_origin)
+    g_key_file_unref (ret_origin);
+  return ret;
+}
+
+static gboolean
+parse_deployment (GFile           *sysroot,
+                  const char      *boot_link,
+                  OtDeployment   **out_deployment,
+                  GCancellable    *cancellable,
+                  GError         **error)
+{
+  gboolean ret = FALSE;
+  const char *relative_boot_link;
+  gs_unref_object OtDeployment *ret_deployment = NULL;
+  int entry_boot_version;
+  int treebootserial;
+  int deployserial;
+  gs_free char *osname = NULL;
+  gs_free char *bootcsum = NULL;
+  gs_free char *treecsum = NULL;
+  gs_unref_object GFile *treebootserial_link = NULL;
+  gs_unref_object GFileInfo *treebootserial_info = NULL;
+  gs_unref_object GFile *treebootserial_target = NULL;
+  GKeyFile *origin = NULL;
+      
+  if (!parse_bootlink (boot_link, &entry_boot_version,
+                       &osname, &bootcsum, &treebootserial,
+                       error))
+    goto out;
+
+  relative_boot_link = boot_link;
+  if (*relative_boot_link == '/')
+    relative_boot_link++;
+  treebootserial_link = g_file_resolve_relative_path (sysroot, relative_boot_link);
+  treebootserial_info = g_file_query_info (treebootserial_link, OSTREE_GIO_FAST_QUERYINFO,
+                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                           cancellable, error);
+  if (!treebootserial_info)
+    goto out;
+
+  if (!ot_gfile_get_symlink_target_from_info (treebootserial_link, treebootserial_info,
+                                              &treebootserial_target, cancellable, error))
+    goto out;
+
+  if (!parse_deploy_path_name (gs_file_get_basename_cached (treebootserial_target),
+                               &treecsum, &deployserial, error))
+    goto out;
+
+  if (!parse_origin (sysroot, treebootserial_target, &origin,
+                     cancellable, error))
+    goto out;
+
+  ret_deployment = ot_deployment_new (-1, osname, treecsum, deployserial,
+                                      bootcsum, treebootserial);
+  if (origin)
+    ot_deployment_set_origin (ret_deployment, origin);
+
+  ret = TRUE;
+  ot_transfer_out_value (out_deployment, &ret_deployment);
+ out:
+  if (origin)
+    g_key_file_unref (origin);
+  return ret;
+}
+
+static gboolean
+parse_kernel_commandline (OtOrderedHash  **out_args,
+                          GCancellable    *cancellable,
+                          GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *proc_cmdline = g_file_new_for_path ("/proc/cmdline");
+  gs_free char *contents = NULL;
+  gsize len;
+
+  if (!g_file_load_contents (proc_cmdline, cancellable, &contents, &len, NULL,
+                             error))
+    goto out;
+
+  ret = TRUE;
+  *out_args = ot_admin_parse_kernel_args (contents);;
+ out:
+  return ret;
+}
+
+static gboolean
+get_devino (GFile         *path,
+            guint32       *out_device,
+            guint64       *out_inode,
+            GCancellable  *cancellable,
+            GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileInfo *finfo = g_file_query_info (path, "unix::device,unix::inode",
+                                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                        cancellable, error);
+
+  if (!finfo)
+    goto out;
+
+  ret = TRUE;
+  *out_device = g_file_info_get_attribute_uint32 (finfo, "unix::device");
+  *out_inode = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
+ out:
+  return ret;
+}
+
+/**
+ * ot_admin_find_booted_deployment:
+ * 
+ * Returns in @out_deployment the currently booted deployment using
+ * the list in @deployments.  Will always return %NULL if
+ * @target_sysroot is not equal to "/".
+ */
+gboolean
+ot_admin_find_booted_deployment (GFile               *target_sysroot,
+                                 GPtrArray           *deployments,
+                                 OtDeployment       **out_deployment,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *active_root = g_file_new_for_path ("/");
+  gs_unref_object OtDeployment *ret_deployment = NULL;
+
+  if (g_file_equal (active_root, target_sysroot))
+    { 
+      guint i;
+      const char *bootlink_arg;
+      __attribute__((cleanup(ot_ordered_hash_cleanup))) OtOrderedHash *kernel_args = NULL;
+      guint32 root_device;
+      guint64 root_inode;
+      
+      if (!get_devino (active_root, &root_device, &root_inode,
+                       cancellable, error))
+        goto out;
+
+      if (!parse_kernel_commandline (&kernel_args, cancellable, error))
+        goto out;
+      
+      bootlink_arg = g_hash_table_lookup (kernel_args->table, "ostree");
+      if (bootlink_arg)
+        {
+          for (i = 0; i < deployments->len; i++)
+            {
+              OtDeployment *deployment = deployments->pdata[i];
+              gs_unref_object GFile *deployment_path = ot_admin_get_deployment_directory (active_root, deployment);
+              guint32 device;
+              guint64 inode;
+
+              if (!get_devino (deployment_path, &device, &inode,
+                               cancellable, error))
+                goto out;
+
+              if (device == root_device && inode == root_inode)
+                {
+                  ret_deployment = g_object_ref (deployment);
+                  break;
+                }
+            }
+          if (ret_deployment == NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unexpected state: ostree= kernel argument found, but / is not a deployment root");
+              goto out;
+            }
+        }
+      else
+        {
+          /* Not an ostree system */
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_deployment, &ret_deployment);
+ out:
+  return ret;
+}
+
+gboolean
+ot_admin_require_deployment_or_osname (GFile               *sysroot,
+                                       GPtrArray           *deployments,
+                                       const char          *osname,
+                                       OtDeployment       **out_deployment,
+                                       GCancellable        *cancellable,
+                                       GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object OtDeployment *ret_deployment = NULL;
+
+  if (!ot_admin_find_booted_deployment (sysroot, deployments, &ret_deployment,
+                                        cancellable, error))
+    goto out;
+
+  if (ret_deployment == NULL && osname == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Not currently booted into an OSTree system and no --os= argument given");
+      goto out;
+    }
+  
+  ret = TRUE;
+  ot_transfer_out_value (out_deployment, &ret_deployment);
+ out:
+  return ret;
+}
+
+OtDeployment *
+ot_admin_get_merge_deployment (GPtrArray         *deployments,
+                               const char        *osname,
+                               OtDeployment      *booted_deployment,
+                               OtDeployment      *new_deployment)
+{
+  g_return_val_if_fail (osname != NULL || booted_deployment != NULL, NULL);
+
+  if (osname == NULL)
+    osname = ot_deployment_get_osname (booted_deployment);
+
+  if (booted_deployment &&
+      new_deployment &&
+      g_strcmp0 (ot_deployment_get_osname (booted_deployment),
+                 ot_deployment_get_osname (new_deployment)) == 0)
+    {
+      return g_object_ref (booted_deployment);
+    }
+  else
+    {
+      guint i;
+      for (i = 0; i < deployments->len; i++)
+        {
+          OtDeployment *deployment = deployments->pdata[i];
+
+          if (strcmp (ot_deployment_get_osname (deployment), osname) != 0)
+            continue;
+          if (deployment == new_deployment)
+            continue;
+          
+          return g_object_ref (deployment);
+        }
+    }
+  return NULL;
+}
+
+static gboolean
+read_current_bootversion (GFile         *sysroot,
+                          int           *out_bootversion,
+                          GCancellable  *cancellable,
+                          GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *boot_loader_path = g_file_resolve_relative_path (sysroot, "boot/loader");
+  gs_unref_object GFileInfo *info = NULL;
+  const char *target;
+  int ret_bootversion;
+
+  if (!ot_gfile_query_info_allow_noent (boot_loader_path, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        &info,
+                                        cancellable, error))
+    goto out;
+
+  if (info == NULL)
+    ret_bootversion = 0;
+  else
+    {
+      if (g_file_info_get_file_type (info) != G_FILE_TYPE_SYMBOLIC_LINK)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Not a symbolic link: %s", gs_file_get_path_cached (boot_loader_path));
+          goto out;
+        }
+
+      target = g_file_info_get_symlink_target (info);
+      if (g_strcmp0 (target, "loader.0") == 0)
+        ret_bootversion = 0;
+      else if (g_strcmp0 (target, "loader.1") == 0)
+        ret_bootversion = 1;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid target '%s' in %s", target, gs_file_get_path_cached (boot_loader_path));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  *out_bootversion = ret_bootversion;
+ out:
+  return ret;
+}
+
+gboolean
+ot_admin_read_current_subbootversion (GFile         *sysroot,
+                                      int            bootversion,
+                                      int           *out_subbootversion,
+                                      GCancellable  *cancellable,
+                                      GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *ostree_dir = g_file_get_child (sysroot, "ostree");
+  gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
+  gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
+  gs_free char *ostree_subbootdir_name = NULL;
+  gs_unref_object GFile *ostree_subbootdir = NULL;
+  gs_unref_ptrarray GPtrArray *deployments_to_swap = NULL;
+
+  if (!ot_gfile_query_symlink_target_allow_noent (ostree_bootdir, &ostree_subbootdir,
+                                                  cancellable, error))
+    goto out;
+
+  if (ostree_subbootdir == NULL)
+    {
+      *out_subbootversion = 0;
+    }
+  else
+    {
+      const char *current_subbootdir_name = gs_file_get_basename_cached (ostree_subbootdir);
+      if (g_str_has_suffix (current_subbootdir_name, ".0"))
+        *out_subbootversion = 0;
+      else if (g_str_has_suffix (current_subbootdir_name, ".1"))
+        *out_subbootversion = 1;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid target '%s' in %s",
+                       gs_file_get_path_cached (ostree_subbootdir),
+                       gs_file_get_path_cached (ostree_bootdir));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ot_admin_read_boot_loader_configs (GFile         *sysroot,
+                                   int            bootversion,
+                                   GPtrArray    **out_loader_configs,
+                                   GCancellable  *cancellable,
+                                   GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *loader_entries_dir = NULL;
+  gs_unref_ptrarray GPtrArray *ret_loader_configs = NULL;
   GError *temp_error = NULL;
 
-  ret_file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     cancellable, &temp_error);
-  if (!ret_file_info)
+  loader_entries_dir = ot_gfile_resolve_path_printf (sysroot, "boot/loader.%d/entries",
+                                                     bootversion);
+  ret_loader_configs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  dir_enum = g_file_enumerate_children (loader_entries_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                        0, NULL, &temp_error);
+  if (!dir_enum)
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
           g_clear_error (&temp_error);
-        }
+          goto done;
+        } 
       else
         {
           g_propagate_error (error, temp_error);
@@ -91,419 +671,599 @@ query_file_info_allow_noent (GFile         *path,
         }
     }
 
-  ret = TRUE;
-  ot_transfer_out_value (out_info, &ret_file_info);
- out:
-  return ret;
-}
-
-static gboolean
-query_symlink_target_allow_noent (GFile         *path,
-                                  GFile        **out_target,
-                                  GCancellable  *cancellable,
-                                  GError       **error)
-{
-  gboolean ret = FALSE;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GFile *ret_target = NULL;
-  ot_lobj GFile *path_parent = NULL;
-
-  if (!query_file_info_allow_noent (path, &file_info,
-                                    cancellable, error))
-    goto out;
-
-  path_parent = g_file_get_parent (path);
-
-  if (file_info != NULL)
+  while (TRUE)
     {
-      const char *target;
-      
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_SYMBOLIC_LINK)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Not a symbolic link");
-          goto out;
-        }
-      target = g_file_info_get_symlink_target (file_info);
-      g_assert (target);
-      ret_target = g_file_resolve_relative_path (path_parent, target);
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_target, &ret_target);
- out:
-  return ret;
-}
-
-/**
- * ot_admin_get_current_deployment:
- * 
- * Returns in @out_deployment the full file path of the current
- * deployment that the /ostree/current symbolic link points to, or
- * %NULL if none.
- */
-gboolean
-ot_admin_get_current_deployment (GFile           *ostree_dir,
-                                 const char      *osname,
-                                 GFile          **out_deployment,
-                                 GCancellable    *cancellable,
-                                 GError         **error)
-{
-  ot_lobj GFile *current_path = NULL;
-
-  current_path = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname,
-                                                "current", NULL);
-
-  return query_symlink_target_allow_noent (current_path, out_deployment,
-                                           cancellable, error);
-}
-
-/**
- * ot_admin_get_previous_deployment:
- * 
- * Returns in @out_deployment the full file path of the current
- * deployment that the /ostree/previous symbolic link points to, or
- * %NULL if none.
- */
-gboolean
-ot_admin_get_previous_deployment (GFile           *ostree_dir,
-                                  const char      *osname,
-                                  GFile          **out_deployment,
-                                  GCancellable    *cancellable,
-                                  GError         **error)
-{
-  ot_lobj GFile *previous_path = NULL;
-
-  previous_path = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname,
-                                                 "previous", NULL);
-
-  return query_symlink_target_allow_noent (previous_path, out_deployment,
-                                           cancellable, error);
-}
-
-/*
-static gboolean
-ot_admin_list_osnames (GFile               *ostree_dir,
-                       GPtrArray          **out_osnames,
-                       GCancellable        *cancellable,
-                       GError             **error)
-{
-  gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GFile *deploy_dir = NULL;
-  ot_lptrarray GPtrArray *ret_osnames = NULL;
-  GError *temp_error = NULL;
-
-  deploy_dir = g_file_get_child (ostree_dir, "deploy");
-
-  dir_enum = g_file_enumerate_children (deploy_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, error);
-  if (!dir_enum)
-    goto out;
-
-  while ((file_info = g_file_enumerator_next_file (dir_enum, NULL, error)) != NULL)
-    {
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
-        {
-          char *name = g_strdup (g_file_info_get_name (file_info));
-          g_ptr_array_add (ret_osnames, name);
-        }
-      g_clear_object (&file_info);
-    }
-
-  if (temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
-    }
-  
-  ret = TRUE;
-  ot_transfer_out_value (out_osnames, &ret_osnames);
- out:
-  return ret;
-}
-*/
-
-static gboolean
-list_deployments_internal (GFile               *from_dir,
-                           GPtrArray           *inout_deployments,
-                           GCancellable        *cancellable,
-                           GError             **error)
-{
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-
-  dir_enum = g_file_enumerate_children (from_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, error);
-  if (!dir_enum)
-    goto out;
-
-  while ((file_info = g_file_enumerator_next_file (dir_enum, cancellable, error)) != NULL)
-    {
+      GFileInfo *file_info;
+      GFile *child;
       const char *name;
-      ot_lobj GFile *child = NULL;
-      ot_lobj GFile *possible_etc = NULL;
-      ot_lobj GFile *possible_usr = NULL;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
 
       name = g_file_info_get_name (file_info);
 
-      if (g_str_has_suffix (name, "-etc"))
-        goto next;
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
-        goto next;
-
-      child = g_file_get_child (from_dir, name);
-
-      possible_etc = ot_gfile_get_child_strconcat (from_dir, name, "-etc", NULL);
-      /* Bit of a hack... */
-      possible_usr = g_file_get_child (child, "usr");
-
-      if (g_file_query_exists (possible_etc, cancellable))
-        g_ptr_array_add (inout_deployments, g_file_get_child (from_dir, name));
-      else if (g_file_query_exists (possible_usr, cancellable))
-        goto next;
-      else
+      if (g_str_has_prefix (name, "ostree-") &&
+          g_str_has_suffix (name, ".conf") &&
+          g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
-          if (!list_deployments_internal (child, inout_deployments,
-                                          cancellable, error))
-            goto out;
+          gs_unref_object OtConfigParser *config = ot_config_parser_new (" \t");
+  
+          if (!ot_config_parser_parse (config, child, cancellable, error))
+            {
+              g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (child));
+              goto out;
+            }
+
+          g_ptr_array_add (ret_loader_configs, g_object_ref (config));
         }
-
-    next:
-      g_clear_object (&file_info);
-    }
-  if (temp_error != NULL)
-    {
-      g_propagate_error (error, temp_error);
-      goto out;
     }
 
+ done:
+  ot_transfer_out_value (out_loader_configs, &ret_loader_configs);
   ret = TRUE;
  out:
   return ret;
 }
 
-gboolean
-ot_admin_list_deployments (GFile               *ostree_dir,
-                           const char          *osname,
-                           GPtrArray          **out_deployments,
-                           GCancellable        *cancellable,
-                           GError             **error)
+static gboolean
+list_deployment_dirs_for_os (GFile               *osdir,
+                             GPtrArray           *inout_deployments,
+                             GCancellable        *cancellable,
+                             GError             **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GFile *osdir = NULL;
-  ot_lptrarray GPtrArray *ret_deployments = NULL;
+  const char *osname = gs_file_get_basename_cached (osdir);
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *osdeploy_dir = NULL;
+  GError *temp_error = NULL;
 
-  osdir = ot_gfile_get_child_build_path (ostree_dir, "deploy", osname, NULL);
+  osdeploy_dir = g_file_get_child (osdir, "deploy");
+
+  dir_enum = g_file_enumerate_children (osdeploy_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        NULL, &temp_error);
+  if (!dir_enum)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          goto done;
+        } 
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  while (TRUE)
+    {
+      const char *name;
+      GFileInfo *file_info = NULL;
+      GFile *child = NULL;
+      gs_unref_object OtDeployment *deployment = NULL;
+      gs_free char *csum = NULL;
+      gint deployserial;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      name = g_file_info_get_name (file_info);
+
+      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+        continue;
+
+      if (!parse_deploy_path_name (name, &csum, &deployserial, error))
+        goto out;
+      
+      deployment = ot_deployment_new (-1, osname, csum, deployserial, NULL, -1);
+      g_ptr_array_add (inout_deployments, g_object_ref (deployment));
+    }
+
+ done:
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+list_all_deployment_directories (GFile               *sysroot,
+                                 GPtrArray          **out_deployments,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *deploydir = NULL;
+  gs_unref_object GFile *osdir = NULL;
+  gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
+  GError *temp_error = NULL;
+
+  deploydir = g_file_resolve_relative_path (sysroot, "ostree/deploy");
+
   ret_deployments = g_ptr_array_new_with_free_func (g_object_unref);
 
-  if (!list_deployments_internal (osdir, ret_deployments, cancellable, error))
-    goto out;
+  dir_enum = g_file_enumerate_children (deploydir, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable, &temp_error);
+  if (!dir_enum)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          goto done;
+        } 
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  while (TRUE)
+    {
+      GFileInfo *file_info = NULL;
+      GFile *child = NULL;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                       NULL, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+        continue;
+      
+      if (!list_deployment_dirs_for_os (child, ret_deployments, cancellable, error))
+        goto out;
+    }
   
+ done:
   ret = TRUE;
   ot_transfer_out_value (out_deployments, &ret_deployments);
  out:
   return ret;
 }
 
-gboolean
-ot_admin_get_booted_os (char        **out_osname,
-                        char        **out_tree,
-                        GCancellable *cancellable,
-                        GError      **error)
+static char *
+get_ostree_kernel_arg_from_config (OtConfigParser  *config)
 {
-  gboolean ret = FALSE;
-  gs_free char *ret_osname = NULL;
-  gs_free char *ret_tree = NULL;
-  gs_free char *cmdline_contents = NULL;
-  const char *iter;
-  gsize len;
+  const char *options;
+  char *ret;
+  char **opts, **iter;
 
-  if (!g_file_get_contents ("/proc/cmdline", &cmdline_contents, &len,
-                            error))
-    goto out;
+  options = ot_config_parser_get (config, "options");
+  if (!options)
+    return NULL;
 
-  iter = cmdline_contents;
-  do
+  opts = g_strsplit (options, " ", -1);
+  for (iter = opts; *iter; iter++)
     {
-      const char *next = strchr (iter, ' ');
-      if (next)
-	next += 1;
-      if (g_str_has_prefix (iter, "ostree="))
+      const char *opt = *iter;
+      if (g_str_has_prefix (opt, "ostree="))
         {
-          const char *slash = strchr (iter, '/');
-          if (slash)
-            {
-              const char *start = iter + strlen ("ostree=");
-              ret_osname = g_strndup (start, slash - start);
-              if (next)
-                ret_tree = g_strndup (slash + 1, next - slash - 1);
-              else
-                ret_tree = g_strdup (slash + 1);
-              break;
-            }
+          ret = g_strdup (opt + strlen ("ostree="));
+          break;
         }
-      iter = next;
     }
-  while (iter != NULL);
+  g_strfreev (opts);
 
-  ret = TRUE;
- out:
-  ot_transfer_out_value (out_osname, &ret_osname);
-  ot_transfer_out_value (out_tree, &ret_tree);
   return ret;
 }
 
-gboolean
-ot_admin_get_active_deployment (GFile           *ostree_dir,
-                                char           **out_osname,
-                                GFile          **out_deployment,
-                                GCancellable    *cancellable,
-                                GError         **error)
+static gboolean
+list_deployments_process_one_boot_entry (GFile               *sysroot,
+                                         OtConfigParser      *config,
+                                         GPtrArray           *inout_deployments,
+                                         GCancellable        *cancellable,
+                                         GError             **error)
 {
   gboolean ret = FALSE;
-  ot_lptrarray GPtrArray *osnames = NULL;
-  ot_lptrarray GPtrArray *deployments = NULL;
-  gs_free char *ret_osname = NULL;
-  gs_unref_object GFile *ret_deployment = NULL;
+  gs_free char *ostree_arg = NULL;
+  gs_unref_object OtDeployment *deployment = NULL;
 
-  if (!ot_admin_get_booted_os (&ret_osname, NULL, cancellable, error))
-    goto out;
-
-  if (ret_osname != NULL && out_deployment != NULL)
+  ostree_arg = get_ostree_kernel_arg_from_config (config);
+  if (ostree_arg == NULL)
     {
-      gs_unref_object GFile *rootfs_path = NULL;
-      gs_unref_object GFileInfo *rootfs_info = NULL;
-      guint32 root_dev;
-      guint64 root_inode;
-      guint i;
-
-      rootfs_path = g_file_new_for_path ("/");
-      rootfs_info = g_file_query_info (rootfs_path, OSTREE_GIO_FAST_QUERYINFO,
-                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                       cancellable, error);
-      if (!rootfs_info)
-        goto out;
-
-      root_dev = g_file_info_get_attribute_uint32 (rootfs_info, "unix::device");
-      root_inode = g_file_info_get_attribute_uint64 (rootfs_info, "unix::inode");
-
-      if (!ot_admin_list_deployments (ostree_dir, ret_osname, &deployments,
-                                      cancellable, error))
-        goto out;
-      
-      for (i = 0; i < deployments->len; i++)
-        {
-          GFile *deployment = deployments->pdata[i];
-          gs_unref_object GFileInfo *deployment_info = NULL;
-          guint32 deploy_dev;
-          guint64 deploy_inode;
-          
-          deployment_info = g_file_query_info (deployment, OSTREE_GIO_FAST_QUERYINFO,
-                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                               cancellable, error);
-          if (!deployment_info)
-            goto out;
-
-          deploy_dev = g_file_info_get_attribute_uint32 (deployment_info, "unix::device");
-          deploy_inode = g_file_info_get_attribute_uint64 (deployment_info, "unix::inode");
-
-          if (root_dev == deploy_dev && root_inode == deploy_inode)
-            {
-              ret_deployment = g_object_ref (deployment);
-              break;
-            }
-        }
-      
-      g_assert (ret_deployment != NULL);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No ostree= kernel argument found");
+      goto out;
     }
+  
+  if (!parse_deployment (sysroot, ostree_arg, &deployment,
+                         cancellable, error))
+    goto out;
+  
+  ot_deployment_set_bootconfig (deployment, config);
 
+  g_ptr_array_add (inout_deployments, g_object_ref (deployment));
+  
   ret = TRUE;
-  ot_transfer_out_value (out_osname, &ret_osname);
-  ot_transfer_out_value (out_deployment, &ret_deployment);
  out:
   return ret;
 }
 
+static gint
+compare_deployments_by_boot_loader_version (gconstpointer     a_pp,
+                                            gconstpointer     b_pp)
+{
+  OtDeployment *a = *((OtDeployment**)a_pp);
+  OtDeployment *b = *((OtDeployment**)b_pp);
+  OtConfigParser *a_bootconfig = ot_deployment_get_bootconfig (a);
+  OtConfigParser *b_bootconfig = ot_deployment_get_bootconfig (b);
+  const char *a_version = ot_config_parser_get (a_bootconfig, "version");
+  const char *b_version = ot_config_parser_get (b_bootconfig, "version");
+  
+  if (a_version && b_version)
+    return strverscmp (a_version, b_version);
+  else if (a_version)
+    return 1;
+  else
+    return -1;
+}
+
 gboolean
-ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
-                                 GCancellable  *cancellable,
-                                 GError       **error)
+ot_admin_list_deployments (GFile               *sysroot,
+                           int                 *out_current_bootversion,
+                           GPtrArray          **out_deployments,
+                           GCancellable        *cancellable,
+                           GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *possible_ostree_dir = NULL;
-  gs_unref_object GFile *ret_ostree_dir = NULL;
-  gs_unref_object GFile *host_usr = NULL;
+  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
+  gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
+  guint i;
+  int bootversion;
 
-  host_usr = g_file_new_for_path ("/usr");
+  if (!read_current_bootversion (sysroot, &bootversion, cancellable, error))
+    goto out;
 
-  if (ret_ostree_dir == NULL)
+  if (!ot_admin_read_boot_loader_configs (sysroot, bootversion, &boot_loader_configs,
+                                          cancellable, error))
+    goto out;
+
+  ret_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  for (i = 0; i < boot_loader_configs->len; i++)
     {
-      g_clear_object (&possible_ostree_dir);
-      possible_ostree_dir = g_file_new_for_path ("/sysroot/ostree");
-      if (g_file_query_exists (possible_ostree_dir, NULL))
-        ret_ostree_dir = g_object_ref (possible_ostree_dir);
+      OtConfigParser *config = boot_loader_configs->pdata[i];
+
+      if (!list_deployments_process_one_boot_entry (sysroot, config, ret_deployments,
+                                                    cancellable, error))
+        goto out;
     }
-  if (ret_ostree_dir == NULL)
+
+  g_ptr_array_sort (ret_deployments, compare_deployments_by_boot_loader_version);
+  for (i = 0; i < ret_deployments->len; i++)
     {
-      g_clear_object (&possible_ostree_dir);
-      possible_ostree_dir = g_file_new_for_path ("/ostree");
-      /* If there's also /usr, we assume we're outside an ostree root
-       * and thus should use /ostree.
-       */
-      if (g_file_query_exists (possible_ostree_dir, NULL) ||
-          g_file_query_exists (host_usr, NULL))
-        ret_ostree_dir = g_object_ref (possible_ostree_dir);
+      OtDeployment *deployment = ret_deployments->pdata[i];
+      ot_deployment_set_index (deployment, i);
     }
 
   ret = TRUE;
-  ot_transfer_out_value (out_ostree_dir, &ret_ostree_dir);
+  *out_current_bootversion = bootversion;
+  ot_transfer_out_value (out_deployments, &ret_deployments);
+ out:
   return ret;
 }
 
 gboolean
-ot_admin_pull (GFile         *ostree_dir,
-               const char    *osname,
+ot_admin_pull (GFile         *sysroot,
+               const char    *remote,
+               const char    *ref,
                GCancellable  *cancellable,
                GError       **error)
 {
-  gs_unref_object GFile *repo_path = g_file_get_child (ostree_dir, "repo");
+  gs_unref_object GFile *repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
   gs_free char *repo_arg = g_strconcat ("--repo=",
                                         gs_file_get_path_cached (repo_path),
                                         NULL);
 
-  return gs_subprocess_simple_run_sync (gs_file_get_path_cached (ostree_dir),
+  return gs_subprocess_simple_run_sync (NULL,
                                         GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                         cancellable, error,
-                                        "ostree", repo_arg, "pull", osname, NULL);
+                                        "ostree", repo_arg, "pull", remote, ref, NULL);
 }
 
-void
-ot_admin_parse_deploy_name (GFile       *ostree_dir,
-                            const char  *osname,
-                            GFile       *deployment,
-                            char       **out_name,
-                            char       **out_rev)
+GFile *
+ot_admin_get_deployment_directory (GFile        *sysroot,
+                                   OtDeployment *deployment)
 {
-  gs_unref_object GFile *deploy_dir = g_file_get_child (ostree_dir, "deploy");
-  gs_unref_object GFile *os_dir = g_file_get_child (deploy_dir, osname);
-  gs_free char *relpath = g_file_get_relative_path (os_dir, deployment);
-  const char *last_dash;
+  gs_free char *path = g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d",
+                                        ot_deployment_get_osname (deployment),
+                                        ot_deployment_get_csum (deployment),
+                                        ot_deployment_get_deployserial (deployment));
+  return g_file_resolve_relative_path (sysroot, path);
+}
 
-  g_assert (relpath);
-  last_dash = strrchr (relpath, '-');
-  if (!last_dash)
-    g_error ("Failed to parse deployment name %s", relpath);
+static gboolean
+cleanup_other_bootversions (GFile               *sysroot,
+                            int                  bootversion,
+                            int                  subbootversion,
+                            GCancellable        *cancellable,
+                            GError             **error)
+{
+  gboolean ret = FALSE;
+  int cleanup_bootversion;
+  int cleanup_subbootversion;
+  gs_free char *cleanup_boot_name = NULL;
+  gs_unref_object GFile *cleanup_boot_dir = NULL;
+
+  cleanup_bootversion = bootversion == 0 ? 1 : 0;
+  cleanup_subbootversion = subbootversion == 0 ? 1 : 0;
+
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "boot/loader.%d", cleanup_bootversion);
+  if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
+    goto out;
+  g_clear_object (&cleanup_boot_dir);
+
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d", cleanup_bootversion);
+  if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
+    goto out;
+  g_clear_object (&cleanup_boot_dir);
+
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.0", cleanup_bootversion);
+  if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
+    goto out;
+  g_clear_object (&cleanup_boot_dir);
+
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.1", cleanup_bootversion);
+  if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
+    goto out;
+  g_clear_object (&cleanup_boot_dir);
+
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.%d", bootversion,
+                                                   cleanup_subbootversion);
+  if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
+    goto out;
+  g_clear_object (&cleanup_boot_dir);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+cleanup_old_deployments (GFile               *sysroot,
+                         GPtrArray           *deployments,
+                         GCancellable        *cancellable,
+                         GError             **error)
+{
+  gboolean ret = FALSE;
+  guint32 root_device;
+  guint64 root_inode;
+  guint i;
+  gs_unref_object GFile *active_root = g_file_new_for_path ("/");
+  gs_unref_hashtable GHashTable *active_deployment_dirs = NULL;
+  gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
+
+  if (!get_devino (active_root, &root_device, &root_inode,
+                   cancellable, error))
+    goto out;
+
+  active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, NULL, g_object_unref);
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OtDeployment *deployment = deployments->pdata[i];
+      GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
+      /* Transfer ownership */
+      g_hash_table_insert (active_deployment_dirs, deployment_path, deployment_path);
+    }
+
+  if (!list_all_deployment_directories (sysroot, &all_deployment_dirs,
+                                        cancellable, error))
+    goto out;
   
-  if (out_name)
-    *out_name = g_strndup (relpath, last_dash - relpath);
-  if (out_rev)
-    *out_rev = g_strdup (last_dash + 1);
+  for (i = 0; i < all_deployment_dirs->len; i++)
+    {
+      OtDeployment *deployment = all_deployment_dirs->pdata[i];
+      gs_unref_object GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
+      gs_unref_object GFile *origin_path = ot_admin_get_deployment_origin_path (deployment_path);
+      if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
+        {
+          guint32 device;
+          guint64 inode;
+
+          if (!get_devino (deployment_path, &device, &inode,
+                           cancellable, error))
+            goto out;
+
+          /* This shouldn't happen, because higher levels should
+           * disallow having the booted deployment not in the active
+           * deployment list, but let's be extra safe. */
+          if (device == root_device && inode == root_inode)
+            continue;
+
+          g_print ("ostadmin: Deleting deployment %s\n", gs_file_get_path_cached (deployment_path));
+          if (!gs_shutil_rm_rf (deployment_path, cancellable, error))
+            goto out;
+          if (!gs_shutil_rm_rf (origin_path, cancellable, error))
+            goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+cleanup_ref_prefix (OstreeRepo         *repo,
+                    int                 bootversion,
+                    int                 subbootversion,
+                    GCancellable       *cancellable,
+                    GError            **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *prefix = NULL;
+  gs_unref_hashtable GHashTable *refs = NULL;
+  GHashTableIter hashiter;
+  gpointer hashkey, hashvalue;
+
+  prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
+
+  if (!ostree_repo_list_refs (repo, prefix, &refs, cancellable, error))
+    goto out;
+
+  g_hash_table_iter_init (&hashiter, refs);
+  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+    {
+      const char *suffix = hashkey;
+      gs_free char *ref = g_strconcat (prefix, "/", suffix, NULL);
+      if (!ostree_repo_write_refspec (repo, ref, NULL, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+generate_deployment_refs_and_prune (GFile               *sysroot,
+                                    OstreeRepo          *repo,
+                                    int                  bootversion,
+                                    int                  subbootversion,
+                                    GPtrArray           *deployments,
+                                    GCancellable        *cancellable,
+                                    GError             **error)
+{
+  gboolean ret = FALSE;
+  int cleanup_bootversion;
+  int cleanup_subbootversion;
+  guint i;
+  gint n_objects_total, n_objects_pruned;
+  guint64 freed_space;
+  gs_free char *cleanup_boot_name = NULL;
+  gs_unref_object GFile *cleanup_boot_dir = NULL;
+
+  cleanup_bootversion = (bootversion == 0) ? 1 : 0;
+  cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
+
+  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 0,
+                           cancellable, error))
+    goto out;
+
+  if (!cleanup_ref_prefix (repo, cleanup_bootversion, 1,
+                           cancellable, error))
+    goto out;
+
+  if (!cleanup_ref_prefix (repo, bootversion, cleanup_subbootversion,
+                           cancellable, error))
+    goto out;
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OtDeployment *deployment = deployments->pdata[i];
+      gs_free char *refname = g_strdup_printf ("ostree/%d/%d/%u",
+                                               bootversion, subbootversion,
+                                               i);
+      if (!ostree_repo_write_refspec (repo, refname, ot_deployment_get_csum (deployment),
+                                      error))
+        goto out;
+    }
+
+  if (!ostree_prune (repo, OSTREE_PRUNE_FLAGS_REFS_ONLY, 0,
+                     &n_objects_total, &n_objects_pruned, &freed_space,
+                     cancellable, error))
+    goto out;
+  if (freed_space > 0)
+    {
+      char *freed_space_str = g_format_size_full (freed_space, 0);
+      g_print ("Freed objects: %s\n", freed_space_str);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+  
+gboolean
+ot_admin_cleanup (GFile               *sysroot,
+                  GCancellable        *cancellable,
+                  GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  int bootversion;
+  int subbootversion;
+
+  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
+                                  cancellable, error))
+    goto out;
+
+  if (!ot_admin_read_current_subbootversion (sysroot, bootversion, &subbootversion,
+                                             cancellable, error))
+    goto out;
+
+  if (!cleanup_other_bootversions (sysroot, bootversion, subbootversion,
+                                   cancellable, error))
+    goto out;
+
+  if (!cleanup_old_deployments (sysroot, deployments,
+                                cancellable, error))
+    goto out;
+
+  if (deployments->len > 0)
+    {
+      if (!ot_admin_get_repo (sysroot, &repo, cancellable, error))
+        goto out;
+
+      if (!generate_deployment_refs_and_prune (sysroot, repo, bootversion,
+                                               subbootversion, deployments,
+                                               cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+OtBootloader *
+ot_admin_query_bootloader (GFile         *sysroot)
+{
+  OtBootloaderSyslinux *syslinux;
+
+  syslinux = ot_bootloader_syslinux_new (sysroot);
+  if (ot_bootloader_query ((OtBootloader*)syslinux))
+    return (OtBootloader*) (syslinux);
+
+  return NULL;
+}
+
+GKeyFile *
+ot_origin_new_from_refspec (const char *refspec)
+{
+  GKeyFile *ret = g_key_file_new ();
+  g_key_file_set_string (ret, "origin", "refspec", refspec);
+  return ret;
+}
+
+gboolean
+ot_admin_get_repo (GFile         *sysroot,
+                   OstreeRepo   **out_repo,
+                   GCancellable  *cancellable,
+                   GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object OstreeRepo *ret_repo = NULL;
+  gs_unref_object GFile *repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
+
+  ret_repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_check (ret_repo, error))
+    goto out;
+    
+  ret = TRUE;
+  ot_transfer_out_value (out_repo, &ret_repo);
+ out:
+  return ret;
 }

@@ -16,7 +16,6 @@
 # Boston, MA 02111-1307, USA.
 
 if !TRIGGERS_ONLY
-sbin_PROGRAMS += ostree-switch-root
 if BUILDOPT_DRACUT
 sbin_PROGRAMS += ostree-prepare-root
 sbin_PROGRAMS += ostree-remount
@@ -32,10 +31,6 @@ libswitchroot_mountutil_la_SOURCES = \
 ostree_prepare_root_SOURCES = src/switchroot/ostree-prepare-root.c
 ostree_prepare_root_LDADD = libswitchroot-mountutil.la
 ostree_prepare_root_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
-
-ostree_switch_root_SOURCES = src/switchroot/ostree-switch-root.c
-ostree_switch_root_LDADD = libswitchroot-mountutil.la
-ostree_switch_root_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
 
 ostree_remount_SOURCES = src/switchroot/ostree-remount.c
 ostree_remount_LDADD = libswitchroot-mountutil.la
