@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..31"
+echo "1..32"
 
 . $(dirname $0)/libtest.sh
 
@@ -225,4 +225,16 @@ ${CMD_PREFIX} ostree --repo=repo3 init
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
 ostree --repo=repo3 rev-parse aremote/test2
 echo "ok pull-local with --remote arg"
+
+cd ${test_tmpdir}
+ostree --repo=repo3 prune
+find repo3/objects -name '*.commit' > objlist-before-prune
+rm repo3/refs/heads/* repo3/refs/remotes/* -rf
+ostree --repo=repo3 prune --refs-only
+find repo3/objects -name '*.commit' > objlist-after-prune
+if cmp -s objlist-before-prune objlist-after-prune; then
+    echo "Prune didn't delete anything!"; exit 1
+fi
+rm repo3 objlist-before-prune objlist-after-prune -rf
+echo "ok prune"
 
