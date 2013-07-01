@@ -26,7 +26,10 @@
 #include "ostree.h"
 #include "ostree-repo-file.h"
 
+static gboolean opt_delete;
+
 static GOptionEntry options[] = {
+  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", "PREFIX" },
   { NULL }
 };
 
@@ -41,9 +44,8 @@ ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GError **error)
   gs_unref_hashtable GHashTable *refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
-  guint i;
 
-  context = g_option_context_new ("[PREFIX...] - List refs");
+  context = g_option_context_new ("[PREFIX] - List refs");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -60,11 +62,24 @@ ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GError **error)
                               cancellable, error))
     goto out;
 
-  g_hash_table_iter_init (&hashiter, refs);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+  if (!opt_delete)
     {
-      const char *ref = hashkey;
-      g_print ("%s\n", ref);
+      g_hash_table_iter_init (&hashiter, refs);
+      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+        {
+          const char *ref = hashkey;
+          g_print ("%s\n", ref);
+        }
+    }
+  else
+    {
+      g_hash_table_iter_init (&hashiter, refs);
+      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+        {
+          const char *refspec = hashkey;
+          if (!ostree_repo_write_refspec (repo, refspec, NULL, error))
+            goto out;
+        }
     }
  
   ret = TRUE;

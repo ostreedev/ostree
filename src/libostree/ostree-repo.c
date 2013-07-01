@@ -1758,6 +1758,42 @@ create_empty_gvariant_dict (void)
 }
 
 static gboolean
+add_ref_to_set (const char       *remote,
+                GFile            *base,
+                GFile            *child,
+                GHashTable       *refs,
+                GCancellable     *cancellable,
+                GError          **error)
+{
+  gboolean ret = FALSE;
+  char *contents;
+  char *relpath;
+  gsize len;
+  GString *refname;
+
+  if (!g_file_load_contents (child, cancellable, &contents, &len, NULL, error))
+    goto out;
+
+  g_strchomp (contents);
+
+  refname = g_string_new ("");
+  if (remote)
+    {
+      g_string_append (refname, remote);
+      g_string_append_c (refname, ':');
+    }
+  relpath = g_file_get_relative_path (base, child);
+  g_string_append (refname, relpath);
+  g_free (relpath);
+          
+  g_hash_table_insert (refs, g_string_free (refname, FALSE), contents);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 enumerate_refs_recurse (OstreeRepo    *repo,
                         const char    *remote,
                         GFile         *base,
@@ -1793,27 +1829,9 @@ enumerate_refs_recurse (OstreeRepo    *repo,
         }
       else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
         {
-          char *contents;
-          char *relpath;
-          gsize len;
-          GString *refname;
-
-          if (!g_file_load_contents (child, cancellable, &contents, &len, NULL, error))
+          if (!add_ref_to_set (remote, base, child, refs,
+                               cancellable, error))
             goto out;
-
-          g_strchomp (contents);
-
-          refname = g_string_new ("");
-          if (remote)
-            {
-              g_string_append (refname, remote);
-              g_string_append_c (refname, ':');
-            }
-          relpath = g_file_get_relative_path (base, child);
-          g_string_append (refname, relpath);
-          g_free (relpath);
-          
-          g_hash_table_insert (refs, g_string_free (refname, FALSE), contents);
         }
     }
 
@@ -1840,6 +1858,7 @@ ostree_repo_list_refs (OstreeRepo       *repo,
     {
       gs_unref_object GFile *dir = NULL;
       gs_unref_object GFile *child = NULL;
+      gs_unref_object GFileInfo *info = NULL;
 
       if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
         goto out;
@@ -1850,11 +1869,26 @@ ostree_repo_list_refs (OstreeRepo       *repo,
         dir = g_object_ref (repo->local_heads_dir);
 
       child = g_file_resolve_relative_path (dir, ref_prefix);
-
-      if (!enumerate_refs_recurse (repo, remote, child, child,
-                                   ret_all_refs,
-                                   cancellable, error))
+      if (!ot_gfile_query_info_allow_noent (child, OSTREE_GIO_FAST_QUERYINFO, 0,
+                                            &info, cancellable, error))
         goto out;
+
+      if (info)
+        {
+          if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY)
+            {
+              if (!enumerate_refs_recurse (repo, remote, child, child,
+                                           ret_all_refs,
+                                           cancellable, error))
+                goto out;
+            }
+          else
+            {
+              if (!add_ref_to_set (remote, dir, child, ret_all_refs,
+                                   cancellable, error))
+                goto out;
+            }
+        }
     }
   else
     {
@@ -1954,19 +1988,38 @@ ostree_repo_write_ref (OstreeRepo  *self,
   else
     {
       dir = g_file_get_child (self->remote_heads_dir, remote);
-
-      if (!gs_file_ensure_directory (dir, FALSE, NULL, error))
-        goto out;
+      
+      if (rev != NULL)
+        {
+          if (!gs_file_ensure_directory (dir, FALSE, NULL, error))
+            goto out;
+        }
     }
 
-  if (!write_checksum_file (dir, name, rev, error))
-    goto out;
-
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE
-      || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (rev == NULL)
     {
-      if (!write_ref_summary (self, NULL, error))
+      gs_unref_object GFile *child = g_file_resolve_relative_path (dir, name);
+      
+      if (g_file_query_exists (child, NULL))
+        {
+          if (!gs_file_unlink (child, NULL, error))
+            goto out;
+        }
+    }
+  else
+    {
+      if (!write_checksum_file (dir, name, rev, error))
         goto out;
+      
+      if (rev != NULL)
+        {
+          if (self->mode == OSTREE_REPO_MODE_ARCHIVE
+              || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+            {
+              if (!write_ref_summary (self, NULL, error))
+                goto out;
+            }
+        }
     }
 
   ret = TRUE;

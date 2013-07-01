@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..33"
+echo "1..34"
 
 . $(dirname $0)/libtest.sh
 
@@ -243,4 +243,14 @@ if cmp -s objlist-before-prune objlist-after-prune; then
 fi
 rm repo3 objlist-before-prune objlist-after-prune -rf
 echo "ok prune"
+
+cd ${test_tmpdir}
+$OSTREE commit -b test3 -s "Another commit" --tree=ref=test2
+ostree --repo=repo refs > reflist
+assert_file_has_content reflist '^test3$'
+ostree --repo=repo refs --delete test3
+ostree --repo=repo refs > reflist
+assert_not_file_has_content reflist '^test3$'
+echo "ok reflist --delete"
+
 
