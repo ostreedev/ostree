@@ -39,6 +39,8 @@ cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo2 checkout test2 test2-checkout-from-local-clone
 cd test2-checkout-from-local-clone
 assert_file_has_content baz/cow moo
+cd ${test_tmpdir}
+rm repo2 -rf
 echo "ok local clone checkout"
 
 $OSTREE checkout -U test2 checkout-user-test2
@@ -64,3 +66,12 @@ echo "ok cat-file"
 cd ${test_tmpdir}
 $OSTREE fsck
 echo "ok fsck"
+
+cd ${test_tmpdir}
+mkdir repo2
+${CMD_PREFIX} ostree --repo=repo2 init
+${CMD_PREFIX} ostree --repo=repo2 remote add aremote file://$(pwd)/repo test2
+ostree --repo=repo2 pull aremote
+ostree --repo=repo2 rev-parse aremote/test2
+ostree --repo=repo2 fsck
+echo "ok pull with from file:/// uri"

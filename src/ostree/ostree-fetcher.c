@@ -189,49 +189,52 @@ on_request_sent (GObject        *object,
 {
   OstreeFetcherPendingURI *pending = user_data;
   GError *local_error = NULL;
-  ot_lobj SoupMessage *msg = NULL;
+  gs_unref_object SoupMessage *msg = NULL;
+  GOutputStreamSpliceFlags flags = G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET;
 
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
                                                    result, &local_error);
-  msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
 
   if (!pending->request_body)
     {
       pending->state = OSTREE_FETCHER_STATE_COMPLETE;
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);
+      return;
     }
-  else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
+  
+  if (SOUP_IS_REQUEST_HTTP (object))
     {
-      g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Server returned status %u: %s",
-                   msg->status_code, soup_status_get_phrase (msg->status_code));
-      g_simple_async_result_take_error (pending->result, local_error);
-      g_simple_async_result_complete (pending->result);
-    }
-  else
-    {
-      GOutputStreamSpliceFlags flags = G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET;
-
-      pending->state = OSTREE_FETCHER_STATE_DOWNLOADING;
-
-      pending->content_length = soup_request_get_content_length (pending->request);
-
-      /* TODO - make this async */
-      if (!ostree_create_temp_regular_file (pending->self->tmpdir,
-                                            NULL, NULL,
-                                            &pending->tmpfile,
-                                            &pending->out_stream,
-                                            NULL, &local_error))
+      msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
+      if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
         {
+          g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Server returned status %u: %s",
+                       msg->status_code, soup_status_get_phrase (msg->status_code));
           g_simple_async_result_take_error (pending->result, local_error);
           g_simple_async_result_complete (pending->result);
           return;
         }
-
-      g_output_stream_splice_async (pending->out_stream, pending->request_body, flags, G_PRIORITY_DEFAULT,
-                                    pending->cancellable, on_splice_complete, pending);
     }
+
+  pending->state = OSTREE_FETCHER_STATE_DOWNLOADING;
+  
+  pending->content_length = soup_request_get_content_length (pending->request);
+  
+  /* TODO - make this async */
+  if (!ostree_create_temp_regular_file (pending->self->tmpdir,
+                                        NULL, NULL,
+                                        &pending->tmpfile,
+                                        &pending->out_stream,
+                                        NULL, &local_error))
+    {
+      g_simple_async_result_take_error (pending->result, local_error);
+      g_simple_async_result_complete (pending->result);
+      return;
+    }
+  
+  g_output_stream_splice_async (pending->out_stream, pending->request_body, flags, G_PRIORITY_DEFAULT,
+                                pending->cancellable, on_splice_complete, pending);
 }
 
 void
@@ -255,9 +258,12 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
   g_assert_no_error (local_error);
 
   pending->refcount++;
-  g_hash_table_insert (self->message_to_request,
-                       soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                       pending);
+  if (SOUP_IS_REQUEST_HTTP (pending->request))
+    {
+      g_hash_table_insert (self->message_to_request,
+                           soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
+                           pending);
+    }
 
   pending->result = g_simple_async_result_new ((GObject*) self,
                                                callback, user_data,
