@@ -509,6 +509,7 @@ deploy_tree (OtAdminDeploy     *self,
     {
       ProcessOneCheckoutData checkout_data;
       ot_lobj GFile *triggers_run_path = NULL;
+      gs_unref_object GFile *usr_etc_path = NULL;
 
       g_print ("ostadmin: Creating deployment %s\n",
                gs_file_get_path_cached (self->deploy_target_path));
@@ -527,6 +528,14 @@ deploy_tree (OtAdminDeploy     *self,
 
       if (checkout_data.caught_error)
         goto out;
+
+      usr_etc_path = g_file_resolve_relative_path (deploy_target_path_tmp, "usr/etc");
+      if (g_file_query_exists (usr_etc_path, NULL))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "Error: This tree contains usr/etc; it is likely an OS in version 2.0 format, and this version of OSTree does not support it");
+          goto out;
+        }
 
       triggers_run_path = g_file_resolve_relative_path (deploy_target_path_tmp, "usr/share/ostree/triggers-run");
 
