@@ -61,7 +61,7 @@ ostree_validate_checksum_string (const char *sha256,
   return ostree_validate_structureof_checksum_string (sha256, error);
 }
 
-#define OSTREE_REF_FRAGMENT_REGEXP "[-_\\w\\d]+"
+#define OSTREE_REF_FRAGMENT_REGEXP "[-._\\w\\d]+"
 #define OSTREE_REF_REGEXP "(?:" OSTREE_REF_FRAGMENT_REGEXP "/)*" OSTREE_REF_FRAGMENT_REGEXP
 
 gboolean
