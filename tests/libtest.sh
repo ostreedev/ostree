@@ -102,9 +102,6 @@ setup_test_repository () {
 }
 
 setup_fake_remote_repo1() {
-    if ! test -x ${SRCDIR}/run-apache; then
-	exit 77
-    fi
     mode=$1
     shift
     oldpwd=`pwd`
@@ -131,36 +128,10 @@ setup_fake_remote_repo1() {
     cd ${test_tmpdir}
     mkdir ${test_tmpdir}/httpd
     cd httpd
-    cat >httpd.conf <<EOF
-ServerRoot ${test_tmpdir}/httpd
-PidFile pid
-LogLevel crit
-ErrorLog log
-LockFile lock
-ServerName localhost
-
-LoadModule alias_module modules/mod_alias.so
-LoadModule cgi_module modules/mod_cgi.so
-LoadModule env_module modules/mod_env.so
-
-StartServers 1
-
-# SetEnv OSTREE_REPO_PREFIX ${test_tmpdir}/ostree-srv
-Alias /ostree/ ${test_tmpdir}/ostree-srv/
-# ScriptAlias /ostree/  ${test_tmpdir}/httpd/ostree-http-backend/
-EOF
-    ${SRCDIR}/tmpdir-lifecycle ${SRCDIR}/run-apache `pwd`/httpd.conf ${test_tmpdir}/httpd-address &
-    for i in $(seq 5); do
-	if ! test -f ${test_tmpdir}/httpd-address; then
-	    sleep 1
-	else
-	    break
-	fi
-    done
-    if ! test -f ${test_tmpdir}/httpd-address; then
-	echo "Error: timed out waiting for httpd-address file"
-	exit 1
-    fi
+    ln -s ${test_tmpdir}/ostree-srv ostree
+    ostree trivial-httpd --daemonize -p ${test_tmpdir}/httpd-port
+    port=$(cat ${test_tmpdir}/httpd-port)
+    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
 
     export OSTREE="ostree --repo=repo"

@@ -49,6 +49,7 @@ static OstreeCommand commands[] = {
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
+  { "trivial-httpd", ostree_builtin_trivial_httpd, OSTREE_BUILTIN_FLAG_NO_REPO },
   { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };
