@@ -1087,8 +1087,7 @@ ot_admin_deploy (GFile             *sysroot,
     merge_deployment = g_object_ref (provided_merge_deployment);
   else
     merge_deployment = ot_admin_get_merge_deployment (current_deployments, osname,
-                                                      booted_deployment,
-                                                      new_deployment);
+                                                      booted_deployment); 
 
   compute_new_deployment_list (current_bootversion,
                                current_deployments, osname,

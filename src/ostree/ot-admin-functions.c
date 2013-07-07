@@ -290,8 +290,8 @@ parse_deployment (GFile           *sysroot,
   const char *relative_boot_link;
   gs_unref_object OtDeployment *ret_deployment = NULL;
   int entry_boot_version;
-  int treebootserial;
-  int deployserial;
+  int treebootserial = -1;
+  int deployserial = -1;
   gs_free char *osname = NULL;
   gs_free char *bootcsum = NULL;
   gs_free char *treecsum = NULL;
@@ -463,8 +463,7 @@ ot_admin_require_deployment_or_osname (GFile               *sysroot,
 OtDeployment *
 ot_admin_get_merge_deployment (GPtrArray         *deployments,
                                const char        *osname,
-                               OtDeployment      *booted_deployment,
-                               OtDeployment      *new_deployment)
+                               OtDeployment      *booted_deployment)
 {
   g_return_val_if_fail (osname != NULL || booted_deployment != NULL, NULL);
 
@@ -472,9 +471,7 @@ ot_admin_get_merge_deployment (GPtrArray         *deployments,
     osname = ot_deployment_get_osname (booted_deployment);
 
   if (booted_deployment &&
-      new_deployment &&
-      g_strcmp0 (ot_deployment_get_osname (booted_deployment),
-                 ot_deployment_get_osname (new_deployment)) == 0)
+      g_strcmp0 (ot_deployment_get_osname (booted_deployment), osname) == 0)
     {
       return g_object_ref (booted_deployment);
     }
@@ -486,8 +483,6 @@ ot_admin_get_merge_deployment (GPtrArray         *deployments,
           OtDeployment *deployment = deployments->pdata[i];
 
           if (strcmp (ot_deployment_get_osname (deployment), osname) != 0)
-            continue;
-          if (deployment == new_deployment)
             continue;
           
           return g_object_ref (deployment);

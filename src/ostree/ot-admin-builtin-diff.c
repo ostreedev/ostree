@@ -77,7 +77,7 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
   if (deployment != NULL)
     opt_osname = (char*)ot_deployment_get_osname (deployment);
   if (deployment == NULL)
-    deployment = ot_admin_get_merge_deployment (deployments, opt_osname, deployment, NULL);
+    deployment = ot_admin_get_merge_deployment (deployments, opt_osname, deployment);
   if (deployment == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,

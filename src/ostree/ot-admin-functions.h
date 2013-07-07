@@ -96,8 +96,7 @@ gboolean ot_admin_require_deployment_or_osname (GFile               *sysroot,
 
 OtDeployment *ot_admin_get_merge_deployment (GPtrArray         *deployment_list,
                                              const char        *osname,
-                                             OtDeployment      *booted_deployment,
-                                             OtDeployment      *new_deployment);
+                                             OtDeployment      *booted_deployment);
 
 GFile *ot_admin_get_deployment_origin_path (GFile   *deployment_path);
 

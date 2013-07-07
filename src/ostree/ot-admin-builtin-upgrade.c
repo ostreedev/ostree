@@ -89,8 +89,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   if (!opt_osname)
     opt_osname = (char*)ot_deployment_get_osname (booted_deployment);
   merge_deployment = ot_admin_get_merge_deployment (current_deployments, opt_osname,
-                                                    booted_deployment,
-                                                    NULL);
+                                                    booted_deployment);
 
   deployment_path = ot_admin_get_deployment_directory (admin_opts->sysroot, merge_deployment);
   deployment_origin_path = ot_admin_get_deployment_origin_path (deployment_path);

@@ -41,7 +41,6 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  const char *osname;
   gs_unref_object GFile *repo_path = NULL;
   gs_unref_object GFile *deploy_dir = NULL;
   gs_unref_object GFile *current_deployment = NULL;
@@ -62,8 +61,6 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
       ot_util_usage_error (context, "OSNAME must be specified", error);
       goto out;
     }
-
-  osname = argv[1];
 
   if (!ot_admin_cleanup (admin_opts->sysroot, cancellable, error))
     goto out;
