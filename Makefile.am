@@ -78,7 +78,6 @@ libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libgsystem
 libgsystem_libs = $(OT_INTERNAL_GIO_UNIX_LIBS)
 include src/libgsystem/Makefile-libgsystem.am
 noinst_LTLIBRARIES += libgsystem.la
-include Makefile-daemon.am
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
