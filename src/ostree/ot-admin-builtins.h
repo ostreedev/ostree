@@ -38,7 +38,6 @@ gboolean ot_admin_builtin_deploy (int argc, char **argv, OtAdminBuiltinOpts *adm
 gboolean ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
-gboolean ot_admin_builtin_run_triggers (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 
 G_END_DECLS

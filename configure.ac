@@ -31,11 +31,6 @@ LT_INIT([disable-static])
 OSTREE_FEATURES=""
 AC_SUBST([OSTREE_FEATURES])
 
-AC_ARG_ENABLE(triggers-only,
-	    AS_HELP_STRING([--enable-triggers-only], [Only build and install triggers]),,
-	    enable_triggers_only=no)
-AM_CONDITIONAL(TRIGGERS_ONLY, test x$enable_triggers_only != xno)
-
 AC_ARG_ENABLE(installed_tests,
               AS_HELP_STRING([--enable-installed-tests],
                              [Install test programs (default: no)]),,
@@ -61,9 +56,6 @@ AS_IF([test x$enable_embedded_dependencies = xyes], [
   AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
 	    [], [with_soup=check])
-  if test x$enable_triggers_only != xno; then
-    with_soup=no
-  fi
   AS_IF([test x$with_soup != xno ], [
     AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
     PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
@@ -89,9 +81,6 @@ AC_ARG_ENABLE(documentation,
               AC_HELP_STRING([--enable-documentation],
                              [build documentation]),,
               enable_documentation=yes)
-if test x$enable_triggers_only != xno; then
-   enable_documentation=no
-fi
 if test x$enable_documentation = xyes; then
    AC_PATH_PROG([XSLTPROC], [xsltproc])
    if test x$XSLTPROC = x; then
@@ -103,9 +92,6 @@ AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
 	    :, with_libarchive=maybe)
-if test x$enable_triggers_only != xno; then
-	with_libarchive=no
-fi
 
 AS_IF([ test x$with_libarchive != xno ], [
     AC_MSG_CHECKING([for $LIBARCHIVE_DEPENDENCY])
@@ -125,7 +111,7 @@ AS_IF([ test x$with_libarchive != xno ], [
 if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarchive"; fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
-AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel && test x$enable_triggers_only != xyes ],
+AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel ],
       [kernel_updates_default=yes],
       [kernel_updates_default=no])
 
@@ -136,7 +122,7 @@ AC_ARG_ENABLE(kernel-updates,
 	      enable_kernel_updates=${kernel_updates_default})
 AM_CONDITIONAL(ENABLE_KERNEL_UPDATES, test $enable_kernel_updates != no)
 
-AS_IF([test x$cross_compiling != xyes && test -d /etc/grub.d && test x$enable_triggers_only != xyes ],
+AS_IF([test x$cross_compiling != xyes && test -d /etc/grub.d ],
       [grub2_hook_default=yes],
       [grub2_hook_default=no])
 
@@ -163,7 +149,6 @@ echo "
     ===============
 
 
-    triggers only: $enable_triggers_only
     embedded dependencies: $enable_embedded_dependencies
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive

@@ -31,7 +31,6 @@
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
-static gboolean opt_no_triggers;
 static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_from_stdin;
@@ -42,7 +41,6 @@ static GOptionEntry options[] = {
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
-  { "no-triggers", 0, 0, G_OPTION_ARG_NONE, &opt_no_triggers, "Don't run triggers", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
   { NULL }
@@ -262,12 +260,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
 
       if (!process_many_checkouts (repo, checkout_target, cancellable, error))
         goto out;
-      
-      if (!opt_no_triggers)
-        {
-          if (!ostree_run_triggers_in_root (checkout_target, cancellable, error))
-            goto out;
-        }
     }
   else
     {
@@ -286,13 +278,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
                                  checkout_target_tmp ? checkout_target_tmp : checkout_target,
                                  cancellable, error))
         goto out;
-
-      if (!opt_no_triggers)
-        {
-          if (!ostree_run_triggers_in_root (checkout_target_tmp ? checkout_target_tmp : checkout_target,
-                                            cancellable, error))
-            goto out;
-        }
     }
 
   ret = TRUE;

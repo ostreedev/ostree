@@ -17,9 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-if !TRIGGERS_ONLY
 bin_PROGRAMS += ostree
-endif
 
 ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ostree-curl-fetcher.h \
@@ -59,7 +57,6 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-os-init.c \
 	src/ostree/ot-admin-builtin-install.c \
 	src/ostree/ot-admin-builtin-status.c \
-	src/ostree/ot-admin-builtin-run-triggers.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtins.h \
 	src/ostree/ot-admin-cleanup.c \

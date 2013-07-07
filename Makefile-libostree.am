@@ -17,9 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-if !TRIGGERS_ONLY
 privlib_LTLIBRARIES += libostree.la
-endif
 
 libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-core.c \
@@ -41,8 +39,6 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-types.h \
 	src/libostree/ostree-traverse.c \
 	src/libostree/ostree-traverse.h \
-	src/libostree/ostree-sysroot.c \
-	src/libostree/ostree-sysroot.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

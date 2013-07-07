@@ -52,7 +52,6 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "prune", ot_admin_builtin_prune },
   { "status", ot_admin_builtin_status },
   { "config-diff", ot_admin_builtin_diff },
-  { "run-triggers", ot_admin_builtin_run_triggers },
   { NULL, NULL }
 };
 

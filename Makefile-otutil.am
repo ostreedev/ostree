@@ -17,9 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-if !TRIGGERS_ONLY
 noinst_LTLIBRARIES += libotutil.la
-endif
 
 libotutil_la_SOURCES = \
 	src/libotutil/ot-checksum-utils.c \
