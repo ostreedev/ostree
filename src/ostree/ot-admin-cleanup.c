@@ -94,6 +94,7 @@ list_deployment_dirs_for_os (GFile               *osdir,
  out:
   return ret;
 }
+
 static gboolean
 list_all_deployment_directories (GFile               *sysroot,
                                  GPtrArray          **out_deployments,
@@ -149,6 +150,100 @@ list_all_deployment_directories (GFile               *sysroot,
  done:
   ret = TRUE;
   ot_transfer_out_value (out_deployments, &ret_deployments);
+ out:
+  return ret;
+}
+
+static gboolean
+parse_bootdir_name (const char *name,
+                    char      **out_osname,
+                    char      **out_csum)
+{
+  const char *lastdash;
+  
+  if (out_osname)
+    *out_osname = NULL;
+  if (out_csum)
+    *out_csum = NULL;
+
+  lastdash = strrchr (name, '-');
+
+  if (!lastdash)
+    return FALSE;
+      
+  if (!ostree_validate_checksum_string (lastdash + 1, NULL))
+    return FALSE;
+
+  if (out_osname)
+    *out_osname = g_strndup (name, lastdash - name);
+  if (out_csum)
+    *out_csum = g_strdup (lastdash + 1);
+
+  return TRUE;
+}
+
+static gboolean
+list_all_boot_directories (GFile               *sysroot,
+                           GPtrArray          **out_bootdirs,
+                           GCancellable        *cancellable,
+                           GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *boot_ostree = NULL;
+  gs_unref_object GFile *osdir = NULL;
+  gs_unref_ptrarray GPtrArray *ret_bootdirs = NULL;
+  GError *temp_error = NULL;
+
+  boot_ostree = g_file_resolve_relative_path (sysroot, "boot/ostree");
+
+  ret_bootdirs = g_ptr_array_new_with_free_func (g_object_unref);
+
+  dir_enum = g_file_enumerate_children (boot_ostree, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable, &temp_error);
+  if (!dir_enum)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          goto done;
+        } 
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  while (TRUE)
+    {
+      GFileInfo *file_info = NULL;
+      GFile *child = NULL;
+      const char *name;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                       NULL, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+        continue;
+
+      /* Only look at directories ending in -CHECKSUM; nothing else
+       * should be in here, but let's be conservative.
+       */
+      name = g_file_info_get_name (file_info);
+      if (!parse_bootdir_name (name, NULL, NULL))
+        continue;
+      
+      g_ptr_array_add (ret_bootdirs, g_object_ref (child));
+    }
+  
+ done:
+  ret = TRUE;
+  ot_transfer_out_value (out_bootdirs, &ret_bootdirs);
  out:
   return ret;
 }
@@ -212,20 +307,25 @@ cleanup_old_deployments (GFile               *sysroot,
   guint i;
   gs_unref_object GFile *active_root = g_file_new_for_path ("/");
   gs_unref_hashtable GHashTable *active_deployment_dirs = NULL;
+  gs_unref_hashtable GHashTable *active_boot_checksums = NULL;
   gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
+  gs_unref_ptrarray GPtrArray *all_boot_dirs = NULL;
 
   if (!ot_admin_util_get_devino (active_root, &root_device, &root_inode,
                                  cancellable, error))
     goto out;
 
   active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, NULL, g_object_unref);
+  active_boot_checksums = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
 
   for (i = 0; i < deployments->len; i++)
     {
       OtDeployment *deployment = deployments->pdata[i];
       GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
+      char *bootcsum = g_strdup (ot_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_insert (active_deployment_dirs, deployment_path, deployment_path);
+      g_hash_table_insert (active_boot_checksums, bootcsum, bootcsum);
     }
 
   if (!list_all_deployment_directories (sysroot, &all_deployment_dirs,
@@ -258,6 +358,28 @@ cleanup_old_deployments (GFile               *sysroot,
           if (!gs_shutil_rm_rf (origin_path, cancellable, error))
             goto out;
         }
+    }
+
+  if (!list_all_boot_directories (sysroot, &all_boot_dirs,
+                                  cancellable, error))
+    goto out;
+  
+  for (i = 0; i < all_boot_dirs->len; i++)
+    {
+      GFile *bootdir = all_boot_dirs->pdata[i];
+      gs_free char *osname = NULL;
+      gs_free char *bootcsum = NULL;
+
+      if (!parse_bootdir_name (gs_file_get_basename_cached (bootdir),
+                               &osname, &bootcsum))
+        g_assert_not_reached ();
+
+      if (g_hash_table_lookup (active_boot_checksums, bootcsum))
+        continue;
+
+      g_print ("ostadmin: Deleting bootdir %s\n", gs_file_get_path_cached (bootdir));
+      if (!gs_shutil_rm_rf (bootdir, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
