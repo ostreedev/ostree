@@ -62,6 +62,8 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-run-triggers.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtins.h \
+	src/ostree/ot-admin-cleanup.c \
+	src/ostree/ot-admin-util.c \
 	src/ostree/ot-admin-functions.h \
 	src/ostree/ot-admin-functions.c \
 	src/ostree/ot-admin-deploy.h \

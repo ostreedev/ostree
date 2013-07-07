@@ -31,6 +31,19 @@
 
 G_BEGIN_DECLS
 
+char *ot_admin_util_split_keyeq (char *str);
+
+gboolean ot_admin_util_get_devino (GFile         *path,
+                                   guint32       *out_device,
+                                   guint64       *out_inode,
+                                   GCancellable  *cancellable,
+                                   GError       **error);
+
+gboolean ot_admin_parse_deploy_path_name (const char *name,
+                                          char      **out_csum,
+                                          int        *out_serial,
+                                          GError    **error);
+
 gboolean ot_admin_ensure_initialized (GFile         *ostree_dir, 
 				      GCancellable  *cancellable,
 				      GError       **error);
@@ -40,7 +53,6 @@ gboolean ot_admin_check_os (GFile         *sysroot,
                             GCancellable  *cancellable,
                             GError       **error);
 
-char *ot_admin_split_keyeq (char *str);
 OtOrderedHash *ot_admin_parse_kernel_args (const char *options);
 char * ot_admin_kernel_arg_string_serialize (OtOrderedHash *ohash);
 

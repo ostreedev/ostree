@@ -1148,7 +1148,7 @@ ot_admin_deploy (GFile             *sysroot,
       for (strviter = add_kernel_argv; *strviter; strviter++)
         {
           char *karg = g_strdup (*strviter);
-          const char *val = ot_admin_split_keyeq (karg);
+          const char *val = ot_admin_util_split_keyeq (karg);
         
           ot_ordered_hash_replace_key_take (ohash, karg, val);
         }
