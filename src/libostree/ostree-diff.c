@@ -35,8 +35,8 @@ get_file_checksum (GFile  *f,
                    GError   **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *ret_checksum = NULL;
-  ot_lfree guchar *csum = NULL;
+  gs_free char *ret_checksum = NULL;
+  gs_free guchar *csum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
@@ -107,8 +107,8 @@ diff_files (GFile           *a,
             GError         **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *checksum_a = NULL;
-  ot_lfree char *checksum_b = NULL;
+  gs_free char *checksum_a = NULL;
+  gs_free char *checksum_b = NULL;
   OstreeDiffItem *ret_item = NULL;
 
   if (!get_file_checksum (a, a_info, &checksum_a, cancellable, error))
@@ -138,9 +138,9 @@ diff_add_dir_recurse (GFile          *d,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFile *child = NULL;
-  ot_lobj GFileInfo *child_info = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GFileInfo *child_info = NULL;
 
   dir_enum = g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -196,11 +196,11 @@ ostree_diff_dirs (GFile          *a,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFile *child_a = NULL;
-  ot_lobj GFile *child_b = NULL;
-  ot_lobj GFileInfo *child_a_info = NULL;
-  ot_lobj GFileInfo *child_b_info = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *child_a = NULL;
+  gs_unref_object GFile *child_b = NULL;
+  gs_unref_object GFileInfo *child_a_info = NULL;
+  gs_unref_object GFileInfo *child_b_info = NULL;
 
   child_a_info = g_file_query_info (a, OSTREE_GIO_FAST_QUERYINFO,
                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,

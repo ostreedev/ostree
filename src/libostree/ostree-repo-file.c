@@ -150,11 +150,11 @@ do_resolve_commit (OstreeRepoFile  *self,
                    GError         **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lvariant GVariant *root_contents = NULL;
-  ot_lvariant GVariant *root_metadata = NULL;
-  ot_lvariant GVariant *tree_contents_csum_v = NULL;
-  ot_lvariant GVariant *tree_metadata_csum_v = NULL;
+  gs_unref_variant GVariant *commit = NULL;
+  gs_unref_variant GVariant *root_contents = NULL;
+  gs_unref_variant GVariant *root_metadata = NULL;
+  gs_unref_variant GVariant *tree_contents_csum_v = NULL;
+  gs_unref_variant GVariant *tree_metadata_csum_v = NULL;
 
   g_assert (self->parent == NULL);
 
@@ -195,12 +195,12 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   gboolean ret = FALSE;
   gboolean is_dir;
   int i;
-  ot_lvariant GVariant *container = NULL;
-  ot_lvariant GVariant *tree_contents = NULL;
-  ot_lvariant GVariant *tree_metadata = NULL;
-  ot_lvariant GVariant *content_csum_v = NULL;
-  ot_lvariant GVariant *metadata_csum_v = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_variant GVariant *container = NULL;
+  gs_unref_variant GVariant *tree_contents = NULL;
+  gs_unref_variant GVariant *tree_metadata = NULL;
+  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *metadata_csum_v = NULL;
+  gs_free char *tmp_checksum = NULL;
 
   i = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
   
@@ -294,7 +294,7 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                              GError         **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *ret_xattrs = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
@@ -687,8 +687,8 @@ query_child_info_dir (OstreeRepo               *repo,
                       GError                  **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileInfo *ret_info = NULL;
-  ot_lvariant GVariant *metadata = NULL;
+  gs_unref_object GFileInfo *ret_info = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
 
   ret_info = g_file_info_new ();
 
@@ -724,7 +724,7 @@ bsearch_in_file_variant (GVariant  *variant,
   imin = 0;
   while (imax >= imin)
     {
-      ot_lvariant GVariant *child = NULL;
+      gs_unref_variant GVariant *child = NULL;
       const char *cur;
       int cmp;
 
@@ -810,12 +810,12 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   gboolean ret = FALSE;
   const char *name = NULL;
   int c;
-  ot_lobj GFileInfo *ret_info = NULL;
-  ot_lvariant GVariant *files_variant = NULL;
-  ot_lvariant GVariant *dirs_variant = NULL;
-  ot_lvariant GVariant *tree_child_metadata = NULL;
-  ot_lvariant GVariant *content_csum_v = NULL;
-  ot_lvariant GVariant *meta_csum_v = NULL;
+  gs_unref_object GFileInfo *ret_info = NULL;
+  gs_unref_variant GVariant *files_variant = NULL;
+  gs_unref_variant GVariant *dirs_variant = NULL;
+  gs_unref_variant GVariant *tree_child_metadata = NULL;
+  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *meta_csum_v = NULL;
   char tmp_checksum[65];
   GFileAttributeMatcher *matcher = NULL;
 
@@ -891,7 +891,7 @@ ostree_repo_file_query_info (GFile                *file,
 {
   gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
-  ot_lobj GFileInfo *info = NULL;
+  gs_unref_object GFileInfo *info = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
@@ -943,8 +943,8 @@ ostree_repo_file_read (GFile         *file,
   gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
-  ot_lobj GFile *local_file = NULL;
-  ot_lobj GInputStream *ret_stream = NULL;
+  gs_unref_object GFile *local_file = NULL;
+  gs_unref_object GInputStream *ret_stream = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;

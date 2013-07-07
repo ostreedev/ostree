@@ -231,7 +231,7 @@ parse_rev_file (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lfree char *rev = NULL;
+  gs_free char *rev = NULL;
 
   if ((rev = gs_file_load_contents_utf8 (f, NULL, &temp_error)) == NULL)
     goto out;
@@ -255,7 +255,7 @@ parse_rev_file (OstreeRepo     *self,
 
   if (g_str_has_prefix (rev, "ref: "))
     {
-      ot_lobj GFile *ref = NULL;
+      gs_unref_object GFile *ref = NULL;
       char *ref_sha256;
       gboolean subret;
 
@@ -290,8 +290,8 @@ find_ref_in_remotes (OstreeRepo         *self,
                      GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFile *ret_file = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *ret_file = NULL;
 
   dir_enum = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -378,11 +378,11 @@ resolve_refspec (OstreeRepo     *self,
   gboolean ret = FALSE;
   __attribute__((unused)) GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
-  ot_lfree char *tmp = NULL;
-  ot_lfree char *tmp2 = NULL;
-  ot_lfree char *ret_rev = NULL;
-  ot_lobj GFile *child = NULL;
-  ot_lobj GFile *origindir = NULL;
+  gs_free char *tmp = NULL;
+  gs_free char *tmp2 = NULL;
+  gs_free char *ret_rev = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GFile *origindir = NULL;
   
   g_return_val_if_fail (ref != NULL, FALSE);
 
@@ -518,10 +518,10 @@ write_checksum_file (GFile *parentdir,
   gboolean ret = FALSE;
   gsize bytes_written;
   int i;
-  ot_lobj GFile *parent = NULL;
-  ot_lobj GFile *child = NULL;
-  ot_lobj GOutputStream *out = NULL;
-  ot_lptrarray GPtrArray *components = NULL;
+  gs_unref_object GFile *parent = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GOutputStream *out = NULL;
+  gs_unref_ptrarray GPtrArray *components = NULL;
 
   if (!ostree_validate_checksum_string (sha256, error))
     goto out;
@@ -624,7 +624,7 @@ ostree_repo_write_config (OstreeRepo *self,
                           GError    **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *data = NULL;
+  gs_free char *data = NULL;
   gsize len;
 
   g_return_val_if_fail (self->inited, FALSE);
@@ -676,9 +676,9 @@ ostree_repo_check (OstreeRepo *self, GError **error)
 {
   gboolean ret = FALSE;
   gboolean is_archive;
-  ot_lfree char *version = NULL;
-  ot_lfree char *mode = NULL;
-  ot_lfree char *parent_repo_path = NULL;
+  gs_free char *version = NULL;
+  gs_free char *mode = NULL;
+  gs_free char *parent_repo_path = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -736,7 +736,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
 
   if (parent_repo_path && parent_repo_path[0])
     {
-      ot_lobj GFile *parent_repo_f = g_file_new_for_path (parent_repo_path);
+      gs_unref_object GFile *parent_repo_f = g_file_new_for_path (parent_repo_path);
 
       self->parent_repo = ostree_repo_new (parent_repo_f);
 
@@ -805,7 +805,7 @@ GFile *
 ostree_repo_get_archive_content_path (OstreeRepo    *self,
                                       const char    *checksum)
 {
-  ot_lfree char *path = NULL;
+  gs_free char *path = NULL;
 
   g_assert (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE);
 
@@ -822,7 +822,7 @@ commit_loose_object_impl (OstreeRepo        *self,
                           GError           **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *parent = NULL;
+  gs_unref_object GFile *parent = NULL;
 
   parent = g_file_get_parent (dest);
   if (!gs_file_ensure_directory (parent, FALSE, cancellable, error))
@@ -863,7 +863,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                              GError           **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *dest_file = NULL;
+  gs_unref_object GFile *dest_file = NULL;
 
   dest_file = ostree_repo_get_object_path (self, checksum, objtype);
 
@@ -890,12 +890,12 @@ stage_object (OstreeRepo         *self,
   const char *actual_checksum;
   gboolean do_commit;
   OstreeRepoMode repo_mode;
-  ot_lobj GFileInfo *temp_info = NULL;
-  ot_lobj GFile *temp_file = NULL;
-  ot_lobj GFile *raw_temp_file = NULL;
-  ot_lobj GFile *stored_path = NULL;
-  ot_lfree guchar *ret_csum = NULL;
-  ot_lobj OstreeChecksumInputStream *checksum_input = NULL;
+  gs_unref_object GFileInfo *temp_info = NULL;
+  gs_unref_object GFile *temp_file = NULL;
+  gs_unref_object GFile *raw_temp_file = NULL;
+  gs_unref_object GFile *stored_path = NULL;
+  gs_free guchar *ret_csum = NULL;
+  gs_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
   gboolean staged_raw_file = FALSE;
@@ -927,9 +927,9 @@ stage_object (OstreeRepo         *self,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      ot_lobj GInputStream *file_input = NULL;
-      ot_lobj GFileInfo *file_info = NULL;
-      ot_lvariant GVariant *xattrs = NULL;
+      gs_unref_object GInputStream *file_input = NULL;
+      gs_unref_object GFileInfo *file_info = NULL;
+      gs_unref_variant GVariant *xattrs = NULL;
 
       if (!ostree_content_stream_parse (FALSE, checksum_input ? (GInputStream*)checksum_input : input,
                                         file_object_length, FALSE,
@@ -951,10 +951,10 @@ stage_object (OstreeRepo         *self,
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
         {
-          ot_lvariant GVariant *file_meta = NULL;
-          ot_lobj GOutputStream *temp_out = NULL;
-          ot_lobj GConverter *zlib_compressor = NULL;
-          ot_lobj GOutputStream *compressed_out_stream = NULL;
+          gs_unref_variant GVariant *file_meta = NULL;
+          gs_unref_object GOutputStream *temp_out = NULL;
+          gs_unref_object GConverter *zlib_compressor = NULL;
+          gs_unref_object GOutputStream *compressed_out_stream = NULL;
 
           if (!ostree_create_temp_regular_file (self->tmp_dir,
                                                 ostree_object_type_to_string (objtype), NULL,
@@ -985,9 +985,9 @@ stage_object (OstreeRepo         *self,
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE)
         {
-          ot_lvariant GVariant *file_meta = NULL;
-          ot_lobj GInputStream *file_meta_input = NULL;
-          ot_lobj GFileInfo *archive_content_file_info = NULL;
+          gs_unref_variant GVariant *file_meta = NULL;
+          gs_unref_object GInputStream *file_meta_input = NULL;
+          gs_unref_object GFileInfo *archive_content_file_info = NULL;
           
           file_meta = ostree_file_header_new (file_info, xattrs);
           file_meta_input = ot_variant_read (file_meta);
@@ -1001,7 +1001,7 @@ stage_object (OstreeRepo         *self,
 
           if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
             {
-              ot_lobj GOutputStream *content_out = NULL;
+              gs_unref_object GOutputStream *content_out = NULL;
               guint32 src_mode;
               guint32 target_mode;
 
@@ -1078,9 +1078,9 @@ stage_object (OstreeRepo         *self,
       if (!staged_raw_file
           && objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
         {
-          ot_lobj GInputStream *file_input = NULL;
-          ot_lobj GFileInfo *file_info = NULL;
-          ot_lvariant GVariant *xattrs = NULL;
+          gs_unref_object GInputStream *file_input = NULL;
+          gs_unref_object GFileInfo *file_info = NULL;
+          gs_unref_variant GVariant *xattrs = NULL;
           gboolean is_regular;
               
           if (!ostree_content_file_parse (FALSE, temp_file, FALSE, &file_input,
@@ -1107,7 +1107,7 @@ stage_object (OstreeRepo         *self,
           /* Commit content first so the process is atomic */
           if (staged_archive_file)
             {
-              ot_lobj GFile *archive_content_dest = NULL;
+              gs_unref_object GFile *archive_content_dest = NULL;
 
               archive_content_dest = ostree_repo_get_archive_content_path (self, actual_checksum);
                                                                    
@@ -1252,8 +1252,8 @@ scan_loose_devino (OstreeRepo                     *self,
   gboolean ret = FALSE;
   guint i;
   OstreeRepoMode repo_mode;
-  ot_lptrarray GPtrArray *object_dirs = NULL;
-  ot_lobj GFile *objdir = NULL;
+  gs_unref_ptrarray GPtrArray *object_dirs = NULL;
+  gs_unref_object GFile *objdir = NULL;
 
   if (self->parent_repo)
     {
@@ -1269,8 +1269,8 @@ scan_loose_devino (OstreeRepo                     *self,
   for (i = 0; i < object_dirs->len; i++)
     {
       GFile *objdir = object_dirs->pdata[i];
-      ot_lobj GFileEnumerator *enumerator = NULL;
-      ot_lobj GFileInfo *file_info = NULL;
+      gs_unref_object GFileEnumerator *enumerator = NULL;
+      gs_unref_object GFileInfo *file_info = NULL;
       const char *dirname;
 
       enumerator = g_file_enumerate_children (objdir, OSTREE_GIO_FAST_QUERYINFO, 
@@ -1431,8 +1431,8 @@ ostree_repo_stage_metadata (OstreeRepo         *self,
                             GCancellable       *cancellable,
                             GError            **error)
 {
-  ot_lobj GInputStream *input = NULL;
-  ot_lvariant GVariant *normalized = NULL;
+  gs_unref_object GInputStream *input = NULL;
+  gs_unref_variant GVariant *normalized = NULL;
 
   normalized = g_variant_get_normal_form (variant);
   input = ot_variant_read (normalized);
@@ -1455,8 +1455,8 @@ ostree_repo_stage_metadata_trusted (OstreeRepo         *self,
                                     GCancellable       *cancellable,
                                     GError            **error)
 {
-  ot_lobj GInputStream *input = NULL;
-  ot_lvariant GVariant *normalized = NULL;
+  gs_unref_object GInputStream *input = NULL;
+  gs_unref_variant GVariant *normalized = NULL;
 
   normalized = g_variant_get_normal_form (variant);
   input = ot_variant_read (normalized);
@@ -1568,7 +1568,7 @@ stage_directory_meta (OstreeRepo   *self,
                       GCancellable *cancellable,
                       GError      **error)
 {
-  ot_lvariant GVariant *dirmeta = NULL;
+  gs_unref_variant GVariant *dirmeta = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1803,7 +1803,7 @@ enumerate_refs_recurse (OstreeRepo    *repo,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *enumerator = NULL;
+  gs_unref_object GFileEnumerator *enumerator = NULL;
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1938,10 +1938,10 @@ write_ref_summary (OstreeRepo      *self,
   GHashTableIter hash_iter;
   gpointer key, value;
   gsize bytes_written;
-  ot_lhash GHashTable *all_refs = NULL;
-  ot_lobj GFile *summary_path = NULL;
-  ot_lobj GOutputStream *out = NULL;
-  ot_lfree char *buf = NULL;
+  gs_unref_hashtable GHashTable *all_refs = NULL;
+  gs_unref_object GFile *summary_path = NULL;
+  gs_unref_object GOutputStream *out = NULL;
+  gs_free char *buf = NULL;
 
   if (!ostree_repo_list_refs (self, NULL, &all_refs, cancellable, error))
     goto out;
@@ -1981,7 +1981,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
                        GError     **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *dir = NULL;
+  gs_unref_object GFile *dir = NULL;
 
   if (remote == NULL)
     dir = g_object_ref (self->local_heads_dir);
@@ -2063,9 +2063,9 @@ ostree_repo_stage_commit (OstreeRepo *self,
                           GError      **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *ret_commit = NULL;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lfree guchar *commit_csum = NULL;
+  gs_free char *ret_commit = NULL;
+  gs_unref_variant GVariant *commit = NULL;
+  gs_free guchar *commit_csum = NULL;
   GDateTime *now = NULL;
 
   g_return_val_if_fail (branch != NULL, FALSE);
@@ -2224,9 +2224,9 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
   gboolean ret = FALSE;
   gboolean repo_dir_was_empty = FALSE;
   OstreeRepoCommitFilterResult filter_result;
-  ot_lobj OstreeRepoFile *repo_dir = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFileInfo *child_info = NULL;
+  gs_unref_object OstreeRepoFile *repo_dir = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFileInfo *child_info = NULL;
 
   /* We can only reuse checksums directly if there's no modifier */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
@@ -2246,10 +2246,10 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
     }
   else
     {
-      ot_lobj GFileInfo *modified_info = NULL;
-      ot_lvariant GVariant *xattrs = NULL;
-      ot_lfree guchar *child_file_csum = NULL;
-      ot_lfree char *tmp_checksum = NULL;
+      gs_unref_object GFileInfo *modified_info = NULL;
+      gs_unref_variant GVariant *xattrs = NULL;
+      gs_free guchar *child_file_csum = NULL;
+      gs_free char *tmp_checksum = NULL;
 
       child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -2330,11 +2330,11 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                 {
                   guint64 file_obj_length;
                   const char *loose_checksum;
-                  ot_lobj GInputStream *file_input = NULL;
-                  ot_lvariant GVariant *xattrs = NULL;
-                  ot_lobj GInputStream *file_object_input = NULL;
-                  ot_lfree guchar *child_file_csum = NULL;
-                  ot_lfree char *tmp_checksum = NULL;
+                  gs_unref_object GInputStream *file_input = NULL;
+                  gs_unref_variant GVariant *xattrs = NULL;
+                  gs_unref_object GInputStream *file_object_input = NULL;
+                  gs_free guchar *child_file_csum = NULL;
+                  gs_free char *tmp_checksum = NULL;
 
                   loose_checksum = devino_cache_lookup (self, child_info);
 
@@ -2423,11 +2423,11 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
   GHashTableIter hash_iter;
   gpointer key, value;
   const char *existing_checksum;
-  ot_lfree char *ret_contents_checksum = NULL;
-  ot_lhash GHashTable *dir_metadata_checksums = NULL;
-  ot_lhash GHashTable *dir_contents_checksums = NULL;
-  ot_lvariant GVariant *serialized_tree = NULL;
-  ot_lfree guchar *contents_csum = NULL;
+  gs_free char *ret_contents_checksum = NULL;
+  gs_unref_hashtable GHashTable *dir_metadata_checksums = NULL;
+  gs_unref_hashtable GHashTable *dir_contents_checksums = NULL;
+  gs_unref_variant GVariant *serialized_tree = NULL;
+  gs_free guchar *contents_csum = NULL;
 
   existing_checksum = ostree_mutable_tree_get_contents_checksum (mtree);
   if (existing_checksum)
@@ -2551,8 +2551,8 @@ import_libarchive_entry_file (OstreeRepo           *self,
                               GError              **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GInputStream *file_object_input = NULL;
-  ot_lobj GInputStream *archive_stream = NULL;
+  gs_unref_object GInputStream *file_object_input = NULL;
+  gs_unref_object GInputStream *archive_stream = NULL;
   guint64 length;
   
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -2588,16 +2588,16 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
   const char *pathname;
   const char *hardlink;
   const char *basename;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lptrarray GPtrArray *split_path = NULL;
-  ot_lptrarray GPtrArray *hardlink_split_path = NULL;
-  ot_lobj OstreeMutableTree *subdir = NULL;
-  ot_lobj OstreeMutableTree *parent = NULL;
-  ot_lobj OstreeMutableTree *hardlink_source_parent = NULL;
-  ot_lfree char *hardlink_source_checksum = NULL;
-  ot_lobj OstreeMutableTree *hardlink_source_subdir = NULL;
-  ot_lfree guchar *tmp_csum = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_ptrarray GPtrArray *split_path = NULL;
+  gs_unref_ptrarray GPtrArray *hardlink_split_path = NULL;
+  gs_unref_object OstreeMutableTree *subdir = NULL;
+  gs_unref_object OstreeMutableTree *parent = NULL;
+  gs_unref_object OstreeMutableTree *hardlink_source_parent = NULL;
+  gs_free char *hardlink_source_checksum = NULL;
+  gs_unref_object OstreeMutableTree *hardlink_source_subdir = NULL;
+  gs_free guchar *tmp_csum = NULL;
+  gs_free char *tmp_checksum = NULL;
 
   pathname = archive_entry_pathname (entry); 
       
@@ -2746,8 +2746,8 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
   struct archive *a = NULL;
   struct archive_entry *entry;
   int r;
-  ot_lobj GFileInfo *tmp_dir_info = NULL;
-  ot_lfree guchar *tmp_csum = NULL;
+  gs_unref_object GFileInfo *tmp_dir_info = NULL;
+  gs_free guchar *tmp_csum = NULL;
 
   a = archive_read_new ();
   archive_read_support_compression_all (a);
@@ -2917,8 +2917,8 @@ list_loose_objects (OstreeRepo                     *self,
 {
   gboolean ret = FALSE;
   guint i;
-  ot_lptrarray GPtrArray *object_dirs = NULL;
-  ot_lobj GFile *objdir = NULL;
+  gs_unref_ptrarray GPtrArray *object_dirs = NULL;
+  gs_unref_object GFile *objdir = NULL;
 
   if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
@@ -2946,12 +2946,12 @@ ostree_repo_load_file (OstreeRepo         *self,
 {
   gboolean ret = FALSE;
   OstreeRepoMode repo_mode;
-  ot_lvariant GVariant *file_data = NULL;
-  ot_lobj GFile *loose_path = NULL;
-  ot_lobj GFileInfo *content_loose_info = NULL;
-  ot_lobj GInputStream *ret_input = NULL;
-  ot_lobj GFileInfo *ret_file_info = NULL;
-  ot_lvariant GVariant *ret_xattrs = NULL;
+  gs_unref_variant GVariant *file_data = NULL;
+  gs_unref_object GFile *loose_path = NULL;
+  gs_unref_object GFileInfo *content_loose_info = NULL;
+  gs_unref_object GInputStream *ret_input = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
 
   if (!repo_find_object (self, OSTREE_OBJECT_TYPE_FILE, checksum, &loose_path,
                          cancellable, error))
@@ -2965,7 +2965,7 @@ ostree_repo_load_file (OstreeRepo         *self,
         {
         case OSTREE_REPO_MODE_ARCHIVE:
           {
-            ot_lvariant GVariant *archive_meta = NULL;
+            gs_unref_variant GVariant *archive_meta = NULL;
 
             if (!ot_util_variant_map (loose_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT,
                                       TRUE, &archive_meta, error))
@@ -2977,8 +2977,8 @@ ostree_repo_load_file (OstreeRepo         *self,
 
             if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
               {
-                ot_lobj GFile *archive_content_path = NULL;
-                ot_lobj GFileInfo *content_info = NULL;
+                gs_unref_object GFile *archive_content_path = NULL;
+                gs_unref_object GFileInfo *content_info = NULL;
 
                 archive_content_path = ostree_repo_get_archive_content_path (self, checksum);
                 content_info = g_file_query_info (archive_content_path, OSTREE_GIO_FAST_QUERYINFO,
@@ -3068,8 +3068,8 @@ repo_find_object (OstreeRepo           *self,
 {
   gboolean ret = FALSE;
   struct stat stbuf;
-  ot_lobj GFile *object_path = NULL;
-  ot_lobj GFile *ret_stored_path = NULL;
+  gs_unref_object GFile *object_path = NULL;
+  gs_unref_object GFile *ret_stored_path = NULL;
 
   object_path = ostree_repo_get_object_path (self, checksum, objtype);
   
@@ -3100,7 +3100,7 @@ ostree_repo_has_object (OstreeRepo           *self,
 {
   gboolean ret = FALSE;
   gboolean ret_have_object;
-  ot_lobj GFile *loose_path = NULL;
+  gs_unref_object GFile *loose_path = NULL;
 
   if (!repo_find_object (self, objtype, checksum, &loose_path,
                          cancellable, error))
@@ -3130,7 +3130,7 @@ ostree_repo_load_variant_c (OstreeRepo          *self,
                             GError             **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *checksum = NULL;
+  gs_free char *checksum = NULL;
 
   checksum = ostree_checksum_from_bytes (csum);
 
@@ -3152,8 +3152,8 @@ load_variant_internal (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   GCancellable *cancellable = NULL;
-  ot_lobj GFile *object_path = NULL;
-  ot_lvariant GVariant *ret_variant = NULL;
+  gs_unref_object GFile *object_path = NULL;
+  gs_unref_variant GVariant *ret_variant = NULL;
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
@@ -3245,7 +3245,7 @@ ostree_repo_list_objects (OstreeRepo                  *self,
                           GError                     **error)
 {
   gboolean ret = FALSE;
-  ot_lhash GHashTable *ret_objects = NULL;
+  gs_unref_hashtable GHashTable *ret_objects = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (self->inited, FALSE);
@@ -3291,9 +3291,9 @@ checkout_file_from_input (GFile          *file,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lobj GFile *dir = NULL;
-  ot_lobj GFile *temp_file = NULL;
-  ot_lobj GFileInfo *temp_info = NULL;
+  gs_unref_object GFile *dir = NULL;
+  gs_unref_object GFile *temp_file = NULL;
+  gs_unref_object GFileInfo *temp_info = NULL;
 
   if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
@@ -3378,7 +3378,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
 {
   gboolean ret = FALSE;
   gboolean ret_was_supported = FALSE;
-  ot_lobj GFile *dir = NULL;
+  gs_unref_object GFile *dir = NULL;
 
  again:
   if (dirfd != -1 &&
@@ -3429,7 +3429,7 @@ find_loose_for_checkout (OstreeRepo             *self,
                          GError                **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *path = NULL;
+  gs_unref_object GFile *path = NULL;
   struct stat stbuf;
 
   do
@@ -3530,9 +3530,9 @@ checkout_file_thread (GSimpleAsyncResult     *result,
   gboolean hardlink_supported;
   GError *local_error = NULL;
   GError **error = &local_error;
-  ot_lobj GFile *loose_path = NULL;
-  ot_lobj GInputStream *input = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
+  gs_unref_object GFile *loose_path = NULL;
+  gs_unref_object GInputStream *input = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
   CheckoutOneFileAsyncData *checkout_data;
 
   checkout_data = g_simple_async_result_get_op_res_gpointer (result);
@@ -3566,7 +3566,7 @@ checkout_file_thread (GSimpleAsyncResult     *result,
       && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER
       && repo->enable_uncompressed_cache)
     {
-      ot_lobj GFile *objdir = NULL;
+      gs_unref_object GFile *objdir = NULL;
 
       loose_path = get_uncompressed_object_cache_path (repo, checksum);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
@@ -3814,8 +3814,8 @@ process_pending_dirs (CheckoutTreeAsyncData *data)
         {
           GFileInfo *file_info = data->pending_dirs->pdata[i];
           const char *name;
-          ot_lobj GFile *dest_path = NULL;
-          ot_lobj GFile *src_child = NULL;
+          gs_unref_object GFile *dest_path = NULL;
+          gs_unref_object GFile *src_child = NULL;
 
           name = g_file_info_get_attribute_byte_string (file_info, "standard::name"); 
 
@@ -3892,8 +3892,8 @@ on_got_next_files (GObject          *src,
 
       if (type != G_FILE_TYPE_DIRECTORY)
         {
-          ot_lobj GFile *dest_path = NULL;
-          ot_lobj GFile *src_child = NULL;
+          gs_unref_object GFile *dest_path = NULL;
+          gs_unref_object GFile *src_child = NULL;
 
           dest_path = g_file_get_child (data->destination, name);
           src_child = g_file_get_child ((GFile*)data->source, name);
@@ -3937,9 +3937,9 @@ ostree_repo_checkout_tree_async (OstreeRepo               *self,
                                  gpointer                  user_data)
 {
   CheckoutTreeAsyncData *checkout_data;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
 
@@ -4024,7 +4024,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
                          GError           **error)
 {
   gboolean ret = FALSE;
-  ot_lhash GHashTable *to_clean_dirs = NULL;
+  gs_unref_hashtable GHashTable *to_clean_dirs = NULL;
   GHashTableIter iter;
   gpointer key, value;
 
@@ -4037,9 +4037,9 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
     g_hash_table_iter_init (&iter, to_clean_dirs);
   while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
     {
-      ot_lobj GFile *objdir = NULL;
-      ot_lobj GFileEnumerator *enumerator = NULL;
-      ot_lfree char *objdir_name = NULL;
+      gs_unref_object GFile *objdir = NULL;
+      gs_unref_object GFileEnumerator *enumerator = NULL;
+      gs_free char *objdir_name = NULL;
 
       objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
       objdir = ot_gfile_get_child_build_path (self->uncompressed_objects_dir, "objects",
@@ -4087,8 +4087,8 @@ ostree_repo_read_commit (OstreeRepo *self,
                          GError **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *ret_root = NULL;
-  ot_lfree char *resolved_rev = NULL;
+  gs_unref_object GFile *ret_root = NULL;
+  gs_free char *resolved_rev = NULL;
 
   if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved_rev, error))
     goto out;

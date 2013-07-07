@@ -48,8 +48,8 @@ ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   const char *op;
   guint i;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lptrarray GPtrArray *branches = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_ptrarray GPtrArray *branches = NULL;
   GKeyFile *config = NULL;
 
   context = g_option_context_new ("OPERATION [args] - Control remote repository configuration");

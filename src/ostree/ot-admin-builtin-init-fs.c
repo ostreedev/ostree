@@ -37,8 +37,8 @@ ot_admin_builtin_init_fs (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj GFile *dir = NULL;
-  ot_lobj GFile *child = NULL;
+  gs_unref_object GFile *dir = NULL;
+  gs_unref_object GFile *child = NULL;
   guint i;
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
   GCancellable *cancellable = NULL;

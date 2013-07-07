@@ -166,7 +166,7 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                 GError           **error)
 {
   gboolean ret = FALSE;
-  ot_lobj OstreeMutableTree *ret_dir = NULL;
+  gs_unref_object OstreeMutableTree *ret_dir = NULL;
 
   g_return_val_if_fail (name != NULL, FALSE);
 
@@ -199,8 +199,8 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
                             GError             **error)
 {
   gboolean ret = FALSE;
-  ot_lobj OstreeMutableTree *ret_subdir = NULL;
-  ot_lfree char *ret_file_checksum = NULL;
+  gs_unref_object OstreeMutableTree *ret_subdir = NULL;
+  gs_free char *ret_file_checksum = NULL;
   
   ret_subdir = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_subdir)
@@ -230,7 +230,7 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
   gboolean ret = FALSE;
   int i;
   OstreeMutableTree *subdir = self; /* nofree */
-  ot_lobj OstreeMutableTree *ret_parent = NULL;
+  gs_unref_object OstreeMutableTree *ret_parent = NULL;
 
   g_assert (metadata_checksum != NULL);
 

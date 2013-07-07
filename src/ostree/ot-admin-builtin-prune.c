@@ -42,11 +42,11 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname;
-  ot_lobj GFile *repo_path = NULL;
-  ot_lobj GFile *deploy_dir = NULL;
-  ot_lobj GFile *current_deployment = NULL;
-  ot_lobj GFile *previous_deployment = NULL;
-  ot_lobj GFile *active_deployment = NULL;
+  gs_unref_object GFile *repo_path = NULL;
+  gs_unref_object GFile *deploy_dir = NULL;
+  gs_unref_object GFile *current_deployment = NULL;
+  gs_unref_object GFile *previous_deployment = NULL;
+  gs_unref_object GFile *active_deployment = NULL;
   gs_free char *active_osname = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
@@ -72,7 +72,7 @@ ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, G
 
   if (!opt_no_repo_prune)
     {
-      ot_lfree char *repo_arg = NULL;
+      gs_free char *repo_arg = NULL;
 
       repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
       

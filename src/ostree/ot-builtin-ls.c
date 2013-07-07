@@ -151,9 +151,9 @@ print_directory_recurse (GFile    *f,
                          GError  **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileEnumerator *dir_enum = NULL;
-  ot_lobj GFile *child = NULL;
-  ot_lobj GFileInfo *child_info = NULL;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GFileInfo *child_info = NULL;
   GError *temp_error = NULL;
 
   dir_enum = g_file_enumerate_children (f, OSTREE_GIO_FAST_QUERYINFO, 
@@ -194,12 +194,12 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj OstreeRepo *repo = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
   const char *rev;
   int i;
-  ot_lobj GFile *root = NULL;
-  ot_lobj GFile *f = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
+  gs_unref_object GFile *root = NULL;
+  gs_unref_object GFile *f = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
 
   context = g_option_context_new ("COMMIT PATH [PATH...] - List file paths");
   g_option_context_add_main_entries (context, options, NULL);

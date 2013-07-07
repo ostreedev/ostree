@@ -75,10 +75,10 @@ copy_one_config_file (GFile              *orig_etc,
                       GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileInfo *src_info = NULL;
-  ot_lobj GFile *dest = NULL;
-  ot_lobj GFile *parent = NULL;
-  ot_lfree char *relative_path = NULL;
+  gs_unref_object GFileInfo *src_info = NULL;
+  gs_unref_object GFile *dest = NULL;
+  gs_unref_object GFile *parent = NULL;
+  gs_free char *relative_path = NULL;
   
   relative_path = g_file_get_relative_path (modified_etc, src);
   g_assert (relative_path);
@@ -91,8 +91,8 @@ copy_one_config_file (GFile              *orig_etc,
 
   if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_DIRECTORY)
     {
-      ot_lobj GFileEnumerator *src_enum = NULL;
-      ot_lobj GFileInfo *child_info = NULL;
+      gs_unref_object GFileEnumerator *src_enum = NULL;
+      gs_unref_object GFileInfo *child_info = NULL;
       GError *temp_error = NULL;
 
       /* FIXME actually we need to copy permissions and xattrs */
@@ -105,7 +105,7 @@ copy_one_config_file (GFile              *orig_etc,
 
       while ((child_info = g_file_enumerator_next_file (src_enum, cancellable, error)) != NULL)
         {
-          ot_lobj GFile *child = g_file_get_child (src, g_file_info_get_name (child_info));
+          gs_unref_object GFile *child = g_file_get_child (src, g_file_info_get_name (child_info));
 
           if (!copy_one_config_file (orig_etc, modified_etc, new_etc, child,
                                      cancellable, error))
@@ -161,11 +161,11 @@ merge_etc_changes (GFile          *orig_etc,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *ostree_etc = NULL;
-  ot_lobj GFile *tmp_etc = NULL;
-  ot_lptrarray GPtrArray *modified = NULL;
-  ot_lptrarray GPtrArray *removed = NULL;
-  ot_lptrarray GPtrArray *added = NULL;
+  gs_unref_object GFile *ostree_etc = NULL;
+  gs_unref_object GFile *tmp_etc = NULL;
+  gs_unref_ptrarray GPtrArray *modified = NULL;
+  gs_unref_ptrarray GPtrArray *removed = NULL;
+  gs_unref_ptrarray GPtrArray *added = NULL;
   guint i;
 
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
@@ -190,8 +190,8 @@ merge_etc_changes (GFile          *orig_etc,
   for (i = 0; i < removed->len; i++)
     {
       GFile *file = removed->pdata[i];
-      ot_lobj GFile *target_file = NULL;
-      ot_lfree char *path = NULL;
+      gs_unref_object GFile *target_file = NULL;
+      gs_free char *path = NULL;
 
       path = g_file_get_relative_path (orig_etc, file);
       g_assert (path);

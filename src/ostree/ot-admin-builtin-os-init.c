@@ -38,8 +38,8 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname = NULL;
-  ot_lobj GFile *deploy_dir = NULL;
-  ot_lobj GFile *dir = NULL;
+  gs_unref_object GFile *deploy_dir = NULL;
+  gs_unref_object GFile *dir = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");

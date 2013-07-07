@@ -37,10 +37,10 @@ ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *rev;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lobj GOutputStream *pager = NULL;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lfree char *resolved_rev = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_object GOutputStream *pager = NULL;
+  gs_unref_variant GVariant *commit = NULL;
+  gs_free char *resolved_rev = NULL;
 
   context = g_option_context_new ("- Show revision log");
   g_option_context_add_main_entries (context, options, NULL);

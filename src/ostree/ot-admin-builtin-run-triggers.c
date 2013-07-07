@@ -39,7 +39,7 @@ ot_admin_builtin_run_triggers (int argc, char **argv, OtAdminBuiltinOpts *admin_
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj GFile *rootdir = NULL;
+  gs_unref_object GFile *rootdir = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("[ROOT] - Run triggers (regenerate caches, etc.)");

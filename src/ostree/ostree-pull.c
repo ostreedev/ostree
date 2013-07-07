@@ -198,7 +198,7 @@ static gboolean
 uri_fetch_update_status (gpointer user_data)
 {
   OtPullData *pull_data = user_data;
-  ot_lfree char *fetcher_status = NULL;
+  gs_free char *fetcher_status = NULL;
   GString *status;
   guint64 current_bytes_transferred;
   guint64 current_delta_bytes_transferred;
@@ -388,8 +388,8 @@ fetch_uri (OtPullData  *pull_data,
            GError     **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *uri_string = NULL;
-  ot_lobj SoupRequest *request = NULL;
+  gs_free char *uri_string = NULL;
+  gs_unref_object SoupRequest *request = NULL;
   OstreeFetchUriData fetch_data;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -421,8 +421,8 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
                          GError     **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *tmpf = NULL;
-  ot_lfree char *ret_contents = NULL;
+  gs_unref_object GFile *tmpf = NULL;
+  gs_free char *ret_contents = NULL;
   gsize len;
 
   if (!fetch_uri (pull_data, uri, "tmp-", &tmpf, cancellable, error))
@@ -455,10 +455,10 @@ scan_dirtree_object (OtPullData   *pull_data,
 {
   gboolean ret = FALSE;
   int i, n;
-  ot_lvariant GVariant *tree = NULL;
-  ot_lvariant GVariant *files_variant = NULL;
-  ot_lvariant GVariant *dirs_variant = NULL;
-  ot_lobj GFile *stored_path = NULL;
+  gs_unref_variant GVariant *tree = NULL;
+  gs_unref_variant GVariant *files_variant = NULL;
+  gs_unref_variant GVariant *dirs_variant = NULL;
+  gs_unref_object GFile *stored_path = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -480,8 +480,8 @@ scan_dirtree_object (OtPullData   *pull_data,
     {
       const char *filename;
       gboolean file_is_stored;
-      ot_lvariant GVariant *csum = NULL;
-      ot_lfree char *file_checksum;
+      gs_unref_variant GVariant *csum = NULL;
+      gs_free char *file_checksum;
 
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
@@ -509,9 +509,9 @@ scan_dirtree_object (OtPullData   *pull_data,
   for (i = 0; i < n; i++)
     {
       const char *dirname;
-      ot_lvariant GVariant *tree_csum = NULL;
-      ot_lvariant GVariant *meta_csum = NULL;
-      ot_lfree char *tmp_checksum = NULL;
+      gs_unref_variant GVariant *tree_csum = NULL;
+      gs_unref_variant GVariant *meta_csum = NULL;
+      gs_free char *tmp_checksum = NULL;
 
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
@@ -543,7 +543,7 @@ fetch_ref_contents (OtPullData    *pull_data,
                     GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *ret_contents = NULL;
+  gs_free char *ret_contents = NULL;
   SoupURI *target_uri = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
@@ -575,8 +575,8 @@ content_fetch_on_stage_complete (GObject        *object,
   GError **error = &local_error;
   OstreeObjectType objtype;
   const char *expected_checksum;
-  ot_lfree guchar *csum = NULL;
-  ot_lfree char *checksum = NULL;
+  gs_free guchar *csum = NULL;
+  gs_free char *checksum = NULL;
 
   if (!ostree_repo_stage_content_finish ((OstreeRepo*)object, result, 
                                          &csum, error))
@@ -612,13 +612,13 @@ content_fetch_on_complete (GObject        *object,
   GError **error = &local_error;
   GCancellable *cancellable = NULL;
   guint64 length;
-  ot_lvariant GVariant *file_meta = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GInputStream *content_input = NULL;
-  ot_lobj GInputStream *file_object_input = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lobj GInputStream *file_in = NULL;
-  ot_lobj GInputStream *object_input = NULL;
+  gs_unref_variant GVariant *file_meta = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_object GInputStream *content_input = NULL;
+  gs_unref_object GInputStream *file_object_input = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
+  gs_unref_object GInputStream *file_in = NULL;
+  gs_unref_object GInputStream *object_input = NULL;
   const char *checksum;
   OstreeObjectType objtype;
 
@@ -700,7 +700,7 @@ meta_fetch_on_complete (GObject           *object,
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  ot_lvariant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
   const char *checksum;
   OstreeObjectType objtype;
   GError *local_error = NULL;
@@ -742,11 +742,11 @@ scan_commit_object (OtPullData         *pull_data,
                     GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lvariant GVariant *related_objects = NULL;
-  ot_lvariant GVariant *tree_contents_csum = NULL;
-  ot_lvariant GVariant *tree_meta_csum = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_variant GVariant *commit = NULL;
+  gs_unref_variant GVariant *related_objects = NULL;
+  gs_unref_variant GVariant *tree_contents_csum = NULL;
+  gs_unref_variant GVariant *tree_meta_csum = NULL;
+  gs_free char *tmp_checksum = NULL;
   GVariantIter *iter = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
@@ -777,7 +777,7 @@ scan_commit_object (OtPullData         *pull_data,
   if (opt_related)
     {
       const char *name;
-      ot_lvariant GVariant *csum_v = NULL;
+      gs_unref_variant GVariant *csum_v = NULL;
 
       related_objects = g_variant_get_child_value (commit, 2);
       iter = g_variant_iter_new (related_objects);
@@ -807,8 +807,8 @@ scan_one_metadata_object (OtPullData         *pull_data,
                           GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *object = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_variant GVariant *object = NULL;
+  gs_free char *tmp_checksum = NULL;
   gboolean is_requested;
   gboolean is_stored;
 
@@ -869,7 +869,7 @@ scan_one_metadata_object_v_name (OtPullData         *pull_data,
 {
   OstreeObjectType objtype;
   const char *checksum = NULL;
-  ot_lfree guchar *csum = NULL;
+  gs_free guchar *csum = NULL;
 
   ostree_object_name_deserialize (object, &checksum, &objtype);
   csum = ostree_checksum_to_bytes (checksum);
@@ -1054,7 +1054,7 @@ parse_ref_summary (const char    *contents,
                    GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lhash GHashTable *ret_refs = NULL;
+  gs_unref_hashtable GHashTable *ret_refs = NULL;
   char **lines = NULL;
   char **iter = NULL;
   char *ref = NULL;
@@ -1112,7 +1112,7 @@ repo_get_string_key_inherit (OstreeRepo          *repo,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   GKeyFile *config;
-  ot_lfree char *ret_value = NULL;
+  gs_free char *ret_value = NULL;
 
   config = ostree_repo_get_config (repo);
 
@@ -1148,7 +1148,7 @@ load_remote_repo_config (OtPullData    *pull_data,
                          GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *contents = NULL;
+  gs_free char *contents = NULL;
   GKeyFile *ret_keyfile = NULL;
   SoupURI *target_uri = NULL;
 
@@ -1180,17 +1180,17 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
-  ot_lfree char *remote_key = NULL;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lfree char *remote_config_content = NULL;
-  ot_lfree char *path = NULL;
-  ot_lfree char *baseurl = NULL;
-  ot_lfree char *summary_data = NULL;
-  ot_lhash GHashTable *requested_refs_to_fetch = NULL;
-  ot_lhash GHashTable *updated_refs = NULL;
-  ot_lhash GHashTable *commits_to_fetch = NULL;
-  ot_lfree char *branch_rev = NULL;
-  ot_lfree char *remote_mode_str = NULL;
+  gs_free char *remote_key = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *remote_config_content = NULL;
+  gs_free char *path = NULL;
+  gs_free char *baseurl = NULL;
+  gs_free char *summary_data = NULL;
+  gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
+  gs_unref_hashtable GHashTable *updated_refs = NULL;
+  gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
+  gs_free char *branch_rev = NULL;
+  gs_free char *remote_mode_str = NULL;
   OtPullData pull_data_real;
   OtPullData *pull_data = &pull_data_real;
   SoupURI *summary_uri = NULL;
@@ -1369,10 +1369,10 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     {
       const char *ref = key;
       const char *sha256 = value;
-      ot_lfree char *key = NULL;
-      ot_lfree char *remote_ref = NULL;
-      ot_lfree char *baseurl = NULL;
-      ot_lfree char *original_rev = NULL;
+      gs_free char *key = NULL;
+      gs_free char *remote_ref = NULL;
+      gs_free char *baseurl = NULL;
+      gs_free char *original_rev = NULL;
 
       remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
 
@@ -1416,7 +1416,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     {
       const char *ref = key;
       const char *checksum = value;
-      ot_lfree char *remote_ref = NULL;
+      gs_free char *remote_ref = NULL;
           
       remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
           

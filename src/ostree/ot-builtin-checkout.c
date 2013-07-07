@@ -92,9 +92,9 @@ process_one_checkout (OstreeRepo           *repo,
   gboolean ret = FALSE;
   ProcessOneCheckoutData data;
   GError *tmp_error = NULL;
-  ot_lobj OstreeRepoFile *root = NULL;
-  ot_lobj OstreeRepoFile *subtree = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
+  gs_unref_object OstreeRepoFile *root = NULL;
+  gs_unref_object OstreeRepoFile *subtree = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
 
   memset (&data, 0, sizeof (data));
   
@@ -154,11 +154,11 @@ process_many_checkouts (OstreeRepo         *repo,
   gboolean ret = FALSE;
   gsize len;
   GError *temp_error = NULL;
-  ot_lobj GInputStream *instream = NULL;
-  ot_lobj GDataInputStream *datastream = NULL;
-  ot_lfree char *revision = NULL;
-  ot_lfree char *subpath = NULL;
-  ot_lfree char *resolved_commit = NULL;
+  gs_unref_object GInputStream *instream = NULL;
+  gs_unref_object GDataInputStream *datastream = NULL;
+  gs_free char *revision = NULL;
+  gs_free char *subpath = NULL;
+  gs_free char *resolved_commit = NULL;
 
   if (opt_from_stdin)
     {
@@ -166,7 +166,7 @@ process_many_checkouts (OstreeRepo         *repo,
     }
   else
     {
-      ot_lobj GFile *f = g_file_new_for_path (opt_from_file);
+      gs_unref_object GFile *f = g_file_new_for_path (opt_from_file);
 
       instream = (GInputStream*)g_file_read (f, cancellable, error);
       if (!instream)
@@ -226,14 +226,14 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error
   gboolean ret = FALSE;
   const char *commit;
   const char *destination;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lfree char *existing_commit = NULL;
-  ot_lfree char *resolved_commit = NULL;
-  ot_lfree char *tmp_destination = NULL;
-  ot_lobj GFileInfo *symlink_file_info = NULL;
-  ot_lobj GFile *checkout_target = NULL;
-  ot_lobj GFile *checkout_target_tmp = NULL;
-  ot_lobj GFile *symlink_target = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *existing_commit = NULL;
+  gs_free char *resolved_commit = NULL;
+  gs_free char *tmp_destination = NULL;
+  gs_unref_object GFileInfo *symlink_file_info = NULL;
+  gs_unref_object GFile *checkout_target = NULL;
+  gs_unref_object GFile *checkout_target_tmp = NULL;
+  gs_unref_object GFile *symlink_target = NULL;
 
   context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
   g_option_context_add_main_entries (context, options, NULL);

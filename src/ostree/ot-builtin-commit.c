@@ -72,9 +72,9 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   gboolean ret = FALSE;
   gsize len;
   char **iter = NULL; /* nofree */
-  ot_lhash GHashTable *ret_hash = NULL;
-  ot_lobj GFile *path = NULL;
-  ot_lfree char *contents = NULL;
+  gs_unref_hashtable GHashTable *ret_hash = NULL;
+  gs_unref_object GFile *path = NULL;
+  gs_free char *contents = NULL;
   char **lines = NULL;
 
   path = g_file_new_for_path (statoverride_file);
@@ -125,10 +125,10 @@ parse_related_objects_file (GVariant     **out_related_objects,
   gboolean ret = FALSE;
   gsize len;
   char **iter = NULL; /* nofree */
-  ot_lhash GHashTable *ret_hash = NULL;
-  ot_lvariant GVariant *ret_related_objects = NULL;
-  ot_lobj GFile *path = NULL;
-  ot_lfree char *contents = NULL;
+  gs_unref_hashtable GHashTable *ret_hash = NULL;
+  gs_unref_variant GVariant *ret_related_objects = NULL;
+  gs_unref_object GFile *path = NULL;
+  gs_free char *contents = NULL;
   GVariantBuilder builder;
   gboolean builder_initialized = FALSE;
   char **lines = NULL;
@@ -148,7 +148,7 @@ parse_related_objects_file (GVariant     **out_related_objects,
     {
       const char *line = *iter;
       const char *spc;
-      ot_lfree char *name = NULL;
+      gs_free char *name = NULL;
 
       if (!*line)
         break;
@@ -219,22 +219,22 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
   GCancellable *cancellable = NULL;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lobj GFile *arg = NULL;
-  ot_lfree char *parent = NULL;
-  ot_lfree char *commit_checksum = NULL;
-  ot_lvariant GVariant *parent_commit = NULL;
-  ot_lvariant GVariant *metadata = NULL;
-  ot_lvariant GVariant *related_objects = NULL;
-  ot_lobj GFile *metadata_f = NULL;
-  ot_lfree char *contents_checksum = NULL;
-  ot_lobj OstreeMutableTree *mtree = NULL;
-  ot_lfree char *tree_type = NULL;
-  ot_lhash GHashTable *mode_adds = NULL;
-  ot_lvariant GVariant *parent_content_csum_v = NULL;
-  ot_lvariant GVariant *parent_metadata_csum_v = NULL;
-  ot_lfree char *parent_content_checksum = NULL;
-  ot_lfree char *parent_metadata_checksum = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_object GFile *arg = NULL;
+  gs_free char *parent = NULL;
+  gs_free char *commit_checksum = NULL;
+  gs_unref_variant GVariant *parent_commit = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *related_objects = NULL;
+  gs_unref_object GFile *metadata_f = NULL;
+  gs_free char *contents_checksum = NULL;
+  gs_unref_object OstreeMutableTree *mtree = NULL;
+  gs_free char *tree_type = NULL;
+  gs_unref_hashtable GHashTable *mode_adds = NULL;
+  gs_unref_variant GVariant *parent_content_csum_v = NULL;
+  gs_unref_variant GVariant *parent_metadata_csum_v = NULL;
+  gs_free char *parent_content_checksum = NULL;
+  gs_free char *parent_metadata_checksum = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
   GMappedFile *metadata_mappedf = NULL;
   GVariantBuilder metadata_builder;
@@ -281,7 +281,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         {
           const char *s;
           const char *eq;
-          ot_lfree char *key = NULL;
+          gs_free char *key = NULL;
 
           s = *iter;
 

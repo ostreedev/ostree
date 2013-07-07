@@ -41,8 +41,8 @@ on_checksum_received (GObject    *obj,
                       GAsyncResult  *result,
                       gpointer       user_data)
 {
-  ot_lfree guchar *csum = NULL;
-  ot_lfree char *checksum = NULL;
+  gs_free guchar *csum = NULL;
+  gs_free char *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
   if (ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error))
@@ -59,7 +59,7 @@ ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GError **
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  ot_lobj GFile *f = NULL;
+  gs_unref_object GFile *f = NULL;
   AsyncChecksumData data;
 
   context = g_option_context_new ("FILENAME - Checksum a file or directory");

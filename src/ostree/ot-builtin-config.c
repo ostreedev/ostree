@@ -60,9 +60,9 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
   const char *op;
   const char *section_key;
   const char *value;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lfree char *section = NULL;
-  ot_lfree char *key = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *section = NULL;
+  gs_free char *key = NULL;
   GKeyFile *config = NULL;
 
   context = g_option_context_new ("- Change configuration settings");
@@ -107,7 +107,7 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
   else if (!strcmp (op, "get"))
     {
       GKeyFile *readonly_config = NULL;
-      ot_lfree char *value = NULL;
+      gs_free char *value = NULL;
       if (argc < 3)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

@@ -47,7 +47,7 @@ ot_util_spawn_pager (GOutputStream  **out_stream,
   char *argv[2];
   int stdin_fd;
   pid_t pid;
-  ot_lfree GOutputStream *ret_stream = NULL;
+  gs_free GOutputStream *ret_stream = NULL;
 
   if (!isatty (1))
     {
@@ -134,7 +134,7 @@ ot_util_path_split_validate (const char *path,
 {
   gboolean ret = FALSE;
   int i;
-  ot_lptrarray GPtrArray *ret_components = NULL;
+  gs_unref_ptrarray GPtrArray *ret_components = NULL;
 
   if (strlen (path) > PATH_MAX)
     {

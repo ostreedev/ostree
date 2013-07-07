@@ -147,7 +147,7 @@ ot_admin_ensure_initialized (GFile         *sysroot,
   dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
     {
-      ot_lfree char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
+      gs_free char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
                                                       gs_file_get_path_cached (ostree_dir));
 
       if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,

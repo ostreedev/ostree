@@ -47,9 +47,9 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   __attribute__ ((unused)) GCancellable *cancellable = NULL;
   const char *mode_str = "bare";
-  ot_lobj GFile *child = NULL;
-  ot_lobj GFile *grandchild = NULL;
-  ot_lobj OstreeRepo *repo = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GFile *grandchild = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
   GString *config_data = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");

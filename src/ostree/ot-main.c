@@ -181,7 +181,7 @@ ostree_run (int    argc,
 
   if (!command->fn)
     {
-      ot_lfree char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
+      gs_free char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
       g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, msg);
       goto out;
     }

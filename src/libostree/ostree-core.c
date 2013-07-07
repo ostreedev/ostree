@@ -223,9 +223,9 @@ ostree_get_xattrs_for_file (GFile         *f,
   gboolean ret = FALSE;
   const char *path;
   ssize_t bytes_read;
-  ot_lvariant GVariant *ret_xattrs = NULL;
-  ot_lfree char *xattr_names = NULL;
-  ot_lfree char *xattr_names_canonical = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
+  gs_free char *xattr_names = NULL;
+  gs_free char *xattr_names_canonical = NULL;
   GVariantBuilder builder;
   gboolean builder_initialized = FALSE;
 
@@ -279,7 +279,7 @@ ostree_file_header_new (GFileInfo         *file_info,
   guint32 rdev;
   const char *symlink_target;
   GVariant *ret;
-  ot_lvariant GVariant *tmp_xattrs = NULL;
+  gs_unref_variant GVariant *tmp_xattrs = NULL;
 
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
@@ -312,7 +312,7 @@ ostree_zlib_file_header_new (GFileInfo         *file_info,
   guint32 rdev;
   const char *symlink_target;
   GVariant *ret;
-  ot_lvariant GVariant *tmp_xattrs = NULL;
+  gs_unref_variant GVariant *tmp_xattrs = NULL;
 
   size = g_file_info_get_size (file_info);
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
@@ -449,11 +449,11 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   gboolean ret = FALSE;
   gpointer header_data;
   gsize header_size;
-  ot_lobj GInputStream *ret_input = NULL;
-  ot_lvariant GVariant *file_header = NULL;
-  ot_lptrarray GPtrArray *streams = NULL;
-  ot_lobj GOutputStream *header_out_stream = NULL;
-  ot_lobj GInputStream *header_in_stream = NULL;
+  gs_unref_object GInputStream *ret_input = NULL;
+  gs_unref_variant GVariant *file_header = NULL;
+  gs_unref_ptrarray GPtrArray *streams = NULL;
+  gs_unref_object GOutputStream *header_out_stream = NULL;
+  gs_unref_object GInputStream *header_in_stream = NULL;
 
   file_header = ostree_file_header_new (file_info, xattrs);
 
@@ -501,12 +501,12 @@ ostree_content_stream_parse (gboolean                compressed,
   guint32 archive_header_size;
   guchar dummy[4];
   gsize bytes_read;
-  ot_lobj GInputStream *ret_input = NULL;
-  ot_lobj GFileInfo *content_file_info = NULL;
-  ot_lobj GFileInfo *ret_file_info = NULL;
-  ot_lvariant GVariant *ret_xattrs = NULL;
-  ot_lvariant GVariant *file_header = NULL;
-  ot_lfree guchar *buf = NULL;
+  gs_unref_object GInputStream *ret_input = NULL;
+  gs_unref_object GFileInfo *content_file_info = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
+  gs_unref_variant GVariant *file_header = NULL;
+  gs_free guchar *buf = NULL;
 
   if (!g_input_stream_read_all (input,
                                 &archive_header_size, 4, &bytes_read,
@@ -570,7 +570,7 @@ ostree_content_stream_parse (gboolean                compressed,
        **/
       if (compressed)
         {
-          ot_lobj GConverter *zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
+          gs_unref_object GConverter *zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
           ret_input = g_converter_input_stream_new (input, zlib_decomp);
         }
       else
@@ -598,10 +598,10 @@ ostree_content_file_parse (gboolean                compressed,
   gboolean ret = FALSE;
   guint64 length;
   struct stat stbuf;
-  ot_lobj GInputStream *file_input = NULL;
-  ot_lobj GInputStream *ret_input = NULL;
-  ot_lobj GFileInfo *ret_file_info = NULL;
-  ot_lvariant GVariant *ret_xattrs = NULL;
+  gs_unref_object GInputStream *file_input = NULL;
+  gs_unref_object GInputStream *ret_input = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
 
   if (out_input)
     {
@@ -657,7 +657,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lfree guchar *ret_csum = NULL;
+  gs_free guchar *ret_csum = NULL;
   GChecksum *checksum = NULL;
 
   checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -669,14 +669,14 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
-      ot_lvariant GVariant *dirmeta = ostree_create_directory_metadata (file_info, xattrs);
+      gs_unref_variant GVariant *dirmeta = ostree_create_directory_metadata (file_info, xattrs);
       g_checksum_update (checksum, g_variant_get_data (dirmeta),
                          g_variant_get_size (dirmeta));
       
     }
   else
     {
-      ot_lvariant GVariant *file_header = NULL;
+      gs_unref_variant GVariant *file_header = NULL;
 
       file_header = ostree_file_header_new (file_info, xattrs);
 
@@ -708,10 +708,10 @@ ostree_checksum_file (GFile            *f,
                       GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lobj GInputStream *in = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lfree guchar *ret_csum = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_object GInputStream *in = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
+  gs_free guchar *ret_csum = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1093,8 +1093,8 @@ ostree_file_header_parse (GVariant         *metadata,
   gboolean ret = FALSE;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  ot_lobj GFileInfo *ret_file_info = NULL;
-  ot_lvariant GVariant *ret_xattrs = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
 
   g_variant_get (metadata, "(uuuu&s@a(ayay))",
                  &uid, &gid, &mode, &rdev,
@@ -1152,8 +1152,8 @@ ostree_zlib_file_header_parse (GVariant         *metadata,
   guint64 size;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  ot_lobj GFileInfo *ret_file_info = NULL;
-  ot_lvariant GVariant *ret_xattrs = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
 
   g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
                  &uid, &gid, &mode, &rdev,
@@ -1214,7 +1214,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   gboolean ret = FALSE;
   const char *dest_path;
   guint32 uid, gid, mode;
-  ot_lobj GFileOutputStream *out = NULL;
+  gs_unref_object GFileOutputStream *out = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1389,13 +1389,13 @@ ostree_create_temp_file_from_input (GFile            *dir,
   gboolean ret = FALSE;
   GError *temp_error = NULL;
   int i = 0;
-  ot_lobj GFile *possible_file = NULL;
-  ot_lfree guchar *ret_csum = NULL;
+  gs_unref_object GFile *possible_file = NULL;
+  gs_free guchar *ret_csum = NULL;
 
   /* 128 attempts seems reasonable... */
   for (i = 0; i < 128; i++)
     {
-      ot_lfree char *possible_name = NULL;
+      gs_free char *possible_name = NULL;
 
       if (g_cancellable_set_error_if_cancelled (cancellable, error))
         goto out;
@@ -1447,8 +1447,8 @@ ostree_create_temp_regular_file (GFile            *dir,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *ret_file = NULL;
-  ot_lobj GOutputStream *ret_stream = NULL;
+  gs_unref_object GFile *ret_file = NULL;
+  gs_unref_object GOutputStream *ret_stream = NULL;
 
   if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
                                            &ret_file, cancellable, error))
@@ -1477,8 +1477,8 @@ ostree_create_temp_dir (GFile            *dir,
                         GError          **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char *template = NULL;
-  ot_lobj GFile *ret_file = NULL;
+  gs_free char *template = NULL;
+  gs_unref_object GFile *ret_file = NULL;
 
   if (dir == NULL)
     dir = g_file_new_for_path (g_get_tmp_dir ());
@@ -1587,9 +1587,9 @@ ostree_validate_structureof_commit (GVariant      *commit,
                                     GError       **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *parent_csum_v = NULL;
-  ot_lvariant GVariant *content_csum_v = NULL;
-  ot_lvariant GVariant *metadata_csum_v = NULL;
+  gs_unref_variant GVariant *parent_csum_v = NULL;
+  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *metadata_csum_v = NULL;
   gsize n_elts;
 
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
@@ -1622,8 +1622,8 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
 {
   gboolean ret = FALSE;
   const char *filename;
-  ot_lvariant GVariant *content_csum_v = NULL;
-  ot_lvariant GVariant *meta_csum_v = NULL;
+  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *meta_csum_v = NULL;
   GVariantIter *contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))

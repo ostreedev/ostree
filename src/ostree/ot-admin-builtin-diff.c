@@ -41,16 +41,16 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
   GOptionContext *context;
   gboolean ret = FALSE;
   gs_free char *booted_osname = NULL;
-  ot_lobj GFile *repo_path = NULL;
+  gs_unref_object GFile *repo_path = NULL;
   gs_unref_object OtDeployment *deployment = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
-  ot_lobj GFile *deploy_parent = NULL;
-  ot_lptrarray GPtrArray *modified = NULL;
-  ot_lptrarray GPtrArray *removed = NULL;
-  ot_lptrarray GPtrArray *added = NULL;
+  gs_unref_object GFile *deploy_parent = NULL;
+  gs_unref_ptrarray GPtrArray *modified = NULL;
+  gs_unref_ptrarray GPtrArray *removed = NULL;
+  gs_unref_ptrarray GPtrArray *added = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
-  ot_lobj GFile *orig_etc_path = NULL;
-  ot_lobj GFile *new_etc_path = NULL;
+  gs_unref_object GFile *orig_etc_path = NULL;
+  gs_unref_object GFile *new_etc_path = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
   int bootversion;
 

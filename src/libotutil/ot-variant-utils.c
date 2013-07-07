@@ -66,7 +66,7 @@ ot_util_variant_save (GFile *dest,
                       GError  **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GOutputStream *out = NULL;
+  gs_unref_object GOutputStream *out = NULL;
   gsize bytes_written;
   
   out = (GOutputStream*)g_file_replace (dest, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION,
@@ -109,7 +109,7 @@ ot_util_variant_map (GFile              *src,
                      GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *ret_variant = NULL;
+  gs_unref_variant GVariant *ret_variant = NULL;
   GMappedFile *mfile = NULL;
 
   mfile = gs_file_map_noatime (src, NULL, error);
@@ -148,8 +148,8 @@ ot_util_variant_from_stream (GInputStream         *src,
                              GError              **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GMemoryOutputStream *data_stream = NULL;
-  ot_lvariant GVariant *ret_variant = NULL;
+  gs_unref_object GMemoryOutputStream *data_stream = NULL;
+  gs_unref_variant GVariant *ret_variant = NULL;
 
   data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 

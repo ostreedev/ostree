@@ -50,13 +50,13 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  ot_lhash GHashTable *reachable_objects = NULL;
-  ot_lobj GInputStream *input = NULL;
-  ot_lobj GFileInfo *file_info = NULL;
-  ot_lvariant GVariant *xattrs = NULL;
-  ot_lvariant GVariant *metadata = NULL;
-  ot_lfree guchar *computed_csum = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_hashtable GHashTable *reachable_objects = NULL;
+  gs_unref_object GInputStream *input = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_free guchar *computed_csum = NULL;
+  gs_free char *tmp_checksum = NULL;
 
   reachable_objects = ostree_traverse_new_reachable ();
 
@@ -186,9 +186,9 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lhash GHashTable *objects = NULL;
-  ot_lhash GHashTable *commits = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_hashtable GHashTable *objects = NULL;
+  gs_unref_hashtable GHashTable *commits = NULL;
 
   context = g_option_context_new ("- Check the repository for consistency");
   g_option_context_add_main_entries (context, options, NULL);

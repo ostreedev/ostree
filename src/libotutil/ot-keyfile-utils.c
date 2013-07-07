@@ -69,7 +69,7 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  ot_lfree char *ret_value;
+  gs_free char *ret_value;
 
   ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
   if (temp_error)

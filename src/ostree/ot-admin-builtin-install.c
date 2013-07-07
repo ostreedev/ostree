@@ -70,14 +70,14 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   gboolean ret = FALSE;
   const char *keyfile_arg = NULL;
   const char *treename_arg = NULL;
-  ot_lobj GFile *deploy_dir = NULL;
-  ot_lobj GFile *osdir = NULL;
-  ot_lobj GFile *dest_osconfig_path = NULL;
+  gs_unref_object GFile *deploy_dir = NULL;
+  gs_unref_object GFile *osdir = NULL;
+  gs_unref_object GFile *dest_osconfig_path = NULL;
   gs_unref_ptrarray GPtrArray *subproc_args = NULL;
-  ot_lfree char *osname = NULL;
-  ot_lfree char *repoarg = NULL;
-  ot_lfree char *ostree_dir_arg = NULL;
-  ot_lfree char *tree_to_deploy = NULL;
+  gs_free char *osname = NULL;
+  gs_free char *repoarg = NULL;
+  gs_free char *ostree_dir_arg = NULL;
+  gs_free char *tree_to_deploy = NULL;
   GKeyFile *keyfile = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
@@ -108,8 +108,8 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 
   if (g_str_has_prefix (keyfile_arg, "http://") || g_str_has_prefix (keyfile_arg, "https://"))
     {
-      ot_lobj GFile *tmp = g_file_new_for_path (g_get_tmp_dir ());
-      ot_lobj OstreeCurlFetcher *fetcher = ostree_curl_fetcher_new (tmp);
+      gs_unref_object GFile *tmp = g_file_new_for_path (g_get_tmp_dir ());
+      gs_unref_object OstreeCurlFetcher *fetcher = ostree_curl_fetcher_new (tmp);
 
       g_print ("Fetching %s...\n", keyfile_arg);
       ostree_curl_fetcher_request_uri_async (fetcher, keyfile_arg, cancellable,
@@ -164,7 +164,7 @@ ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
                          NULL);
 
   {
-    ot_lfree char *repourl = NULL;
+    gs_free char *repourl = NULL;
       
     repourl = g_key_file_get_string (keyfile, "os", "Repo", error);
     if (!repourl)

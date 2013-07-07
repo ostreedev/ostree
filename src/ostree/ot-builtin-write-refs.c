@@ -42,10 +42,10 @@ ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GError **err
   GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
   gsize len;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lobj GInputStream *instream = NULL;
-  ot_lobj GDataInputStream *datastream = NULL;
-  ot_lfree char *line = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_object GInputStream *instream = NULL;
+  gs_unref_object GDataInputStream *datastream = NULL;
+  gs_free char *line = NULL;
 
   context = g_option_context_new ("Import newline-separated pairs of REF REVISION");
   g_option_context_add_main_entries (context, options, NULL);
@@ -64,8 +64,8 @@ ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GError **err
                                                 cancellable, &temp_error)) != NULL)
     {
       const char *spc = strchr (line, ' ');
-      ot_lfree char *ref = NULL;
-      ot_lfree guchar *rev = NULL;
+      gs_free char *ref = NULL;
+      gs_free guchar *rev = NULL;
 
       if (!spc || spc == line)
         {

@@ -39,7 +39,7 @@ parse_file_or_commit (OstreeRepo  *repo,
                       GError     **error)
 {
   gboolean ret = FALSE;
-  ot_lfree GFile *ret_file = NULL;
+  gs_free GFile *ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
       || g_str_has_prefix (arg, "./")
@@ -67,14 +67,14 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   const char *src;
   const char *target;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lfree char *src_prev = NULL;
-  ot_lobj GFile *srcf = NULL;
-  ot_lobj GFile *targetf = NULL;
-  ot_lobj GFile *cwd = NULL;
-  ot_lptrarray GPtrArray *modified = NULL;
-  ot_lptrarray GPtrArray *removed = NULL;
-  ot_lptrarray GPtrArray *added = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *src_prev = NULL;
+  gs_unref_object GFile *srcf = NULL;
+  gs_unref_object GFile *targetf = NULL;
+  gs_unref_object GFile *cwd = NULL;
+  gs_unref_ptrarray GPtrArray *modified = NULL;
+  gs_unref_ptrarray GPtrArray *removed = NULL;
+  gs_unref_ptrarray GPtrArray *added = NULL;
 
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
   g_option_context_add_main_entries (context, options, NULL);

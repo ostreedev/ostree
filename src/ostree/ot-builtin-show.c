@@ -41,8 +41,8 @@ static GOptionEntry options[] = {
 static void
 print_variant (GVariant *variant)
 {
-  ot_lfree char *formatted_variant = NULL;
-  ot_lvariant GVariant *byteswapped = NULL;
+  gs_free char *formatted_variant = NULL;
+  gs_unref_variant GVariant *byteswapped = NULL;
 
   if (G_BYTE_ORDER != G_BIG_ENDIAN)
     {
@@ -62,8 +62,8 @@ do_print_variant_generic (const GVariantType *type,
                           GError **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *f = NULL;
-  ot_lvariant GVariant *variant = NULL;
+  gs_unref_object GFile *f = NULL;
+  gs_unref_variant GVariant *variant = NULL;
 
   f = g_file_new_for_path (filename);
 
@@ -87,9 +87,9 @@ show_repo_meta (OstreeRepo  *repo,
   char buf[8192];
   gsize bytes_read;
   OstreeObjectType objtype;
-  ot_lvariant GVariant *variant = NULL;
-  ot_lobj GFile *object_path = NULL;
-  ot_lobj GInputStream *in = NULL;
+  gs_unref_variant GVariant *variant = NULL;
+  gs_unref_object GFile *object_path = NULL;
+  gs_unref_object GInputStream *in = NULL;
 
   for (objtype = OSTREE_OBJECT_TYPE_FILE; objtype <= OSTREE_OBJECT_TYPE_COMMIT; objtype++)
     {
@@ -139,9 +139,9 @@ do_print_related (OstreeRepo  *repo,
 {
   gboolean ret = FALSE;
   const char *name;
-  ot_lvariant GVariant *csum_v = NULL;
-  ot_lvariant GVariant *variant = NULL;
-  ot_lvariant GVariant *related = NULL;
+  gs_unref_variant GVariant *csum_v = NULL;
+  gs_unref_variant GVariant *variant = NULL;
+  gs_unref_variant GVariant *related = NULL;
   GVariantIter *viter = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
@@ -155,7 +155,7 @@ do_print_related (OstreeRepo  *repo,
 
   while (g_variant_iter_loop (viter, "(&s@ay)", &name, &csum_v))
     {
-      ot_lfree char *checksum = ostree_checksum_from_bytes_v (csum_v);
+      gs_free char *checksum = ostree_checksum_from_bytes_v (csum_v);
       g_print ("%s %s\n", name, checksum);
     }
   csum_v = NULL;
@@ -175,8 +175,8 @@ do_print_metadata_key (OstreeRepo  *repo,
 {
   gboolean ret = FALSE;
   const char *value;
-  ot_lvariant GVariant *commit = NULL;
-  ot_lvariant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *commit = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  resolved_rev, &commit, error))
@@ -201,8 +201,8 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error)
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *rev;
-  ot_lobj OstreeRepo *repo = NULL;
-  ot_lfree char *resolved_rev = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_free char *resolved_rev = NULL;
 
   context = g_option_context_new ("OBJECT - Output a metadata object");
   g_option_context_add_main_entries (context, options, NULL);

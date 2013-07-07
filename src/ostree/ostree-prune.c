@@ -43,8 +43,8 @@ maybe_prune_loose_object (OtPruneData        *data,
                           GError            **error)
 {
   gboolean ret = FALSE;
-  ot_lvariant GVariant *key = NULL;
-  ot_lobj GFile *objf = NULL;
+  gs_unref_variant GVariant *key = NULL;
+  gs_unref_object GFile *objf = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
 
@@ -54,7 +54,7 @@ maybe_prune_loose_object (OtPruneData        *data,
     {
       if (!(flags & OSTREE_PRUNE_FLAGS_NO_PRUNE))
         {
-          ot_lobj GFileInfo *info = NULL;
+          gs_unref_object GFileInfo *info = NULL;
 
           if ((info = g_file_query_info (objf, OSTREE_GIO_FAST_QUERYINFO,
                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,

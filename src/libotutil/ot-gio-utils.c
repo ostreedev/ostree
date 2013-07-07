@@ -55,8 +55,8 @@ ot_gfile_from_build_path (const char *first, ...)
 {
   va_list args;
   const char *arg;
-  ot_lfree char *path = NULL;
-  ot_lptrarray GPtrArray *components = NULL;  
+  gs_free char *path = NULL;
+  gs_unref_ptrarray GPtrArray *components = NULL;  
 
   va_start (args, first);
 
@@ -110,8 +110,8 @@ ot_gfile_get_child_build_path (GFile      *parent,
 {
   va_list args;
   const char *arg;
-  ot_lfree char *path = NULL;
-  ot_lptrarray GPtrArray *components = NULL;  
+  gs_free char *path = NULL;
+  gs_unref_ptrarray GPtrArray *components = NULL;  
 
   va_start (args, first);
 

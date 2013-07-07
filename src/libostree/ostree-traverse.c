@@ -44,14 +44,14 @@ traverse_dirtree_internal (OstreeRepo      *repo,
 {
   gboolean ret = FALSE;
   int n, i;
-  ot_lvariant GVariant *key = NULL;
-  ot_lvariant GVariant *tree = NULL;
-  ot_lvariant GVariant *files_variant = NULL;
-  ot_lvariant GVariant *dirs_variant = NULL;
-  ot_lvariant GVariant *csum_v = NULL;
-  ot_lvariant GVariant *content_csum_v = NULL;
-  ot_lvariant GVariant *metadata_csum_v = NULL;
-  ot_lfree char *tmp_checksum = NULL;
+  gs_unref_variant GVariant *key = NULL;
+  gs_unref_variant GVariant *tree = NULL;
+  gs_unref_variant GVariant *files_variant = NULL;
+  gs_unref_variant GVariant *dirs_variant = NULL;
+  gs_unref_variant GVariant *csum_v = NULL;
+  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *metadata_csum_v = NULL;
+  gs_free char *tmp_checksum = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -144,16 +144,16 @@ ostree_traverse_commit (OstreeRepo      *repo,
                         GError         **error)
 {
   gboolean ret = FALSE;
-  ot_lfree char*tmp_checksum = NULL;
+  gs_free char*tmp_checksum = NULL;
 
   while (TRUE)
     {
       gboolean recurse = FALSE;
-      ot_lvariant GVariant *parent_csum_bytes = NULL;
-      ot_lvariant GVariant *meta_csum_bytes = NULL;
-      ot_lvariant GVariant *content_csum_bytes = NULL;
-      ot_lvariant GVariant *key = NULL;
-      ot_lvariant GVariant *commit = NULL;
+      gs_unref_variant GVariant *parent_csum_bytes = NULL;
+      gs_unref_variant GVariant *meta_csum_bytes = NULL;
+      gs_unref_variant GVariant *content_csum_bytes = NULL;
+      gs_unref_variant GVariant *key = NULL;
+      gs_unref_variant GVariant *commit = NULL;
 
       key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
 

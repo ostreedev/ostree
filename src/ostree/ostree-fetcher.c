@@ -167,7 +167,7 @@ on_splice_complete (GObject        *object,
                     gpointer        user_data) 
 {
   OstreeFetcherPendingURI *pending = user_data;
-  ot_lobj GFileInfo *file_info = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   file_info = g_file_query_info (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
@@ -332,14 +332,14 @@ ostree_fetcher_query_state_text (OstreeFetcher              *self)
 
           if (active->tmpfile)
             {
-              ot_lobj GFileInfo *file_info = NULL;
+              gs_unref_object GFileInfo *file_info = NULL;
 
               file_info = g_file_query_info (active->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                              NULL, NULL);
               if (file_info)
                 {
-                  ot_lfree char *size = format_size_pair (g_file_info_get_size (file_info),
+                  gs_free char *size = format_size_pair (g_file_info_get_size (file_info),
                                                           active->content_length);
                   g_string_append_printf (buf, " [%s]", size);
                 }

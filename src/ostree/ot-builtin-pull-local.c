@@ -60,16 +60,16 @@ import_one_object (OtLocalCloneData *data,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  ot_lobj GFile *content_path = NULL;
-  ot_lobj GFileInfo *archive_info = NULL;
+  gs_unref_object GFile *content_path = NULL;
+  gs_unref_object GFileInfo *archive_info = NULL;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
       guint64 length;
-      ot_lobj GInputStream *file_object = NULL;
-      ot_lobj GInputStream *input = NULL;
-      ot_lobj GFileInfo *file_info = NULL;
-      ot_lvariant GVariant *xattrs = NULL;
+      gs_unref_object GInputStream *file_object = NULL;
+      gs_unref_object GInputStream *input = NULL;
+      gs_unref_object GFileInfo *file_info = NULL;
+      gs_unref_variant GVariant *xattrs = NULL;
 
       if (!ostree_repo_load_file (data->src_repo, checksum,
                                   &input, &file_info, &xattrs,
@@ -88,7 +88,7 @@ import_one_object (OtLocalCloneData *data,
     }
   else
     {
-      ot_lvariant GVariant *metadata = NULL;
+      gs_unref_variant GVariant *metadata = NULL;
 
       if (!ostree_repo_load_variant (data->src_repo, objtype, checksum, &metadata,
                                      error))
@@ -111,7 +111,7 @@ import_one_object_thread (gpointer   object,
                           gpointer   user_data)
 {
   OtLocalCloneData *data = user_data;
-  ot_lvariant GVariant *serialized_key = object;
+  gs_unref_variant GVariant *serialized_key = object;
   GError *local_error = NULL;
   GError **error = &local_error;
   const char *checksum;
@@ -170,16 +170,16 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   int i;
   GHashTableIter hash_iter;
   gpointer key, value;
-  ot_lhash GHashTable *objects = NULL;
-  ot_lobj GFile *src_f = NULL;
-  ot_lobj GFile *src_repo_dir = NULL;
-  ot_lobj GFile *dest_repo_dir = NULL;
-  ot_lobj GFile *src_dir = NULL;
-  ot_lobj GFile *dest_dir = NULL;
-  ot_lhash GHashTable *refs_to_clone = NULL;
-  ot_lhash GHashTable *commits_to_clone = NULL;
-  ot_lhash GHashTable *source_objects = NULL;
-  ot_lhash GHashTable *objects_to_copy = NULL;
+  gs_unref_hashtable GHashTable *objects = NULL;
+  gs_unref_object GFile *src_f = NULL;
+  gs_unref_object GFile *src_repo_dir = NULL;
+  gs_unref_object GFile *dest_repo_dir = NULL;
+  gs_unref_object GFile *src_dir = NULL;
+  gs_unref_object GFile *dest_dir = NULL;
+  gs_unref_hashtable GHashTable *refs_to_clone = NULL;
+  gs_unref_hashtable GHashTable *commits_to_clone = NULL;
+  gs_unref_hashtable GHashTable *source_objects = NULL;
+  gs_unref_hashtable GHashTable *objects_to_copy = NULL;
   OtLocalCloneData datav;
   OtLocalCloneData *data = &datav;
 
