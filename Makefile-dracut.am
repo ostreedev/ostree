@@ -35,5 +35,9 @@ dracutconfdir = $(sysconfdir)/dracut.conf.d
 dracutconf_DATA = src/dracut/ostree.conf
 endif
 
-EXTRA_DIST += $(dracutmod_DATA) $(dracutmod_SCRIPTS)
+EXTRA_DIST += src/dracut/module-setup.sh \
+	src/dracut/ostree-prepare-root.service \
+	src/dracut/ostree-remount.service \
+	src/dracut/ostree.conf \
+	$(NULL)
 
