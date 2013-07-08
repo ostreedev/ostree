@@ -111,27 +111,6 @@ AS_IF([ test x$with_libarchive != xno ], [
 if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarchive"; fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
-AS_IF([test x$cross_compiling != xyes && test -d /etc/kernel ],
-      [kernel_updates_default=yes],
-      [kernel_updates_default=no])
-
-AC_ARG_ENABLE(kernel-updates,
-              AS_HELP_STRING([--enable-kernel-updates],
-	      [Install configuration scripts to handle kernel updates
-	       in the host system]), ,
-	      enable_kernel_updates=${kernel_updates_default})
-AM_CONDITIONAL(ENABLE_KERNEL_UPDATES, test $enable_kernel_updates != no)
-
-AS_IF([test x$cross_compiling != xyes && test -d /etc/grub.d ],
-      [grub2_hook_default=yes],
-      [grub2_hook_default=no])
-
-AC_ARG_ENABLE(grub2-hook,
-              AS_HELP_STRING([--enable-grub2-hook],
-	      [Install GRUB2 hook]), ,
-	      enable_grub2_hook=${grub2_hook_default})
-AM_CONDITIONAL(ENABLE_GRUB2_HOOK, test $enable_grub2_hook != no)
-
 AC_ARG_WITH(dracut,
             AS_HELP_STRING([--with-dracut],
                            [Install dracut module (default: no)]),,
@@ -153,7 +132,5 @@ echo "
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
     documentation: $enable_documentation
-    kernel updates integration: $enable_kernel_updates
-    GRUB2 hook: $enable_grub2_hook
     dracut: $with_dracut
 "

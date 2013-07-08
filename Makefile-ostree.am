@@ -94,26 +94,3 @@ ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
 endif
 
 MANPAGES += doc/ostree.1
-
-if ENABLE_GRUB2_HOOK
-
-grub2dir = $(sysconfdir)/grub.d
-grub2_SCRIPTS = src/ostree/grub2/15_ostree
-
-endif
-
-EXTRA_DIST += src/ostree/grub2/15_ostree
-
-if ENABLE_KERNEL_UPDATES
-
-kernelpostinstdir = $(sysconfdir)/kernel/postinst.d
-kernelpostinst_SCRIPTS = src/ostree/kernel/15_ostree_update
-
-kernelprermdir = $(sysconfdir)/kernel/prerm.d
-kernelprerm_SCRIPTS = src/ostree/kernel/15_ostree_remove
-
-endif
-
-EXTRA_DIST += src/ostree/kernel/15_ostree_update \
-              src/ostree/kernel/15_ostree_remove \
-              $(NULL)
