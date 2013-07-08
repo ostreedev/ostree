@@ -351,7 +351,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
         goto out;
     }
 
-  if (!ostree_repo_prepare_transaction (repo, TRUE, cancellable, error))
+  if (!ostree_repo_prepare_transaction (repo, TRUE, NULL, cancellable, error))
     goto out;
 
   in_transaction = TRUE;

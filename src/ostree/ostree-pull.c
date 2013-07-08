@@ -108,6 +108,7 @@ typedef struct {
   GMainLoop    *loop;
   GCancellable *cancellable;
 
+  gboolean      transaction_resuming;
   volatile gint n_scanned_metadata;
   guint         outstanding_uri_requests;
 
@@ -822,7 +823,7 @@ scan_one_metadata_object (OtPullData         *pull_data,
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
     goto out;
-  
+
   if (!is_stored && !is_requested)
     {
       char *duped_checksum = g_strdup (tmp_checksum);
@@ -834,23 +835,26 @@ scan_one_metadata_object (OtPullData         *pull_data,
     }
   else if (is_stored)
     {
-      switch (objtype)
+      if (pull_data->transaction_resuming || is_requested)
         {
-        case OSTREE_OBJECT_TYPE_COMMIT:
-          if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
-                                   pull_data->cancellable, error))
-            goto out;
-          break;
-        case OSTREE_OBJECT_TYPE_DIR_META:
-          break;
-        case OSTREE_OBJECT_TYPE_DIR_TREE:
-          if (!scan_dirtree_object (pull_data, tmp_checksum, recursion_depth,
-                                    pull_data->cancellable, error))
-            goto out;
-          break;
-        case OSTREE_OBJECT_TYPE_FILE:
-          g_assert_not_reached ();
-          break;
+          switch (objtype)
+            {
+            case OSTREE_OBJECT_TYPE_COMMIT:
+              if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
+                                       pull_data->cancellable, error))
+                goto out;
+              break;
+            case OSTREE_OBJECT_TYPE_DIR_META:
+              break;
+            case OSTREE_OBJECT_TYPE_DIR_TREE:
+              if (!scan_dirtree_object (pull_data, tmp_checksum, recursion_depth,
+                                        pull_data->cancellable, error))
+                goto out;
+              break;
+            case OSTREE_OBJECT_TYPE_FILE:
+              g_assert_not_reached ();
+              break;
+            }
         }
       g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
       g_atomic_int_inc (&pull_data->n_scanned_metadata);
@@ -1347,7 +1351,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
         }
     }
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, FALSE, NULL, error))
+  if (!ostree_repo_prepare_transaction (pull_data->repo, FALSE, &pull_data->transaction_resuming,
+                                        cancellable, error))
     goto out;
 
   pull_data->metadata_objects_to_fetch = ot_waitable_queue_new ();

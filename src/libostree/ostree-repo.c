@@ -54,6 +54,8 @@ struct OstreeRepo {
   GFile *remote_cache_dir;
   GFile *config_file;
 
+  GFile *transaction_lock_path;
+
   GMutex cache_lock;
   GPtrArray *cached_meta_indexes;
   GPtrArray *cached_content_indexes;
@@ -106,6 +108,9 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->uncompressed_objects_dir);
   g_clear_object (&self->remote_cache_dir);
   g_clear_object (&self->config_file);
+
+  g_clear_object (&self->transaction_lock_path);
+
   if (self->loose_object_devino_hash)
     g_hash_table_destroy (self->loose_object_devino_hash);
   if (self->updated_uncompressed_dirs)
@@ -1357,14 +1362,34 @@ devino_cache_lookup (OstreeRepo           *self,
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  gboolean        enable_commit_hardlink_scan,
+                                 gboolean       *out_transaction_resume,
                                  GCancellable   *cancellable,
                                  GError        **error)
 {
   gboolean ret = FALSE;
+  gboolean ret_transaction_resume = FALSE;
+  gs_free char *transaction_str = NULL;
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
+  if (self->transaction_lock_path == NULL)
+    self->transaction_lock_path = g_file_resolve_relative_path (self->repodir, "transaction");
+
+  if (g_file_query_file_type (self->transaction_lock_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK)
+    ret_transaction_resume = TRUE;
+  else
+    ret_transaction_resume = FALSE;
+
   self->in_transaction = TRUE;
+  if (ret_transaction_resume)
+    {
+      if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
+        goto out;
+    }
+  transaction_str = g_strdup_printf ("pid=%llu", (unsigned long long) getpid ());
+  if (!g_file_make_symbolic_link (self->transaction_lock_path, transaction_str,
+                                  cancellable, error))
+    goto out;
 
   if (enable_commit_hardlink_scan)
     {
@@ -1376,6 +1401,8 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
     }
 
   ret = TRUE;
+  if (out_transaction_resume)
+    *out_transaction_resume = ret_transaction_resume;
  out:
   return ret;
 }
@@ -1389,12 +1416,15 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
 
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
 
-  ret = TRUE;
-  /* out: */
-  self->in_transaction = FALSE;
+  if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
+    goto out;
+
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
+  self->in_transaction = FALSE;
+  ret = TRUE;
+ out:
   return ret;
 }
 

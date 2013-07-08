@@ -170,6 +170,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
   int i;
   GHashTableIter hash_iter;
   gpointer key, value;
+  gboolean transaction_resuming = FALSE;
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_object GFile *src_f = NULL;
   gs_unref_object GFile *src_repo_dir = NULL;
@@ -247,6 +248,10 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
         }
     }
 
+  if (!ostree_repo_prepare_transaction (data->dest_repo, FALSE, &transaction_resuming,
+                                        cancellable, error))
+    goto out;
+
   g_print ("Enumerating objects...\n");
 
   source_objects = ostree_traverse_new_reachable ();
@@ -274,9 +279,6 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
             goto out;
         }
     }
-
-  if (!ostree_repo_prepare_transaction (data->dest_repo, FALSE, cancellable, error))
-    goto out;
 
   data->n_objects_to_check = g_hash_table_size (source_objects);
   g_hash_table_iter_init (&hash_iter, source_objects);

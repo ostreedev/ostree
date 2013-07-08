@@ -78,6 +78,7 @@ GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
 
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean        enable_commit_hardlink_scan,
+                                               gboolean       *out_transaction_resume,
                                                GCancellable   *cancellable,
                                                GError        **error);
 
