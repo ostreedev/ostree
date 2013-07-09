@@ -20,16 +20,16 @@
 
 if BUILDOPT_INSTALL_TESTS
 insttestdir=$(pkglibexecdir)/installed-tests
-testfiles = t0000-basic \
-	t0001-archive \
-	t0002-archivez \
-	t0003-log \
-	t0004-remote-add \
-	t0005-corruption \
-	t0006-libarchive \
-	t0011-pull-archive-z \
-	t0015-admin-deploy \
-	t0016-admin-deploy \
+testfiles = test-basic \
+	test-archive \
+	test-archivez \
+	test-log \
+	test-remote-add \
+	test-corruption \
+	test-libarchive \
+	test-pull-archive-z \
+	test-admin-deploy-1 \
+	test-admin-deploy-2 \
 	$(NULL)
 insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
 

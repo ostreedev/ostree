@@ -590,7 +590,13 @@ content_fetch_on_stage_complete (GObject        *object,
 
   g_debug ("stage of %s complete", ostree_object_to_string (checksum, objtype));
 
-  g_assert (strcmp (checksum, expected_checksum) == 0);
+  if (strcmp (checksum, expected_checksum) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted content object; checksum expected='%s' actual='%s'",
+                   expected_checksum, checksum);
+      goto out;
+    }
 
   pull_data->n_fetched_content++;
  out:
@@ -678,7 +684,13 @@ on_metadata_staged (GObject           *object,
 
   g_debug ("stage of %s complete", ostree_object_to_string (checksum, objtype));
 
-  g_assert (strcmp (checksum, expected_checksum) == 0);
+  if (strcmp (checksum, expected_checksum) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted metadata object; checksum expected='%s' actual='%s'",
+                   expected_checksum, checksum);
+      goto out;
+    }
 
   pull_data->metadata_scan_idle = FALSE;
   ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
