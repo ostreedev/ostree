@@ -31,7 +31,9 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-mutable-tree.c \
 	src/libostree/ostree-mutable-tree.h \
 	src/libostree/ostree-repo.c \
+	src/libostree/ostree-repo-checkout.c \
 	src/libostree/ostree-repo.h \
+	src/libostree/ostree-repo-private.h \
 	src/libostree/ostree-repo-file.c \
 	src/libostree/ostree-repo-file.h \
 	src/libostree/ostree-repo-file-enumerator.c \
