@@ -97,6 +97,7 @@ typedef struct {
   OstreeFetcher *fetcher;
   SoupURI      *base_uri;
 
+  GMainContext    *main_context;
   GMainLoop    *loop;
   GCancellable *cancellable;
 
@@ -328,6 +329,7 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 {
   GSource *update_timeout = NULL;
   GSConsole *console;
+  GSource *idle_src;
 
   console = gs_console_get ();
 
@@ -341,7 +343,9 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
       g_source_unref (update_timeout);
     }
   
-  g_idle_add (idle_check_outstanding_requests, pull_data);
+  idle_src = g_idle_source_new ();
+  g_source_set_callback (idle_src, idle_check_outstanding_requests, pull_data, NULL);
+  g_source_attach (idle_src, pull_data->main_context);
   g_main_loop_run (pull_data->loop);
 
   if (console)
@@ -1216,7 +1220,8 @@ ostree_pull (OstreeRepo               *repo,
   memset (pull_data, 0, sizeof (*pull_data));
 
   pull_data->async_error = error;
-  pull_data->loop = g_main_loop_new (NULL, FALSE);
+  pull_data->main_context = g_main_context_get_thread_default ();
+  pull_data->loop = g_main_loop_new (pull_data->main_context, FALSE);
   pull_data->flags = flags;
 
   pull_data->repo = repo;
@@ -1402,7 +1407,7 @@ ostree_pull (OstreeRepo               *repo,
   {
     queue_src = ot_waitable_queue_create_source (pull_data->metadata_objects_to_fetch);
     g_source_set_callback (queue_src, (GSourceFunc)on_metadata_objects_to_fetch_ready, pull_data, NULL);
-    g_source_attach (queue_src, NULL);
+    g_source_attach (queue_src, pull_data->main_context);
     g_source_unref (queue_src);
   }
 
@@ -1452,6 +1457,8 @@ ostree_pull (OstreeRepo               *repo,
 
   ret = TRUE;
  out:
+  if (pull_data->main_context)
+    g_main_context_unref (pull_data->main_context);
   if (pull_data->loop)
     g_main_loop_unref (pull_data->loop);
   g_strfreev (configured_branches);
