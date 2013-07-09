@@ -153,11 +153,14 @@ ostree_fetcher_init (OstreeFetcher *self)
 }
 
 OstreeFetcher *
-ostree_fetcher_new (GFile *tmpdir)
+ostree_fetcher_new (GFile                    *tmpdir,
+                    OstreeFetcherConfigFlags  flags)
 {
   OstreeFetcher *self = (OstreeFetcher*)g_object_new (OSTREE_TYPE_FETCHER, NULL);
 
   self->tmpdir = g_object_ref (tmpdir);
+  if ((flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
+    g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
  
   return self;
 }

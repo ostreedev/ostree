@@ -43,9 +43,15 @@ struct OstreeFetcherClass
   GObjectClass parent_class;
 };
 
+typedef enum {
+  OSTREE_FETCHER_FLAGS_NONE = 0,
+  OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE = (1 << 0)
+} OstreeFetcherConfigFlags;
+
 GType   ostree_fetcher_get_type (void) G_GNUC_CONST;
 
-OstreeFetcher *ostree_fetcher_new (GFile *tmpdir);
+OstreeFetcher *ostree_fetcher_new (GFile                     *tmpdir,
+                                   OstreeFetcherConfigFlags   flags);
 
 char * ostree_fetcher_query_state_text (OstreeFetcher              *self);
 

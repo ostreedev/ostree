@@ -1196,6 +1196,8 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gpointer key, value;
   int i;
   GCancellable *cancellable = NULL;
+  gboolean tls_permissive = FALSE;
+  OstreeFetcherConfigFlags fetcher_flags = 0;
   gs_free char *remote_key = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *remote_config_content = NULL;
@@ -1250,13 +1252,21 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   start_time = g_get_monotonic_time ();
 
   pull_data->remote_name = g_strdup (argv[1]);
-  pull_data->fetcher = ostree_fetcher_new (ostree_repo_get_tmpdir (pull_data->repo));
   config = ostree_repo_get_config (repo);
 
   remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
   if (!repo_get_string_key_inherit (repo, remote_key, "url", &baseurl, error))
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
+
+  if (!ot_keyfile_get_boolean_with_default (config, remote_key, "tls-permissive",
+                                            FALSE, &tls_permissive, error))
+    goto out;
+  if (tls_permissive)
+    fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
+
+  pull_data->fetcher = ostree_fetcher_new (ostree_repo_get_tmpdir (pull_data->repo),
+                                           fetcher_flags);
 
   if (!pull_data->base_uri)
     {
