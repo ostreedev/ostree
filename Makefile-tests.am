@@ -28,6 +28,7 @@ testfiles = test-basic \
 	test-corruption \
 	test-libarchive \
 	test-pull-archive-z \
+	test-pull-corruption \
 	test-admin-deploy-1 \
 	test-admin-deploy-2 \
 	$(NULL)

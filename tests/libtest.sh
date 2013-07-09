@@ -30,6 +30,10 @@ if test -n "$OT_TESTS_VALGRIND"; then
     CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
 fi
 
+assert_not_reached () {
+    echo $@ 1>&2; exit 1
+}
+
 assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
 }
