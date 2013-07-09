@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_WAITABLE_QUEUE_H__
-#define __OSTREE_WAITABLE_QUEUE_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -44,4 +43,3 @@ void ot_waitable_queue_unref (OtWaitableQueue *queue);
 
 G_END_DECLS
 
-#endif

@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_OPT_UTILS_H__
-#define __OSTREE_OPT_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -31,4 +30,3 @@ void ot_util_usage_error (GOptionContext *context, const char *message, GError *
 
 G_END_DECLS
 
-#endif

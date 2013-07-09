@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OT_ADMIN_DEPLOY__
-#define __OT_ADMIN_DEPLOY_
+#pragma once
 
 #include <gio/gio.h>
 #include "ot-deployment.h"
@@ -48,4 +47,3 @@ gboolean ot_admin_deploy (GFile             *sysroot,
 
 G_END_DECLS
 
-#endif

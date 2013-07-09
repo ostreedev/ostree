@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_BOOTLOADER_H__
-#define __OT_BOOTLOADER_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -56,4 +55,3 @@ gboolean ot_bootloader_write_config (OtBootloader  *self,
 
 G_END_DECLS
 
-#endif /* __OT_BOOTLOADER_H__ */

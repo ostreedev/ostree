@@ -19,9 +19,7 @@
  *
  */
 
-#ifndef _OSTREE_MOUNT_UTIL_H
-#define _OSTREE_MOUNT_UTIL_H
+#pragma once
 
 int perrorv (const char *format, ...) __attribute__ ((format (printf, 1, 2)));
 
-#endif

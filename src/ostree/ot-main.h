@@ -20,6 +20,8 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
+#pragma once
+
 #include <gio/gio.h>
 
 typedef enum {

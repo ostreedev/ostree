@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_DIFF
-#define _OSTREE_DIFF
+#pragma once
 
 #include "ostree-core.h"
 #include "ostree-types.h"
@@ -62,4 +61,3 @@ void ostree_diff_print (GFile          *a,
 
 G_END_DECLS
 
-#endif /* _OSTREE_REPO */

@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_CHECKSUM_UTILS_H__
-#define __OSTREE_CHECKSUM_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -65,5 +64,3 @@ guchar * ot_gio_checksum_stream_finish (GInputStream   *in,
                                         GError        **error);
 
 G_END_DECLS
-
-#endif

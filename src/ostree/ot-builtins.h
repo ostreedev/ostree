@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_BUILTINS__
-#define __OSTREE_BUILTINS__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -50,4 +49,3 @@ gboolean ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, 
 
 G_END_DECLS
 
-#endif

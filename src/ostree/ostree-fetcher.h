@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef _OSTREE_FETCHER
-#define _OSTREE_FETCHER
+#pragma once
 
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
 #include <libsoup/soup.h>
@@ -71,4 +70,3 @@ GFile *ostree_fetcher_request_uri_finish (OstreeFetcher         *self,
 
 G_END_DECLS
 
-#endif

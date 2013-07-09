@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_SPAWN_UTILS_H__
-#define __OSTREE_SPAWN_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -33,4 +32,3 @@ GThreadPool * ot_thread_pool_new_nproc (GFunc     func,
 
 G_END_DECLS
 
-#endif

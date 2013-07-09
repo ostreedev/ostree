@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_TRAVERSE
-#define _OSTREE_TRAVERSE
+#pragma once
 
 #include "ostree-core.h"
 #include "ostree-types.h"
@@ -45,4 +44,3 @@ gboolean ostree_traverse_commit (OstreeRepo         *repo,
 
 G_END_DECLS
 
-#endif /* _OSTREE_REPO */

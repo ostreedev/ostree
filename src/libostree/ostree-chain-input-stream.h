@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __OSTREE_CHAIN_INPUT_STREAM_H__
-#define __OSTREE_CHAIN_INPUT_STREAM_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -64,4 +63,3 @@ OstreeChainInputStream * ostree_chain_input_stream_new          (GPtrArray *stre
 
 G_END_DECLS
 
-#endif /* __OSTREE_CHAIN_INPUT_STREAM_H__ */

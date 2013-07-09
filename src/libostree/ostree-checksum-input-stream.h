@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef __OSTREE_CHECKSUM_INPUT_STREAM_H__
-#define __OSTREE_CHECKSUM_INPUT_STREAM_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -65,4 +64,3 @@ OstreeChecksumInputStream * ostree_checksum_input_stream_new          (GInputStr
 
 G_END_DECLS
 
-#endif /* __OSTREE_CHECKSUM_INPUT_STREAM_H__ */

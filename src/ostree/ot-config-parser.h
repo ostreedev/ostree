@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_CONFIG_PARSER_H__
-#define __OT_CONFIG_PARSER_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -55,4 +54,3 @@ const char *ot_config_parser_get (OtConfigParser  *self,
 
 G_END_DECLS
 
-#endif /* __OT_CONFIG_PARSER_H__ */

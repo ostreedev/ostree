@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UTIL_H__
-#define __OSTREE_UTIL_H__
+#pragma once
 
 #include <gio/gio.h>
 #include <libgsystem.h>
@@ -48,4 +47,3 @@
 
 void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED; 
 
-#endif

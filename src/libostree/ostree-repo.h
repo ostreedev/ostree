@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_REPO
-#define _OSTREE_REPO
+#pragma once
 
 #include "ostree-core.h"
 #include "ostree-types.h"
@@ -320,4 +319,3 @@ gboolean ostree_repo_list_objects (OstreeRepo                  *self,
 
 G_END_DECLS
 
-#endif /* _OSTREE_REPO */

@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_ORDERED_HASH_H__
-#define __OT_ORDERED_HASH_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -43,4 +42,3 @@ void ot_ordered_hash_replace_key (OtOrderedHash  *ohash,
 
 G_END_DECLS
 
-#endif /* __OT_ORDERED_HASH_H__ */

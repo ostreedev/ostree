@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_UNIX_UTILS_H__
-#define __OSTREE_UNIX_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -51,4 +50,3 @@ void ot_util_set_error_from_errno (GError **error, gint saved_errno);
 
 G_END_DECLS
 
-#endif

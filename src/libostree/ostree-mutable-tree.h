@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_MUTABLE_TREE
-#define _OSTREE_MUTABLE_TREE
+#pragma once
 
 #include "ostree-types.h"
 
@@ -94,4 +93,3 @@ GHashTable * ostree_mutable_tree_get_files (OstreeMutableTree *self);
 
 G_END_DECLS
 
-#endif

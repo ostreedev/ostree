@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_KEYFILE_UTILS_H__
-#define __OSTREE_KEYFILE_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -46,4 +45,3 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
 
 G_END_DECLS
 
-#endif

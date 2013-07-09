@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_GIO_UTILS_H__
-#define __OSTREE_GIO_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -81,4 +80,3 @@ gboolean ot_gfile_atomic_symlink_swap (GFile          *path,
 
 G_END_DECLS
 
-#endif

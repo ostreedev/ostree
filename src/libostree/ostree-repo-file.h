@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_REPO_FILE
-#define _OSTREE_REPO_FILE
+#pragma once
 
 #include "ostree-types.h"
 
@@ -96,4 +95,3 @@ GVariant *ostree_repo_file_tree_get_metadata (OstreeRepoFile  *self);
 
 G_END_DECLS
 
-#endif

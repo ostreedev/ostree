@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_PRUNE_H__
-#define __OT_PRUNE_H__
+#pragma once
 
 #include "ostree.h"
 
@@ -42,4 +41,3 @@ gboolean ostree_prune (OstreeRepo        *repo,
 
 G_END_DECLS
 
-#endif /* __OT_PRUNE_H__ */

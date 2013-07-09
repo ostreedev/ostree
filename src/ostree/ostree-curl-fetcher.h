@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef _OSTREE_CURL_FETCHER
-#define _OSTREE_CURL_FETCHER
+#pragma once
 
 #include <gio/gio.h>
 
@@ -56,4 +55,3 @@ GFile *ostree_curl_fetcher_request_uri_finish (OstreeCurlFetcher         *self,
 
 G_END_DECLS
 
-#endif

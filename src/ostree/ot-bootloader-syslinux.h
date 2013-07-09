@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_BOOTLOADER_SYSLINUX_H__
-#define __OT_BOOTLOADER_SYSLINUX_H__
+#pragma once
 
 #include "ot-bootloader.h"
 
@@ -37,4 +36,3 @@ OtBootloaderSyslinux * ot_bootloader_syslinux_new (GFile *sysroot);
 
 G_END_DECLS
 
-#endif /* __OT_BOOTLOADER_SYSLINUX_H__ */

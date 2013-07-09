@@ -20,7 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_H__
+#pragma once
 
 #include <ostree-checksum-input-stream.h>
 #include <ostree-chain-input-stream.h>
@@ -30,5 +30,3 @@
 #include <ostree-repo-file.h>
 #include <ostree-traverse.h>
 #include <ostree-diff.h>
-
-#endif

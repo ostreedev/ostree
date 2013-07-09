@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_REPO_FILE_ENUMERATOR
-#define _OSTREE_REPO_FILE_ENUMERATOR
+#pragma once
 
 #include "ostree-repo-file.h"
 
@@ -54,4 +53,3 @@ GFileEnumerator * _ostree_repo_file_enumerator_new      (OstreeRepoFile       *d
 
 G_END_DECLS
 
-#endif

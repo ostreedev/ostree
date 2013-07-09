@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OSTREE_VARIANT_UTILS_H__
-#define __OSTREE_VARIANT_UTILS_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -56,4 +55,3 @@ GInputStream *ot_variant_read (GVariant             *variant);
 
 G_END_DECLS
 
-#endif

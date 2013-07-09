@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OT_ADMIN_BUILTINS__
-#define __OT_ADMIN_BUILTINS__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -42,4 +41,3 @@ gboolean ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *ad
 
 G_END_DECLS
 
-#endif

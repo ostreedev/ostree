@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef __OT_ADMIN_FUNCTIONS__
-#define __OT_ADMIN_FUNCTIONS__
+#pragma once
 
 #include <gio/gio.h>
 #include "ostree.h"
@@ -120,4 +119,3 @@ GKeyFile *ot_origin_new_from_refspec (const char *refspec);
 
 G_END_DECLS
 
-#endif

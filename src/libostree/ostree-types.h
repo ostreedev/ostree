@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_TYPES
-#define _OSTREE_TYPES
+#pragma once
 
 #include <gio/gio.h>
 
@@ -36,4 +35,3 @@ typedef struct OstreeRepoFile OstreeRepoFile;
 
 G_END_DECLS
 
-#endif

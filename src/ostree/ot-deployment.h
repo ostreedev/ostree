@@ -18,8 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#ifndef __OT_DEPLOYMENT_H__
-#define __OT_DEPLOYMENT_H__
+#pragma once
 
 #include <gio/gio.h>
 #include "ot-config-parser.h"
@@ -63,4 +62,3 @@ OtDeployment *ot_deployment_clone (OtDeployment *self);
 
 G_END_DECLS
 
-#endif /* __OT_DEPLOYMENT_H__ */

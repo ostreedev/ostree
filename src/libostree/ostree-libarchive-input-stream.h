@@ -20,8 +20,7 @@
  * Author: Alexander Larsson <alexl@redhat.com>
  */
 
-#ifndef __OSTREE_LIBARCHIVE_INPUT_STREAM_H__
-#define __OSTREE_LIBARCHIVE_INPUT_STREAM_H__
+#pragma once
 
 #include <gio/gio.h>
 
@@ -65,4 +64,3 @@ GInputStream * ostree_libarchive_input_stream_new          (struct archive  *a);
 
 G_END_DECLS
 
-#endif /* __OSTREE_LIBARCHIVE_INPUT_STREAM_H__ */

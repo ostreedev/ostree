@@ -20,8 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#ifndef _OSTREE_CORE
-#define _OSTREE_CORE
+#pragma once
 
 #include <otutil.h>
 
@@ -308,4 +307,5 @@ gboolean ostree_validate_structureof_dirtree (GVariant      *index,
 gboolean ostree_validate_structureof_dirmeta (GVariant      *index,
                                               GError       **error);
 
-#endif /* _OSTREE_REPO */
+
+G_END_DECLS
