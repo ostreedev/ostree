@@ -1202,6 +1202,7 @@ ostree_pull (OstreeRepo               *repo,
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
   gs_free char *branch_rev = NULL;
   gs_free char *remote_mode_str = NULL;
+  GSource *queue_src = NULL;
   OtPullData pull_data_real;
   OtPullData *pull_data = &pull_data_real;
   SoupURI *summary_uri = NULL;
@@ -1399,10 +1400,10 @@ ostree_pull (OstreeRepo               *repo,
     }
   
   {
-    GSource *src = ot_waitable_queue_create_source (pull_data->metadata_objects_to_fetch);
-    g_source_set_callback (src, (GSourceFunc)on_metadata_objects_to_fetch_ready, pull_data, NULL);
-    g_source_attach (src, NULL);
-    g_source_unref (src);
+    queue_src = ot_waitable_queue_create_source (pull_data->metadata_objects_to_fetch);
+    g_source_set_callback (queue_src, (GSourceFunc)on_metadata_objects_to_fetch_ready, pull_data, NULL);
+    g_source_attach (queue_src, NULL);
+    g_source_unref (queue_src);
   }
 
   /* Prime the message queue */
@@ -1458,6 +1459,8 @@ ostree_pull (OstreeRepo               *repo,
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
+  if (queue_src)
+    g_source_destroy (queue_src);
   if (pull_data->metadata_thread)
     {
       ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
