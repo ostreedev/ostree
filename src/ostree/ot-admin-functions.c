@@ -776,24 +776,6 @@ ot_admin_list_deployments (GFile               *sysroot,
   return ret;
 }
 
-gboolean
-ot_admin_pull (GFile         *sysroot,
-               const char    *remote,
-               const char    *ref,
-               GCancellable  *cancellable,
-               GError       **error)
-{
-  gs_unref_object GFile *repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
-  gs_free char *repo_arg = g_strconcat ("--repo=",
-                                        gs_file_get_path_cached (repo_path),
-                                        NULL);
-
-  return gs_subprocess_simple_run_sync (NULL,
-                                        GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                        cancellable, error,
-                                        "ostree", repo_arg, "pull", remote, ref, NULL);
-}
-
 GFile *
 ot_admin_get_deployment_directory (GFile        *sysroot,
                                    OtDeployment *deployment)

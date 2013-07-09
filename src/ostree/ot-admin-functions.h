@@ -118,12 +118,6 @@ gboolean ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
 
 GKeyFile *ot_origin_new_from_refspec (const char *refspec);
 
-gboolean ot_admin_pull (GFile         *ostree_dir,
-                        const char    *remote,
-                        const char    *ref,
-                        GCancellable  *cancellable,
-                        GError       **error);
-
 G_END_DECLS
 
 #endif

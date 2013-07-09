@@ -25,6 +25,7 @@
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ot-admin-deploy.h"
+#include "ostree-pull.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -118,9 +119,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 
   if (origin_remote)
     {
+      char *refs_to_fetch[] = { origin_ref, NULL };
+
       g_print ("Fetching remote %s ref %s\n", origin_remote, origin_ref);
-      if (!ot_admin_pull (admin_opts->sysroot, origin_remote, origin_ref,
-                          cancellable, error))
+
+      if (!ostree_pull (repo, origin_remote, refs_to_fetch, OSTREE_PULL_FLAGS_NONE,
+                        cancellable, error))
         goto out;
     }
 
