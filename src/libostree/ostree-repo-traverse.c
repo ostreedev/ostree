@@ -28,7 +28,7 @@
 #include "otutil.h"
 
 GHashTable *
-ostree_traverse_new_reachable (void)
+ostree_repo_traverse_new_reachable (void)
 {
   return g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                 (GDestroyNotify)g_variant_unref, NULL);
@@ -119,11 +119,11 @@ traverse_dirtree_internal (OstreeRepo      *repo,
 }
 
 gboolean
-ostree_traverse_dirtree (OstreeRepo      *repo,
-                         const char      *dirtree_checksum,
-                         GHashTable      *inout_reachable,
-                         GCancellable    *cancellable,
-                         GError         **error)
+ostree_repo_traverse_dirtree (OstreeRepo      *repo,
+                              const char      *dirtree_checksum,
+                              GHashTable      *inout_reachable,
+                              GCancellable    *cancellable,
+                              GError         **error)
 {
   return traverse_dirtree_internal (repo, dirtree_checksum, 0,
                                     inout_reachable, cancellable, error);
@@ -136,12 +136,12 @@ ostree_traverse_dirtree (OstreeRepo      *repo,
  * @commit_checksum, traversing @maxdepth parent commits.
  */
 gboolean
-ostree_traverse_commit (OstreeRepo      *repo,
-                        const char      *commit_checksum,
-                        int              maxdepth,
-                        GHashTable      *inout_reachable,
-                        GCancellable    *cancellable,
-                        GError         **error)
+ostree_repo_traverse_commit (OstreeRepo      *repo,
+                             const char      *commit_checksum,
+                             int              maxdepth,
+                             GHashTable      *inout_reachable,
+                             GCancellable    *cancellable,
+                             GError         **error)
 {
   gboolean ret = FALSE;
   gs_free char*tmp_checksum = NULL;
@@ -199,7 +199,7 @@ ostree_traverse_commit (OstreeRepo      *repo,
         }
 
       tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
-      if (!ostree_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
+      if (!ostree_repo_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
         goto out;
 
       if (maxdepth == -1 || maxdepth > 0)

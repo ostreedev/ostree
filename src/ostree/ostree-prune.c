@@ -106,7 +106,7 @@ ostree_prune (OstreeRepo        *repo,
   memset (&data, 0, sizeof (data));
 
   data.repo = repo;
-  data.reachable = ostree_traverse_new_reachable ();
+  data.reachable = ostree_repo_traverse_new_reachable ();
 
   if (refs_only)
     {
@@ -120,8 +120,8 @@ ostree_prune (OstreeRepo        *repo,
         {
           const char *checksum = value;
           
-          if (!ostree_traverse_commit (repo, checksum, depth, data.reachable,
-                                       cancellable, error))
+          if (!ostree_repo_traverse_commit (repo, checksum, depth, data.reachable,
+                                            cancellable, error))
             goto out;
         }
     }
@@ -144,8 +144,8 @@ ostree_prune (OstreeRepo        *repo,
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
             continue;
           
-          if (!ostree_traverse_commit (repo, checksum, depth, data.reachable,
-                                       cancellable, error))
+          if (!ostree_repo_traverse_commit (repo, checksum, depth, data.reachable,
+                                            cancellable, error))
             goto out;
         }
     }

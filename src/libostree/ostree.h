@@ -28,5 +28,4 @@
 #include <ostree-repo.h>
 #include <ostree-mutable-tree.h>
 #include <ostree-repo-file.h>
-#include <ostree-traverse.h>
 #include <ostree-diff.h>

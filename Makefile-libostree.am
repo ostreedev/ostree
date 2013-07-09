@@ -34,6 +34,7 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-repo-checkout.c \
 	src/libostree/ostree-repo-libarchive.c \
 	src/libostree/ostree-repo-refs.c \
+	src/libostree/ostree-repo-traverse.c \
 	src/libostree/ostree-repo.h \
 	src/libostree/ostree-repo-private.h \
 	src/libostree/ostree-repo-file.c \
@@ -41,8 +42,6 @@ libostree_la_SOURCES = src/libostree/ostree.h \
 	src/libostree/ostree-repo-file-enumerator.c \
 	src/libostree/ostree-repo-file-enumerator.h \
 	src/libostree/ostree-types.h \
-	src/libostree/ostree-traverse.c \
-	src/libostree/ostree-traverse.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

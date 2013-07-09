@@ -58,7 +58,7 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   gs_free guchar *computed_csum = NULL;
   gs_free char *tmp_checksum = NULL;
 
-  reachable_objects = ostree_traverse_new_reachable ();
+  reachable_objects = ostree_repo_traverse_new_reachable ();
 
   g_hash_table_iter_init (&hash_iter, commits);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -71,8 +71,8 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
 
       g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
 
-      if (!ostree_traverse_commit (data->repo, checksum, 0, reachable_objects,
-                                   cancellable, error))
+      if (!ostree_repo_traverse_commit (data->repo, checksum, 0, reachable_objects,
+                                        cancellable, error))
         goto out;
     }
 

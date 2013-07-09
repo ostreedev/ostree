@@ -254,7 +254,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
 
   g_print ("Enumerating objects...\n");
 
-  source_objects = ostree_traverse_new_reachable ();
+  source_objects = ostree_repo_traverse_new_reachable ();
 
   if (refs_to_clone)
     {
@@ -263,7 +263,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
         {
           const char *checksum = value;
           
-          if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
+          if (!ostree_repo_traverse_commit (data->src_repo, checksum, 0, source_objects,
+                                            cancellable, error))
             goto out;
         }
     }
@@ -275,7 +276,8 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **err
         {
           const char *checksum = key;
 
-          if (!ostree_traverse_commit (data->src_repo, checksum, 0, source_objects, cancellable, error))
+          if (!ostree_repo_traverse_commit (data->src_repo, checksum, 0, source_objects,
+                                            cancellable, error))
             goto out;
         }
     }
