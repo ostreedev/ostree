@@ -100,11 +100,6 @@ main(int argc, char *argv[])
     }
 
   root_mountpoint = argv[1];
-  if (strcmp (root_mountpoint, "/sysroot") != 0)
-    {
-      fprintf (stderr, "ostree-prepare-root: Expected /sysroot\n");
-      exit (1);
-    }
 
   ostree_target = parse_ostree_cmdline ();
   if (!ostree_target)
