@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011,2012 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2011,2012,2013 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -73,16 +73,7 @@
 #include "ot-builtins.h"
 
 #include "ostree-fetcher.h"
-
-
-gboolean verbose;
-gboolean opt_related;
-
-static GOptionEntry options[] = {
-  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose, "Show more information", NULL },
-  { "related", 0, 0, G_OPTION_ARG_NONE, &opt_related, "Download related commits", NULL },
-  { NULL },
-};
+#include "ostree-pull.h"
 
 typedef struct {
   enum {
@@ -100,6 +91,7 @@ typedef struct {
 
 typedef struct {
   OstreeRepo   *repo;
+  OstreePullFlags flags;
   char         *remote_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
@@ -787,7 +779,7 @@ scan_commit_object (OtPullData         *pull_data,
                                  cancellable, error))
     goto out;
   
-  if (opt_related)
+  if (pull_data->flags & OSTREE_PULL_FLAGS_RELATED)
     {
       const char *name;
       gs_unref_variant GVariant *csum_v = NULL;
@@ -1188,18 +1180,19 @@ load_remote_repo_config (OtPullData    *pull_data,
 }
 
 gboolean
-ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_pull (OstreeRepo               *repo,
+             const char               *remote_name,
+             char                    **refs_to_fetch,
+             OstreePullFlags           flags,
+             GCancellable             *cancellable,
+             GError                  **error)
 {
-  GOptionContext *context;
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  int i;
-  GCancellable *cancellable = NULL;
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
   gs_free char *remote_key = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *remote_config_content = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
@@ -1221,18 +1214,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
 
   memset (pull_data, 0, sizeof (*pull_data));
 
-  context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
-    goto out;
-
   pull_data->async_error = error;
   pull_data->loop = g_main_loop_new (NULL, FALSE);
+  pull_data->flags = flags;
 
   pull_data->repo = repo;
 
@@ -1243,15 +1227,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
 
-  if (argc < 2)
-    {
-      ot_util_usage_error (context, "REMOTE must be specified", error);
-      goto out;
-    }
-
   start_time = g_get_monotonic_time ();
 
-  pull_data->remote_name = g_strdup (argv[1]);
+  pull_data->remote_name = g_strdup (remote_name);
   config = ostree_repo_get_config (repo);
 
   remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
@@ -1297,11 +1275,12 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   updated_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
-  if (argc > 2)
+  if (refs_to_fetch != NULL)
     {
-      for (i = 2; i < argc; i++)
+      char **strviter;
+      for (strviter = refs_to_fetch; *strviter; strviter++)
         {
-          const char *branch = argv[i];
+          const char *branch = *strviter;
           char *contents;
 
           if (ostree_validate_checksum_string (branch, NULL))
@@ -1475,8 +1454,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   if (pull_data->loop)
     g_main_loop_unref (pull_data->loop);
   g_strfreev (configured_branches);
-  if (context)
-    g_option_context_free (context);
   g_clear_object (&pull_data->fetcher);
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
