@@ -135,6 +135,7 @@ static void
 ostree_fetcher_init (OstreeFetcher *self)
 {
   self->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
+                                                       SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
                                                        SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
                                                        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_REQUESTER,
                                                        NULL);
