@@ -27,8 +27,7 @@
 #include "ot-deployment.h"
 #include "ot-config-parser.h"
 #include "otutil.h"
-#include "ostree-core.h"
-#include "ostree-prune.h"
+#include "ostree.h"
 #include "libgsystem.h"
 
 static gboolean
@@ -463,9 +462,9 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
         goto out;
     }
 
-  if (!ostree_prune (repo, OSTREE_PRUNE_FLAGS_REFS_ONLY, 0,
-                     &n_objects_total, &n_objects_pruned, &freed_space,
-                     cancellable, error))
+  if (!ostree_repo_prune (repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0,
+                          &n_objects_total, &n_objects_pruned, &freed_space,
+                          cancellable, error))
     goto out;
   if (freed_space > 0)
     {

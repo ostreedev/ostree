@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,7 @@
 
 #include "config.h"
 
-#include "ostree-prune.h"
+#include "ostree-repo.h"
 
 typedef struct {
   OstreeRepo *repo;
@@ -36,7 +36,7 @@ typedef struct {
 
 static gboolean
 maybe_prune_loose_object (OtPruneData        *data,
-                          OstreePruneFlags    flags,
+                          OstreeRepoPruneFlags    flags,
                           const char         *checksum,
                           OstreeObjectType    objtype,
                           GCancellable       *cancellable,
@@ -52,7 +52,7 @@ maybe_prune_loose_object (OtPruneData        *data,
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
-      if (!(flags & OSTREE_PRUNE_FLAGS_NO_PRUNE))
+      if (!(flags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE))
         {
           gs_unref_object GFileInfo *info = NULL;
 
@@ -85,14 +85,14 @@ maybe_prune_loose_object (OtPruneData        *data,
 }
 
 gboolean
-ostree_prune (OstreeRepo        *repo,
-              OstreePruneFlags   flags,
-              gint               depth,
-              gint              *out_objects_total,
-              gint              *out_objects_pruned,
-              guint64           *out_pruned_object_size_total,
-              GCancellable      *cancellable,
-              GError           **error)
+ostree_repo_prune (OstreeRepo        *repo,
+                   OstreeRepoPruneFlags   flags,
+                   gint               depth,
+                   gint              *out_objects_total,
+                   gint              *out_objects_pruned,
+                   guint64           *out_pruned_object_size_total,
+                   GCancellable      *cancellable,
+                   GError           **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
@@ -101,7 +101,7 @@ ostree_prune (OstreeRepo        *repo,
   gs_unref_hashtable GHashTable *all_refs = NULL;
   gs_free char *formatted_freed_size = NULL;
   OtPruneData data;
-  gboolean refs_only = flags & OSTREE_PRUNE_FLAGS_REFS_ONLY;
+  gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 
   memset (&data, 0, sizeof (data));
 

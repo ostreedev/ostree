@@ -23,7 +23,7 @@
 #include "config.h"
 
 #include "ot-builtins.h"
-#include "ostree-prune.h"
+#include "ostree.h"
 
 #include <glib/gi18n.h>
 #include <glib/gprintf.h>
@@ -47,7 +47,7 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   GCancellable *cancellable = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *formatted_freed_size = NULL;
-  OstreePruneFlags pruneflags = 0;
+  OstreeRepoPruneFlags pruneflags = 0;
   gint n_objects_total;
   gint n_objects_pruned;
   guint64 objsize_total;
@@ -63,13 +63,13 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
     goto out;
 
   if (opt_refs_only)
-    pruneflags |= OSTREE_PRUNE_FLAGS_REFS_ONLY;
+    pruneflags |= OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
   if (opt_no_prune)
-    pruneflags |= OSTREE_PRUNE_FLAGS_NO_PRUNE;
+    pruneflags |= OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE;
 
-  if (!ostree_prune (repo, pruneflags, opt_depth,
-                     &n_objects_total, &n_objects_pruned, &objsize_total,
-                     cancellable, error))
+  if (!ostree_repo_prune (repo, pruneflags, opt_depth,
+                          &n_objects_total, &n_objects_pruned, &objsize_total,
+                          cancellable, error))
     goto out;
 
   formatted_freed_size = g_format_size_full (objsize_total, 0);
@@ -77,7 +77,7 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
   g_print ("Total objects: %u\n", n_objects_total);
   if (n_objects_pruned == 0)
     g_print ("No unreachable objects\n");
-  else if (pruneflags & OSTREE_PRUNE_FLAGS_NO_PRUNE)
+  else if (pruneflags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE)
     g_print ("Would delete: %u objects, freeing %s bytes\n",
              n_objects_pruned, formatted_freed_size);
   else

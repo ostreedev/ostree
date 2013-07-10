@@ -28,8 +28,7 @@
 #include "ot-config-parser.h"
 #include "ot-bootloader-syslinux.h"
 #include "otutil.h"
-#include "ostree-core.h"
-#include "ostree-prune.h"
+#include "ostree.h"
 #include "libgsystem.h"
 
 OtOrderedHash *

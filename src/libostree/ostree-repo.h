@@ -332,6 +332,20 @@ gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       GCancellable       *cancellable,
                                       GError            **error);
 
+typedef enum {
+  OSTREE_REPO_PRUNE_FLAGS_NONE,
+  OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
+  OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
+} OstreeRepoPruneFlags;
+
+gboolean ostree_repo_prune (OstreeRepo        *repo,
+                            OstreeRepoPruneFlags   flags,
+                            gint               depth,
+                            gint              *out_objects_total,
+                            gint              *out_objects_pruned,
+                            guint64           *out_pruned_object_size_total,
+                            GCancellable      *cancellable,
+                            GError           **error);
 
 G_END_DECLS
 
