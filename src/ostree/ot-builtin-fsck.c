@@ -25,9 +25,6 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-#include <glib/gi18n.h>
-#include <glib/gprintf.h>
-
 static gboolean quiet;
 static gboolean delete;
 

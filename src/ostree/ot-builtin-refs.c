@@ -24,7 +24,6 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "ostree-repo-file.h"
 
 static gboolean opt_delete;
 

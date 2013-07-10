@@ -25,8 +25,6 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-#include <glib/gi18n.h>
-
 static GOptionEntry options[] = {
   { NULL }
 };

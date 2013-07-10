@@ -25,10 +25,6 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-#include <gio/gunixoutputstream.h>
-
-#include <glib/gi18n.h>
-
 static char *metadata_text_path;
 static char *metadata_bin_path;
 static char *subject;

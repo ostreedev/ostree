@@ -27,8 +27,6 @@
 
 #include <gio/gunixinputstream.h>
 
-#include <glib/gi18n.h>
-
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
 static char *opt_subpath;

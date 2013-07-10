@@ -24,10 +24,6 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "ostree-repo-file.h"
-
-#include <gio/gunixoutputstream.h>
-#include <glib/gi18n.h>
 
 gboolean opt_related;
 

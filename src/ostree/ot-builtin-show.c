@@ -25,8 +25,6 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-#include <glib/gi18n.h>
-
 static gboolean print_related;
 static char* print_variant_type;
 static char* print_metadata_key;

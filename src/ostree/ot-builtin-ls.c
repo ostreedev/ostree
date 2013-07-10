@@ -26,8 +26,6 @@
 #include "ostree.h"
 #include "ostree-repo-file.h"
 
-#include <glib/gi18n.h>
-
 static gboolean recursive;
 static gboolean checksum;
 static gboolean xattrs;

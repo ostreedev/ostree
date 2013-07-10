@@ -23,13 +23,7 @@
 #include <libsoup/soup.h>
 
 #include "ot-builtins.h"
-#include "ot-admin-builtins.h"
-#include "ot-admin-functions.h"
-#include "ot-main.h"
 #include "ostree.h"
-#include "ostree-repo-file.h"
-
-#include <glib/gi18n.h>
 
 static char *opt_port_file = NULL;
 static gboolean opt_daemonize;

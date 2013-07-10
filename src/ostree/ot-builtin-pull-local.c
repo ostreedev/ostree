@@ -22,11 +22,11 @@
 
 #include "config.h"
 
-#include "ot-builtins.h"
-#include "ostree.h"
-
 #include <unistd.h>
 #include <stdlib.h>
+
+#include "ot-builtins.h"
+#include "ostree.h"
 
 static char *opt_remote;
 
