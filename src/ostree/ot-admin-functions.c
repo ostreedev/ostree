@@ -20,7 +20,6 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#define _GNU_SOURCE
 #include "config.h"
 
 #include "ot-admin-functions.h"

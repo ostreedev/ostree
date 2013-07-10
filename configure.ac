@@ -7,6 +7,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([1.11 -Wno-portability foreign no-define tar-ustar no-dist-gzip dist-xz])
 AM_MAINTAINER_MODE([enable])
 AM_SILENT_RULES([yes])
+AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
 
 AC_PROG_CC

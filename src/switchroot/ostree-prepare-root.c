@@ -23,7 +23,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#define _GNU_SOURCE
+
+#include "config.h"
+
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/stat.h>

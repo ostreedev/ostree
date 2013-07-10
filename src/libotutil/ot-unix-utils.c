@@ -22,8 +22,6 @@
 
 #include "config.h"
 
-#define _GNU_SOURCE
-
 #include "otutil.h"
 
 #include <gio/gio.h>

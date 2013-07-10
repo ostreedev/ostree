@@ -20,7 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-#define _GNU_SOURCE
+#include "config.h"
 
 #include <string.h>
 #include <stdio.h>
