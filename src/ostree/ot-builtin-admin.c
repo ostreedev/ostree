@@ -31,13 +31,6 @@
 
 #include <glib/gi18n.h>
 
-static char *opt_sysroot = "/";
-
-static GOptionEntry options[] = {
-  { "sysroot", 0, 0, G_OPTION_ARG_STRING, &opt_sysroot, "Path to root directory (default: /)", NULL },
-  { NULL }
-};
-
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
@@ -57,42 +50,34 @@ static OstreeAdminCommand admin_subcommands[] = {
 gboolean
 ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
 {
-  GOptionContext *context;
   gboolean ret = FALSE;
   __attribute__((unused)) GCancellable *cancellable = NULL;
+  const char *opt_sysroot;
   const char *subcommand_name;
   OstreeAdminCommand *subcommand;
   int subcmd_argc;
   OtAdminBuiltinOpts admin_opts;
   char **subcmd_argv = NULL;
 
-  context = g_option_context_new ("[OPTIONS] SUBCOMMAND - Run an administrative subcommand");
-
-  {
-    GString *s = g_string_new ("Subcommands:\n");
-
-    subcommand = admin_subcommands;
-    while (subcommand->name)
-      {
-        g_string_append_printf (s, "  %s\n", subcommand->name);
-        subcommand++;
-      }
-    g_option_context_set_description (context, s->str);
-    g_string_free (s, TRUE);
-  }
-    
-  g_option_context_add_main_entries (context, options, NULL);
-  /* Skip subcommand options */
-  g_option_context_set_ignore_unknown_options (context, TRUE);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  if (argc <= 1)
+  if (argc > 1 && g_str_has_prefix (argv[1], "--sysroot="))
     {
-      ot_util_usage_error (context, "A valid SUBCOMMAND is required", error);
-      goto out;
+      opt_sysroot = argv[1] + strlen ("--sysroot=");
+      argc--;
+      argv++;
     }
+  else if (argc <= 1 || g_str_has_prefix (argv[1], "--help"))
+    {
+      subcommand = admin_subcommands;
+      g_print ("usage: ostree admin --sysroot=PATH COMMAND [options]\n");
+      g_print ("Builtin commands:\n");
+      while (subcommand->name)
+        {
+          g_print ("  %s\n", subcommand->name);
+          subcommand++;
+        }
+      return argc <= 1 ? 1 : 0;
+    }
+
   subcommand_name = argv[1];
 
   subcommand = admin_subcommands;
@@ -118,7 +103,5 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error)
  
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }
