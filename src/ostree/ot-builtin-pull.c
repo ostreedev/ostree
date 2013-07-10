@@ -24,7 +24,6 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "ostree-pull.h"
 #include "ostree-repo-file.h"
 
 #include <gio/gunixoutputstream.h>
@@ -44,7 +43,7 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
   gboolean ret = FALSE;
   GCancellable *cancellable = NULL;
   const char *remote;
-  OstreePullFlags pullflags = 0;
+  OstreeRepoPullFlags pullflags = 0;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
 
@@ -75,9 +74,9 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
     }
 
   if (opt_related)
-    pullflags |= OSTREE_PULL_FLAGS_RELATED;
+    pullflags |= OSTREE_REPO_PULL_FLAGS_RELATED;
 
-  if (!ostree_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
+  if (!ostree_repo_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
                     pullflags, cancellable, error))
     goto out;
  

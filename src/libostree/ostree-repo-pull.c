@@ -67,13 +67,8 @@
 
 #include "config.h"
 
-
 #include "ostree.h"
-#include "ot-main.h"
-#include "ot-builtins.h"
-
 #include "ostree-fetcher.h"
-#include "ostree-pull.h"
 
 typedef struct {
   enum {
@@ -91,7 +86,7 @@ typedef struct {
 
 typedef struct {
   OstreeRepo   *repo;
-  OstreePullFlags flags;
+  OstreeRepoPullFlags flags;
   char         *remote_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
@@ -783,7 +778,7 @@ scan_commit_object (OtPullData         *pull_data,
                                  cancellable, error))
     goto out;
   
-  if (pull_data->flags & OSTREE_PULL_FLAGS_RELATED)
+  if (pull_data->flags & OSTREE_REPO_PULL_FLAGS_RELATED)
     {
       const char *name;
       gs_unref_variant GVariant *csum_v = NULL;
@@ -1184,12 +1179,12 @@ load_remote_repo_config (OtPullData    *pull_data,
 }
 
 gboolean
-ostree_pull (OstreeRepo               *repo,
-             const char               *remote_name,
-             char                    **refs_to_fetch,
-             OstreePullFlags           flags,
-             GCancellable             *cancellable,
-             GError                  **error)
+ostree_repo_pull (OstreeRepo               *repo,
+                  const char               *remote_name,
+                  char                    **refs_to_fetch,
+                  OstreeRepoPullFlags       flags,
+                  GCancellable             *cancellable,
+                  GError                  **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hash_iter;

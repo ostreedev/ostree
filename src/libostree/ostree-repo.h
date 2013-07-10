@@ -347,5 +347,17 @@ gboolean ostree_repo_prune (OstreeRepo        *repo,
                             GCancellable      *cancellable,
                             GError           **error);
 
+typedef enum {
+  OSTREE_REPO_PULL_FLAGS_NONE,
+  OSTREE_REPO_PULL_FLAGS_RELATED
+} OstreeRepoPullFlags;
+
+gboolean ostree_repo_pull (OstreeRepo             *repo,
+                           const char             *remote_name,
+                           char                  **refs_to_fetch,
+                           OstreeRepoPullFlags     flags,
+                           GCancellable           *cancellable,
+                           GError                **error);
+
 G_END_DECLS
 
