@@ -29,13 +29,6 @@
 #include "ot-main.h"
 #include "otutil.h"
 
-static gboolean opt_version;
-
-static GOptionEntry main_options[] = {
-  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Display version", NULL },
-  { NULL }
-};
-
 int
 ostree_usage (char **argv,
               OstreeCommand *commands,
@@ -87,14 +80,11 @@ ostree_run (int    argc,
             OstreeCommand *commands,
             GError **res_error)
 {
-  GOptionContext *optcontext;
   OstreeCommand *command;
   GError *error = NULL;
   int cmd_argc;
   char **cmd_argv = NULL;
   gboolean have_repo_arg;
-  const char *binname = NULL;
-  const char *slash = NULL;
   const char *cmd = NULL;
   const char *repo = NULL;
   const char *host_repo_path = "/ostree/repo";
@@ -111,14 +101,7 @@ ostree_run (int    argc,
   if (argc < 2)
     return ostree_usage (argv, commands, TRUE);
 
-  optcontext = g_option_context_new ("COMMAND [OPTIONS...]");
-  g_option_context_add_main_entries (optcontext, main_options, NULL);
-  g_option_context_set_ignore_unknown_options (optcontext, TRUE);
-
-  if (!g_option_context_parse (optcontext, &argc, &argv, &error))
-    goto out;
-
-  if (opt_version)
+  if (g_str_has_prefix (argv[1], "--version"))
     {
       g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
       return 0;
@@ -134,25 +117,7 @@ ostree_run (int    argc,
   if (repo)
     repo_file = g_file_new_for_path (repo);
 
-  slash = strrchr (argv[0], '/');
-  if (slash)
-    binname = slash+1;
-  else
-    binname = argv[0];
-
-  if (g_str_has_prefix (binname, "lt-"))
-    binname += 3;
-
-  if (g_str_has_prefix (binname, "ostree-"))
-    {
-      cmd = strchr (binname, '-');
-      g_assert (cmd);
-      cmd += 1;
-      arg_off = 1;
-      if (have_repo_arg)
-        arg_off += 1;
-    }
-  else if (!have_repo_arg)
+  if (!have_repo_arg)
     {
       arg_off = 2;
       cmd = argv[arg_off-1];
@@ -177,6 +142,8 @@ ostree_run (int    argc,
       g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, msg);
       goto out;
     }
+
+  g_set_prgname (g_strdup_printf ("ostree %s", cmd));
 
   if (repo == NULL && !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
