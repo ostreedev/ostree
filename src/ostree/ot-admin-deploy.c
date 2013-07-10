@@ -1211,6 +1211,8 @@ ot_admin_deploy (GFile             *sysroot,
         }
     }
 
+  g_print ("Transaction complete, performing cleanup\n");
+
   /* TEMPORARY HACK: Add a "current" symbolic link that's easy to
    * follow inside the gnome-ostree build scripts.  This isn't atomic,
    * but that doesn't matter because it's only used by deployments
