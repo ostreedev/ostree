@@ -2325,3 +2325,18 @@ ostree_repo_read_commit (OstreeRepo *self,
  out:
   return ret;
 }
+
+#ifndef HAVE_LIBSOUP
+gboolean
+ostree_repo_pull (OstreeRepo               *repo,
+                  const char               *remote_name,
+                  char                    **refs_to_fetch,
+                  OstreeRepoPullFlags       flags,
+                  GCancellable             *cancellable,
+                  GError                  **error)
+{
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+  return FALSE;
+}
+#endif

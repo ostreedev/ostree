@@ -38,7 +38,6 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-remote.c \
 	src/ostree/ot-builtin-rev-parse.c \
 	src/ostree/ot-builtin-show.c \
-	src/ostree/ot-builtin-trivial-httpd.c \
 	src/ostree/ot-builtin-write-refs.c \
 	src/ostree/ot-main.h \
 	src/ostree/ot-main.c \
@@ -79,7 +78,10 @@ ostree_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 ostree_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
 if USE_LIBSOUP
-ostree_SOURCES += src/ostree/ot-builtin-pull.c
+ostree_SOURCES += \
+	src/ostree/ot-builtin-pull.c \
+	src/ostree/ot-builtin-trivial-httpd.c \
+	$(NULL)
 ostree_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
 endif

@@ -44,12 +44,16 @@ static OstreeCommand commands[] = {
   { "ls", ostree_builtin_ls, 0 },
   { "refs", ostree_builtin_refs, 0 },
   { "prune", ostree_builtin_prune, 0 },
+#ifdef HAVE_LIBSOUP 
   { "pull", ostree_builtin_pull, 0 },
+#endif
   { "pull-local", ostree_builtin_pull_local, 0 },
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
+#ifdef HAVE_LIBSOUP 
   { "trivial-httpd", ostree_builtin_trivial_httpd, OSTREE_BUILTIN_FLAG_NO_REPO },
+#endif
   { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };
