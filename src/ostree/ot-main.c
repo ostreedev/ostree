@@ -97,7 +97,6 @@ ostree_run (int    argc,
   const char *slash = NULL;
   const char *cmd = NULL;
   const char *repo = NULL;
-  const char *sysroot_repo_path = "/sysroot/ostree/repo";
   const char *host_repo_path = "/ostree/repo";
   GFile *repo_file = NULL;
   int arg_off;
@@ -128,16 +127,9 @@ ostree_run (int    argc,
   have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
 
   if (have_repo_arg)
-    {
-      repo = argv[1] + strlen ("--repo=");
-    }
-  else
-    {
-      if (g_file_test (sysroot_repo_path, G_FILE_TEST_EXISTS))
-        repo = sysroot_repo_path;
-      else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
-        repo = host_repo_path;
-    }
+    repo = argv[1] + strlen ("--repo=");
+  else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
+    repo = host_repo_path;
 
   if (repo)
     repo_file = g_file_new_for_path (repo);
