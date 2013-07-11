@@ -57,9 +57,6 @@ ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, 
       goto out;
     }
 
-  /* Find the currently booted deployment, if any; we will
-   * ensure it is present in the new deployment list.
-   */
   if (!ot_admin_find_booted_deployment (admin_opts->sysroot, deployments,
                                         &booted_deployment,
                                         cancellable, error))
@@ -78,17 +75,27 @@ ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, 
                                                  cancellable, error))
         goto out;
 
-      g_print ("bootversion: %d.%d\n", bootversion, subbootversion);
-
       for (i = 0; i < deployments->len; i++)
         {
           OtDeployment *deployment = deployments->pdata[i];
-          g_print ("%u: %c %s %s.%d\n",
-                   i,
+          GKeyFile *origin;
+
+          g_print ("%c %s %s.%d\n",
                    deployment == booted_deployment ? '*' : ' ',
                    ot_deployment_get_osname (deployment),
                    ot_deployment_get_csum (deployment),
                    ot_deployment_get_deployserial (deployment));
+          origin = ot_deployment_get_origin (deployment);
+          if (!origin)
+            g_print ("    origin: none\n");
+          else
+            {
+              gs_free char *origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+              if (!origin_refspec)
+                g_print ("    origin: <unknown origin type>\n");
+              else
+                g_print ("    origin refspec: %s\n", origin_refspec);
+            }
         }
     }
 
