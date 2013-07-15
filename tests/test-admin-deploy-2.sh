@@ -56,3 +56,9 @@ assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok deploy and GC /boot"
+
+ostree admin --sysroot=sysroot cleanup
+assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
+
+echo "ok manual cleanup"

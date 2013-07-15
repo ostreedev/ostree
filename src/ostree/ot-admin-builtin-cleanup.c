@@ -28,58 +28,26 @@
 
 #include <glib/gi18n.h>
 
-static gboolean opt_no_repo_prune;
-
 static GOptionEntry options[] = {
-  { "no-repo-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_repo_prune, "Only prune deployment checkouts; don't prune repository", NULL },
   { NULL }
 };
 
-
 gboolean
-ot_admin_builtin_prune (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_cleanup (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  gs_unref_object GFile *repo_path = NULL;
-  gs_unref_object GFile *deploy_dir = NULL;
-  gs_unref_object GFile *current_deployment = NULL;
-  gs_unref_object GFile *previous_deployment = NULL;
-  gs_unref_object GFile *active_deployment = NULL;
-  gs_free char *active_osname = NULL;
   __attribute__((unused)) GCancellable *cancellable = NULL;
 
-  context = g_option_context_new ("OSNAME - Delete untagged deployments and repository objects");
+  context = g_option_context_new ("Delete untagged deployments and repository objects");
 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc < 2)
-    {
-      ot_util_usage_error (context, "OSNAME must be specified", error);
-      goto out;
-    }
-
   if (!ot_admin_cleanup (admin_opts->sysroot, cancellable, error))
     goto out;
-
-  repo_path = g_file_resolve_relative_path (admin_opts->sysroot, "ostree/repo");
-
-  if (!opt_no_repo_prune)
-    {
-      gs_free char *repo_arg = NULL;
-
-      repo_arg = g_strconcat ("--repo=", gs_file_get_path_cached (repo_path), NULL);
-      
-      if (!gs_subprocess_simple_run_sync (NULL,
-                                          GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                          cancellable, error,
-                                          "ostree", repo_arg, "prune", "--refs-only",
-                                          "--depth=0", NULL))
-        goto out;
-    }
 
   ret = TRUE;
  out:

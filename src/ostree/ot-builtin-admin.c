@@ -41,7 +41,7 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "init-fs", ot_admin_builtin_init_fs },
   { "deploy", ot_admin_builtin_deploy },
   { "upgrade", ot_admin_builtin_upgrade },
-  { "prune", ot_admin_builtin_prune },
+  { "cleanup", ot_admin_builtin_cleanup },
   { "status", ot_admin_builtin_status },
   { "config-diff", ot_admin_builtin_diff },
   { NULL, NULL }
