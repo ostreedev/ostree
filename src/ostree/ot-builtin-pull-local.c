@@ -161,10 +161,9 @@ idle_print_status (gpointer user_data)
 }
 
 gboolean
-ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   GOptionContext *context;
   const char *src_repo_path;
   int i;

@@ -33,10 +33,9 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   GOptionContext *context;
   const char *refspec_prefix = NULL;
   gs_unref_object OstreeRepo *repo = NULL;

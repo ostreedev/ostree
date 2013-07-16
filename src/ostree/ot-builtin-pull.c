@@ -33,11 +33,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   const char *remote;
   OstreeRepoPullFlags pullflags = 0;
   gs_unref_object OstreeRepo *repo = NULL;

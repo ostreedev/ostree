@@ -40,7 +40,7 @@ usage_error (GOptionContext *context, const char *message, GError **error)
 }
 
 gboolean
-ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

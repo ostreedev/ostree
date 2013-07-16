@@ -39,11 +39,10 @@ static GOptionEntry options[] = {
 
 
 gboolean
-ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  __attribute__ ((unused)) GCancellable *cancellable = NULL;
   const char *mode_str = "bare";
   gs_unref_object GFile *child = NULL;
   gs_unref_object GFile *grandchild = NULL;

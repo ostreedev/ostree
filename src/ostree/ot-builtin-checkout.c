@@ -215,10 +215,9 @@ process_many_checkouts (OstreeRepo         *repo,
 }
 
 gboolean
-ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  GCancellable *cancellable = NULL;
   gboolean ret = FALSE;
   const char *commit;
   const char *destination;

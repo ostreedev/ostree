@@ -33,11 +33,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
   gsize len;
   gs_unref_object OstreeRepo *repo = NULL;

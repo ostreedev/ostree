@@ -53,12 +53,11 @@ cat_one_file (GFile         *f,
 }
 
 gboolean
-ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   int i;
-  GCancellable *cancellable = NULL;
   const char *rev;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GOutputStream *stdout_stream = NULL;

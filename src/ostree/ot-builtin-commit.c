@@ -208,13 +208,12 @@ commit_filter (OstreeRepo         *self,
 }
 
 gboolean
-ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
-  GCancellable *cancellable = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;

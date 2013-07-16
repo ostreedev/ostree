@@ -263,10 +263,9 @@ on_dir_changed (GFileMonitor  *mon,
 }
 
 gboolean
-ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   GOptionContext *context;
   const char *dirpath;
   OtTrivialHttpd appstruct;

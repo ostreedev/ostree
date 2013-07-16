@@ -188,7 +188,7 @@ print_directory_recurse (GFile    *f,
 }
 
 gboolean
-ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -216,7 +216,7 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
     }
   rev = argv[1];
 
-  if (!ostree_repo_read_commit (repo, rev, &root, NULL, error))
+  if (!ostree_repo_read_commit (repo, rev, &root, cancellable, error))
     goto out;
 
   for (i = 2; i < argc; i++)
@@ -227,7 +227,7 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error)
       g_clear_object (&file_info);
       file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     NULL, error);
+                                     cancellable, error);
       if (!file_info)
         goto out;
       

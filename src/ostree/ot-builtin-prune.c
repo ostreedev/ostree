@@ -37,11 +37,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  GCancellable *cancellable = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *formatted_freed_size = NULL;
   OstreeRepoPruneFlags pruneflags = 0;

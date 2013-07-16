@@ -31,7 +31,7 @@ typedef enum {
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, GFile *repo_path, GError **error);
+  gboolean (*fn) (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
   int flags; /* OstreeBuiltinFlags */
 } OstreeCommand;
 

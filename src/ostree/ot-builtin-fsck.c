@@ -175,12 +175,11 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
+  gboolean ret = FALSE;
   GOptionContext *context;
   OtFsckData data;
-  gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
   gs_unref_object OstreeRepo *repo = NULL;

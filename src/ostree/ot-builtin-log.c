@@ -30,7 +30,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_log (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

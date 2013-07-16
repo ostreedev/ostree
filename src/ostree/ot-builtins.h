@@ -26,26 +26,26 @@
 
 G_BEGIN_DECLS
 
-gboolean ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_checksum (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_init (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_log (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_show (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GError **error);
-gboolean ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GError **error);
+gboolean ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_cat (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_config (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_checksum (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_log (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_remote (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_write_refs (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
 

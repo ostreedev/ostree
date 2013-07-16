@@ -82,6 +82,7 @@ ostree_run (int    argc,
 {
   OstreeCommand *command;
   GError *error = NULL;
+  GCancellable *cancellable = NULL;
   int cmd_argc;
   char **cmd_argv = NULL;
   gboolean have_repo_arg;
@@ -155,7 +156,7 @@ ostree_run (int    argc,
   
   ostree_prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
 
-  if (!command->fn (cmd_argc, cmd_argv, repo_file, &error))
+  if (!command->fn (cmd_argc, cmd_argv, repo_file, cancellable, &error))
     goto out;
 
  out:

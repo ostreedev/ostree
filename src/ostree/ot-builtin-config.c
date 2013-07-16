@@ -51,7 +51,7 @@ split_key_string (const char   *k,
 }
 
 gboolean
-ostree_builtin_config (int argc, char **argv, GFile *repo_path, GError **error)
+ostree_builtin_config (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
