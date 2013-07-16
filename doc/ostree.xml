@@ -3,7 +3,7 @@
         "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
 
 <!--
-  Copyright 2011 Colin Walters <walters@verbum.org>
+  Copyright 2011,2013 Colin Walters <walters@verbum.org>
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -44,30 +44,42 @@
 
         <refnamediv>
                 <refname>ostree</refname>
-                <refpurpose>Operating system build, deployment, and development tool</refpurpose>
+                <refpurpose>Manage multiple bootable versioned filesystem trees</refpurpose>
         </refnamediv>
 
         <refsynopsisdiv>
                 <cmdsynopsis>
-                        <command>ostree <arg choice="req">--repo=REPO</arg> <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                        <command>ostree <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
                 </cmdsynopsis>
         </refsynopsisdiv>
 
         <refsect1>
                 <title>Description</title>
 
-                <para>OSTree is a system for building, deploying, and
-                developing Linux-based operating systems.  For many
-                cases, it can fill the role of "package managers" such
-                as RPM and .deb.</para>
-		<para>At its heart, OSTree is very similar to git -
-		but it is designed explicitly for managing files like
-		ELF binaries.  Unlike a typical version control
-		system, OSTree is capable of tracking file UID and
-		GIDs, as well as all extended attributes such as ACLs
-		and SELinux security contexts. You should think of
-		OSTree as a flexible but specialized userspace
-		filesystem.</para>
+                <para>
+		  OSTree is a tool for managing multiple bootable
+		  versioned filesystem trees, or just "tree" for
+		  short.  In the OSTree model, operating systems no
+		  longer live in the physical "/" root directory.
+		  Instead, they parallel install to the new toplevel
+		  <literal>/ostree</literal> directory.
+		</para>
+		<para>
+		  Unlike <literal>rpm</literal> or
+		  <literal>dpg</literal>, OSTree is only aware of
+		  complete filesystem trees.  It has no built-in
+		  knowledge of what components went into creating the
+		  filesystem tree.
+		</para>
+		<para>
+		  It must be emphasized that OSTree only supports
+		  <emphasis>read-only</emphasis> trees.  To change to
+		  a different tree (upgrade, downgrade, install
+		  software), a new tree is checked out, and a 3-way
+		  merge of configuration is performed.  The currently
+		  running tree is not ever modified; the new tree will
+		  become active on a system reboot.
+		</para>
         </refsect1>
 
         <refsect1>
