@@ -1311,57 +1311,6 @@ ostree_create_file_from_input (GFile            *dest_file,
   return ret;
 }
 
-static const char *
-get_default_tmp_prefix (void)
-{
-  static char *tmpprefix = NULL;
-
-  if (g_once_init_enter (&tmpprefix))
-    {
-      const char *prgname = g_get_prgname ();
-      const char *p;
-      char *prefix;
-
-      p = strrchr (prgname, '/');
-      if (p)
-        prgname = p + 1;
-
-      prefix = g_strdup_printf ("tmp-%s%u-", prgname, getuid ());
-      
-      g_once_init_leave (&tmpprefix, prefix);
-    }
-
-  return tmpprefix;
-}
-
-static char *
-create_tmp_name (const char *dirpath,
-                 const char *prefix,
-                 const char *suffix)
-{
-  static const char table[] = "ABCEDEFGHIJKLMNOPQRSTUVWXYZabcedefghijklmnopqrstuvwxyz0123456789";
-  GString *tmp_name = NULL;
-  guint i;
-
-  if (!prefix)
-    prefix = get_default_tmp_prefix ();
-  if (!suffix)
-    suffix = "tmp";
-
-  tmp_name = g_string_new (dirpath);
-  g_string_append_c (tmp_name, '/');
-  g_string_append (tmp_name, prefix);
-  for (i = 0; i < 8; i++)
-    {
-      int offset = g_random_int_range (0, sizeof (table) - 1);
-      g_string_append_c (tmp_name, (guint8)table[offset]);
-    }
-  g_string_append_c (tmp_name, '.');
-  g_string_append (tmp_name, suffix);
-
-  return g_string_free (tmp_name, FALSE);
-}
-
 gboolean
 ostree_create_temp_file_from_input (GFile            *dir,
                                     const char       *prefix,
@@ -1387,8 +1336,7 @@ ostree_create_temp_file_from_input (GFile            *dir,
       if (g_cancellable_set_error_if_cancelled (cancellable, error))
         goto out;
 
-      possible_name = create_tmp_name (gs_file_get_path_cached (dir),
-                                       prefix, suffix);
+      possible_name = gsystem_fileutil_gen_tmp_name (prefix, suffix);
       g_clear_object (&possible_file);
       possible_file = g_file_get_child (dir, possible_name);
       
