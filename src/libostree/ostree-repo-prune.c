@@ -56,15 +56,17 @@ maybe_prune_loose_object (OtPruneData        *data,
         {
           gs_unref_object GFileInfo *info = NULL;
 
-          if ((info = g_file_query_info (objf, OSTREE_GIO_FAST_QUERYINFO,
-                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                         cancellable, error)) == NULL)
+          if (!ot_gfile_query_info_allow_noent (objf, OSTREE_GIO_FAST_QUERYINFO,
+                                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                &info, cancellable, error))
             goto out;
 
-          if (!gs_file_unlink (objf, cancellable, error))
-            goto out;
-
-          data->freed_bytes += g_file_info_get_size (info);
+          if (info)
+            {
+              if (!gs_file_unlink (objf, cancellable, error))
+                goto out;
+              data->freed_bytes += g_file_info_get_size (info);
+            }
         }
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         data->n_unreachable_meta++;
