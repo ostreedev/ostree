@@ -103,7 +103,6 @@ setup_test_repository () {
     $OSTREE commit -b test2 -s "Test Commit 1" -m "Commit body first"
 
     mkdir baz
-    mkfifo baz/afifo  # named pipe
     echo moo > baz/cow
     echo alien > baz/saucer
     mkdir baz/deeper

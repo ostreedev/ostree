@@ -1117,14 +1117,6 @@ ostree_file_header_parse (GVariant         *metadata,
     {
       g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
     }
-  else if (S_ISCHR (mode) || S_ISBLK (mode))
-    {
-      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", rdev);
-    }
-  else if (S_ISFIFO (mode))
-    {
-      ;
-    }
   else
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -1177,14 +1169,6 @@ ostree_zlib_file_header_parse (GVariant         *metadata,
   else if (S_ISLNK (mode))
     {
       g_file_info_set_attribute_byte_string (ret_file_info, "standard::symlink-target", symlink_target);
-    }
-  else if (S_ISCHR (mode) || S_ISBLK (mode))
-    {
-      g_file_info_set_attribute_uint32 (ret_file_info, "unix::rdev", rdev);
-    }
-  else if (S_ISFIFO (mode))
-    {
-      ;
     }
   else
     {
@@ -1254,23 +1238,6 @@ ostree_create_file_from_input (GFile            *dest_file,
     {
       const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
       if (symlink (target, dest_path) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else if (S_ISCHR (mode) || S_ISBLK (mode))
-    {
-      guint32 dev = g_file_info_get_attribute_uint32 (finfo, "unix::rdev");
-      if (mknod (dest_path, mode, dev) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else if (S_ISFIFO (mode))
-    {
-      if (mkfifo (dest_path, mode) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
@@ -1625,11 +1592,7 @@ ostree_validate_structureof_file_mode (guint32            mode,
 {
   gboolean ret = FALSE;
 
-  if (!(S_ISREG (mode)
-        || S_ISLNK (mode)
-        || S_ISCHR (mode)
-        || S_ISBLK (mode)
-        || S_ISFIFO (mode)))
+  if (!(S_ISREG (mode) || S_ISLNK (mode)))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid file metadata mode %u; not a valid file type", mode);
