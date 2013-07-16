@@ -1211,7 +1211,7 @@ ostree_create_file_from_input (GFile            *dest_file,
   gboolean ret = FALSE;
   const char *dest_path;
   guint32 uid, gid, mode;
-  gs_unref_object GFileOutputStream *out = NULL;
+  gs_unref_object GOutputStream *out = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1236,8 +1236,8 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else if (S_ISREG (mode))
     {
-      out = g_file_create (dest_file, 0, cancellable, error);
-      if (!out)
+      if (!gs_file_create (dest_file, mode, &out,
+                           cancellable, error))
         goto out;
 
       if (input)
@@ -1292,16 +1292,6 @@ ostree_create_file_from_input (GFile            *dest_file,
         {
           ot_util_set_error_from_errno (error, errno);
           g_prefix_error (error, "lchown(%u, %u) failed: ", uid, gid);
-          goto out;
-        }
-    }
-
-  if (!S_ISLNK (mode))
-    {
-      if (chmod (dest_path, mode) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "chmod(%u) failed: ", mode);
           goto out;
         }
     }
