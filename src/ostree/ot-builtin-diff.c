@@ -25,7 +25,12 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
+static gboolean opt_stats;
+static gboolean opt_fs_diff;
+
 static GOptionEntry options[] = {
+  { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
+  { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },
   { NULL }
 };
 
@@ -57,6 +62,61 @@ parse_file_or_commit (OstreeRepo  *repo,
   return ret;
 }
 
+static GHashTable *
+reachable_set_intersect (GHashTable *a, GHashTable *b)
+{
+  GHashTable *ret = ostree_repo_traverse_new_reachable ();
+  GHashTableIter hashiter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&hashiter, a);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      GVariant *v = key;
+      if (g_hash_table_contains (b, v))
+        g_hash_table_insert (ret, g_variant_ref (v), v);
+    }
+
+  return ret;
+}
+
+static gboolean
+object_set_total_size (OstreeRepo    *repo,
+                       GHashTable    *reachable,
+                       guint64       *out_total,
+                       GCancellable  *cancellable,
+                       GError       **error)
+{
+  gboolean ret = FALSE;
+  GHashTableIter hashiter;
+  gpointer key, value;
+
+  *out_total = 0;
+
+  g_hash_table_iter_init (&hashiter, reachable);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      GVariant *v = key;
+      const char *csum;
+      OstreeObjectType objtype;
+      gs_unref_object GFile *objpath = NULL;
+      gs_unref_object GFileInfo *finfo = NULL;
+
+      ostree_object_name_deserialize (v, &csum, &objtype);
+      objpath = ostree_repo_get_object_path (repo, csum, objtype);
+      finfo = g_file_query_info (objpath, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                 cancellable, error);
+      if (!finfo)
+        goto out;
+      
+      *out_total += g_file_info_get_size (finfo);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
@@ -68,7 +128,6 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GCancellable *canc
   gs_free char *src_prev = NULL;
   gs_unref_object GFile *srcf = NULL;
   gs_unref_object GFile *targetf = NULL;
-  gs_unref_object GFile *cwd = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;
@@ -105,21 +164,63 @@ ostree_builtin_diff (int argc, char **argv, GFile *repo_path, GCancellable *canc
       target = argv[2];
     }
 
-  cwd = g_file_new_for_path (".");
+  if (!opt_stats && !opt_fs_diff)
+    opt_fs_diff = TRUE;
 
-  if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
-    goto out;
-  if (!parse_file_or_commit (repo, target, &targetf, cancellable, error))
-    goto out;
+  if (opt_fs_diff)
+    {
+      if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
+        goto out;
+      if (!parse_file_or_commit (repo, target, &targetf, cancellable, error))
+        goto out;
 
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_diff_item_unref);
-  removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-  added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-  
-  if (!ostree_diff_dirs (srcf, targetf, modified, removed, added, cancellable, error))
-    goto out;
+      modified = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_diff_item_unref);
+      removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+      added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+      
+      if (!ostree_diff_dirs (srcf, targetf, modified, removed, added, cancellable, error))
+        goto out;
 
-  ostree_diff_print (srcf, targetf, modified, removed, added);
+      ostree_diff_print (srcf, targetf, modified, removed, added);
+    }
+
+  if (opt_stats)
+    {
+      gs_unref_hashtable GHashTable *reachable_a = ostree_repo_traverse_new_reachable ();
+      gs_unref_hashtable GHashTable *reachable_b = ostree_repo_traverse_new_reachable ();
+      gs_unref_hashtable GHashTable *reachable_intersection = NULL;
+      gs_free char *rev_a = NULL;
+      gs_free char *rev_b = NULL;
+      gs_free char *size = NULL;
+      guint a_size;
+      guint b_size;
+      guint64 total_common;
+
+      if (!ostree_repo_resolve_rev (repo, src, FALSE, &rev_a, error))
+        goto out;
+      if (!ostree_repo_resolve_rev (repo, target, FALSE, &rev_b, error))
+        goto out;
+
+      if (!ostree_repo_traverse_commit (repo, rev_a, -1, reachable_a, cancellable, error))
+        goto out;
+      if (!ostree_repo_traverse_commit (repo, rev_b, -1, reachable_b, cancellable, error))
+        goto out;
+
+      a_size = g_hash_table_size (reachable_a);
+      b_size = g_hash_table_size (reachable_b);
+      g_print ("[A] Object Count: %u\n", a_size);
+      g_print ("[B] Object Count: %u\n", b_size);
+
+      reachable_intersection = reachable_set_intersect (reachable_a, reachable_b);
+
+      g_print ("Common Object Count: %u\n", g_hash_table_size (reachable_intersection));
+
+      if (!object_set_total_size (repo, reachable_intersection, &total_common,
+                                  cancellable, error))
+        goto out;
+      size = g_format_size_full (total_common, 0);
+      g_print ("Common Object Size: %s\n", size);
+    }
 
   ret = TRUE;
  out:
