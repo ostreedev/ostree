@@ -34,6 +34,7 @@ static char *branch;
 static char **metadata_strings;
 static char *statoverride_file;
 static char *opt_related_objects_file;
+static gboolean opt_link_checkout_speedup;
 static gboolean skip_if_unchanged;
 static gboolean tar_autocreate_parents;
 static gboolean no_xattrs;
@@ -53,6 +54,7 @@ static GOptionEntry options[] = {
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &no_xattrs, "Do not import extended attributes", NULL },
+  { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &statoverride_file, "File containing list of modifications to make to permissions", "path" },
@@ -346,7 +348,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
         goto out;
     }
 
-  if (!ostree_repo_prepare_transaction (repo, TRUE, NULL, cancellable, error))
+  if (!ostree_repo_prepare_transaction (repo, opt_link_checkout_speedup, NULL, cancellable, error))
     goto out;
 
   in_transaction = TRUE;
