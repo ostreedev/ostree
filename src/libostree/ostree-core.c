@@ -1220,9 +1220,21 @@ ostree_create_file_from_input (GFile            *dest_file,
     }
   else if (S_ISREG (mode))
     {
-      if (!gs_file_create (dest_file, mode, &out,
-                           cancellable, error))
-        goto out;
+      if (finfo != NULL)
+        {
+          uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
+          gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
+
+          if (!gs_file_create_with_uidgid (dest_file, mode, uid, gid, &out,
+                                           cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!gs_file_create (dest_file, mode, &out,
+                               cancellable, error))
+            goto out;
+        }
 
       if (input)
         {
@@ -1250,7 +1262,10 @@ ostree_create_file_from_input (GFile            *dest_file,
       goto out;
     }
 
-  if (finfo != NULL)
+  /* We only need to chown for directories and symlinks; we already
+   * did a chown for files above via fchown().
+   */
+  if (finfo != NULL && !S_ISREG (mode))
     {
       uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
       gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
