@@ -79,11 +79,10 @@ static gboolean
 show_repo_meta (OstreeRepo  *repo,
                 const char *rev,
                 const char *resolved_rev,
+                GCancellable   *cancellable,
                 GError **error)
 {
   gboolean ret = FALSE;
-  char buf[8192];
-  gsize bytes_read;
   OstreeObjectType objtype;
   gs_unref_variant GVariant *variant = NULL;
   gs_unref_object GFile *object_path = NULL;
@@ -98,26 +97,56 @@ show_repo_meta (OstreeRepo  *repo,
       if (!g_file_query_exists (object_path, NULL))
         continue;
       
+      g_print ("Object: %s\nType: %s\n", resolved_rev, ostree_object_type_to_string (objtype));
+
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         {
           if (!ostree_repo_load_variant (repo, objtype, resolved_rev, &variant, error))
             continue;
 
-          g_print ("Object: %s\nType: %d\n", resolved_rev, objtype);
           print_variant (variant);
           break;
         }
       else if (objtype == OSTREE_OBJECT_TYPE_FILE)
         {
-          in = (GInputStream*)g_file_read (object_path, NULL, error);
-          if (!in)
-            continue;
+          gs_unref_object GFileInfo *finfo = NULL;
+          gs_unref_variant GVariant *xattrs = NULL;
+          GFileType filetype;
+          
+          if (!ostree_repo_load_file (repo, resolved_rev, NULL, &finfo, &xattrs,
+                                      cancellable, error))
+            goto out;
 
-          do {
-            if (!g_input_stream_read_all (in, buf, sizeof (buf), &bytes_read, NULL, error))
-              goto out;
-            g_print ("%s", buf);
-          } while (bytes_read > 0);
+          filetype = g_file_info_get_file_type (finfo);
+          g_print ("File Type: ");
+          switch (filetype)
+            {
+            case G_FILE_TYPE_REGULAR:
+              g_print ("regular\n");
+              g_print ("Size: %" G_GUINT64_FORMAT "\n", g_file_info_get_size (finfo));
+              break;
+            case G_FILE_TYPE_SYMBOLIC_LINK:
+              g_print ("symlink\n");
+              g_print ("Target: %s\n", g_file_info_get_symlink_target (finfo));
+              break;
+            default:
+              g_printerr ("(unknown type %u)\n", (guint)filetype);
+            }
+
+          g_print ("Mode: 0%04o\n", g_file_info_get_attribute_uint32 (finfo, "unix::mode") & ~S_IFMT);
+          g_print ("Uid: %u\n", g_file_info_get_attribute_uint32 (finfo, "unix::uid"));
+          g_print ("Gid: %u\n", g_file_info_get_attribute_uint32 (finfo, "unix::gid"));
+
+          g_print ("Extended Attributes: ");
+          if (xattrs)
+            {
+              gs_free char *xattr_string = g_variant_print (xattrs, TRUE);
+              g_print ("{ %s }\n", xattr_string);
+            }
+          else
+            {
+              g_print ("(none)\n");
+            }
         }
       else
         g_assert_not_reached ();
@@ -245,7 +274,7 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *canc
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
 
-      if (!show_repo_meta (repo, rev, resolved_rev, error))
+      if (!show_repo_meta (repo, rev, resolved_rev, cancellable, error))
         goto out;
     }
  
