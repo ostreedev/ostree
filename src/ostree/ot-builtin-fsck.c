@@ -38,6 +38,7 @@ static gboolean
 load_and_fsck_one_object (OstreeRepo            *repo,
                           const char            *checksum,
                           OstreeObjectType       objtype,
+                          gboolean              *out_found_corruption,
                           GCancellable          *cancellable,
                           GError               **error)
 {
@@ -131,7 +132,11 @@ load_and_fsck_one_object (OstreeRepo            *repo,
         }
     }
 
-  if (!missing)
+  if (missing)
+    {
+      *out_found_corruption = TRUE;
+    }
+  else
     {
       gs_free guchar *computed_csum = NULL;
       gs_free char *tmp_checksum = NULL;
@@ -144,11 +149,21 @@ load_and_fsck_one_object (OstreeRepo            *repo,
       tmp_checksum = ostree_checksum_from_bytes (computed_csum);
       if (strcmp (checksum, tmp_checksum) != 0)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "corrupted object %s.%s; actual checksum: %s",
-                       checksum, ostree_object_type_to_string (objtype),
-                       tmp_checksum);
-          goto out;
+          gs_free char *msg = g_strdup_printf ("corrupted object %s.%s; actual checksum: %s",
+                                               checksum, ostree_object_type_to_string (objtype),
+                                               tmp_checksum);
+          if (opt_delete)
+            {
+              gs_unref_object GFile *object_path = ostree_repo_get_object_path (repo, checksum, objtype);
+              g_printerr ("%s\n", msg);
+              (void) gs_file_unlink (object_path, cancellable, NULL);
+              *out_found_corruption = TRUE;
+            }
+          else
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, msg);
+              goto out;
+            }
         }
     }
 
@@ -160,6 +175,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
 static gboolean
 fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                                      GHashTable            *commits,
+                                     gboolean              *out_found_corruption,
                                      GCancellable          *cancellable,
                                      GError               **error)
 {
@@ -203,7 +219,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!load_and_fsck_one_object (repo, checksum, objtype,
+      if (!load_and_fsck_one_object (repo, checksum, objtype, out_found_corruption,
                                      cancellable, error))
         goto out;
 
@@ -224,6 +240,7 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *canc
   GOptionContext *context;
   GHashTableIter hash_iter;
   gpointer key, value;
+  gboolean found_corruption = FALSE;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_hashtable GHashTable *commits = NULL;
@@ -268,8 +285,16 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *canc
     g_print ("Verifying content integrity of %u commit objects...\n",
              (guint)g_hash_table_size (commits));
 
-  if (!fsck_reachable_objects_from_commits (repo, commits, cancellable, error))
+  if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption,
+                                            cancellable, error))
     goto out;
+
+  if (found_corruption)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Repository corruption encountered");
+      goto out;
+    }
 
   ret = TRUE;
  out:

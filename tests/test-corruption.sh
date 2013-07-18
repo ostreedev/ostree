@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..1"
+echo "1..2"
 
 . $(dirname $0)/libtest.sh
 
@@ -27,8 +27,17 @@ setup_test_repository "bare"
 $OSTREE checkout test2 checkout-test2
 cd checkout-test2
 chmod o+x firstfile
-$OSTREE fsck -q 2>/dev/null && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
+$OSTREE fsck -q && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
 chmod o-x firstfile
 $OSTREE fsck -q
+
+echo "ok chmod"
+
+cd ${test_tmpdir}
+rm checkout-test2 -rf
+$OSTREE checkout test2 checkout-test2
+cd checkout-test2
+chmod o+x firstfile
+$OSTREE fsck -q --delete && (echo 1>&2 "fsck unexpectedly succeeded"; exit 1)
 
 echo "ok chmod"
