@@ -25,79 +25,50 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-static gboolean quiet;
-static gboolean delete;
+static gboolean opt_quiet;
+static gboolean opt_delete;
 
 static GOptionEntry options[] = {
-  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &quiet, "Don't display informational messages", NULL },
-  { "delete", 0, 0, G_OPTION_ARG_NONE, &delete, "Remove corrupted objects", NULL },
+  { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
+  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
   { NULL }
 };
 
-typedef struct {
-  OstreeRepo *repo;
-} OtFsckData;
-
 static gboolean
-fsck_reachable_objects_from_commits (OtFsckData            *data,
-                                     GHashTable            *commits,
-                                     GCancellable          *cancellable,
-                                     GError               **error)
+load_and_fsck_one_object (OstreeRepo            *repo,
+                          const char            *checksum,
+                          OstreeObjectType       objtype,
+                          GCancellable          *cancellable,
+                          GError               **error)
 {
   gboolean ret = FALSE;
-  GHashTableIter hash_iter;
-  gpointer key, value;
-  gs_unref_hashtable GHashTable *reachable_objects = NULL;
+  gboolean missing = FALSE;
+  gs_unref_variant GVariant *metadata = NULL;
   gs_unref_object GInputStream *input = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_free guchar *computed_csum = NULL;
-  gs_free char *tmp_checksum = NULL;
+  GError *temp_error = NULL;
 
-  reachable_objects = ostree_repo_traverse_new_reachable ();
-
-  g_hash_table_iter_init (&hash_iter, commits);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
-      GVariant *serialized_key = key;
-      const char *checksum;
-      OstreeObjectType objtype;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-
-      g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-
-      if (!ostree_repo_traverse_commit (data->repo, checksum, 0, reachable_objects,
-                                        cancellable, error))
-        goto out;
-    }
-
-  g_hash_table_iter_init (&hash_iter, reachable_objects);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      GVariant *serialized_key = key;
-      const char *checksum;
-      OstreeObjectType objtype;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
-
-      g_clear_object (&input);
-      g_clear_object (&file_info);
-      g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
-
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT
-          || objtype == OSTREE_OBJECT_TYPE_DIR_TREE 
-          || objtype == OSTREE_OBJECT_TYPE_DIR_META)
+      if (!ostree_repo_load_variant (repo, objtype,
+                                     checksum, &metadata, &temp_error))
         {
-          g_clear_pointer (&metadata, (GDestroyNotify) g_variant_unref);
-          if (!ostree_repo_load_variant (data->repo, objtype,
-                                         checksum, &metadata, error))
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (&temp_error);
+              g_printerr ("Object missing: %s.%s\n", checksum,
+                          ostree_object_type_to_string (objtype));
+              missing = TRUE;
+            }
+          else
             {
               g_prefix_error (error, "Loading metadata object %s: ", checksum);
               goto out;
             }
-
+        }
+      else
+        {
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
               if (!ostree_validate_structureof_commit (metadata, error))
@@ -122,23 +93,35 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
                   goto out;
                 }
             }
-          else
-            g_assert_not_reached ();
-          
+      
           input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
                                                        g_variant_get_size (metadata),
                                                        NULL);
+
         }
-      else if (objtype == OSTREE_OBJECT_TYPE_FILE)
+    }
+  else
+    {
+      guint32 mode;
+      g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
+      if (!ostree_repo_load_file (repo, checksum, &input, &file_info,
+                                  &xattrs, cancellable, &temp_error))
         {
-          guint32 mode;
-          if (!ostree_repo_load_file (data->repo, checksum, &input, &file_info,
-                                      &xattrs, cancellable, error))
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (&temp_error);
+              g_printerr ("Object missing: %s.%s\n", checksum,
+                          ostree_object_type_to_string (objtype));
+              missing = TRUE;
+            }
+          else
             {
               g_prefix_error (error, "Loading file object %s: ", checksum);
               goto out;
             }
-
+        }
+      else
+        {
           mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
           if (!ostree_validate_structureof_file_mode (mode, error))
             {
@@ -146,18 +129,18 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
               goto out;
             }
         }
-      else
-        {
-          g_assert_not_reached ();
-        }
+    }
 
-      g_free (computed_csum);
+  if (!missing)
+    {
+      gs_free guchar *computed_csum = NULL;
+      gs_free char *tmp_checksum = NULL;
+
       if (!ostree_checksum_file_from_input (file_info, xattrs, input,
                                             objtype, &computed_csum,
                                             cancellable, error))
         goto out;
-
-      g_free (tmp_checksum);
+      
       tmp_checksum = ostree_checksum_from_bytes (computed_csum);
       if (strcmp (checksum, tmp_checksum) != 0)
         {
@@ -174,12 +157,71 @@ fsck_reachable_objects_from_commits (OtFsckData            *data,
   return ret;
 }
 
+static gboolean
+fsck_reachable_objects_from_commits (OstreeRepo            *repo,
+                                     GHashTable            *commits,
+                                     GCancellable          *cancellable,
+                                     GError               **error)
+{
+  gboolean ret = FALSE;
+  GHashTableIter hash_iter;
+  gpointer key, value;
+  gs_unref_hashtable GHashTable *reachable_objects = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_free guchar *computed_csum = NULL;
+  guint i;
+  guint mod;
+  guint count;
+
+  reachable_objects = ostree_repo_traverse_new_reachable ();
+
+  g_hash_table_iter_init (&hash_iter, commits);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      const char *checksum;
+      OstreeObjectType objtype;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
+
+      if (!ostree_repo_traverse_commit (repo, checksum, 0, reachable_objects,
+                                        cancellable, error))
+        goto out;
+    }
+
+  count = g_hash_table_size (reachable_objects);
+  mod = count / 10;
+  i = 0;
+  g_hash_table_iter_init (&hash_iter, reachable_objects);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      GVariant *serialized_key = key;
+      const char *checksum;
+      OstreeObjectType objtype;
+
+      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+
+      if (!load_and_fsck_one_object (repo, checksum, objtype,
+                                     cancellable, error))
+        goto out;
+
+      if (i % mod == 0)
+        g_print ("%u/%u objects\n", i, count);
+      i++;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  OtFsckData data;
   GHashTableIter hash_iter;
   gpointer key, value;
   gs_unref_object OstreeRepo *repo = NULL;
@@ -196,10 +238,8 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *canc
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  memset (&data, 0, sizeof (data));
-  data.repo = repo;
-
-  g_print ("Enumerating objects...\n");
+  if (!opt_quiet)
+    g_print ("Enumerating objects...\n");
 
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL,
                                  &objects, cancellable, error))
@@ -224,10 +264,11 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *canc
 
   g_clear_pointer (&objects, (GDestroyNotify) g_hash_table_unref);
 
-  g_print ("Verifying content integrity of %u commit objects...\n",
-           (guint)g_hash_table_size (commits));
+  if (!opt_quiet)
+    g_print ("Verifying content integrity of %u commit objects...\n",
+             (guint)g_hash_table_size (commits));
 
-  if (!fsck_reachable_objects_from_commits (&data, commits, cancellable, error))
+  if (!fsck_reachable_objects_from_commits (repo, commits, cancellable, error))
     goto out;
 
   ret = TRUE;
