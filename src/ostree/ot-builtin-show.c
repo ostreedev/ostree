@@ -133,7 +133,7 @@ show_repo_meta (OstreeRepo  *repo,
               g_printerr ("(unknown type %u)\n", (guint)filetype);
             }
 
-          g_print ("Mode: 0%04o\n", g_file_info_get_attribute_uint32 (finfo, "unix::mode") & ~S_IFMT);
+          g_print ("Mode: 0%04o\n", g_file_info_get_attribute_uint32 (finfo, "unix::mode"));
           g_print ("Uid: %u\n", g_file_info_get_attribute_uint32 (finfo, "unix::uid"));
           g_print ("Gid: %u\n", g_file_info_get_attribute_uint32 (finfo, "unix::gid"));
 
