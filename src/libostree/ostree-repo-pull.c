@@ -1356,24 +1356,11 @@ ostree_repo_pull (OstreeRepo               *repo,
       gs_free char *key = NULL;
       gs_free char *remote_ref = NULL;
       gs_free char *baseurl = NULL;
-      gs_free char *original_rev = NULL;
 
-      remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
-
-      if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
-        goto out;
-
-      if (original_rev && strcmp (sha256, original_rev) == 0)
-        {
-          g_print ("No changes in %s\n", remote_ref);
-        }
-      else
-        {
-          ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
-                                  pull_worker_message_new (PULL_MSG_SCAN,
-                                                           ostree_object_name_serialize (sha256, OSTREE_OBJECT_TYPE_COMMIT)));
-          g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));
-        }
+      ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
+                              pull_worker_message_new (PULL_MSG_SCAN,
+                                                       ostree_object_name_serialize (sha256, OSTREE_OBJECT_TYPE_COMMIT)));
+      g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));
     }
   
   {
@@ -1401,13 +1388,24 @@ ostree_repo_pull (OstreeRepo               *repo,
       const char *ref = key;
       const char *checksum = value;
       gs_free char *remote_ref = NULL;
+      gs_free char *original_rev = NULL;
           
       remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
-          
-      if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, ref, checksum, error))
+
+      if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
         goto out;
           
-      g_print ("remote %s is now %s\n", remote_ref, checksum);
+      if (original_rev && strcmp (checksum, original_rev) == 0)
+        {
+          g_print ("remote %s is unchanged from %s\n", remote_ref, original_rev);
+        }
+      else
+        {
+          if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, ref, checksum, error))
+            goto out;
+          
+          g_print ("remote %s is now %s\n", remote_ref, checksum);
+        }
     }
       
   end_time = g_get_monotonic_time ();
