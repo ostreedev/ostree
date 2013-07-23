@@ -29,7 +29,6 @@ static char *metadata_text_path;
 static char *metadata_bin_path;
 static char *subject;
 static char *body;
-static char *parent;
 static char *branch;
 static char **metadata_strings;
 static char *statoverride_file;
@@ -49,7 +48,6 @@ static GOptionEntry options[] = {
   { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
-  { "parent", 'p', 0, G_OPTION_ARG_STRING, &parent, "Parent commit", "commit" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
