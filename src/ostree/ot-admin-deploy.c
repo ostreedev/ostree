@@ -1114,7 +1114,6 @@ ot_admin_deploy (GFile             *sysroot,
   gs_free char *source_etc_kernel_args = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   int new_bootversion;
-  int i;
 
   if (!ot_admin_get_repo (sysroot, &repo, cancellable, error))
     goto out;
