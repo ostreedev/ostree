@@ -27,7 +27,7 @@ setup_os_repository "archive-z2"
 
 echo "ok setup"
 
-echo "1..7"
+echo "1..8"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -126,9 +126,26 @@ echo "ok upgrade bare"
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
+origrev=${rev}
 rev=${newrev}
 newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok upgrade"
+
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.4/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot undeploy 1
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
+assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.4
+
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.3/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot undeploy 3
+assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.3
+
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot undeploy 0
+assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${newrev}.0
+
+echo "ok undeploy"

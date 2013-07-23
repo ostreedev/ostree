@@ -33,6 +33,7 @@ typedef struct {
 gboolean ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_install (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_init_fs (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
+gboolean ot_admin_builtin_undeploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_cleanup (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
 gboolean ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);

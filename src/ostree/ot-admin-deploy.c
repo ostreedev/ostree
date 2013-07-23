@@ -1000,6 +1000,86 @@ swap_bootloader (GFile          *sysroot,
 }
 
 gboolean
+ot_admin_write_deployments (GFile             *sysroot,
+                            int                current_bootversion,
+                            int                new_bootversion,
+                            GPtrArray         *new_deployments,
+                            GCancellable      *cancellable,
+                            GError           **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  gs_unref_object OtBootloader *bootloader = NULL;
+
+  bootloader = ot_admin_query_bootloader (sysroot);
+  if (!bootloader)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No known bootloader configuration detected");
+      goto out;
+    }
+
+  if (current_bootversion == new_bootversion)
+    {
+      if (!full_system_sync (cancellable, error))
+        {
+          g_prefix_error (error, "Full sync: ");
+          goto out;
+        }
+
+      if (!swap_bootlinks (sysroot, current_bootversion,
+                           new_deployments,
+                           cancellable, error))
+        {
+          g_prefix_error (error, "Swapping current bootlinks: ");
+          goto out;
+        }
+    }
+  else
+    {
+      for (i = 0; i < new_deployments->len; i++)
+        {
+          OtDeployment *deployment = new_deployments->pdata[i];
+          if (!install_deployment_kernel (sysroot, new_bootversion, deployment,
+                                          cancellable, error))
+            {
+              g_prefix_error (error, "Installing kernel: ");
+              goto out;
+            }
+        }
+
+      /* Swap bootlinks for *new* version */
+      if (!swap_bootlinks (sysroot, new_bootversion, new_deployments,
+                           cancellable, error))
+        {
+          g_prefix_error (error, "Generating new bootlinks: ");
+          goto out;
+        }
+
+      if (!full_system_sync (cancellable, error))
+        {
+          g_prefix_error (error, "Full sync: ");
+          goto out;
+        }
+
+      if (!ot_bootloader_write_config (bootloader, new_bootversion,
+                                       cancellable, error))
+        goto out;
+
+      if (!swap_bootloader (sysroot, current_bootversion, new_bootversion,
+                            cancellable, error))
+        {
+          g_prefix_error (error, "Final bootloader swap: ");
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+                            
+gboolean
 ot_admin_deploy (GFile             *sysroot,
                  int                current_bootversion,
                  GPtrArray         *current_deployments,
@@ -1019,7 +1099,6 @@ ot_admin_deploy (GFile             *sysroot,
   gboolean ret = FALSE;
   OtDeployment *new_deployment;
   gs_unref_object OtDeployment *merge_deployment = NULL;
-  gs_unref_object OtBootloader *bootloader = NULL;
   gs_unref_object GFile *rootfs = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *commit_root = NULL;
@@ -1069,14 +1148,6 @@ ot_admin_deploy (GFile             *sysroot,
     {
       if (!checksum_from_kernel_src (tree_kernel_path, &new_bootcsum, error))
         goto out;
-    }
-
-  bootloader = ot_admin_query_bootloader (sysroot);
-  if (!bootloader)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No known bootloader configuration detected");
-      goto out;
     }
 
   /* If we're booted into the OS into which we're deploying, then
@@ -1156,60 +1227,9 @@ ot_admin_deploy (GFile             *sysroot,
       ot_config_parser_set (bootconfig, "options", new_options);
     }
 
-  if (current_bootversion == new_bootversion)
-    {
-      if (!full_system_sync (cancellable, error))
-        {
-          g_prefix_error (error, "Full sync: ");
-          goto out;
-        }
-
-      if (!swap_bootlinks (sysroot, current_bootversion,
-                           new_deployments,
-                           cancellable, error))
-        {
-          g_prefix_error (error, "Swapping current bootlinks: ");
-          goto out;
-        }
-    }
-  else
-    {
-      for (i = 0; i < new_deployments->len; i++)
-        {
-          OtDeployment *deployment = new_deployments->pdata[i];
-          if (!install_deployment_kernel (sysroot, new_bootversion, deployment,
-                                          cancellable, error))
-            {
-              g_prefix_error (error, "Installing kernel: ");
-              goto out;
-            }
-        }
-
-      /* Swap bootlinks for *new* version */
-      if (!swap_bootlinks (sysroot, new_bootversion, new_deployments,
-                           cancellable, error))
-        {
-          g_prefix_error (error, "Generating new bootlinks: ");
-          goto out;
-        }
-
-      if (!full_system_sync (cancellable, error))
-        {
-          g_prefix_error (error, "Full sync: ");
-          goto out;
-        }
-
-      if (!ot_bootloader_write_config (bootloader, new_bootversion,
-                                       cancellable, error))
-        goto out;
-
-      if (!swap_bootloader (sysroot, current_bootversion, new_bootversion,
-                            cancellable, error))
-        {
-          g_prefix_error (error, "Final bootloader swap: ");
-          goto out;
-        }
-    }
+  if (!ot_admin_write_deployments (sysroot, current_bootversion, new_bootversion,
+                                   new_deployments, cancellable, error))
+    goto out;
 
   g_print ("Transaction complete, performing cleanup\n");
 

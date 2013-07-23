@@ -29,6 +29,13 @@
 
 G_BEGIN_DECLS
 
+gboolean ot_admin_write_deployments (GFile             *sysroot,
+                                     int                current_bootversion,
+                                     int                new_bootversion,
+                                     GPtrArray         *new_deployments,
+                                     GCancellable      *cancellable,
+                                     GError           **error);
+
 gboolean ot_admin_deploy (GFile             *sysroot,
                           int                current_bootversion,
                           GPtrArray         *current_deployments,
