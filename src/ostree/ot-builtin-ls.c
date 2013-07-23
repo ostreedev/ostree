@@ -26,12 +26,14 @@
 #include "ostree.h"
 #include "ostree-repo-file.h"
 
+static gboolean opt_dironly;
 static gboolean opt_recursive;
 static gboolean opt_checksum;
 static gboolean opt_xattrs;
 static gboolean opt_nul_filenames_only;
 
 static GOptionEntry options[] = {
+  { "dironly", 'd', 0, G_OPTION_ARG_NONE, &opt_dironly, "Do not recurse into directory arguments", NULL },
   { "recursive", 'R', 0, G_OPTION_ARG_NONE, &opt_recursive, "Print directories recursively", NULL },
   { "checksum", 'C', 0, G_OPTION_ARG_NONE, &opt_checksum, "Print checksum", NULL },
   { "xattrs", 'X', 0, G_OPTION_ARG_NONE, &opt_xattrs, "Print extended attributes", NULL },
@@ -146,6 +148,7 @@ print_one_file (GFile     *f,
 
 static gboolean
 print_directory_recurse (GFile    *f,
+                         int       depth,
                          GError  **error)
 {
   gboolean ret = FALSE;
@@ -153,6 +156,13 @@ print_directory_recurse (GFile    *f,
   gs_unref_object GFile *child = NULL;
   gs_unref_object GFileInfo *child_info = NULL;
   GError *temp_error = NULL;
+
+  if (depth > 0)
+    depth--;
+  else if (depth == 0)
+    return TRUE;
+  else
+    g_assert (depth == -1);
 
   dir_enum = g_file_enumerate_children (f, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -170,7 +180,7 @@ print_directory_recurse (GFile    *f,
 
       if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!print_directory_recurse (child, error))
+          if (!print_directory_recurse (child, depth, error))
             goto out;
         }
 
@@ -233,10 +243,18 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancel
       
       print_one_file (f, file_info);
 
-      if (opt_recursive && g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!print_directory_recurse (f, error))
-            goto out;
+          if (opt_recursive)
+            {
+              if (!print_directory_recurse (f, -1, error))
+                goto out;
+            }
+          else if (!opt_dironly)
+            {
+              if (!print_directory_recurse (f, 1, error))
+                goto out;
+            }
         }
     }
  
