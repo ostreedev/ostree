@@ -189,50 +189,27 @@ uri_fetch_update_status (gpointer user_data)
   OtPullData *pull_data = user_data;
   gs_free char *fetcher_status = NULL;
   GString *status;
-  guint64 current_bytes_transferred;
-  guint64 current_delta_bytes_transferred;
-  guint64 delta_bytes_transferred;
   guint outstanding_stages;
   guint outstanding_fetches;
  
   status = g_string_new ("");
 
   if (!pull_data->metadata_scan_idle)
-    g_string_append_printf (status, "scan: %u metadata; ",
+    g_string_append_printf (status, "scan: %u; ",
                             g_atomic_int_get (&pull_data->n_scanned_metadata));
 
   outstanding_stages = pull_data->n_outstanding_content_stage_requests + pull_data->n_outstanding_metadata_stage_requests;
   if (outstanding_stages > 0)
-    g_string_append_printf (status, "writing: %u objects; ", outstanding_stages);
+    g_string_append_printf (status, "writing: %u; ", outstanding_stages);
 
   outstanding_fetches = pull_data->n_outstanding_content_fetches + pull_data->n_outstanding_metadata_fetches;
   if (outstanding_fetches)
     {
-      g_string_append_printf (status, "fetch: %u/%u metadata %u/%u content; ",
+      g_string_append_printf (status, "fetch: %u/%u meta %u/%u; ",
                               pull_data->n_fetched_metadata,
                               pull_data->n_requested_metadata,
                               pull_data->n_fetched_content,
                               pull_data->n_requested_content);
-
-      current_bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
-      current_delta_bytes_transferred = current_bytes_transferred - pull_data->previous_total_downloaded;
-
-      if (pull_data->have_previous_bytes)
-        delta_bytes_transferred = (guint64)(0.5 * current_delta_bytes_transferred + 0.5 * pull_data->previous_bytes_sec);
-      else
-        {
-          pull_data->have_previous_bytes = TRUE;
-          delta_bytes_transferred = current_delta_bytes_transferred;
-        }
-      pull_data->previous_bytes_sec = delta_bytes_transferred;
-      pull_data->previous_total_downloaded = current_bytes_transferred;
-      
-      if (delta_bytes_transferred < 1024)
-        g_string_append_printf (status, "%u B/s; ", 
-                                (guint)delta_bytes_transferred);
-      else
-        g_string_append_printf (status, "%.1f KiB/s; ", 
-                                (double)delta_bytes_transferred / 1024);
 
       fetcher_status = ostree_fetcher_query_state_text (pull_data->fetcher);
       g_string_append (status, fetcher_status);
