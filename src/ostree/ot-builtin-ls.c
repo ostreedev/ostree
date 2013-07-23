@@ -26,15 +26,15 @@
 #include "ostree.h"
 #include "ostree-repo-file.h"
 
-static gboolean recursive;
-static gboolean checksum;
-static gboolean xattrs;
+static gboolean opt_recursive;
+static gboolean opt_checksum;
+static gboolean opt_xattrs;
 static gboolean opt_nul_filenames_only;
 
 static GOptionEntry options[] = {
-  { "recursive", 'R', 0, G_OPTION_ARG_NONE, &recursive, "Print directories recursively", NULL },
-  { "checksum", 'C', 0, G_OPTION_ARG_NONE, &checksum, "Print checksum", NULL },
-  { "xattrs", 'X', 0, G_OPTION_ARG_NONE, &xattrs, "Print extended attributes", NULL },
+  { "recursive", 'R', 0, G_OPTION_ARG_NONE, &opt_recursive, "Print directories recursively", NULL },
+  { "checksum", 'C', 0, G_OPTION_ARG_NONE, &opt_checksum, "Print checksum", NULL },
+  { "xattrs", 'X', 0, G_OPTION_ARG_NONE, &opt_xattrs, "Print extended attributes", NULL },
   { "nul-filenames-only", 0, 0, G_OPTION_ARG_NONE, &opt_nul_filenames_only, "Print only filenames, NUL separated", NULL },
   { NULL }
 };
@@ -86,14 +86,14 @@ print_one_file_text (GFile     *f,
                           g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                           g_file_info_get_attribute_uint64 (file_info, "standard::size"));
   
-  if (checksum)
+  if (opt_checksum)
     {
       if (type == G_FILE_TYPE_DIRECTORY)
         g_string_append_printf (buf, "%s ", ostree_repo_file_tree_get_content_checksum ((OstreeRepoFile*)f));
       g_string_append_printf (buf, "%s ", ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
     }
 
-  if (xattrs)
+  if (opt_xattrs)
     {
       GVariant *xattrs;
       char *formatted;
@@ -233,7 +233,7 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancel
       
       print_one_file (f, file_info);
 
-      if (recursive && g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+      if (opt_recursive && g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
           if (!print_directory_recurse (f, error))
             goto out;

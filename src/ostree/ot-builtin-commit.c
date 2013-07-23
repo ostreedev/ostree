@@ -25,37 +25,37 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-static char *metadata_text_path;
-static char *metadata_bin_path;
-static char *subject;
-static char *body;
-static char *branch;
-static char **metadata_strings;
-static char *statoverride_file;
+static char *opt_metadata_text_path;
+static char *opt_metadata_bin_path;
+static char *opt_subject;
+static char *opt_body;
+static char *opt_branch;
+static char **opt_metadata_strings;
+static char *opt_statoverride_file;
 static char *opt_related_objects_file;
 static gboolean opt_link_checkout_speedup;
-static gboolean skip_if_unchanged;
-static gboolean tar_autocreate_parents;
-static gboolean no_xattrs;
-static char **trees;
-static gint owner_uid = -1;
-static gint owner_gid = -1;
+static gboolean opt_skip_if_unchanged;
+static gboolean opt_tar_autocreate_parents;
+static gboolean opt_no_xattrs;
+static char **opt_trees;
+static gint opt_owner_uid = -1;
+static gint opt_owner_gid = -1;
 
 static GOptionEntry options[] = {
-  { "subject", 's', 0, G_OPTION_ARG_STRING, &subject, "One line subject", "subject" },
-  { "body", 'm', 0, G_OPTION_ARG_STRING, &body, "Full description", "body" },
-  { "metadata-variant-text", 0, 0, G_OPTION_ARG_FILENAME, &metadata_text_path, "File containing g_variant_print() output", "path" },
-  { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
-  { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
-  { "branch", 'b', 0, G_OPTION_ARG_STRING, &branch, "Branch", "branch" },
-  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &trees, "Overlay the given argument as a tree", "NAME" },
-  { "owner-uid", 0, 0, G_OPTION_ARG_INT, &owner_uid, "Set file ownership user id", "UID" },
-  { "owner-gid", 0, 0, G_OPTION_ARG_INT, &owner_gid, "Set file ownership group id", "GID" },
-  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &no_xattrs, "Do not import extended attributes", NULL },
+  { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
+  { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "body" },
+  { "metadata-variant-text", 0, 0, G_OPTION_ARG_FILENAME, &opt_metadata_text_path, "File containing g_variant_print() output", "path" },
+  { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &opt_metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
+  { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
+  { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
+  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "NAME" },
+  { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
+  { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
+  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
   { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
-  { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
-  { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
-  { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &statoverride_file, "File containing list of modifications to make to permissions", "path" },
+  { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
+  { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
+  { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "path" },
   { "related-objects-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_related_objects_file, "File containing newline-separated pairs of (checksum SPACE name) of related objects", "path" },
   { NULL }
 };
@@ -73,7 +73,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   gs_free char *contents = NULL;
   char **lines = NULL;
 
-  path = g_file_new_for_path (statoverride_file);
+  path = g_file_new_for_path (opt_statoverride_file);
 
   if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
                              error))
@@ -190,10 +190,10 @@ commit_filter (OstreeRepo         *self,
   GHashTable *mode_adds = user_data;
   gpointer value;
 
-  if (owner_uid >= 0)
-    g_file_info_set_attribute_uint32 (file_info, "unix::uid", owner_uid);
-  if (owner_gid >= 0)
-    g_file_info_set_attribute_uint32 (file_info, "unix::gid", owner_gid);
+  if (opt_owner_uid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::uid", opt_owner_uid);
+  if (opt_owner_gid >= 0)
+    g_file_info_set_attribute_uint32 (file_info, "unix::gid", opt_owner_gid);
 
   if (mode_adds && g_hash_table_lookup_extended (mode_adds, path, NULL, &value))
     {
@@ -241,12 +241,12 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (metadata_text_path || metadata_bin_path)
+  if (opt_metadata_text_path || opt_metadata_bin_path)
     {
-      metadata_mappedf = g_mapped_file_new (metadata_text_path ? metadata_text_path : metadata_bin_path, FALSE, error);
+      metadata_mappedf = g_mapped_file_new (opt_metadata_text_path ? opt_metadata_text_path : opt_metadata_bin_path, FALSE, error);
       if (!metadata_mappedf)
         goto out;
-      if (metadata_text_path)
+      if (opt_metadata_text_path)
         {
           metadata = g_variant_parse (G_VARIANT_TYPE ("a{sv}"),
                                       g_mapped_file_get_contents (metadata_mappedf),
@@ -255,9 +255,9 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
           if (!metadata)
             goto out;
         }
-      else if (metadata_bin_path)
+      else if (opt_metadata_bin_path)
         {
-          metadata_f = g_file_new_for_path (metadata_bin_path);
+          metadata_f = g_file_new_for_path (opt_metadata_bin_path);
           if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), TRUE,
                                     &metadata, error))
             goto out;
@@ -265,14 +265,14 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
       else
         g_assert_not_reached ();
     }
-  else if (metadata_strings)
+  else if (opt_metadata_strings)
     {
       char **iter;
 
       metadata_builder_initialized = TRUE;
       g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
 
-      for (iter = metadata_strings; *iter; iter++)
+      for (iter = opt_metadata_strings; *iter; iter++)
         {
           const char *s;
           const char *eq;
@@ -297,7 +297,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
       g_variant_ref_sink (metadata);
     }
 
-  if (statoverride_file)
+  if (opt_statoverride_file)
     {
       if (!parse_statoverride_file (&mode_adds, cancellable, error))
         goto out;
@@ -313,33 +313,33 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (!branch)
+  if (!opt_branch)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "A branch must be specified with --branch");
       goto out;
     }
 
-  if (!subject)
+  if (!opt_subject)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "A subject must be specified with --subject");
       goto out;
     }
 
-  if (owner_uid >= 0 || owner_gid >= 0 || statoverride_file != NULL
-      || no_xattrs)
+  if (opt_owner_uid >= 0 || opt_owner_gid >= 0 || opt_statoverride_file != NULL
+      || opt_no_xattrs)
     {
       modifier = ostree_repo_commit_modifier_new ();
-      modifier->skip_xattrs = no_xattrs;
+      modifier->skip_xattrs = opt_no_xattrs;
       modifier->filter = commit_filter;
       modifier->user_data = mode_adds;
     }
 
-  if (!ostree_repo_resolve_rev (repo, branch, TRUE, &parent, error))
+  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
     goto out;
 
-  if (skip_if_unchanged && parent)
+  if (opt_skip_if_unchanged && parent)
     {
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      parent, &parent_commit, error))
@@ -353,7 +353,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
 
   mtree = ostree_mutable_tree_new ();
 
-  if (argc == 1 && (trees == NULL || trees[0] == NULL))
+  if (argc == 1 && (opt_trees == NULL || opt_trees[0] == NULL))
     {
       char *current_dir = g_get_current_dir ();
       arg = g_file_new_for_path (current_dir);
@@ -369,7 +369,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
       const char *tree;
       const char *eq;
 
-      for (tree_iter = (const char *const*)trees; *tree_iter; tree_iter++)
+      for (tree_iter = (const char *const*)opt_trees; *tree_iter; tree_iter++)
         {
           tree = *tree_iter;
 
@@ -396,7 +396,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
             {
               arg = g_file_new_for_path (tree);
               if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
-                                                       tar_autocreate_parents,
+                                                       opt_tar_autocreate_parents,
                                                        cancellable, error))
                 goto out;
             }
@@ -437,7 +437,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
 
-  if (skip_if_unchanged && parent_commit)
+  if (opt_skip_if_unchanged && parent_commit)
     {
       g_variant_get_child (parent_commit, 6, "@ay", &parent_content_csum_v);
       g_variant_get_child (parent_commit, 7, "@ay", &parent_metadata_csum_v);
@@ -462,7 +462,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
           goto out;
         }
 
-      if (!ostree_repo_stage_commit (repo, branch, parent, subject, body, metadata,
+      if (!ostree_repo_stage_commit (repo, opt_branch, parent, opt_subject, opt_body, metadata,
                                      related_objects, contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
@@ -472,7 +472,7 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
 
       in_transaction = FALSE;
       
-      if (!ostree_repo_write_ref (repo, NULL, branch, commit_checksum, error))
+      if (!ostree_repo_write_ref (repo, NULL, opt_branch, commit_checksum, error))
         goto out;
 
       g_print ("%s\n", commit_checksum);

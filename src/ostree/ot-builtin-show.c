@@ -25,14 +25,14 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-static gboolean print_related;
-static char* print_variant_type;
-static char* print_metadata_key;
+static gboolean opt_print_related;
+static char* opt_print_variant_type;
+static char* opt_print_metadata_key;
 
 static GOptionEntry options[] = {
-  { "print-related", 0, 0, G_OPTION_ARG_NONE, &print_related, "If given, show the \"related\" commits", NULL },
-  { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
-  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
+  { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "If given, show the \"related\" commits", NULL },
+  { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
+  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
   { NULL }
 };
 
@@ -248,15 +248,15 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *canc
     }
   rev = argv[1];
 
-  if (print_metadata_key)
+  if (opt_print_metadata_key)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
 
-      if (!do_print_metadata_key (repo, resolved_rev, print_metadata_key, error))
+      if (!do_print_metadata_key (repo, resolved_rev, opt_print_metadata_key, error))
         goto out;
     }
-  else if (print_related)
+  else if (opt_print_related)
     {
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
@@ -264,9 +264,9 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *canc
       if (!do_print_related (repo, rev, resolved_rev, error))
         goto out;
     }
-  else if (print_variant_type)
+  else if (opt_print_variant_type)
     {
-      if (!do_print_variant_generic (G_VARIANT_TYPE (print_variant_type), rev, error))
+      if (!do_print_variant_generic (G_VARIANT_TYPE (opt_print_variant_type), rev, error))
         goto out;
     }
   else
