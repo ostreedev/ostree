@@ -36,8 +36,6 @@
 
 G_BEGIN_DECLS
 
-gboolean ot_util_spawn_pager (GOutputStream  **out_stream, GError         **error);
-
 void ot_util_fatal_literal (const char *msg) G_GNUC_NORETURN;
 
 void ot_util_fatal_gerror (GError *error) G_GNUC_NORETURN;

@@ -37,46 +37,6 @@
 #include <dirent.h>
 
 gboolean
-ot_util_spawn_pager (GOutputStream  **out_stream,
-                     GError         **error)
-{
-  gboolean ret = FALSE;
-  const char *pager;
-  char *argv[2];
-  int stdin_fd;
-  pid_t pid;
-  gs_free GOutputStream *ret_stream = NULL;
-
-  if (!isatty (1))
-    {
-      ret_stream = (GOutputStream*)g_unix_output_stream_new (1, TRUE);
-    }
-  else
-    {
-      pager = g_getenv ("GIT_PAGER");
-      if (pager == NULL)
-        pager = "less";
-      
-      argv[0] = (char*)pager;
-      argv[1] = NULL;
-      
-      if (!g_spawn_async_with_pipes (NULL, argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_DO_NOT_REAP_CHILD,
-                                     NULL, NULL, &pid, &stdin_fd, NULL, NULL, error))
-        {
-          g_prefix_error (error, "%s", "Failed to spawn pager: ");
-          goto out;
-        }
-      
-      ret_stream = (GOutputStream*)g_unix_output_stream_new (stdin_fd, TRUE);
-    }
-
-  ot_transfer_out_value(out_stream, &ret_stream);
-  ret = TRUE;
- out:
-  return ret;
-}
-
-gboolean
 ot_util_filename_validate (const char *name,
                            GError    **error)
 {
