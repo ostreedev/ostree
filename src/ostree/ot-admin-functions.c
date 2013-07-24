@@ -656,7 +656,7 @@ static char *
 get_ostree_kernel_arg_from_config (OtConfigParser  *config)
 {
   const char *options;
-  char *ret;
+  char *ret = NULL;
   char **opts, **iter;
 
   options = ot_config_parser_get (config, "options");
