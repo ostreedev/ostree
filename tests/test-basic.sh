@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..33"
+echo "1..34"
 
 . $(dirname $0)/libtest.sh
 
@@ -33,6 +33,9 @@ $OSTREE rev-parse test2
 $OSTREE rev-parse 'test2^'
 $OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
 echo "ok rev-parse"
+
+(cd repo && ostree rev-parse test2)
+echo "ok repo-in-cwd"
 
 $OSTREE refs > reflist
 assert_file_has_content reflist '^test2$'

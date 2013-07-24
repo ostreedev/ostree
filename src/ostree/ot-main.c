@@ -115,9 +115,6 @@ ostree_run (int    argc,
   else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
     repo = host_repo_path;
 
-  if (repo)
-    repo_file = g_file_new_for_path (repo);
-
   if (!have_repo_arg)
     {
       arg_off = 2;
@@ -148,11 +145,22 @@ ostree_run (int    argc,
 
   if (repo == NULL && !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Command requires a --repo argument");
-      ostree_usage (argv, commands, TRUE);
-      goto out;
+      if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
+          && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
+        {
+          repo = ".";
+        }
+      else
+        {
+          g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Command requires a --repo argument");
+          ostree_usage (argv, commands, TRUE);
+          goto out;
+        }
     }
+
+  if (repo)
+    repo_file = g_file_new_for_path (repo);
   
   ostree_prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
 
