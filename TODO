@@ -6,6 +6,10 @@
     key-value store?
   - Optional non-object metadata; e.g., "detached" GPG signatures which
     are in the same file (to avoid double HTTP requests)
+  - Extended validation; SHA512+SHA256 checksum of all metadata along
+    with content object metadata (file size in particular) wouldn't take
+    too much extra time per commit, and would greatly strengthen resistance
+    to active hash collision attacks.
 
 * Hybrid SSL pull (fetch refs over SSL, content via plain HTTP)
 
@@ -14,11 +18,6 @@
     (device, inode) -> checksum.  We need to keep the cache up to to date;
     investigate something like http://www.sqlite.org/wal.html for having
     a shared file.
-
-* GPG signatures on commits, and more generally, extensible metadata
-  associatible with commits.  So for example, commit objects could
-  also contain secondary checksums of the *entire* content, which
-  would allow for stronger verification.
 
 * Indexed metadata pack objects for bare repositories at least;
   no reason to inflict thousands of little metadata files on
