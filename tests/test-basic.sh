@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..35"
+echo "1..33"
 
 . $(dirname $0)/libtest.sh
 
@@ -120,21 +120,6 @@ cd ${test_tmpdir}
 assert_file_has_content diff-test2-2 'M */four$'
 echo "ok diff file changing type"
 
-cd ${test_tmpdir}/checkout-test2-4
-echo afile > oh-look-a-file
-cat > ${test_tmpdir}/ostree-commit-metadata <<EOF
-{'origin': <'http://example.com'>, 'buildid': <@u 42>}
-EOF
-$OSTREE commit -b test2 -s "Metadata test" --metadata-variant-text=${test_tmpdir}/ostree-commit-metadata
-echo "ok metadata commit"
-
-cd ${test_tmpdir}
-rm ostree-commit-metadata
-$OSTREE show test2 > ${test_tmpdir}/show
-assert_file_has_content ${test_tmpdir}/show 'example.com'
-assert_file_has_content ${test_tmpdir}/show 'buildid'
-echo "ok metadata content"
-
 cd ${test_tmpdir}
 mkdir repo2
 ${CMD_PREFIX} ostree --repo=repo2 init
@@ -161,12 +146,6 @@ $OSTREE commit --skip-if-unchanged -b test2 -s 'should not be committed' --tree=
 new_rev=$($OSTREE rev-parse test2)
 assert_streq "${old_rev}" "${new_rev}"
 echo "ok commit --skip-if-unchanged"
-
-$OSTREE commit -b test2 -s "Metadata string" --add-metadata-string=FOO=BAR --add-metadata-string=KITTENS=CUTE --tree=ref=test2
-$OSTREE show test2 > test2-commit-text
-assert_file_has_content test2-commit-text "'FOO'.*'BAR'"
-assert_file_has_content test2-commit-text "'KITTENS'.*'CUTE'"
-echo "ok metadata commit with strings"
 
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "no xattrs" --no-xattrs

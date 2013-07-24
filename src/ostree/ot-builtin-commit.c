@@ -25,14 +25,10 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 
-static char *opt_metadata_text_path;
-static char *opt_metadata_bin_path;
 static char *opt_subject;
 static char *opt_body;
 static char *opt_branch;
-static char **opt_metadata_strings;
 static char *opt_statoverride_file;
-static char *opt_related_objects_file;
 static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_tar_autocreate_parents;
@@ -44,9 +40,6 @@ static gint opt_owner_gid = -1;
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "body" },
-  { "metadata-variant-text", 0, 0, G_OPTION_ARG_FILENAME, &opt_metadata_text_path, "File containing g_variant_print() output", "path" },
-  { "metadata-variant", 0, 0, G_OPTION_ARG_FILENAME, &opt_metadata_bin_path, "File containing serialized variant, in host endianness", "path" },
-  { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "NAME" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
@@ -56,7 +49,6 @@ static GOptionEntry options[] = {
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "path" },
-  { "related-objects-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_related_objects_file, "File containing newline-separated pairs of (checksum SPACE name) of related objects", "path" },
   { NULL }
 };
 
@@ -113,74 +105,6 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   return ret;
 }
 
-static gboolean
-parse_related_objects_file (GVariant     **out_related_objects,
-                            GCancellable  *cancellable,
-                            GError        **error)
-{
-  gboolean ret = FALSE;
-  gsize len;
-  char **iter = NULL; /* nofree */
-  gs_unref_hashtable GHashTable *ret_hash = NULL;
-  gs_unref_variant GVariant *ret_related_objects = NULL;
-  gs_unref_object GFile *path = NULL;
-  gs_free char *contents = NULL;
-  GVariantBuilder builder;
-  gboolean builder_initialized = FALSE;
-  char **lines = NULL;
-
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(say)"));
-  builder_initialized = TRUE;
-
-  path = g_file_new_for_path (opt_related_objects_file);
-
-  if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
-                             error))
-    goto out;
-  
-  lines = g_strsplit (contents, "\n", -1);
-
-  for (iter = lines; iter && *iter; iter++)
-    {
-      const char *line = *iter;
-      const char *spc;
-      gs_free char *name = NULL;
-
-      if (!*line)
-        break;
-
-      spc = strchr (line, ' ');
-      if (!spc)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Malformed related objects file");
-          goto out;
-        }
-
-      name = g_strndup (line, spc - line);
-
-      if (!ostree_validate_checksum_string (spc + 1, error))
-        goto out;
-
-      {
-        GVariant *csum_bytes_v = ostree_checksum_to_bytes_v (spc + 1);
-        g_variant_builder_add (&builder, "(s@ay)", name, csum_bytes_v);
-      }
-    }
-
-  ret_related_objects = g_variant_builder_end (&builder);
-  g_variant_ref_sink (ret_related_objects);
-  builder_initialized = FALSE;
-
-  ret = TRUE;
-  ot_transfer_out_value (out_related_objects, &ret_related_objects);
- out:
-  if (builder_initialized)
-    g_variant_builder_clear (&builder);
-  g_strfreev (lines);
-  return ret;
-}
-
 static OstreeRepoCommitFilterResult
 commit_filter (OstreeRepo         *self,
                const char         *path,
@@ -219,9 +143,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
   gs_unref_variant GVariant *parent_commit = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_variant GVariant *related_objects = NULL;
-  gs_unref_object GFile *metadata_f = NULL;
   gs_free char *contents_checksum = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
   gs_free char *tree_type = NULL;
@@ -231,9 +152,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   gs_free char *parent_content_checksum = NULL;
   gs_free char *parent_metadata_checksum = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
-  GMappedFile *metadata_mappedf = NULL;
-  GVariantBuilder metadata_builder;
-  gboolean metadata_builder_initialized = FALSE;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -241,71 +159,9 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (opt_metadata_text_path || opt_metadata_bin_path)
-    {
-      metadata_mappedf = g_mapped_file_new (opt_metadata_text_path ? opt_metadata_text_path : opt_metadata_bin_path, FALSE, error);
-      if (!metadata_mappedf)
-        goto out;
-      if (opt_metadata_text_path)
-        {
-          metadata = g_variant_parse (G_VARIANT_TYPE ("a{sv}"),
-                                      g_mapped_file_get_contents (metadata_mappedf),
-                                      g_mapped_file_get_contents (metadata_mappedf) + g_mapped_file_get_length (metadata_mappedf),
-                                      NULL, error);
-          if (!metadata)
-            goto out;
-        }
-      else if (opt_metadata_bin_path)
-        {
-          metadata_f = g_file_new_for_path (opt_metadata_bin_path);
-          if (!ot_util_variant_map (metadata_f, G_VARIANT_TYPE ("a{sv}"), TRUE,
-                                    &metadata, error))
-            goto out;
-        }
-      else
-        g_assert_not_reached ();
-    }
-  else if (opt_metadata_strings)
-    {
-      char **iter;
-
-      metadata_builder_initialized = TRUE;
-      g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
-
-      for (iter = opt_metadata_strings; *iter; iter++)
-        {
-          const char *s;
-          const char *eq;
-          gs_free char *key = NULL;
-
-          s = *iter;
-
-          eq = strchr (s, '=');
-          if (!eq)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Missing '=' in KEY=VALUE metadata '%s'", s);
-              goto out;
-            }
-          
-          key = g_strndup (s, eq - s);
-          g_variant_builder_add (&metadata_builder, "{sv}", key,
-                                 g_variant_new_string (eq + 1));
-        }
-      metadata = g_variant_builder_end (&metadata_builder);
-      metadata_builder_initialized = FALSE;
-      g_variant_ref_sink (metadata);
-    }
-
   if (opt_statoverride_file)
     {
       if (!parse_statoverride_file (&mode_adds, cancellable, error))
-        goto out;
-    }
-
-  if (opt_related_objects_file)
-    {
-      if (!parse_related_objects_file (&related_objects, cancellable, error))
         goto out;
     }
 
@@ -462,8 +318,8 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
           goto out;
         }
 
-      if (!ostree_repo_stage_commit (repo, opt_branch, parent, opt_subject, opt_body, metadata,
-                                     related_objects, contents_checksum, root_metadata,
+      if (!ostree_repo_stage_commit (repo, opt_branch, parent, opt_subject, opt_body,
+                                     contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
 
@@ -493,10 +349,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
     {
       (void) ostree_repo_abort_transaction (repo, cancellable, NULL);
     }
-  if (metadata_builder_initialized)
-    g_variant_builder_clear (&metadata_builder);
-  if (metadata_mappedf)
-    g_mapped_file_unref (metadata_mappedf);
   if (context)
     g_option_context_free (context);
   if (modifier)
