@@ -194,26 +194,29 @@ uri_fetch_update_status (gpointer user_data)
  
   status = g_string_new ("");
 
-  if (!pull_data->metadata_scan_idle)
-    g_string_append_printf (status, "scan: %u; ",
-                            g_atomic_int_get (&pull_data->n_scanned_metadata));
-
-  outstanding_stages = pull_data->n_outstanding_content_stage_requests + pull_data->n_outstanding_metadata_stage_requests;
-  if (outstanding_stages > 0)
-    g_string_append_printf (status, "writing: %u; ", outstanding_stages);
-
   outstanding_fetches = pull_data->n_outstanding_content_fetches + pull_data->n_outstanding_metadata_fetches;
+  outstanding_stages = pull_data->n_outstanding_content_stage_requests + pull_data->n_outstanding_metadata_stage_requests;
+
   if (outstanding_fetches)
     {
-      g_string_append_printf (status, "fetch: %u/%u meta %u/%u; ",
-                              pull_data->n_fetched_metadata,
-                              pull_data->n_requested_metadata,
-                              pull_data->n_fetched_content,
-                              pull_data->n_requested_content);
+      guint64 bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+      guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
+      guint requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
+      gs_free char *formatted_bytes_transferred = NULL;
 
-      fetcher_status = ostree_fetcher_query_state_text (pull_data->fetcher);
-      g_string_append (status, fetcher_status);
+      formatted_bytes_transferred = g_format_size_full (bytes_transferred, 0);
+
+      g_string_append_printf (status, "Receiving objects: %u%% (%u/%u) %s",
+                              (guint)((((double)fetched) / requested) * 100),
+                              fetched, requested, formatted_bytes_transferred);
     }
+  else if (outstanding_stages > 0)
+    g_string_append_printf (status, "Writing objects: %u", outstanding_stages);
+  else if (!pull_data->metadata_scan_idle)
+    g_string_append_printf (status, "Scanning metadata: %u",
+                            g_atomic_int_get (&pull_data->n_scanned_metadata));
+  else
+    g_string_append_printf (status, "Idle");
 
   gs_console_begin_status_line (gs_console_get (), status->str, NULL, NULL);
 
