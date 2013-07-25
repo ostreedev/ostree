@@ -223,7 +223,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                                      cancellable, error))
         goto out;
 
-      if (i % mod == 0)
+      if (mod == 0 || (i % mod == 0))
         g_print ("%u/%u objects\n", i, count);
       i++;
     }
