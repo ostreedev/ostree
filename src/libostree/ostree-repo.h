@@ -85,6 +85,15 @@ gboolean      ostree_repo_commit_transaction (OstreeRepo     *self,
                                               GCancellable   *cancellable,
                                               GError        **error);
 
+gboolean      ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
+                                                         guint          *out_metadata_objects_total,
+                                                         guint          *out_metadata_objects_written,
+                                                         guint          *out_content_objects_total,
+                                                         guint          *out_content_objects_written,
+                                                         guint64        *out_content_bytes_written,
+                                                         GCancellable   *cancellable,
+                                                         GError        **error);
+
 gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GCancellable   *cancellable,
                                              GError        **error);
@@ -227,20 +236,20 @@ OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);
 
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
-gboolean      ostree_repo_stage_directory_to_mtree (OstreeRepo         *self,
-                                                    GFile              *dir,
-                                                    OstreeMutableTree  *mtree,
-                                                    OstreeRepoCommitModifier *modifier,
-                                                    GCancellable *cancellable,
-                                                    GError      **error);
+gboolean      ostree_repo_stage_directory_to_mtree (OstreeRepo                 *self,
+                                                    GFile                      *dir,
+                                                    OstreeMutableTree          *mtree,
+                                                    OstreeRepoCommitModifier   *modifier,
+                                                    GCancellable               *cancellable,
+                                                    GError                    **error);
 
-gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo         *self,
-                                                  GFile              *archive,
-                                                  OstreeMutableTree  *tree,
-                                                  OstreeRepoCommitModifier *modifier,
-                                                  gboolean            autocreate_parents,
-                                                  GCancellable *cancellable,
-                                                  GError      **error);
+gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo                   *self,
+                                                  GFile                        *archive,
+                                                  OstreeMutableTree            *tree,
+                                                  OstreeRepoCommitModifier     *modifier,
+                                                  gboolean                      autocreate_parents,
+                                                  GCancellable                 *cancellable,
+                                                  GError                      **error);
 
 gboolean      ostree_repo_stage_mtree (OstreeRepo         *self,
                                        OstreeMutableTree  *tree,

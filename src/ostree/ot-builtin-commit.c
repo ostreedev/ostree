@@ -36,6 +36,7 @@ static gboolean opt_no_xattrs;
 static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
+static gboolean opt_table_output;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
@@ -49,6 +50,7 @@ static GOptionEntry options[] = {
   { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "path" },
+  { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
   { NULL }
 };
 
@@ -138,6 +140,11 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
+  guint metadata_total = 0;
+  guint metadata_written = 0;
+  guint content_total = 0;
+  guint content_written = 0;
+  guint64 content_bytes_written = 0;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
@@ -323,7 +330,13 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
                                      &commit_checksum, cancellable, error))
         goto out;
 
-      if (!ostree_repo_commit_transaction (repo, cancellable, error))
+      if (!ostree_repo_commit_transaction_with_stats (repo,
+                                                      &metadata_total,
+                                                      &metadata_written,
+                                                      &content_total,
+                                                      &content_written,
+                                                      &content_bytes_written,
+                                                      cancellable, error))
         goto out;
 
       in_transaction = FALSE;
@@ -331,7 +344,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
       if (!ostree_repo_write_ref (repo, NULL, opt_branch, commit_checksum, error))
         goto out;
 
-      g_print ("%s\n", commit_checksum);
     }
   else
     {
@@ -340,7 +352,21 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
 
       in_transaction = FALSE;
 
-      g_print ("%s\n", parent);
+      commit_checksum = g_strdup (parent);
+    }
+
+  if (opt_table_output)
+    {
+      g_print ("Commit: %s\n", commit_checksum);
+      g_print ("Metadata Total: %u\n", metadata_total);
+      g_print ("Metadata Written: %u\n", metadata_written);
+      g_print ("Content Total: %u\n", content_total);
+      g_print ("Content Written: %u\n", content_written);
+      g_print ("Content Bytes Written: %" G_GUINT64_FORMAT "\n", content_bytes_written);
+    }
+  else
+    {
+      g_print ("%s\n", commit_checksum);
     }
 
   ret = TRUE;

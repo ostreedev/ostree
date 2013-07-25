@@ -266,7 +266,8 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
               goto out;
             }
 
-          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_csum, cancellable, error))
+          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_csum,
+                                             cancellable, error))
             goto out;
           
           g_free (tmp_checksum);

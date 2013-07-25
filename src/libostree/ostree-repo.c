@@ -83,6 +83,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_mutex_clear (&self->cache_lock);
+  g_mutex_clear (&self->txn_stats_lock);
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
@@ -177,6 +178,7 @@ static void
 ostree_repo_init (OstreeRepo *self)
 {
   g_mutex_init (&self->cache_lock);
+  g_mutex_init (&self->txn_stats_lock);
 }
 
 OstreeRepo*
@@ -735,6 +737,25 @@ stage_object (OstreeRepo         *self,
           g_clear_object (&temp_file);
         }
     }
+
+  g_mutex_lock (&self->txn_stats_lock);
+  if (do_commit)
+    {
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        {
+          self->txn_metadata_objects_written++;
+        }
+      else
+        {
+          self->txn_content_objects_written++;
+          self->txn_content_bytes_written += file_object_length;
+        }
+    }
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    self->txn_metadata_objects_total++;
+  else
+    self->txn_content_objects_total++;
+  g_mutex_unlock (&self->txn_stats_lock);
       
   if (checksum)
     ret_csum = ot_csum_from_gchecksum (checksum);
@@ -988,6 +1009,12 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   else
     ret_transaction_resume = FALSE;
 
+  self->txn_metadata_objects_total =
+    self->txn_metadata_objects_written = 
+    self->txn_content_objects_total = 
+    self->txn_content_objects_written =
+    self->txn_content_bytes_written = 0;
+
   self->in_transaction = TRUE;
   if (ret_transaction_resume)
     {
@@ -1015,10 +1042,15 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   return ret;
 }
 
-gboolean      
-ostree_repo_commit_transaction (OstreeRepo     *self,
-                                GCancellable   *cancellable,
-                                GError        **error)
+gboolean
+ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
+                                           guint          *out_metadata_objects_total,
+                                           guint          *out_metadata_objects_written,
+                                           guint          *out_content_objects_total,
+                                           guint          *out_content_objects_written,
+                                           guint64        *out_content_bytes_written,
+                                           GCancellable   *cancellable,
+                                           GError        **error)
 {
   gboolean ret = FALSE;
 
@@ -1031,9 +1063,23 @@ ostree_repo_commit_transaction (OstreeRepo     *self,
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   self->in_transaction = FALSE;
+  if (out_metadata_objects_total) *out_metadata_objects_total = self->txn_metadata_objects_total;
+  if (out_metadata_objects_written) *out_metadata_objects_written = self->txn_metadata_objects_written;
+  if (out_content_objects_total) *out_content_objects_total = self->txn_content_objects_total;
+  if (out_content_objects_written) *out_content_objects_written = self->txn_content_objects_written;
+  if (out_content_bytes_written) *out_content_bytes_written = self->txn_content_bytes_written;
   ret = TRUE;
  out:
   return ret;
+}
+
+gboolean      
+ostree_repo_commit_transaction (OstreeRepo     *self,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  return ostree_repo_commit_transaction_with_stats (self, NULL, NULL, NULL, NULL, NULL,
+                                                    cancellable, error);
 }
 
 gboolean
@@ -1366,6 +1412,15 @@ ostree_repo_stage_content_async (OstreeRepo               *self,
   g_object_unref (asyncdata->result);
 }
 
+/**
+ * ostree_repo_stage_content_finish:
+ * @self: a #OstreeRepo
+ * @result: a #GAsyncResult
+ * @out_csum: (out) (transfer full): A binary SHA256 checksum of the content object
+ * @error: a #GError
+ *
+ * Completes an invocation of ostree_repo_stage_content_async().
+ */
 gboolean
 ostree_repo_stage_content_finish (OstreeRepo        *self,
                                   GAsyncResult      *result,
@@ -1381,9 +1436,7 @@ ostree_repo_stage_content_finish (OstreeRepo        *self,
     return FALSE;
 
   data = g_simple_async_result_get_op_res_gpointer (simple);
-  /* Transfer ownership */
-  *out_csum = data->result_csum;
-  data->result_csum = NULL;
+  ot_transfer_out_value (out_csum, &data->result_csum);
   return TRUE;
 }
 
@@ -1558,13 +1611,13 @@ apply_commit_filter (OstreeRepo            *self,
 }
 
 static gboolean
-stage_directory_to_mtree_internal (OstreeRepo           *self,
-                                   GFile                *dir,
-                                   OstreeMutableTree    *mtree,
-                                   OstreeRepoCommitModifier *modifier,
-                                   GPtrArray             *path,
-                                   GCancellable         *cancellable,
-                                   GError              **error)
+stage_directory_to_mtree_internal (OstreeRepo                  *self,
+                                   GFile                       *dir,
+                                   OstreeMutableTree           *mtree,
+                                   OstreeRepoCommitModifier    *modifier,
+                                   GPtrArray                   *path,
+                                   GCancellable                *cancellable,
+                                   GError                     **error)
 {
   gboolean ret = FALSE;
   gboolean repo_dir_was_empty = FALSE;
@@ -1661,7 +1714,8 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
                     goto out;
 
                   if (!stage_directory_to_mtree_internal (self, child, child_mtree,
-                                                          modifier, path, cancellable, error))
+                                                          modifier, path,
+                                                          cancellable, error))
                     goto out;
                 }
               else if (repo_dir)
@@ -1735,19 +1789,32 @@ stage_directory_to_mtree_internal (OstreeRepo           *self,
   return ret;
 }
 
+/**
+ * ostree_repo_stage_directory_to_mtree:
+ * @self:
+ * @dir: Path to a directory
+ * @mtree: Overlay directory contents into this tree
+ * @modifier: (allow-none): Optional modifier
+ * @cancellable:
+ * @error:
+ *
+ * Store objects for @dir and all children into the repository @self,
+ * overlaying the resulting filesystem hierarchy into @mtree.
+ */
 gboolean
-ostree_repo_stage_directory_to_mtree (OstreeRepo           *self,
-                                      GFile                *dir,
-                                      OstreeMutableTree    *mtree,
-                                      OstreeRepoCommitModifier *modifier,
-                                      GCancellable         *cancellable,
-                                      GError              **error)
+ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
+                                      GFile                     *dir,
+                                      OstreeMutableTree         *mtree,
+                                      OstreeRepoCommitModifier  *modifier,
+                                      GCancellable              *cancellable,
+                                      GError                   **error)
 {
   gboolean ret = FALSE;
   GPtrArray *path = NULL;
 
   path = g_ptr_array_new ();
-  if (!stage_directory_to_mtree_internal (self, dir, mtree, modifier, path, cancellable, error))
+  if (!stage_directory_to_mtree_internal (self, dir, mtree, modifier, path,
+                                          cancellable, error))
     goto out;
   
   ret = TRUE;
