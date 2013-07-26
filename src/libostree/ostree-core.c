@@ -1245,6 +1245,16 @@ ostree_create_file_from_input (GFile            *dest_file,
 
       if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
         goto out;
+
+      /* Work around libguestfs/FUSE bug */
+      if (mode & (S_ISUID|S_ISGID))
+        {
+          if (chmod (dest_path, mode) == -1)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
     }
   else if (S_ISLNK (mode))
     {
