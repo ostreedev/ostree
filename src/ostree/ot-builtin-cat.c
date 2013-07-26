@@ -24,6 +24,7 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "otutil.h"
 
 #include <gio/gunixoutputstream.h>
 

@@ -24,6 +24,7 @@
 
 #include "ostree.h"
 #include "otutil.h"
+#include "libgsystem.h"
 
 GHashTable *
 ostree_repo_traverse_new_reachable (void)

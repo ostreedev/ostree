@@ -37,11 +37,19 @@ EXTRA_DIST =
 bin_PROGRAMS =
 sbin_PROGRAMS =
 bin_SCRIPTS =
+lib_LTLIBRARIES =
 libexec_PROGRAMS =
 noinst_LTLIBRARIES =
 noinst_PROGRAMS =
 privlibdir = $(pkglibdir)
 privlib_LTLIBRARIES =
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA =
+INTROSPECTION_GIRS = 
+girdir = $(datadir)/gir-1.0
+gir_DATA =
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA =
 
 EXTRA_DIST += autogen.sh COPYING.GPL COPYING.LGPL README.md
 
@@ -78,6 +86,14 @@ libgsystem_cflags = $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/src/libgsystem
 libgsystem_libs = $(OT_INTERNAL_GIO_UNIX_LIBS)
 include src/libgsystem/Makefile-libgsystem.am
 noinst_LTLIBRARIES += libgsystem.la
+
+
+if BUILDOPT_INTROSPECTION
+include $(INTROSPECTION_MAKEFILE)
+GIRS =
+TYPELIBS = $(GIRS:.gir=.typelib)
+endif
+
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am

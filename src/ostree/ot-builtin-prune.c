@@ -24,6 +24,7 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "libgsystem.h"
 
 static gboolean opt_no_prune;
 static gint opt_depth = -1;

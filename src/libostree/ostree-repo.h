@@ -164,7 +164,7 @@ gboolean      ostree_repo_stage_content_finish (OstreeRepo        *self,
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *refspec,
                                        gboolean     allow_noent,
-                                       char       **out_resolved,
+                                       char       **out_rev,
                                        GError     **error);
 
 gboolean      ostree_repo_write_ref (OstreeRepo  *self,

@@ -24,6 +24,7 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "otutil.h"
 
 gboolean opt_related;
 

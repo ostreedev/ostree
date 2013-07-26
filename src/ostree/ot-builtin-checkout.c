@@ -22,10 +22,12 @@
 
 #include "config.h"
 
+#include <string.h>
+#include <gio/gunixinputstream.h>
+
 #include "ot-builtins.h"
 #include "ostree.h"
-
-#include <gio/gunixinputstream.h>
+#include "otutil.h"
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;

@@ -21,9 +21,9 @@
 #include "config.h"
 
 #include "ot-bootloader-syslinux.h"
-#include "libgsystem.h"
 #include "otutil.h"
 #include "ot-admin-functions.h"
+#include "libgsystem.h"
 
 #include <string.h>
 

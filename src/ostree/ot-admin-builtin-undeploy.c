@@ -20,13 +20,14 @@
 
 #include "config.h"
 
+#include <stdlib.h>
+
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ot-admin-deploy.h"
 #include "ot-ordered-hash.h"
 #include "ostree.h"
-
-#include <stdlib.h>
+#include "otutil.h"
 
 static GOptionEntry options[] = {
   { NULL }

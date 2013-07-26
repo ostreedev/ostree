@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "ot-deployment.h"
+#include "libgsystem.h"
 
 struct _OtDeployment
 {

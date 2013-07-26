@@ -22,6 +22,9 @@
 
 #include "config.h"
 
+#include <glib-unix.h>
+#include "otutil.h"
+
 #include "ostree-repo-file.h"
 #include "ostree-repo-private.h"
 

@@ -28,6 +28,7 @@
 #include "ot-main.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
+#include "libgsystem.h"
 
 #include <glib/gi18n.h>
 

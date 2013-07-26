@@ -72,7 +72,7 @@ ostree_SOURCES += \
 	$(NULL)
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libgsystem -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree  -DLOCALEDIR=\"$(datadir)/locale\"
-ostree_bin_shared_ldadd = libotutil.la libostree.la
+ostree_bin_shared_ldadd = libotutil.la libostree-1.la
 
 ostree_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 ostree_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)

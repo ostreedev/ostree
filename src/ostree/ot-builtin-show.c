@@ -24,6 +24,7 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "otutil.h"
 
 static gboolean opt_print_related;
 static char* opt_print_variant_type;

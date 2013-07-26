@@ -24,6 +24,8 @@
 
 #include "ostree-fetcher.h"
 #include "ostree.h"
+#include "otutil.h"
+#include "libgsystem.h"
 
 typedef enum {
   OSTREE_FETCHER_STATE_PENDING,

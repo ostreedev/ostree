@@ -22,11 +22,12 @@
 
 #include "config.h"
 
-#include "ot-builtins.h"
-#include "ostree.h"
-
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
+
+#include "ot-builtins.h"
+#include "ostree.h"
+#include "otutil.h"
 
 static GOptionEntry options[] = {
   { NULL }

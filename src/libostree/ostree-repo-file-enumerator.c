@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "libgsystem.h"
 #include "ostree-repo-file-enumerator.h"
 #include <string.h>
 

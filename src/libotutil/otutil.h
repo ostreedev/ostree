@@ -24,6 +24,7 @@
 
 #include <gio/gio.h>
 #include <libgsystem.h>
+#include <string.h> /* Yeah...let's just do that here. */
 #include <gsystem-local-alloc.h>
 
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)

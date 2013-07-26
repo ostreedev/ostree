@@ -20,9 +20,8 @@
 
 #include "config.h"
 
-
-#include <gio/gio.h>
 #include "ostree-checksum-input-stream.h"
+#include "libgsystem.h"
 
 enum {
   PROP_0,

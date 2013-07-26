@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "ot-bootloader.h"
+#include "libgsystem.h"
 
 G_DEFINE_INTERFACE (OtBootloader, ot_bootloader, G_TYPE_OBJECT)
 

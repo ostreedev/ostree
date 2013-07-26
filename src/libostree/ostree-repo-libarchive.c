@@ -31,6 +31,8 @@
 #include "ostree-libarchive-input-stream.h"
 #endif
 
+#include "otutil.h"
+
 #ifdef HAVE_LIBARCHIVE
 
 static GFileInfo *

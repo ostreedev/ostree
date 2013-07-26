@@ -24,6 +24,7 @@
 #include <archive.h>
 #include <gio/gio.h>
 #include "ostree-libarchive-input-stream.h"
+#include "libgsystem.h"
 
 enum {
   PROP_0,

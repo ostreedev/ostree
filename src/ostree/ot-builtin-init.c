@@ -24,6 +24,7 @@
 
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "libgsystem.h"
 
 static gboolean opt_archive;
 static char *opt_mode = NULL;

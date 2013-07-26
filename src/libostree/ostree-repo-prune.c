@@ -22,7 +22,8 @@
 
 #include "config.h"
 
-#include "ostree-repo.h"
+#include "ostree.h"
+#include "otutil.h"
 
 typedef struct {
   OstreeRepo *repo;

@@ -27,6 +27,7 @@
 #include "ot-admin-deploy.h"
 #include "ot-ordered-hash.h"
 #include "ostree.h"
+#include "otutil.h"
 
 #include <glib/gi18n.h>
 

@@ -22,18 +22,19 @@
 
 #include "config.h"
 
-#include "ostree-repo-private.h"
-#include "ostree-mutable-tree.h"
-#include "ostree-checksum-input-stream.h"
-#include "otutil.h"
-#include "ostree-repo-file-enumerator.h"
-
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
 #include <glib/gstdio.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "ostree-repo-private.h"
+#include "ostree-mutable-tree.h"
+#include "ostree-checksum-input-stream.h"
+#include "otutil.h"
+#include "libgsystem.h"
+#include "ostree-repo-file-enumerator.h"
 
 typedef struct {
   GObjectClass parent_class;
@@ -2292,6 +2293,11 @@ ostree_repo_load_variant_if_exists (OstreeRepo       *self,
 
 /**
  * ostree_repo_load_variant:
+ * @self:
+ * @objtype: Expected object type
+ * @sha256: Checksum string
+ * @out_variant: (out): (transfer full): Metadata object
+ * @error:
  * 
  * Load the metadata object @sha256 of type @objtype, storing the
  * result in @out_variant.

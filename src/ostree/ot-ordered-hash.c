@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "ot-ordered-hash.h"
+#include "libgsystem.h"
 
 OtOrderedHash *
 ot_ordered_hash_new (void)

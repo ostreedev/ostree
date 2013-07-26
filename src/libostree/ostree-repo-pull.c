@@ -69,6 +69,7 @@
 
 #include "ostree.h"
 #include "ostree-fetcher.h"
+#include "otutil.h"
 
 typedef struct {
   enum {

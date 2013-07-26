@@ -22,15 +22,15 @@
 
 #include "config.h"
 
-#include "ostree.h"
-#include "otutil.h"
-
-#include <gio/gfiledescriptorbased.h>
-
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <gio/gfiledescriptorbased.h>
 #include <attr/xattr.h>
+#include "ostree.h"
+#include "ostree-chain-input-stream.h"
+#include "otutil.h"
+#include "libgsystem.h"
 
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))

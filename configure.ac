@@ -76,6 +76,11 @@ AS_IF([test x$enable_embedded_dependencies = xyes], [
 if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 
+m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
+  GOBJECT_INTROSPECTION_CHECK([1.34.0])
+])
+AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test x$found_introspection = xyes)
+
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
 AC_ARG_ENABLE(documentation,
@@ -121,6 +126,7 @@ AM_CONDITIONAL(BUILDOPT_DRACUT, test x$with_dracut = xyes)
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
+src/libostree/ostree-1.pc
 ])
 AC_OUTPUT
 
@@ -130,6 +136,7 @@ echo "
 
 
     embedded dependencies: $enable_embedded_dependencies
+    introspection: $found_introspection
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
     documentation: $enable_documentation

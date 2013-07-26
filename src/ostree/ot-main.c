@@ -28,6 +28,7 @@
 
 #include "ot-main.h"
 #include "otutil.h"
+#include "libgsystem.h"
 
 int
 ostree_usage (char **argv,

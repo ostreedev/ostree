@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include "ostree-repo-private.h"
+#include "otutil.h"
 
 static gboolean
 add_ref_to_set (const char       *remote,
@@ -350,6 +351,17 @@ resolve_refspec (OstreeRepo     *self,
   return ret;
 }
 
+/**
+ * ostree_repo_resolve_rev:
+ * @self:
+ * @refspec: A refspec
+ * @allow_noent: Do not throw an error if refspec does not exist
+ * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @error:
+ *
+ * Look up the given refspec, returning the checksum it references in
+ * the parameter @out_rev.
+ */
 gboolean
 ostree_repo_resolve_rev (OstreeRepo     *self,
                          const char     *refspec,

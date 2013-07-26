@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "otutil.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-repo.h"
 

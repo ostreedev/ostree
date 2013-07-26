@@ -25,6 +25,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
+#include "otutil.h"
 
 static gboolean opt_dironly;
 static gboolean opt_recursive;

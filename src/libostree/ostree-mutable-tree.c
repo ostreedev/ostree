@@ -25,6 +25,7 @@
 #include "ostree-mutable-tree.h"
 #include "otutil.h"
 #include "ostree-core.h"
+#include "libgsystem.h"
 
 struct OstreeMutableTree
 {
