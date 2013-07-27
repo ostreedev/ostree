@@ -20,6 +20,8 @@
 
 #pragma once
 
+#ifndef __GI_SCANNER__
+
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
 #include <libsoup/soup.h>
 #include <libsoup/soup-requester.h>
@@ -70,3 +72,4 @@ GFile *ostree_fetcher_request_uri_finish (OstreeFetcher         *self,
 
 G_END_DECLS
 
+#endif

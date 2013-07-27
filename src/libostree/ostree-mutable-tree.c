@@ -221,6 +221,17 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
   return ret;
 }
 
+/**
+ * ostree_mutable_tree_ensure_parent_dirs:
+ * @self:
+ * @split_path: (element-type utf8): File path components
+ * @metadata_checksum: SHA256 checksum for metadata
+ * @out_parent: (out) (transfer full): The parent tree
+ * @error: a #GError
+ *
+ * Create all parent trees necessary for the given @split_path to
+ * exist.
+ */
 gboolean
 ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
                                         GPtrArray          *split_path,
@@ -269,11 +280,22 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
   return ret;
 }
 
+/**
+ * ostree_mutable_tree_walk:
+ * @self:
+ * @split_path: (element-type utf8): Split pathname
+ * @start: Descend from this number of elements in @split_path
+ * @out_subdir: (out) (transfer full): Target parent
+ * @error:
+ *
+ * Traverse @start number of elements starting from @split_path; the
+ * child will be returned in @out_subdir.
+ */
 gboolean
 ostree_mutable_tree_walk (OstreeMutableTree     *self,
                           GPtrArray             *split_path,
                           guint                  start,
-                          OstreeMutableTree    **out_parent,
+                          OstreeMutableTree    **out_subdir,
                           GError               **error)
 {
   if (start >= split_path->len)
@@ -282,7 +304,7 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
     }
   else if (start == split_path->len - 1)
     {
-      *out_parent = g_object_ref (self);
+      *out_subdir = g_object_ref (self);
       return TRUE;
     }
   else
@@ -293,22 +315,39 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
       if (!subdir)
         return set_error_noent (error, (char*)split_path->pdata[start]);
 
-      return ostree_mutable_tree_walk (subdir, split_path, start + 1, out_parent, error);
+      return ostree_mutable_tree_walk (subdir, split_path, start + 1, out_subdir, error);
     }
 }
 
+/**
+ * ostree_mutable_tree_get_subdirs:
+ * @self:
+ * 
+ * Returns: (transfer none) (element-type utf8 OstreeMutableTree): All children directories
+ */
 GHashTable *
 ostree_mutable_tree_get_subdirs (OstreeMutableTree *self)
 {
   return self->subdirs;
 }
 
+/**
+ * ostree_mutable_tree_get_files:
+ * @self:
+ * 
+ * Returns: (transfer none) (element-type utf8 utf8): All children files (the value is a checksum)
+ */
 GHashTable *
 ostree_mutable_tree_get_files (OstreeMutableTree *self)
 {
   return self->files;
 }
 
+/**
+ * ostree_mutable_tree_new:
+ *
+ * Returns: (transfer full): A new tree
+ */
 OstreeMutableTree *
 ostree_mutable_tree_new (void)
 {

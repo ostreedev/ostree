@@ -21,6 +21,8 @@
 
 #pragma once
 
+#ifndef __GI_SCANNER__
+
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
@@ -63,3 +65,4 @@ OstreeChainInputStream * ostree_chain_input_stream_new          (GPtrArray *stre
 
 G_END_DECLS
 
+#endif

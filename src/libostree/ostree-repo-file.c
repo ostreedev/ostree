@@ -110,6 +110,13 @@ set_error_noent (GFile *self, GError **error)
   return FALSE;
 }
 
+/**
+ * ostree_repo_file_new_root:
+ * @repo: Containing repo
+ * @commit: SHA256 checksum
+ *
+ * Returns: (transfer full): A new #OstreeRepoFile corresponding to commit contents
+ */
 GFile * 
 ostree_repo_file_new_root (OstreeRepo  *repo,
                             const char  *commit)
@@ -127,7 +134,13 @@ ostree_repo_file_new_root (OstreeRepo  *repo,
   return G_FILE (self);
 }
 
-
+/**
+ * ostree_repo_file_new_child:
+ * @parent:
+ * @name: Name for new child
+ *
+ * Returns: (transfer full): A new child file with the given name
+ */
 GFile *
 ostree_repo_file_new_child (OstreeRepoFile *parent,
                              const char  *name)
@@ -344,18 +357,35 @@ ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
   return self->tree_contents_checksum;
 }
 
+/**
+ * ostree_repo_file_nontree_get_local:
+ *
+ * Returns: (transfer full): The real loose #GFile backing this object
+ */
 GFile *
 ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
   return ostree_repo_get_file_object_path (self->repo, ostree_repo_file_get_checksum (self));
 }
 
+/**
+ * ostree_repo_file_get_repo:
+ * @self:
+ *
+ * Returns: (transfer none): Repository
+ */
 OstreeRepo *
 ostree_repo_file_get_repo (OstreeRepoFile  *self)
 {
   return self->repo;
 }
 
+/**
+ * ostree_repo_file_get_root:
+ * @self:
+ *
+ * Returns: (transfer none): The root directory for the commit referenced by this file
+ */
 OstreeRepoFile *
 ostree_repo_file_get_root (OstreeRepoFile  *self)
 {

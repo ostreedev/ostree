@@ -77,6 +77,10 @@ ostree_diff_item_unref (OstreeDiffItem *diffitem)
   g_free (diffitem);
 }
 
+G_DEFINE_BOXED_TYPE(OstreeDiffItem, ostree_diff_item,
+                    ostree_diff_item_ref,
+                    ostree_diff_item_unref);
+
 static OstreeDiffItem *
 diff_item_new (GFile          *a,
                GFileInfo      *a_info,
@@ -180,6 +184,11 @@ diff_add_dir_recurse (GFile          *d,
 
 /**
  * ostree_diff_dirs:
+ * @a: First directory path
+ * @b: First directory path
+ * @modified: (element-type OstreeDiffItem): Modified files
+ * @removed: (element-type Gio.File): Removed files
+ * @added: (element-type Gio.File): Added files
  *
  * Compute the difference between directory @a and @b as 3 separate
  * sets of #OstreeDiffItem in @modified, @removed, and @added.
@@ -382,6 +391,16 @@ print_diff_item (char        prefix,
     }
 }
 
+/**
+ * ostree_diff_print:
+ * @a: First directory path
+ * @b: First directory path
+ * @modified: (element-type OstreeDiffItem): Modified files
+ * @removed: (element-type Gio.File): Removed files
+ * @added: (element-type Gio.File): Added files
+ *
+ * Print the contents of a diff to stdout.
+ */
 void
 ostree_diff_print (GFile          *a,
                    GFile          *b,

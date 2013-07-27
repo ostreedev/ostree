@@ -66,14 +66,14 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GError    **error);
 
 GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
-                                           const char   *object,
+                                           const char   *checksum,
                                            OstreeObjectType type);
 
 GFile *       ostree_repo_get_archive_content_path (OstreeRepo    *self,
                                                     const char    *checksum);
 
 GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
-                                                const char   *object);
+                                                const char   *checksum);
 
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean        enable_commit_hardlink_scan,
@@ -191,7 +191,7 @@ gboolean      ostree_repo_load_variant_c (OstreeRepo  *self,
                                           GError       **error);
 
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
-                                        OstreeObjectType expected_type,
+                                        OstreeObjectType objtype,
                                         const char    *sha256, 
                                         GVariant     **out_variant,
                                         GError       **error);
@@ -234,6 +234,9 @@ typedef struct {
 
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);
 
+GType ostree_repo_commit_modifier_get_type (void);
+
+OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
 gboolean      ostree_repo_stage_directory_to_mtree (OstreeRepo                 *self,

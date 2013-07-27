@@ -26,6 +26,14 @@
 #include "otutil.h"
 #include "libgsystem.h"
 
+/**
+ * ostree_repo_traverse_new_reachable:
+ *
+ * This hash table is a set of #GVariant which can be accessed via
+ * ostree_object_name_deserialize().
+ *
+ * Returns: (transfer full) (element-type GVariant GVariant): A new hash table
+ */
 GHashTable *
 ostree_repo_traverse_new_reachable (void)
 {

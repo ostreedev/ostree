@@ -45,6 +45,8 @@ struct _OstreeDiffItem
 OstreeDiffItem *ostree_diff_item_ref (OstreeDiffItem *diffitem);
 void ostree_diff_item_unref (OstreeDiffItem *diffitem);
 
+GType ostree_diff_item_get_type (void);
+
 gboolean ostree_diff_dirs (GFile          *a,
                            GFile          *b,
                            GPtrArray      *modified,

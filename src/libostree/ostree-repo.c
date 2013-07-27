@@ -375,12 +375,24 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   return ret;
 }
 
+/**
+ * ostree_repo_get_path:
+ * @self:
+ *
+ * Returns: (transfer none): Path to repo
+ */
 GFile *
 ostree_repo_get_path (OstreeRepo  *self)
 {
   return self->repodir;
 }
 
+/**
+ * ostree_repo_get_tmpdir:
+ * @self:
+ *
+ * Returns: (transfer none): Path to temporary directory
+ */
 GFile *
 ostree_repo_get_tmpdir (OstreeRepo  *self)
 {
@@ -410,6 +422,17 @@ ostree_repo_get_parent (OstreeRepo  *self)
   return self->parent_repo;
 }
 
+/**
+ * ostree_repo_get_file_object_path:
+ * @self:
+ * @checksum: SHA256 checksum string
+ *
+ * This function directly retrieves the path of loose objects; it is a
+ * low level API as one cannot assume that all objects are loose.  Use
+ * higher level API such as ostree_repo_load_file() if possible.
+ *
+ * Returns: (transfer full): A new file containing the direct path to a loose object
+ */
 GFile *
 ostree_repo_get_file_object_path (OstreeRepo   *self,
                                   const char   *checksum)
@@ -417,6 +440,17 @@ ostree_repo_get_file_object_path (OstreeRepo   *self,
   return ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
 
+/**
+ * ostree_repo_get_archive_content_path:
+ * @self:
+ * @checksum: SHA256 checksum string
+ *
+ * This function directly retrieves the path of loose objects; it is a
+ * low level API as one cannot assume that all objects are loose.  Use
+ * higher level API such as ostree_repo_load_file() if possible.
+ *
+ * Returns: (transfer full): A new file containing the direct path to a loose object
+ */
 GFile *
 ostree_repo_get_archive_content_path (OstreeRepo    *self,
                                       const char    *checksum)
@@ -1264,6 +1298,18 @@ _ostree_repo_stage_directory_meta (OstreeRepo   *self,
                                      dirmeta, out_csum, cancellable, error);
 }
 
+/**
+ * ostree_repo_get_object_path:
+ * @self:
+ * @checksum: SHA256 checksum string
+ * @type: Object type
+ *
+ * This function directly retrieves the path of loose objects; it is a
+ * low level API as one cannot assume that all objects are loose.  Use
+ * higher level API such as ostree_repo_load_file() if possible.
+ *
+ * Returns: (transfer full): A new file containing the direct path to a loose object
+ */
 GFile *
 ostree_repo_get_object_path (OstreeRepo       *self,
                              const char       *checksum,
@@ -1892,6 +1938,11 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
   return ret;
 }
 
+/**
+ * ostree_repo_commit_modifier_new:
+ *
+ * Returns: (transfer full): A new commit modifier.
+ */
 OstreeRepoCommitModifier *
 ostree_repo_commit_modifier_new (void)
 {
@@ -1899,6 +1950,13 @@ ostree_repo_commit_modifier_new (void)
 
   modifier->refcount = 1;
 
+  return modifier;
+}
+
+OstreeRepoCommitModifier *
+ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier)
+{
+  g_atomic_int_inc (&modifier->refcount);
   return modifier;
 }
 
@@ -1913,6 +1971,10 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   g_free (modifier);
   return;
 }
+
+G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
+                    ostree_repo_commit_modifier_ref,
+                    ostree_repo_commit_modifier_unref);
 
 static gboolean
 list_loose_object_dir (OstreeRepo             *self,
