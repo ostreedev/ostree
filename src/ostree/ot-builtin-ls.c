@@ -198,6 +198,46 @@ print_directory_recurse (GFile    *f,
   return ret;
 }
 
+static gboolean
+print_one_argument (OstreeRepo   *repo,
+                    GFile        *root,
+                    const char   *arg,
+                    GCancellable *cancellable,
+                    GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *f = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+
+  f = g_file_resolve_relative_path (root, arg);
+  
+  file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
+                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                 cancellable, error);
+  if (!file_info)
+    goto out;
+  
+  print_one_file (f, file_info);
+      
+  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+    {
+      if (opt_recursive)
+        {
+          if (!print_directory_recurse (f, -1, error))
+            goto out;
+        }
+      else if (!opt_dironly)
+        {
+          if (!print_directory_recurse (f, 1, error))
+            goto out;
+        }
+    }
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
 {
@@ -220,9 +260,9 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancel
   if (!ostree_repo_check (repo, error))
     goto out;
 
-  if (argc <= 2)
+  if (argc <= 1)
     {
-      ot_util_usage_error (context, "An COMMIT and at least one PATH argument are required", error);
+      ot_util_usage_error (context, "An COMMIT argument is required", error);
       goto out;
     }
   rev = argv[1];
@@ -230,35 +270,20 @@ ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancel
   if (!ostree_repo_read_commit (repo, rev, &root, cancellable, error))
     goto out;
 
-  for (i = 2; i < argc; i++)
+  if (argc > 2)
     {
-      g_clear_object (&f);
-      f = g_file_resolve_relative_path (root, argv[i]);
-
-      g_clear_object (&file_info);
-      file_info = g_file_query_info (f, OSTREE_GIO_FAST_QUERYINFO,
-                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                     cancellable, error);
-      if (!file_info)
-        goto out;
-      
-      print_one_file (f, file_info);
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+      for (i = 2; i < argc; i++)
         {
-          if (opt_recursive)
-            {
-              if (!print_directory_recurse (f, -1, error))
-                goto out;
-            }
-          else if (!opt_dironly)
-            {
-              if (!print_directory_recurse (f, 1, error))
-                goto out;
-            }
+          if (!print_one_argument (repo, root, argv[i], cancellable, error))
+            goto out;
         }
     }
- 
+  else
+    {
+      if (!print_one_argument (repo, root, "/", cancellable, error))
+        goto out;
+    }
+  
   ret = TRUE;
  out:
   if (context)

@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..34"
+echo "1..35"
 
 . $(dirname $0)/libtest.sh
 
@@ -240,4 +240,8 @@ rm -rf test2-checkout
 $OSTREE checkout test2 test2-checkout
 (cd test2-checkout && $OSTREE commit --link-checkout-speedup -b test2 -s "tmp")
 echo "ok commit with link speedup"
+
+cd ${test_tmpdir}
+$OSTREE ls test2
+echo "ok ls with no argument"
 
