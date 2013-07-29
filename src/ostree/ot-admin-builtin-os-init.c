@@ -34,14 +34,13 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_os_init (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *osname = NULL;
   gs_unref_object GFile *deploy_dir = NULL;
   gs_unref_object GFile *dir = NULL;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
   g_option_context_add_main_entries (context, options, NULL);
@@ -49,7 +48,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (admin_opts->sysroot, cancellable, error))
+  if (!ot_admin_ensure_initialized (sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)
@@ -60,7 +59,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
 
   osname = argv[1];
 
-  deploy_dir = ot_gfile_get_child_build_path (admin_opts->sysroot, "ostree", "deploy", osname, NULL);
+  deploy_dir = ot_gfile_get_child_build_path (sysroot, "ostree", "deploy", osname, NULL);
 
   /* Ensure core subdirectories of /var exist, since we need them for
    * dracut generation, and the host will want them too.  Note that at

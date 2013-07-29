@@ -47,13 +47,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
   const char *refspec;
   GOptionContext *context;
-  GFile *sysroot = admin_opts->sysroot;
   GKeyFile *origin = NULL;
   int current_bootversion;
   int new_bootversion;

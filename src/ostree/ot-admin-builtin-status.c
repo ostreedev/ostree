@@ -34,14 +34,13 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_status (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   int bootversion;
   gs_unref_object OtDeployment *booted_deployment = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
   guint i;
 
   context = g_option_context_new ("List deployments");
@@ -51,14 +50,14 @@ ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_list_deployments (admin_opts->sysroot, &bootversion, &deployments,
+  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  if (!ot_admin_find_booted_deployment (admin_opts->sysroot, deployments,
+  if (!ot_admin_find_booted_deployment (sysroot, deployments,
                                         &booted_deployment,
                                         cancellable, error))
     goto out;
@@ -71,7 +70,7 @@ ot_admin_builtin_status (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, 
     {
       int subbootversion;
 
-      if (!ot_admin_read_current_subbootversion (admin_opts->sysroot, bootversion,
+      if (!ot_admin_read_current_subbootversion (sysroot, bootversion,
                                                  &subbootversion,
                                                  cancellable, error))
         goto out;

@@ -37,7 +37,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -52,7 +52,6 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   gs_unref_object GFile *orig_etc_path = NULL;
   gs_unref_object GFile *new_etc_path = NULL;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
   int bootversion;
 
   context = g_option_context_new ("Diff current /etc configuration versus default");
@@ -62,16 +61,16 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  repo_path = g_file_resolve_relative_path (admin_opts->sysroot, "ostree/repo");
+  repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
 
-  if (!ot_admin_list_deployments (admin_opts->sysroot, &bootversion, &deployments,
+  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  if (!ot_admin_require_deployment_or_osname (admin_opts->sysroot, deployments,
+  if (!ot_admin_require_deployment_or_osname (sysroot, deployments,
                                               opt_osname, &deployment,
                                               cancellable, error))
     goto out;
@@ -86,7 +85,7 @@ ot_admin_builtin_diff (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GE
       goto out;
     }
 
-  deployment_dir = ot_admin_get_deployment_directory (admin_opts->sysroot, deployment);
+  deployment_dir = ot_admin_get_deployment_directory (sysroot, deployment);
 
   orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
   new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");

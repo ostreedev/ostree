@@ -34,11 +34,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_cleanup (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_cleanup (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("Delete untagged deployments and repository objects");
 
@@ -47,7 +46,7 @@ ot_admin_builtin_cleanup (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_cleanup (admin_opts->sysroot, cancellable, error))
+  if (!ot_admin_cleanup (sysroot, cancellable, error))
     goto out;
 
   ret = TRUE;

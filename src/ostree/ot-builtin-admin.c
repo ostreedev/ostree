@@ -34,7 +34,7 @@
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error);
+  gboolean (*fn) (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error);
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
@@ -57,7 +57,7 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *can
   const char *subcommand_name;
   OstreeAdminCommand *subcommand;
   int subcmd_argc;
-  OtAdminBuiltinOpts admin_opts;
+  gs_unref_object GFile *sysroot = NULL;
   char **subcmd_argv = NULL;
 
   if (argc > 1 && g_str_has_prefix (argv[1], "--sysroot="))
@@ -98,8 +98,8 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *can
 
   ostree_prep_builtin_argv (subcommand_name, argc-2, argv+2, &subcmd_argc, &subcmd_argv);
 
-  admin_opts.sysroot = g_file_new_for_path (opt_sysroot);
-  if (!subcommand->fn (subcmd_argc, subcmd_argv, &admin_opts, error))
+  sysroot = g_file_new_for_path (opt_sysroot);
+  if (!subcommand->fn (subcmd_argc, subcmd_argv, sysroot, cancellable, error))
     goto out;
  
   ret = TRUE;

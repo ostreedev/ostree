@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_init_fs (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_init_fs (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -42,7 +42,6 @@ ot_admin_builtin_init_fs (int argc, char **argv, OtAdminBuiltinOpts *admin_opts,
   gs_unref_object GFile *child = NULL;
   guint i;
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
-  GCancellable *cancellable = NULL;
 
   context = g_option_context_new ("PATH - Initialize a root filesystem");
   g_option_context_add_main_entries (context, options, NULL);

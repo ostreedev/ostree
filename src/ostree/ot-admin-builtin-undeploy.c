@@ -34,11 +34,9 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_undeploy (int argc, char **argv, OtAdminBuiltinOpts *admin_opts, GError **error)
+ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  __attribute__((unused)) GCancellable *cancellable = NULL;
-  GFile *sysroot = admin_opts->sysroot;
   GOptionContext *context;
   const char *deploy_index_str;
   int deploy_index;
