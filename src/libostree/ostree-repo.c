@@ -422,38 +422,16 @@ ostree_repo_get_parent (OstreeRepo  *self)
   return self->parent_repo;
 }
 
-/**
- * ostree_repo_get_file_object_path:
- * @self:
- * @checksum: SHA256 checksum string
- *
- * This function directly retrieves the path of loose objects; it is a
- * low level API as one cannot assume that all objects are loose.  Use
- * higher level API such as ostree_repo_load_file() if possible.
- *
- * Returns: (transfer full): A new file containing the direct path to a loose object
- */
 GFile *
-ostree_repo_get_file_object_path (OstreeRepo   *self,
-                                  const char   *checksum)
+_ostree_repo_get_file_object_path (OstreeRepo   *self,
+                                   const char   *checksum)
 {
   return ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
 
-/**
- * ostree_repo_get_archive_content_path:
- * @self:
- * @checksum: SHA256 checksum string
- *
- * This function directly retrieves the path of loose objects; it is a
- * low level API as one cannot assume that all objects are loose.  Use
- * higher level API such as ostree_repo_load_file() if possible.
- *
- * Returns: (transfer full): A new file containing the direct path to a loose object
- */
 GFile *
-ostree_repo_get_archive_content_path (OstreeRepo    *self,
-                                      const char    *checksum)
+_ostree_repo_get_archive_content_path (OstreeRepo    *self,
+                                       const char    *checksum)
 {
   gs_free char *path = NULL;
 
@@ -759,7 +737,7 @@ stage_object (OstreeRepo         *self,
             {
               gs_unref_object GFile *archive_content_dest = NULL;
 
-              archive_content_dest = ostree_repo_get_archive_content_path (self, actual_checksum);
+              archive_content_dest = _ostree_repo_get_archive_content_path (self, actual_checksum);
                                                                    
               if (!commit_loose_object_impl (self, raw_temp_file, archive_content_dest, TRUE,
                                              cancellable, error))
@@ -2129,7 +2107,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                 gs_unref_object GFile *archive_content_path = NULL;
                 gs_unref_object GFileInfo *content_info = NULL;
 
-                archive_content_path = ostree_repo_get_archive_content_path (self, checksum);
+                archive_content_path = _ostree_repo_get_archive_content_path (self, checksum);
                 content_info = g_file_query_info (archive_content_path, OSTREE_GIO_FAST_QUERYINFO,
                                                   G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                   cancellable, error);

@@ -69,12 +69,6 @@ GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
                                            const char   *checksum,
                                            OstreeObjectType type);
 
-GFile *       ostree_repo_get_archive_content_path (OstreeRepo    *self,
-                                                    const char    *checksum);
-
-GFile *       ostree_repo_get_file_object_path (OstreeRepo   *self,
-                                                const char   *checksum);
-
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean        enable_commit_hardlink_scan,
                                                gboolean       *out_transaction_resume,

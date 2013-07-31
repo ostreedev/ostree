@@ -65,6 +65,14 @@ GFile *
 _ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
                                                  const char       *checksum);
 
+GFile *
+_ostree_repo_get_archive_content_path (OstreeRepo    *self,
+                                       const char    *checksum);
+
+GFile *
+_ostree_repo_get_file_object_path (OstreeRepo   *self,
+                                   const char   *checksum);
+
 gboolean
 _ostree_repo_stage_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,

@@ -189,7 +189,7 @@ find_loose_for_checkout (OstreeRepo             *self,
           path = ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
           break;
         case OSTREE_REPO_MODE_ARCHIVE:
-          path = ostree_repo_get_archive_content_path (self, checksum);
+          path = _ostree_repo_get_archive_content_path (self, checksum);
           break;
         case OSTREE_REPO_MODE_ARCHIVE_Z2:
           {

@@ -24,7 +24,7 @@
 
 #include "otutil.h"
 #include "ostree-repo-file-enumerator.h"
-#include "ostree-repo.h"
+#include "ostree-repo-private.h"
 
 static void ostree_repo_file_file_iface_init (GFileIface *iface);
 
@@ -365,7 +365,7 @@ ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
 GFile *
 ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
 {
-  return ostree_repo_get_file_object_path (self->repo, ostree_repo_file_get_checksum (self));
+  return _ostree_repo_get_file_object_path (self->repo, ostree_repo_file_get_checksum (self));
 }
 
 /**
