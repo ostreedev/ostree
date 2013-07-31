@@ -29,6 +29,12 @@
 
 * Tests of corrupted repositories, more error conditions
 
+* Structured output from commandline?  ostree --output={table,gvariant} ?
+
+* Better output on a tty - progress bars
+
+* Improve library
+
 * ostree admin install: Pull in host data, such as uids and /etc/fstab
 
 * ostree admin undeploy <osname> <tree>
