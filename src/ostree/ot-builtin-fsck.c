@@ -155,9 +155,8 @@ load_and_fsck_one_object (OstreeRepo            *repo,
                                                tmp_checksum);
           if (opt_delete)
             {
-              gs_unref_object GFile *object_path = ostree_repo_get_object_path (repo, checksum, objtype);
               g_printerr ("%s\n", msg);
-              (void) gs_file_unlink (object_path, cancellable, NULL);
+              (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
               *out_found_corruption = TRUE;
             }
           else

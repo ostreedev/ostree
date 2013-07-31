@@ -73,6 +73,11 @@ GFile *
 _ostree_repo_get_file_object_path (OstreeRepo   *self,
                                    const char   *checksum);
 
+GFile *
+_ostree_repo_get_object_path (OstreeRepo   *self,
+                              const char   *checksum,
+                              OstreeObjectType type);
+
 gboolean
 _ostree_repo_stage_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,

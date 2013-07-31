@@ -65,10 +65,6 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GKeyFile   *new_config,
                                         GError    **error);
 
-GFile *       ostree_repo_get_object_path (OstreeRepo   *self,
-                                           const char   *checksum,
-                                           OstreeObjectType type);
-
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean        enable_commit_hardlink_scan,
                                                gboolean       *out_transaction_resume,
@@ -203,6 +199,19 @@ gboolean ostree_repo_load_file (OstreeRepo         *self,
                                 GVariant          **out_xattrs,
                                 GCancellable       *cancellable,
                                 GError            **error);
+
+gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
+                                                     OstreeObjectType      objtype,
+                                                     const char           *sha256, 
+                                                     gsize                *out_size,
+                                                     GCancellable         *cancellable,
+                                                     GError              **error);
+
+gboolean      ostree_repo_delete_object (OstreeRepo           *self,
+                                         OstreeObjectType      objtype,
+                                         const char           *sha256, 
+                                         GCancellable         *cancellable,
+                                         GError              **error);
 
 typedef enum {
   OSTREE_REPO_COMMIT_FILTER_ALLOW,

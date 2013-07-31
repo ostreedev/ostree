@@ -100,17 +100,13 @@ object_set_total_size (OstreeRepo    *repo,
       GVariant *v = key;
       const char *csum;
       OstreeObjectType objtype;
-      gs_unref_object GFile *objpath = NULL;
-      gs_unref_object GFileInfo *finfo = NULL;
+      guint64 size;
 
       ostree_object_name_deserialize (v, &csum, &objtype);
-      objpath = ostree_repo_get_object_path (repo, csum, objtype);
-      finfo = g_file_query_info (objpath, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
-      if (!finfo)
+      if (!ostree_repo_query_object_storage_size (repo, objtype, csum, &size,
+                                                  cancellable, error))
         goto out;
-      
-      *out_total += g_file_info_get_size (finfo);
+      *out_total += size;
     }
 
   ret = TRUE;

@@ -22,7 +22,7 @@
 
 #include "config.h"
 
-#include "ostree.h"
+#include "ostree-repo-private.h"
 #include "otutil.h"
 
 typedef struct {
@@ -49,7 +49,7 @@ maybe_prune_loose_object (OtPruneData        *data,
 
   key = ostree_object_name_serialize (checksum, objtype);
 
-  objf = ostree_repo_get_object_path (data->repo, checksum, objtype);
+  objf = _ostree_repo_get_object_path (data->repo, checksum, objtype);
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {

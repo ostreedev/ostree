@@ -426,7 +426,7 @@ GFile *
 _ostree_repo_get_file_object_path (OstreeRepo   *self,
                                    const char   *checksum)
 {
-  return ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+  return _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
 
 GFile *
@@ -493,7 +493,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
   gboolean ret = FALSE;
   gs_unref_object GFile *dest_file = NULL;
 
-  dest_file = ostree_repo_get_object_path (self, checksum, objtype);
+  dest_file = _ostree_repo_get_object_path (self, checksum, objtype);
 
   if (!commit_loose_object_impl (self, tempfile_path, dest_file, is_regular,
                                  cancellable, error))
@@ -1276,22 +1276,10 @@ _ostree_repo_stage_directory_meta (OstreeRepo   *self,
                                      dirmeta, out_csum, cancellable, error);
 }
 
-/**
- * ostree_repo_get_object_path:
- * @self:
- * @checksum: SHA256 checksum string
- * @type: Object type
- *
- * This function directly retrieves the path of loose objects; it is a
- * low level API as one cannot assume that all objects are loose.  Use
- * higher level API such as ostree_repo_load_file() if possible.
- *
- * Returns: (transfer full): A new file containing the direct path to a loose object
- */
 GFile *
-ostree_repo_get_object_path (OstreeRepo       *self,
-                             const char       *checksum,
-                             OstreeObjectType  type)
+_ostree_repo_get_object_path (OstreeRepo       *self,
+                              const char       *checksum,
+                              OstreeObjectType  type)
 {
   char *relpath;
   GFile *ret;
@@ -2198,7 +2186,7 @@ repo_find_object (OstreeRepo           *self,
   gs_unref_object GFile *object_path = NULL;
   gs_unref_object GFile *ret_stored_path = NULL;
 
-  object_path = ostree_repo_get_object_path (self, checksum, objtype);
+  object_path = _ostree_repo_get_object_path (self, checksum, objtype);
   
   if (lstat (gs_file_get_path_cached (object_path), &stbuf) == 0)
     {
@@ -2245,6 +2233,63 @@ ostree_repo_has_object (OstreeRepo           *self,
   ret = TRUE;
   if (out_have_object)
     *out_have_object = ret_have_object;
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_delete_object:
+ * @self:
+ * @objtype: Object type
+ * @sha256: Checksum
+ * @cancellable:
+ * @error:
+ *
+ * Remove the object of type @objtype with checksum @sha256
+ * from the repository.  An error of type %G_IO_ERROR_NOT_FOUND
+ * is thrown if the object does not exist.
+ */
+gboolean
+ostree_repo_delete_object (OstreeRepo           *self,
+                           OstreeObjectType      objtype,
+                           const char           *sha256, 
+                           GCancellable         *cancellable,
+                           GError              **error)
+{
+  gs_unref_object GFile *objpath = _ostree_repo_get_object_path (self, sha256, objtype);
+  return gs_file_unlink (objpath, cancellable, error);
+}
+
+/**
+ * ostree_repo_query_object_storage_size:
+ * @self:
+ * @objtype: Object type
+ * @sha256: Checksum
+ * @out_size: (out): Size in bytes object occupies physically
+ * @cancellable:
+ * @error:
+ *
+ * Return the size in bytes of object with checksum @sha256, after any
+ * compression has been applied.
+ */
+gboolean
+ostree_repo_query_object_storage_size (OstreeRepo           *self,
+                                       OstreeObjectType      objtype,
+                                       const char           *sha256, 
+                                       gsize                *out_size,
+                                       GCancellable         *cancellable,
+                                       GError              **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *objpath = _ostree_repo_get_object_path (self, sha256, objtype);
+  gs_unref_object GFileInfo *finfo = g_file_query_info (objpath, OSTREE_GIO_FAST_QUERYINFO,
+                                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                        cancellable, error);
+  if (!finfo)
+    goto out;
+      
+  *out_size = g_file_info_get_size (finfo);
+  ret = TRUE;
  out:
   return ret;
 }
