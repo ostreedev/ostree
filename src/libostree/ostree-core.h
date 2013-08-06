@@ -269,14 +269,6 @@ gboolean ostree_create_temp_file_from_input (GFile            *dir,
                                              GCancellable     *cancellable,
                                              GError          **error);
 
-gboolean ostree_create_temp_regular_file (GFile            *dir,
-                                          const char       *prefix,
-                                          const char       *suffix,
-                                          GFile           **out_file,
-                                          GOutputStream   **out_stream,
-                                          GCancellable     *cancellable,
-                                          GError          **error);
-
 gboolean ostree_create_temp_dir (GFile            *dir,
                                  const char       *prefix,
                                  const char       *suffix,

@@ -387,18 +387,6 @@ ostree_repo_get_path (OstreeRepo  *self)
   return self->repodir;
 }
 
-/**
- * ostree_repo_get_tmpdir:
- * @self:
- *
- * Returns: (transfer none): Path to temporary directory
- */
-GFile *
-ostree_repo_get_tmpdir (OstreeRepo  *self)
-{
-  return self->tmp_dir;
-}
-
 OstreeRepoMode
 ostree_repo_get_mode (OstreeRepo  *self)
 {
@@ -584,10 +572,9 @@ stage_object (OstreeRepo         *self,
           gs_unref_object GConverter *zlib_compressor = NULL;
           gs_unref_object GOutputStream *compressed_out_stream = NULL;
 
-          if (!ostree_create_temp_regular_file (self->tmp_dir,
-                                                ostree_object_type_to_string (objtype), NULL,
-                                                &temp_file, &temp_out,
-                                                cancellable, error))
+          if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                                       &temp_file, &temp_out,
+                                       cancellable, error))
             goto out;
           temp_file_is_regular = TRUE;
 
@@ -633,10 +620,9 @@ stage_object (OstreeRepo         *self,
               guint32 src_mode;
               guint32 target_mode;
 
-              if (!ostree_create_temp_regular_file (self->tmp_dir,
-                                                    ostree_object_type_to_string (objtype), NULL,
-                                                    &raw_temp_file, &content_out,
-                                                    cancellable, error))
+              if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                                           &raw_temp_file, &content_out,
+                                           cancellable, error))
                 goto out;
 
               /* Don't make setuid files in the repository; all we want to preserve

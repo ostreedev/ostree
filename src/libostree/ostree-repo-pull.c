@@ -68,6 +68,7 @@
 #include "config.h"
 
 #include "ostree.h"
+#include "ostree-repo-private.h"
 #include "ostree-fetcher.h"
 #include "otutil.h"
 
@@ -1225,7 +1226,7 @@ ostree_repo_pull (OstreeRepo               *repo,
   if (tls_permissive)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
-  pull_data->fetcher = ostree_fetcher_new (ostree_repo_get_tmpdir (pull_data->repo),
+  pull_data->fetcher = ostree_fetcher_new (pull_data->repo->tmp_dir,
                                            fetcher_flags);
 
   if (!pull_data->base_uri)

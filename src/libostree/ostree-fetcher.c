@@ -228,11 +228,9 @@ on_request_sent (GObject        *object,
   pending->content_length = soup_request_get_content_length (pending->request);
   
   /* TODO - make this async */
-  if (!ostree_create_temp_regular_file (pending->self->tmpdir,
-                                        NULL, NULL,
-                                        &pending->tmpfile,
-                                        &pending->out_stream,
-                                        NULL, &local_error))
+  if (!gs_file_open_in_tmpdir (pending->self->tmpdir, 0644,
+                               &pending->tmpfile, &pending->out_stream,
+                               NULL, &local_error))
     {
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);

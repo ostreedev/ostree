@@ -53,8 +53,6 @@ gboolean       ostree_repo_mode_from_string (const char      *mode,
 
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
-GFile *       ostree_repo_get_tmpdir (OstreeRepo  *self);
-
 GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
 
 GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);

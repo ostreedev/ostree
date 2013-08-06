@@ -1365,37 +1365,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
 }
 
 gboolean
-ostree_create_temp_regular_file (GFile            *dir,
-                                 const char       *prefix,
-                                 const char       *suffix,
-                                 GFile           **out_file,
-                                 GOutputStream   **out_stream,
-                                 GCancellable     *cancellable,
-                                 GError          **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GFile *ret_file = NULL;
-  gs_unref_object GOutputStream *ret_stream = NULL;
-
-  if (!ostree_create_temp_file_from_input (dir, prefix, suffix, NULL, NULL, NULL,
-                                           &ret_file, cancellable, error))
-    goto out;
-  
-  if (out_stream)
-    {
-      ret_stream = (GOutputStream*)g_file_append_to (ret_file, 0, cancellable, error);
-      if (ret_stream == NULL)
-        goto out;
-    }
-  
-  ret = TRUE;
-  ot_transfer_out_value(out_file, &ret_file);
-  ot_transfer_out_value(out_stream, &ret_stream);
- out:
-  return ret;
-}
-
-gboolean
 ostree_create_temp_dir (GFile            *dir,
                         const char       *prefix,
                         const char       *suffix,
