@@ -123,6 +123,16 @@ AC_ARG_WITH(dracut,
               [with_dracut=no])
 AM_CONDITIONAL(BUILDOPT_DRACUT, test x$with_dracut = xyes)
 
+AS_IF([test "x$with_dracut" = "xyes"], [
+  AC_ARG_WITH([systemdsystemunitdir],
+              AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
+              [],
+              [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+  AS_IF([test "x$with_systemdsystemunitdir" != "xno"], [
+    AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+  ])
+])
+
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
@@ -140,5 +150,8 @@ echo "
     libsoup (retrieve remote HTTP repositories): $with_soup
     libarchive (parse tar files directly): $with_libarchive
     documentation: $enable_documentation
-    dracut: $with_dracut
-"
+    dracut: $with_dracut"
+if test "x$with_dracut" = "xyes" ; then
+    echo "    systemd unit dir: $with_systemdsystemunitdir"
+fi
+echo ""

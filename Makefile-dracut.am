@@ -23,13 +23,7 @@ dracutmoddir = $(prefix)/lib/dracut/modules.d/98ostree
 dracutmod_SCRIPTS = src/dracut/module-setup.sh
 dracutmod_DATA = src/dracut/ostree-prepare-root.service
 
-systemdunitdir = $(prefix)/lib/systemd/system
-systemdunit_DATA = src/dracut/ostree-remount.service
-
-INSTALL_DATA_HOOKS += install-remount-service-data-hook
-install-remount-service-data-hook:
-	mkdir -p $(DESTDIR)$(systemdunitdir)/local-fs.target.wants/
-	ln -s ../ostree-remount.service $(DESTDIR)$(systemdunitdir)/local-fs.target.wants/ostree-remount.service
+systemdsystemunit_DATA = src/dracut/ostree-remount.service
 
 dracutconfdir = $(sysconfdir)/dracut.conf.d
 dracutconf_DATA = src/dracut/ostree.conf
