@@ -21,8 +21,8 @@ include Makefile-libostree-defines.am
 
 lib_LTLIBRARIES += libostree-1.la
 
-libostreeheadersdir = $(includedir)/ostree-1
-libostreeheaders_DATA = $(libostree_public_headers)
+libostreeincludedir = $(includedir)/ostree-1
+libostreeinclude_HEADERS = $(libostree_public_headers)
 
 libostree_1_la_SOURCES = \
 	src/libostree/ostree-core.c \
@@ -79,10 +79,8 @@ OSTree_1_0_gir_FILES = $(libostreeheaders_DATA) $(filter-out %-private.h,$(libos
 INTROSPECTION_GIRS += OSTree-1.0.gir
 gir_DATA += OSTree-1.0.gir
 typelib_DATA += OSTree-1.0.typelib
+
+CLEANFILES += $(gir_DATA) $(typelib_DATA)
 endif
 
 pkgconfig_DATA += src/libostree/ostree-1.pc
-
-INSTALL_DATA_HOOKS += install-libostree-data-hook
-install-libostree-data-hook: 
-	rm -f $(DESTDIR)$(libdir)/libostree-1.la
