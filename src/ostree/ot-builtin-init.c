@@ -31,7 +31,7 @@ static char *opt_mode = NULL;
 
 static GOptionEntry options[] = {
   { "archive", 0, 0, G_OPTION_ARG_NONE, &opt_archive, "Initialize repository as archive", NULL },
-  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive, archive-z)", NULL },
+  { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive-z2)", NULL },
   { NULL }
 };
 
