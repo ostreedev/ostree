@@ -55,6 +55,19 @@ ostree_usage (char **argv,
   return (is_error ? 1 : 0);
 }
 
+static void
+message_handler (const gchar *log_domain,
+                 GLogLevelFlags log_level,
+                 const gchar *message,
+                 gpointer user_data)
+{
+  /* Make this look like normal console output */
+  if (log_level & G_LOG_LEVEL_DEBUG)
+    g_printerr ("OT: %s\n", message);
+  else
+    g_printerr ("%s: %s\n", g_get_prgname (), message);
+}
+
 int
 ostree_run (int    argc,
             char **argv,
@@ -78,6 +91,8 @@ ostree_run (int    argc,
   g_type_init ();
 
   g_set_prgname (argv[0]);
+
+  g_log_set_handler (NULL, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
 
   if (argc < 2)
     return ostree_usage (argv, commands, TRUE);
@@ -122,6 +137,11 @@ ostree_run (int    argc,
               repo = argv[in] + 7;
               skip = TRUE;
             }
+          else if (g_str_equal (argv[in], "--verbose"))
+            {
+              g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
+              skip = TRUE;
+            }
           else if (cmd == NULL && g_str_equal (argv[in], "--version"))
             {
               g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
@@ -146,7 +166,10 @@ ostree_run (int    argc,
                 case 'h':
                   want_help = TRUE;
                   break;
-
+                case 'v':
+                  g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
+                  skip = TRUE;
+                  break;
                 default:
                   if (cmd == NULL)
                     {
@@ -201,11 +224,18 @@ ostree_run (int    argc,
     {
       if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
           && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
-        repo = ".";
+        {
+          g_debug ("Assuming repo is in current directory");
+          repo = ".";
+        }
       else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
-        repo = host_repo_path;
+        {
+          g_debug ("Assuming repo is at: %s", host_repo_path);
+          repo = host_repo_path;
+        }
       else
         {
+          g_debug ("Could not automatically determine --repo");
           g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "Command requires a --repo argument");
           ostree_usage (argv, commands, TRUE);
@@ -244,7 +274,7 @@ ostree_main (int    argc,
 
   if (error)
     {
-      g_printerr ("%s\n", error->message);
+      g_message ("%s", error->message);
       g_error_free (error);
     }
 
