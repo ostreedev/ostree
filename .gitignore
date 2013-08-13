@@ -35,3 +35,10 @@ m4
 po
 ABOUT-NLS
 _build
+
+/doc/ostree.1
+
+/ostree
+/OSTree-1.0.gir
+
+/src/libostree/ostree-1.pc
