@@ -1625,6 +1625,8 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFileInfo *child_info = NULL;
 
+  g_debug ("Examining: %s", gs_file_get_path_cached (dir));
+
   /* We can only reuse checksums directly if there's no modifier */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
     repo_dir = (OstreeRepoFile*)g_object_ref (dir);
@@ -1658,6 +1660,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
+          g_debug ("Adding: %s", gs_file_get_path_cached (dir));
           if (!(modifier && modifier->skip_xattrs))
             {
               if (!ostree_get_xattrs_for_file (dir, &xattrs, cancellable, error))
@@ -1719,6 +1722,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                 }
               else if (repo_dir)
                 {
+                  g_debug ("Adding: %s", gs_file_get_path_cached (child));
                   if (!ostree_mutable_tree_replace_file (mtree, name, 
                                                          ostree_repo_file_get_checksum ((OstreeRepoFile*) child),
                                                          error))
@@ -1734,6 +1738,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                   gs_free guchar *child_file_csum = NULL;
                   gs_free char *tmp_checksum = NULL;
 
+                  g_debug ("Adding: %s", gs_file_get_path_cached (child));
                   loose_checksum = devino_cache_lookup (self, child_info);
 
                   if (loose_checksum)
