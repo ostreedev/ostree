@@ -158,8 +158,10 @@ canonicalize_xattrs (char *xattr_string, size_t len)
     }
 
   xattrs = g_slist_sort (xattrs, (GCompareFunc) strcmp);
-  for (iter = xattrs; iter; iter = iter->next)
+  for (iter = xattrs; iter; iter = iter->next) {
     g_string_append (result, iter->data);
+    g_string_append_c (result, '\0');
+  }
 
   g_slist_free (xattrs);
   return g_string_free (result, FALSE);
