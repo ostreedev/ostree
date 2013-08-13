@@ -54,19 +54,95 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *can
 {
   gboolean ret = FALSE;
   const char *opt_sysroot = "/";
-  const char *subcommand_name;
+  const char *subcommand_name = NULL;
   OstreeAdminCommand *subcommand;
-  int subcmd_argc;
   gs_unref_object GFile *sysroot = NULL;
-  char **subcmd_argv = NULL;
+  gboolean want_help = FALSE;
+  int in, out, i;
+  gboolean skip;
 
-  if (argc > 1 && g_str_has_prefix (argv[1], "--sysroot="))
+  /*
+   * Parse the global options. We rearrange the options as
+   * necessary, in order to pass relevant options through
+   * to the commands, but also have them take effect globally.
+   */
+
+  for (in = 1, out = 1; in < argc; in++, out++)
     {
-      opt_sysroot = argv[1] + strlen ("--sysroot=");
-      argc--;
-      argv++;
+      /* The non-option is the command, take it out of the arguments */
+      if (argv[in][0] != '-')
+        {
+          skip = (subcommand_name == NULL);
+          if (subcommand_name == NULL)
+            subcommand_name = argv[in];
+        }
+
+      /* The global long options */
+      else if (argv[in][1] == '-')
+        {
+          skip = FALSE;
+
+          if (g_str_equal (argv[in], "--"))
+            {
+              break;
+            }
+          else if (g_str_equal (argv[in], "--help"))
+            {
+              want_help = TRUE;
+            }
+          else if (g_str_equal (argv[in], "--sysroot") && in + 1 < argc)
+            {
+              opt_sysroot = argv[in + 1];
+              skip = TRUE;
+              in++;
+            }
+          else if (g_str_has_prefix (argv[in], "--sysroot="))
+            {
+              opt_sysroot = argv[in] + 10;
+              skip = TRUE;
+            }
+          else if (subcommand_name == NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown or invalid admin option: %s", argv[in]);
+              goto out;
+            }
+        }
+
+      /* The global short options */
+      else
+        {
+          skip = FALSE;
+          for (i = 1; argv[in][i] != '\0'; i++)
+            {
+              switch (argv[in][i])
+              {
+                case 'h':
+                  want_help = TRUE;
+                  break;
+
+                default:
+                  if (subcommand_name == NULL)
+                    {
+                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Unknown or invalid admin option: %s", argv[in]);
+                      goto out;
+                    }
+                  break;
+              }
+            }
+        }
+
+      /* Skipping this argument? */
+      if (skip)
+        out--;
+      else
+        argv[out] = argv[in];
     }
-  else if (argc <= 1 || g_str_has_prefix (argv[1], "--help"))
+
+  argc = out;
+
+  if (subcommand_name == NULL || want_help)
     {
       subcommand = admin_subcommands;
       g_print ("usage: ostree admin --sysroot=PATH COMMAND [options]\n");
@@ -76,10 +152,8 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *can
           g_print ("  %s\n", subcommand->name);
           subcommand++;
         }
-      return argc <= 1 ? 1 : 0;
+      return subcommand_name == NULL ? 1 : 0;
     }
-
-  subcommand_name = argv[1];
 
   subcommand = admin_subcommands;
   while (subcommand->name)
@@ -92,14 +166,12 @@ ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *can
   if (!subcommand->name)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Unknown command '%s'", subcommand_name);
+                   "Unknown admin command '%s'", subcommand_name);
       goto out;
     }
 
-  ostree_prep_builtin_argv (subcommand_name, argc-2, argv+2, &subcmd_argc, &subcmd_argv);
-
   sysroot = g_file_new_for_path (opt_sysroot);
-  if (!subcommand->fn (subcmd_argc, subcmd_argv, sysroot, cancellable, error))
+  if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
     goto out;
  
   ret = TRUE;

@@ -55,26 +55,6 @@ ostree_usage (char **argv,
   return (is_error ? 1 : 0);
 }
 
-void
-ostree_prep_builtin_argv (const char  *builtin,
-                          int          argc,
-                          char       **argv,
-                          int         *out_argc,
-                          char      ***out_argv)
-{
-  int i;
-  char **cmd_argv;
-  
-  cmd_argv = g_new0 (char *, argc + 2);
-  
-  cmd_argv[0] = (char*)builtin;
-  for (i = 0; i < argc; i++)
-    cmd_argv[i+1] = argv[i];
-  cmd_argv[i+1] = NULL;
-  *out_argc = argc+1;
-  *out_argv = cmd_argv;
-}
-
 int
 ostree_run (int    argc,
             char **argv,
@@ -84,14 +64,13 @@ ostree_run (int    argc,
   OstreeCommand *command;
   GError *error = NULL;
   GCancellable *cancellable = NULL;
-  int cmd_argc;
-  char **cmd_argv = NULL;
-  gboolean have_repo_arg;
   const char *cmd = NULL;
   const char *repo = NULL;
   const char *host_repo_path = "/ostree/repo";
   GFile *repo_file = NULL;
-  int arg_off;
+  gboolean want_help = FALSE;
+  gboolean skip;
+  int in, out, i;
 
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
@@ -103,23 +82,101 @@ ostree_run (int    argc,
   if (argc < 2)
     return ostree_usage (argv, commands, TRUE);
 
-  if (g_str_has_prefix (argv[1], "--version"))
+  /*
+   * Parse the global options. We rearrange the options as
+   * necessary, in order to pass relevant options through
+   * to the commands, but also have them take effect globally.
+   */
+
+  for (in = 1, out = 1; in < argc; in++, out++)
     {
-      g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
-      return 0;
+      /* The non-option is the command, take it out of the arguments */
+      if (argv[in][0] != '-')
+        {
+          skip = (cmd == NULL);
+          if (cmd == NULL)
+              cmd = argv[in];
+        }
+
+      /* The global long options */
+      else if (argv[in][1] == '-')
+        {
+          skip = FALSE;
+
+          if (g_str_equal (argv[in], "--"))
+            {
+              break;
+            }
+          else if (g_str_equal (argv[in], "--help"))
+            {
+              want_help = TRUE;
+            }
+          else if (g_str_equal (argv[in], "--repo") && in + 1 < argc)
+            {
+              repo = argv[in + 1];
+              skip = TRUE;
+              in++;
+            }
+          else if (g_str_has_prefix (argv[in], "--repo="))
+            {
+              repo = argv[in] + 7;
+              skip = TRUE;
+            }
+          else if (cmd == NULL && g_str_equal (argv[in], "--version"))
+            {
+              g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
+              return 0;
+            }
+          else if (cmd == NULL)
+            {
+              g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown or invalid global option: %s", argv[in]);
+              goto out;
+            }
+        }
+
+      /* The global short options */
+      else
+        {
+          skip = FALSE;
+          for (i = 1; argv[in][i] != '\0'; i++)
+            {
+              switch (argv[in][i])
+              {
+                case 'h':
+                  want_help = TRUE;
+                  break;
+
+                default:
+                  if (cmd == NULL)
+                    {
+                      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Unknown or invalid global option: %s", argv[in]);
+                      goto out;
+                    }
+                  break;
+              }
+            }
+        }
+
+      /* Skipping this argument? */
+      if (skip)
+        out--;
+      else
+        argv[out] = argv[in];
     }
 
-  have_repo_arg = g_str_has_prefix (argv[1], "--repo=");
+  argc = out;
 
-  if (!have_repo_arg)
+  if (cmd == NULL)
     {
-      arg_off = 2;
-      cmd = argv[arg_off-1];
-    }
-  else
-    {
-      arg_off = 3;
-      cmd = argv[arg_off-1];
+      if (!want_help)
+        {
+          g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "No command specified");
+        }
+      ostree_usage (argv, commands, TRUE);
+      goto out;
     }
 
   command = commands;
@@ -139,12 +196,11 @@ ostree_run (int    argc,
 
   g_set_prgname (g_strdup_printf ("ostree %s", cmd));
 
-  if (!(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+  if (repo == NULL && !want_help &&
+      !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      if (have_repo_arg)
-        repo = argv[1] + strlen ("--repo=");
-      else if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
-               && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
+      if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
+          && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
         repo = ".";
       else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
         repo = host_repo_path;
@@ -160,13 +216,10 @@ ostree_run (int    argc,
   if (repo)
     repo_file = g_file_new_for_path (repo);
   
-  ostree_prep_builtin_argv (cmd, argc-arg_off, argv+arg_off, &cmd_argc, &cmd_argv);
-
-  if (!command->fn (cmd_argc, cmd_argv, repo_file, cancellable, &error))
+  if (!command->fn (argc, argv, repo_file, cancellable, &error))
     goto out;
 
  out:
-  g_free (cmd_argv);
   g_clear_object (&repo_file);
   if (error)
     {

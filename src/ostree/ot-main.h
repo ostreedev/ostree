@@ -35,13 +35,6 @@ typedef struct {
   int flags; /* OstreeBuiltinFlags */
 } OstreeCommand;
 
-void
-ostree_prep_builtin_argv (const char  *builtin,
-                          int          argc,
-                          char       **argv,
-                          int         *out_argc,
-                          char      ***out_argv);
-
 int ostree_main (int    argc, char **argv, OstreeCommand  *commands);
 
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
