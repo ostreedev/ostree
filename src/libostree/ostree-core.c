@@ -187,6 +187,7 @@ read_xattr_name_array (const char *path,
       if (bytes_read < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "lgetxattr (%s, %s) failed: ", path, p);
           goto out;
         }
       if (bytes_read == 0)
@@ -196,6 +197,7 @@ read_xattr_name_array (const char *path,
       if (lgetxattr (path, p, buf, bytes_read) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "lgetxattr (%s, %s) failed: ", path, p);
           g_free (buf);
           goto out;
         }
@@ -240,6 +242,7 @@ ostree_get_xattrs_for_file (GFile         *f,
       if (errno != ENOTSUP)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "llistxattr (%s) failed: ", path);
           goto out;
         }
     }
@@ -249,6 +252,7 @@ ostree_get_xattrs_for_file (GFile         *f,
       if (llistxattr (path, xattr_names, bytes_read) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "llistxattr (%s) failed: ", path);
           goto out;
         }
       xattr_names_canonical = canonicalize_xattrs (xattr_names, bytes_read);
@@ -865,6 +869,7 @@ ostree_set_xattrs (GFile  *f,
       if (loop_err)
         {
           ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "lsetxattr (%s, %s) failed: ", path, name);
           goto out;
         }
     }
