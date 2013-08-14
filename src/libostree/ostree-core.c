@@ -972,9 +972,17 @@ ostree_object_name_deserialize (GVariant         *variant,
   *out_objtype = (OstreeObjectType)objtype_u32;
 }
 
-static void
-checksum_to_bytes (const char *checksum,
-                   guchar     *buf)
+/**
+ * ostree_checksum_inplace_to_bytes:
+ * @checksum: a SHA256 string
+ * @buf: Output buffer with at least 32 bytes of space
+ *
+ * Convert @checksum from a string to binary in-place, without
+ * allocating memory.  Use this function in hot code paths.
+ */
+void
+ostree_checksum_inplace_to_bytes (const char *checksum,
+                                  guchar     *buf)
 {
   guint i;
   guint j;
@@ -1000,7 +1008,7 @@ guchar *
 ostree_checksum_to_bytes (const char *checksum)
 {
   guchar *ret = g_malloc (32);
-  checksum_to_bytes (checksum, ret);
+  ostree_checksum_inplace_to_bytes (checksum, ret);
   return ret;
 }
 
@@ -1008,7 +1016,7 @@ GVariant *
 ostree_checksum_to_bytes_v (const char *checksum)
 {
   guchar result[32];
-  checksum_to_bytes (checksum, result);
+  ostree_checksum_inplace_to_bytes (checksum, result);
   return ot_gvariant_new_bytearray ((guchar*)result, 32);
 }
 
