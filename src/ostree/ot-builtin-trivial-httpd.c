@@ -29,6 +29,7 @@
 static char *opt_port_file = NULL;
 static gboolean opt_daemonize;
 static gboolean opt_autoexit;
+static gboolean opt_force_ranges;
 
 typedef struct {
   GFile *root;
@@ -39,6 +40,7 @@ static GOptionEntry options[] = {
   { "daemonize", 'd', 0, G_OPTION_ARG_NONE, &opt_daemonize, "Fork into background when ready", NULL },
   { "autoexit", 0, 0, G_OPTION_ARG_NONE, &opt_autoexit, "Automatically exit when directory is deleted", NULL },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH", "PATH" },
+  { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { NULL }
 };
 
@@ -199,6 +201,10 @@ do_get (OtTrivialHttpd  *self,
         {
           GMappedFile *mapping;
           SoupBuffer *buffer;
+          gsize buffer_length, file_size;
+          SoupRange *ranges;
+          int ranges_length;
+          gboolean have_ranges;
 
           mapping = g_mapped_file_new (safepath, FALSE, NULL);
           if (!mapping)
@@ -207,8 +213,17 @@ do_get (OtTrivialHttpd  *self,
               goto out;
             }
 
+          file_size = g_mapped_file_get_length (mapping);
+          have_ranges = soup_message_headers_get_ranges(msg->request_headers, file_size, &ranges, &ranges_length);
+          if (opt_force_ranges && !have_ranges)
+            buffer_length = file_size/2;
+          else
+            buffer_length = file_size;
+
+          if (have_ranges)
+            soup_message_headers_free_ranges (msg->request_headers, ranges);
           buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
-                                               g_mapped_file_get_length (mapping),
+                                               buffer_length,
                                                mapping, (GDestroyNotify)g_mapped_file_unref);
           soup_message_body_append_buffer (msg->response_body, buffer);
           soup_buffer_free (buffer);
