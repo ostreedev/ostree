@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..36"
+echo "1..37"
 
 . $(dirname $0)/libtest.sh
 
@@ -248,3 +248,10 @@ echo "ok ls with no argument"
 cd ${test_tmpdir}
 $OSTREE show test2
 echo "ok show with non-checksum"
+
+cd ${test_tmpdir}
+checksum=$($OSTREE commit -b test4 -s "Third commit")
+$OSTREE show test4 > show-output
+assert_file_has_content show-output "Third commit"
+assert_file_has_content show-output "commit $checksum"
+echo "ok show full output"

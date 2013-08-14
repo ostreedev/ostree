@@ -23,37 +23,22 @@
 #include "config.h"
 
 #include "ot-builtins.h"
+#include "ot-dump.h"
 #include "ostree.h"
 #include "otutil.h"
 
 static gboolean opt_print_related;
 static char* opt_print_variant_type;
 static char* opt_print_metadata_key;
+static gboolean opt_raw;
 
 static GOptionEntry options[] = {
   { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "If given, show the \"related\" commits", NULL },
   { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
   { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
+  { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
   { NULL }
 };
-
-static void
-print_variant (GVariant *variant)
-{
-  gs_free char *formatted_variant = NULL;
-  gs_unref_variant GVariant *byteswapped = NULL;
-
-  if (G_BYTE_ORDER != G_BIG_ENDIAN)
-    {
-      byteswapped = g_variant_byteswap (variant);
-      formatted_variant = g_variant_print (byteswapped, TRUE);
-    }
-  else
-    {
-      formatted_variant = g_variant_print (variant, TRUE);
-    }
-  g_print ("%s\n", formatted_variant);
-}
 
 static gboolean
 do_print_variant_generic (const GVariantType *type,
@@ -69,7 +54,7 @@ do_print_variant_generic (const GVariantType *type,
   if (!ot_util_variant_map (f, type, TRUE, &variant, error))
     goto out;
 
-  print_variant (variant);
+  ot_dump_variant (variant);
 
   ret = TRUE;
  out:
@@ -140,6 +125,29 @@ do_print_metadata_key (OstreeRepo  *repo,
   return ret;
 }
 
+
+static gboolean
+print_object (OstreeRepo          *repo,
+              OstreeObjectType     objtype,
+              const char          *checksum,
+              GError             **error)
+{
+  gs_unref_variant GVariant *variant = NULL;
+  OstreeDumpFlags flags = OSTREE_DUMP_NONE;
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_load_variant (repo, objtype, checksum,
+                                 &variant, error))
+    goto out;
+  if (opt_raw)
+    flags |= OSTREE_DUMP_RAW;
+  ot_dump_object (objtype, checksum, variant, flags);
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
 static gboolean
 print_if_found (OstreeRepo        *repo,
                 OstreeObjectType   objtype,
@@ -159,13 +167,9 @@ print_if_found (OstreeRepo        *repo,
     goto out;
   if (have_object)
     {
-      gs_unref_variant GVariant *variant = NULL;
-      if (!ostree_repo_load_variant (repo, objtype, checksum,
-                                     &variant, error))
+      if (!print_object (repo, objtype, checksum, error))
         goto out;
       *inout_was_found = TRUE;
-      g_print ("Object: %s\nType: %s\n", checksum, ostree_object_type_to_string (objtype));
-      print_variant (variant);
     }
   
   ret = TRUE;
@@ -228,10 +232,8 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *canc
           gs_unref_variant GVariant *variant = NULL;
           if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
             goto out;
-          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev,
-                                         &variant, error))
+          if (!print_object (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, error))
             goto out;
-          print_variant (variant);
         }
       else
         {
