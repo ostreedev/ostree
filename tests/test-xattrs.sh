@@ -19,6 +19,11 @@
 
 set -e
 
+touch test-xattrs
+if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    exit 77
+fi
+
 echo "1..2"
 
 . $(dirname $0)/libtest.sh
