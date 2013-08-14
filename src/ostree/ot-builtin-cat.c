@@ -29,6 +29,7 @@
 #include <gio/gunixoutputstream.h>
 
 static GOptionEntry options[] = {
+  { NULL },
 };
 
 static gboolean
