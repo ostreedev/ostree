@@ -198,6 +198,14 @@ gboolean ostree_repo_load_file (OstreeRepo         *self,
                                 GCancellable       *cancellable,
                                 GError            **error);
 
+gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
+                                         OstreeObjectType    objtype,
+                                         const char         *checksum,
+                                         GInputStream      **out_input,
+                                         guint64            *out_size,
+                                         GCancellable       *cancellable,
+                                         GError            **error);
+
 gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      OstreeObjectType      objtype,
                                                      const char           *sha256, 

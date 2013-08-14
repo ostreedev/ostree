@@ -68,18 +68,10 @@ import_one_object (OtLocalCloneData *data,
     {
       guint64 length;
       gs_unref_object GInputStream *file_object = NULL;
-      gs_unref_object GInputStream *input = NULL;
-      gs_unref_object GFileInfo *file_info = NULL;
-      gs_unref_variant GVariant *xattrs = NULL;
 
-      if (!ostree_repo_load_file (data->src_repo, checksum,
-                                  &input, &file_info, &xattrs,
-                                  cancellable, error))
-        goto out;
-
-      if (!ostree_raw_file_to_content_stream (input, file_info, xattrs,
-                                              &file_object, &length,
-                                              cancellable, error))
+      if (!ostree_repo_load_object_stream (data->src_repo, objtype, checksum,
+                                           &file_object, &length,
+                                           cancellable, error))
         goto out;
 
       if (!ostree_repo_stage_content_trusted (data->dest_repo, checksum,

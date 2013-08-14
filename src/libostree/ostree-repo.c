@@ -2041,6 +2041,73 @@ list_loose_objects (OstreeRepo                     *self,
   return ret;
 }
 
+static gboolean
+load_metadata_internal (OstreeRepo       *self,
+                        OstreeObjectType  objtype,
+                        const char       *sha256, 
+                        gboolean          error_if_not_found,
+                        GVariant        **out_variant,
+                        GInputStream    **out_stream,
+                        guint64          *out_size,
+                        GCancellable     *cancellable,
+                        GError          **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *object_path = NULL;
+  gs_unref_object GInputStream *ret_stream = NULL;
+  gs_unref_variant GVariant *ret_variant = NULL;
+
+  g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
+
+  if (!repo_find_object (self, objtype, sha256, &object_path,
+                         cancellable, error))
+    goto out;
+
+  if (object_path != NULL)
+    {
+      if (out_variant)
+        {
+          if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
+                                    TRUE, &ret_variant, error))
+            goto out;
+          if (out_size)
+            *out_size = g_variant_get_size (ret_variant);
+        }
+      else if (out_stream)
+        {
+          ret_stream = gs_file_read_noatime (object_path, cancellable, error);
+          if (!ret_stream)
+            goto out;
+          if (out_size)
+            {
+              struct stat stbuf;
+              
+              if (!gs_stream_fstat ((GFileDescriptorBased*)ret_stream, &stbuf, cancellable, error))
+                goto out;
+              *out_size = stbuf.st_size;
+            }
+        }
+    }
+  else if (self->parent_repo)
+    {
+      if (!ostree_repo_load_variant (self->parent_repo, objtype, sha256, &ret_variant, error))
+        goto out;
+    }
+  else if (error_if_not_found)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No such metadata object %s.%s",
+                   sha256, ostree_object_type_to_string (objtype));
+      goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_variant, &ret_variant);
+  ot_transfer_out_value (out_stream, &ret_stream);
+ out:
+  return ret;
+}
+
 gboolean
 ostree_repo_load_file (OstreeRepo         *self,
                        const char         *checksum,
@@ -2160,6 +2227,49 @@ ostree_repo_load_file (OstreeRepo         *self,
   ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
   ot_transfer_out_value (out_xattrs, &ret_xattrs);
+ out:
+  return ret;
+}
+
+gboolean
+ostree_repo_load_object_stream (OstreeRepo         *self,
+                                OstreeObjectType    objtype,
+                                const char         *checksum,
+                                GInputStream      **out_input,
+                                guint64            *out_size,
+                                GCancellable       *cancellable,
+                                GError            **error)
+{
+  gboolean ret = FALSE;
+  guint64 size;
+  gs_unref_object GInputStream *ret_input = NULL;
+      
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    {
+      if (!load_metadata_internal (self, objtype, checksum, TRUE, NULL,
+                                   &ret_input, &size,
+                                   cancellable, error))
+        goto out;
+    }
+  else
+    {
+      gs_unref_object GInputStream *input = NULL;
+      gs_unref_object GFileInfo *finfo = NULL;
+      gs_unref_variant GVariant *xattrs = NULL;
+
+      if (!ostree_repo_load_file (self, checksum, &input, &finfo, &xattrs,
+                                  cancellable, error))
+        goto out;
+
+      if (!ostree_raw_file_to_content_stream (input, finfo, xattrs,
+                                              &ret_input, &size,
+                                              cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_input, &ret_input);
+  *out_size = size;
  out:
   return ret;
 }
@@ -2305,50 +2415,6 @@ ostree_repo_load_variant_c (OstreeRepo          *self,
   return ret;
 }
 
-static gboolean
-load_variant_internal (OstreeRepo       *self,
-                       OstreeObjectType  objtype,
-                       const char       *sha256, 
-                       gboolean          error_if_not_found,
-                       GVariant        **out_variant,
-                       GError          **error)
-{
-  gboolean ret = FALSE;
-  GCancellable *cancellable = NULL;
-  gs_unref_object GFile *object_path = NULL;
-  gs_unref_variant GVariant *ret_variant = NULL;
-
-  g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
-
-  if (!repo_find_object (self, objtype, sha256, &object_path,
-                         cancellable, error))
-    goto out;
-
-  if (object_path != NULL)
-    {
-      if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
-                                TRUE, &ret_variant, error))
-        goto out;
-    }
-  else if (self->parent_repo)
-    {
-      if (!ostree_repo_load_variant (self->parent_repo, objtype, sha256, &ret_variant, error))
-        goto out;
-    }
-  else if (error_if_not_found)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No such metadata object %s.%s",
-                   sha256, ostree_object_type_to_string (objtype));
-      goto out;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_variant, &ret_variant);
- out:
-  return ret;
-}
-
 /**
  * ostree_repo_load_variant_if_exists:
  * 
@@ -2363,8 +2429,8 @@ ostree_repo_load_variant_if_exists (OstreeRepo       *self,
                                     GVariant        **out_variant,
                                     GError          **error)
 {
-  return load_variant_internal (self, objtype, sha256, FALSE,
-                                out_variant, error);
+  return load_metadata_internal (self, objtype, sha256, FALSE,
+                                 out_variant, NULL, NULL, NULL, error);
 }
 
 /**
@@ -2385,10 +2451,9 @@ ostree_repo_load_variant (OstreeRepo       *self,
                           GVariant        **out_variant,
                           GError          **error)
 {
-  return load_variant_internal (self, objtype, sha256, TRUE,
-                                out_variant, error);
+  return load_metadata_internal (self, objtype, sha256, TRUE,
+                                 out_variant, NULL, NULL, NULL, error);
 }
-
 
 /**
  * ostree_repo_list_objects:
