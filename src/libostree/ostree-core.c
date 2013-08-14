@@ -1643,3 +1643,13 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
  out:
   return ret;
 }
+
+gchar *
+ostree_commit_get_parent (GVariant  *commit_variant)
+{
+  gs_unref_variant GVariant *bytes = NULL;
+  bytes = g_variant_get_child_value (commit_variant, 1);
+  if (g_variant_n_children (bytes) == 0)
+    return NULL;
+  return ostree_checksum_from_bytes_v (bytes);
+}

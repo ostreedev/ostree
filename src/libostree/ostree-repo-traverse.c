@@ -211,12 +211,10 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
 
       if (maxdepth == -1 || maxdepth > 0)
         {
-          g_variant_get_child (commit, 1, "@ay", &parent_csum_bytes);
-          
-          if (g_variant_n_children (parent_csum_bytes) > 0)
+          g_free (tmp_checksum);
+          tmp_checksum = ostree_commit_get_parent (commit);
+          if (tmp_checksum)
             {
-              g_free (tmp_checksum);
-              tmp_checksum = ostree_checksum_from_bytes_v (parent_csum_bytes);
               commit_checksum = tmp_checksum;
               if (maxdepth > 0)
                 maxdepth -= 1;
@@ -231,4 +229,3 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
  out:
   return ret;
 }
-

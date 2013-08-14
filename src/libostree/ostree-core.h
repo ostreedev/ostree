@@ -319,5 +319,6 @@ gboolean ostree_validate_structureof_dirtree (GVariant      *index,
 gboolean ostree_validate_structureof_dirmeta (GVariant      *index,
                                               GError       **error);
 
+gchar *  ostree_commit_get_parent            (GVariant  *commit_variant);
 
 G_END_DECLS
