@@ -40,6 +40,7 @@ static OstreeCommand commands[] = {
   { "diff", ostree_builtin_diff, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
   { "init", ostree_builtin_init, 0 },
+  { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
   { "refs", ostree_builtin_refs, 0 },
   { "prune", ostree_builtin_prune, 0 },
