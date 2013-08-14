@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 GVariant *ot_gvariant_new_bytearray (const guchar   *data,
                                      gsize           len);
 
+GVariant *ot_gvariant_new_ay_bytes (GBytes *bytes);
+
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
 GVariant * ot_util_variant_take_ref (GVariant *variant);

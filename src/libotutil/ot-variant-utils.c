@@ -41,6 +41,12 @@ ot_gvariant_new_bytearray (const guchar   *data,
   return ret;
 }
 
+GVariant *
+ot_gvariant_new_ay_bytes (GBytes *bytes)
+{
+  return g_variant_new_from_bytes (G_VARIANT_TYPE ("ay"), bytes, TRUE);
+}
+
 GHashTable *
 ot_util_variant_asv_to_hash_table (GVariant *variant)
 {

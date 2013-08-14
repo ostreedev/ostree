@@ -182,6 +182,7 @@ read_xattr_name_array (const char *path,
     {
       ssize_t bytes_read;
       char *buf;
+      gs_unref_bytes GBytes *bytes = NULL;
 
       bytes_read = lgetxattr (path, p, NULL, 0);
       if (bytes_read < 0)
@@ -194,18 +195,17 @@ read_xattr_name_array (const char *path,
         continue;
 
       buf = g_malloc (bytes_read);
+      bytes = g_bytes_new_take (buf, bytes_read);
       if (lgetxattr (path, p, buf, bytes_read) < 0)
         {
           ot_util_set_error_from_errno (error, errno);
           g_prefix_error (error, "lgetxattr (%s, %s) failed: ", path, p);
-          g_free (buf);
           goto out;
         }
       
       g_variant_builder_add (builder, "(@ay@ay)",
                              g_variant_new_bytestring (p),
-                             g_variant_new_from_data (G_VARIANT_TYPE ("ay"),
-                                                      buf, bytes_read, FALSE, g_free, buf));
+                             ot_gvariant_new_ay_bytes (bytes));
 
       p = p + strlen (p) + 1;
     }
