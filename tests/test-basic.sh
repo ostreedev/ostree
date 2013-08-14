@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..35"
+echo "1..36"
 
 . $(dirname $0)/libtest.sh
 
@@ -245,3 +245,6 @@ cd ${test_tmpdir}
 $OSTREE ls test2
 echo "ok ls with no argument"
 
+cd ${test_tmpdir}
+$OSTREE show test2
+echo "ok show with non-checksum"

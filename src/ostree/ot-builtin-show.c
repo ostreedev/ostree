@@ -143,7 +143,7 @@ do_print_metadata_key (OstreeRepo  *repo,
 static gboolean
 print_if_found (OstreeRepo        *repo,
                 OstreeObjectType   objtype,
-                const char        *rev,
+                const char        *checksum,
                 gboolean          *inout_was_found,
                 GCancellable      *cancellable,
                 GError           **error)
@@ -154,17 +154,17 @@ print_if_found (OstreeRepo        *repo,
   if (*inout_was_found)
     return TRUE;
 
-  if (!ostree_repo_has_object (repo, objtype, rev, &have_object,
+  if (!ostree_repo_has_object (repo, objtype, checksum, &have_object,
                                cancellable, error))
     goto out;
   if (have_object)
     {
       gs_unref_variant GVariant *variant = NULL;
-      if (!ostree_repo_load_variant (repo, objtype, rev,
+      if (!ostree_repo_load_variant (repo, objtype, checksum,
                                      &variant, error))
         goto out;
       *inout_was_found = TRUE;
-      g_print ("Object: %s\nType: %s\n", rev, ostree_object_type_to_string (objtype));
+      g_print ("Object: %s\nType: %s\n", checksum, ostree_object_type_to_string (objtype));
       print_variant (variant);
     }
   
@@ -223,7 +223,7 @@ ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *canc
   else
     {
       gboolean found = FALSE;
-      if (!ostree_validate_rev (rev, NULL))
+      if (!ostree_validate_checksum_string (rev, NULL))
         {
           gs_unref_variant GVariant *variant = NULL;
           if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
