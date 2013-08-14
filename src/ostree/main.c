@@ -43,6 +43,7 @@ static OstreeCommand commands[] = {
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
   { "refs", ostree_builtin_refs, 0 },
+  { "reset", ostree_builtin_reset, 0 },
   { "prune", ostree_builtin_prune, 0 },
 #ifdef HAVE_LIBSOUP 
   { "pull", ostree_builtin_pull, 0 },

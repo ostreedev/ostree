@@ -40,6 +40,7 @@ gboolean ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCa
 gboolean ostree_builtin_ls (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 gboolean ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 gboolean ostree_builtin_refs (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+gboolean ostree_builtin_reset (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 gboolean ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 gboolean ostree_builtin_show (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
 gboolean ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);

@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..38"
+echo "1..39"
 
 . $(dirname $0)/libtest.sh
 
@@ -265,3 +265,13 @@ assert_file_has_content log-output "commit $checksum1"
 assert_file_has_content log-output "Second commit"
 assert_file_has_content log-output "commit $checksum2"
 echo "ok log output"
+
+cd ${test_tmpdir}
+checksum1=$($OSTREE commit -b test6 -s "First commit")
+checksum2=$($OSTREE commit -b test6 -s "Second commit")
+$OSTREE show test6 > show-output
+assert_file_has_content show-output "commit $checksum2"
+$OSTREE reset test6 $checksum1
+$OSTREE show test6 > show-output
+assert_file_has_content show-output "commit $checksum1"
+echo "ok basic reset"
