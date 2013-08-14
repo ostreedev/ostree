@@ -26,6 +26,23 @@
 
 G_BEGIN_DECLS
 
+/**
+ * These functions implement repository-independent algorithms for
+ * operating on the core OSTree data formats, such as converting
+ * #GFileInfo into a #GVariant.
+ *
+ * There are 4 types of objects; file, dirmeta, tree, and commit.  The
+ * last 3 are metadata, and the file object is the only content object
+ * type.
+ *
+ * All metadata objects are stored as #GVariant (big endian).  The
+ * rationale for this is the same as that of the ext{2,3,4} family of
+ * filesystems; most developers will be using LE, and so it's better
+ * to continually test the BE->LE swap.
+ *
+ * The file object is a custom format in order to support streaming.
+ */
+
 #define OSTREE_MAX_METADATA_SIZE (1 << 26)
 
 #define OSTREE_MAX_RECURSION (256)
