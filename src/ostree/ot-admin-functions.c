@@ -26,6 +26,7 @@
 #include "ot-deployment.h"
 #include "ot-config-parser.h"
 #include "ot-bootloader-syslinux.h"
+#include "ot-bootloader-uboot.h"
 #include "otutil.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -794,10 +795,15 @@ OtBootloader *
 ot_admin_query_bootloader (GFile         *sysroot)
 {
   OtBootloaderSyslinux *syslinux;
+  OtBootloaderUboot    *uboot;
 
   syslinux = ot_bootloader_syslinux_new (sysroot);
   if (ot_bootloader_query ((OtBootloader*)syslinux))
     return (OtBootloader*) (syslinux);
+
+  uboot = ot_bootloader_uboot_new (sysroot);
+  if (ot_bootloader_query ((OtBootloader*)uboot))
+    return (OtBootloader*) (uboot);
 
   return NULL;
 }

@@ -67,6 +67,8 @@ ostree_SOURCES += \
 	src/ostree/ot-bootloader.c \
 	src/ostree/ot-bootloader-syslinux.h \
 	src/ostree/ot-bootloader-syslinux.c \
+	src/ostree/ot-bootloader-uboot.h \
+	src/ostree/ot-bootloader-uboot.c \
 	src/ostree/ot-config-parser.h \
 	src/ostree/ot-config-parser.c \
 	src/ostree/ot-deployment.h \
