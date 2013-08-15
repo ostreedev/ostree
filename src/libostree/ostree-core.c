@@ -714,11 +714,8 @@ ostree_content_file_parse (gboolean                compressed,
       if (!file_input)
         goto out;
       
-      if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)file_input), &stbuf) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
+      if (!gs_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, cancellable, error))
+        goto out;
 
       length = stbuf.st_size;
     }
