@@ -87,6 +87,11 @@ test_varint_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 test_varint_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 testmeta_DATA += test-varint.test
 
+insttest_PROGRAMS += test-rollsum
+test_rollsum_SOURCES = src/libostree/bupsplit.c tests/test-rollsum.c
+test_rollsum_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+test_rollsum_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
+
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
 	tests/test-sizes.js \
