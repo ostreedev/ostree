@@ -345,6 +345,13 @@ ostree_file_header_new (GFileInfo         *file_info,
   return ret;
 }
 
+/**
+ * ostree_zlib_file_header_new:
+ * @file_info: a #GFileInfo
+ * @xattrs: (allow-none): Optional extended attribute array
+ *
+ * Returns: (transfer full): A new #GVariant containing file header for an archive-z2 repository
+ */
 GVariant *
 ostree_zlib_file_header_new (GFileInfo         *file_info,
                              GVariant          *xattrs)
@@ -413,6 +420,20 @@ write_padding (GOutputStream    *output,
   return ret;
 }
 
+/**
+ * ostree_write_variant_with_size:
+ * @output: Stream
+ * @variant: A variant
+ * @alignment_offset: Used to determine whether or not we should write padding bytes
+ * @checksum: (allow-none): If provided, update with written data
+ * @cancellable:
+ * @error:
+ *
+ * Use this function for serializing a chain of 1 or more variants
+ * into a stream; the @alignment_offset parameter is used to ensure
+ * that each variant begins on an 8-byte alignment so it can be safely
+ * accessed.
+ */
 gboolean
 ostree_write_variant_with_size (GOutputStream      *output,
                                 GVariant           *variant,
@@ -462,6 +483,17 @@ ostree_write_variant_with_size (GOutputStream      *output,
   return ret;
 }
 
+/**
+ * ostree_write_file_header_update_checksum:
+ * @out: Stream
+ * @variant: A variant, should be a file header
+ * @checksum: (allow-none): If provided, update with written data
+ * @cancellable:
+ * @error:
+ *
+ * Write a file header variant to the provided @out stream, optionally
+ * updating @checksum.
+ */
 gboolean
 ostree_write_file_header_update_checksum (GOutputStream         *out,
                                           GVariant              *header,
@@ -481,6 +513,20 @@ ostree_write_file_header_update_checksum (GOutputStream         *out,
   return ret;
 }
 
+/**
+ * ostree_raw_file_to_content_stream:
+ * @input: File raw content stream
+ * @file_info: A file info
+ * @xattrs: (allow-none): Optional extended attributes
+ * @out_input: (out): Serialized object stream
+ * @out_length: (out): Length of stream
+ * @cancellable:
+ * @error:
+ *
+ * Convert from a "bare" file representation into an
+ * OSTREE_OBJECT_TYPE_FILE stream.  This is a fundamental operation
+ * for writing data to an #OstreeRepo.
+ */
 gboolean
 ostree_raw_file_to_content_stream (GInputStream       *input,
                                    GFileInfo          *file_info,
@@ -530,6 +576,21 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   return ret;
 }
 
+/**
+ * ostree_content_stream_parse:
+ * @compressed: Whether or not the stream is zlib-compressed
+ * @input: Object content stream
+ * @input_length: Length of stream
+ * @trusted: If %TRUE, assume the content has been validated
+ * @out_input: (out): The raw file content stream
+ * @out_file_info: (out): Normal metadata 
+ * @out_xattrs: (out): Extended attributes
+ * @cancellable:
+ * @error:
+ *
+ * The reverse of ostree_raw_file_to_content_stream(); this function
+ * converts an object content stream back into components.
+ */
 gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,
