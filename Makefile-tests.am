@@ -19,6 +19,8 @@
 
 
 if BUILDOPT_INSTALL_TESTS
+insttest_PROGRAMS = 
+
 insttestdir=$(pkglibexecdir)/installed-tests
 testfiles = test-basic \
 	test-archivez \
@@ -37,6 +39,9 @@ testfiles = test-basic \
 	test-xattrs \
 	$(NULL)
 insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
+
+testmetadir = $(datadir)/installed-tests/$(PACKAGE)
+testmeta_DATA = $(testfiles:=.test)
 
 insttest_DATA = tests/archive-test.sh \
 	tests/pull-test.sh \
@@ -61,8 +66,20 @@ gpginsttest_DATA = tests/gpghome/secring.gpg \
 	 echo 'Type=session' >> $@.tmp; \
 	 mv $@.tmp $@)
 
+%.test: tests/%.c Makefile
+	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
+	 echo 'Exec=$(pkglibexecdir)/installed-tests/$(notdir $(<:.c=))' >> $@.tmp; \
+	 echo 'Type=session' >> $@.tmp; \
+	 mv $@.tmp $@)
+
 testmetadir = $(datadir)/installed-tests/$(PACKAGE)
 testmeta_DATA = $(testfiles:=.test)
+
+insttest_PROGRAMS = test-varint
+test_varint_SOURCES = src/libostree/ostree-varint.c tests/test-varint.c
+test_varint_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+test_varint_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
+testmeta_DATA += test-varint.test
 
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
