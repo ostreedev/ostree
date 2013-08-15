@@ -70,6 +70,10 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-bootloader-uboot.c \
 	src/libostree/ostree-gpg-verifier.c \
 	src/libostree/ostree-gpg-verifier.h \
+	src/libostree/ostree-repo-static-delta-core.c \
+	src/libostree/ostree-repo-static-delta-processing.c \
+	src/libostree/ostree-repo-static-delta-compilation.c \
+	src/libostree/ostree-repo-static-delta-private.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

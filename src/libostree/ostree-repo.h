@@ -426,6 +426,37 @@ gboolean ostree_repo_list_objects (OstreeRepo                  *self,
                                    GCancellable                *cancellable,
                                    GError                     **error);
 
+gboolean ostree_repo_list_static_delta_names (OstreeRepo                  *self,
+                                              GPtrArray                  **out_deltas,
+                                              GCancellable                *cancellable,
+                                              GError                     **error);
+
+/**
+ * OstreeStaticDeltaGenerateOpt:
+ * @OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY: Optimize for speed of delta creation over space
+ * @OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR: Optimize for delta size (may be very slow)
+ *
+ * Parameters controlling optimization of static deltas.
+ */
+typedef enum {
+  OSTREE_STATIC_DELTA_GENERATE_OPT_LOWLATENCY,
+  OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR
+} OstreeStaticDeltaGenerateOpt;
+
+gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
+                                            OstreeStaticDeltaGenerateOpt  opt,
+                                            const char                   *from,
+                                            const char                   *to,
+                                            GVariant                     *metadata,
+                                            GCancellable                 *cancellable,
+                                            GError                      **error);
+
+gboolean ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
+                                                   GFile                         *dir,
+                                                   gboolean                       skip_validation,
+                                                   GCancellable                  *cancellable,
+                                                   GError                      **error);
+
 GHashTable *ostree_repo_traverse_new_reachable (void);
 
 gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,

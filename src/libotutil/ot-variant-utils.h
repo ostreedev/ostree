@@ -46,6 +46,13 @@ gboolean ot_util_variant_map (GFile *src,
                               GVariant **out_variant,
                               GError  **error);
 
+gboolean ot_util_variant_map_fd (GFileDescriptorBased *stream,
+                                 goffset              offset,
+                                 const GVariantType  *type,
+                                 gboolean             trusted,
+                                 GVariant           **out_variant,
+                                 GError             **error);
+
 gboolean ot_util_variant_from_stream (GInputStream         *src,
                                       const GVariantType   *type,
                                       gboolean              trusted,
@@ -57,6 +64,11 @@ GInputStream *ot_variant_read (GVariant             *variant);
 
 GVariantBuilder *ot_util_variant_builder_from_variant (GVariant            *variant,
                                                        const GVariantType  *type);
+
+GVariant *
+ot_variant_new_from_bytes (const GVariantType  *type,
+                           GBytes        *bytes,
+                           gboolean       trusted);
 
 G_END_DECLS
 

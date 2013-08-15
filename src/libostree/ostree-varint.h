@@ -24,9 +24,10 @@
 
 G_BEGIN_DECLS
 
-guint64 _ostree_read_varuint64 (const guint8   *buf,
-                                gsize           buflen,
-                                gsize          *bytes_read);
+gboolean _ostree_read_varuint64 (const guint8   *buf,
+                                 gsize           buflen,
+                                 guint64        *out_value,
+                                 gsize          *bytes_read);
 
 void _ostree_write_varuint64 (GString *buf, guint64 n);
 

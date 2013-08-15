@@ -91,6 +91,16 @@ _ostree_get_relative_object_path (const char        *checksum,
                                   OstreeObjectType   type,
                                   gboolean           compressed);
 
+
+char *
+_ostree_get_relative_static_delta_path (const char        *from,
+                                        const char        *to);
+
+char *
+_ostree_get_relative_static_delta_part_path (const char        *from,
+                                             const char        *to,
+                                             guint              i);
+
 void
 _ostree_loose_path (char              *buf,
                     const char        *checksum,

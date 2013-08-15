@@ -1208,13 +1208,41 @@ ostree_checksum_from_bytes_v (GVariant *csum_v)
  * ostree_checksum_bytes_peek:
  * @bytes: #GVariant of type ay
  *
- * Returns: (transfer none): Binary checksum data in @bytes; do not free
+ * Returns: (transfer none) (array fixed-size=32) (element-type guint8): Binary checksum data in @bytes; do not free.  If @bytes does not have the correct length, return %NULL.
  */
 const guchar *
 ostree_checksum_bytes_peek (GVariant *bytes)
 {
   gsize n_elts;
-  return g_variant_get_fixed_array (bytes, &n_elts, 1);
+  const guchar *ret;
+  ret = g_variant_get_fixed_array (bytes, &n_elts, 1);
+  if (G_UNLIKELY (n_elts != 32))
+    return NULL;
+  return ret;
+}
+
+/**
+ * ostree_checksum_bytes_peek_validate:
+ * @bytes: #GVariant of type ay
+ * @error: Errror
+ *
+ * Like ostree_checksum_bytes_peek(), but also throws @error.
+ *
+ * Returns: (transfer none) (array fixed-size=32) (element-type guint8): Binary checksum data
+ */
+const guchar *
+ostree_checksum_bytes_peek_validate (GVariant  *bytes,
+                                     GError   **error)
+{
+  const guchar *ret = ostree_checksum_bytes_peek (bytes);
+  if (G_UNLIKELY (!ret))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid checksum of length %" G_GUINT64_FORMAT
+                   " expected 32", (guint64) g_variant_n_children (bytes));
+      return NULL;
+    }
+  return ret;
 }
 
 /*
@@ -1293,8 +1321,23 @@ _ostree_get_relative_object_path (const char         *checksum,
   return g_string_free (path, FALSE);
 }
 
+char *
+_ostree_get_relative_static_delta_path (const char        *from,
+                                        const char        *to)
+{
+  return g_strdup_printf ("deltas/%s-%s/meta", from, to);
+}
+
+char *
+_ostree_get_relative_static_delta_part_path (const char        *from,
+                                             const char        *to,
+                                             guint              i)
+{
+  return g_strdup_printf ("deltas/%s-%s/%u", from, to, i);
+}
+
 /*
- * ostree_file_header_parse:
+ * file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
  * @out_file_info: (out): Parsed file information
  * @out_xattrs: (out): Parsed extended attribute set
@@ -1449,15 +1492,7 @@ gboolean
 ostree_validate_structureof_csum_v (GVariant  *checksum,
                                     GError   **error)
 {
-  gsize n_children = g_variant_n_children (checksum);
-  if (n_children != 32)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid checksum of length %" G_GUINT64_FORMAT
-                   " expected 32", (guint64) n_children);
-      return FALSE;
-    }
-  return TRUE;
+  return ostree_checksum_bytes_peek_validate (checksum, error) != NULL;
 }
 
 /**

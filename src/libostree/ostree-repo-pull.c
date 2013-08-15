@@ -58,6 +58,7 @@
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-repo-static-delta-private.h"
 #include "ostree-fetcher.h"
 #include "otutil.h"
 
@@ -97,6 +98,7 @@ typedef struct {
   GThread          *metadata_thread;
   GMainContext     *metadata_thread_context;
   GMainLoop        *metadata_thread_loop;
+  GPtrArray        *static_delta_metas;
   OtWaitableQueue  *metadata_objects_to_scan;
   OtWaitableQueue  *metadata_objects_to_fetch;
   GHashTable       *scanned_metadata; /* Maps object name to itself */
@@ -348,17 +350,21 @@ fetch_uri_sync_on_complete (GObject        *object,
 }
 
 static gboolean
-fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
-                              SoupURI     *uri,
-                              char       **out_contents,
-                              GCancellable  *cancellable,
-                              GError     **error)
+fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
+                                SoupURI        *uri,
+                                gboolean        add_nul,
+                                gboolean        allow_noent,
+                                GBytes        **out_contents,
+                                GCancellable   *cancellable,
+                                GError        **error)
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
   gs_free char *ret_contents = NULL;
   gs_unref_object GMemoryOutputStream *buf = NULL;
   OstreeFetchUriSyncData fetch_data = { 0, };
+
+  g_assert (error != NULL);
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -371,7 +377,15 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
 
   run_mainloop_monitor_fetcher (pull_data);
   if (!fetch_data.result_stream)
-    goto out;
+    {
+      if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (error);
+          ret = TRUE;
+          *out_contents = NULL;
+        }
+      goto out;
+    }
 
   buf = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
   if (g_output_stream_splice ((GOutputStream*)buf, fetch_data.result_stream,
@@ -379,14 +393,40 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
                               cancellable, error) < 0)
     goto out;
 
-  /* Add trailing NUL */
-  if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
-    goto out;
+  if (add_nul)
+    {
+      if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
+        goto out;
+    }
 
   if (!g_output_stream_close ((GOutputStream*)buf, cancellable, error))
     goto out;
 
-  ret_contents = g_memory_output_stream_steal_data (buf);
+  ret = TRUE;
+  *out_contents = g_memory_output_stream_steal_as_bytes (buf);
+ out:
+  g_clear_object (&(fetch_data.result_stream));
+  return ret;
+}
+
+static gboolean
+fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
+                              SoupURI     *uri,
+                              char       **out_contents,
+                              GCancellable  *cancellable,
+                              GError     **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_bytes GBytes *bytes = NULL;
+  gs_free char *ret_contents = NULL;
+  gsize len;
+
+  if (!fetch_uri_contents_membuf_sync (pull_data, uri, TRUE, FALSE,
+                                       &bytes, cancellable, error))
+    goto out;
+
+  ret_contents = g_bytes_unref_to_data (bytes, &len);
+  bytes = NULL;
 
   if (!g_utf8_validate (ret_contents, -1, NULL))
     {
@@ -398,7 +438,6 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  g_clear_object (&(fetch_data.result_stream));
   return ret;
 }
 
@@ -1193,6 +1232,70 @@ load_remote_repo_config (OtPullData    *pull_data,
   return ret;
 }
 
+static void
+initiate_commit_scan (OtPullData   *pull_data,
+                      const char   *checksum)
+{
+  ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
+                          pull_worker_message_new (PULL_MSG_SCAN,
+                                                   ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_COMMIT)));
+}
+
+#if 0
+static gboolean
+request_static_delta_meta_sync (OtPullData  *pull_data,
+                                const char  *ref,
+                                const char  *checksum,
+                                GVariant   **out_delta_meta,
+                                GCancellable *cancellable,
+                                GError     **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *from_revision = NULL;
+  SoupURI *target_uri = NULL;
+  gs_unref_variant GVariant *ret_delta_meta = NULL;
+
+  if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE, &from_revision, error))
+    goto out;
+
+  if (from_revision == NULL)
+    {
+      initiate_commit_scan (pull_data, checksum);
+    }
+  else
+    {
+      gs_free char *delta_name = _ostree_get_relative_static_delta_path (from_revision, checksum);
+      gs_unref_bytes GBytes *delta_meta_data = NULL;
+      gs_unref_variant GVariant *delta_meta = NULL;
+
+      target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+
+      if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
+                                           &delta_meta_data,
+                                           pull_data->cancellable, error))
+        goto out;
+
+      if (delta_meta_data)
+        {
+          g_print ("Using static delta\n"); 
+          ret_delta_meta = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_META_FORMAT,
+                                                      delta_meta_data, FALSE);
+        }
+    }
+  
+  ret = TRUE;
+  gs_transfer_out_value (out_delta_meta, &ret_delta_meta);
+ out:
+  return ret;
+}
+#endif
+
+static void
+process_one_static_delta_meta (OtPullData   *pull_data,
+                               GVariant     *delta_meta)
+{
+}
+
 gboolean
 ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
@@ -1207,6 +1310,7 @@ ostree_repo_pull (OstreeRepo               *self,
   gpointer key, value;
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
+  guint i;
   gs_free char *remote_key = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
@@ -1293,6 +1397,8 @@ ostree_repo_pull (OstreeRepo               *self,
       goto out;
     }
 
+  pull_data->static_delta_metas = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   updated_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
@@ -1364,12 +1470,29 @@ ostree_repo_pull (OstreeRepo               *self,
             {
               const char *branch = *branches_iter;
               char *contents;
+              GVariant *descriptor_data = NULL;
               
               if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
                 goto out;
-              
-              /* Transfer ownership of contents */
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
+
+              initiate_commit_scan (pull_data, contents);
+#if 0
+              if (!request_static_delta_meta_sync (pull_data, branch, contents,
+                                                   &descriptor_data, cancellable, error))
+                goto out;
+#endif
+
+              if (!descriptor_data)
+                {
+                  /* Transfer ownership of contents */
+                  g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
+                }
+              else
+                {
+                  /* Transfer ownership of delta descriptor */
+                  g_ptr_array_add (pull_data->static_delta_metas, descriptor_data);
+                  g_free (contents);
+                }
             }
         }
     }
@@ -1388,24 +1511,24 @@ ostree_repo_pull (OstreeRepo               *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
-
-      ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
-                              pull_worker_message_new (PULL_MSG_SCAN,
-                                                       ostree_object_name_serialize (commit, OSTREE_OBJECT_TYPE_COMMIT)));
+      initiate_commit_scan (pull_data, commit);
     }
 
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *ref = key;
-      const char *sha256 = value;
+      const char *checksum = value;
 
-      ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
-                              pull_worker_message_new (PULL_MSG_SCAN,
-                                                       ostree_object_name_serialize (sha256, OSTREE_OBJECT_TYPE_COMMIT)));
-      g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (sha256));
+      initiate_commit_scan (pull_data, checksum);
+      g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (checksum));
     }
-  
+
+  for (i = 0; i < pull_data->static_delta_metas->len; i++)
+    {
+      process_one_static_delta_meta (pull_data, pull_data->static_delta_metas->pdata[i]);
+    }
+
   {
     queue_src = ot_waitable_queue_create_source (pull_data->metadata_objects_to_fetch);
     g_source_set_callback (queue_src, (GSourceFunc)on_metadata_objects_to_fetch_ready, pull_data, NULL);
@@ -1486,6 +1609,7 @@ ostree_repo_pull (OstreeRepo               *self,
                               pull_worker_message_new (PULL_MSG_QUIT, NULL));
       g_thread_join (pull_data->metadata_thread);
     }
+  g_clear_pointer (&pull_data->static_delta_metas, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->metadata_objects_to_scan, (GDestroyNotify) ot_waitable_queue_unref);
   g_clear_pointer (&pull_data->metadata_objects_to_fetch, (GDestroyNotify) ot_waitable_queue_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);

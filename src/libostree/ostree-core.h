@@ -136,6 +136,8 @@ void ostree_checksum_inplace_to_bytes (const char *checksum,
 
 const guchar *ostree_checksum_bytes_peek (GVariant *bytes);
 
+const guchar *ostree_checksum_bytes_peek_validate (GVariant *bytes, GError **error);
+
 int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 
 gboolean ostree_validate_rev (const char *rev, GError **error);

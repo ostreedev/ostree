@@ -23,8 +23,10 @@
 #include "config.h"
 
 #include <gio/gio.h>
+#include <gio/gfiledescriptorbased.h>
 
 #include <string.h>
+#include <sys/mman.h>
 
 #include "otutil.h"
 
@@ -149,6 +151,55 @@ ot_util_variant_map (GFile              *src,
   return ret;
 }
 
+typedef struct {
+  gpointer addr;
+  gsize len;
+} VariantMapData;
+
+static void
+variant_map_data_destroy (gpointer data)
+{
+  VariantMapData *mdata = data;
+  (void) munmap (mdata->addr, mdata->len);
+}
+
+gboolean
+ot_util_variant_map_fd (GFileDescriptorBased  *stream,
+                        goffset                start,
+                        const GVariantType    *type,
+                        gboolean               trusted,
+                        GVariant             **out_variant,
+                        GError               **error)
+{
+  gboolean ret = FALSE;
+  gpointer map;
+  struct stat stbuf;
+  VariantMapData *mdata = NULL;
+  gsize len;
+
+  if (!gs_stream_fstat (stream, &stbuf, NULL, error))
+    goto out;
+
+  len = stbuf.st_size - start;
+  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, 
+              g_file_descriptor_based_get_fd (stream), start);
+  if (!map)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  mdata = g_new (VariantMapData, 1);
+  mdata->addr = map;
+  mdata->len = len;
+
+  ret = TRUE;
+  *out_variant = g_variant_new_from_data (type, map, len, trusted,
+                                          variant_map_data_destroy, mdata);
+ out:
+  return ret;
+}
+
 /**
  * Read all input from @src, allocating a new #GVariant from it into
  * output variable @out_variant.  @src will be closed as a result.
@@ -219,3 +270,17 @@ ot_util_variant_builder_from_variant (GVariant            *variant,
   return builder;
 }
 
+GVariant *
+ot_variant_new_from_bytes (const GVariantType  *type,
+                           GBytes        *bytes,
+                           gboolean       trusted)
+{
+#if GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_36
+  return g_variant_new_from_bytes (type, bytes, trusted);
+#else
+  gsize size;
+  gconstpointer data = g_bytes_get_data (bytes, &size);
+  return g_variant_new_from_data (type, data, size, trusted,
+                                  (GDestroyNotify)g_bytes_unref, bytes);
+#endif
+}

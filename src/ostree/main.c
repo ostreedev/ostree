@@ -54,6 +54,7 @@ static OstreeCommand commands[] = {
   { "remote", ostree_builtin_remote, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
+  { "static-delta", ostree_builtin_static_delta, 0 },
 #ifdef HAVE_LIBSOUP 
   { "trivial-httpd", ostree_builtin_trivial_httpd, OSTREE_BUILTIN_FLAG_NO_REPO },
 #endif

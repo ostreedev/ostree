@@ -62,13 +62,15 @@ static const int max_varint_bytes = 10;
  * _ostree_read_varuint64:
  * @buf: (array length=buflen): Byte buffer
  * @buflen: Length of bytes in @buf
+ * @out_value: (out): Value
  * @bytes_read: (out): Number of bytes read
  *
- * Returns: An unsigned 64 bit integer value
+ * Returns: %TRUE on success, %FALSE on end of stream
  */
-guint64
+gboolean
 _ostree_read_varuint64 (const guint8   *buf,
                         gsize           buflen,
+                        guint64        *out_value,
                         gsize          *bytes_read)
 {
   guint64 result = 0;
@@ -92,8 +94,9 @@ _ostree_read_varuint64 (const guint8   *buf,
   } while (b & 0x80);
 
   *bytes_read = count;
+  *out_value = result;
 
-  return result;
+  return TRUE;
 }
 
 /**
