@@ -175,7 +175,7 @@ setup_os_repository () {
     echo "a kernel" > boot/vmlinuz-3.6.0
     echo "an initramfs" > boot/initramfs-3.6.0
     echo "a kernel module" > usr/lib/modules/3.6.0/foofs.ko
-    bootcsum=$(cat boot/vmlinuz-3-6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko | sha256sum | cut -f 1 -d ' ')
+    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
     mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
