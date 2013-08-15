@@ -270,8 +270,6 @@ ostree_repo_mode_from_string (const char      *mode,
 
   if (strcmp (mode, "bare") == 0)
     ret_mode = OSTREE_REPO_MODE_BARE;
-  else if (strcmp (mode, "archive") == 0)
-    ret_mode = OSTREE_REPO_MODE_ARCHIVE;
   else if (strcmp (mode, "archive-z2") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
   else
@@ -333,18 +331,18 @@ ostree_repo_check (OstreeRepo *self, GError **error)
   if (!ot_keyfile_get_boolean_with_default (self->config, "core", "archive",
                                             FALSE, &is_archive, error))
     goto out;
-  
   if (is_archive)
-    self->mode = OSTREE_REPO_MODE_ARCHIVE;
-  else
     {
-      if (!ot_keyfile_get_value_with_default (self->config, "core", "mode",
-                                              "bare", &mode, error))
-        goto out;
-
-      if (!ostree_repo_mode_from_string (mode, &self->mode, error))
-        goto out;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "This version of OSTree no longer supports \"archive\" repositories; use archive-z2 instead");
+      goto out;
     }
+
+  if (!ot_keyfile_get_value_with_default (self->config, "core", "mode",
+                                          "bare", &mode, error))
+    goto out;
+  if (!ostree_repo_mode_from_string (mode, &self->mode, error))
+    goto out;
 
   if (!ot_keyfile_get_value_with_default (self->config, "core", "parent",
                                           NULL, &parent_repo_path, error))
@@ -415,18 +413,6 @@ _ostree_repo_get_file_object_path (OstreeRepo   *self,
                                    const char   *checksum)
 {
   return _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
-}
-
-GFile *
-_ostree_repo_get_archive_content_path (OstreeRepo    *self,
-                                       const char    *checksum)
-{
-  gs_free char *path = NULL;
-
-  g_assert (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE);
-
-  path = ostree_get_relative_archive_content_path (checksum);
-  return g_file_resolve_relative_path (self->repodir, path);
 }
 
 static gboolean
@@ -514,8 +500,6 @@ stage_object (OstreeRepo         *self,
   gs_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
-  gboolean staged_raw_file = FALSE;
-  gboolean staged_archive_file = FALSE;
   gboolean temp_file_is_regular;
 
   g_return_val_if_fail (self->in_transaction, FALSE);
@@ -563,7 +547,6 @@ stage_object (OstreeRepo         *self,
                                                    &temp_file,
                                                    cancellable, error))
             goto out;
-          staged_raw_file = TRUE;
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
         {
@@ -597,58 +580,6 @@ stage_object (OstreeRepo         *self,
 
           if (!g_output_stream_close (temp_out, cancellable, error))
             goto out;
-        }
-      else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE)
-        {
-          gs_unref_variant GVariant *file_meta = NULL;
-          gs_unref_object GInputStream *file_meta_input = NULL;
-          gs_unref_object GFileInfo *archive_content_file_info = NULL;
-          
-          file_meta = ostree_file_header_new (file_info, xattrs);
-          file_meta_input = ot_variant_read (file_meta);
-
-          if (!ostree_create_temp_file_from_input (self->tmp_dir,
-                                                   ostree_object_type_to_string (objtype), NULL,
-                                                   NULL, NULL, file_meta_input,
-                                                   &temp_file,
-                                                   cancellable, error))
-            goto out;
-
-          if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-            {
-              gs_unref_object GOutputStream *content_out = NULL;
-              guint32 src_mode;
-              guint32 target_mode;
-
-              if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                                           &raw_temp_file, &content_out,
-                                           cancellable, error))
-                goto out;
-
-              /* Don't make setuid files in the repository; all we want to preserve
-               * is file type and permissions.
-               */
-              src_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-              target_mode = src_mode & (S_IRWXU | S_IRWXG | S_IRWXO | S_IFMT);
-              /* However, do ensure that archive mode files are
-               * readable by all users.  This is important for serving
-               * files via HTTP.
-               */
-              target_mode |= (S_IRUSR | S_IRGRP | S_IROTH);
-              
-              if (chmod (gs_file_get_path_cached (raw_temp_file), target_mode) < 0)
-                {
-                  ot_util_set_error_from_errno (error, errno);
-                  goto out;
-                }
-
-              if (g_output_stream_splice (content_out, file_input,
-                                          G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE | G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                          cancellable, error) < 0)
-                goto out;
-
-              staged_archive_file = TRUE;
-            }
         }
       else
         g_assert_not_reached ();
@@ -688,53 +619,10 @@ stage_object (OstreeRepo         *self,
 
   if (do_commit)
     {
-      /* Only do this if we *didn't* stage a bare file above */
-      if (!staged_raw_file
-          && objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
-        {
-          gs_unref_object GInputStream *file_input = NULL;
-          gs_unref_object GFileInfo *file_info = NULL;
-          gs_unref_variant GVariant *xattrs = NULL;
-          gboolean is_regular;
-              
-          if (!ostree_content_file_parse (FALSE, temp_file, FALSE, &file_input,
-                                          &file_info, &xattrs,
-                                          cancellable, error))
-            goto out;
-              
-          if (!ostree_create_temp_file_from_input (self->tmp_dir,
-                                                   ostree_object_type_to_string (objtype), NULL,
-                                                   file_info, xattrs, file_input,
-                                                   &raw_temp_file,
-                                                   cancellable, error))
-            goto out;
-
-          is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
-
-          if (!commit_loose_object_trusted (self, actual_checksum, objtype, 
-                                            raw_temp_file, is_regular, cancellable, error))
-            goto out;
-          g_clear_object (&raw_temp_file);
-        }
-      else
-        {
-          /* Commit content first so the process is atomic */
-          if (staged_archive_file)
-            {
-              gs_unref_object GFile *archive_content_dest = NULL;
-
-              archive_content_dest = _ostree_repo_get_archive_content_path (self, actual_checksum);
-                                                                   
-              if (!commit_loose_object_impl (self, raw_temp_file, archive_content_dest, TRUE,
-                                             cancellable, error))
-                goto out;
-              g_clear_object (&raw_temp_file);
-            }
-          if (!commit_loose_object_trusted (self, actual_checksum, objtype, temp_file, temp_file_is_regular,
-                                            cancellable, error))
-            goto out;
-          g_clear_object (&temp_file);
-        }
+      if (!commit_loose_object_trusted (self, actual_checksum, objtype, temp_file, temp_file_is_regular,
+                                        cancellable, error))
+        goto out;
+      g_clear_object (&temp_file);
     }
 
   g_mutex_lock (&self->txn_stats_lock);
@@ -938,9 +826,6 @@ scan_loose_devino (OstreeRepo                     *self,
       
           switch (repo_mode)
             {
-            case OSTREE_REPO_MODE_ARCHIVE:
-              skip = !g_str_has_suffix (name, ".filecontent");
-              break;
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
             case OSTREE_REPO_MODE_BARE:
               skip = !g_str_has_suffix (name, ".file");
@@ -2136,40 +2021,6 @@ ostree_repo_load_file (OstreeRepo         *self,
     {
       switch (repo_mode)
         {
-        case OSTREE_REPO_MODE_ARCHIVE:
-          {
-            gs_unref_variant GVariant *archive_meta = NULL;
-
-            if (!ot_util_variant_map (loose_path, OSTREE_FILE_HEADER_GVARIANT_FORMAT,
-                                      TRUE, &archive_meta, error))
-              goto out;
-
-            if (!ostree_file_header_parse (archive_meta, &ret_file_info, &ret_xattrs,
-                                           error))
-              goto out;
-
-            if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
-              {
-                gs_unref_object GFile *archive_content_path = NULL;
-                gs_unref_object GFileInfo *content_info = NULL;
-
-                archive_content_path = _ostree_repo_get_archive_content_path (self, checksum);
-                content_info = g_file_query_info (archive_content_path, OSTREE_GIO_FAST_QUERYINFO,
-                                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                  cancellable, error);
-                if (!content_info)
-                  goto out;
-
-                if (out_input)
-                  {
-                    ret_input = (GInputStream*)gs_file_read_noatime (archive_content_path, cancellable, error);
-                    if (!ret_input)
-                      goto out;
-                  }
-                g_file_info_set_size (ret_file_info, g_file_info_get_size (content_info));
-              }
-          }
-          break;
         case OSTREE_REPO_MODE_ARCHIVE_Z2:
           {
             if (!ostree_content_file_parse (TRUE, loose_path, TRUE,

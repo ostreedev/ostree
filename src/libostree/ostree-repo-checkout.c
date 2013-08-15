@@ -188,9 +188,6 @@ find_loose_for_checkout (OstreeRepo             *self,
         case OSTREE_REPO_MODE_BARE:
           path = _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
           break;
-        case OSTREE_REPO_MODE_ARCHIVE:
-          path = _ostree_repo_get_archive_content_path (self, checksum);
-          break;
         case OSTREE_REPO_MODE_ARCHIVE_Z2:
           {
             if (self->enable_uncompressed_cache)
@@ -299,7 +296,6 @@ checkout_file_thread (GSimpleAsyncResult     *result,
   /* We can only do hardlinks in these scenarios */
   if (!is_symlink &&
       ((checkout_data->repo->mode == OSTREE_REPO_MODE_BARE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
-       || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
        || (checkout_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && checkout_data->mode == OSTREE_REPO_CHECKOUT_MODE_USER)))
     {
       if (!find_loose_for_checkout (checkout_data->repo, checksum, &loose_path,

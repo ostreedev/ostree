@@ -21,7 +21,6 @@
 if BUILDOPT_INSTALL_TESTS
 insttestdir=$(pkglibexecdir)/installed-tests
 testfiles = test-basic \
-	test-archive \
 	test-archivez \
 	test-remote-add \
 	test-corruption \

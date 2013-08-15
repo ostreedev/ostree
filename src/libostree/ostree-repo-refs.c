@@ -646,8 +646,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
       
       if (rev != NULL)
         {
-          if (self->mode == OSTREE_REPO_MODE_ARCHIVE
-              || self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+          if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
             {
               if (!write_ref_summary (self, NULL, error))
                 goto out;
