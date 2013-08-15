@@ -35,6 +35,12 @@
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
+/**
+ * ostree_metadata_variant_type:
+ * @objtype: an object type
+ *
+ * Given a metadata object, return the signature of its #GVariant.
+ */
 const GVariantType *
 ostree_metadata_variant_type (OstreeObjectType objtype)
 {
@@ -51,6 +57,15 @@ ostree_metadata_variant_type (OstreeObjectType objtype)
     }
 }
 
+/**
+ * ostree_validate_checksum_string:
+ * @sha256: SHA256 hex string
+ * @error:
+ *
+ * Use this function to see if input strings are checksums.
+ *
+ * Returns: %TRUE if @sha256 is a valid checksum string, %FALSE otherwise
+ */
 gboolean
 ostree_validate_checksum_string (const char *sha256,
                                  GError    **error)
@@ -61,6 +76,19 @@ ostree_validate_checksum_string (const char *sha256,
 #define OSTREE_REF_FRAGMENT_REGEXP "[-._\\w\\d]+"
 #define OSTREE_REF_REGEXP "(?:" OSTREE_REF_FRAGMENT_REGEXP "/)*" OSTREE_REF_FRAGMENT_REGEXP
 
+/**
+ * ostree_parse_refspec:
+ * @refspec: A "refspec" string
+ * @out_remote: (out) (allow-none): The remote name, or %NULL if the refspec refs to a local ref
+ * @out_ref: (out) (allow-none): Name of ref
+ * @error:
+ *
+ * Split a refspec like "gnome-ostree:gnome-ostree/buildmaster" into
+ * two parts; @out_remote will be set to "gnome-ostree", and @out_ref
+ * will be "gnome-ostree/buildmaster".
+ *
+ * If @refspec refers to a local ref, @out_remote will be %NULL.
+ */
 gboolean
 ostree_parse_refspec (const char   *refspec,
                       char        **out_remote,
@@ -215,6 +243,19 @@ read_xattr_name_array (const char *path,
   return ret;
 }
 
+/**
+ * ostree_get_xattrs_for_file:
+ * @f: a #GFile
+ * @out_xattrs: (out): A new #GVariant containing the extended attributes
+ * @cancellable:
+ * @error:
+ *
+ * Read all extended attributes of @f in a canonical sorted order, and
+ * set @out_xattrs with the result.
+ *
+ * If the filesystem does not support extended attributes, @out_xattrs
+ * will have 0 elements, and this function will return successfully.
+ */
 gboolean
 ostree_get_xattrs_for_file (GFile         *f,
                             GVariant     **out_xattrs,
