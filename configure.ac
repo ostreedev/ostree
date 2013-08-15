@@ -87,12 +87,12 @@ AC_ARG_ENABLE(documentation,
               AC_HELP_STRING([--enable-documentation],
                              [build documentation]),,
               enable_documentation=yes)
-if test x$enable_documentation = xyes; then
+AS_IF([test x$enable_documentation = xyes], [
    AC_PATH_PROG([XSLTPROC], [xsltproc])
-   if test x$XSLTPROC = x; then
+   AS_IF([test x$XSLTPROC = x], [
       AC_MSG_ERROR([xsltproc is required to build documentation])
-   fi
-fi
+   ])
+])
 AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 
 AC_ARG_WITH(libarchive,
@@ -151,7 +151,7 @@ echo "
     libarchive (parse tar files directly): $with_libarchive
     documentation: $enable_documentation
     dracut: $with_dracut"
-if test "x$with_dracut" = "xyes" ; then
+AS_IF([test "x$with_dracut" = "xyes"], [
     echo "    systemd unit dir: $with_systemdsystemunitdir"
-fi
+])
 echo ""
