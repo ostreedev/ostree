@@ -1534,6 +1534,14 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return serialized_tree;
 }
 
+struct OstreeRepoCommitModifier {
+  volatile gint refcount;
+
+  OstreeRepoCommitModifierFlags flags;
+  OstreeRepoCommitFilter filter;
+  gpointer user_data;
+};
+
 static OstreeRepoCommitFilterResult
 apply_commit_filter (OstreeRepo            *self,
                      OstreeRepoCommitModifier *modifier,
@@ -1627,7 +1635,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
           g_debug ("Adding: %s", gs_file_get_path_cached (dir));
-          if (!(modifier && modifier->skip_xattrs))
+          if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
             {
               if (!ostree_get_xattrs_for_file (dir, &xattrs, cancellable, error))
                 goto out;
@@ -1722,7 +1730,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                             goto out;
                         }
 
-                      if (!(modifier && modifier->skip_xattrs))
+                      if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
                         {
                           g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
                           if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
@@ -1875,15 +1883,23 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
 
 /**
  * ostree_repo_commit_modifier_new:
+ * @flags: Control options for filter
+ * @commit_filter: (allow-none): Function that can inspect individual files
+ * @user_data: (allow-none): User data
  *
  * Returns: (transfer full): A new commit modifier.
  */
 OstreeRepoCommitModifier *
-ostree_repo_commit_modifier_new (void)
+ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
+                                 OstreeRepoCommitFilter         commit_filter,
+                                 gpointer                       user_data)
 {
   OstreeRepoCommitModifier *modifier = g_new0 (OstreeRepoCommitModifier, 1);
 
   modifier->refcount = 1;
+  modifier->flags = flags;
+  modifier->filter = commit_filter;
+  modifier->user_data = user_data;
 
   return modifier;
 }

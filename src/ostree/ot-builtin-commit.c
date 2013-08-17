@@ -194,10 +194,10 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   if (opt_owner_uid >= 0 || opt_owner_gid >= 0 || opt_statoverride_file != NULL
       || opt_no_xattrs)
     {
-      modifier = ostree_repo_commit_modifier_new ();
-      modifier->skip_xattrs = opt_no_xattrs;
-      modifier->filter = commit_filter;
-      modifier->user_data = mode_adds;
+      OstreeRepoCommitModifierFlags flags = 0;
+      if (opt_no_xattrs)
+        flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+      modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds);
     }
 
   if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))

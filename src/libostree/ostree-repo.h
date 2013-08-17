@@ -251,23 +251,25 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *r
                                                                 gpointer       user_data);
 
 /**
+ * OstreeRepoCommitModifierFlags:
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE: No special flags
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS: Do not process extended attributes
+ */
+typedef enum {
+  OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE = 0,
+  OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS = (1 << 0)
+} OstreeRepoCommitModifierFlags;
+
+/**
  * OstreeRepoCommitModifier:
  *
  * A structure allowing control over commits.
  */
-typedef struct {
-  volatile gint refcount;
+typedef struct OstreeRepoCommitModifier OstreeRepoCommitModifier;
 
-  guint reserved_flags : 31;
-  guint skip_xattrs : 1;
-
-  OstreeRepoCommitFilter filter;
-  gpointer user_data;
-
-  gpointer reserved[3];
-} OstreeRepoCommitModifier;
-
-OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (void);
+OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
+                                                           OstreeRepoCommitFilter         commit_filter,
+                                                           gpointer                       user_data);
 
 GType ostree_repo_commit_modifier_get_type (void);
 
