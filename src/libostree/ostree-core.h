@@ -197,8 +197,6 @@ char *ostree_get_relative_object_path (const char        *checksum,
                                        OstreeObjectType   type,
                                        gboolean           compressed);
 
-char *ostree_get_relative_archive_content_path (const char        *checksum);
-
 gboolean ostree_get_xattrs_for_file (GFile         *f,
                                      GVariant     **out_xattrs,
                                      GCancellable  *cancellable,

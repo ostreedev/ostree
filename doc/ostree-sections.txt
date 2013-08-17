@@ -31,7 +31,6 @@ ostree_object_name_deserialize
 ostree_object_to_string
 ostree_object_from_string
 ostree_get_relative_object_path
-ostree_get_relative_archive_content_path
 ostree_get_xattrs_for_file
 ostree_set_xattrs
 ostree_map_metadata_file

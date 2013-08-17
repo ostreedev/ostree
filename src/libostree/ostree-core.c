@@ -1378,23 +1378,6 @@ ostree_get_relative_object_path (const char         *checksum,
   return g_string_free (path, FALSE);
 }
 
-char *
-ostree_get_relative_archive_content_path (const char        *checksum)
-{
-  GString *path;
-
-  g_assert (strlen (checksum) == 64);
-
-  path = g_string_new ("objects/");
-
-  g_string_append_len (path, checksum, 2);
-  g_string_append_c (path, '/');
-  g_string_append (path, checksum + 2);
-  g_string_append (path, ".filecontent");
-
-  return g_string_free (path, FALSE);
-}
-
 /**
  * ostree_file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
