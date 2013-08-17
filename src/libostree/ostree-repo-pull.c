@@ -364,12 +364,11 @@ fetch_uri (OtPullData  *pull_data,
   gboolean ret = FALSE;
   gs_free char *uri_string = NULL;
   gs_unref_object SoupRequest *request = NULL;
-  OstreeFetchUriData fetch_data;
+  OstreeFetchUriData fetch_data = { 0, };
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  memset (&fetch_data, 0, sizeof (fetch_data));
   fetch_data.pull_data = pull_data;
 
   uri_string = soup_uri_to_string (uri, FALSE);
@@ -1184,7 +1183,7 @@ ostree_repo_pull (OstreeRepo               *self,
   gs_free char *branch_rev = NULL;
   gs_free char *remote_mode_str = NULL;
   GSource *queue_src = NULL;
-  OtPullData pull_data_real;
+  OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   SoupURI *summary_uri = NULL;
   GKeyFile *config = NULL;
@@ -1193,8 +1192,6 @@ ostree_repo_pull (OstreeRepo               *self,
   guint64 bytes_transferred;
   guint64 start_time;
   guint64 end_time;
-
-  memset (pull_data, 0, sizeof (*pull_data));
 
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_get_thread_default ();

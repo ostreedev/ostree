@@ -103,10 +103,8 @@ ostree_repo_prune (OstreeRepo        *repo,
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_hashtable GHashTable *all_refs = NULL;
   gs_free char *formatted_freed_size = NULL;
-  OtPruneData data;
+  OtPruneData data = { 0, };
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
-
-  memset (&data, 0, sizeof (data));
 
   data.repo = repo;
   data.reachable = ostree_repo_traverse_new_reachable ();

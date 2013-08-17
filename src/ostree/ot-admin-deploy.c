@@ -247,7 +247,7 @@ checkout_deployment_tree (GFile             *sysroot,
   gs_unref_object GFile *osdeploy_path = NULL;
   gs_unref_object GFile *deploy_target_path = NULL;
   gs_unref_object GFile *deploy_parent = NULL;
-  ProcessOneCheckoutData checkout_data;
+  ProcessOneCheckoutData checkout_data = { 0, };
 
   root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, csum);
   if (!ostree_repo_file_ensure_resolved (root, error))
@@ -272,7 +272,6 @@ checkout_deployment_tree (GFile             *sysroot,
   g_print ("ostadmin: Creating deployment %s\n",
            gs_file_get_path_cached (deploy_target_path));
 
-  memset (&checkout_data, 0, sizeof (checkout_data));
   checkout_data.loop = g_main_loop_new (NULL, TRUE);
   checkout_data.error = error;
   

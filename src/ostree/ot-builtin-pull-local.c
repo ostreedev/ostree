@@ -173,13 +173,11 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCancellable
   gs_unref_hashtable GHashTable *commits_to_clone = NULL;
   gs_unref_hashtable GHashTable *source_objects = NULL;
   gs_unref_hashtable GHashTable *objects_to_copy = NULL;
-  OtLocalCloneData datav;
+  OtLocalCloneData datav = { 0, };
   OtLocalCloneData *data = &datav;
 
   context = g_option_context_new ("SRC_REPO [REFS...] -  Copy data from SRC_REPO");
   g_option_context_add_main_entries (context, options, NULL);
-
-  memset (&datav, 0, sizeof (datav));
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
