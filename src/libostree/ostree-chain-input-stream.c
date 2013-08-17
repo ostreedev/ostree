@@ -68,7 +68,7 @@ ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
   stream_class->read_fn = ostree_chain_input_stream_read;
   stream_class->close_fn = ostree_chain_input_stream_close;
 
-  /**
+  /*
    * OstreeChainInputStream:streams: (element-type GInputStream)
    *
    * Chain of input streams read in order.

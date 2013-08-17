@@ -26,7 +26,6 @@
 
 G_BEGIN_DECLS
 
-
 /**
  * OSTREE_MAX_METADATA_SIZE:
  * 
@@ -43,6 +42,10 @@ G_BEGIN_DECLS
 
 /**
  * OstreeObjectType:
+ * @OSTREE_OBJECT_TYPE_FILE: Content; regular file, symbolic link
+ * @OSTREE_OBJECT_TYPE_DIR_TREE: List of children (trees or files), and metadata
+ * @OSTREE_OBJECT_TYPE_DIR_META: Directory metadata
+ * @OSTREE_OBJECT_TYPE_COMMIT: Toplevel object, refers to tree and dirmeta for root
  *
  * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
  * content, the other types are metadata.
@@ -56,17 +59,18 @@ typedef enum {
 
 /**
  * OSTREE_OBJECT_TYPE_IS_META:
+ * @t: An #OstreeObjectType
  *
  * Returns: %TRUE if object type is metadata
  */
 #define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 2 && t <= 4)
+
 /**
  * OSTREE_OBJECT_TYPE_LAST:
  *
  * Last valid object type; use this to validate ranges.
  */
 #define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
-
 
 /**
  * OSTREE_FILE_HEADER_GVARIANT_FORMAT:

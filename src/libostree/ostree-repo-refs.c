@@ -353,11 +353,11 @@ resolve_refspec (OstreeRepo     *self,
 
 /**
  * ostree_repo_resolve_rev:
- * @self:
+ * @self: Repo
  * @refspec: A refspec
  * @allow_noent: Do not throw an error if refspec does not exist
  * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
- * @error:
+ * @error: Error
  *
  * Look up the given refspec, returning the checksum it references in
  * the parameter @out_rev.

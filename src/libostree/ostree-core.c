@@ -75,7 +75,7 @@ ostree_metadata_variant_type (OstreeObjectType objtype)
 /**
  * ostree_validate_checksum_string:
  * @sha256: SHA256 hex string
- * @error:
+ * @error: Error
  *
  * Use this function to see if input strings are checksums.
  *
@@ -96,7 +96,7 @@ ostree_validate_checksum_string (const char *sha256,
  * @refspec: A "refspec" string
  * @out_remote: (out) (allow-none): The remote name, or %NULL if the refspec refs to a local ref
  * @out_ref: (out) (allow-none): Name of ref
- * @error:
+ * @error: Error
  *
  * Split a refspec like "gnome-ostree:gnome-ostree/buildmaster" into
  * two parts; @out_remote will be set to "gnome-ostree", and @out_ref
@@ -262,8 +262,8 @@ read_xattr_name_array (const char *path,
  * ostree_get_xattrs_for_file:
  * @f: a #GFile
  * @out_xattrs: (out): A new #GVariant containing the extended attributes
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Read all extended attributes of @f in a canonical sorted order, and
  * set @out_xattrs with the result.
@@ -441,8 +441,8 @@ write_padding (GOutputStream    *output,
  * @variant: A variant
  * @alignment_offset: Used to determine whether or not we should write padding bytes
  * @checksum: (allow-none): If provided, update with written data
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Use this function for serializing a chain of 1 or more variants
  * into a stream; the @alignment_offset parameter is used to ensure
@@ -503,8 +503,8 @@ ostree_write_variant_with_size (GOutputStream      *output,
  * @out: Stream
  * @variant: A variant, should be a file header
  * @checksum: (allow-none): If provided, update with written data
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Write a file header variant to the provided @out stream, optionally
  * updating @checksum.
@@ -535,8 +535,8 @@ ostree_write_file_header_update_checksum (GOutputStream         *out,
  * @xattrs: (allow-none): Optional extended attributes
  * @out_input: (out): Serialized object stream
  * @out_length: (out): Length of stream
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Convert from a "bare" file representation into an
  * OSTREE_OBJECT_TYPE_FILE stream.  This is a fundamental operation
@@ -600,8 +600,8 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
  * @out_input: (out): The raw file content stream
  * @out_file_info: (out): Normal metadata 
  * @out_xattrs: (out): Extended attributes
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * The reverse of ostree_raw_file_to_content_stream(); this function
  * converts an object content stream back into components.
@@ -713,8 +713,8 @@ ostree_content_stream_parse (gboolean                compressed,
  * @out_input: (out): The raw file content stream
  * @out_file_info: (out): Normal metadata 
  * @out_xattrs: (out): Extended attributes
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * A thin wrapper for ostree_content_stream_parse(); this function
  * converts an object content stream back into components.
@@ -978,8 +978,8 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
  * ostree_set_xattrs:
  * @f: a file
  * @xattrs: Extended attribute list
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * For each attribute in @xattrs, replace the value (if any) of @f for
  * that attribute.  This function does not clear other existing

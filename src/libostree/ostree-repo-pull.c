@@ -20,7 +20,7 @@
  * Author: Colin Walters <walters@verbum.org>
  */
 
-/**
+/*
  * See:
  * https://mail.gnome.org/archives/ostree-list/2012-August/msg00021.html
  *

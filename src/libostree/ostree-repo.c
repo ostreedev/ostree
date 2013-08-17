@@ -226,7 +226,7 @@ ostree_repo_copy_config (OstreeRepo *self)
 
 /**
  * ostree_repo_write_config:
- * @self:
+ * @self: Repo
  * @new_config: Overwrite the config file with this data.  Do not change later!
  * @error: a #GError
  *
@@ -395,7 +395,7 @@ ostree_repo_get_mode (OstreeRepo  *self)
 
 /**
  * ostree_repo_get_parent:
- * @self:
+ * @self: Repo
  * 
  * Before this function can be used, ostree_repo_init() must have been
  * called.
@@ -1680,12 +1680,12 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
 
 /**
  * ostree_repo_stage_directory_to_mtree:
- * @self:
+ * @self: Repo
  * @dir: Path to a directory
  * @mtree: Overlay directory contents into this tree
  * @modifier: (allow-none): Optional modifier
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Store objects for @dir and all children into the repository @self,
  * overlaying the resulting filesystem hierarchy into @mtree.
@@ -2191,11 +2191,11 @@ ostree_repo_has_object (OstreeRepo           *self,
 
 /**
  * ostree_repo_delete_object:
- * @self:
+ * @self: Repo
  * @objtype: Object type
  * @sha256: Checksum
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Remove the object of type @objtype with checksum @sha256
  * from the repository.  An error of type %G_IO_ERROR_NOT_FOUND
@@ -2214,12 +2214,12 @@ ostree_repo_delete_object (OstreeRepo           *self,
 
 /**
  * ostree_repo_query_object_storage_size:
- * @self:
+ * @self: Repo
  * @objtype: Object type
  * @sha256: Checksum
  * @out_size: (out): Size in bytes object occupies physically
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Return the size in bytes of object with checksum @sha256, after any
  * compression has been applied.
@@ -2286,11 +2286,11 @@ ostree_repo_load_variant_if_exists (OstreeRepo       *self,
 
 /**
  * ostree_repo_load_variant:
- * @self:
+ * @self: Repo
  * @objtype: Expected object type
  * @sha256: Checksum string
  * @out_variant: (out): (transfer full): Metadata object
- * @error:
+ * @error: Error
  * 
  * Load the metadata object @sha256 of type @objtype, storing the
  * result in @out_variant.
@@ -2308,11 +2308,11 @@ ostree_repo_load_variant (OstreeRepo       *self,
 
 /**
  * ostree_repo_list_objects:
- * @self:
- * @flags:
+ * @self: Repo
+ * @flags: Flags controlling enumeration
  * @out_objects: (out): Map of serialized object name to variant data
- * @cancellable:
- * @error:
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * This function synchronously enumerates all objects in the
  * repository, returning data in @out_objects.  @out_objects

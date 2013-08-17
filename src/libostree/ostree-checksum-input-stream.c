@@ -61,7 +61,7 @@ ostree_checksum_input_stream_class_init (OstreeChecksumInputStreamClass *klass)
 
   stream_class->read_fn = ostree_checksum_input_stream_read;
 
-  /**
+  /*
    * OstreeChecksumInputStream:checksum:
    *
    * The checksum that the stream updates.

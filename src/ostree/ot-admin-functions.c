@@ -360,10 +360,15 @@ parse_kernel_commandline (OtOrderedHash  **out_args,
 
 /**
  * ot_admin_find_booted_deployment:
+ * @target_sysroot: Root directory
+ * @deployments: (element-type OtDeployment): Loaded deployments
+ * @out_deployment: (out): The currently booted deployment
+ * @cancellable:
+ * @error: 
  * 
- * Returns in @out_deployment the currently booted deployment using
- * the list in @deployments.  Will always return %NULL if
- * @target_sysroot is not equal to "/".
+ * If the system is currently booted into a deployment in
+ * @deployments, set @out_deployment.  Note that if @target_sysroot is
+ * not equal to "/", @out_deployment will always be set to %NULL.
  */
 gboolean
 ot_admin_find_booted_deployment (GFile               *target_sysroot,

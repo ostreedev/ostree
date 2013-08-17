@@ -102,10 +102,15 @@ ot_util_variant_take_ref (GVariant *variant)
 }
 
 /**
- * Return in @out_variant the result of memory-mapping the entire
- * contents of file @src.
+ * ot_util_variant_map:
+ * @src: a #GFile
+ * @type: Use this for variant
+ * @trusted: See documentation of g_variant_new_from_data()
+ * @out_variant: (out): Return location for new variant
+ * @error:
  *
- * Note the returned @out_variant is not floating.
+ * Memory-map @src, and store a new #GVariant referring to this memory
+ * in @out_variant.  Note the returned @out_variant is not floating.
  */
 gboolean
 ot_util_variant_map (GFile              *src,

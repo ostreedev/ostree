@@ -223,7 +223,7 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
 
 /**
  * ostree_mutable_tree_ensure_parent_dirs:
- * @self:
+ * @self: Tree
  * @split_path: (element-type utf8): File path components
  * @metadata_checksum: SHA256 checksum for metadata
  * @out_parent: (out) (transfer full): The parent tree
@@ -282,11 +282,11 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
 
 /**
  * ostree_mutable_tree_walk:
- * @self:
+ * @self: Tree
  * @split_path: (element-type utf8): Split pathname
  * @start: Descend from this number of elements in @split_path
  * @out_subdir: (out) (transfer full): Target parent
- * @error:
+ * @error: Error
  *
  * Traverse @start number of elements starting from @split_path; the
  * child will be returned in @out_subdir.
