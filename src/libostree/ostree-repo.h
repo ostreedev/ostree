@@ -41,6 +41,14 @@ gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
+/**
+ * OstreeRepoMode:
+ * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
+ * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
+ *
+ * See the documentation of #OstreeRepo for more information about the
+ * possible modes.
+ */
 typedef enum {
   OSTREE_REPO_MODE_BARE,
   OSTREE_REPO_MODE_ARCHIVE_Z2
@@ -115,8 +123,8 @@ gboolean      ostree_repo_stage_metadata_finish (OstreeRepo        *self,
 
 gboolean      ostree_repo_stage_content (OstreeRepo       *self,
                                          const char       *expected_checksum,
-                                         GInputStream     *content,
-                                         guint64           content_length,
+                                         GInputStream     *object_input,
+                                         guint64           length,
                                          guchar          **out_csum,
                                          GCancellable     *cancellable,
                                          GError          **error);
@@ -124,21 +132,21 @@ gboolean      ostree_repo_stage_content (OstreeRepo       *self,
 gboolean      ostree_repo_stage_metadata_trusted (OstreeRepo        *self,
                                                   OstreeObjectType   objtype,
                                                   const char        *checksum,
-                                                  GVariant          *object,
+                                                  GVariant          *variant,
                                                   GCancellable      *cancellable,
                                                   GError           **error);
 
 gboolean      ostree_repo_stage_content_trusted (OstreeRepo       *self,
                                                  const char       *checksum,
-                                                 GInputStream     *content,
-                                                 guint64           content_length,
+                                                 GInputStream     *object_input,
+                                                 guint64           length,
                                                  GCancellable     *cancellable,
                                                  GError          **error);
 
 void          ostree_repo_stage_content_async (OstreeRepo              *self,
                                                const char              *expected_checksum,
                                                GInputStream            *object,
-                                               guint64                  file_object_length,
+                                               guint64                  length,
                                                GCancellable            *cancellable,
                                                GAsyncReadyCallback      callback,
                                                gpointer                 user_data);
@@ -184,7 +192,7 @@ gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         GError       **error);
 
 gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
-                                                  OstreeObjectType expected_type,
+                                                  OstreeObjectType objtype,
                                                   const char    *sha256, 
                                                   GVariant     **out_variant,
                                                   GError       **error);

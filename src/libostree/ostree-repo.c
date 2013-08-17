@@ -36,6 +36,31 @@
 #include "libgsystem.h"
 #include "ostree-repo-file-enumerator.h"
 
+/**
+ * SECTION:libostree-repo
+ * @title: Content-addressed object store
+ * @short_description: A git-like storage system for operating system binaries
+ *
+ * The #OstreeRepo is like git, a content-addressed object store.
+ * Unlike git, it records uid, gid, and extended attributes.
+ *
+ * There are two possible "modes" for an #OstreeRepo;
+ * %OSTREE_REPO_MODE_BARE is very simple - content files are
+ * represented exactly as they are, and checkouts are just hardlinks.
+ * A %OSTREE_REPO_MODE_ARCHIVE_Z2 repository in contrast stores
+ * content files zlib-compressed.  It is suitable for non-root-owned
+ * repositories that can be served via a static HTTP server.
+ *
+ * To store content in the repo, first start a transaction with
+ * ostree_repo_prepare_transaction().  Then create a
+ * #OstreeMutableTree, and apply functions such as
+ * ostree_repo_stage_directory_to_mtree() to traverse a physical
+ * filesystem and stage content, possibly multiple times.
+ * 
+ * Once the #OstreeMutableTree is complete, stage all of its metadata
+ * with ostree_repo_stage_mtree(), and finally create a commit with
+ * ostree_repo_stage_commit().
+ */
 typedef struct {
   GObjectClass parent_class;
 } OstreeRepoClass;
@@ -983,6 +1008,13 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 
 /**
  * ostree_repo_stage_metadata:
+ * @self: Repo
+ * @objtype: Object type
+ * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @object: Metadata
+ * @out_csum: (out) (array fixed-size=32) (allow-none): Binary checksum
+ * @cancellable: Cancellable
+ * @error: Error
  * 
  * Store the metadata object @variant.  Return the checksum
  * as @out_csum.
@@ -992,9 +1024,9 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
  */
 gboolean
 ostree_repo_stage_metadata (OstreeRepo         *self,
-                            OstreeObjectType    type,
+                            OstreeObjectType    objtype,
                             const char         *expected_checksum,
-                            GVariant           *variant,
+                            GVariant           *object,
                             guchar            **out_csum,
                             GCancellable       *cancellable,
                             GError            **error)
@@ -1002,18 +1034,24 @@ ostree_repo_stage_metadata (OstreeRepo         *self,
   gs_unref_object GInputStream *input = NULL;
   gs_unref_variant GVariant *normalized = NULL;
 
-  normalized = g_variant_get_normal_form (variant);
+  normalized = g_variant_get_normal_form (object);
   input = ot_variant_read (normalized);
   
-  return stage_object (self, type, expected_checksum, input, 0, out_csum,
+  return stage_object (self, objtype, expected_checksum, input, 0, out_csum,
                        cancellable, error);
 }
 
 /**
  * ostree_repo_stage_metadata_trusted:
+ * @self: Repo
+ * @objtype: Object type
+ * @checksum: Store object with this ASCII SHA256 checksum
+ * @variant: Metadata object
+ * @cancellable: Cancellable
+ * @error: Error
  * 
- * Store the metadata object @variant; the provided @checksum
- * is trusted.
+ * Store the metadata object @variant; the provided @checksum is
+ * trusted.
  */
 gboolean
 ostree_repo_stage_metadata_trusted (OstreeRepo         *self,
@@ -1075,6 +1113,13 @@ stage_metadata_thread (GSimpleAsyncResult  *res,
 
 /**
  * ostree_repo_stage_metadata_async:
+ * @self: Repo
+ * @objtype: Object type
+ * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @object: Metadata
+ * @cancellable: Cancellable
+ * @callback: Invoked when metadata is staged
+ * @user_data: Data for @callback
  * 
  * Asynchronously store the metadata object @variant.  If provided,
  * the checksum @expected_checksum will be verified.
@@ -1181,6 +1226,12 @@ _ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
 
 /**
  * ostree_repo_stage_content_trusted:
+ * @self: Repo
+ * @checksum: Store content using this ASCII SHA256 checksum
+ * @object_input: Content stream
+ * @length: Length of @object_input
+ * @cancellable: Cancellable
+ * @error: Data for @callback
  *
  * Store the content object streamed as @object_input, with total
  * length @length.  The given @checksum will be treated as trusted.
@@ -1203,6 +1254,13 @@ ostree_repo_stage_content_trusted (OstreeRepo       *self,
 
 /**
  * ostree_repo_stage_content:
+ * @self: Repo
+ * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @object_input: Content object stream
+ * @length: Length of @object_input
+ * @out_csum: (out) (array fixed-size=32) (allow-none): Binary checksum
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Store the content object streamed as @object_input,
  * with total length @length.  The actual checksum will
@@ -1264,15 +1322,22 @@ stage_content_thread (GSimpleAsyncResult  *res,
 
 /**
  * ostree_repo_stage_content_async:
+ * @self: Repo
+ * @expected_checksum: (allow-none): If provided, validate content against this checksum
+ * @object: Input
+ * @length: Length of @object
+ * @cancellable: Cancellable
+ * @callback: Invoked when content is staged
+ * @user_data: User data for @callback
  * 
- * Asynchronously store the content object @object.  If provided,
- * the checksum @expected_checksum will be verified.
+ * Asynchronously store the content object @object.  If provided, the
+ * checksum @expected_checksum will be verified.
  */
 void          
 ostree_repo_stage_content_async (OstreeRepo               *self,
                                  const char               *expected_checksum,
                                  GInputStream             *object,
-                                 guint64                   file_object_length,
+                                 guint64                   length,
                                  GCancellable             *cancellable,
                                  GAsyncReadyCallback       callback,
                                  gpointer                  user_data)
@@ -1283,7 +1348,7 @@ ostree_repo_stage_content_async (OstreeRepo               *self,
   asyncdata->repo = g_object_ref (self);
   asyncdata->expected_checksum = g_strdup (expected_checksum);
   asyncdata->object = g_object_ref (object);
-  asyncdata->file_object_length = file_object_length;
+  asyncdata->file_object_length = length;
   asyncdata->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   asyncdata->result = g_simple_async_result_new ((GObject*) self,
@@ -2268,6 +2333,11 @@ ostree_repo_load_variant_c (OstreeRepo          *self,
 
 /**
  * ostree_repo_load_variant_if_exists:
+ * @self: Repo
+ * @objtype: Object type
+ * @sha256: ASCII checksum
+ * @out_variant: (out) (transfer full): Metadata
+ * @error: Error
  * 
  * Attempt to load the metadata object @sha256 of type @objtype if it
  * exists, storing the result in @out_variant.  If it doesn't exist,

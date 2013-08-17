@@ -758,6 +758,9 @@ ostree_repo_checkout_tree_finish (OstreeRepo               *self,
 
 /**
  * ostree_repo_checkout_gc:
+ * @self: Repo
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Call this after finishing a succession of checkout operations; it
  * will delete any currently-unused uncompressed objects from the
