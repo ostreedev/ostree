@@ -26,29 +26,27 @@
 
 G_BEGIN_DECLS
 
-/**
- * These functions implement repository-independent algorithms for
- * operating on the core OSTree data formats, such as converting
- * #GFileInfo into a #GVariant.
- *
- * There are 4 types of objects; file, dirmeta, tree, and commit.  The
- * last 3 are metadata, and the file object is the only content object
- * type.
- *
- * All metadata objects are stored as #GVariant (big endian).  The
- * rationale for this is the same as that of the ext{2,3,4} family of
- * filesystems; most developers will be using LE, and so it's better
- * to continually test the BE->LE swap.
- *
- * The file object is a custom format in order to support streaming.
- */
 
+/**
+ * OSTREE_MAX_METADATA_SIZE:
+ * 
+ * Maximum permitted size in bytes of metadata objects.
+ */
 #define OSTREE_MAX_METADATA_SIZE (1 << 26)
 
+/**
+ * OSTREE_MAX_RECURSION:
+ * 
+ * Maximum depth of metadata.
+ */
 #define OSTREE_MAX_RECURSION (256)
 
-#define OSTREE_EMPTY_STRING_SHA256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-
+/**
+ * OstreeObjectType:
+ *
+ * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
+ * content, the other types are metadata.
+ */
 typedef enum {
   OSTREE_OBJECT_TYPE_FILE = 1,      /* .file */
   OSTREE_OBJECT_TYPE_DIR_TREE = 2,  /* .dirtree */
@@ -56,26 +54,43 @@ typedef enum {
   OSTREE_OBJECT_TYPE_COMMIT = 4     /* .commit */
 } OstreeObjectType;
 
+/**
+ * OSTREE_OBJECT_TYPE_IS_META:
+ *
+ * Returns: %TRUE if object type is metadata
+ */
 #define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 2 && t <= 4)
+/**
+ * OSTREE_OBJECT_TYPE_LAST:
+ *
+ * Last valid object type; use this to validate ranges.
+ */
 #define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
 
 
-/*
- * file objects:
- * <BE guint32 containing variant length>
+/**
+ * OSTREE_FILE_HEADER_GVARIANT_FORMAT:
+ *
+ * File objects are stored as a stream, with one #GVariant header,
+ * followed by content.
+ * 
+ * The file header is of the following form:
+ *
+ * &lt;BE guint32 containing variant length&gt;
  * u - uid
  * u - gid
  * u - mode
  * u - rdev
  * s - symlink target 
  * a(ayay) - xattrs
- * ---
- * data
+ *
+ * Then the rest of the stream is data.
  */
 #define OSTREE_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuuusa(ayay))")
 
-/*
- * dirmeta objects:
+/**
+ * OSTREE_DIRMETA_GVARIANT_FORMAT:
+ *
  * u - uid
  * u - gid
  * u - mode
@@ -83,15 +98,17 @@ typedef enum {
  */
 #define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuua(ayay))")
 
-/*
- * Tree objects:
+/**
+ * OSTREE_TREE_GVARIANT_FORMAT:
+ *
  * a(say) - array of (filename, checksum) for files
  * a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories
  */
 #define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE ("(a(say)a(sayay))")
 
-/*
- * Commit objects:
+/**
+ * OSTREE_COMMIT_GVARIANT_FORMAT:
+ *
  * a{sv} - Metadata
  * ay - parent checksum (empty string for initial)
  * a(say) - Related objects
@@ -103,9 +120,13 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
-/*
- * filez objects:
- * <BE guint32 containing variant length>
+/**
+ * OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT:
+ *
+ * This is a variation on %OSTREE_FILE_HEADER_GVARIANT_FORMAT, used for
+ * storing zlib-compressed content objects.
+ *
+ * &lt;BE guint32 containing variant length&gt;
  * t - size
  * u - uid
  * u - gid
