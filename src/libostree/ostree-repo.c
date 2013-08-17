@@ -1397,6 +1397,22 @@ create_empty_gvariant_dict (void)
   return g_variant_builder_end (&builder);
 }
 
+/**
+ * ostree_repo_stage_commit:
+ * @self: Repo
+ * @branch: Name of ref
+ * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
+ * @subject: Subject
+ * @body: Body
+ * @root_contents_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_TREE
+ * @root_metadata_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_META
+ * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Write a commit metadata object, referencing @root_contents_checksum
+ * and @root_metadata_checksum.
+ */
 gboolean
 ostree_repo_stage_commit (OstreeRepo *self,
                           const char   *branch,
@@ -1778,6 +1794,18 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
   return ret;
 }
 
+/**
+ * ostree_repo_stage_mtree:
+ * @self: Repo
+ * @mtree: Mutable tree
+ * @out_contents_checksum: (out): Return location for ASCII checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Write all metadata objects for @mtree to repo; the resulting
+ * @out_contents_checksum contains the checksum for the
+ * %OSTREE_OBJECT_TYPE_DIR_TREE object.
+ */
 gboolean
 ostree_repo_stage_mtree (OstreeRepo           *self,
                          OstreeMutableTree    *mtree,
@@ -2058,6 +2086,19 @@ load_metadata_internal (OstreeRepo       *self,
   return ret;
 }
 
+/**
+ * ostree_repo_load_file:
+ * @self: Repo
+ * @checksum: ASCII SHA256 checksum
+ * @out_input: (out) (allow-none): File content
+ * @out_file_info: (out) (allow-none): File information
+ * @out_xattrs: (out) (allow-none): Extended attributes
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Load content object, decomposing it into three parts: the actual
+ * content (for regular files), the metadata, and extended attributes.
+ */
 gboolean
 ostree_repo_load_file (OstreeRepo         *self,
                        const char         *checksum,
@@ -2147,6 +2188,19 @@ ostree_repo_load_file (OstreeRepo         *self,
   return ret;
 }
 
+/**
+ * ostree_repo_load_object_stream:
+ * @self: Repo
+ * @objtype: Object type
+ * @checksum: ASCII SHA256 checksum
+ * @out_input: (out): Stream for object
+ * @out_size: (out): Length of @out_input
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Load object as a stream; useful when copying objects between
+ * repositories.
+ */
 gboolean
 ostree_repo_load_object_stream (OstreeRepo         *self,
                                 OstreeObjectType    objtype,
@@ -2222,6 +2276,20 @@ out:
   return ret;
 }
 
+/**
+ * ostree_repo_has_object:
+ * @self: Repo
+ * @objtype: Object type
+ * @checksum: ASCII SHA256 checksum
+ * @out_have_object: (out): %TRUE if repository contains object
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Set @out_have_object to %TRUE if @self contains the given object;
+ * %FALSE otherwise.
+ * 
+ * Returns: %FALSE if an unexpected error occurred, %TRUE otherwise
+ */
 gboolean
 ostree_repo_has_object (OstreeRepo           *self,
                         OstreeObjectType      objtype,
@@ -2311,6 +2379,17 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
   return ret;
 }
 
+/**
+ * ostree_repo_load_variant_c:
+ * @self: Repo
+ * @objtype: Expected object type
+ * @csum: Binary checksum
+ * @out_variant: (out): (transfer full): Metadata object
+ * @error: Error
+ * 
+ * Load the metadata object @csum of type @objtype, storing the
+ * result in @out_variant.
+ */
 gboolean
 ostree_repo_load_variant_c (OstreeRepo          *self,
                             OstreeObjectType     objtype,
@@ -2433,6 +2512,16 @@ ostree_repo_list_objects (OstreeRepo                  *self,
   return ret;
 }
 
+/**
+ * ostree_repo_read_commit:
+ * @self: Repo
+ * @rev: Revision (ref or ASCII checksum)
+ * @out_root: (out): An #OstreeRepoFile corresponding to the root
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Load the content for @rev into @out_root.
+ */
 gboolean
 ostree_repo_read_commit (OstreeRepo *self,
                          const char *rev, 
@@ -2458,8 +2547,22 @@ ostree_repo_read_commit (OstreeRepo *self,
 }
 
 #ifndef HAVE_LIBSOUP
+/**
+ * ostree_repo_pull:
+ * @self: Repo
+ * @remote_name: Name of remote
+ * @refs_to_fetch: (array zero-terminated=1) (element-type utf8) (allow-none): Optional list of refs; if %NULL, fetch all configured refs
+ * @flags: Options controlling fetch behavior
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Connect to the remote repository, fetching the specified set of
+ * refs @refs_to_fetch.  For each ref that is changed, download the
+ * commit, all metadata, and all content objects, storing them safely
+ * on disk in @self.
+ */
 gboolean
-ostree_repo_pull (OstreeRepo               *repo,
+ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
                   char                    **refs_to_fetch,
                   OstreeRepoPullFlags       flags,

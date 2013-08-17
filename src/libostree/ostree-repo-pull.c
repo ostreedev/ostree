@@ -1161,7 +1161,7 @@ load_remote_repo_config (OtPullData    *pull_data,
 }
 
 gboolean
-ostree_repo_pull (OstreeRepo               *repo,
+ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
                   char                    **refs_to_fetch,
                   OstreeRepoPullFlags       flags,
@@ -1201,7 +1201,7 @@ ostree_repo_pull (OstreeRepo               *repo,
   pull_data->loop = g_main_loop_new (pull_data->main_context, FALSE);
   pull_data->flags = flags;
 
-  pull_data->repo = repo;
+  pull_data->repo = self;
 
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
@@ -1213,10 +1213,10 @@ ostree_repo_pull (OstreeRepo               *repo,
   start_time = g_get_monotonic_time ();
 
   pull_data->remote_name = g_strdup (remote_name);
-  config = ostree_repo_get_config (repo);
+  config = ostree_repo_get_config (self);
 
   remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
-  if (!repo_get_string_key_inherit (repo, remote_key, "url", &baseurl, error))
+  if (!repo_get_string_key_inherit (self, remote_key, "url", &baseurl, error))
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
 

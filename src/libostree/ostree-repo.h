@@ -180,7 +180,7 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *repo,
                                      GError          **error);
 
 gboolean      ostree_repo_load_variant_c (OstreeRepo  *self,
-                                          OstreeObjectType expected_type,
+                                          OstreeObjectType objtype,
                                           const guchar  *csum,       
                                           GVariant     **out_variant,
                                           GError       **error);
@@ -198,7 +198,7 @@ gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   GError       **error);
 
 gboolean ostree_repo_load_file (OstreeRepo         *self,
-                                const char         *entry_sha256,
+                                const char         *checksum,
                                 GInputStream      **out_input,
                                 GFileInfo         **out_file_info,
                                 GVariant          **out_xattrs,
@@ -226,16 +226,35 @@ gboolean      ostree_repo_delete_object (OstreeRepo           *self,
                                          GCancellable         *cancellable,
                                          GError              **error);
 
+/** 
+ * OstreeRepoCommitFilterResult:
+ * @OSTREE_REPO_COMMIT_FILTER_ALLOW: Do commit this object
+ * @OSTREE_REPO_COMMIT_FILTER_SKIP: Ignore this object
+ */
 typedef enum {
   OSTREE_REPO_COMMIT_FILTER_ALLOW,
   OSTREE_REPO_COMMIT_FILTER_SKIP
 } OstreeRepoCommitFilterResult;
 
+/**
+ * OstreeRepoCommitFilter:
+ * @repo: Repo
+ * @path: Path to file
+ * @file_info: File information
+ * @user_data: User data
+ *
+ * Returns: #OstreeRepoCommitFilterResult saying whether or not to commit this file
+ */
 typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *repo,
                                                                 const char    *path,
                                                                 GFileInfo     *file_info,
                                                                 gpointer       user_data);
 
+/**
+ * OstreeRepoCommitModifier:
+ *
+ * A structure allowing control over commits.
+ */
 typedef struct {
   volatile gint refcount;
 
@@ -271,7 +290,7 @@ gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo                   *
                                                   GError                      **error);
 
 gboolean      ostree_repo_stage_mtree (OstreeRepo         *self,
-                                       OstreeMutableTree  *tree,
+                                       OstreeMutableTree  *mtree,
                                        char              **out_contents_checksum,
                                        GCancellable       *cancellable,
                                        GError            **error);
@@ -281,17 +300,27 @@ gboolean      ostree_repo_stage_commit (OstreeRepo   *self,
                                         const char   *parent,
                                         const char   *subject,
                                         const char   *body,
-                                        const char   *content_checksum,
-                                        const char   *metadata_checksum,
+                                        const char   *root_contents_checksum,
+                                        const char   *root_metadata_checksum,
                                         char        **out_commit,
                                         GCancellable *cancellable,
                                         GError      **error);
 
+/**
+ * OstreeRepoCheckoutMode:
+ * @OSTREE_REPO_CHECKOUT_MODE_NONE: No special options
+ * @OSTREE_REPO_CHECKOUT_MODE_USER: Ignore uid/gid of files
+ */
 typedef enum {
   OSTREE_REPO_CHECKOUT_MODE_NONE = 0,
   OSTREE_REPO_CHECKOUT_MODE_USER = 1
 } OstreeRepoCheckoutMode;
 
+/**
+ * OstreeRepoCheckoutOverwriteMode:
+ * @OSTREE_REPO_CHECKOUT_OVERWRITE_NONE: No special options
+ * @OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES: When layering checkouts, overwrite earlier files, but keep earlier directories
+ */
 typedef enum {
   OSTREE_REPO_CHECKOUT_OVERWRITE_NONE = 0,
   OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1
@@ -323,6 +352,12 @@ gboolean       ostree_repo_read_commit (OstreeRepo *self,
                                         GCancellable *cancellable,
                                         GError  **error);
 
+/**
+ * OstreeRepoListObjectsFlags:
+ * @OSTREE_REPO_LIST_OBJECTS_LOOSE: List only loose (plain file) objects
+ * @OSTREE_REPO_LIST_OBJECTS_PACKED: List only packed (compacted into blobs) objects
+ * @OSTREE_REPO_LIST_OBJECTS_ALL: List all objects
+ */
 typedef enum {
   OSTREE_REPO_LIST_OBJECTS_LOOSE = (1 << 0),
   OSTREE_REPO_LIST_OBJECTS_PACKED = (1 << 1),
@@ -358,6 +393,12 @@ gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       GCancellable       *cancellable,
                                       GError            **error);
 
+/**
+ * OstreeRepoPruneFlags:
+ * @OSTREE_REPO_PRUNE_FLAGS_NONE: No special options for pruning
+ * @OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE: Don't actually delete objects
+ * @OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY: Do not traverse individual commit objects, only follow refs
+ */
 typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_NONE,
   OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE,
@@ -373,12 +414,17 @@ gboolean ostree_repo_prune (OstreeRepo        *repo,
                             GCancellable      *cancellable,
                             GError           **error);
 
+/**
+ * OstreeRepoPullFlags:
+ * @OSTREE_REPO_PULL_FLAGS_NONE: No special options for pull
+ * @OSTREE_REPO_PULL_FLAGS_RELATED: Fetch objects referred to by each commit
+ */
 typedef enum {
   OSTREE_REPO_PULL_FLAGS_NONE,
   OSTREE_REPO_PULL_FLAGS_RELATED
 } OstreeRepoPullFlags;
 
-gboolean ostree_repo_pull (OstreeRepo             *repo,
+gboolean ostree_repo_pull (OstreeRepo             *self,
                            const char             *remote_name,
                            char                  **refs_to_fetch,
                            OstreeRepoPullFlags     flags,
