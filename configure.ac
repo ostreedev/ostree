@@ -137,13 +137,13 @@ echo "
     ===============
 
 
-    embedded dependencies: $enable_embedded_dependencies
-    introspection: $found_introspection
-    libsoup (retrieve remote HTTP repositories): $with_soup
-    libarchive (parse tar files directly): $with_libarchive
-    documentation: $enable_documentation
-    dracut: $with_dracut"
+    embedded dependencies:                        $enable_embedded_dependencies
+    introspection:                                $found_introspection
+    libsoup (retrieve remote HTTP repositories):  $with_soup
+    libarchive (parse tar files directly):        $with_libarchive
+    documentation:                                $enable_gtk_doc
+    dracut:                                       $with_dracut"
 AS_IF([test "x$with_dracut" = "xyes"], [
-    echo "    systemd unit dir: $with_systemdsystemunitdir"
+    echo "    systemd unit dir:                             $with_systemdsystemunitdir"
 ])
 echo ""
