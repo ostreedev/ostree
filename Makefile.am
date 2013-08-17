@@ -31,7 +31,7 @@ endif
 
 SUBDIRS += .
 
-if BUILD_DOCUMENTATION
+if ENABLE_GTK_DOC
 SUBDIRS += doc
 endif
 

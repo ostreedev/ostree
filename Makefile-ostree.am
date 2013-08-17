@@ -89,5 +89,3 @@ ostree_SOURCES += \
 ostree_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 ostree_LDADD += $(OT_INTERNAL_SOUP_LIBS)
 endif
-
-MANPAGES += doc/ostree.1

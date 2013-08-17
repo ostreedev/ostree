@@ -83,18 +83,8 @@ AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test x$found_introspection = xyes)
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
-AC_ARG_ENABLE(documentation,
-              AC_HELP_STRING([--enable-documentation],
-                             [build documentation]),,
-              enable_documentation=yes)
-AS_IF([test x$enable_documentation = xyes], [
-   AC_PATH_PROG([XSLTPROC], [xsltproc])
-   AS_IF([test x$XSLTPROC = x], [
-      AC_MSG_ERROR([xsltproc is required to build documentation])
-   ])
 GTK_DOC_CHECK([1.15], [--flavour no-tmpl])
-])
-AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
+AC_PATH_PROG([XSLTPROC], [xsltproc])
 
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
