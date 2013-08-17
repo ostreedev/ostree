@@ -225,11 +225,11 @@ GVariant *ostree_file_header_new (GFileInfo         *file_info,
 GVariant *ostree_zlib_file_header_new (GFileInfo         *file_info,
                                        GVariant          *xattrs);
 
-gboolean ostree_file_header_parse (GVariant         *data,
+gboolean ostree_file_header_parse (GVariant         *metadata,
                                    GFileInfo       **out_file_info,
                                    GVariant        **out_xattrs,
                                    GError          **error);
-gboolean ostree_zlib_file_header_parse (GVariant         *data,
+gboolean ostree_zlib_file_header_parse (GVariant         *metadata,
                                         GFileInfo       **out_file_info,
                                         GVariant        **out_xattrs,
                                         GError          **error);
@@ -277,7 +277,7 @@ gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GError          **error);
 
 gboolean ostree_checksum_file (GFile             *f,
-                               OstreeObjectType   type,
+                               OstreeObjectType   objtype,
                                guchar           **out_csum,
                                GCancellable      *cancellable,
                                GError           **error);
@@ -297,7 +297,7 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
-gboolean ostree_create_file_from_input (GFile          *file,
+gboolean ostree_create_file_from_input (GFile          *dest_file,
                                         GFileInfo      *finfo,
                                         GVariant       *xattrs,
                                         GInputStream   *input,
@@ -335,13 +335,13 @@ gboolean ostree_validate_structureof_checksum_string (const char *checksum,
 gboolean ostree_validate_structureof_file_mode (guint32            mode,
                                                 GError           **error);
 
-gboolean ostree_validate_structureof_commit (GVariant      *index,
+gboolean ostree_validate_structureof_commit (GVariant      *commit,
                                              GError       **error);
 
-gboolean ostree_validate_structureof_dirtree (GVariant      *index,
+gboolean ostree_validate_structureof_dirtree (GVariant      *dirtree,
                                               GError       **error);
 
-gboolean ostree_validate_structureof_dirmeta (GVariant      *index,
+gboolean ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
                                               GError       **error);
 
 gchar *  ostree_commit_get_parent            (GVariant  *commit_variant);

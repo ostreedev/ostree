@@ -151,6 +151,13 @@ ostree_parse_refspec (const char   *refspec,
   return ret;
 }
 
+/**
+ * ostree_validate_rev:
+ * @rev: A revision string
+ * @error: Error
+ *
+ * Returns: %TRUE if @rev is a valid ref string
+ */
 gboolean
 ostree_validate_rev (const char *rev,
                      GError **error)
@@ -440,6 +447,7 @@ write_padding (GOutputStream    *output,
  * @output: Stream
  * @variant: A variant
  * @alignment_offset: Used to determine whether or not we should write padding bytes
+ * @out_bytes_written: (out): Number of bytes written
  * @checksum: (allow-none): If provided, update with written data
  * @cancellable: Cancellable
  * @error: Error
@@ -778,6 +786,18 @@ ostree_content_file_parse (gboolean                compressed,
   return ret;
 }
 
+/**
+ * ostree_checksum_file_from_input:
+ * @file_info: File information
+ * @xattrs: (allow-none): Optional extended attributes
+ * @in: (allow-none): File content, should be %NULL for symbolic links
+ * @objtype: Object type
+ * @out_csum: (out) (array fixed-size=32): Return location for binary checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Compute the OSTree checksum for a given input.
+ */
 gboolean
 ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GVariant         *xattrs,
@@ -831,6 +851,16 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
   return ret;
 }
 
+/**
+ * ostree_checksum_file:
+ * @f: File path
+ * @objtype: Object type
+ * @out_csum: (out) (array fixed-size=32): Return location for binary checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Compute the OSTree checksum for a given file.
+ */
 gboolean
 ostree_checksum_file (GFile            *f,
                       OstreeObjectType  objtype,
@@ -908,6 +938,18 @@ checksum_file_async_data_free (gpointer datap)
   g_free (data);
 }
   
+/**
+ * ostree_checksum_file_async:
+ * @f: File path
+ * @objtype: Object type
+ * @io_priority: Priority for operation, see %G_IO_PRIORITY_DEFAULT
+ * @cancellable: Cancellable
+ * @callback: Invoked when operation is complete
+ * @user_data: Data for @callback
+ *
+ * Asynchronously compute the OSTree checksum for a given file;
+ * complete with ostree_checksum_file_async_finish().
+ */
 void
 ostree_checksum_file_async (GFile                 *f,
                             OstreeObjectType       objtype,
@@ -930,6 +972,16 @@ ostree_checksum_file_async (GFile                 *f,
   g_object_unref (res);
 }
 
+/**
+ * ostree_checksum_file_async_finish:
+ * @f: File path
+ * @result: Async result
+ * @out_csum: (out) (array fixed-size=32): Return location for binary checksum
+ * @error: Error
+ *
+ * Finish computing the OSTree checksum for a given file; see
+ * ostree_checksum_file_async().
+ */
 gboolean
 ostree_checksum_file_async_finish (GFile          *f,
                                    GAsyncResult   *result,
@@ -1343,6 +1395,16 @@ ostree_get_relative_archive_content_path (const char        *checksum)
   return g_string_free (path, FALSE);
 }
 
+/**
+ * ostree_file_header_parse:
+ * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
+ * @out_file_info: (out): Parsed file information
+ * @out_xattrs: (out): Parsed extended attribute set
+ * @error: Error
+ *
+ * Load file header information into standard Gio #GFileInfo object,
+ * along with extended attributes tored in @out_xattrs.
+ */
 gboolean
 ostree_file_header_parse (GVariant         *metadata,
                           GFileInfo       **out_file_info,
@@ -1393,6 +1455,16 @@ ostree_file_header_parse (GVariant         *metadata,
   return ret;
 }
 
+/**
+ * ostree_zlib_file_header_parse:
+ * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
+ * @out_file_info: (out): Parsed file information
+ * @out_xattrs: (out): Parsed extended attribute set
+ * @error: Error
+ *
+ * Like ostree_file_header_parse(), but operates on zlib-compressed
+ * content.
+ */
 gboolean
 ostree_zlib_file_header_parse (GVariant         *metadata,
                                GFileInfo       **out_file_info,
@@ -1446,6 +1518,19 @@ ostree_zlib_file_header_parse (GVariant         *metadata,
   return ret;
 }
 
+/**
+ * ostree_create_file_from_input:
+ * @dest_file: Destination; must not exist
+ * @finfo: File information
+ * @xattrs: (allow-none): Optional extended attributes
+ * @input: (allow-none): Optional file content, must be %NULL for symbolic links
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create a directory, regular file, or symbolic link, based on
+ * @finfo.  Append extended attributes from @xattrs if provided.  For
+ * %G_FILE_TYPE_REGULAR, set content based on @input.
+ */
 gboolean
 ostree_create_file_from_input (GFile            *dest_file,
                                GFileInfo        *finfo,
@@ -1565,6 +1650,22 @@ ostree_create_file_from_input (GFile            *dest_file,
   return ret;
 }
 
+/**
+ * ostree_create_temp_file_from_input:
+ * @dir: Target directory
+ * @prefix: Optional prefix
+ * @suffix: Optional suffix
+ * @finfo: File information
+ * @xattrs: (allow-none): Optional extended attributes
+ * @input: (allow-none): Optional file content, must be %NULL for symbolic links
+ * @out_file: (out): Path for newly created directory, file, or symbolic link
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_create_file_from_input(), but securely allocates a
+ * randomly-named target in @dir.  This is a unified version of
+ * mkstemp()/mkdtemp() that also supports symbolic links.
+ */
 gboolean
 ostree_create_temp_file_from_input (GFile            *dir,
                                     const char       *prefix,
@@ -1626,6 +1727,17 @@ ostree_create_temp_file_from_input (GFile            *dir,
   return ret;
 }
 
+/**
+ * ostree_create_temp_dir:
+ * @dir: Use this as temporary base
+ * @prefix: (allow-none): Optional prefix
+ * @suffix: (allow-none): Optional suffix
+ * @out_file: (out): Path for newly created directory, file, or symbolic link
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Securely create a randomly-named temporary subdirectory of @dir.
+ */
 gboolean
 ostree_create_temp_dir (GFile            *dir,
                         const char       *prefix,
@@ -1659,6 +1771,13 @@ ostree_create_temp_dir (GFile            *dir,
   return ret;
 }
 
+/**
+ * ostree_validate_structureof_objtype:
+ * @objtype:
+ * @error: Error
+ *
+ * Returns: %TRUE if @objtype represents a valid object type
+ */
 gboolean
 ostree_validate_structureof_objtype (guchar    objtype,
                                      GError   **error)
@@ -1674,6 +1793,13 @@ ostree_validate_structureof_objtype (guchar    objtype,
   return TRUE;
 }
 
+/**
+ * ostree_validate_structureof_csum_v:
+ * @checksum: a #GVariant of type "ay"
+ * @error: Error
+ *
+ * Returns: %TRUE if @checksum is a valid binary SHA256 checksum
+ */
 gboolean
 ostree_validate_structureof_csum_v (GVariant  *checksum,
                                     GError   **error)
@@ -1689,6 +1815,13 @@ ostree_validate_structureof_csum_v (GVariant  *checksum,
   return TRUE;
 }
 
+/**
+ * ostree_validate_structureof_checksum_string:
+ * @checksum: an ASCII string
+ * @error: Error
+ *
+ * Returns: %TRUE if @checksum is a valid ASCII SHA256 checksum
+ */
 gboolean
 ostree_validate_structureof_checksum_string (const char *checksum,
                                              GError   **error)
@@ -1740,6 +1873,16 @@ validate_variant (GVariant           *variant,
   return TRUE;
 }
 
+/**
+ * ostree_validate_structureof_commit:
+ * @commit: A commit object, %OSTREE_OBJECT_TYPE_COMMIT
+ * @error: Error
+ * 
+ * Use this to validate the basic structure of @commit, independent of
+ * any other objects it references.
+ *
+ * Returns: %TRUE if @commit is structurally valid
+ */
 gboolean
 ostree_validate_structureof_commit (GVariant      *commit,
                                     GError       **error)
@@ -1774,6 +1917,16 @@ ostree_validate_structureof_commit (GVariant      *commit,
   return ret;
 }
 
+/**
+ * ostree_validate_structureof_dirtree:
+ * @dirtree: A dirtree object, %OSTREE_OBJECT_TYPE_DIR_TREE
+ * @error: Error
+ * 
+ * Use this to validate the basic structure of @dirtree, independent of
+ * any other objects it references.
+ *
+ * Returns: %TRUE if @dirtree is structurally valid
+ */
 gboolean
 ostree_validate_structureof_dirtree (GVariant      *dirtree,
                                      GError       **error)
@@ -1842,6 +1995,13 @@ validate_stat_mode_perms (guint32        mode,
   return ret;
 }
 
+/**
+ * ostree_validate_structureof_file_mode:
+ * @mode: A Unix filesystem mode
+ * @error: Error
+ * 
+ * Returns: %TRUE if @mode represents a valid file type and permissions
+ */
 gboolean
 ostree_validate_structureof_file_mode (guint32            mode,
                                        GError           **error)
@@ -1863,6 +2023,15 @@ ostree_validate_structureof_file_mode (guint32            mode,
   return ret;
 }
 
+/**
+ * ostree_validate_structureof_dirmeta:
+ * @dirmeta: A dirmeta object, %OSTREE_OBJECT_TYPE_DIR_META
+ * @error: Error
+ * 
+ * Use this to validate the basic structure of @dirmeta.
+ *
+ * Returns: %TRUE if @dirmeta is structurally valid
+ */
 gboolean
 ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
                                      GError       **error)
@@ -1891,6 +2060,12 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
   return ret;
 }
 
+/**
+ * ostree_commit_get_parent:
+ * @commit_variant: Variant of type %OSTREE_OBJECT_TYPE_COMMIT
+ * 
+ * Returns: Binary checksum with parent of @commit_variant, or %NULL if none
+ */
 gchar *
 ostree_commit_get_parent (GVariant  *commit_variant)
 {
