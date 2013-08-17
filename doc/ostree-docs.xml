@@ -7,9 +7,11 @@
 ]>
 <book id="index">
 	<bookinfo>
-		<title>libostree</title>
+		<title>OSTree Manual</title>
 		<releaseinfo>for OSTree &version;</releaseinfo>
 	</bookinfo>
+
+	<xi:include href="overview.xml"/>
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>

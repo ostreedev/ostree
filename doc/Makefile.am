@@ -25,7 +25,7 @@ NULL =
 AUTOMAKE_OPTIONS = 1.6
 
 # The name of the module, e.g. 'glib'.
-DOC_MODULE=libostree
+DOC_MODULE=ostree
 
 # The top-level SGML file. You can change this if you want to.
 DOC_MAIN_SGML_FILE=$(DOC_MODULE)-docs.xml
@@ -73,7 +73,9 @@ HTML_IMAGES=
 
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).
 # e.g. content_files=running.sgml building.sgml changes-2.0.sgml
-content_files=$(NULL)
+content_files= \
+	overview.xml \
+	$(NULL)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
 # These files must be listed here *and* in content_files
@@ -90,7 +92,7 @@ expand_content_files= \
 GTKDOC_LIBS=
 
 # Hacks around gtk-doc brokenness for out of tree builds
-libostree-sections.txt: $(srcdir)/libostree-sections.txt
+ostree-sections.txt: $(srcdir)/ostree-sections.txt
 	cp $< $@
 
 version.xml:
