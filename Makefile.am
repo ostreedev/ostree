@@ -22,12 +22,20 @@ AM_CPPFLAGS = -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DSOUP_VERSION_MIN_REQUIRED=SOUP_VERSION_2_40 -DSOUP_VERSION_MAX_ALLOWED=SOUP_VERSION_40
 AM_CFLAGS = $(WARN_CFLAGS)
 
+# Subdirectories
+SUBDIRS =
+
 if BUILD_EMBEDDED_DEPENDENCIES
-SUBDIRS = embedded-dependencies .
-else
-SUBDIRS = .
+SUBDIRS += embedded-dependencies
 endif
 
+SUBDIRS += .
+
+if BUILD_DOCUMENTATION
+SUBDIRS += doc
+endif
+
+# Common variables
 NULL = 
 INSTALL_DATA_HOOKS =
 BUILT_SOURCES =
@@ -102,44 +110,6 @@ include Makefile-tests.am
 include Makefile-dracut.am
 
 install-data-hook: $(INSTALL_DATA_HOOKS)
-
-#  Docbook generation copied from systemd/Makefile.am
-#
-#  Copyright 2010 Lennart Poettering
-#
-#  systemd is free software; you can redistribute it and/or modify it
-#  under the terms of the GNU General Public License as published by
-#  the Free Software Foundation; either version 2 of the License, or
-#  (at your option) any later version.
-#
-#  systemd is distributed in the hope that it will be useful, but
-#  WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-#  General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with systemd; If not, see <http://www.gnu.org/licenses/>.
-
-XML_FILES = \
-	${patsubst %.1,%.xml,${patsubst %.3,%.xml,${patsubst %.5,%.xml,${patsubst %.7,%.xml,${patsubst %.8,%.xml,$(MANPAGES)}}}}}
-EXTRA_DIST += $(XML_FILES)
-
-if BUILD_DOCUMENTATION
-
-dist_man_MANS = $(MANPAGES)
-
-XSLTPROC_FLAGS = \
-	--nonet \
-	--param funcsynopsis.style "'ansi'"
-
-XSLTPROC_PROCESS_MAN = \
-	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
-	$(XSLTPROC) -o $@ $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
-
-doc/%.1: doc/%.xml
-	$(XSLTPROC_PROCESS_MAN)
-
-endif
 
 
 release-tag:

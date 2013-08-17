@@ -92,6 +92,7 @@ AS_IF([test x$enable_documentation = xyes], [
    AS_IF([test x$XSLTPROC = x], [
       AC_MSG_ERROR([xsltproc is required to build documentation])
    ])
+GTK_DOC_CHECK([1.15], [--flavour no-tmpl])
 ])
 AM_CONDITIONAL(BUILD_DOCUMENTATION, test x$enable_documentation = xyes)
 
@@ -136,6 +137,7 @@ AS_IF([test "x$with_dracut" = "xyes"], [
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
+doc/Makefile
 src/libostree/ostree-1.pc
 ])
 AC_OUTPUT

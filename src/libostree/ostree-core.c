@@ -36,11 +36,15 @@
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
 
 /**
- * ostree_metadata_variant_type:
- * @objtype: an object type
+ * SECTION:libostree-core
+ * @title: Core repository-independent functions
+ * @short_description: Create, validate, and convert core data types
  *
- * Given a metadata object, return the signature of its #GVariant.
+ * These functions make up the core data manipulation functions of
+ * OSTree, such as serializing/deserializing metadata, converting
+ * between different types of checksums, and validating input.
  */
+
 const GVariantType *
 ostree_metadata_variant_type (OstreeObjectType objtype)
 {
@@ -690,6 +694,20 @@ ostree_content_stream_parse (gboolean                compressed,
   return ret;
 }
 
+/**
+ * ostree_content_file_parse:
+ * @compressed: Whether or not the stream is zlib-compressed
+ * @content_path: Path to file containing content
+ * @trusted: If %TRUE, assume the content has been validated
+ * @out_input: (out): The raw file content stream
+ * @out_file_info: (out): Normal metadata 
+ * @out_xattrs: (out): Extended attributes
+ * @cancellable:
+ * @error:
+ *
+ * A thin wrapper for ostree_content_stream_parse(); this function
+ * converts an object content stream back into components.
+ */
 gboolean
 ostree_content_file_parse (gboolean                compressed,
                            GFile                  *content_path,
@@ -922,6 +940,13 @@ ostree_checksum_file_async_finish (GFile          *f,
   return TRUE;
 }
 
+/**
+ * ostree_create_directory_metadata:
+ * @dir_info: a #GFileInfo containing directory information
+ * @xattrs: (allow-none): Optional extended attributes
+ *
+ * Returns: (transfer full): A new #GVariant containing %OSTREE_OBJECT_TYPE_DIR_META
+ */
 GVariant *
 ostree_create_directory_metadata (GFileInfo    *dir_info,
                                   GVariant     *xattrs)
@@ -938,6 +963,17 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
   return ret_metadata;
 }
 
+/**
+ * ostree_set_xattrs:
+ * @f: a file
+ * @xattrs: Extended attribute list
+ * @cancellable:
+ * @error:
+ *
+ * For each attribute in @xattrs, replace the value (if any) of @f for
+ * that attribute.  This function does not clear other existing
+ * attributes.
+ */
 gboolean
 ostree_set_xattrs (GFile  *f, 
                    GVariant *xattrs, 
@@ -978,6 +1014,12 @@ ostree_set_xattrs (GFile  *f,
   return ret;
 }
 
+/**
+ * ostree_object_type_to_string:
+ * @objtype: an #OstreeObjectType
+ *
+ * Serialize @objtype to a string; this is used for file extensions.
+ */
 const char *
 ostree_object_type_to_string (OstreeObjectType objtype)
 {
@@ -997,6 +1039,12 @@ ostree_object_type_to_string (OstreeObjectType objtype)
     }
 }
 
+/**
+ * ostree_object_type_from_string:
+ * @str: A stringified version of #OstreeObjectType
+ *
+ * The reverse of ostree_object_type_to_string().
+ */
 OstreeObjectType
 ostree_object_type_from_string (const char *str)
 {
@@ -1012,6 +1060,13 @@ ostree_object_type_from_string (const char *str)
   return 0;
 }
 
+/**
+ * ostree_object_to_string:
+ * @checksum: An ASCII checksum
+ * @objtype: Object type
+ *
+ * Returns: A string containing both @checksum and a stringifed version of @objtype
+ */
 char *
 ostree_object_to_string (const char *checksum,
                          OstreeObjectType objtype)
@@ -1019,6 +1074,14 @@ ostree_object_to_string (const char *checksum,
   return g_strconcat (checksum, ".", ostree_object_type_to_string (objtype), NULL);
 }
 
+/**
+ * ostree_object_from_string:
+ * @str: An ASCII checksum
+ * @out_checksum: (out) (transfer full): Parsed checksum
+ * @out_objtype: (out): Parsed object type
+ *
+ * Reverse ostree_object_to_string().
+ */
 void
 ostree_object_from_string (const char *str,
                            gchar     **out_checksum,
@@ -1032,6 +1095,12 @@ ostree_object_from_string (const char *str,
   *out_objtype = ostree_object_type_from_string (dot + 1);
 }
 
+/**
+ * ostree_hash_object_name:
+ * @a: A #GVariant containing a serialized object
+ *
+ * Use this function with #GHashTable and ostree_object_name_serialize().
+ */
 guint
 ostree_hash_object_name (gconstpointer a)
 {
@@ -1045,6 +1114,13 @@ ostree_hash_object_name (gconstpointer a)
   return g_str_hash (checksum) + g_int_hash (&objtype_int);
 }
 
+/**
+ * ostree_cmp_checksum_bytes:
+ * @a: A binary checksum
+ * @b: A binary checksum
+ *
+ * Compare two binary checksums, using memcmp().
+ */
 int
 ostree_cmp_checksum_bytes (const guchar *a,
                            const guchar *b)
@@ -1052,6 +1128,13 @@ ostree_cmp_checksum_bytes (const guchar *a,
   return memcmp (a, b, 32);
 }
 
+/**
+ * ostree_object_name_serialize:
+ * @checksum: An ASCII checksum
+ * @objtype: An object type
+ *
+ * Returns: (transfer floating): A new floating #GVariant containing checksum string and objtype
+ */
 GVariant *
 ostree_object_name_serialize (const char *checksum,
                               OstreeObjectType objtype)
@@ -1061,6 +1144,15 @@ ostree_object_name_serialize (const char *checksum,
   return g_variant_new ("(su)", checksum, (guint32)objtype);
 }
 
+/**
+ * ostree_object_name_deserialize:
+ * @variant: A #GVariant of type (su)
+ * @out_checksum: (out) (transfer none): Pointer into string memory of @variant with checksum
+ * @out_objtype: (out): Return object type
+ *
+ * Reverse ostree_object_name_serialize().  Note that @out_checksum is
+ * only valid for the lifetime of @variant, and must not be freed.
+ */
 void
 ostree_object_name_deserialize (GVariant         *variant,
                                 const char      **out_checksum,
@@ -1103,6 +1195,12 @@ ostree_checksum_inplace_to_bytes (const char *checksum,
     }
 }
 
+/**
+ * ostree_checksum_to_bytes:
+ * @checksum: An ASCII checksum
+ *
+ * Returns: (transfer full) (array fixed-size=32): Binary checksum from @checksum of length 32; free with g_free().
+ */
 guchar *
 ostree_checksum_to_bytes (const char *checksum)
 {
@@ -1111,6 +1209,12 @@ ostree_checksum_to_bytes (const char *checksum)
   return ret;
 }
 
+/**
+ * ostree_checksum_to_bytes_v:
+ * @checksum: An ASCII checksum
+ *
+ * Returns: (transfer full): New #GVariant of type ay with length 32
+ */
 GVariant *
 ostree_checksum_to_bytes_v (const char *checksum)
 {
@@ -1119,6 +1223,13 @@ ostree_checksum_to_bytes_v (const char *checksum)
   return ot_gvariant_new_bytearray ((guchar*)result, 32);
 }
 
+/**
+ * ostree_checksum_inplace_from_bytes: (skip)
+ * @csum: (array fixed-size=32): An binary checksum of length 32
+ * @buf: Output location, must be at least 65 bytes in length
+ *
+ * Overwrite the contents of @buf with stringified version of @csum.
+ */
 void
 ostree_checksum_inplace_from_bytes (const guchar *csum,
                                     char         *buf)
@@ -1135,6 +1246,12 @@ ostree_checksum_inplace_from_bytes (const guchar *csum,
   buf[j] = '\0';
 }
 
+/**
+ * ostree_checksum_from_bytes:
+ * @csum: (array fixed-size=32): An binary checksum of length 32
+ *
+ * Returns: (transfer full): String form of @csum
+ */
 char *
 ostree_checksum_from_bytes (const guchar *csum)
 {
@@ -1143,12 +1260,24 @@ ostree_checksum_from_bytes (const guchar *csum)
   return ret;
 }
 
+/**
+ * ostree_checksum_from_bytes_v:
+ * @csum_v: #GVariant of type ay
+ *
+ * Returns: (transfer full): String form of @csum_bytes
+ */
 char *
-ostree_checksum_from_bytes_v (GVariant *csum_bytes)
+ostree_checksum_from_bytes_v (GVariant *csum_v)
 {
-  return ostree_checksum_from_bytes (ostree_checksum_bytes_peek (csum_bytes));
+  return ostree_checksum_from_bytes (ostree_checksum_bytes_peek (csum_v));
 }
 
+/**
+ * ostree_checksum_bytes_peek:
+ * @bytes: #GVariant of type ay
+ *
+ * Returns: (transfer none): Binary checksum data in @bytes; do not free
+ */
 const guchar *
 ostree_checksum_bytes_peek (GVariant *bytes)
 {
@@ -1156,6 +1285,14 @@ ostree_checksum_bytes_peek (GVariant *bytes)
   return g_variant_get_fixed_array (bytes, &n_elts, 1);
 }
 
+/**
+ * ostree_get_relative_object_path:
+ * @checksum: ASCII checksum string
+ * @type: Object type
+ * @compressed: Whether or not the repository object is compressed
+ *
+ * Returns: (transfer full): Relative path for a loose object
+ */
 char *
 ostree_get_relative_object_path (const char         *checksum,
                                  OstreeObjectType    type,

@@ -17,18 +17,12 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+include Makefile-libostree-defines.am
+
 lib_LTLIBRARIES += libostree-1.la
 
 libostreeheadersdir = $(includedir)/ostree-1
-libostreeheaders_DATA = \
-	src/libostree/ostree.h \
-	src/libostree/ostree-core.h \
-	src/libostree/ostree-mutable-tree.h \
-	src/libostree/ostree-repo.h \
-	src/libostree/ostree-types.h \
-	src/libostree/ostree-repo-file.h \
-	src/libostree/ostree-diff.h \
-	$(NULL)
+libostreeheaders_DATA = $(libostree_public_headers)
 
 libostree_1_la_SOURCES = \
 	src/libostree/ostree-core.c \

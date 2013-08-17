@@ -126,10 +126,10 @@ gboolean ostree_validate_checksum_string (const char *sha256,
 guchar *ostree_checksum_to_bytes (const char *checksum);
 GVariant *ostree_checksum_to_bytes_v (const char *checksum);
 
-char * ostree_checksum_from_bytes (const guchar *bytes);
-char * ostree_checksum_from_bytes_v (GVariant *bytes);
+char * ostree_checksum_from_bytes (const guchar *csum);
+char * ostree_checksum_from_bytes_v (GVariant *csum_v);
 
-void ostree_checksum_inplace_from_bytes (const guchar *bytes,
+void ostree_checksum_inplace_from_bytes (const guchar *csum,
                                          char         *buf);
 
 void ostree_checksum_inplace_to_bytes (const char *checksum,
@@ -230,7 +230,7 @@ gboolean ostree_content_file_parse (gboolean                compressed,
                                     GError                **error);
 
 gboolean ostree_write_file_header_update_checksum (GOutputStream         *out,
-                                                   GVariant              *header,
+                                                   GVariant              *variant,
                                                    GChecksum             *checksum,
                                                    GCancellable          *cancellable,
                                                    GError               **error);
