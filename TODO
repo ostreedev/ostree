@@ -1,4 +1,5 @@
 * Documentation
+  - More gtk-doc
 
 * Rethink commit objects
   - Drop the a{sv} per https://bugzilla.gnome.org/show_bug.cgi?id=673012
