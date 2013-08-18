@@ -190,12 +190,12 @@ GInputStream *
 ot_variant_read (GVariant             *variant)
 {
   GMemoryInputStream *ret = NULL;
-  gs_unref_bytes GBytes *bytes = NULL;
 
-  bytes = g_variant_get_data_as_bytes (variant);
-  ret = (GMemoryInputStream*)g_memory_input_stream_new ();
-  g_memory_input_stream_add_bytes (ret, bytes);
-
+  ret = (GMemoryInputStream*)g_memory_input_stream_new_from_data (g_variant_get_data (variant),
+                                                                  g_variant_get_size (variant),
+                                                                  NULL);
+  g_object_set_data_full ((GObject*)ret, "ot-variant-data",
+                          g_variant_ref (variant), (GDestroyNotify) g_variant_unref);
   return (GInputStream*)ret;
 }
 
