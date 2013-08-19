@@ -173,7 +173,7 @@ gboolean      ostree_repo_write_refspec (OstreeRepo  *self,
                                          const char  *rev,
                                          GError     **error);
 
-gboolean      ostree_repo_list_refs (OstreeRepo       *repo,
+gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      const char       *refspec_prefix,
                                      GHashTable      **out_all_refs,
                                      GCancellable     *cancellable,
@@ -405,7 +405,7 @@ typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
 } OstreeRepoPruneFlags;
 
-gboolean ostree_repo_prune (OstreeRepo        *repo,
+gboolean ostree_repo_prune (OstreeRepo        *self,
                             OstreeRepoPruneFlags   flags,
                             gint               depth,
                             gint              *out_objects_total,

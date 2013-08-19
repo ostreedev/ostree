@@ -87,8 +87,33 @@ maybe_prune_loose_object (OtPruneData        *data,
   return ret;
 }
 
+/**
+ * ostree_repo_prune:
+ * @self: Repo
+ * @flags: Options controlling prune process
+ * @depth: Stop traversal after this many iterations (-1 for unlimited)
+ * @out_objects_total: (out): Number of objects found
+ * @out_objects_pruned: (out): Number of objects deleted
+ * @out_pruned_object_size_total: (out): Storage size in bytes of objects deleted
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Delete content from the repository.  By default, this function will
+ * only delete "orphaned" objects not referred to by any commit.  This
+ * can happen during a local commit operation, when we have written
+ * content objects but not saved the commit referencing them.
+ *
+ * However, if %OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY is provided, instead
+ * of traversing all commits, only refs will be used.  Particularly
+ * when combined with @depth, this is a convenient way to delete
+ * history from the repository.
+ * 
+ * Use the %OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE to just determine
+ * statistics on objects that would be deleted, without actually
+ * deleting them.
+ */
 gboolean
-ostree_repo_prune (OstreeRepo        *repo,
+ostree_repo_prune (OstreeRepo        *self,
                    OstreeRepoPruneFlags   flags,
                    gint               depth,
                    gint              *out_objects_total,
@@ -106,12 +131,12 @@ ostree_repo_prune (OstreeRepo        *repo,
   OtPruneData data = { 0, };
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 
-  data.repo = repo;
+  data.repo = self;
   data.reachable = ostree_repo_traverse_new_reachable ();
 
   if (refs_only)
     {
-      if (!ostree_repo_list_refs (repo, NULL, &all_refs,
+      if (!ostree_repo_list_refs (self, NULL, &all_refs,
                                   cancellable, error))
         goto out;
       
@@ -121,13 +146,13 @@ ostree_repo_prune (OstreeRepo        *repo,
         {
           const char *checksum = value;
           
-          if (!ostree_repo_traverse_commit (repo, checksum, depth, data.reachable,
+          if (!ostree_repo_traverse_commit (self, checksum, depth, data.reachable,
                                             cancellable, error))
             goto out;
         }
     }
 
-  if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
+  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
                                  cancellable, error))
     goto out;
 
@@ -145,7 +170,7 @@ ostree_repo_prune (OstreeRepo        *repo,
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
             continue;
           
-          if (!ostree_repo_traverse_commit (repo, checksum, depth, data.reachable,
+          if (!ostree_repo_traverse_commit (self, checksum, depth, data.reachable,
                                             cancellable, error))
             goto out;
         }

@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,8 +16,6 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- *
- * Author: Colin Walters <walters@verbum.org>
  */
 
 #include "config.h"
@@ -473,8 +471,20 @@ enumerate_refs_recurse (OstreeRepo    *repo,
   return ret;
 }
 
+/**
+ * ostree_repo_list_refs:
+ * @self: Repo
+ * @refspec_prefix: (allow-none): Only list refs which match this prefix
+ * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * If @refspec_prefix is %NULL, list all local and remote refspecs,
+ * with their current values in @out_all_refs.  Otherwise, only list
+ * refspecs which have @refspec_prefix as a prefix.
+ */
 gboolean
-ostree_repo_list_refs (OstreeRepo       *repo,
+ostree_repo_list_refs (OstreeRepo       *self,
                        const char       *refspec_prefix,
                        GHashTable      **out_all_refs,
                        GCancellable     *cancellable,
@@ -497,9 +507,9 @@ ostree_repo_list_refs (OstreeRepo       *repo,
         goto out;
 
       if (remote)
-        dir = g_file_get_child (repo->remote_heads_dir, remote);
+        dir = g_file_get_child (self->remote_heads_dir, remote);
       else
-        dir = g_object_ref (repo->local_heads_dir);
+        dir = g_object_ref (self->local_heads_dir);
 
       child = g_file_resolve_relative_path (dir, ref_prefix);
       if (!ot_gfile_query_info_allow_noent (child, OSTREE_GIO_FAST_QUERYINFO, 0,
@@ -510,7 +520,7 @@ ostree_repo_list_refs (OstreeRepo       *repo,
         {
           if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY)
             {
-              if (!enumerate_refs_recurse (repo, remote, child, child,
+              if (!enumerate_refs_recurse (self, remote, child, child,
                                            ret_all_refs,
                                            cancellable, error))
                 goto out;
@@ -527,12 +537,12 @@ ostree_repo_list_refs (OstreeRepo       *repo,
     {
       gs_unref_object GFileEnumerator *remote_enumerator = NULL;
 
-      if (!enumerate_refs_recurse (repo, NULL, repo->local_heads_dir, repo->local_heads_dir,
+      if (!enumerate_refs_recurse (self, NULL, self->local_heads_dir, self->local_heads_dir,
                                    ret_all_refs,
                                    cancellable, error))
         goto out;
 
-      remote_enumerator = g_file_enumerate_children (repo->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
+      remote_enumerator = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
                                                      0,
                                                      cancellable, error);
 
@@ -549,7 +559,7 @@ ostree_repo_list_refs (OstreeRepo       *repo,
             break;
 
           name = g_file_info_get_name (info);
-          if (!enumerate_refs_recurse (repo, name, child, child,
+          if (!enumerate_refs_recurse (self, name, child, child,
                                        ret_all_refs,
                                        cancellable, error))
             goto out;
@@ -606,6 +616,23 @@ write_ref_summary (OstreeRepo      *self,
   return ret;
 }
 
+/**
+ * ostree_repo_write_ref:
+ * @self: Repo
+ * @remote: (allow-none): Optional remote name
+ * @name: Name of ref, e.g. foo/bar/baz
+ * @rev: (allow-none); ASCII SHA256 checksum; if %NULL, then delete @name
+ * @error: Error
+ *
+ * If @rev is not %NULL, then it as the target of ref named @name; if
+ * @remote is provided, the ref will appear originate from that
+ * remote.
+ *
+ * Otherwise, if @rev is %NULL, then delete the ref @name if it exists.
+ *
+ * This function merely changes the ref target; it is possible to use
+ * it to target earlier commits.
+ */
 gboolean      
 ostree_repo_write_ref (OstreeRepo  *self,
                        const char  *remote,
@@ -659,6 +686,16 @@ ostree_repo_write_ref (OstreeRepo  *self,
   return ret;
 }
 
+/**
+ * ostree_repo_write_refspec:
+ * @self: Repo
+ * @refspec: Optional remote with name of ref, e.g. remotename:foo/bar/baz
+ * @rev: (allow-none); ASCII SHA256 checksum; if %NULL, then delete @refspec
+ * @error: Error
+ *
+ * Like ostree_repo_write_ref(), but takes concatenated @refspec
+ * format as input instead of separate remote and name arguments.
+ */
 gboolean
 ostree_repo_write_refspec (OstreeRepo  *self,
                            const char  *refspec,
