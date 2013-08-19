@@ -8,13 +8,15 @@
   <name>ostree</name>
   <shortname>ostree</shortname>
 
-  <shortdesc xml:lang="en">Linux-based operating system develop/build/deploy tool</shortdesc>
+  <shortdesc xml:lang="en">Git for operating system binaries</shortdesc>
 
-  <description xml:lang="en">OSTree is a tool for developing,
-  building, and deploying Linux-based operating systems.  It is most
-  similar to tools like dpkg and rpm in "Linux
-  distributions". However, it is not a package system (though one
-  could be built on top).</description>
+  <description xml:lang="en">
+    OSTree is best summarized in a single sentence as "git for
+    operating system binaries".  At its core architecture is a
+    userspace content-addressed filesystem, and layered on top of
+    that is an administrative layer that is designed to atomically
+    parallel install multiple bootable Unix-like operating systems.
+  </description>
 
   <homepage rdf:resource="http://live.gnome.org/OSTree" />
   <license rdf:resource="http://usefulinc.com/doap/licenses/lgpl" />
