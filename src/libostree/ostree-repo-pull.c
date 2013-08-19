@@ -747,23 +747,6 @@ scan_commit_object (OtPullData         *pull_data,
                                  cancellable, error))
     goto out;
   
-  if (pull_data->flags & OSTREE_REPO_PULL_FLAGS_RELATED)
-    {
-      const char *name;
-      gs_unref_variant GVariant *csum_v = NULL;
-
-      related_objects = g_variant_get_child_value (commit, 2);
-      iter = g_variant_iter_new (related_objects);
-
-      while (g_variant_iter_loop (iter, "(&s@ay)", &name, &csum_v))
-        {
-          if (!scan_one_metadata_object (pull_data, ostree_checksum_bytes_peek (csum_v),
-                                         OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1,
-                                         cancellable, error))
-            goto out;
-        }
-    }
-
   ret = TRUE;
  out:
   if (iter)

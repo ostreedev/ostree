@@ -26,10 +26,7 @@
 #include "ostree.h"
 #include "otutil.h"
 
-gboolean opt_related;
-
 static GOptionEntry options[] = {
-  { "related", 0, 0, G_OPTION_ARG_NONE, &opt_related, "Download related commits", NULL },
   { NULL }
 };
 
@@ -68,9 +65,6 @@ ostree_builtin_pull (int argc, char **argv, GFile *repo_path, GCancellable *canc
         g_ptr_array_add (refs_to_fetch, argv[i]);
       g_ptr_array_add (refs_to_fetch, NULL);
     }
-
-  if (opt_related)
-    pullflags |= OSTREE_REPO_PULL_FLAGS_RELATED;
 
   if (!ostree_repo_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
                     pullflags, cancellable, error))

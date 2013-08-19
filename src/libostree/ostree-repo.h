@@ -411,11 +411,9 @@ gboolean ostree_repo_prune (OstreeRepo        *self,
 /**
  * OstreeRepoPullFlags:
  * @OSTREE_REPO_PULL_FLAGS_NONE: No special options for pull
- * @OSTREE_REPO_PULL_FLAGS_RELATED: Fetch objects referred to by each commit
  */
 typedef enum {
-  OSTREE_REPO_PULL_FLAGS_NONE,
-  OSTREE_REPO_PULL_FLAGS_RELATED
+  OSTREE_REPO_PULL_FLAGS_NONE
 } OstreeRepoPullFlags;
 
 gboolean ostree_repo_pull (OstreeRepo             *self,
