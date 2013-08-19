@@ -26,11 +26,9 @@
 #include "ostree.h"
 #include "libgsystem.h"
 
-static gboolean opt_archive;
 static char *opt_mode = NULL;
 
 static GOptionEntry options[] = {
-  { "archive", 0, 0, G_OPTION_ARG_NONE, &opt_archive, "Initialize repository as archive", NULL },
   { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive-z2)", NULL },
   { NULL }
 };
@@ -59,9 +57,7 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *canc
   child = g_file_get_child (repo_path, "config");
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
-  if (opt_archive)
-    mode_str = "archive";
-  else if (opt_mode)
+  if (opt_mode)
     {
       OstreeRepoMode mode;
       if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
