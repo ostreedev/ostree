@@ -214,7 +214,17 @@ on_request_sent (GObject        *object,
       msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
       if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
         {
-          g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
+          GIOErrorEnum code;
+          switch (msg->status_code)
+            {
+            case 404:
+            case 410:
+              code = G_IO_ERROR_NOT_FOUND;
+              break;
+            default:
+              code = G_IO_ERROR_FAILED;
+            }
+          g_set_error (&local_error, G_IO_ERROR, code,
                        "Server returned status %u: %s",
                        msg->status_code, soup_status_get_phrase (msg->status_code));
           g_simple_async_result_take_error (pending->result, local_error);
