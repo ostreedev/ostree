@@ -38,6 +38,8 @@ gboolean ot_admin_util_get_devino (GFile         *path,
                                    GCancellable  *cancellable,
                                    GError       **error);
 
+char *ot_admin_join_lines (GPtrArray  *lines);
+
 gboolean ot_admin_parse_deploy_path_name (const char *name,
                                           char      **out_csum,
                                           int        *out_serial,

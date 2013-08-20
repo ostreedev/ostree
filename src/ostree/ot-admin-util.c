@@ -75,3 +75,27 @@ ot_admin_util_get_devino (GFile         *path,
  out:
   return ret;
 }
+
+char *
+ot_admin_join_lines (GPtrArray  *lines)
+{
+  GString *buf = g_string_new ("");
+  guint i;
+  gboolean prev_was_empty = FALSE;
+
+  for (i = 0; i < lines->len; i++)
+    {
+      const char *line = lines->pdata[i];
+      /* Special bit to remove extraneous empty lines */
+      if (*line == '\0')
+        {
+          if (prev_was_empty || i == 0)
+            continue;
+          else
+            prev_was_empty = TRUE;
+        }
+      g_string_append (buf, line);
+      g_string_append_c (buf, '\n');
+    }
+  return g_string_free (buf, FALSE);
+}

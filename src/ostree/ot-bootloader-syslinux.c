@@ -104,30 +104,6 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
   return ret;
 }
 
-static char *
-join_lines (GPtrArray  *lines)
-{
-  GString *buf = g_string_new ("");
-  guint i;
-  gboolean prev_was_empty = FALSE;
-
-  for (i = 0; i < lines->len; i++)
-    {
-      const char *line = lines->pdata[i];
-      /* Special bit to remove extraneous empty lines */
-      if (*line == '\0')
-        {
-          if (prev_was_empty || i == 0)
-            continue;
-          else
-            prev_was_empty = TRUE;
-        }
-      g_string_append (buf, line);
-      g_string_append_c (buf, '\n');
-    }
-  return g_string_free (buf, FALSE);
-}
-
 static gboolean
 ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
                                      int                    bootversion,
@@ -253,7 +229,7 @@ ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
                                                cancellable, error))
     goto out;
 
-  new_config_contents = join_lines (new_lines);
+  new_config_contents = ot_admin_join_lines (new_lines);
 
   if (strcmp (new_config_contents, config_contents) != 0)
     {
