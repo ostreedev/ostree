@@ -31,34 +31,6 @@
 #include "ostree-core.h"
 #include "libgsystem.h"
 
-typedef struct {
-  GError **error;
-  gboolean caught_error;
-
-  GMainLoop *loop;
-} ProcessOneCheckoutData;
-
-static void
-on_checkout_complete (GObject         *object,
-                      GAsyncResult    *result,
-                      gpointer         user_data)
-{
-  ProcessOneCheckoutData *data = user_data;
-  GError *local_error = NULL;
-
-  if (!ostree_repo_checkout_tree_finish ((OstreeRepo*)object, result,
-                                         &local_error))
-    goto out;
-
- out:
-  if (local_error)
-    {
-      data->caught_error = TRUE;
-      g_propagate_error (data->error, local_error);
-    }
-  g_main_loop_quit (data->loop);
-}
-
 
 /**
  * copy_one_config_file:
@@ -247,7 +219,6 @@ checkout_deployment_tree (GFile             *sysroot,
   gs_unref_object GFile *osdeploy_path = NULL;
   gs_unref_object GFile *deploy_target_path = NULL;
   gs_unref_object GFile *deploy_parent = NULL;
-  ProcessOneCheckoutData checkout_data = { 0, };
 
   root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, csum);
   if (!ostree_repo_file_ensure_resolved (root, error))
@@ -272,18 +243,8 @@ checkout_deployment_tree (GFile             *sysroot,
   g_print ("ostadmin: Creating deployment %s\n",
            gs_file_get_path_cached (deploy_target_path));
 
-  checkout_data.loop = g_main_loop_new (NULL, TRUE);
-  checkout_data.error = error;
-  
-  ostree_repo_checkout_tree_async (repo, 0, 0, deploy_target_path, root,
-                                   file_info, cancellable,
-                                   on_checkout_complete, &checkout_data);
-  
-  g_main_loop_run (checkout_data.loop);
-  
-  g_main_loop_unref (checkout_data.loop);
-  
-  if (checkout_data.caught_error)
+  if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, root,
+                                  file_info, cancellable, error))
     goto out;
 
   ret = TRUE;

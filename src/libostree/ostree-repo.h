@@ -326,21 +326,15 @@ typedef enum {
   OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1
 } OstreeRepoCheckoutOverwriteMode;
 
-void
-ostree_repo_checkout_tree_async (OstreeRepo               *self,
-                                 OstreeRepoCheckoutMode    mode,
-                                 OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                                 GFile                    *destination,
-                                 OstreeRepoFile           *source,
-                                 GFileInfo                *source_info,
-                                 GCancellable             *cancellable,
-                                 GAsyncReadyCallback       callback,
-                                 gpointer                  user_data);
-
 gboolean
-ostree_repo_checkout_tree_finish (OstreeRepo               *self,
-                                  GAsyncResult             *result,
-                                  GError                  **error);
+ostree_repo_checkout_tree (OstreeRepo               *self,
+                           OstreeRepoCheckoutMode    mode,
+                           OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                           GFile                    *destination,
+                           OstreeRepoFile           *source,
+                           GFileInfo                *source_info,
+                           GCancellable             *cancellable,
+                           GError                  **error);
 
 gboolean       ostree_repo_checkout_gc (OstreeRepo        *self,
                                         GCancellable      *cancellable,

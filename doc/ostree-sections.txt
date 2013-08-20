@@ -109,8 +109,7 @@ ostree_repo_stage_mtree
 ostree_repo_stage_commit
 OstreeRepoCheckoutMode
 OstreeRepoCheckoutOverwriteMode
-ostree_repo_checkout_tree_async
-ostree_repo_checkout_tree_finish
+ostree_repo_checkout_tree
 ostree_repo_checkout_gc
 ostree_repo_read_commit
 OstreeRepoListObjectsFlags

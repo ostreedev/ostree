@@ -46,39 +46,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-typedef struct {
-  gboolean caught_error;
-  GError **error;
-
-  GMainLoop *loop;
-} ProcessOneCheckoutData;
-
-static void
-on_checkout_complete (GObject         *object,
-                      GAsyncResult    *result,
-                      gpointer         user_data)
-{
-  ProcessOneCheckoutData *data = user_data;
-  GError *local_error = NULL;
-
-  if (!ostree_repo_checkout_tree_finish ((OstreeRepo*)object, result,
-                                         &local_error))
-    goto out;
-
- out:
-  if (local_error)
-    {
-      if (!data->caught_error)
-        {
-          data->caught_error = TRUE;
-          g_propagate_error (data->error, local_error);
-        }
-      else
-        g_clear_error (&local_error);
-    }
-  g_main_loop_quit (data->loop);
-}
-
 static gboolean
 process_one_checkout (OstreeRepo           *repo,
                       const char           *resolved_commit,
@@ -88,14 +55,11 @@ process_one_checkout (OstreeRepo           *repo,
                       GError              **error)
 {
   gboolean ret = FALSE;
-  ProcessOneCheckoutData data;
   GError *tmp_error = NULL;
   gs_unref_object OstreeRepoFile *root = NULL;
   gs_unref_object OstreeRepoFile *subtree = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
 
-  memset (&data, 0, sizeof (data));
-  
   root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, resolved_commit);
   if (!ostree_repo_file_ensure_resolved (root, error))
     goto out;
@@ -123,23 +87,13 @@ process_one_checkout (OstreeRepo           *repo,
       goto out;
     }
 
-  data.loop = g_main_loop_new (NULL, TRUE);
-  data.error = error;
-
-  ostree_repo_checkout_tree_async (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
-                                   opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
-                                   target, subtree, file_info, cancellable,
-                                   on_checkout_complete, &data);
-
-  g_main_loop_run (data.loop);
-
-  if (data.caught_error)
+  if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
+                                  opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
+                                  target, subtree, file_info, cancellable, error))
     goto out;
                       
   ret = TRUE;
  out:
-  if (data.loop)
-    g_main_loop_unref (data.loop);
   return ret;
 }
 
