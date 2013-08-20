@@ -975,15 +975,7 @@ ot_admin_write_deployments (GFile             *sysroot,
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_object OtBootloader *bootloader = NULL;
-
-  bootloader = ot_admin_query_bootloader (sysroot);
-  if (!bootloader)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No known bootloader configuration detected");
-      goto out;
-    }
+  gs_unref_object OtBootloader *bootloader = ot_admin_query_bootloader (sysroot);
 
   if (current_bootversion == new_bootversion)
     {
@@ -1029,9 +1021,12 @@ ot_admin_write_deployments (GFile             *sysroot,
           goto out;
         }
 
-      if (!ot_bootloader_write_config (bootloader, new_bootversion,
-                                       cancellable, error))
-        goto out;
+      if (bootloader && !ot_bootloader_write_config (bootloader, new_bootversion,
+                                                     cancellable, error))
+          {
+            g_prefix_error (error, "Bootloader write config: ");
+            goto out;
+          }
 
       if (!swap_bootloader (sysroot, current_bootversion, new_bootversion,
                             cancellable, error))
