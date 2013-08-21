@@ -12,6 +12,7 @@
 	</bookinfo>
 
 	<xi:include href="overview.xml"/>
+	<xi:include href="repo.xml"/>
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>
