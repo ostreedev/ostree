@@ -62,6 +62,8 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf 
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
 
+ostree admin --sysroot=sysroot status
+
 echo "ok second deploy"
 
 ostree admin --sysroot=sysroot deploy --os=testos testos:testos/buildmaster/x86_64-runtime
@@ -123,6 +125,8 @@ assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 
 echo "ok upgrade bare"
 
+ostree admin --sysroot=sysroot status
+
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
@@ -134,14 +138,16 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-r
 
 echo "ok upgrade"
 
+ostree admin --sysroot=sysroot status
+
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.4/etc/os-release 'NAME=TestOS'
-ostree admin --sysroot=sysroot undeploy 1
+ostree admin --sysroot=sysroot undeploy 2
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.4
 
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.3/etc/os-release 'NAME=TestOS'
-ostree admin --sysroot=sysroot undeploy 3
+ostree admin --sysroot=sysroot undeploy 2
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.3
 
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'

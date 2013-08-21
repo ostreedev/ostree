@@ -791,10 +791,16 @@ parse_os_release (const char *contents,
   return ret;
 }
 
+/*
+ * install_deployment_kernel:
+ * 
+ * Write out an entry in /boot/loader/entries for @deployment.
+ */
 static gboolean
 install_deployment_kernel (GFile          *sysroot,
                            int             new_bootversion,
                            OtDeployment   *deployment,
+                           guint           n_deployments,
                            GCancellable   *cancellable,
                            GError        **error)
 
@@ -901,7 +907,7 @@ install_deployment_kernel (GFile          *sysroot,
                                val);
   ot_config_parser_set (bootconfig, "title", title_key);
 
-  version_key = g_strdup_printf ("%d", ot_deployment_get_bootserial (deployment));
+  version_key = g_strdup_printf ("%d", n_deployments - ot_deployment_get_index (deployment));
   ot_config_parser_set (bootconfig, "version", version_key);
 
   linux_relpath = g_file_get_relative_path (bootdir, dest_kernel_path);
@@ -1000,7 +1006,8 @@ ot_admin_write_deployments (GFile             *sysroot,
       for (i = 0; i < new_deployments->len; i++)
         {
           OtDeployment *deployment = new_deployments->pdata[i];
-          if (!install_deployment_kernel (sysroot, new_bootversion, deployment,
+          if (!install_deployment_kernel (sysroot, new_bootversion,
+                                          deployment, new_deployments->len,
                                           cancellable, error))
             {
               g_prefix_error (error, "Installing kernel: ");

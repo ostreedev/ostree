@@ -717,8 +717,8 @@ list_deployments_process_one_boot_entry (GFile               *sysroot,
 }
 
 static gint
-compare_deployments_by_boot_loader_version (gconstpointer     a_pp,
-                                            gconstpointer     b_pp)
+compare_deployments_by_boot_loader_version_reversed (gconstpointer     a_pp,
+                                                     gconstpointer     b_pp)
 {
   OtDeployment *a = *((OtDeployment**)a_pp);
   OtDeployment *b = *((OtDeployment**)b_pp);
@@ -728,11 +728,15 @@ compare_deployments_by_boot_loader_version (gconstpointer     a_pp,
   const char *b_version = ot_config_parser_get (b_bootconfig, "version");
   
   if (a_version && b_version)
-    return strverscmp (a_version, b_version);
+    {
+      int r = strverscmp (a_version, b_version);
+      /* Reverse */
+      return -r;
+    }
   else if (a_version)
-    return 1;
-  else
     return -1;
+  else
+    return 1;
 }
 
 gboolean
@@ -766,7 +770,7 @@ ot_admin_list_deployments (GFile               *sysroot,
         goto out;
     }
 
-  g_ptr_array_sort (ret_deployments, compare_deployments_by_boot_loader_version);
+  g_ptr_array_sort (ret_deployments, compare_deployments_by_boot_loader_version_reversed);
   for (i = 0; i < ret_deployments->len; i++)
     {
       OtDeployment *deployment = ret_deployments->pdata[i];
