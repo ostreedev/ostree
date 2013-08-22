@@ -977,6 +977,11 @@ ot_admin_write_deployments (GFile             *sysroot,
   guint i;
   gs_unref_object OtBootloader *bootloader = ot_admin_query_bootloader (sysroot);
 
+  if (bootloader)
+    g_print ("Detected bootloader: %s\n", ot_bootloader_get_name (bootloader));
+  else
+    g_print ("Detected bootloader: (unknown)\n");
+
   if (current_bootversion == new_bootversion)
     {
       if (!full_system_sync (cancellable, error))
