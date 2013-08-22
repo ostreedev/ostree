@@ -342,7 +342,23 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancella
   app->running = TRUE;
   if (opt_autoexit)
     {
-      dirmon = g_file_monitor_directory (app->root, 0, cancellable, error);
+      gboolean is_symlink = FALSE;
+      gs_unref_object GFileInfo *info = NULL;
+
+      info = g_file_query_info (app->root,
+                               G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               cancellable, error);
+      if (!info)
+        goto out;
+
+      is_symlink = g_file_info_get_is_symlink (info);
+
+      if (is_symlink)
+        dirmon = g_file_monitor_file (app->root, 0, cancellable, error);
+      else
+        dirmon = g_file_monitor_directory (app->root, 0, cancellable, error);
+
       if (!dirmon)
         goto out;
       g_signal_connect (dirmon, "changed", G_CALLBACK (on_dir_changed), app);
