@@ -39,7 +39,7 @@ typedef struct {
 static GOptionEntry options[] = {
   { "daemonize", 'd', 0, G_OPTION_ARG_NONE, &opt_daemonize, "Fork into background when ready", NULL },
   { "autoexit", 0, 0, G_OPTION_ARG_NONE, &opt_autoexit, "Automatically exit when directory is deleted", NULL },
-  { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH", "PATH" },
+  { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { NULL }
 };
@@ -311,7 +311,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancella
   if (opt_port_file)
     {
       gs_free char *portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));
-      if (!g_file_set_contents (opt_port_file, portstr, strlen (portstr), error))
+      if (g_strcmp0 ("-", opt_port_file) == 0)
+        fputs (portstr, stdout); // not g_print - this must go to stdout, not a handler
+      else if (!g_file_set_contents (opt_port_file, portstr, strlen (portstr), error))
         goto out;
     }
   soup_server_run_async (server);
