@@ -77,6 +77,7 @@ content_files= \
 	overview.xml \
 	repo.xml \
 	deployment.xml \
+	atomic-upgrades.xml \
 	$(NULL)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded

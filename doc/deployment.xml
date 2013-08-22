@@ -111,6 +111,17 @@
       class='directory'>/usr</filename>, but this is not a hard
       requirement.
     </para>
+
+    <para>
+      Finally, a deployment may have a <filename
+      class='extension'>.origin</filename> file, stored next to its
+      directory.  This file tells <command>ostree admin
+      upgrade</command> how to upgrade it.  At the moment, OSTree only
+      supports upgrading a single refspec.  However, in the future
+      OSTree may support a syntax for composing layers of trees, for
+      example.
+    </para>
+
   </chapter>
   
   <chapter id="managing-boot">
