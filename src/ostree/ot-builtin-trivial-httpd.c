@@ -334,6 +334,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancella
           _exit (0);
         }
       /* Child, continue */
+      /* Daemonising: close stdout/stderr so $() et al work on us */
+      fclose (stdout);
+      fclose (stdin);
     }
 
   app->running = TRUE;
