@@ -13,6 +13,7 @@
 
 	<xi:include href="overview.xml"/>
 	<xi:include href="repo.xml"/>
+	<xi:include href="deployment.xml"/>
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>

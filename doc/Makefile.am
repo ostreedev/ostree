@@ -76,6 +76,7 @@ HTML_IMAGES=
 content_files= \
 	overview.xml \
 	repo.xml \
+	deployment.xml \
 	$(NULL)
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
