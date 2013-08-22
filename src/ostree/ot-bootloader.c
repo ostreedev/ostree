@@ -37,6 +37,19 @@ ot_bootloader_query (OtBootloader  *self)
   return OT_BOOTLOADER_GET_IFACE (self)->query (self);
 }
 
+/**
+ * ot_bootloader_get_name:
+ *
+ * Returns: (transfer none): Name of this bootloader
+ */
+const char *
+ot_bootloader_get_name (OtBootloader  *self)
+{
+  g_return_val_if_fail (OT_IS_BOOTLOADER (self), NULL);
+
+  return OT_BOOTLOADER_GET_IFACE (self)->get_name (self);
+}
+
 gboolean
 ot_bootloader_write_config (OtBootloader  *self,
                             int            bootversion,

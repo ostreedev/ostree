@@ -49,6 +49,12 @@ ot_bootloader_syslinux_query (OtBootloader *bootloader)
   return g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
 }
 
+static const char *
+ot_bootloader_syslinux_get_name (OtBootloader *bootloader)
+{
+  return "syslinux";
+}
+
 static gboolean
 append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
                                         gboolean               regenerate_default,
@@ -267,6 +273,7 @@ static void
 ot_bootloader_syslinux_bootloader_iface_init (OtBootloaderInterface *iface)
 {
   iface->query = ot_bootloader_syslinux_query;
+  iface->get_name = ot_bootloader_syslinux_get_name;
   iface->write_config = ot_bootloader_syslinux_write_config;
 }
 

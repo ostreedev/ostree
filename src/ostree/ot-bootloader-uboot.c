@@ -53,6 +53,12 @@ ot_bootloader_uboot_query (OtBootloader *bootloader)
   return g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
 }
 
+static const char *
+ot_bootloader_uboot_get_name (OtBootloader *bootloader)
+{
+  return "U-Boot";
+}
+
 static gboolean
 create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
                                         int                    bootversion,
@@ -153,6 +159,7 @@ static void
 ot_bootloader_uboot_bootloader_iface_init (OtBootloaderInterface *iface)
 {
   iface->query = ot_bootloader_uboot_query;
+  iface->get_name = ot_bootloader_uboot_get_name;
   iface->write_config = ot_bootloader_uboot_write_config;
 }
 

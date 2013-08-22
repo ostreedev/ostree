@@ -38,6 +38,7 @@ struct _OtBootloaderInterface
 
   /* virtual functions */
   gboolean             (* query)                  (OtBootloader  *self);
+  const char *         (* get_name)               (OtBootloader  *self);
   gboolean             (* write_config)           (OtBootloader  *self,
                                                    int            bootversion,
                                                    GCancellable  *cancellable,
@@ -47,6 +48,8 @@ struct _OtBootloaderInterface
 GType ot_bootloader_get_type (void) G_GNUC_CONST;
 
 gboolean ot_bootloader_query (OtBootloader *self);
+
+const char *ot_bootloader_get_name (OtBootloader  *self);
 
 gboolean ot_bootloader_write_config (OtBootloader  *self,
                                      int            bootversion,
