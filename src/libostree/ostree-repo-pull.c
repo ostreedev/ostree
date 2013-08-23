@@ -24,45 +24,33 @@
  * See:
  * https://mail.gnome.org/archives/ostree-list/2012-August/msg00021.html
  *
- * DESIGN:
+ * First, we synchronously fetch all requested refs, and resolve them
+ * to SHA256 commit checksums.
  *
- * Pull refs
- *   For each ref:
- *     Queue scan of commit
+ * Now, there are two threads involved here.  First, there's the
+ * calling thread; we create a temporary #GMainContext, and iterate
+ * it.  This thread performs all HTTP requests.
  *
- * Mainloop:
- *  Process requests, await idle scan
+ * The calling thread communicates with the "metadata scanning"
+ * thread.  The purpose of the metadata thread is to avoid blocking
+ * the main thread while reading from the repository.  If a
+ * transaction is interrupted for example, the next run will need to
+ * lstat() each loose object, which could easily be 60000 or more.
+ *
+ * The two threads pass messages back and forth over queues.  The deep
+ * complexity in this code is determining when a pull process is
+ * complete.  When the main thread completes fetching a metadata
+ * object, it passes it over to the metadata thread, which may in turn
+ * queue more work for the main thread.  That in turn may generate
+ * more work for the metadata thread, etc.
+ *
+ * Work completion is presently done via sending special _IDLE message
+ * down the queue; if both threads are idle, the main thread tells the
+ * metadata thread to shut down, and then proceeds to stop iterating
+ * the main context.
  *  
- * Async queue:
- *  Scan commit
- *   If already cached, recursively scan content
- *   If not, queue fetch
- * 
- *  For each commit:
- *    Verify checksum
- *    Import
- *    Traverse and queue dirtree/dirmeta
- * 
- * Pull dirtrees:
- *  For each dirtree:
- *    Verify checksum
- *    Import
- *    Traverse and queue content/dirtree/dirmeta
- *
- * Pull content meta:
- *  For each content:
- *    Pull meta
- *    If contentcontent needed:
- *      Queue contentcontent
- *    else:
- *      Import
- *
- * Pull contentcontent:
- *  For each contentcontent
- *    Verify checksum
- *    Import
- *    
- *  
+ * There is still a race condition here.  See
+ * https://bugzilla.gnome.org/show_bug.cgi?id=706456
  */
 
 #include "config.h"
