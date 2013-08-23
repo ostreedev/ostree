@@ -8,29 +8,70 @@
   <chapter id="repository-intro">
     <title>Core object types and data model</title>
     <para>
-      OSTree is deeply inspired by git.  It is worth taking some time
+      OSTree is deeply inspired by git; like git, OSTree is a
+      userspace versioning filesystem.  It is worth taking some time
       to familiarize yourself with <ulink
       url="http://git-scm.com/book/en/Git-Internals">Git
-      Internals</ulink>, as this section will assume some knowledge of how
-      git works.
+      Internals</ulink>, as this section will assume some knowledge of
+      how git works.
     </para>
     
     <para>
-      Like git, OSTree is a userspace versioning filesystem.  Its
-      object types are similar to git; it has commit objects and
+      Its object types are similar to git; it has commit objects and
       content objects.  Git has "tree" objects, whereas OSTree splits
       them into "dirtree" and "dirmeta" objects.  But unlike git,
-      OSTree's checksums are SHA256.  Its content objects include uid,
-      gid, and extended attributes (but still no timestamps).
+      OSTree's checksums are SHA256.  And most crucially, its content
+      objects include uid, gid, and extended attributes (but still no
+      timestamps).
     </para>
     
-    <para>
-      Also like git, each commit in OSTree can have a parent.  It is
-      designed to store a history of your binary builds, just like git
-      stores a history of source control.  However, OSTree also makes
-      it easy to delete data, under the assumption that you can
-      regenerate it from source code.
-    </para>
+    <simplesect id="commits">
+      <title>Commit objects</title>
+      <para>
+	A commit object contains metadata such as a timestamp, a log
+	message, and most importantly, a reference to a
+	dirtree/dirmeta pair of checksums which describe the root
+	directory of the filesystem.
+      </para>
+      <para>
+	Also like git, each commit in OSTree can have a parent.  It is
+	designed to store a history of your binary builds, just like git
+	stores a history of source control.  However, OSTree also makes
+	it easy to delete data, under the assumption that you can
+	regenerate it from source code.
+      </para>
+    </simplesect>
+
+    <simplesect id="dirtree">
+      <title>Dirtree objects</title>
+      <para>
+	A dirtree contains a sorted array of (filename, checksum)
+	pairs for content objects, and a second sorted array of
+	(filename, dirtree checksum, dirmeta checksum), which are
+	subdirectories.
+      </para>
+    </simplesect>
+
+    <simplesect id="dirmeta">
+      <title>Dirmeta objects</title>
+      <para>
+	In git, tree objects contain the metadata such as permissions
+	for their children.  But OSTree splits this into a separate
+	object to avoid duplicating extended attribute listings.
+      </para>
+    </simplesect>
+
+    <simplesect id="content">
+      <title>Content objects</title>
+      <para>
+	Unlike the first three object types which are metadata,
+	designed to be <literal>mmap()ed</literal>, the content object
+	has a separate internal header and payload sections.  The
+	header contains uid, gid, mode, and symbolic link target (for
+	symlinks), as well as extended attributes.  After the header,
+	for regular files, the content follows.
+      </para>
+    </simplesect>
   </chapter>
 
   <chapter id="repository-types">
