@@ -15,6 +15,7 @@
 	<xi:include href="repo.xml"/>
 	<xi:include href="deployment.xml"/>
 	<xi:include href="atomic-upgrades.xml"/>
+	<xi:include href="adapting-existing.xml"/>
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>

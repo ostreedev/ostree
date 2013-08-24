@@ -82,24 +82,15 @@
       "live" on the currently booted filesystem.  The way they could
       work with OSTree is instead to take the list of installed
       packages in the currently booted tree, and compute a new
-      filesystem from that.
+      filesystem from that.  A later chapter describes in more details
+      how this could work: <xref linkend="adapting-existing"/>.
     </para>
 
     <para>
-      The most basic implementation of this would be something like
-      taking the result of <command>rpm -qa</command>, and doing
-      <command>yum --installroot=/var/tmp/newroot install
-      <replaceable>package1</replaceable>
-      <replaceable>package2</replaceable> ...</command>.  Then,
-      <command>ostree commit -b osname/localtree
-      --tree=dir=/var/tmp/newroot</command>.  This would checksum all
-      of the input files and store them in local <filename
-      class='directory'>/ostree/repo</filename> repository, creating
-      a new commit.
-    </para>
-
-    <para>
-      Now, we can move on to deployment.
+      For the purposes of this section, let's assume that we have a
+      newly generated filesystem tree stored in the repo (which shares
+      storage with the existing booted tree).  We can then move on to
+      checking it back out of the repo into a deployment.
     </para>
   </chapter>
 
