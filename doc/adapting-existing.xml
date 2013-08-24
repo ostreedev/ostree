@@ -4,7 +4,7 @@
 <!ENTITY version SYSTEM "../version.xml">
 ]>
 <part id="adapting-existing">
-  <title>Adapating existing mainstream distributions</title>
+  <title>Adapting existing mainstream distributions</title>
   <chapter id="layout">
     <title>System layout</title>
     <para>
@@ -20,18 +20,19 @@
     </para>
 
     <para>
-      The <filename class='directory'>/sysroot</filename> directory is
-      a new OS-level directory that OSTree expects to use as a bind
-      mount target to the physical <filename
-      class='directory'>/</filename> root directory.  Remember,
-      because by default the system is booted into a
+      Remember, because by default the system is booted into a
       <literal>chroot</literal> equivalent, there has to be some way
-      to refer to the actual physical root filesystem, and there is
-      precedent for this name in the initramfs context.  This
-      directory must exist; for example, the OSTree tool at runtime
-      expects that <filename
-      class='directory'>/sysroot/ostree/repo</filename> refers to the
-      system repository.
+      to refer to the actual physical root filesystem.  Therefore,
+      your operating system tree should contain an empty <filename
+      class='directory'>/sysroot</filename> directory; at boot time,
+      OSTree will make this a bind mount to the physical / root
+      directory.  There is precedent for this name in the initramfs
+      context.  You should furthermore make a toplevel symbolic link
+      <filename class='directory'>/ostree</filename> which points to
+      <filename class='directory'>/sysroot/ostree</filename>, so that
+      the OSTree tool at runtime can consistently find the system data
+      regardless of whether it's operating on a physical root or
+      inside a deployment.
     </para>
 
     <para>
