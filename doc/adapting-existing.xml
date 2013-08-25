@@ -37,11 +37,15 @@
 
     <para>
       Because OSTree only preserves <filename
-      class='directory'>/var</filename> across upgrades, it is very
-      strongly recommended for systems which want to preserve
-      compatibility with the <ulink
+      class='directory'>/var</filename> across upgrades (each
+      deployment's chroot directory will be garbage collected
+      eventually), you will need to choose how to handle other
+      toplevel writable directories specified by the <ulink
       url="http://www.pathname.com/fhs/">Filesystem Hierarchy
-      Standard</ulink> to create the following symbolic links:
+      Standard</ulink>.  Your operating system may of course choose
+      not to support some of these such as <filename
+      class='directory'>/usr/local</filename>, but following is the
+      recommended set:
       <itemizedlist>
 	<listitem>
 	  <para>
@@ -51,6 +55,16 @@
 	<listitem>
 	  <para>
 	    <filename class='directory'>/opt</filename> to <filename class='directory'>/var/opt</filename>
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    <filename class='directory'>/srv</filename> to <filename class='directory'>/var/srv</filename>
+	  </para>
+	</listitem>
+	<listitem>
+	  <para>
+	    <filename class='directory'>/root</filename> to <filename class='directory'>/var/roothome</filename>
 	  </para>
 	</listitem>
 	<listitem>
@@ -74,9 +88,10 @@
     <para>
       Furthermore, since <filename class='directory'>/var</filename>
       is empty by default, your operating system will need to
-      dynamically create these directories at boot.  A good way to do
-      this is using <command>systemd-tmpfiles</command>, if your OS
-      uses systemd.  For example:
+      dynamically create the <emphasis>targets</emphasis> of these at
+      boot.  A good way to do this is using
+      <command>systemd-tmpfiles</command>, if your OS uses systemd.
+      For example:
     </para>
 
     <programlisting>
@@ -100,6 +115,21 @@ d /var/mnt 0755 root root -
 d /run/media 0755 root root -
       ]]>
 </programlisting>
+
+     <para>
+       Particularly note here the double indirection of <filename
+       class='directory'>/home</filename>.  By default, each
+       deployment will share the global toplevel <filename
+       class='directory'>/home</filename> directory on the physical
+       root filesystem.  It is then up to higher levels of management
+       tools to keep <filename>/etc/passwd</filename> or equivalent
+       synchronized between operating systems.
+     </para>
+     <para>
+       Each deployment can easily be reconfigured to have its own home
+       directory set simply by making <filename
+       class='directory'>/var/home</filename> a real directory.
+     </para>
   </chapter>
 
   <chapter id="booting">
