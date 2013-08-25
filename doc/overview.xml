@@ -79,9 +79,10 @@
       and <emphasis>predictable</emphasis>.
     </para>
     <para>
-      But unlike many default image-based deployments, OSTree
-      supports a persistent, writable <literal>/etc</literal> that
-      is preserved across upgrades.
+      But unlike many default image-based deployments, OSTree supports
+      exactly two persistent writable directories that are preserved
+      across upgrades: <literal>/etc</literal> and
+      <literal>/var</literal>.
     </para>
     <para>
       Because OSTree operates at the Unix filesystem layer, it works

@@ -8,9 +8,9 @@
   <chapter id="repository-intro">
     <title>Core object types and data model</title>
     <para>
-      OSTree is deeply inspired by git; like git, OSTree is a
-      userspace versioning filesystem.  It is worth taking some time
-      to familiarize yourself with <ulink
+      OSTree is deeply inspired by git; the core layer is a userspace
+      content-addressed versioning filesystem.  It is worth taking
+      some time to familiarize yourself with <ulink
       url="http://git-scm.com/book/en/Git-Internals">Git
       Internals</ulink>, as this section will assume some knowledge of
       how git works.
