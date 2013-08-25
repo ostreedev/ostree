@@ -154,7 +154,7 @@ idle_print_status (gpointer user_data)
 }
 
 gboolean
-ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
@@ -182,9 +182,7 @@ ostree_builtin_pull_local (int argc, char **argv, GFile *repo_path, GCancellable
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  data->dest_repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (data->dest_repo, error))
-    goto out;
+  data->dest_repo = g_object_ref (repo);
 
   if (argc < 2)
     {

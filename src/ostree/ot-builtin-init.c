@@ -38,14 +38,14 @@ static GOptionEntry options[] = {
 
 
 gboolean
-ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_init (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
   const char *mode_str = "bare";
+  GFile *repo_path = NULL;
   gs_unref_object GFile *child = NULL;
   gs_unref_object GFile *grandchild = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
   GString *config_data = NULL;
 
   context = g_option_context_new ("- Initialize a new empty repository");
@@ -53,6 +53,8 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *canc
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
+
+  repo_path = ostree_repo_get_path (repo);
 
   child = g_file_get_child (repo_path, "config");
 
@@ -112,7 +114,6 @@ ostree_builtin_init (int argc, char **argv, GFile *repo_path, GCancellable *canc
   if (!g_file_make_directory (child, NULL, error))
     goto out;
 
-  repo = ostree_repo_new (repo_path);
   if (!ostree_repo_check (repo, error))
     goto out;
 

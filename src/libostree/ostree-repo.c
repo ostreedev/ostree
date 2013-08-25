@@ -207,11 +207,44 @@ ostree_repo_init (OstreeRepo *self)
   g_mutex_init (&self->txn_stats_lock);
 }
 
+/**
+ * ostree_repo_new:
+ * @path: Path to a repository
+ *
+ * Returns: (transfer full): An accessor object for an OSTree repository located at @path
+ */
 OstreeRepo*
 ostree_repo_new (GFile *path)
 {
   return g_object_new (OSTREE_TYPE_REPO, "path", path, NULL);
 }
+
+/**
+ * ostree_repo_new_default:
+ *
+ * If the current working directory appears to be an OSTree
+ * repository, create a new #OstreeRepo object for accessing it.
+ * Otherwise, use the default system repository located at
+ * /ostree/repo.
+ *
+ * Returns: (transfer full): An accessor object for an OSTree repository located at /ostree/repo
+ */
+OstreeRepo*
+ostree_repo_new_default (void)
+{
+  if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
+      && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
+    {
+      gs_unref_object GFile *cwd = g_file_new_for_path (".");
+      return ostree_repo_new (cwd);
+    }
+  else
+    {
+      gs_unref_object GFile *default_repo_path = g_file_new_for_path ("/ostree/repo");
+      return ostree_repo_new (default_repo_path);
+    }
+}
+
 /**
  * ostree_repo_get_config:
  * @self:
@@ -326,7 +359,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
 
   if (!g_file_test (gs_file_get_path_cached (self->objects_dir), G_FILE_TEST_IS_DIR))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "Couldn't find objects directory '%s'",
                    gs_file_get_path_cached (self->objects_dir));
       goto out;

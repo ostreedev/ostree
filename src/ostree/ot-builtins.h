@@ -22,11 +22,11 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include "ostree.h"
 
 G_BEGIN_DECLS
 
-#define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+#define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 
 BUILTINPROTO(admin);
 BUILTINPROTO(cat);

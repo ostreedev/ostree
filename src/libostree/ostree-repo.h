@@ -37,6 +37,8 @@ GType ostree_repo_get_type (void);
 
 OstreeRepo* ostree_repo_new (GFile *path);
 
+OstreeRepo* ostree_repo_new_default (void);
+
 gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
 
 GFile *       ostree_repo_get_path (OstreeRepo  *self);

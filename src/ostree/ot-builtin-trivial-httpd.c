@@ -279,7 +279,7 @@ on_dir_changed (GFileMonitor  *mon,
 }
 
 gboolean
-ostree_builtin_trivial_httpd (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;

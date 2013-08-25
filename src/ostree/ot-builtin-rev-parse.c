@@ -31,13 +31,12 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *rev = "master";
   int i;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *resolved_rev = NULL;
   gs_unref_variant GVariant *variant = NULL;
   gs_free char *formatted_variant = NULL;
@@ -46,10 +45,6 @@ ostree_builtin_rev_parse (int argc, char **argv, GFile *repo_path, GCancellable 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (argc < 2)

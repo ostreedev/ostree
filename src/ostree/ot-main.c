@@ -26,6 +26,7 @@
 
 #include <string.h>
 
+#include "ostree.h"
 #include "ot-main.h"
 #include "otutil.h"
 #include "libgsystem.h"
@@ -77,10 +78,9 @@ ostree_run (int    argc,
   OstreeCommand *command;
   GError *error = NULL;
   GCancellable *cancellable = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
   const char *cmd = NULL;
-  const char *repo = NULL;
-  const char *host_repo_path = "/ostree/repo";
-  GFile *repo_file = NULL;
+  const char *repo_arg = NULL;
   gboolean want_help = FALSE;
   gboolean skip;
   int in, out, i;
@@ -128,13 +128,13 @@ ostree_run (int    argc,
             }
           else if (g_str_equal (argv[in], "--repo") && in + 1 < argc)
             {
-              repo = argv[in + 1];
+              repo_arg = argv[in + 1];
               skip = TRUE;
               in++;
             }
           else if (g_str_has_prefix (argv[in], "--repo="))
             {
-              repo = argv[in] + 7;
+              repo_arg = argv[in] + 7;
               skip = TRUE;
             }
           else if (g_str_equal (argv[in], "--verbose"))
@@ -219,38 +219,42 @@ ostree_run (int    argc,
 
   g_set_prgname (g_strdup_printf ("ostree %s", cmd));
 
-  if (repo == NULL && !want_help &&
+  if (repo_arg == NULL && !want_help &&
       !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
-      if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
-          && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
+      GError *temp_error = NULL;
+      repo = ostree_repo_new_default ();
+      if (!ostree_repo_check (repo, &temp_error))
         {
-          g_debug ("Assuming repo is in current directory");
-          repo = ".";
-        }
-      else if (g_file_test (host_repo_path, G_FILE_TEST_EXISTS))
-        {
-          g_debug ("Assuming repo is at: %s", host_repo_path);
-          repo = host_repo_path;
-        }
-      else
-        {
-          g_debug ("Could not automatically determine --repo");
-          g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "Command requires a --repo argument");
-          ostree_usage (argv, commands, TRUE);
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Command requires a --repo argument");
+              g_error_free (temp_error);
+              ostree_usage (argv, commands, TRUE);
+            }
+          else
+            {
+              g_propagate_error (&error, temp_error);
+            }
           goto out;
         }
     }
-
-  if (repo)
-    repo_file = g_file_new_for_path (repo);
+  else if (repo_arg)
+    {
+      gs_unref_object GFile *repo_file = g_file_new_for_path (repo_arg);
+      repo = ostree_repo_new (repo_file);
+      if (!(command->flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
+        {
+          if (!ostree_repo_check (repo, &error))
+            goto out;
+        }
+    }
   
-  if (!command->fn (argc, argv, repo_file, cancellable, &error))
+  if (!command->fn (argc, argv, repo, cancellable, &error))
     goto out;
 
  out:
-  g_clear_object (&repo_file);
   if (error)
     {
       g_propagate_error (res_error, error);

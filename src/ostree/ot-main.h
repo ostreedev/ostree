@@ -22,16 +22,17 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include "ostree.h"
 
 typedef enum {
   OSTREE_BUILTIN_FLAG_NONE = 0,
-  OSTREE_BUILTIN_FLAG_NO_REPO = 1,
+  OSTREE_BUILTIN_FLAG_NO_REPO = 1 << 0,
+  OSTREE_BUILTIN_FLAG_NO_CHECK = 1 << 1
 } OstreeBuiltinFlags;
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error);
+  gboolean (*fn) (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error);
   int flags; /* OstreeBuiltinFlags */
 } OstreeCommand;
 

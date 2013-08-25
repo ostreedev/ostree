@@ -135,7 +135,7 @@ commit_filter (OstreeRepo         *self,
 }
 
 gboolean
-ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -146,7 +146,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
   guint content_total = 0;
   guint content_written = 0;
   guint64 content_bytes_written = 0;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
@@ -172,10 +171,6 @@ ostree_builtin_commit (int argc, char **argv, GFile *repo_path, GCancellable *ca
       if (!parse_statoverride_file (&mode_adds, cancellable, error))
         goto out;
     }
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
-    goto out;
 
   if (!opt_branch)
     {

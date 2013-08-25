@@ -38,11 +38,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_prune (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *formatted_freed_size = NULL;
   OstreeRepoPruneFlags pruneflags = 0;
   gint n_objects_total;
@@ -53,10 +52,6 @@ ostree_builtin_prune (int argc, char **argv, GFile *repo_path, GCancellable *can
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (opt_refs_only)

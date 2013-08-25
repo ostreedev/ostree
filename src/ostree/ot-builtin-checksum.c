@@ -56,7 +56,7 @@ on_checksum_received (GObject    *obj,
 }
 
 gboolean
-ostree_builtin_checksum (int argc, char **argv, GFile *repo_path_path, GCancellable *cancellable, GError **error)
+ostree_builtin_checksum (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

@@ -234,14 +234,13 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_fsck (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
   GHashTableIter hash_iter;
   gpointer key, value;
   gboolean found_corruption = FALSE;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_hashtable GHashTable *commits = NULL;
 
@@ -249,10 +248,6 @@ ostree_builtin_fsck (int argc, char **argv, GFile *repo_path, GCancellable *canc
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (!opt_quiet)

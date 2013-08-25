@@ -50,7 +50,7 @@ static OstreeAdminCommand admin_subcommands[] = {
 };
 
 gboolean
-ostree_builtin_admin (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *opt_sysroot = "/";

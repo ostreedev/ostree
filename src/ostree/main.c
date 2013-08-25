@@ -39,7 +39,7 @@ static OstreeCommand commands[] = {
   { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
   { "diff", ostree_builtin_diff, 0 },
   { "fsck", ostree_builtin_fsck, 0 },
-  { "init", ostree_builtin_init, 0 },
+  { "init", ostree_builtin_init, OSTREE_BUILTIN_FLAG_NO_CHECK },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
   { "refs", ostree_builtin_refs, 0 },

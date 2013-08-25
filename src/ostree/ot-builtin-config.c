@@ -52,14 +52,13 @@ split_key_string (const char   *k,
 }
 
 gboolean
-ostree_builtin_config (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_config (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
   const char *op;
   const char *section_key;
   const char *value;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *section = NULL;
   gs_free char *key = NULL;
   GKeyFile *config = NULL;
@@ -68,10 +67,6 @@ ostree_builtin_config (int argc, char **argv, GFile *repo_path, GCancellable *ca
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (argc < 2)

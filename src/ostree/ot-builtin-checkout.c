@@ -171,13 +171,12 @@ process_many_checkouts (OstreeRepo         *repo,
 }
 
 gboolean
-ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GCancellable *cancellable, GError **error)
+ostree_builtin_checkout (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *commit;
   const char *destination;
-  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *existing_commit = NULL;
   gs_free char *resolved_commit = NULL;
   gs_free char *tmp_destination = NULL;
@@ -190,10 +189,6 @@ ostree_builtin_checkout (int argc, char **argv, GFile *repo_path, GCancellable *
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
-
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
     goto out;
 
   if (argc < 2)
