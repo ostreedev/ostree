@@ -119,10 +119,28 @@ is_safe_to_access (struct stat *stbuf)
 }
 
 static void
-do_get (OtTrivialHttpd  *self,
-        SoupServer      *server,
-        SoupMessage     *msg,
-        const char      *path)
+close_socket (SoupMessage *msg, gpointer user_data)
+{
+	SoupSocket *sock = user_data;
+	int sockfd;
+
+	/* Actually calling soup_socket_disconnect() here would cause
+	 * us to leak memory, so just shutdown the socket instead.
+	 */
+	sockfd = soup_socket_get_fd (sock);
+#ifdef G_OS_WIN32
+	shutdown (sockfd, SD_SEND);
+#else
+	shutdown (sockfd, SHUT_WR);
+#endif
+}
+
+static void
+do_get (OtTrivialHttpd    *self,
+        SoupServer        *server,
+        SoupMessage       *msg,
+        const char        *path,
+        SoupClientContext *context)
 {
   char *slash;
   int ret;
@@ -177,7 +195,7 @@ do_get (OtTrivialHttpd  *self,
           if (stat (index_realpath, &stbuf) != -1)
             {
               gs_free char *index_path = g_strconcat (path, "/index.html", NULL);
-              do_get (self, server, msg, index_path);
+              do_get (self, server, msg, index_path, context);
             }
           else
             {
@@ -215,13 +233,35 @@ do_get (OtTrivialHttpd  *self,
 
           file_size = g_mapped_file_get_length (mapping);
           have_ranges = soup_message_headers_get_ranges(msg->request_headers, file_size, &ranges, &ranges_length);
-          if (opt_force_ranges && !have_ranges)
-            buffer_length = file_size/2;
+          if (opt_force_ranges && !have_ranges && g_strrstr (path, "/objects") != NULL)
+            {
+              SoupSocket *sock;
+              buffer_length = file_size/2;
+              soup_message_headers_set_content_length (msg->response_headers, file_size);
+              soup_message_headers_append (msg->response_headers,
+                                           "Connection", "close");
+
+              /* soup-message-io will wait for us to add
+               * another chunk after the first, to fill out
+               * the declared Content-Length. Instead, we
+               * forcibly close the socket at that point.
+               */
+              sock = soup_client_context_get_socket (context);
+              g_signal_connect (msg, "wrote-chunk", G_CALLBACK (close_socket), sock);
+            }
           else
             buffer_length = file_size;
 
           if (have_ranges)
-            soup_message_headers_free_ranges (msg->request_headers, ranges);
+            {
+              if (ranges_length > 0 && ranges[0].start >= file_size)
+                {
+                  soup_message_set_status (msg, SOUP_STATUS_REQUESTED_RANGE_NOT_SATISFIABLE);
+                  soup_message_headers_free_ranges (msg->request_headers, ranges);
+                  goto out;
+                }
+              soup_message_headers_free_ranges (msg->request_headers, ranges);
+            }
           buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
                                                buffer_length,
                                                mapping, (GDestroyNotify)g_mapped_file_unref);
@@ -257,7 +297,7 @@ httpd_callback (SoupServer *server, SoupMessage *msg,
   soup_message_headers_iter_init (&iter, msg->request_headers);
 
   if (msg->method == SOUP_METHOD_GET || msg->method == SOUP_METHOD_HEAD)
-    do_get (self, server, msg, path);
+    do_get (self, server, msg, path, context);
   else
     soup_message_set_status (msg, SOUP_STATUS_NOT_IMPLEMENTED);
 }
