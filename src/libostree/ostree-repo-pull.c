@@ -402,8 +402,6 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  if (tmpf)
-    (void) unlink (gs_file_get_path_cached (tmpf));
   return ret;
 }
 
@@ -589,7 +587,7 @@ content_fetch_on_complete (GObject        *object,
   const char *checksum;
   OstreeObjectType objtype;
 
-  fetch_data->temp_path = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object, result, error);
+  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
   if (!fetch_data->temp_path)
     goto out;
 
@@ -679,7 +677,7 @@ meta_fetch_on_complete (GObject           *object,
   GError *local_error = NULL;
   GError **error = &local_error;
 
-  fetch_data->temp_path = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object, result, error);
+  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
   if (!fetch_data->temp_path)
     goto out;
 
@@ -990,7 +988,7 @@ on_metadata_objects_to_fetch_ready (gint         fd,
       fetch_data = g_new (FetchObjectData, 1);
       fetch_data->pull_data = pull_data;
       fetch_data->object = g_variant_ref (msg->d.item);
-      ostree_fetcher_request_uri_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
+      ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
                                         is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
       soup_uri_free (obj_uri);
       g_variant_unref (msg->d.item);

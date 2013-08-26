@@ -60,6 +60,16 @@ guint64 ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 
 guint ostree_fetcher_get_n_requests (OstreeFetcher       *self);
 
+void ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
+                                                    SoupURI               *uri,
+                                                    GCancellable          *cancellable,
+                                                    GAsyncReadyCallback    callback,
+                                                    gpointer               user_data);
+
+GFile *ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
+                                                       GAsyncResult  *result,
+                                                       GError       **error);
+
 void ostree_fetcher_request_uri_async (OstreeFetcher         *self,
                                        SoupURI               *uri,
                                        GCancellable          *cancellable,
