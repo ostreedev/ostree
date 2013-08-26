@@ -26,6 +26,8 @@
 #include "ostree.h"
 #include "otutil.h"
 
+#include <sys/socket.h>
+
 static char *opt_port_file = NULL;
 static gboolean opt_daemonize;
 static gboolean opt_autoexit;
