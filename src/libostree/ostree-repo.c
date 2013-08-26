@@ -995,6 +995,7 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
                                            GError        **error)
 {
   gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *enumerator = NULL;
 
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
 
@@ -1010,6 +1011,30 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
   if (out_content_objects_total) *out_content_objects_total = self->txn_content_objects_total;
   if (out_content_objects_written) *out_content_objects_written = self->txn_content_objects_written;
   if (out_content_bytes_written) *out_content_bytes_written = self->txn_content_bytes_written;
+  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name,standard::type,unix::inode,unix::nlink", 
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, 
+                                          error);
+  if (!enumerator)
+    goto out;
+  
+  while (TRUE)
+    {
+      GFileInfo *file_info;
+      guint32 nlinks;
+      gs_unref_object GFile *objpath = NULL;
+        
+      if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+      
+      objpath = g_file_get_child (self->tmp_dir, g_file_info_get_name (file_info));
+      if (!gs_file_unlink (objpath, cancellable, error))
+        goto out;
+    }
+      
   ret = TRUE;
  out:
   return ret;
