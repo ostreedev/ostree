@@ -984,6 +984,41 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   return ret;
 }
 
+static gboolean
+cleanup_tmpdir (OstreeRepo        *self,
+                GCancellable      *cancellable,
+                GError           **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *enumerator = NULL;
+
+  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name", 
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          cancellable, 
+                                          error);
+  if (!enumerator)
+    goto out;
+  
+  while (TRUE)
+    {
+      GFileInfo *file_info;
+      GFile *path;
+        
+      if (!gs_file_enumerator_iterate (enumerator, &file_info, &path,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+      
+      if (!gs_shutil_rm_rf (path, cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
                                            guint          *out_metadata_objects_total,
@@ -995,9 +1030,11 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
                                            GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *enumerator = NULL;
 
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
+
+  if (!cleanup_tmpdir (self, cancellable, error))
+    goto out;
 
   if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
     goto out;
@@ -1006,34 +1043,12 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   self->in_transaction = FALSE;
+
   if (out_metadata_objects_total) *out_metadata_objects_total = self->txn_metadata_objects_total;
   if (out_metadata_objects_written) *out_metadata_objects_written = self->txn_metadata_objects_written;
   if (out_content_objects_total) *out_content_objects_total = self->txn_content_objects_total;
   if (out_content_objects_written) *out_content_objects_written = self->txn_content_objects_written;
   if (out_content_bytes_written) *out_content_bytes_written = self->txn_content_bytes_written;
-  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name,standard::type,unix::inode,unix::nlink", 
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          cancellable, 
-                                          error);
-  if (!enumerator)
-    goto out;
-  
-  while (TRUE)
-    {
-      GFileInfo *file_info;
-      guint32 nlinks;
-      gs_unref_object GFile *objpath = NULL;
-        
-      if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
-                                       cancellable, error))
-        goto out;
-      if (file_info == NULL)
-        break;
-      
-      objpath = g_file_get_child (self->tmp_dir, g_file_info_get_name (file_info));
-      if (!gs_file_unlink (objpath, cancellable, error))
-        goto out;
-    }
       
   ret = TRUE;
  out:
@@ -1056,11 +1071,15 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
 
+  if (!cleanup_tmpdir (self, cancellable, error))
+    goto out;
+
   self->in_transaction = FALSE;
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   ret = TRUE;
+ out:
   return ret;
 }
 
