@@ -162,3 +162,11 @@ dist-snapshot:
 	done; \
 	mv ostree-$${GITVERSION}.tar{.tmp,}; \
 	gzip -f ostree-$${GITVERSION}.tar 
+
+check-local:
+	@echo "  *** NOTE ***"
+	@echo "  *** NOTE ***"
+	@echo "    ostree only supports https://live.gnome.org/GnomeGoals/InstalledTests"
+	@echo "    To run them, ostree must be configured with --enable-installed-tests and installed"
+	@echo "  *** NOTE ***"
+	@echo "  *** NOTE ***"
