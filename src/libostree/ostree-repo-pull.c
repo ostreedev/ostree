@@ -88,7 +88,7 @@ typedef struct {
 
   gboolean      transaction_resuming;
   volatile gint n_scanned_metadata;
-  guint         outstanding_uri_requests;
+  SoupURI       *fetching_sync_uri;
 
   GThread          *metadata_thread;
   GMainContext     *metadata_thread_context;
@@ -187,7 +187,12 @@ uri_fetch_update_status (gpointer user_data)
   outstanding_fetches = pull_data->n_outstanding_content_fetches + pull_data->n_outstanding_metadata_fetches;
   outstanding_stages = pull_data->n_outstanding_content_stage_requests + pull_data->n_outstanding_metadata_stage_requests;
 
-  if (outstanding_fetches)
+  if (pull_data->fetching_sync_uri)
+    {
+      gs_free char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
+      g_string_append_printf (status, "Requesting %s", uri_string);
+    }
+  else if (outstanding_fetches)
     {
       guint64 bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
       guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
@@ -272,7 +277,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
   /* This is true in the phase when we're fetching refs */
   if (pull_data->metadata_objects_to_scan == NULL)
     {
-      if (pull_data->outstanding_uri_requests == 0)
+      if (!pull_data->fetching_sync_uri)
         g_main_loop_quit (pull_data->loop);
       return;
     }
@@ -325,71 +330,49 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 typedef struct {
   OtPullData     *pull_data;
   GFile          *result_file;
-} OstreeFetchUriData;
+} OstreeFetchUriSyncData;
 
 static void
-uri_fetch_on_complete (GObject        *object,
-                       GAsyncResult   *result,
-                       gpointer        user_data) 
+fetch_uri_sync_on_complete (GObject        *object,
+                            GAsyncResult   *result,
+                            gpointer        user_data) 
 {
-  OstreeFetchUriData *data = user_data;
-  GError *local_error = NULL;
+  OstreeFetchUriSyncData *data = user_data;
 
   data->result_file = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object,
-                                                         result, &local_error);
-  data->pull_data->outstanding_uri_requests--;
-  check_outstanding_requests_handle_error (data->pull_data, local_error);
+                                                         result, data->pull_data->async_error);
+  data->pull_data->fetching_sync_uri = NULL;
+  g_main_loop_quit (data->pull_data->loop);
 }
 
 static gboolean
-fetch_uri (OtPullData  *pull_data,
-           SoupURI     *uri,
-           const char  *tmp_prefix,
-           GFile      **out_temp_filename,
-           GCancellable  *cancellable,
-           GError     **error)
+fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
+                              SoupURI     *uri,
+                              char       **out_contents,
+                              GCancellable  *cancellable,
+                              GError     **error)
 {
   gboolean ret = FALSE;
-  gs_free char *uri_string = NULL;
+  gsize len;
+  gs_unref_object GFile *tmpf = NULL;
+  gs_free char *ret_contents = NULL;
   gs_unref_object SoupRequest *request = NULL;
-  OstreeFetchUriData fetch_data = { 0, };
+  OstreeFetchUriSyncData fetch_data = { 0, };
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
   fetch_data.pull_data = pull_data;
 
-  uri_string = soup_uri_to_string (uri, FALSE);
-
-  pull_data->outstanding_uri_requests++;
+  pull_data->fetching_sync_uri = uri;
   ostree_fetcher_request_uri_async (pull_data->fetcher, uri, cancellable,
-                                    uri_fetch_on_complete, &fetch_data);
+                                    fetch_uri_sync_on_complete, &fetch_data);
 
-  if (!run_mainloop_monitor_fetcher (pull_data))
+  run_mainloop_monitor_fetcher (pull_data);
+  if (!fetch_data.result_file)
     goto out;
 
-  ret = TRUE;
-  ot_transfer_out_value (out_temp_filename, &fetch_data.result_file);
- out:
-  return ret;
-}
-
-static gboolean
-fetch_uri_contents_utf8 (OtPullData  *pull_data,
-                         SoupURI     *uri,
-                         char       **out_contents,
-                         GCancellable  *cancellable,
-                         GError     **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GFile *tmpf = NULL;
-  gs_free char *ret_contents = NULL;
-  gsize len;
-
-  if (!fetch_uri (pull_data, uri, "tmp-", &tmpf, cancellable, error))
-    goto out;
-
-  if (!g_file_load_contents (tmpf, cancellable, &ret_contents, &len, NULL, error))
+  if (!g_file_load_contents (fetch_data.result_file, cancellable, &ret_contents, &len, NULL, error))
     goto out;
 
   if (!g_utf8_validate (ret_contents, -1, NULL))
@@ -402,6 +385,7 @@ fetch_uri_contents_utf8 (OtPullData  *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
+  g_clear_object (&(fetch_data.result_file));
   return ret;
 }
 
@@ -507,7 +491,7 @@ fetch_ref_contents (OtPullData    *pull_data,
 
   target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
   
-  if (!fetch_uri_contents_utf8 (pull_data, target_uri, &ret_contents, cancellable, error))
+  if (!fetch_uri_contents_utf8_sync (pull_data, target_uri, &ret_contents, cancellable, error))
     goto out;
 
   g_strchomp (ret_contents);
@@ -1111,8 +1095,8 @@ load_remote_repo_config (OtPullData    *pull_data,
 
   target_uri = suburi_new (pull_data->base_uri, "config", NULL);
   
-  if (!fetch_uri_contents_utf8 (pull_data, target_uri, &contents,
-                                cancellable, error))
+  if (!fetch_uri_contents_utf8_sync (pull_data, target_uri, &contents,
+                                     cancellable, error))
     goto out;
 
   ret_keyfile = g_key_file_new ();
@@ -1275,7 +1259,7 @@ ostree_repo_pull (OstreeRepo               *self,
           path = g_build_filename (soup_uri_get_path (summary_uri), "refs", "summary", NULL);
           soup_uri_set_path (summary_uri, path);
           
-          if (!fetch_uri_contents_utf8 (pull_data, summary_uri, &summary_data, cancellable, error))
+          if (!fetch_uri_contents_utf8_sync (pull_data, summary_uri, &summary_data, cancellable, error))
             goto out;
           
           if (!parse_ref_summary (summary_data, &requested_refs_to_fetch, error))
