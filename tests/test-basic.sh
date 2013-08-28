@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..39"
+echo "1..40"
 
 . $(dirname $0)/libtest.sh
 
@@ -275,3 +275,10 @@ $OSTREE reset test6 $checksum1
 $OSTREE show test6 > show-output
 assert_file_has_content show-output "commit $checksum1"
 echo "ok basic reset"
+
+cd ${test_tmpdir}
+rm checkout-test2 -rf
+$OSTREE checkout test2 checkout-test2
+touch checkout-test2/sometestfile
+$OSTREE commit -s sometest -b test2 checkout-test2
+echo "ok commit with directory filename"

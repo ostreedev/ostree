@@ -212,7 +212,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   mtree = ostree_mutable_tree_new ();
 
-  if (argc == 1 && (opt_trees == NULL || opt_trees[0] == NULL))
+  if (argc <= 1 && (opt_trees == NULL || opt_trees[0] == NULL))
     {
       char *current_dir = g_get_current_dir ();
       arg = g_file_new_for_path (current_dir);
@@ -222,7 +222,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                                  cancellable, error))
         goto out;
     }
-  else
+  else if (opt_trees != NULL)
     {
       const char *const*tree_iter;
       const char *tree;
@@ -275,6 +275,14 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
               goto out;
             }
         }
+    }
+  else
+    {
+      g_assert (argc > 1);
+      arg = g_file_new_for_path (argv[1]);
+      if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+                                                 cancellable, error))
+        goto out;
     }
 
   if (mode_adds && g_hash_table_size (mode_adds) > 0)
