@@ -536,6 +536,71 @@ commit_loose_object_trusted (OstreeRepo        *self,
   return ret;
 }
 
+/* Create a randomly-named symbolic link in @tempdir which points to
+ * @target.  The filename will be returned in @out_file.
+ *
+ * The reason this odd function exists is that the repo should only
+ * contain objects in their final state.  For bare repositories, we
+ * need to first create the symlink, then chown it, and apply all
+ * extended attributes, before finally rename()ing it into place.
+ */
+static gboolean
+make_temporary_symlink (GFile          *tmpdir,
+                        const char     *target,
+                        GFile         **out_file,
+                        GCancellable   *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *tmpname = NULL;
+  DIR *d = NULL;
+  int dfd = -1;
+  guint i;
+  const int max_attempts = 128;
+
+  d = opendir (gs_file_get_path_cached (tmpdir));
+  if (!d)
+    {
+      int errsv = errno;
+      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                           g_strerror (errsv));
+      goto out;
+    }
+  dfd = dirfd (d);
+
+  for (i = 0; i < max_attempts; i++)
+    {
+      g_free (tmpname);
+      tmpname = gsystem_fileutil_gen_tmp_name (NULL, NULL);
+      if (symlinkat (target, dfd, tmpname) < 0)
+        {
+          if (errno == EEXIST)
+            continue;
+          else
+            {
+              int errsv = errno;
+              g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                                   g_strerror (errsv));
+              goto out;
+            }
+        }
+      else
+        break;
+    }
+  if (i == max_attempts)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Exhausted attempts to open temporary file");
+      goto out;
+    }
+
+  ret = TRUE;
+  *out_file = g_file_get_child (tmpdir, tmpname);
+ out:
+  if (d) (void) closedir (d);
+  return ret;
+}
+
 static gboolean
 stage_object (OstreeRepo         *self,
               OstreeObjectType    objtype,
@@ -555,9 +620,13 @@ stage_object (OstreeRepo         *self,
   gs_unref_object GFile *stored_path = NULL;
   gs_free guchar *ret_csum = NULL;
   gs_unref_object OstreeChecksumInputStream *checksum_input = NULL;
+  gs_unref_object GInputStream *file_input = NULL;
+  gs_unref_object GFileInfo *file_info = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
+  gboolean is_symlink = FALSE;
 
   g_return_val_if_fail (self->in_transaction, FALSE);
   
@@ -584,10 +653,6 @@ stage_object (OstreeRepo         *self,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      gs_unref_object GInputStream *file_input = NULL;
-      gs_unref_object GFileInfo *file_info = NULL;
-      gs_unref_variant GVariant *xattrs = NULL;
-
       if (!ostree_content_stream_parse (FALSE, checksum_input ? (GInputStream*)checksum_input : input,
                                         file_object_length, FALSE,
                                         &file_input, &file_info, &xattrs,
@@ -595,14 +660,38 @@ stage_object (OstreeRepo         *self,
         goto out;
 
       temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
+      is_symlink = g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK;
 
-      if (repo_mode == OSTREE_REPO_MODE_BARE)
+      if (!(temp_file_is_regular || is_symlink))
         {
-          if (!ostree_create_temp_file_from_input (self->tmp_dir,
-                                                   ostree_object_type_to_string (objtype), NULL,
-                                                   file_info, xattrs, file_input,
-                                                   &temp_file,
-                                                   cancellable, error))
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "Unsupported file type %u", g_file_info_get_file_type (file_info));
+          goto out;
+        }
+
+      /* For regular files, we create them with default mode, and only
+       * later apply any xattrs and setuid bits.  The rationale here
+       * is that an attacker on the network with the ability to MITM
+       * could potentially cause the system to make a temporary setuid
+       * binary with trailing garbage, creating a window on the local
+       * system where a malicious setuid binary exists.
+       */
+      if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_regular)
+        {
+          gs_unref_object GOutputStream *temp_out = NULL;
+          if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644, &temp_file, &temp_out,
+                                       cancellable, error))
+            goto out;
+          if (g_output_stream_splice (temp_out, file_input, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                      cancellable, error) < 0)
+            goto out;
+        }
+      else if (repo_mode == OSTREE_REPO_MODE_BARE && is_symlink)
+        {
+          if (!make_temporary_symlink (self->tmp_dir,
+                                       g_file_info_get_symlink_target (file_info),
+                                       &temp_file,
+                                       cancellable, error))
             goto out;
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
@@ -643,12 +732,13 @@ stage_object (OstreeRepo         *self,
     }
   else
     {
-      if (!ostree_create_temp_file_from_input (self->tmp_dir,
-                                               ostree_object_type_to_string (objtype), NULL,
-                                               NULL, NULL,
-                                               checksum_input ? (GInputStream*)checksum_input : input,
-                                               &temp_file,
-                                               cancellable, error))
+      gs_unref_object GOutputStream *temp_out = NULL;
+      if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644, &temp_file, &temp_out,
+                                   cancellable, error))
+        goto out;
+      if (g_output_stream_splice (temp_out, checksum_input ? (GInputStream*)checksum_input : input,
+                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                  cancellable, error) < 0)
         goto out;
       temp_file_is_regular = TRUE;
     }
@@ -676,6 +766,33 @@ stage_object (OstreeRepo         *self,
 
   if (do_commit)
     {
+      if (objtype == OSTREE_OBJECT_TYPE_FILE && repo_mode == OSTREE_REPO_MODE_BARE)
+        {
+          g_assert (file_info != NULL);
+          /* Now that we know the checksum is valid, apply uid/gid, mode bits,
+           * and extended attributes.
+           */
+          if (!gs_file_lchown (temp_file,
+                               g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                               g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                               cancellable, error))
+            goto out;
+          /* symlinks are always 777, there's no lchmod().  Calling
+           * chmod() on them would apply to their target, which we
+           * definitely don't want.
+           */
+          if (!is_symlink)
+            {
+              if (!gs_file_chmod (temp_file, g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
+                                  cancellable, error))
+                goto out;
+            }
+          if (xattrs != NULL)
+            {
+              if (!ostree_set_xattrs (temp_file, xattrs, cancellable, error))
+                goto out;
+            }
+        }
       if (!commit_loose_object_trusted (self, actual_checksum, objtype, temp_file, temp_file_is_regular,
                                         cancellable, error))
         goto out;
