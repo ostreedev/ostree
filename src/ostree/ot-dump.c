@@ -72,7 +72,7 @@ dump_indented_lines (const gchar *data)
       pos = strchr (data, '\n');
       if (pos)
         {
-          g_print ("%s%*s", indent, (int)(pos + 1 - data), data);
+          g_print ("%s%.*s", indent, (int)(pos + 1 - data), data);
           data = pos + 1;
         }
       else
