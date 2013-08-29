@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include "ot-builtins.h"
+#include "ot-editor.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -134,6 +135,92 @@ commit_filter (OstreeRepo         *self,
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
 }
 
+static gboolean
+commit_editor (OstreeRepo     *repo,
+               const char     *branch,
+               char          **subject,
+               char          **body,
+               GCancellable   *cancellable,
+               GError        **error)
+{
+  const char *template =
+      "\n"
+      "# Please enter the commit message for your changes. The first line will\n"
+      "# become the subject, and the remainder the body. Lines starting\n"
+      "# with '#' will be ignored, and an empty message aborts the commit.\n"
+      "#\n"
+      "# Branch: %s\n";
+
+  gs_free char *input = NULL;
+  gs_free char *output = NULL;
+  gboolean ret = FALSE;
+  GString *bodybuf = NULL;
+  char **lines = NULL;
+  int i;
+
+  *subject = NULL;
+  *body = NULL;
+
+  input = g_strdup_printf (template, branch);
+
+  output = ot_editor_prompt (repo, input, cancellable, error);
+  if (output == NULL)
+    goto out;
+
+  lines = g_strsplit (output, "\n", -1);
+  for (i = 0; lines[i] != NULL; i++)
+    {
+      g_strchomp (lines[i]);
+
+      /* Lines starting with # are skipped */
+      if (lines[i][0] == '#')
+        continue;
+
+      /* Blank lines before body starts are skipped */
+      if (lines[i][0] == '\0')
+        {
+          if (!bodybuf)
+            continue;
+        }
+
+      if (!*subject)
+        {
+          *subject = g_strdup (lines[i]);
+        }
+      else if (!bodybuf)
+        {
+          bodybuf = g_string_new (lines[i]);
+        }
+      else
+        {
+          g_string_append_c (bodybuf, '\n');
+          g_string_append (bodybuf, lines[i]);
+        }
+    }
+
+  if (!*subject)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Aborting commit due to empty commit subject.");
+      goto out;
+    }
+
+  if (bodybuf)
+    {
+      *body = g_string_free (bodybuf, FALSE);
+      g_strchomp (*body);
+      bodybuf = NULL;
+    }
+
+  ret = TRUE;
+
+out:
+  g_strfreev (lines);
+  if (bodybuf)
+    g_string_free (bodybuf, TRUE);
+  return ret;
+}
+
 gboolean
 ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
@@ -179,13 +266,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       goto out;
     }
 
-  if (!opt_subject)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "A subject must be specified with --subject");
-      goto out;
-    }
-
   if (opt_owner_uid >= 0 || opt_owner_gid >= 0 || opt_statoverride_file != NULL
       || opt_no_xattrs)
     {
@@ -203,6 +283,19 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                      parent, &parent_commit, error))
         goto out;
+    }
+
+  if (!opt_subject && !opt_body)
+    {
+      if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
+        goto out;
+    }
+
+  if (!opt_subject)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "A subject must be specified with --subject");
+      goto out;
     }
 
   if (!ostree_repo_prepare_transaction (repo, opt_link_checkout_speedup, NULL, cancellable, error))
