@@ -100,6 +100,10 @@ AS_IF([ test x$with_libarchive != xno ], [
     AS_IF([ test x$have_libarchive = xyes], [
         AC_DEFINE(HAVE_LIBARCHIVE, 1, [Define if we have libarchive.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBARCHIVE, $LIBARCHIVE_DEPENDENCY)
+        save_LIBS=$LIBS
+        LIBS=$OT_DEP_LIBARCHIVE_LIBS
+        AC_CHECK_FUNCS(archive_read_support_filter_all)
+        LIBS=$save_LIBS
 	with_libarchive=yes
     ], [
 	with_libarchive=no
