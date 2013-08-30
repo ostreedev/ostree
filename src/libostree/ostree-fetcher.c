@@ -43,7 +43,6 @@ typedef struct {
   SoupRequest *request;
 
   GFile *tmpfile;
-  gchar *filename; /* Hash of the SoupURI used to request the file */
   GInputStream *request_body;
   GOutputStream *out_stream;
 
@@ -64,7 +63,6 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
   soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
   g_clear_object (&pending->tmpfile);
-  g_free (pending->filename);
   g_clear_object (&pending->request);
   g_clear_object (&pending->request_body);
   g_clear_object (&pending->out_stream);
@@ -88,9 +86,6 @@ struct OstreeFetcher
   guint64 total_downloaded;
   guint total_requests;
 };
-
-static const gchar *partsuffix = ".part";
-static const gchar *donesuffix = ".done";
 
 G_DEFINE_TYPE (OstreeFetcher, ostree_fetcher, G_TYPE_OBJECT)
 
@@ -172,37 +167,6 @@ ostree_fetcher_new (GFile                    *tmpdir,
   return self;
 }
 
-static gboolean
-rename_part_file (OstreeFetcherPendingURI *pending,
-                  GCancellable  *cancellable,
-                  GError       **error)
-{
-  gboolean ret = FALSE;
-  GError *local_error = NULL;
-  const gchar *tempfilename = gs_file_get_path_cached (pending->tmpfile);
-
-  // Only rename files that end in .part
-  if (g_str_has_suffix (tempfilename, partsuffix))
-    {
-      gs_free gchar *finalname = g_strconcat (pending->filename, donesuffix, NULL);
-      gs_unref_object GFile *donefile = g_file_get_child (pending->self->tmpdir, finalname);
-      // Copy the .part file to .done file
-      if (!g_file_move (pending->tmpfile, 
-                        donefile, 
-                        G_FILE_COPY_OVERWRITE, 
-                        NULL, 
-                        NULL, 
-                        NULL, 
-                        &local_error))
-          goto out;
-      g_object_unref (pending->tmpfile);
-      pending->tmpfile = g_object_ref (donefile);
-    }
-  ret = TRUE;
-out:
-  return ret;
-}
-
 static void
 on_splice_complete (GObject        *object,
                     GAsyncResult   *result,
@@ -210,30 +174,31 @@ on_splice_complete (GObject        *object,
 {
   OstreeFetcherPendingURI *pending = user_data;
   gs_unref_object GFileInfo *file_info = NULL;
+  goffset filesize;
   GError *local_error = NULL;
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   file_info = g_file_query_info (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 NULL, NULL);
-  if (file_info)
+                                 pending->cancellable, &local_error);
+  if (!file_info)
+    goto out;
+
+  filesize = g_file_info_get_size (file_info);
+  if (filesize < pending->content_length)
     {
-      goffset filesize = g_file_info_get_size (file_info);
-      if (filesize < pending->content_length)
-        {
-          g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED, "Download incomplete");
-          g_simple_async_result_take_error (pending->result, local_error);
-        }
-      else
-        {
-          pending->self->total_downloaded += g_file_info_get_size (file_info);
-          if (!rename_part_file (pending, NULL, &local_error))
-            g_simple_async_result_take_error (pending->result, local_error);
-        }
+      g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED, "Download incomplete");
+      goto out;
+    }
+  else
+    {
+      pending->self->total_downloaded += g_file_info_get_size (file_info);
     }
 
+ out:
   (void) g_input_stream_close (pending->request_body, NULL, NULL);
-
+  if (local_error)
+    g_simple_async_result_take_error (pending->result, local_error);
   g_simple_async_result_complete (pending->result);
   g_object_unref (pending->result);
 }
@@ -266,11 +231,6 @@ on_request_sent (GObject        *object,
         {
           // We already have the whole file, so just use it.
           pending->state = OSTREE_FETCHER_STATE_COMPLETE;
-          if (!rename_part_file (pending, NULL, &local_error))
-            {
-              g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED, "Rename failed");
-              g_simple_async_result_take_error (pending->result, local_error);
-            }
           g_simple_async_result_complete (pending->result);
           g_object_unref (pending->result);
           return;
@@ -305,37 +265,25 @@ on_request_sent (GObject        *object,
 }
 
 static OstreeFetcherPendingURI *
-ostree_fetcher_request_uri_internal (OstreeFetcher *self,
-                                     SoupURI       *uri,
-                                     GCancellable  *cancellable)
+ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
+                                     SoupURI               *uri,
+                                     GCancellable          *cancellable,
+                                     GAsyncReadyCallback    callback,
+                                     gpointer               user_data,
+                                     gpointer               source_tag)
 {
   OstreeFetcherPendingURI *pending;
   GError *local_error = NULL;
   gs_free char *uristring = soup_uri_to_string (uri, FALSE);
+  gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
 
   pending = g_new0 (OstreeFetcherPendingURI, 1);
   pending->refcount = 1;
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
-  pending->filename = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
+  pending->tmpfile = g_file_get_child (self->tmpdir, hash);
   pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
   pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
-  
-  g_assert_no_error (local_error);
-  
-  pending->refcount++;
-
-  return pending;
-}
-
-static void
-ostree_fetcher_request_uri_use_existing_file (OstreeFetcher           *self,
-                                              OstreeFetcherPendingURI *pending,
-                                              GAsyncReadyCallback      callback,
-                                              gpointer                 user_data,
-                                              gpointer                 source_tag)
-{
-  pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->result = g_simple_async_result_new ((GObject*) self,
                                                callback,
                                                user_data,
@@ -343,8 +291,12 @@ ostree_fetcher_request_uri_use_existing_file (OstreeFetcher           *self,
   g_simple_async_result_set_op_res_gpointer (pending->result,
                                              pending,
                                              (GDestroyNotify) pending_uri_free);
-  g_simple_async_result_complete (pending->result);
-  g_object_unref (pending->result);
+  
+  g_assert_no_error (local_error);
+  
+  pending->refcount++;
+
+  return pending;
 }
 
 void
@@ -356,62 +308,36 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
 {
   OstreeFetcherPendingURI *pending;
   GError *local_error = NULL;
-  gs_free char *finalname = NULL;
-  gs_free char *downloadname = NULL;
 
   self->total_requests++;
 
-  pending = ostree_fetcher_request_uri_internal (self, uri, cancellable);
+  pending = ostree_fetcher_request_uri_internal (self, uri, cancellable,
+                                                 callback, user_data,
+                                                 ostree_fetcher_request_uri_with_partial_async);
+  pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->tmpfile, G_FILE_CREATE_NONE, NULL, &local_error));
+  if (!pending->out_stream)
+    goto out;
 
-  finalname = g_strconcat (pending->filename, donesuffix, NULL);
-  downloadname = g_strconcat (pending->filename, partsuffix, NULL);
-  
-  /* First check if the finalname file exists */
-  pending->tmpfile = g_file_get_child (pending->self->tmpdir, finalname);
-  if (g_file_query_exists (pending->tmpfile, NULL) )
+  if (SOUP_IS_REQUEST_HTTP (pending->request))
     {
-      // We already have the complete file, so just use it.
-      ostree_fetcher_request_uri_use_existing_file (self,
-                                                    pending,
-                                                    callback,
-                                                    user_data,
-                                                    ostree_fetcher_request_uri_with_partial_async);
-    }
-  else
-    {
-      g_object_unref (pending->tmpfile);
-      pending->tmpfile = g_file_get_child (pending->self->tmpdir, downloadname);
-      pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->tmpfile, G_FILE_CREATE_NONE, NULL, &local_error));
-      if (!pending->out_stream)
+      SoupMessage *msg;
+      gs_unref_object GFileInfo *file_info = 
+        g_file_query_info (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                           NULL, &local_error);
+      if (!file_info)
         goto out;
 
-      if (SOUP_IS_REQUEST_HTTP (pending->request))
-        {
-          SoupMessage *msg;
-          gs_unref_object GFileInfo *file_info = 
-            g_file_query_info (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               NULL, &local_error);
-          if (!file_info)
-            goto out;
-
-          msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
-          if (g_file_info_get_size (file_info) > 0)
-            soup_message_headers_set_range (msg->request_headers, g_file_info_get_size (file_info), -1);
-          g_hash_table_insert (self->message_to_request,
-                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                               pending);
-        }
-
-      pending->result = g_simple_async_result_new ((GObject*) self,
-                        callback, user_data,
-                        ostree_fetcher_request_uri_with_partial_async);
-      g_simple_async_result_set_op_res_gpointer (pending->result, pending,
-          (GDestroyNotify) pending_uri_free);
-
-      soup_request_send_async (pending->request, cancellable,
-                               on_request_sent, pending);
+      msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
+      if (g_file_info_get_size (file_info) > 0)
+        soup_message_headers_set_range (msg->request_headers, g_file_info_get_size (file_info), -1);
+      g_hash_table_insert (self->message_to_request,
+                           soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
+                           pending);
     }
+  
+  soup_request_send_async (pending->request, cancellable,
+                           on_request_sent, pending);
 
  out:
   if (local_error != NULL)
@@ -423,8 +349,8 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
 
 GFile *
 ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
-                                   GAsyncResult          *result,
-                                   GError               **error)
+                                                GAsyncResult          *result,
+                                                GError               **error)
 {
   GSimpleAsyncResult *simple;
   OstreeFetcherPendingURI *pending;
@@ -448,50 +374,34 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
 {
   OstreeFetcherPendingURI *pending;
   GError *local_error = NULL;
-  gs_free char *finalname = NULL;
 
   self->total_requests++;
 
-  pending = ostree_fetcher_request_uri_internal (self, uri, cancellable);
+  pending = ostree_fetcher_request_uri_internal (self, uri, cancellable,
+                                                 callback, user_data,
+                                                 ostree_fetcher_request_uri_async);
 
-  finalname = g_strconcat (pending->filename, donesuffix, NULL);
+  pending->out_stream = G_OUTPUT_STREAM (g_file_replace (pending->tmpfile, NULL, FALSE,
+                                                         G_FILE_CREATE_REPLACE_DESTINATION,
+                                                         cancellable, &local_error));
+  if (!pending->out_stream)
+    goto out;
 
-  /* TODO - make this async */
-  pending->tmpfile = g_file_get_child (pending->self->tmpdir, finalname);
-  if (g_file_query_exists (pending->tmpfile, NULL) )
+  if (SOUP_IS_REQUEST_HTTP (pending->request))
     {
-      // We already have the complete file, so just use it.
-      ostree_fetcher_request_uri_use_existing_file (self,
-                                                    pending,
-                                                    callback,
-                                                    user_data,
-                                                    ostree_fetcher_request_uri_async);
+      g_hash_table_insert (self->message_to_request,
+                           soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
+                           pending);
     }
-  else
+  
+  soup_request_send_async (pending->request, cancellable,
+                           on_request_sent, pending);
+
+ out:
+  if (local_error)
     {
-      pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->tmpfile, G_FILE_CREATE_NONE, NULL, &local_error));
-      if (local_error)
-        {
-          g_simple_async_result_take_error (pending->result, local_error);
-          g_simple_async_result_complete (pending->result);
-          return;
-        }
-
-      if (SOUP_IS_REQUEST_HTTP (pending->request))
-        {
-          g_hash_table_insert (self->message_to_request,
-                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                               pending);
-        }
-
-      pending->result = g_simple_async_result_new ((GObject*) self,
-                                                   callback, user_data,
-                                                   ostree_fetcher_request_uri_async);
-      g_simple_async_result_set_op_res_gpointer (pending->result, pending,
-                                                 (GDestroyNotify) pending_uri_free);
-
-      soup_request_send_async (pending->request, cancellable,
-                               on_request_sent, pending);
+      g_simple_async_result_take_error (pending->result, local_error);
+      g_simple_async_result_complete (pending->result);
     }
 }
 
