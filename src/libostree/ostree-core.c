@@ -163,7 +163,6 @@ ostree_validate_rev (const char *rev,
                      GError **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *components = NULL;
   GMatchInfo *match = NULL;
 
   static gsize regex_initialized;
@@ -630,7 +629,6 @@ ostree_content_stream_parse (gboolean                compressed,
   guchar dummy[4];
   gsize bytes_read;
   gs_unref_object GInputStream *ret_input = NULL;
-  gs_unref_object GFileInfo *content_file_info = NULL;
   gs_unref_object GFileInfo *ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
   gs_unref_variant GVariant *file_header = NULL;
@@ -1664,7 +1662,6 @@ ostree_create_temp_file_from_input (GFile            *dir,
   GError *temp_error = NULL;
   int i = 0;
   gs_unref_object GFile *possible_file = NULL;
-  gs_free guchar *ret_csum = NULL;
 
   /* 128 attempts seems reasonable... */
   for (i = 0; i < 128; i++)

@@ -61,8 +61,6 @@ import_one_object (OtLocalCloneData *data,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *content_path = NULL;
-  gs_unref_object GFileInfo *archive_info = NULL;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
@@ -163,16 +161,12 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
   GHashTableIter hash_iter;
   gpointer key, value;
   gboolean transaction_resuming = FALSE;
-  gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_object GFile *src_f = NULL;
   gs_unref_object GFile *src_repo_dir = NULL;
   gs_unref_object GFile *dest_repo_dir = NULL;
-  gs_unref_object GFile *src_dir = NULL;
-  gs_unref_object GFile *dest_dir = NULL;
   gs_unref_hashtable GHashTable *refs_to_clone = NULL;
   gs_unref_hashtable GHashTable *commits_to_clone = NULL;
   gs_unref_hashtable GHashTable *source_objects = NULL;
-  gs_unref_hashtable GHashTable *objects_to_copy = NULL;
   OtLocalCloneData datav = { 0, };
   OtLocalCloneData *data = &datav;
 

@@ -328,7 +328,6 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
   const char *dirpath;
   OtTrivialHttpd appstruct = { 0, };
   OtTrivialHttpd *app = &appstruct;
-  gs_unref_object GFile *dir = NULL;
   gs_unref_object SoupServer *server = NULL;
   gs_unref_object GFileMonitor *dirmon = NULL;
 

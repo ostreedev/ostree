@@ -143,14 +143,6 @@ commit_editor (OstreeRepo     *repo,
                GCancellable   *cancellable,
                GError        **error)
 {
-  const char *template =
-      "\n"
-      "# Please enter the commit message for your changes. The first line will\n"
-      "# become the subject, and the remainder the body. Lines starting\n"
-      "# with '#' will be ignored, and an empty message aborts the commit.\n"
-      "#\n"
-      "# Branch: %s\n";
-
   gs_free char *input = NULL;
   gs_free char *output = NULL;
   gboolean ret = FALSE;
@@ -161,7 +153,12 @@ commit_editor (OstreeRepo     *repo,
   *subject = NULL;
   *body = NULL;
 
-  input = g_strdup_printf (template, branch);
+  input = g_strdup_printf ("\n"
+      "# Please enter the commit message for your changes. The first line will\n"
+      "# become the subject, and the remainder the body. Lines starting\n"
+      "# with '#' will be ignored, and an empty message aborts the commit.\n"
+      "#\n"
+      "# Branch: %s\n", branch);
 
   output = ot_editor_prompt (repo, input, cancellable, error);
   if (output == NULL)

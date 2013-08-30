@@ -38,8 +38,6 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable 
   const char *rev = "master";
   int i;
   gs_free char *resolved_rev = NULL;
-  gs_unref_variant GVariant *variant = NULL;
-  gs_free char *formatted_variant = NULL;
 
   context = g_option_context_new ("REV - Output the target of a rev");
   g_option_context_add_main_entries (context, options, NULL);

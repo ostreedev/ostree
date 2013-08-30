@@ -177,7 +177,6 @@ static gboolean
 uri_fetch_update_status (gpointer user_data)
 {
   OtPullData *pull_data = user_data;
-  gs_free char *fetcher_status = NULL;
   GString *status;
   guint outstanding_stages;
   guint outstanding_fetches;
@@ -354,9 +353,7 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
 {
   gboolean ret = FALSE;
   gsize len;
-  gs_unref_object GFile *tmpf = NULL;
   gs_free char *ret_contents = NULL;
-  gs_unref_object SoupRequest *request = NULL;
   OstreeFetchUriSyncData fetch_data = { 0, };
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -401,7 +398,6 @@ scan_dirtree_object (OtPullData   *pull_data,
   gs_unref_variant GVariant *tree = NULL;
   gs_unref_variant GVariant *files_variant = NULL;
   gs_unref_variant GVariant *dirs_variant = NULL;
-  gs_unref_object GFile *stored_path = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -454,7 +450,6 @@ scan_dirtree_object (OtPullData   *pull_data,
       const char *dirname;
       gs_unref_variant GVariant *tree_csum = NULL;
       gs_unref_variant GVariant *meta_csum = NULL;
-      gs_free char *tmp_checksum = NULL;
 
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
@@ -561,10 +556,7 @@ content_fetch_on_complete (GObject        *object,
   GError **error = &local_error;
   GCancellable *cancellable = NULL;
   guint64 length;
-  gs_unref_variant GVariant *file_meta = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
-  gs_unref_object GInputStream *content_input = NULL;
-  gs_unref_object GInputStream *file_object_input = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GInputStream *file_in = NULL;
   gs_unref_object GInputStream *object_input = NULL;
@@ -698,10 +690,8 @@ scan_commit_object (OtPullData         *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *commit = NULL;
-  gs_unref_variant GVariant *related_objects = NULL;
   gs_unref_variant GVariant *tree_contents_csum = NULL;
   gs_unref_variant GVariant *tree_meta_csum = NULL;
-  gs_free char *tmp_checksum = NULL;
   GVariantIter *iter = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
@@ -1126,14 +1116,12 @@ ostree_repo_pull (OstreeRepo               *self,
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
   gs_free char *remote_key = NULL;
-  gs_free char *remote_config_content = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
   gs_free char *summary_data = NULL;
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *updated_refs = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
-  gs_free char *branch_rev = NULL;
   gs_free char *remote_mode_str = NULL;
   GSource *queue_src = NULL;
   OtPullData pull_data_real = { 0, };
@@ -1308,9 +1296,6 @@ ostree_repo_pull (OstreeRepo               *self,
     {
       const char *ref = key;
       const char *sha256 = value;
-      gs_free char *key = NULL;
-      gs_free char *remote_ref = NULL;
-      gs_free char *baseurl = NULL;
 
       ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
                               pull_worker_message_new (PULL_MSG_SCAN,

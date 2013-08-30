@@ -550,7 +550,6 @@ stage_object (OstreeRepo         *self,
   const char *actual_checksum;
   gboolean do_commit;
   OstreeRepoMode repo_mode;
-  gs_unref_object GFileInfo *temp_info = NULL;
   gs_unref_object GFile *temp_file = NULL;
   gs_unref_object GFile *raw_temp_file = NULL;
   gs_unref_object GFile *stored_path = NULL;
@@ -832,7 +831,6 @@ scan_loose_devino (OstreeRepo                     *self,
   guint i;
   OstreeRepoMode repo_mode;
   gs_unref_ptrarray GPtrArray *object_dirs = NULL;
-  gs_unref_object GFile *objdir = NULL;
 
   if (self->parent_repo)
     {
@@ -2095,7 +2093,6 @@ list_loose_objects (OstreeRepo                     *self,
   gboolean ret = FALSE;
   guint i;
   gs_unref_ptrarray GPtrArray *object_dirs = NULL;
-  gs_unref_object GFile *objdir = NULL;
 
   if (!get_loose_object_dirs (self, &object_dirs, cancellable, error))
     goto out;
@@ -2203,9 +2200,7 @@ ostree_repo_load_file (OstreeRepo         *self,
 {
   gboolean ret = FALSE;
   OstreeRepoMode repo_mode;
-  gs_unref_variant GVariant *file_data = NULL;
   gs_unref_object GFile *loose_path = NULL;
-  gs_unref_object GFileInfo *content_loose_info = NULL;
   gs_unref_object GInputStream *ret_input = NULL;
   gs_unref_object GFileInfo *ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;

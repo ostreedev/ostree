@@ -47,7 +47,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_free char *booted_osname = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *repo_path = NULL;
   gs_free char *origin_refspec = NULL;
@@ -61,7 +60,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   gs_unref_object OtDeployment *new_deployment = NULL;
-  gs_free char *ostree_dir_arg = NULL;
   int current_bootversion;
   int new_bootversion;
   GKeyFile *origin;

@@ -305,7 +305,7 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
   gs_free guchar *tmp_csum = NULL;
 
   a = archive_read_new ();
-  archive_read_support_compression_all (a);
+  archive_read_support_filter_all (a);
   archive_read_support_format_all (a);
   if (archive_read_open_filename (a, gs_file_get_path_cached (archive_f), 8192) != ARCHIVE_OK)
     {

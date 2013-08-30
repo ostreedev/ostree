@@ -183,8 +183,6 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
   GHashTableIter hash_iter;
   gpointer key, value;
   gs_unref_hashtable GHashTable *reachable_objects = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_free guchar *computed_csum = NULL;
   guint i;
   guint mod;
   guint count;

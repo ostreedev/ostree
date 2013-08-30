@@ -133,8 +133,6 @@ merge_etc_changes (GFile          *orig_etc,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ostree_etc = NULL;
-  gs_unref_object GFile *tmp_etc = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;
@@ -213,9 +211,7 @@ checkout_deployment_tree (GFile             *sysroot,
   const char *csum = ot_deployment_get_csum (deployment);
   gs_unref_object OstreeRepoFile *root = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
-  gs_unref_object GFileInfo *existing_checkout_info = NULL;
   gs_free char *checkout_target_name = NULL;
-  gs_free char *checkout_target_tmp_name = NULL;
   gs_unref_object GFile *osdeploy_path = NULL;
   gs_unref_object GFile *deploy_target_path = NULL;
   gs_unref_object GFile *deploy_parent = NULL;
@@ -378,7 +374,6 @@ get_kernel_from_tree (GFile         *deployroot,
   gboolean ret = FALSE;
   gs_unref_object GFile *bootdir = g_file_get_child (deployroot, "boot");
   gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
   gs_unref_object GFile *ret_kernel = NULL;
   gs_unref_object GFile *ret_initramfs = NULL;
 
@@ -703,7 +698,6 @@ swap_bootlinks (GFile        *sysroot,
   gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
   gs_free char *ostree_subbootdir_name = NULL;
   gs_unref_object GFile *ostree_subbootdir = NULL;
-  gs_unref_ptrarray GPtrArray *deployments_to_swap = NULL;
 
   if (!ot_admin_read_current_subbootversion (sysroot, current_bootversion,
                                              &old_subbootversion,
@@ -1066,19 +1060,13 @@ ot_admin_deploy (GFile             *sysroot,
   gboolean ret = FALSE;
   OtDeployment *new_deployment;
   gs_unref_object OtDeployment *merge_deployment = NULL;
-  gs_unref_object GFile *rootfs = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
   gs_unref_object GFile *new_deployment_path = NULL;
-  gs_unref_object GFile *deploy_path = NULL;
-  gs_unref_object GFile *osdir = NULL;
   gs_free char *new_bootcsum = NULL;
-  gs_unref_object GFile *source_etc_path = NULL;
-  gs_unref_object GFile *source_etc_pristine_path = NULL;
   gs_unref_object OtConfigParser *bootconfig = NULL;
-  gs_free char *source_etc_kernel_args = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   int new_bootversion;
 
