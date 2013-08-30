@@ -283,11 +283,8 @@ resolve_refspec (OstreeRepo     *self,
   gboolean ret = FALSE;
   __attribute__((unused)) GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
-  gs_free char *tmp = NULL;
-  gs_free char *tmp2 = NULL;
   gs_free char *ret_rev = NULL;
   gs_unref_object GFile *child = NULL;
-  gs_unref_object GFile *origindir = NULL;
   
   g_return_val_if_fail (ref != NULL, FALSE);
 

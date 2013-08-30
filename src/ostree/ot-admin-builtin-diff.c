@@ -41,11 +41,9 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *sysroot, GCancellable *canc
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  gs_free char *booted_osname = NULL;
   gs_unref_object GFile *repo_path = NULL;
   gs_unref_object OtDeployment *deployment = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
-  gs_unref_object GFile *deploy_parent = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;

@@ -224,7 +224,6 @@ ostree_builtin_show (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       gboolean found = FALSE;
       if (!ostree_validate_checksum_string (rev, NULL))
         {
-          gs_unref_variant GVariant *variant = NULL;
           if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
             goto out;
           if (!print_object (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, error))

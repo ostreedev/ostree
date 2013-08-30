@@ -64,7 +64,7 @@ format_timestamp (guint64 timestamp)
 static void
 dump_indented_lines (const gchar *data)
 {
-  const char const* indent = "    ";
+  const char* indent = "    ";
   const gchar *pos;
 
   for (;;)

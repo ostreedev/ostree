@@ -554,9 +554,7 @@ ot_admin_read_current_subbootversion (GFile         *sysroot,
   gs_unref_object GFile *ostree_dir = g_file_get_child (sysroot, "ostree");
   gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
   gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
-  gs_free char *ostree_subbootdir_name = NULL;
   gs_unref_object GFile *ostree_subbootdir = NULL;
-  gs_unref_ptrarray GPtrArray *deployments_to_swap = NULL;
 
   if (!ot_gfile_query_symlink_target_allow_noent (ostree_bootdir, &ostree_subbootdir,
                                                   cancellable, error))

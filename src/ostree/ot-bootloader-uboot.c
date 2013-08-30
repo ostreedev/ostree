@@ -108,7 +108,6 @@ ot_bootloader_uboot_write_config (OtBootloader          *bootloader,
   gs_free char *config_contents = NULL;
   gs_free char *new_config_contents = NULL;
   gs_unref_ptrarray GPtrArray *new_lines = NULL;
-  gs_unref_ptrarray GPtrArray *tmp_args = NULL;
 
   /* This should follow the symbolic link to the current bootversion. */
   config_contents = gs_file_load_contents_utf8 (self->config_path, cancellable, error);
