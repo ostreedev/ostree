@@ -376,6 +376,8 @@ get_kernel_from_tree (GFile         *deployroot,
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFile *ret_kernel = NULL;
   gs_unref_object GFile *ret_initramfs = NULL;
+  gs_free char *kernel_checksum = NULL;
+  gs_free char *initramfs_checksum = NULL;
 
   dir_enum = g_file_enumerate_children (bootdir, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -395,11 +397,27 @@ get_kernel_from_tree (GFile         *deployroot,
         break;
 
       name = g_file_info_get_name (file_info);
-
+      
       if (ret_kernel == NULL && g_str_has_prefix (name, "vmlinuz-"))
-        ret_kernel = g_file_get_child (bootdir, name);
+        {
+          const char *dash = strrchr (name, '-');
+          g_assert (dash);
+          if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
+            {
+              kernel_checksum = g_strdup (dash + 1);
+              ret_kernel = g_file_get_child (bootdir, name);
+            }
+        }
       else if (ret_initramfs == NULL && g_str_has_prefix (name, "initramfs-"))
-        ret_initramfs = g_file_get_child (bootdir, name);
+        {
+          const char *dash = strrchr (name, '-');
+          g_assert (dash);
+          if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
+            {
+              initramfs_checksum = g_strdup (dash + 1);
+              ret_initramfs = g_file_get_child (bootdir, name);
+            }
+        }
       
       if (ret_kernel && ret_initramfs)
         break;
@@ -408,9 +426,21 @@ get_kernel_from_tree (GFile         *deployroot,
   if (ret_kernel == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find boot/vmlinuz-CHECKSUM in %s",
+                   "Failed to find boot/vmlinuz-<CHECKSUM> in %s",
                    gs_file_get_path_cached (deployroot));
       goto out;
+    }
+
+  if (ret_initramfs != NULL)
+    {
+      if (strcmp (kernel_checksum, initramfs_checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Mismatched kernel %s checksum vs initrd %s",
+                       gs_file_get_basename_cached (ret_initramfs),
+                       gs_file_get_basename_cached (ret_initramfs));
+          goto out;
+        }
     }
 
   ot_transfer_out_value (out_kernel, &ret_kernel);
