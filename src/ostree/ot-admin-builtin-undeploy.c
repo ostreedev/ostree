@@ -42,8 +42,6 @@ ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *
   int deploy_index;
   int current_bootversion;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
-  gs_unref_ptrarray GPtrArray *new_deployments = NULL;
-  gs_free char *revision = NULL;
   gs_unref_object OtDeployment *booted_deployment = NULL;
   gs_unref_object OtDeployment *target_deployment = NULL;
 

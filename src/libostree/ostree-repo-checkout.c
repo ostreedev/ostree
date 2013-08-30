@@ -127,7 +127,6 @@ checkout_file_hardlink (OstreeRepo                  *self,
 {
   gboolean ret = FALSE;
   gboolean ret_was_supported = FALSE;
-  gs_unref_object GFile *dir = NULL;
 
  again:
   if (dirfd != -1 &&
@@ -398,7 +397,6 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GError                  **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
 

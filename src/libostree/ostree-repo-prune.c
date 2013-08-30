@@ -127,7 +127,6 @@ ostree_repo_prune (OstreeRepo        *self,
   gpointer key, value;
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_hashtable GHashTable *all_refs = NULL;
-  gs_free char *formatted_freed_size = NULL;
   OtPruneData data = { 0, };
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 

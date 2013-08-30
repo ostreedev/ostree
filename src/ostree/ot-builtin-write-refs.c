@@ -58,7 +58,6 @@ ostree_builtin_write_refs (int argc, char **argv, OstreeRepo *repo, GCancellable
     {
       const char *spc = strchr (line, ' ');
       gs_free char *ref = NULL;
-      gs_free guchar *rev = NULL;
 
       if (!spc || spc == line)
         {

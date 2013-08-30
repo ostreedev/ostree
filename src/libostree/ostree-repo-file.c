@@ -844,7 +844,6 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   gs_unref_object GFileInfo *ret_info = NULL;
   gs_unref_variant GVariant *files_variant = NULL;
   gs_unref_variant GVariant *dirs_variant = NULL;
-  gs_unref_variant GVariant *tree_child_metadata = NULL;
   gs_unref_variant GVariant *content_csum_v = NULL;
   gs_unref_variant GVariant *meta_csum_v = NULL;
   char tmp_checksum[65];
@@ -974,7 +973,6 @@ ostree_repo_file_read (GFile         *file,
   gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
-  gs_unref_object GFile *local_file = NULL;
   gs_unref_object GInputStream *ret_stream = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))

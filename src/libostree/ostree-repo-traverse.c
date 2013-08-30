@@ -156,7 +156,6 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
   while (TRUE)
     {
       gboolean recurse = FALSE;
-      gs_unref_variant GVariant *parent_csum_bytes = NULL;
       gs_unref_variant GVariant *meta_csum_bytes = NULL;
       gs_unref_variant GVariant *content_csum_bytes = NULL;
       gs_unref_variant GVariant *key = NULL;

@@ -102,7 +102,6 @@ list_all_deployment_directories (GFile               *sysroot,
   gboolean ret = FALSE;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFile *deploydir = NULL;
-  gs_unref_object GFile *osdir = NULL;
   gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
   GError *temp_error = NULL;
 
@@ -189,7 +188,6 @@ list_all_boot_directories (GFile               *sysroot,
   gboolean ret = FALSE;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFile *boot_ostree = NULL;
-  gs_unref_object GFile *osdir = NULL;
   gs_unref_ptrarray GPtrArray *ret_bootdirs = NULL;
   GError *temp_error = NULL;
 
@@ -256,7 +254,6 @@ cleanup_other_bootversions (GFile               *sysroot,
   gboolean ret = FALSE;
   int cleanup_bootversion;
   int cleanup_subbootversion;
-  gs_free char *cleanup_boot_name = NULL;
   gs_unref_object GFile *cleanup_boot_dir = NULL;
 
   cleanup_bootversion = bootversion == 0 ? 1 : 0;
@@ -432,8 +429,6 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
   guint i;
   gint n_objects_total, n_objects_pruned;
   guint64 freed_space;
-  gs_free char *cleanup_boot_name = NULL;
-  gs_unref_object GFile *cleanup_boot_dir = NULL;
 
   cleanup_bootversion = (bootversion == 0) ? 1 : 0;
   cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
