@@ -175,8 +175,7 @@ setup_os_repository () {
     mkdir -p boot usr/bin usr/lib/modules/3.6.0 usr/share usr/etc
     echo "a kernel" > boot/vmlinuz-3.6.0
     echo "an initramfs" > boot/initramfs-3.6.0
-    echo "a kernel module" > usr/lib/modules/3.6.0/foofs.ko
-    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko | sha256sum | cut -f 1 -d ' ')
+    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
     mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
@@ -223,9 +222,7 @@ os_repository_new_commit ()
     rm boot/*
     echo "new: a kernel" > boot/vmlinuz-3.6.0
     echo "new: an initramfs" > boot/initramfs-3.6.0
-    echo "new: a kernel module" > usr/lib/modules/3.6.0/foofs.ko
-    echo "new: another kernel module" > usr/lib/modules/3.6.0/othermod.ko
-    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 usr/lib/modules/3.6.0/foofs.ko usr/lib/modules/3.6.0/othermod.ko | sha256sum | cut -f 1 -d ' ')
+    bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}
     mv boot/initramfs-3.6.0 boot/initramfs-3.6.0-${bootcsum}
