@@ -42,9 +42,9 @@ typedef struct {
 
   SoupRequest *request;
 
-  gboolean is_partial;
-  GFile *tmpfile;
+  gboolean is_stream;
   GInputStream *request_body;
+  GFile *out_tmpfile;
   GOutputStream *out_stream;
 
   guint64 content_length;
@@ -63,7 +63,7 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
 
   soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
-  g_clear_object (&pending->tmpfile);
+  g_clear_object (&pending->out_tmpfile);
   g_clear_object (&pending->request);
   g_clear_object (&pending->request_body);
   g_clear_object (&pending->out_stream);
@@ -179,7 +179,7 @@ on_splice_complete (GObject        *object,
   GError *local_error = NULL;
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
-  file_info = g_file_query_info (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+  file_info = g_file_query_info (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  pending->cancellable, &local_error);
   if (!file_info)
@@ -256,18 +256,20 @@ on_request_sent (GObject        *object,
   
   pending->content_length = soup_request_get_content_length (pending->request);
 
-  if (pending->is_partial)
-    pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->tmpfile, G_FILE_CREATE_NONE,
-                                                             pending->cancellable, &local_error));
+  if (!pending->is_stream)
+    {
+      pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->out_tmpfile, G_FILE_CREATE_NONE,
+                                                               pending->cancellable, &local_error));
+      if (!pending->out_stream)
+        goto out;
+      g_output_stream_splice_async (pending->out_stream, pending->request_body, flags, G_PRIORITY_DEFAULT,
+                                    pending->cancellable, on_splice_complete, pending);
+    }
   else
-    pending->out_stream = G_OUTPUT_STREAM (g_file_replace (pending->tmpfile, NULL, FALSE,
-                                                           G_FILE_CREATE_REPLACE_DESTINATION,
-                                                           pending->cancellable, &local_error));
-  if (!pending->out_stream)
-    goto out;
+    {
+      g_simple_async_result_complete (pending->result);
+    }
   
-  g_output_stream_splice_async (pending->out_stream, pending->request_body, flags, G_PRIORITY_DEFAULT,
-                                pending->cancellable, on_splice_complete, pending);
  out:
   if (local_error)
     {
@@ -279,7 +281,7 @@ on_request_sent (GObject        *object,
 static OstreeFetcherPendingURI *
 ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      SoupURI               *uri,
-                                     gboolean               is_partial,
+                                     gboolean               is_stream,
                                      GCancellable          *cancellable,
                                      GAsyncReadyCallback    callback,
                                      gpointer               user_data,
@@ -287,15 +289,18 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 {
   OstreeFetcherPendingURI *pending;
   GError *local_error = NULL;
-  gs_free char *uristring = soup_uri_to_string (uri, FALSE);
-  gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
 
   pending = g_new0 (OstreeFetcherPendingURI, 1);
   pending->refcount = 1;
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
-  pending->is_partial = is_partial;
-  pending->tmpfile = g_file_get_child (self->tmpdir, hash);
+  pending->is_stream = is_stream;
+  if (!is_stream)
+    {
+      gs_free char *uristring = soup_uri_to_string (uri, FALSE);
+      gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
+      pending->out_tmpfile = g_file_get_child (self->tmpdir, hash);
+    }
   pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
   pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
   pending->result = g_simple_async_result_new ((GObject*) self,
@@ -326,11 +331,11 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
 
   self->total_requests++;
 
-  pending = ostree_fetcher_request_uri_internal (self, uri, TRUE, cancellable,
+  pending = ostree_fetcher_request_uri_internal (self, uri, FALSE, cancellable,
                                                  callback, user_data,
                                                  ostree_fetcher_request_uri_with_partial_async);
 
-  if (!ot_gfile_query_info_allow_noent (pending->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+  if (!ot_gfile_query_info_allow_noent (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         &file_info, cancellable, &local_error))
     goto out;
@@ -373,23 +378,23 @@ ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
     return NULL;
   pending = g_simple_async_result_get_op_res_gpointer (simple);
 
-  return g_object_ref (pending->tmpfile);
+  return g_object_ref (pending->out_tmpfile);
 }
 
 void
-ostree_fetcher_request_uri_async (OstreeFetcher         *self,
-                                  SoupURI               *uri,
-                                  GCancellable          *cancellable,
-                                  GAsyncReadyCallback    callback,
-                                  gpointer               user_data)
+ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
+                                 SoupURI               *uri,
+                                 GCancellable          *cancellable,
+                                 GAsyncReadyCallback    callback,
+                                 gpointer               user_data)
 {
   OstreeFetcherPendingURI *pending;
 
   self->total_requests++;
 
-  pending = ostree_fetcher_request_uri_internal (self, uri, FALSE, cancellable,
+  pending = ostree_fetcher_request_uri_internal (self, uri, TRUE, cancellable,
                                                  callback, user_data,
-                                                 ostree_fetcher_request_uri_async);
+                                                 ostree_fetcher_stream_uri_async);
 
   if (SOUP_IS_REQUEST_HTTP (pending->request))
     {
@@ -402,22 +407,22 @@ ostree_fetcher_request_uri_async (OstreeFetcher         *self,
                            on_request_sent, pending);
 }
 
-GFile *
-ostree_fetcher_request_uri_finish (OstreeFetcher         *self,
-                                   GAsyncResult          *result,
-                                   GError               **error)
+GInputStream *
+ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+                                  GAsyncResult          *result,
+                                  GError               **error)
 {
   GSimpleAsyncResult *simple;
   OstreeFetcherPendingURI *pending;
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_request_uri_async), FALSE);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_stream_uri_async), FALSE);
 
   simple = G_SIMPLE_ASYNC_RESULT (result);
   if (g_simple_async_result_propagate_error (simple, error))
     return NULL;
   pending = g_simple_async_result_get_op_res_gpointer (simple);
 
-  return g_object_ref (pending->tmpfile);
+  return g_object_ref (pending->request_body);
 }
 
 static char *
@@ -457,17 +462,17 @@ ostree_fetcher_query_state_text (OstreeFetcher              *self)
           active = g_hash_table_lookup (self->message_to_request, key);
           g_assert (active != NULL);
 
-          if (active->tmpfile)
+          if (active->out_tmpfile)
             {
               gs_unref_object GFileInfo *file_info = NULL;
 
-              file_info = g_file_query_info (active->tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+              file_info = g_file_query_info (active->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                              NULL, NULL);
               if (file_info)
                 {
                   gs_free char *size = format_size_pair (g_file_info_get_size (file_info),
-                                                          active->content_length);
+                                                         active->content_length);
                   g_string_append_printf (buf, " [%s]", size);
                 }
             }

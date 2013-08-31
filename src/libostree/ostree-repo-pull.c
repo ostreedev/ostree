@@ -328,7 +328,7 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 
 typedef struct {
   OtPullData     *pull_data;
-  GFile          *result_file;
+  GInputStream   *result_stream;
 } OstreeFetchUriSyncData;
 
 static void
@@ -338,8 +338,8 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   OstreeFetchUriSyncData *data = user_data;
 
-  data->result_file = ostree_fetcher_request_uri_finish ((OstreeFetcher*)object,
-                                                         result, data->pull_data->async_error);
+  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+                                                          result, data->pull_data->async_error);
   data->pull_data->fetching_sync_uri = NULL;
   g_main_loop_quit (data->pull_data->loop);
 }
@@ -352,8 +352,9 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
                               GError     **error)
 {
   gboolean ret = FALSE;
-  gsize len;
+  const guint8 nulchar = 0;
   gs_free char *ret_contents = NULL;
+  gs_unref_object GMemoryOutputStream *buf = NULL;
   OstreeFetchUriSyncData fetch_data = { 0, };
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -362,15 +363,27 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   fetch_data.pull_data = pull_data;
 
   pull_data->fetching_sync_uri = uri;
-  ostree_fetcher_request_uri_async (pull_data->fetcher, uri, cancellable,
-                                    fetch_uri_sync_on_complete, &fetch_data);
+  ostree_fetcher_stream_uri_async (pull_data->fetcher, uri, cancellable,
+                                   fetch_uri_sync_on_complete, &fetch_data);
 
   run_mainloop_monitor_fetcher (pull_data);
-  if (!fetch_data.result_file)
+  if (!fetch_data.result_stream)
     goto out;
 
-  if (!g_file_load_contents (fetch_data.result_file, cancellable, &ret_contents, &len, NULL, error))
+  buf = (GMemoryOutputStream*)g_memory_output_stream_new_resizable ();
+  if (g_output_stream_splice ((GOutputStream*)buf, fetch_data.result_stream,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                              cancellable, error) < 0)
     goto out;
+
+  /* Add trailing NUL */
+  if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
+    goto out;
+
+  if (!g_output_stream_close ((GOutputStream*)buf, cancellable, error))
+    goto out;
+
+  ret_contents = g_memory_output_stream_steal_data (buf);
 
   if (!g_utf8_validate (ret_contents, -1, NULL))
     {
@@ -382,7 +395,7 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  g_clear_object (&(fetch_data.result_file));
+  g_clear_object (&(fetch_data.result_stream));
   return ret;
 }
 

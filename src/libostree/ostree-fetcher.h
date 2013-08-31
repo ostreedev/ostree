@@ -70,15 +70,15 @@ GFile *ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
                                                        GAsyncResult  *result,
                                                        GError       **error);
 
-void ostree_fetcher_request_uri_async (OstreeFetcher         *self,
+void ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                        SoupURI               *uri,
                                        GCancellable          *cancellable,
                                        GAsyncReadyCallback    callback,
                                        gpointer               user_data);
 
-GFile *ostree_fetcher_request_uri_finish (OstreeFetcher         *self,
-                                          GAsyncResult          *result,
-                                          GError               **error);
+GInputStream *ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+                                                GAsyncResult          *result,
+                                                GError               **error);
 
 G_END_DECLS
 
