@@ -155,8 +155,19 @@ setup_fake_remote_repo1() {
     export OSTREE="ostree --repo=repo"
 }
 
+setup_os_boot_syslinux() {
+    # Stub syslinux configuration
+    mkdir -p sysroot/boot/loader.0
+    ln -s loader.0 sysroot/boot/loader
+    touch sysroot/boot/loader/syslinux.cfg
+    # And a compatibility symlink
+    mkdir -p sysroot/boot/syslinux
+    ln -s ../loader/syslinux.cfg sysroot/boot/syslinux/syslinux.cfg
+}
+
 setup_os_repository () {
     mode=$1
+    bootmode=$2
     shift
 
     oldpwd=`pwd`
@@ -207,13 +218,9 @@ EOF
     ostree admin --sysroot=sysroot init-fs sysroot
     ostree admin --sysroot=sysroot os-init testos
 
-    # Stub syslinux configuration
-    mkdir -p sysroot/boot/loader.0
-    ln -s loader.0 sysroot/boot/loader
-    touch sysroot/boot/loader/syslinux.cfg
-    # And a compatibility symlink
-    mkdir -p sysroot/boot/syslinux
-    ln -s ../loader/syslinux.cfg sysroot/boot/syslinux/syslinux.cfg
+    if [ $bootmode = "syslinux" ]; then
+        setup_os_boot_syslinux
+    fi
 }
 
 os_repository_new_commit ()

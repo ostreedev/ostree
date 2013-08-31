@@ -23,7 +23,7 @@ set -e
 
 echo "1..1"
 
-setup_os_repository "archive-z2"
+setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
 
