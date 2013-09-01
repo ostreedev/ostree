@@ -54,8 +54,15 @@ parse_ostree_cmdline (void)
 
   if (!f)
     return NULL;
+  /* Note that /proc/cmdline will not end in a newline, so getline
+   * will fail unelss we provide a length.
+   */
   if (getline (&cmdline, &len, f) < 0)
     return NULL;
+  /* ... but the length will be the size of the malloc buffer, not
+   * strlen().  Fix that.
+   */
+  len = strlen (cmdline);
 
   if (cmdline[len-1] == '\n')
     cmdline[len-1] = '\0';
