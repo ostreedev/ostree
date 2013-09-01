@@ -165,6 +165,15 @@ setup_os_boot_syslinux() {
     ln -s ../loader/syslinux.cfg sysroot/boot/syslinux/syslinux.cfg
 }
 
+setup_os_boot_uboot() {
+    # Stub U-Boot configuration
+    mkdir -p sysroot/boot/loader.0
+    ln -s loader.0 sysroot/boot/loader
+    touch sysroot/boot/loader/uEnv.txt
+    # And a compatibility symlink
+    ln -s loader/uEnv.txt sysroot/boot/uEnv.txt
+}
+
 setup_os_repository () {
     mode=$1
     bootmode=$2
@@ -218,9 +227,14 @@ EOF
     ostree admin --sysroot=sysroot init-fs sysroot
     ostree admin --sysroot=sysroot os-init testos
 
-    if [ $bootmode = "syslinux" ]; then
-        setup_os_boot_syslinux
-    fi
+    case $bootmode in
+        "syslinux")
+	    setup_os_boot_syslinux
+            ;;
+        "uboot")
+	    setup_os_boot_uboot
+            ;;
+    esac
 }
 
 os_repository_new_commit ()
