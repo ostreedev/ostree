@@ -169,6 +169,7 @@ do_resolve_commit (OstreeRepoFile  *self,
   gs_unref_variant GVariant *root_metadata = NULL;
   gs_unref_variant GVariant *tree_contents_csum_v = NULL;
   gs_unref_variant GVariant *tree_metadata_csum_v = NULL;
+  char tmp_checksum[65];
 
   g_assert (self->parent == NULL);
 
@@ -178,16 +179,20 @@ do_resolve_commit (OstreeRepoFile  *self,
 
   /* PARSE OSTREE_OBJECT_TYPE_COMMIT */
   g_variant_get_child (commit, 6, "@ay", &tree_contents_csum_v);
-  g_variant_get_child (commit, 7, "@ay", &tree_metadata_csum_v);
 
-  if (!ostree_repo_load_variant_c (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
-                                   ostree_checksum_bytes_peek (tree_contents_csum_v),
-                                   &root_contents, error))
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_contents_csum_v), tmp_checksum);
+
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
+                                 tmp_checksum,
+                                 &root_contents, error))
     goto out;
 
-  if (!ostree_repo_load_variant_c (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
-                                   ostree_checksum_bytes_peek (tree_metadata_csum_v),
-                                   &root_metadata, error))
+  g_variant_get_child (commit, 7, "@ay", &tree_metadata_csum_v);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v), tmp_checksum);
+
+  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
+                                 tmp_checksum,
+                                 &root_metadata, error))
     goto out;
   
   self->tree_metadata = root_metadata;

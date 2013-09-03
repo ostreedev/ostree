@@ -2585,37 +2585,6 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
 }
 
 /**
- * ostree_repo_load_variant_c:
- * @self: Repo
- * @objtype: Expected object type
- * @csum: Binary checksum
- * @out_variant: (out): (transfer full): Metadata object
- * @error: Error
- * 
- * Load the metadata object @csum of type @objtype, storing the
- * result in @out_variant.
- */
-gboolean
-ostree_repo_load_variant_c (OstreeRepo          *self,
-                            OstreeObjectType     objtype,
-                            const guchar        *csum, 
-                            GVariant           **out_variant,
-                            GError             **error)
-{
-  gboolean ret = FALSE;
-  gs_free char *checksum = NULL;
-
-  checksum = ostree_checksum_from_bytes (csum);
-
-  if (!ostree_repo_load_variant (self, objtype, checksum, out_variant, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-/**
  * ostree_repo_load_variant_if_exists:
  * @self: Repo
  * @objtype: Object type

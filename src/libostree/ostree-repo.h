@@ -181,12 +181,6 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
-gboolean      ostree_repo_load_variant_c (OstreeRepo  *self,
-                                          OstreeObjectType objtype,
-                                          const guchar  *csum,       
-                                          GVariant     **out_variant,
-                                          GError       **error);
-
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
                                         const char    *sha256, 

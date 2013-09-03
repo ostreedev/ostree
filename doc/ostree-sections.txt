@@ -90,7 +90,6 @@ ostree_repo_resolve_rev
 ostree_repo_write_ref
 ostree_repo_write_refspec
 ostree_repo_list_refs
-ostree_repo_load_variant_c
 ostree_repo_load_variant
 ostree_repo_load_variant_if_exists
 ostree_repo_load_file
