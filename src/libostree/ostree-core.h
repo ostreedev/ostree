@@ -73,26 +73,6 @@ typedef enum {
 #define OSTREE_OBJECT_TYPE_LAST OSTREE_OBJECT_TYPE_COMMIT
 
 /**
- * OSTREE_FILE_HEADER_GVARIANT_FORMAT:
- *
- * File objects are stored as a stream, with one #GVariant header,
- * followed by content.
- * 
- * The file header is of the following form:
- *
- * &lt;BE guint32 containing variant length&gt;
- * u - uid
- * u - gid
- * u - mode
- * u - rdev
- * s - symlink target 
- * a(ayay) - xattrs
- *
- * Then the rest of the stream is data.
- */
-#define OSTREE_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuuusa(ayay))")
-
-/**
  * OSTREE_DIRMETA_GVARIANT_FORMAT:
  *
  * u - uid
@@ -123,25 +103,6 @@ typedef enum {
  * ay - Root tree metadata
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
-
-/**
- * OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT:
- *
- * This is a variation on %OSTREE_FILE_HEADER_GVARIANT_FORMAT, used for
- * storing zlib-compressed content objects.
- *
- * &lt;BE guint32 containing variant length&gt;
- * t - size
- * u - uid
- * u - gid
- * u - mode
- * u - rdev
- * s - symlink target 
- * a(ayay) - xattrs
- * ---
- * zlib-compressed data
- */
-#define OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT G_VARIANT_TYPE ("(tuuuusa(ayay))")
 
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
@@ -220,8 +181,6 @@ gboolean ostree_write_variant_with_size (GOutputStream      *output,
 
 GVariant *ostree_file_header_new (GFileInfo         *file_info,
                                   GVariant          *xattrs);
-GVariant *ostree_zlib_file_header_new (GFileInfo         *file_info,
-                                       GVariant          *xattrs);
 
 gboolean ostree_file_header_parse (GVariant         *metadata,
                                    GFileInfo       **out_file_info,

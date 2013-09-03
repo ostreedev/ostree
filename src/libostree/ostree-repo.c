@@ -30,6 +30,7 @@
 #include <stdlib.h>
 
 #include "ostree-repo-private.h"
+#include "ostree-core-private.h"
 #include "ostree-mutable-tree.h"
 #include "ostree-checksum-input-stream.h"
 #include "otutil.h"
@@ -707,7 +708,7 @@ stage_object (OstreeRepo         *self,
             goto out;
           temp_file_is_regular = TRUE;
 
-          file_meta = ostree_zlib_file_header_new (file_info, xattrs);
+          file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
 
           if (!ostree_write_variant_with_size (temp_out, file_meta, 0, NULL, NULL,
                                                cancellable, error))

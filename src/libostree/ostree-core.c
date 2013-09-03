@@ -28,12 +28,24 @@
 #include <gio/gfiledescriptorbased.h>
 #include <attr/xattr.h>
 #include "ostree.h"
+#include "ostree-core-private.h"
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
 #include "libgsystem.h"
 
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
+
+static gboolean
+file_header_parse (GVariant         *metadata,
+                   GFileInfo       **out_file_info,
+                   GVariant        **out_xattrs,
+                   GError          **error);
+static gboolean
+zlib_file_header_parse (GVariant         *metadata,
+                        GFileInfo       **out_file_info,
+                        GVariant        **out_xattrs,
+                        GError          **error);
 
 /**
  * SECTION:libostree-core
@@ -334,9 +346,9 @@ ostree_get_xattrs_for_file (GFile         *f,
   return ret;
 }
 
-GVariant *
-ostree_file_header_new (GFileInfo         *file_info,
-                        GVariant          *xattrs)
+static GVariant *
+file_header_new (GFileInfo         *file_info,
+                 GVariant          *xattrs)
 {
   guint32 uid;
   guint32 gid;
@@ -366,7 +378,7 @@ ostree_file_header_new (GFileInfo         *file_info,
   return ret;
 }
 
-/**
+/*
  * ostree_zlib_file_header_new:
  * @file_info: a #GFileInfo
  * @xattrs: (allow-none): Optional extended attribute array
@@ -374,8 +386,8 @@ ostree_file_header_new (GFileInfo         *file_info,
  * Returns: (transfer full): A new #GVariant containing file header for an archive-z2 repository
  */
 GVariant *
-ostree_zlib_file_header_new (GFileInfo         *file_info,
-                             GVariant          *xattrs)
+_ostree_zlib_file_header_new (GFileInfo         *file_info,
+                              GVariant          *xattrs)
 {
   guint64 size;
   guint32 uid;
@@ -567,7 +579,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   gs_unref_object GOutputStream *header_out_stream = NULL;
   gs_unref_object GInputStream *header_in_stream = NULL;
 
-  file_header = ostree_file_header_new (file_info, xattrs);
+  file_header = file_header_new (file_info, xattrs);
 
   header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 
@@ -663,25 +675,25 @@ ostree_content_stream_parse (gboolean                compressed,
   if (!g_input_stream_read_all (input, buf, archive_header_size, &bytes_read,
                                 cancellable, error))
     goto out;
-  file_header = g_variant_new_from_data (compressed ? OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : OSTREE_FILE_HEADER_GVARIANT_FORMAT,
+  file_header = g_variant_new_from_data (compressed ? _OSTREE_ZLIB_FILE_HEADER_GVARIANT_FORMAT : _OSTREE_FILE_HEADER_GVARIANT_FORMAT,
                                          buf, archive_header_size, trusted,
                                          g_free, buf);
   buf = NULL;
 
   if (compressed)
     {
-      if (!ostree_zlib_file_header_parse (file_header,
-                                          out_file_info ? &ret_file_info : NULL,
-                                          out_xattrs ? &ret_xattrs : NULL,
-                                          error))
+      if (!zlib_file_header_parse (file_header,
+                                   out_file_info ? &ret_file_info : NULL,
+                                   out_xattrs ? &ret_xattrs : NULL,
+                                   error))
         goto out;
     }
   else
     {
-      if (!ostree_file_header_parse (file_header,
-                                     out_file_info ? &ret_file_info : NULL,
-                                     out_xattrs ? &ret_xattrs : NULL,
-                                     error))
+      if (!file_header_parse (file_header,
+                              out_file_info ? &ret_file_info : NULL,
+                              out_xattrs ? &ret_xattrs : NULL,
+                              error))
         goto out;
       if (ret_file_info)
         g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
@@ -827,7 +839,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     {
       gs_unref_variant GVariant *file_header = NULL;
 
-      file_header = ostree_file_header_new (file_info, xattrs);
+      file_header = file_header_new (file_info, xattrs);
 
       if (!ostree_write_file_header_update_checksum (NULL, file_header, checksum,
                                                      cancellable, error))
@@ -1376,7 +1388,7 @@ ostree_get_relative_object_path (const char         *checksum,
   return g_string_free (path, FALSE);
 }
 
-/**
+/*
  * ostree_file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
  * @out_file_info: (out): Parsed file information
@@ -1386,11 +1398,11 @@ ostree_get_relative_object_path (const char         *checksum,
  * Load file header information into standard Gio #GFileInfo object,
  * along with extended attributes tored in @out_xattrs.
  */
-gboolean
-ostree_file_header_parse (GVariant         *metadata,
-                          GFileInfo       **out_file_info,
-                          GVariant        **out_xattrs,
-                          GError          **error)
+static gboolean
+file_header_parse (GVariant         *metadata,
+                   GFileInfo       **out_file_info,
+                   GVariant        **out_xattrs,
+                   GError          **error)
 {
   gboolean ret = FALSE;
   guint32 uid, gid, mode, rdev;
@@ -1436,8 +1448,8 @@ ostree_file_header_parse (GVariant         *metadata,
   return ret;
 }
 
-/**
- * ostree_zlib_file_header_parse:
+/*
+ * zlib_file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
  * @out_file_info: (out): Parsed file information
  * @out_xattrs: (out): Parsed extended attribute set
@@ -1446,11 +1458,11 @@ ostree_file_header_parse (GVariant         *metadata,
  * Like ostree_file_header_parse(), but operates on zlib-compressed
  * content.
  */
-gboolean
-ostree_zlib_file_header_parse (GVariant         *metadata,
-                               GFileInfo       **out_file_info,
-                               GVariant        **out_xattrs,
-                               GError          **error)
+static gboolean
+zlib_file_header_parse (GVariant         *metadata,
+                        GFileInfo       **out_file_info,
+                        GVariant        **out_xattrs,
+                        GError          **error)
 {
   gboolean ret = FALSE;
   guint64 size;
