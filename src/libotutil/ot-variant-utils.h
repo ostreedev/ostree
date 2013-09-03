@@ -55,5 +55,8 @@ gboolean ot_util_variant_from_stream (GInputStream         *src,
 
 GInputStream *ot_variant_read (GVariant             *variant);
 
+GVariantBuilder *ot_util_variant_builder_from_variant (GVariant            *variant,
+                                                       const GVariantType  *type);
+
 G_END_DECLS
 

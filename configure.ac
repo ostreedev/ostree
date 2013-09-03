@@ -81,6 +81,31 @@ m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
 ])
 AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test x$found_introspection = xyes)
 
+LIBGPGME_DEPENDENCY="1.1.8"
+
+AC_ARG_WITH(gpgme,
+            AS_HELP_STRING([--without-gpgme], [Do not use gpgme]),
+            :, with_gpgme=maybe)
+
+AS_IF([ test x$with_gpgme != xno ], [
+   AC_MSG_CHECKING([for $LIBGPGME_DEPENDENCY])
+   m4_ifdef([AM_PATH_GPGME], [
+      AM_PATH_GPGME($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+      ],[
+      AM_CONDITIONAL([have_gpgme],[false])
+      ])
+   AC_MSG_RESULT([$have_gpgme])
+   AS_IF([ test x$have_gpgme = xno && test x$with_gpgme != xmaybe ], [
+       AC_MSG_ERROR([gpgme is enabled but could not be found])
+   ])
+   AS_IF([ test x$have_gpgme = xyes], [
+       AC_DEFINE(HAVE_GPGME, 1, [Define if we have gpgme])
+       with_gpgme=yes
+       ], [ with_gpgme=no ])
+], [ with_gpgme=no ])
+if test x$with_gpgme != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"; fi
+AM_CONDITIONAL(USE_GPGME, test $with_gpgme != no)
+
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
 GTK_DOC_CHECK([1.15], [--flavour no-tmpl])
@@ -154,6 +179,7 @@ echo "
     introspection:                                $found_introspection
     libsoup (retrieve remote HTTP repositories):  $with_soup
     libarchive (parse tar files directly):        $with_libarchive
+    gpgme (sign commits):                         $with_gpgme
     documentation:                                $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut"

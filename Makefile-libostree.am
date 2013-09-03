@@ -99,3 +99,8 @@ CLEANFILES += $(gir_DATA) $(typelib_DATA)
 endif
 
 pkgconfig_DATA += src/libostree/ostree-1.pc
+
+if USE_GPGME
+libostree_1_la_LIBADD += $(GPGME_LIBS)
+endif
+

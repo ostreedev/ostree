@@ -28,6 +28,7 @@ testfiles = test-basic \
 	test-pull-archive-z \
 	test-pull-corruption \
 	test-pull-resume \
+	test-gpg-signed-commit \
 	test-admin-deploy-1 \
 	test-admin-deploy-2 \
 	test-admin-deploy-uboot \
@@ -40,6 +41,11 @@ insttest_DATA = tests/archive-test.sh \
 	tests/pull-test.sh \
 	tests/libtest.sh \
 	$(NULL)
+
+gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome
+gpginsttest_DATA = tests/gpghome/secring.gpg \
+	tests/gpghome/pubring.gpg \
+	tests/gpghome/trustdb.gpg
 
 %.test: tests/%.sh Makefile
 	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \

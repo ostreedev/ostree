@@ -24,12 +24,19 @@
 
 #include <glib-unix.h>
 #include <gio/gunixinputstream.h>
+#include <gio/gfiledescriptorbased.h>
 #include "otutil.h"
 #include "libgsystem.h"
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file.h"
+
+#ifdef HAVE_GPGME
+#include <locale.h>
+#include <gpgme.h>
+#include <glib/gstdio.h>
+#endif
 
 /**
  * SECTION:libostree-repo
@@ -1462,4 +1469,181 @@ ostree_repo_pull (OstreeRepo               *self,
                        "This version of ostree was built without libsoup, and cannot fetch over HTTP");
   return FALSE;
 }
+#endif
+
+#ifdef HAVE_GPGME
+gboolean
+ostree_repo_sign_commit (OstreeRepo     *self,
+                         const gchar    *commit_checksum,
+                         const gchar    *key_id,
+                         const gchar    *homedir,
+                         GCancellable   *cancellable,
+                         GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *commit_path = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_free gchar *commit_filename = NULL;
+  gs_unref_object GFile *tmp_signature_file = NULL;
+  gs_unref_object GOutputStream *tmp_signature_output = NULL;
+  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+  gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
+  gs_unref_variant GVariant *commit_variant = NULL;
+  gs_unref_variant GVariant *signaturedata = NULL;
+  gs_unref_bytes GBytes *signature_bytes = NULL;
+  gpgme_ctx_t context;
+  gpgme_engine_info_t info;
+  gpgme_error_t err;
+  gpgme_key_t key = NULL;
+  gpgme_data_t commit_buffer = NULL;
+  gpgme_data_t signature_buffer = NULL;
+  int signature_fd = -1;
+  gpgme_sign_result_t result;
+  GMappedFile *signature_file = NULL;
+  
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit_checksum, &commit_variant, error))
+    goto out;
+  
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to read existing detached metadata");
+      goto out;
+    }
+
+  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                               &tmp_signature_file, &tmp_signature_output,
+                               cancellable, error))
+    goto out;
+
+  gpgme_check_version (NULL);
+  gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
+  
+  if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to create gpg context");
+      goto out;
+    }
+
+  info = gpgme_ctx_get_engine_info (context);
+  
+  if (homedir != NULL)
+    {
+      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, info->file_name, homedir))
+          != GPG_ERR_NO_ERROR)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unable to set gpg homedir");
+          goto out;
+        }
+    }
+
+  /* Get the secret keys with the given key id */
+  if ((err = gpgme_get_key (context, key_id, &key, 1)) != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No gpg key found with the given key-id");
+      goto out;
+    }
+  
+  /* Add the key to the context as a signer */
+  if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Error signing commit");
+      goto out;
+    }
+  
+  if ((err = gpgme_data_new_from_mem (&commit_buffer, g_variant_get_data (commit_variant),
+                                      g_variant_get_size (commit_variant), FALSE)) != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failed to create buffer from commit file");
+      goto out;
+    }
+  
+  signature_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)tmp_signature_output);
+  if (signature_fd < 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to open signature file");
+      goto out;
+    }
+  
+  if ((err = gpgme_data_new_from_fd (&signature_buffer, signature_fd)) != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failed to create buffer for signature file");
+      goto out;
+    }
+  
+  if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
+      != GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failure signing commit file");
+      goto out;
+    }
+  
+  result = gpgme_op_sign_result (context);
+
+  if (!g_output_stream_close (tmp_signature_output, cancellable, error))
+    goto out;
+  
+  signature_file = gs_file_map_noatime (tmp_signature_file, cancellable, error);
+  if (!signature_file)
+    goto out;
+  signature_bytes = g_mapped_file_get_bytes (signature_file);
+  
+  // Now read the file and put its contents into the result GVariant
+  if (metadata)
+    {
+      builder = ot_util_variant_builder_from_variant (metadata, G_VARIANT_TYPE ("a{sv}"));
+      signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
+      if (signaturedata)
+        signature_builder = ot_util_variant_builder_from_variant (signaturedata, G_VARIANT_TYPE ("aay"));
+    }
+  if (!builder)
+    builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  if (!signature_builder)
+    signature_builder = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
+
+  g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
+
+  g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
+  
+  metadata = g_variant_builder_end (builder);
+
+  if (!ostree_repo_write_commit_detached_metadata (self,
+                                                   commit_checksum,
+                                                   metadata,
+                                                   cancellable,
+                                                   error))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to read existing detached metadata");
+      goto out;
+    }
+
+  ret = TRUE;
+out:
+  if (commit_buffer)
+    gpgme_data_release (commit_buffer);
+  if (signature_buffer)
+    gpgme_data_release (signature_buffer);
+  if (key)
+    gpgme_key_release (key);
+  if (context)
+    gpgme_release (context);
+  if (signature_file)
+    g_mapped_file_unref (signature_file);
+  return ret;
+}
+
 #endif

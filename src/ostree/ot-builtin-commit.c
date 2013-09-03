@@ -41,6 +41,10 @@ static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
 static gboolean opt_table_output;
+#ifdef HAVE_GPGME
+static char **opt_key_ids;
+static char *opt_gpg_homedir;
+#endif
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
@@ -57,6 +61,10 @@ static GOptionEntry options[] = {
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "path" },
   { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
+#ifdef HAVE_GPGME
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "key-id"},
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
+#endif
   { NULL }
 };
 
@@ -461,6 +469,26 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                                            cancellable, error))
             goto out;
         }
+
+#ifdef HAVE_GPGME
+      if (opt_key_ids)
+        {
+          char **iter;
+
+          for (iter = opt_key_ids; iter && *iter; iter++)
+            {
+              const char *keyid = *iter;
+
+              if (!ostree_repo_sign_commit (repo,
+                                            commit_checksum,
+                                            keyid,
+                                            opt_gpg_homedir,
+                                            cancellable,
+                                            error))
+                goto out;
+            }
+        }
+#endif
 
       ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
 

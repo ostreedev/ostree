@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "config.h"
 #include "ostree-core.h"
 #include "ostree-types.h"
 
@@ -461,6 +462,15 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            OstreeRepoPullFlags     flags,
                            GCancellable           *cancellable,
                            GError                **error);
+
+#ifdef HAVE_GPGME
+gboolean ostree_repo_sign_commit (OstreeRepo     *self,
+                                  const gchar    *commit_checksum,
+                                  const gchar    *key_id,
+                                  const gchar    *homedir,
+                                  GCancellable   *cancellable,
+                                  GError        **error);
+#endif
 
 G_END_DECLS
 

@@ -199,3 +199,23 @@ ot_variant_read (GVariant             *variant)
   return (GInputStream*)ret;
 }
 
+GVariantBuilder *
+ot_util_variant_builder_from_variant (GVariant            *variant,
+                                      const GVariantType  *type)
+{
+  GVariantBuilder *builder = NULL;
+  gint i, n;
+  
+  builder = g_variant_builder_new (type);
+  
+  n = g_variant_n_children (variant);
+  for (i = 0; i < n; i++)
+    {
+      GVariant *child = g_variant_get_child_value (variant, i);
+      g_variant_builder_add_value (builder, child);
+      g_variant_unref (child);
+    }
+    
+  return builder;
+}
+
