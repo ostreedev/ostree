@@ -171,18 +171,6 @@ gboolean ostree_map_metadata_file (GFile                       *file,
                                    GVariant                   **out_variant,
                                    GError                     **error);
 
-GVariant *ostree_file_header_new (GFileInfo         *file_info,
-                                  GVariant          *xattrs);
-
-gboolean ostree_file_header_parse (GVariant         *metadata,
-                                   GFileInfo       **out_file_info,
-                                   GVariant        **out_xattrs,
-                                   GError          **error);
-gboolean ostree_zlib_file_header_parse (GVariant         *metadata,
-                                        GFileInfo       **out_file_info,
-                                        GVariant        **out_xattrs,
-                                        GError          **error);
-
 gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,
