@@ -228,23 +228,6 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
-gboolean ostree_create_file_from_input (GFile          *dest_file,
-                                        GFileInfo      *finfo,
-                                        GVariant       *xattrs,
-                                        GInputStream   *input,
-                                        GCancellable   *cancellable,
-                                        GError        **error);
-
-gboolean ostree_create_temp_file_from_input (GFile            *dir,
-                                             const char       *prefix,
-                                             const char       *suffix,
-                                             GFileInfo        *finfo,
-                                             GVariant         *xattrs,
-                                             GInputStream     *input,
-                                             GFile           **out_file,
-                                             GCancellable     *cancellable,
-                                             GError          **error);
-
 gboolean ostree_create_temp_dir (GFile            *dir,
                                  const char       *prefix,
                                  const char       *suffix,

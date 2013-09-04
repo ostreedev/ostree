@@ -28,6 +28,214 @@
 #include "ostree-repo-file.h"
 #include "ostree-repo-private.h"
 
+/*
+ * create_file_from_input:
+ * @dest_file: Destination; must not exist
+ * @finfo: File information
+ * @xattrs: (allow-none): Optional extended attributes
+ * @input: (allow-none): Optional file content, must be %NULL for symbolic links
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create a directory, regular file, or symbolic link, based on
+ * @finfo.  Append extended attributes from @xattrs if provided.  For
+ * %G_FILE_TYPE_REGULAR, set content based on @input.
+ */
+static gboolean
+create_file_from_input (GFile            *dest_file,
+                        GFileInfo        *finfo,
+                        GVariant         *xattrs,
+                        GInputStream     *input,
+                        GCancellable     *cancellable,
+                        GError          **error)
+{
+  gboolean ret = FALSE;
+  const char *dest_path;
+  guint32 uid, gid, mode;
+  gs_unref_object GOutputStream *out = NULL;
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  if (finfo != NULL)
+    {
+      mode = g_file_info_get_attribute_uint32 (finfo, "unix::mode");
+    }
+  else
+    {
+      mode = S_IFREG | 0664;
+    }
+  dest_path = gs_file_get_path_cached (dest_file);
+
+  if (S_ISDIR (mode))
+    {
+      if (mkdir (gs_file_get_path_cached (dest_file), mode) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISREG (mode))
+    {
+      if (finfo != NULL)
+        {
+          uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
+          gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
+
+          if (!gs_file_create_with_uidgid (dest_file, mode, uid, gid, &out,
+                                           cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!gs_file_create (dest_file, mode, &out,
+                               cancellable, error))
+            goto out;
+        }
+
+      if (input)
+        {
+          if (g_output_stream_splice ((GOutputStream*)out, input, 0,
+                                      cancellable, error) < 0)
+            goto out;
+        }
+
+      if (!g_output_stream_close ((GOutputStream*)out, NULL, error))
+        goto out;
+
+      /* Work around libguestfs/FUSE bug */
+      if (mode & (S_ISUID|S_ISGID))
+        {
+          if (chmod (dest_path, mode) == -1)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
+    }
+  else if (S_ISLNK (mode))
+    {
+      const char *target = g_file_info_get_attribute_byte_string (finfo, "standard::symlink-target");
+      if (symlink (target, dest_path) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid mode %u", mode);
+      goto out;
+    }
+
+  /* We only need to chown for directories and symlinks; we already
+   * did a chown for files above via fchown().
+   */
+  if (finfo != NULL && !S_ISREG (mode))
+    {
+      uid = g_file_info_get_attribute_uint32 (finfo, "unix::uid");
+      gid = g_file_info_get_attribute_uint32 (finfo, "unix::gid");
+      
+      if (lchown (dest_path, uid, gid) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "lchown(%u, %u) failed: ", uid, gid);
+          goto out;
+        }
+    }
+
+  if (xattrs != NULL)
+    {
+      if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (!ret && !S_ISDIR(mode))
+    {
+      (void) unlink (dest_path);
+    }
+  return ret;
+}
+
+/*
+ * create_temp_file_from_input:
+ * @dir: Target directory
+ * @prefix: Optional prefix
+ * @suffix: Optional suffix
+ * @finfo: File information
+ * @xattrs: (allow-none): Optional extended attributes
+ * @input: (allow-none): Optional file content, must be %NULL for symbolic links
+ * @out_file: (out): Path for newly created directory, file, or symbolic link
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like create_file_from_input(), but securely allocates a
+ * randomly-named target in @dir.  This is a unified version of
+ * mkstemp()/mkdtemp() that also supports symbolic links.
+ */
+static gboolean
+create_temp_file_from_input (GFile            *dir,
+                             const char       *prefix,
+                             const char       *suffix,
+                             GFileInfo        *finfo,
+                             GVariant         *xattrs,
+                             GInputStream     *input,
+                             GFile           **out_file,
+                             GCancellable     *cancellable,
+                             GError          **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  int i = 0;
+  gs_unref_object GFile *possible_file = NULL;
+
+  /* 128 attempts seems reasonable... */
+  for (i = 0; i < 128; i++)
+    {
+      gs_free char *possible_name = NULL;
+
+      if (g_cancellable_set_error_if_cancelled (cancellable, error))
+        goto out;
+
+      possible_name = gsystem_fileutil_gen_tmp_name (prefix, suffix);
+      g_clear_object (&possible_file);
+      possible_file = g_file_get_child (dir, possible_name);
+      
+      if (!create_file_from_input (possible_file, finfo, xattrs, input,
+                                   cancellable, &temp_error))
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+            {
+              g_clear_error (&temp_error);
+              continue;
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+        }
+      else
+        {
+          break;
+        }
+    }
+  if (i >= 128)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Exhausted 128 attempts to create a temporary file");
+      goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value(out_file, &possible_file);
+ out:
+  return ret;
+}
+
 static gboolean
 checkout_file_from_input (GFile          *file,
                           OstreeRepoCheckoutMode mode,
@@ -60,9 +268,9 @@ checkout_file_from_input (GFile          *file,
     {
       if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!ostree_create_file_from_input (file, temp_info,
-                                              xattrs, input,
-                                              cancellable, &temp_error))
+          if (!create_file_from_input (file, temp_info,
+                                       xattrs, input,
+                                       cancellable, &temp_error))
             {
               if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
                 {
@@ -78,9 +286,9 @@ checkout_file_from_input (GFile          *file,
       else
         {
           dir = g_file_get_parent (file);
-          if (!ostree_create_temp_file_from_input (dir, NULL, "checkout",
-                                                   temp_info, xattrs, input, &temp_file, 
-                                                   cancellable, error))
+          if (!create_temp_file_from_input (dir, NULL, "checkout",
+                                            temp_info, xattrs, input, &temp_file, 
+                                            cancellable, error))
             goto out;
 
           if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
@@ -98,8 +306,8 @@ checkout_file_from_input (GFile          *file,
     }
   else
     {
-      if (!ostree_create_file_from_input (file, temp_info,
-                                          xattrs, input, cancellable, error))
+      if (!create_file_from_input (file, temp_info,
+                                   xattrs, input, cancellable, error))
         goto out;
 
       if (g_file_info_get_file_type (temp_info) == G_FILE_TYPE_REGULAR)
