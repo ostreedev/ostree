@@ -32,7 +32,6 @@ ostree_get_relative_object_path
 ostree_get_xattrs_for_file
 ostree_set_xattrs
 ostree_map_metadata_file
-ostree_write_variant_with_size
 ostree_content_stream_parse
 ostree_content_file_parse
 ostree_write_file_header_update_checksum

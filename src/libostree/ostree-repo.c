@@ -710,8 +710,8 @@ stage_object (OstreeRepo         *self,
 
           file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
 
-          if (!ostree_write_variant_with_size (temp_out, file_meta, 0, NULL, NULL,
-                                               cancellable, error))
+          if (!_ostree_write_variant_with_size (temp_out, file_meta, 0, NULL, NULL,
+                                                cancellable, error))
             goto out;
 
           if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)

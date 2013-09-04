@@ -171,14 +171,6 @@ gboolean ostree_map_metadata_file (GFile                       *file,
                                    GVariant                   **out_variant,
                                    GError                     **error);
 
-gboolean ostree_write_variant_with_size (GOutputStream      *output,
-                                         GVariant           *variant,
-                                         guint64             alignment_offset,
-                                         gsize              *out_bytes_written,
-                                         GChecksum          *checksum,
-                                         GCancellable       *cancellable,
-                                         GError            **error);
-
 GVariant *ostree_file_header_new (GFileInfo         *file_info,
                                   GVariant          *xattrs);
 

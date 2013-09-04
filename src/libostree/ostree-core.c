@@ -453,8 +453,8 @@ write_padding (GOutputStream    *output,
   return ret;
 }
 
-/**
- * ostree_write_variant_with_size:
+/*
+ * _ostree_write_variant_with_size:
  * @output: Stream
  * @variant: A variant
  * @alignment_offset: Used to determine whether or not we should write padding bytes
@@ -469,13 +469,13 @@ write_padding (GOutputStream    *output,
  * accessed.
  */
 gboolean
-ostree_write_variant_with_size (GOutputStream      *output,
-                                GVariant           *variant,
-                                guint64             alignment_offset,
-                                gsize              *out_bytes_written,
-                                GChecksum          *checksum,
-                                GCancellable       *cancellable,
-                                GError            **error)
+_ostree_write_variant_with_size (GOutputStream      *output,
+                                 GVariant           *variant,
+                                 guint64             alignment_offset,
+                                 gsize              *out_bytes_written,
+                                 GChecksum          *checksum,
+                                 GCancellable       *cancellable,
+                                 GError            **error)
 {
   gboolean ret = FALSE;
   guint64 variant_size;
@@ -538,8 +538,8 @@ ostree_write_file_header_update_checksum (GOutputStream         *out,
   gboolean ret = FALSE;
   gsize bytes_written;
 
-  if (!ostree_write_variant_with_size (out, header, 0, &bytes_written, checksum,
-                                       cancellable, error))
+  if (!_ostree_write_variant_with_size (out, header, 0, &bytes_written, checksum,
+                                        cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -583,8 +583,8 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
 
   header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 
-  if (!ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
-                                       cancellable, error))
+  if (!_ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
+                                        cancellable, error))
     goto out;
 
   if (!g_output_stream_close (header_out_stream, cancellable, error))
