@@ -228,13 +228,6 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
-gboolean ostree_create_temp_dir (GFile            *dir,
-                                 const char       *prefix,
-                                 const char       *suffix,
-                                 GFile           **out_file,
-                                 GCancellable     *cancellable,
-                                 GError          **error);
-
 /** VALIDATION **/
 
 gboolean ostree_validate_structureof_objtype (guchar    objtype,

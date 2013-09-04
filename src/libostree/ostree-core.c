@@ -1512,50 +1512,6 @@ zlib_file_header_parse (GVariant         *metadata,
 }
 
 /**
- * ostree_create_temp_dir:
- * @dir: Use this as temporary base
- * @prefix: (allow-none): Optional prefix
- * @suffix: (allow-none): Optional suffix
- * @out_file: (out): Path for newly created directory, file, or symbolic link
- * @cancellable: Cancellable
- * @error: Error
- *
- * Securely create a randomly-named temporary subdirectory of @dir.
- */
-gboolean
-ostree_create_temp_dir (GFile            *dir,
-                        const char       *prefix,
-                        const char       *suffix,
-                        GFile           **out_file,
-                        GCancellable     *cancellable,
-                        GError          **error)
-{
-  gboolean ret = FALSE;
-  gs_free char *template = NULL;
-  gs_unref_object GFile *ret_file = NULL;
-
-  if (dir == NULL)
-    dir = g_file_new_for_path (g_get_tmp_dir ());
-
-  template = g_strdup_printf ("%s/%s-XXXXXX",
-                              gs_file_get_path_cached (dir),
-                              prefix ? prefix : "tmp");
-  
-  if (mkdtemp (template) == NULL)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  ret_file = g_file_new_for_path (template);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_file, &ret_file);
- out:
-  return ret;
-}
-
-/**
  * ostree_validate_structureof_objtype:
  * @objtype:
  * @error: Error
