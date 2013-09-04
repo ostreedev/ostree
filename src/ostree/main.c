@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <locale.h>
 
 #include "ot-main.h"
 #include "ot-builtins.h"
@@ -65,6 +66,8 @@ main (int    argc,
 {
   GError *error = NULL;
   int ret;
+
+  setlocale (LC_ALL, "");
 
   ret = ostree_run (argc, argv, commands, &error);
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
