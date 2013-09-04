@@ -34,7 +34,6 @@ ostree_set_xattrs
 ostree_map_metadata_file
 ostree_content_stream_parse
 ostree_content_file_parse
-ostree_write_file_header_update_checksum
 ostree_raw_file_to_content_stream
 ostree_checksum_file_from_input
 ostree_checksum_file

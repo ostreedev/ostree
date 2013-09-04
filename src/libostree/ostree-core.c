@@ -517,8 +517,8 @@ _ostree_write_variant_with_size (GOutputStream      *output,
   return ret;
 }
 
-/**
- * ostree_write_file_header_update_checksum:
+/*
+ * write_file_header_update_checksum:
  * @out: Stream
  * @variant: A variant, should be a file header
  * @checksum: (allow-none): If provided, update with written data
@@ -528,12 +528,12 @@ _ostree_write_variant_with_size (GOutputStream      *output,
  * Write a file header variant to the provided @out stream, optionally
  * updating @checksum.
  */
-gboolean
-ostree_write_file_header_update_checksum (GOutputStream         *out,
-                                          GVariant              *header,
-                                          GChecksum             *checksum,
-                                          GCancellable          *cancellable,
-                                          GError               **error)
+static gboolean
+write_file_header_update_checksum (GOutputStream         *out,
+                                   GVariant              *header,
+                                   GChecksum             *checksum,
+                                   GCancellable          *cancellable,
+                                   GError               **error)
 {
   gboolean ret = FALSE;
   gsize bytes_written;
@@ -841,8 +841,8 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
 
       file_header = file_header_new (file_info, xattrs);
 
-      if (!ostree_write_file_header_update_checksum (NULL, file_header, checksum,
-                                                     cancellable, error))
+      if (!write_file_header_update_checksum (NULL, file_header, checksum,
+                                              cancellable, error))
         goto out;
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)

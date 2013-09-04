@@ -203,12 +203,6 @@ gboolean ostree_content_file_parse (gboolean                compressed,
                                     GCancellable           *cancellable,
                                     GError                **error);
 
-gboolean ostree_write_file_header_update_checksum (GOutputStream         *out,
-                                                   GVariant              *variant,
-                                                   GChecksum             *checksum,
-                                                   GCancellable          *cancellable,
-                                                   GError               **error);
-
 gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GFileInfo          *file_info,
                                             GVariant           *xattrs,
