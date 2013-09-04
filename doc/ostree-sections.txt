@@ -31,7 +31,6 @@ ostree_object_from_string
 ostree_get_relative_object_path
 ostree_get_xattrs_for_file
 ostree_set_xattrs
-ostree_map_metadata_file
 ostree_content_stream_parse
 ostree_content_file_parse
 ostree_raw_file_to_content_stream
