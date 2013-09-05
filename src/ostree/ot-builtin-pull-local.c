@@ -290,7 +290,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
         gs_console_end_status_line (data->console, NULL, NULL);
     }
 
-  if (!ostree_repo_commit_transaction (data->dest_repo, NULL, error))
+  if (!ostree_repo_commit_transaction (data->dest_repo, NULL, NULL, error))
     goto out;
 
   g_print ("Writing %u refs\n", g_hash_table_size (refs_to_clone));

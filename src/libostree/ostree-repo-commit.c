@@ -367,18 +367,18 @@ write_object (OstreeRepo         *self,
     {
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         {
-          self->txn_metadata_objects_written++;
+          self->txn_stats.metadata_objects_written++;
         }
       else
         {
-          self->txn_content_objects_written++;
-          self->txn_content_bytes_written += file_object_length;
+          self->txn_stats.content_objects_written++;
+          self->txn_stats.content_bytes_written += file_object_length;
         }
     }
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
-    self->txn_metadata_objects_total++;
+    self->txn_stats.metadata_objects_total++;
   else
-    self->txn_content_objects_total++;
+    self->txn_stats.content_objects_total++;
   g_mutex_unlock (&self->txn_stats_lock);
 
   if (checksum)
@@ -562,11 +562,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   else
     ret_transaction_resume = FALSE;
 
-  self->txn_metadata_objects_total =
-    self->txn_metadata_objects_written =
-    self->txn_content_objects_total =
-    self->txn_content_objects_written =
-    self->txn_content_bytes_written = 0;
+  memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
   if (ret_transaction_resume)
@@ -631,14 +627,10 @@ cleanup_tmpdir (OstreeRepo        *self,
 }
 
 gboolean
-ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
-                                           guint          *out_metadata_objects_total,
-                                           guint          *out_metadata_objects_written,
-                                           guint          *out_content_objects_total,
-                                           guint          *out_content_objects_written,
-                                           guint64        *out_content_bytes_written,
-                                           GCancellable   *cancellable,
-                                           GError        **error)
+ostree_repo_commit_transaction (OstreeRepo                  *self,
+                                OstreeRepoTransactionStats  *out_stats,
+                                GCancellable                *cancellable,
+                                GError                     **error)
 {
   gboolean ret = FALSE;
 
@@ -655,24 +647,12 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
   if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
     goto out;
 
-  if (out_metadata_objects_total) *out_metadata_objects_total = self->txn_metadata_objects_total;
-  if (out_metadata_objects_written) *out_metadata_objects_written = self->txn_metadata_objects_written;
-  if (out_content_objects_total) *out_content_objects_total = self->txn_content_objects_total;
-  if (out_content_objects_written) *out_content_objects_written = self->txn_content_objects_written;
-  if (out_content_bytes_written) *out_content_bytes_written = self->txn_content_bytes_written;
+  if (out_stats)
+    *out_stats = self->txn_stats;
 
   ret = TRUE;
  out:
   return ret;
-}
-
-gboolean
-ostree_repo_commit_transaction (OstreeRepo     *self,
-                                GCancellable   *cancellable,
-                                GError        **error)
-{
-  return ostree_repo_commit_transaction_with_stats (self, NULL, NULL, NULL, NULL, NULL,
-                                                    cancellable, error);
 }
 
 gboolean
@@ -1622,3 +1602,19 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
 G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
                     ostree_repo_commit_modifier_ref,
                     ostree_repo_commit_modifier_unref);
+
+static OstreeRepoTransactionStats *
+ostree_repo_transaction_stats_copy (OstreeRepoTransactionStats *stats)
+{
+  return g_memdup (stats, sizeof (OstreeRepoTransactionStats));
+}
+
+static void
+ostree_repo_transaction_stats_free (OstreeRepoTransactionStats *stats)
+{
+  return g_free (stats);
+}
+
+G_DEFINE_BOXED_TYPE(OstreeRepoTransactionStats, ostree_repo_transaction_stats,
+                    ostree_repo_transaction_stats_copy,
+                    ostree_repo_transaction_stats_free);

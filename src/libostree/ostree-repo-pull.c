@@ -1332,7 +1332,7 @@ ostree_repo_pull (OstreeRepo               *self,
   if (!run_mainloop_monitor_fetcher (pull_data))
     goto out;
   
-  if (!ostree_repo_commit_transaction (pull_data->repo, cancellable, error))
+  if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
     goto out;
 
   g_hash_table_iter_init (&hash_iter, updated_refs);

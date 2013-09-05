@@ -225,11 +225,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gboolean in_transaction = FALSE;
-  guint metadata_total = 0;
-  guint metadata_written = 0;
-  guint content_total = 0;
-  guint content_written = 0;
-  guint64 content_bytes_written = 0;
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
@@ -243,6 +238,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   gs_free char *parent_content_checksum = NULL;
   gs_free char *parent_metadata_checksum = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
+  OstreeRepoTransactionStats stats;
 
   context = g_option_context_new ("[ARG] - Commit a new revision");
   g_option_context_add_main_entries (context, options, NULL);
@@ -424,13 +420,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                      &commit_checksum, cancellable, error))
         goto out;
 
-      if (!ostree_repo_commit_transaction_with_stats (repo,
-                                                      &metadata_total,
-                                                      &metadata_written,
-                                                      &content_total,
-                                                      &content_written,
-                                                      &content_bytes_written,
-                                                      cancellable, error))
+      if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
 
       in_transaction = FALSE;
@@ -452,11 +442,11 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   if (opt_table_output)
     {
       g_print ("Commit: %s\n", commit_checksum);
-      g_print ("Metadata Total: %u\n", metadata_total);
-      g_print ("Metadata Written: %u\n", metadata_written);
-      g_print ("Content Total: %u\n", content_total);
-      g_print ("Content Written: %u\n", content_written);
-      g_print ("Content Bytes Written: %" G_GUINT64_FORMAT "\n", content_bytes_written);
+      g_print ("Metadata Total: %u\n", stats.metadata_objects_total);
+      g_print ("Metadata Written: %u\n", stats.metadata_objects_written);
+      g_print ("Content Total: %u\n", stats.content_objects_total);
+      g_print ("Content Written: %u\n", stats.content_objects_written);
+      g_print ("Content Bytes Written: %" G_GUINT64_FORMAT "\n", stats.content_bytes_written);
     }
   else
     {

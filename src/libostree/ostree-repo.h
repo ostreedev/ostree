@@ -79,24 +79,49 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GKeyFile   *new_config,
                                         GError    **error);
 
+/**
+ * OstreeRepoTransactionStats:
+ * @metadata_objects_total: The total number of metadata objects
+ * in the repository after this transaction has completed.
+ * @metadata_objects_written: The number of metadata objects that
+ * were written to the repository in this transaction.
+ * @content_objects_total: The total number of content objects
+ * in the repository after this transaction has completed.
+ * @content_objects_written: The number of content objects that
+ * were written to the repository in this transaction.
+ * @content_bytes_total: The amount of data added to the repository,
+ * in bytes, counting only content objects.
+ *
+ * A list of statistics for each transaction that may be
+ * interesting for reporting purposes.
+ */
+typedef struct _OstreeRepoTransactionStats OstreeRepoTransactionStats;
+
+struct _OstreeRepoTransactionStats {
+  guint metadata_objects_total;
+  guint metadata_objects_written;
+  guint content_objects_total;
+  guint content_objects_written;
+  guint64 content_bytes_written;
+
+  guint64 padding1;
+  guint64 padding2;
+  guint64 padding3;
+  guint64 padding4;
+};
+
+GType ostree_repo_transaction_stats_get_type (void);
+
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean        enable_commit_hardlink_scan,
                                                gboolean       *out_transaction_resume,
                                                GCancellable   *cancellable,
                                                GError        **error);
 
-gboolean      ostree_repo_commit_transaction (OstreeRepo     *self,
-                                              GCancellable   *cancellable,
-                                              GError        **error);
-
-gboolean      ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
-                                                         guint          *out_metadata_objects_total,
-                                                         guint          *out_metadata_objects_written,
-                                                         guint          *out_content_objects_total,
-                                                         guint          *out_content_objects_written,
-                                                         guint64        *out_content_bytes_written,
-                                                         GCancellable   *cancellable,
-                                                         GError        **error);
+gboolean      ostree_repo_commit_transaction (OstreeRepo                  *self,
+                                              OstreeRepoTransactionStats  *out_stats,
+                                              GCancellable                *cancellable,
+                                              GError                     **error);
 
 gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GCancellable   *cancellable,

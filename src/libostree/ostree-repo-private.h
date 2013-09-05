@@ -40,11 +40,7 @@ struct OstreeRepo {
 
   GFile *transaction_lock_path;
   GMutex txn_stats_lock;
-  guint txn_metadata_objects_total;
-  guint txn_metadata_objects_written;
-  guint txn_content_objects_total;
-  guint txn_content_objects_written;
-  guint64 txn_content_bytes_written;
+  OstreeRepoTransactionStats txn_stats;
 
   GMutex cache_lock;
   GPtrArray *cached_meta_indexes;
