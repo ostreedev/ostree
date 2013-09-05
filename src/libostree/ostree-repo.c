@@ -1846,6 +1846,7 @@ struct OstreeRepoCommitModifier {
   OstreeRepoCommitModifierFlags flags;
   OstreeRepoCommitFilter filter;
   gpointer user_data;
+  GDestroyNotify destroy_notify;
 };
 
 static OstreeRepoCommitFilterResult
@@ -2192,13 +2193,15 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
  * @flags: Control options for filter
  * @commit_filter: (allow-none): Function that can inspect individual files
  * @user_data: (allow-none): User data
+ * @destroy_notify: A #GDestroyNotify
  *
  * Returns: (transfer full): A new commit modifier.
  */
 OstreeRepoCommitModifier *
 ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
                                  OstreeRepoCommitFilter         commit_filter,
-                                 gpointer                       user_data)
+                                 gpointer                       user_data,
+                                 GDestroyNotify                 destroy_notify)
 {
   OstreeRepoCommitModifier *modifier = g_new0 (OstreeRepoCommitModifier, 1);
 
@@ -2206,6 +2209,7 @@ ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
   modifier->flags = flags;
   modifier->filter = commit_filter;
   modifier->user_data = user_data;
+  modifier->destroy_notify = destroy_notify;
 
   return modifier;
 }
@@ -2224,6 +2228,9 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
     return;
   if (!g_atomic_int_dec_and_test (&modifier->refcount))
     return;
+
+  if (modifier->destroy_notify)
+    modifier->destroy_notify (modifier->user_data);
 
   g_free (modifier);
   return;

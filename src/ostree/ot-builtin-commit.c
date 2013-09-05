@@ -269,7 +269,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       OstreeRepoCommitModifierFlags flags = 0;
       if (opt_no_xattrs)
         flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
-      modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds);
+      modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds, NULL);
     }
 
   if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))

@@ -272,7 +272,8 @@ typedef struct OstreeRepoCommitModifier OstreeRepoCommitModifier;
 
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
                                                            OstreeRepoCommitFilter         commit_filter,
-                                                           gpointer                       user_data);
+                                                           gpointer                       user_data,
+                                                           GDestroyNotify                 destroy_notify);
 
 GType ostree_repo_commit_modifier_get_type (void);
 
