@@ -39,6 +39,7 @@ struct OstreeRepo {
   GFile *config_file;
 
   GFile *transaction_lock_path;
+  GHashTable *txn_refs;
   GMutex txn_stats_lock;
   OstreeRepoTransactionStats txn_stats;
 
@@ -92,6 +93,11 @@ _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    guchar      **out_csum,
                                    GCancellable *cancellable,
                                    GError      **error);
+gboolean
+_ostree_repo_update_refs (OstreeRepo        *self,
+                          GHashTable        *refs,
+                          GCancellable      *cancellable,
+                          GError           **error);
 
 G_END_DECLS
 

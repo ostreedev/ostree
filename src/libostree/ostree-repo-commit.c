@@ -652,6 +652,74 @@ cleanup_tmpdir (OstreeRepo        *self,
   return ret;
 }
 
+static void
+ensure_txn_refs (OstreeRepo *self)
+{
+  if (self->txn_refs == NULL)
+    self->txn_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+}
+
+/**
+ * ostree_repo_transaction_set_refspec:
+ * @self: An #OstreeRepo
+ * @refspec: The refspec to write
+ * @checksum: The checksum to point it to
+ *
+ * Like ostree_repo_transaction_set__ref(), but takes concatenated
+ * @refspec format as input instead of separate remote and name
+ * arguments.
+ */
+void
+ostree_repo_transaction_set_refspec (OstreeRepo *self,
+                                     const char *refspec,
+                                     const char *checksum)
+{
+  g_return_if_fail (self->in_transaction == TRUE);
+
+  ensure_txn_refs (self);
+
+  g_hash_table_replace (self->txn_refs, g_strdup (refspec), g_strdup (checksum));
+}
+
+/**
+ * ostree_repo_transaction_set_ref:
+ * @self: An #OstreeRepo
+ * @remote: (allow-none): A remote for the ref
+ * @ref: The ref to write
+ * @checksum: The checksum to point it to
+ *
+ * If @checksum is not %NULL, then record it as the target of ref named
+ * @ref; if @remote is provided, the ref will appear to originate from that
+ * remote.
+ *
+ * Otherwise, if @checksum is %NULL, then record that the ref should
+ * be deleted.
+ *
+ * The change will not be written out immediately, but when the transaction
+ * is completed with ostree_repo_complete_transaction(). If the transaction
+ * is instead aborted with ostree_repo_abort_transaction(), no changes will
+ * be made to the repository.
+ */
+void
+ostree_repo_transaction_set_ref (OstreeRepo *self,
+                                 const char *remote,
+                                 const char *ref,
+                                 const char *checksum)
+{
+  char *refspec;
+
+  g_return_if_fail (self->in_transaction == TRUE);
+
+  ensure_txn_refs (self);
+
+  if (remote)
+    refspec = g_strdup_printf ("%s:%s", remote, ref);
+  else
+    refspec = g_strdup (ref);
+
+  g_hash_table_replace (self->txn_refs, refspec, g_strdup (checksum));
+}
+
 gboolean
 ostree_repo_commit_transaction (OstreeRepo                  *self,
                                 OstreeRepoTransactionStats  *out_stats,
@@ -667,6 +735,11 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
 
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
+
+  if (self->txn_refs)
+    if (!_ostree_repo_update_refs (self, self->txn_refs, cancellable, error))
+      goto out;
+  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
 
   self->in_transaction = FALSE;
 
@@ -696,6 +769,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
+
+  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
 
   self->in_transaction = FALSE;
 

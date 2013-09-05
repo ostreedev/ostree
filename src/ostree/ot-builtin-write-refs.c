@@ -53,6 +53,9 @@ ostree_builtin_write_refs (int argc, char **argv, OstreeRepo *repo, GCancellable
   instream = (GInputStream*)g_unix_input_stream_new (0, FALSE);
   datastream = g_data_input_stream_new (instream);
 
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    goto out;
+
   while ((line = g_data_input_stream_read_line (datastream, &len,
                                                 cancellable, &temp_error)) != NULL)
     {
@@ -70,8 +73,7 @@ ostree_builtin_write_refs (int argc, char **argv, OstreeRepo *repo, GCancellable
       if (!ostree_validate_structureof_checksum_string (spc + 1, error))
         goto out;
 
-      if (!ostree_repo_write_ref (repo, NULL, ref, spc + 1, error))
-        goto out;
+      ostree_repo_transaction_set_ref (repo, NULL, ref, spc + 1);
 
       g_free (line);
     }
@@ -81,9 +83,13 @@ ostree_builtin_write_refs (int argc, char **argv, OstreeRepo *repo, GCancellable
       goto out;
     }
 
+  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

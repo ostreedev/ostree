@@ -290,9 +290,6 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
         gs_console_end_status_line (data->console, NULL, NULL);
     }
 
-  if (!ostree_repo_commit_transaction (data->dest_repo, NULL, NULL, error))
-    goto out;
-
   g_print ("Writing %u refs\n", g_hash_table_size (refs_to_clone));
 
   g_hash_table_iter_init (&hash_iter, refs_to_clone);
@@ -301,10 +298,11 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
       const char *name = key;
       const char *checksum = value;
         
-      if (!ostree_repo_write_ref (data->dest_repo, opt_remote, name, checksum,
-                                  error))
-        goto out;
+      ostree_repo_transaction_set_ref (data->dest_repo, opt_remote, name, checksum);
     }
+
+  if (!ostree_repo_commit_transaction (data->dest_repo, NULL, NULL, error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -315,5 +313,6 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
     g_object_unref (data->dest_repo);
   if (context)
     g_option_context_free (context);
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

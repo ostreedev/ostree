@@ -118,12 +118,18 @@ ostree_builtin_reset (int           argc,
   if (!check_revision_is_parent (repo, current, checksum, cancellable, error))
     goto out;
 
-  if (!ostree_repo_write_ref (repo, NULL, ref, checksum, error))
-     goto out;
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    goto out;
+
+  ostree_repo_transaction_set_ref (repo, NULL, ref, checksum);
+
+  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

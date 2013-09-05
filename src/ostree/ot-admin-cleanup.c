@@ -400,17 +400,23 @@ cleanup_ref_prefix (OstreeRepo         *repo,
   if (!ostree_repo_list_refs (repo, prefix, &refs, cancellable, error))
     goto out;
 
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    goto out;
+
   g_hash_table_iter_init (&hashiter, refs);
   while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
     {
       const char *suffix = hashkey;
       gs_free char *ref = g_strconcat (prefix, "/", suffix, NULL);
-      if (!ostree_repo_write_refspec (repo, ref, NULL, error))
-        goto out;
+      ostree_repo_transaction_set_refspec (repo, ref, NULL);
     }
+
+  if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }
 
@@ -451,8 +457,13 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
       gs_free char *refname = g_strdup_printf ("ostree/%d/%d/%u",
                                                bootversion, subbootversion,
                                                i);
-      if (!ostree_repo_write_refspec (repo, refname, ot_deployment_get_csum (deployment),
-                                      error))
+
+      if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+        goto out;
+
+      ostree_repo_transaction_set_refspec (repo, refname, ot_deployment_get_csum (deployment));
+
+      if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
         goto out;
     }
 
@@ -468,6 +479,7 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
 
   ret = TRUE;
  out:
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }
   

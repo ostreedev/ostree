@@ -63,6 +63,7 @@ static gboolean
 write_checksum_file (GFile *parentdir,
                      const char *name,
                      const char *sha256,
+                     GCancellable *cancellable,
                      GError **error)
 {
   gboolean ret = FALSE;
@@ -98,7 +99,7 @@ write_checksum_file (GFile *parentdir,
     {
       child = g_file_get_child (parent, (char*)components->pdata[i]);
 
-      if (!gs_file_ensure_directory (child, FALSE, NULL, error))
+      if (!gs_file_ensure_directory (child, FALSE, cancellable, error))
         goto out;
 
       g_clear_object (&parent);
@@ -107,13 +108,13 @@ write_checksum_file (GFile *parentdir,
     }
 
   child = g_file_get_child (parent, components->pdata[components->len - 1]);
-  if ((out = (GOutputStream*)g_file_replace (child, NULL, FALSE, 0, NULL, error)) == NULL)
+  if ((out = (GOutputStream*)g_file_replace (child, NULL, FALSE, 0, cancellable, error)) == NULL)
     goto out;
-  if (!g_output_stream_write_all (out, sha256, strlen (sha256), &bytes_written, NULL, error))
+  if (!g_output_stream_write_all (out, sha256, strlen (sha256), &bytes_written, cancellable, error))
     goto out;
-  if (!g_output_stream_write_all (out, "\n", 1, &bytes_written, NULL, error))
+  if (!g_output_stream_write_all (out, "\n", 1, &bytes_written, cancellable, error))
     goto out;
-  if (!g_output_stream_close (out, NULL, error))
+  if (!g_output_stream_close (out, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -613,32 +614,20 @@ write_ref_summary (OstreeRepo      *self,
   return ret;
 }
 
-/**
- * ostree_repo_write_ref:
- * @self: Repo
- * @remote: (allow-none): Optional remote name
- * @name: Name of ref, e.g. foo/bar/baz
- * @rev: (allow-none); ASCII SHA256 checksum; if %NULL, then delete @name
- * @error: Error
- *
- * If @rev is not %NULL, then it as the target of ref named @name; if
- * @remote is provided, the ref will appear originate from that
- * remote.
- *
- * Otherwise, if @rev is %NULL, then delete the ref @name if it exists.
- *
- * This function merely changes the ref target; it is possible to use
- * it to target earlier commits.
- */
-gboolean      
-ostree_repo_write_ref (OstreeRepo  *self,
-                       const char  *remote,
-                       const char  *name,
-                       const char  *rev,
-                       GError     **error)
+static gboolean      
+write_refspec (OstreeRepo    *self,
+               const char    *refspec,
+               const char    *rev,
+               GCancellable  *cancellable,
+               GError       **error)
 {
   gboolean ret = FALSE;
+  gs_free char *remote = NULL;
+  gs_free char *name = NULL;
   gs_unref_object GFile *dir = NULL;
+
+  if (!ostree_parse_refspec (refspec, &remote, &name, error))
+    goto out;
 
   if (remote == NULL)
     dir = g_object_ref (self->local_heads_dir);
@@ -648,7 +637,7 @@ ostree_repo_write_ref (OstreeRepo  *self,
       
       if (rev != NULL)
         {
-          if (!gs_file_ensure_directory (dir, FALSE, NULL, error))
+          if (!gs_file_ensure_directory (dir, FALSE, cancellable, error))
             goto out;
         }
     }
@@ -656,26 +645,17 @@ ostree_repo_write_ref (OstreeRepo  *self,
   if (rev == NULL)
     {
       gs_unref_object GFile *child = g_file_resolve_relative_path (dir, name);
-      
-      if (g_file_query_exists (child, NULL))
+
+      if (g_file_query_exists (child, cancellable))
         {
-          if (!gs_file_unlink (child, NULL, error))
+          if (!gs_file_unlink (child, cancellable, error))
             goto out;
         }
     }
   else
     {
-      if (!write_checksum_file (dir, name, rev, error))
+      if (!write_checksum_file (dir, name, rev, cancellable, error))
         goto out;
-      
-      if (rev != NULL)
-        {
-          if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
-            {
-              if (!write_ref_summary (self, NULL, error))
-                goto out;
-            }
-        }
     }
 
   ret = TRUE;
@@ -683,31 +663,31 @@ ostree_repo_write_ref (OstreeRepo  *self,
   return ret;
 }
 
-/**
- * ostree_repo_write_refspec:
- * @self: Repo
- * @refspec: Optional remote with name of ref, e.g. remotename:foo/bar/baz
- * @rev: (allow-none); ASCII SHA256 checksum; if %NULL, then delete @refspec
- * @error: Error
- *
- * Like ostree_repo_write_ref(), but takes concatenated @refspec
- * format as input instead of separate remote and name arguments.
- */
 gboolean
-ostree_repo_write_refspec (OstreeRepo  *self,
-                           const char  *refspec,
-                           const char  *rev,
-                           GError     **error)
+_ostree_repo_update_refs (OstreeRepo        *self,
+                          GHashTable        *refs,
+                          GCancellable      *cancellable,
+                          GError           **error)
 {
   gboolean ret = FALSE;
-  gs_free char *remote = NULL;
-  gs_free char *ref = NULL;
+  GHashTableIter hash_iter;
+  gpointer key, value;
 
-  if (!ostree_parse_refspec (refspec, &remote, &ref, error))
-    goto out;
+  g_hash_table_iter_init (&hash_iter, refs);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *refspec = key;
+      const char *rev = value;
 
-  if (!ostree_repo_write_ref (self, remote, ref, rev, error))
-    goto out;
+      if (!write_refspec (self, refspec, rev, cancellable, error))
+        goto out;
+    }
+
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    {
+      if (!write_ref_summary (self, cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:

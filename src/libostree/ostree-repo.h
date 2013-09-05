@@ -130,6 +130,15 @@ gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GCancellable   *cancellable,
                                              GError        **error);
 
+void          ostree_repo_transaction_set_refspec (OstreeRepo *self,
+                                                   const char *refspec,
+                                                   const char *checksum);
+
+void          ostree_repo_transaction_set_ref     (OstreeRepo *self,
+                                                   const char *remote,
+                                                   const char *ref,
+                                                   const char *checksum);
+
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       OstreeObjectType      objtype,
                                       const char           *checksum,
@@ -198,17 +207,6 @@ gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        gboolean     allow_noent,
                                        char       **out_rev,
                                        GError     **error);
-
-gboolean      ostree_repo_write_ref (OstreeRepo  *self,
-                                     const char  *remote,
-                                     const char  *name,
-                                     const char  *rev,
-                                     GError     **error);
-
-gboolean      ostree_repo_write_refspec (OstreeRepo  *self,
-                                         const char  *refspec,
-                                         const char  *rev,
-                                         GError     **error);
 
 gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      const char       *refspec_prefix,

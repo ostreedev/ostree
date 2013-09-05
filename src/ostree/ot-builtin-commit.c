@@ -420,10 +420,9 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                      &commit_checksum, cancellable, error))
         goto out;
 
+      ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
+
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
-        goto out;
-      
-      if (!ostree_repo_write_ref (repo, NULL, opt_branch, commit_checksum, error))
         goto out;
     }
   else

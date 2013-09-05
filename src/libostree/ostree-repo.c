@@ -100,6 +100,7 @@ ostree_repo_finalize (GObject *object)
     g_hash_table_destroy (self->updated_uncompressed_dirs);
   if (self->config)
     g_key_file_free (self->config);
+  g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
   g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_mutex_clear (&self->cache_lock);

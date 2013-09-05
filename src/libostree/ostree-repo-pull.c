@@ -1332,8 +1332,6 @@ ostree_repo_pull (OstreeRepo               *self,
   if (!run_mainloop_monitor_fetcher (pull_data))
     goto out;
   
-  if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
-    goto out;
 
   g_hash_table_iter_init (&hash_iter, updated_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -1354,13 +1352,15 @@ ostree_repo_pull (OstreeRepo               *self,
         }
       else
         {
-          if (!ostree_repo_write_ref (pull_data->repo, pull_data->remote_name, ref, checksum, error))
-            goto out;
-          
+          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name, ref, checksum);
+
           g_print ("remote %s is now %s\n", remote_ref, checksum);
         }
     }
-      
+
+  if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
+    goto out;
+
   end_time = g_get_monotonic_time ();
 
   bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);

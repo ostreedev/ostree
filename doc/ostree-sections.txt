@@ -68,6 +68,8 @@ ostree_repo_scan_hardlinks
 ostree_repo_prepare_transaction
 ostree_repo_commit_transaction
 ostree_repo_abort_transaction
+ostree_repo_transaction_set_ref
+ostree_repo_transaction_set_refspec
 ostree_repo_has_object
 ostree_repo_write_metadata
 ostree_repo_write_metadata_async
@@ -78,8 +80,6 @@ ostree_repo_write_content_trusted
 ostree_repo_write_content_async
 ostree_repo_write_content_finish
 ostree_repo_resolve_rev
-ostree_repo_write_ref
-ostree_repo_write_refspec
 ostree_repo_list_refs
 ostree_repo_load_variant
 ostree_repo_load_variant_if_exists
