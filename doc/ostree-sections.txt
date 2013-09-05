@@ -53,7 +53,9 @@ ostree_commit_get_parent
 <FILE>libostree-repo</FILE>
 OstreeRepoMode
 ostree_repo_new
-ostree_repo_check
+ostree_repo_new_default
+ostree_repo_open
+ostree_repo_create
 ostree_repo_get_path
 ostree_repo_get_mode
 ostree_repo_mode_from_string
