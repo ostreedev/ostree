@@ -154,21 +154,13 @@ ostree_repo_get_property(GObject         *object,
     }
 }
 
-static GObject *
-ostree_repo_constructor (GType                  gtype,
-                           guint                  n_properties,
-                           GObjectConstructParam *properties)
+static void
+ostree_repo_constructed (GObject *object)
 {
-  OstreeRepo *self;
-  GObject *object;
-  GObjectClass *parent_class;
-
-  parent_class = G_OBJECT_CLASS (ostree_repo_parent_class);
-  object = parent_class->constructor (gtype, n_properties, properties);
-  self = (OstreeRepo*)object;
+  OstreeRepo *self = OSTREE_REPO (object);
 
   g_assert (self->repodir != NULL);
-  
+
   self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
   self->pending_dir = g_file_resolve_relative_path (self->repodir, "tmp/pending");
   self->local_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/heads");
@@ -179,7 +171,7 @@ ostree_repo_constructor (GType                  gtype,
   self->remote_cache_dir = g_file_get_child (self->repodir, "remote-cache");
   self->config_file = g_file_get_child (self->repodir, "config");
 
-  return object;
+  G_OBJECT_CLASS (ostree_repo_parent_class)->constructed (object);
 }
 
 static void
@@ -187,7 +179,7 @@ ostree_repo_class_init (OstreeRepoClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  object_class->constructor = ostree_repo_constructor;
+  object_class->constructed = ostree_repo_constructed;
   object_class->get_property = ostree_repo_get_property;
   object_class->set_property = ostree_repo_set_property;
   object_class->finalize = ostree_repo_finalize;
