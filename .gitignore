@@ -54,3 +54,16 @@ _build
 /OSTree-1.0.gir
 
 /src/libostree/ostree-1.pc
+
+/test-admin-deploy-1.test
+/test-admin-deploy-2.test
+/test-archivez.test
+/test-basic.test
+/test-corruption.test
+/test-libarchive.test
+/test-pull-archive-z.test
+/test-pull-corruption.test
+/test-pull-resume.test
+/test-remote-add.test
+/test-setuid.test
+/test-xattrs.test
