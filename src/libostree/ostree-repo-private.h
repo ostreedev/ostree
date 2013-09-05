@@ -90,7 +90,7 @@ _ostree_repo_get_object_path (OstreeRepo   *self,
                               OstreeObjectType type);
 
 gboolean
-_ostree_repo_stage_directory_meta (OstreeRepo   *self,
+_ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,
                                    GVariant     *xattrs,
                                    guchar      **out_csum,

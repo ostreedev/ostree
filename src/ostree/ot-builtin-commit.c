@@ -308,7 +308,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       arg = g_file_new_for_path (current_dir);
       g_free (current_dir);
 
-      if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+      if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
                                                  cancellable, error))
         goto out;
     }
@@ -337,14 +337,14 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
           if (strcmp (tree_type, "dir") == 0)
             {
               arg = g_file_new_for_path (tree);
-              if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+              if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
                                                          cancellable, error))
                 goto out;
             }
           else if (strcmp (tree_type, "tar") == 0)
             {
               arg = g_file_new_for_path (tree);
-              if (!ostree_repo_stage_archive_to_mtree (repo, arg, mtree, modifier,
+              if (!ostree_repo_write_archive_to_mtree (repo, arg, mtree, modifier,
                                                        opt_tar_autocreate_parents,
                                                        cancellable, error))
                 goto out;
@@ -354,7 +354,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
               if (!ostree_repo_read_commit (repo, tree, &arg, cancellable, error))
                 goto out;
 
-              if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+              if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
                                                          cancellable, error))
                 goto out;
             }
@@ -370,7 +370,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
     {
       g_assert (argc > 1);
       arg = g_file_new_for_path (argv[1]);
-      if (!ostree_repo_stage_directory_to_mtree (repo, arg, mtree, modifier,
+      if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
                                                  cancellable, error))
         goto out;
     }
@@ -391,7 +391,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       goto out;
     }
           
-  if (!ostree_repo_stage_mtree (repo, mtree, &contents_checksum, cancellable, error))
+  if (!ostree_repo_write_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
 
   if (opt_skip_if_unchanged && parent_commit)
@@ -419,7 +419,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
           goto out;
         }
 
-      if (!ostree_repo_stage_commit (repo, opt_branch, parent, opt_subject, opt_body,
+      if (!ostree_repo_write_commit (repo, opt_branch, parent, opt_subject, opt_body,
                                      contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;

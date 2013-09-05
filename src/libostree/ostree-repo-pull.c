@@ -101,9 +101,9 @@ typedef struct {
   guint             metadata_scan_idle : 1; /* TRUE if we passed through an idle message */
   guint             idle_serial; /* Incremented when we get a SCAN_IDLE message */
   guint             n_outstanding_metadata_fetches;
-  guint             n_outstanding_metadata_stage_requests;
+  guint             n_outstanding_metadata_write_requests;
   guint             n_outstanding_content_fetches;
-  guint             n_outstanding_content_stage_requests;
+  guint             n_outstanding_content_write_requests;
   gint              n_requested_metadata;
   gint              n_requested_content;
   guint             n_fetched_metadata;
@@ -178,13 +178,13 @@ uri_fetch_update_status (gpointer user_data)
 {
   OtPullData *pull_data = user_data;
   GString *status;
-  guint outstanding_stages;
+  guint outstanding_writes;
   guint outstanding_fetches;
  
   status = g_string_new ("");
 
   outstanding_fetches = pull_data->n_outstanding_content_fetches + pull_data->n_outstanding_metadata_fetches;
-  outstanding_stages = pull_data->n_outstanding_content_stage_requests + pull_data->n_outstanding_metadata_stage_requests;
+  outstanding_writes = pull_data->n_outstanding_content_write_requests + pull_data->n_outstanding_metadata_write_requests;
 
   if (pull_data->fetching_sync_uri)
     {
@@ -204,8 +204,8 @@ uri_fetch_update_status (gpointer user_data)
                               (guint)((((double)fetched) / requested) * 100),
                               fetched, requested, formatted_bytes_transferred);
     }
-  else if (outstanding_stages > 0)
-    g_string_append_printf (status, "Writing objects: %u", outstanding_stages);
+  else if (outstanding_writes > 0)
+    g_string_append_printf (status, "Writing objects: %u", outstanding_writes);
   else if (!pull_data->metadata_scan_idle)
     g_string_append_printf (status, "Scanning metadata: %u",
                             g_atomic_int_get (&pull_data->n_scanned_metadata));
@@ -265,11 +265,11 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
 {
   gboolean current_fetch_idle = (pull_data->n_outstanding_metadata_fetches == 0 &&
                                  pull_data->n_outstanding_content_fetches == 0);
-  gboolean current_stage_idle = (pull_data->n_outstanding_metadata_stage_requests == 0 &&
-                                 pull_data->n_outstanding_content_stage_requests == 0);
+  gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0 &&
+                                 pull_data->n_outstanding_content_write_requests == 0);
 
   g_debug ("pull: scan: %u fetching: %u staging: %u",
-           !pull_data->metadata_scan_idle, !current_fetch_idle, !current_stage_idle);
+           !pull_data->metadata_scan_idle, !current_fetch_idle, !current_write_idle);
 
   throw_async_error (pull_data, error);
 
@@ -280,7 +280,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
         g_main_loop_quit (pull_data->loop);
       return;
     }
-  else if (pull_data->metadata_scan_idle && current_fetch_idle && current_stage_idle)
+  else if (pull_data->metadata_scan_idle && current_fetch_idle && current_write_idle)
     {
       g_main_loop_quit (pull_data->loop);
     }
@@ -516,7 +516,7 @@ fetch_ref_contents (OtPullData    *pull_data,
 }
 
 static void
-content_fetch_on_stage_complete (GObject        *object,
+content_fetch_on_write_complete (GObject        *object,
                                  GAsyncResult   *result,
                                  gpointer        user_data)
 {
@@ -529,7 +529,7 @@ content_fetch_on_stage_complete (GObject        *object,
   gs_free guchar *csum = NULL;
   gs_free char *checksum = NULL;
 
-  if (!ostree_repo_stage_content_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result, 
                                          &csum, error))
     goto out;
 
@@ -538,7 +538,7 @@ content_fetch_on_stage_complete (GObject        *object,
   ostree_object_name_deserialize (fetch_data->object, &expected_checksum, &objtype);
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
-  g_debug ("stage of %s complete", ostree_object_to_string (checksum, objtype));
+  g_debug ("write of %s complete", ostree_object_to_string (checksum, objtype));
 
   if (strcmp (checksum, expected_checksum) != 0)
     {
@@ -550,7 +550,7 @@ content_fetch_on_stage_complete (GObject        *object,
 
   pull_data->n_fetched_content++;
  out:
-  pull_data->n_outstanding_content_stage_requests--;
+  pull_data->n_outstanding_content_write_requests--;
   check_outstanding_requests_handle_error (pull_data, local_error);
   (void) gs_file_unlink (fetch_data->temp_path, NULL, NULL);
   g_object_unref (fetch_data->temp_path);
@@ -595,11 +595,11 @@ content_fetch_on_complete (GObject        *object,
                                           cancellable, error))
     goto out;
   
-  pull_data->n_outstanding_content_stage_requests++;
-  ostree_repo_stage_content_async (pull_data->repo, checksum,
+  pull_data->n_outstanding_content_write_requests++;
+  ostree_repo_write_content_async (pull_data->repo, checksum,
                                    object_input, length,
                                    cancellable,
-                                   content_fetch_on_stage_complete, fetch_data);
+                                   content_fetch_on_write_complete, fetch_data);
 
  out:
   pull_data->n_outstanding_content_fetches--;
@@ -607,7 +607,7 @@ content_fetch_on_complete (GObject        *object,
 }
 
 static void
-on_metadata_staged (GObject           *object,
+on_metadata_writed (GObject           *object,
                     GAsyncResult      *result,
                     gpointer           user_data)
 {
@@ -620,7 +620,7 @@ on_metadata_staged (GObject           *object,
   gs_free char *checksum = NULL;
   gs_free guchar *csum = NULL;
 
-  if (!ostree_repo_stage_metadata_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result, 
                                           &csum, error))
     goto out;
 
@@ -629,7 +629,7 @@ on_metadata_staged (GObject           *object,
   ostree_object_name_deserialize (fetch_data->object, &expected_checksum, &objtype);
   g_assert (OSTREE_OBJECT_TYPE_IS_META (objtype));
 
-  g_debug ("stage of %s complete", ostree_object_to_string (checksum, objtype));
+  g_debug ("write of %s complete", ostree_object_to_string (checksum, objtype));
 
   if (strcmp (checksum, expected_checksum) != 0)
     {
@@ -644,7 +644,7 @@ on_metadata_staged (GObject           *object,
                           pull_worker_message_new (PULL_MSG_SCAN,
                                                   g_variant_ref (fetch_data->object)));
  out:
-  pull_data->n_outstanding_metadata_stage_requests--;
+  pull_data->n_outstanding_metadata_write_requests--;
   (void) gs_file_unlink (fetch_data->temp_path, NULL, NULL);
   g_object_unref (fetch_data->temp_path);
   g_variant_unref (fetch_data->object);
@@ -678,11 +678,11 @@ meta_fetch_on_complete (GObject           *object,
                             FALSE, &metadata, error))
     goto out;
 
-  ostree_repo_stage_metadata_async (pull_data->repo, objtype, checksum, metadata,
+  ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                     pull_data->cancellable,
-                                    on_metadata_staged, fetch_data);
+                                    on_metadata_writed, fetch_data);
 
-  pull_data->n_outstanding_metadata_stage_requests++;
+  pull_data->n_outstanding_metadata_write_requests++;
  out:
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;

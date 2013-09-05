@@ -54,12 +54,12 @@
  * To store content in the repo, first start a transaction with
  * ostree_repo_prepare_transaction().  Then create a
  * #OstreeMutableTree, and apply functions such as
- * ostree_repo_stage_directory_to_mtree() to traverse a physical
- * filesystem and stage content, possibly multiple times.
+ * ostree_repo_write_directory_to_mtree() to traverse a physical
+ * filesystem and write content, possibly multiple times.
  * 
- * Once the #OstreeMutableTree is complete, stage all of its metadata
- * with ostree_repo_stage_mtree(), and finally create a commit with
- * ostree_repo_stage_commit().
+ * Once the #OstreeMutableTree is complete, write all of its metadata
+ * with ostree_repo_write_mtree(), and finally create a commit with
+ * ostree_repo_write_commit().
  */
 typedef struct {
   GObjectClass parent_class;

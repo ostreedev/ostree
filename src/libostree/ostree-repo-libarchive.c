@@ -119,7 +119,7 @@ import_libarchive_entry_file (OstreeRepo           *self,
                                           &file_object_input, &length, cancellable, error))
     goto out;
   
-  if (!ostree_repo_stage_content (self, NULL, file_object_input, length, out_csum,
+  if (!ostree_repo_write_content (self, NULL, file_object_input, length, out_csum,
                                   cancellable, error))
     goto out;
 
@@ -129,7 +129,7 @@ import_libarchive_entry_file (OstreeRepo           *self,
 }
 
 static gboolean
-stage_libarchive_entry_to_mtree (OstreeRepo           *self,
+write_libarchive_entry_to_mtree (OstreeRepo           *self,
                                  OstreeMutableTree    *root,
                                  struct archive       *a,
                                  struct archive_entry *entry,
@@ -242,7 +242,7 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
 
-          if (!_ostree_repo_stage_directory_meta (self, file_info, NULL, &tmp_csum, cancellable, error))
+          if (!_ostree_repo_write_directory_meta (self, file_info, NULL, &tmp_csum, cancellable, error))
             goto out;
 
           if (parent == NULL)
@@ -288,7 +288,7 @@ stage_libarchive_entry_to_mtree (OstreeRepo           *self,
 #endif
                           
 gboolean
-ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
+ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
                                     GFile                     *archive_f,
                                     OstreeMutableTree         *root,
                                     OstreeRepoCommitModifier  *modifier,
@@ -336,11 +336,11 @@ ostree_repo_stage_archive_to_mtree (OstreeRepo                *self,
           g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
           g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
           
-          if (!_ostree_repo_stage_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
+          if (!_ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
             goto out;
         }
 
-      if (!stage_libarchive_entry_to_mtree (self, root, a,
+      if (!write_libarchive_entry_to_mtree (self, root, a,
                                             entry, modifier,
                                             autocreate_parents ? tmp_csum : NULL,
                                             cancellable, error))

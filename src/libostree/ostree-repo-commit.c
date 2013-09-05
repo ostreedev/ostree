@@ -161,7 +161,7 @@ make_temporary_symlink (GFile          *tmpdir,
 }
 
 static gboolean
-stage_object (OstreeRepo         *self,
+write_object (OstreeRepo         *self,
               OstreeObjectType    objtype,
               const char         *expected_checksum,
               GInputStream       *input,
@@ -696,7 +696,7 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 }
 
 /**
- * ostree_repo_stage_metadata:
+ * ostree_repo_write_metadata:
  * @self: Repo
  * @objtype: Object type
  * @expected_checksum: (allow-none): If provided, validate content against this checksum
@@ -712,7 +712,7 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
  * computed checksum.
  */
 gboolean
-ostree_repo_stage_metadata (OstreeRepo         *self,
+ostree_repo_write_metadata (OstreeRepo         *self,
                             OstreeObjectType    objtype,
                             const char         *expected_checksum,
                             GVariant           *object,
@@ -726,12 +726,12 @@ ostree_repo_stage_metadata (OstreeRepo         *self,
   normalized = g_variant_get_normal_form (object);
   input = ot_variant_read (normalized);
 
-  return stage_object (self, objtype, expected_checksum, input, 0, out_csum,
+  return write_object (self, objtype, expected_checksum, input, 0, out_csum,
                        cancellable, error);
 }
 
 /**
- * ostree_repo_stage_metadata_trusted:
+ * ostree_repo_write_metadata_trusted:
  * @self: Repo
  * @objtype: Object type
  * @checksum: Store object with this ASCII SHA256 checksum
@@ -743,7 +743,7 @@ ostree_repo_stage_metadata (OstreeRepo         *self,
  * trusted.
  */
 gboolean
-ostree_repo_stage_metadata_trusted (OstreeRepo         *self,
+ostree_repo_write_metadata_trusted (OstreeRepo         *self,
                                     OstreeObjectType    type,
                                     const char         *checksum,
                                     GVariant           *variant,
@@ -756,7 +756,7 @@ ostree_repo_stage_metadata_trusted (OstreeRepo         *self,
   normalized = g_variant_get_normal_form (variant);
   input = ot_variant_read (normalized);
 
-  return stage_object (self, type, checksum, input, 0, NULL,
+  return write_object (self, type, checksum, input, 0, NULL,
                        cancellable, error);
 }
 
@@ -769,12 +769,12 @@ typedef struct {
   GSimpleAsyncResult *result;
 
   guchar *result_csum;
-} StageMetadataAsyncData;
+} WriteMetadataAsyncData;
 
 static void
-stage_metadata_async_data_free (gpointer user_data)
+write_metadata_async_data_free (gpointer user_data)
 {
-  StageMetadataAsyncData *data = user_data;
+  WriteMetadataAsyncData *data = user_data;
 
   g_clear_object (&data->repo);
   g_clear_object (&data->cancellable);
@@ -785,15 +785,15 @@ stage_metadata_async_data_free (gpointer user_data)
 }
 
 static void
-stage_metadata_thread (GSimpleAsyncResult  *res,
+write_metadata_thread (GSimpleAsyncResult  *res,
                        GObject             *object,
                        GCancellable        *cancellable)
 {
   GError *error = NULL;
-  StageMetadataAsyncData *data;
+  WriteMetadataAsyncData *data;
 
   data = g_simple_async_result_get_op_res_gpointer (res);
-  if (!ostree_repo_stage_metadata (data->repo, data->objtype, data->expected_checksum,
+  if (!ostree_repo_write_metadata (data->repo, data->objtype, data->expected_checksum,
                                    data->object,
                                    &data->result_csum,
                                    cancellable, &error))
@@ -801,20 +801,20 @@ stage_metadata_thread (GSimpleAsyncResult  *res,
 }
 
 /**
- * ostree_repo_stage_metadata_async:
+ * ostree_repo_write_metadata_async:
  * @self: Repo
  * @objtype: Object type
  * @expected_checksum: (allow-none): If provided, validate content against this checksum
  * @object: Metadata
  * @cancellable: Cancellable
- * @callback: Invoked when metadata is staged
+ * @callback: Invoked when metadata is writed
  * @user_data: Data for @callback
  *
  * Asynchronously store the metadata object @variant.  If provided,
  * the checksum @expected_checksum will be verified.
  */
 void
-ostree_repo_stage_metadata_async (OstreeRepo               *self,
+ostree_repo_write_metadata_async (OstreeRepo               *self,
                                   OstreeObjectType          objtype,
                                   const char               *expected_checksum,
                                   GVariant                 *object,
@@ -822,9 +822,9 @@ ostree_repo_stage_metadata_async (OstreeRepo               *self,
                                   GAsyncReadyCallback       callback,
                                   gpointer                  user_data)
 {
-  StageMetadataAsyncData *asyncdata;
+  WriteMetadataAsyncData *asyncdata;
 
-  asyncdata = g_new0 (StageMetadataAsyncData, 1);
+  asyncdata = g_new0 (WriteMetadataAsyncData, 1);
   asyncdata->repo = g_object_ref (self);
   asyncdata->objtype = objtype;
   asyncdata->expected_checksum = g_strdup (expected_checksum);
@@ -833,24 +833,24 @@ ostree_repo_stage_metadata_async (OstreeRepo               *self,
 
   asyncdata->result = g_simple_async_result_new ((GObject*) self,
                                                  callback, user_data,
-                                                 ostree_repo_stage_metadata_async);
+                                                 ostree_repo_write_metadata_async);
 
   g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
-                                             stage_metadata_async_data_free);
-  g_simple_async_result_run_in_thread (asyncdata->result, stage_metadata_thread, G_PRIORITY_DEFAULT, cancellable);
+                                             write_metadata_async_data_free);
+  g_simple_async_result_run_in_thread (asyncdata->result, write_metadata_thread, G_PRIORITY_DEFAULT, cancellable);
   g_object_unref (asyncdata->result);
 }
 
 gboolean
-ostree_repo_stage_metadata_finish (OstreeRepo        *self,
+ostree_repo_write_metadata_finish (OstreeRepo        *self,
                                    GAsyncResult      *result,
                                    guchar           **out_csum,
                                    GError           **error)
 {
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-  StageMetadataAsyncData *data;
+  WriteMetadataAsyncData *data;
 
-  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_stage_metadata_async);
+  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_write_metadata_async);
 
   if (g_simple_async_result_propagate_error (simple, error))
     return FALSE;
@@ -863,7 +863,7 @@ ostree_repo_stage_metadata_finish (OstreeRepo        *self,
 }
 
 gboolean
-_ostree_repo_stage_directory_meta (OstreeRepo   *self,
+_ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,
                                    GVariant     *xattrs,
                                    guchar      **out_csum,
@@ -877,7 +877,7 @@ _ostree_repo_stage_directory_meta (OstreeRepo   *self,
 
   dirmeta = ostree_create_directory_metadata (file_info, xattrs);
 
-  return ostree_repo_stage_metadata (self, OSTREE_OBJECT_TYPE_DIR_META, NULL,
+  return ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_DIR_META, NULL,
                                      dirmeta, out_csum, cancellable, error);
 }
 
@@ -914,7 +914,7 @@ _ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
 }
 
 /**
- * ostree_repo_stage_content_trusted:
+ * ostree_repo_write_content_trusted:
  * @self: Repo
  * @checksum: Store content using this ASCII SHA256 checksum
  * @object_input: Content stream
@@ -929,20 +929,20 @@ _ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
  * disk, for example.
  */
 gboolean
-ostree_repo_stage_content_trusted (OstreeRepo       *self,
+ostree_repo_write_content_trusted (OstreeRepo       *self,
                                    const char       *checksum,
                                    GInputStream     *object_input,
                                    guint64           length,
                                    GCancellable     *cancellable,
                                    GError          **error)
 {
-  return stage_object (self, OSTREE_OBJECT_TYPE_FILE, checksum,
+  return write_object (self, OSTREE_OBJECT_TYPE_FILE, checksum,
                        object_input, length, NULL,
                        cancellable, error);
 }
 
 /**
- * ostree_repo_stage_content:
+ * ostree_repo_write_content:
  * @self: Repo
  * @expected_checksum: (allow-none): If provided, validate content against this checksum
  * @object_input: Content object stream
@@ -956,7 +956,7 @@ ostree_repo_stage_content_trusted (OstreeRepo       *self,
  * be returned as @out_csum.
  */
 gboolean
-ostree_repo_stage_content (OstreeRepo       *self,
+ostree_repo_write_content (OstreeRepo       *self,
                            const char       *expected_checksum,
                            GInputStream     *object_input,
                            guint64           length,
@@ -964,7 +964,7 @@ ostree_repo_stage_content (OstreeRepo       *self,
                            GCancellable     *cancellable,
                            GError          **error)
 {
-  return stage_object (self, OSTREE_OBJECT_TYPE_FILE, expected_checksum,
+  return write_object (self, OSTREE_OBJECT_TYPE_FILE, expected_checksum,
                        object_input, length, out_csum,
                        cancellable, error);
 }
@@ -978,12 +978,12 @@ typedef struct {
   GSimpleAsyncResult *result;
 
   guchar *result_csum;
-} StageContentAsyncData;
+} WriteContentAsyncData;
 
 static void
-stage_content_async_data_free (gpointer user_data)
+write_content_async_data_free (gpointer user_data)
 {
-  StageContentAsyncData *data = user_data;
+  WriteContentAsyncData *data = user_data;
 
   g_clear_object (&data->repo);
   g_clear_object (&data->cancellable);
@@ -994,15 +994,15 @@ stage_content_async_data_free (gpointer user_data)
 }
 
 static void
-stage_content_thread (GSimpleAsyncResult  *res,
+write_content_thread (GSimpleAsyncResult  *res,
                       GObject             *object,
                       GCancellable        *cancellable)
 {
   GError *error = NULL;
-  StageContentAsyncData *data;
+  WriteContentAsyncData *data;
 
   data = g_simple_async_result_get_op_res_gpointer (res);
-  if (!ostree_repo_stage_content (data->repo, data->expected_checksum,
+  if (!ostree_repo_write_content (data->repo, data->expected_checksum,
                                   data->object, data->file_object_length,
                                   &data->result_csum,
                                   cancellable, &error))
@@ -1010,20 +1010,20 @@ stage_content_thread (GSimpleAsyncResult  *res,
 }
 
 /**
- * ostree_repo_stage_content_async:
+ * ostree_repo_write_content_async:
  * @self: Repo
  * @expected_checksum: (allow-none): If provided, validate content against this checksum
  * @object: Input
  * @length: Length of @object
  * @cancellable: Cancellable
- * @callback: Invoked when content is staged
+ * @callback: Invoked when content is writed
  * @user_data: User data for @callback
  *
  * Asynchronously store the content object @object.  If provided, the
  * checksum @expected_checksum will be verified.
  */
 void
-ostree_repo_stage_content_async (OstreeRepo               *self,
+ostree_repo_write_content_async (OstreeRepo               *self,
                                  const char               *expected_checksum,
                                  GInputStream             *object,
                                  guint64                   length,
@@ -1031,9 +1031,9 @@ ostree_repo_stage_content_async (OstreeRepo               *self,
                                  GAsyncReadyCallback       callback,
                                  gpointer                  user_data)
 {
-  StageContentAsyncData *asyncdata;
+  WriteContentAsyncData *asyncdata;
 
-  asyncdata = g_new0 (StageContentAsyncData, 1);
+  asyncdata = g_new0 (WriteContentAsyncData, 1);
   asyncdata->repo = g_object_ref (self);
   asyncdata->expected_checksum = g_strdup (expected_checksum);
   asyncdata->object = g_object_ref (object);
@@ -1042,33 +1042,33 @@ ostree_repo_stage_content_async (OstreeRepo               *self,
 
   asyncdata->result = g_simple_async_result_new ((GObject*) self,
                                                  callback, user_data,
-                                                 ostree_repo_stage_content_async);
+                                                 ostree_repo_write_content_async);
 
   g_simple_async_result_set_op_res_gpointer (asyncdata->result, asyncdata,
-                                             stage_content_async_data_free);
-  g_simple_async_result_run_in_thread (asyncdata->result, stage_content_thread, G_PRIORITY_DEFAULT, cancellable);
+                                             write_content_async_data_free);
+  g_simple_async_result_run_in_thread (asyncdata->result, write_content_thread, G_PRIORITY_DEFAULT, cancellable);
   g_object_unref (asyncdata->result);
 }
 
 /**
- * ostree_repo_stage_content_finish:
+ * ostree_repo_write_content_finish:
  * @self: a #OstreeRepo
  * @result: a #GAsyncResult
  * @out_csum: (out) (transfer full): A binary SHA256 checksum of the content object
  * @error: a #GError
  *
- * Completes an invocation of ostree_repo_stage_content_async().
+ * Completes an invocation of ostree_repo_write_content_async().
  */
 gboolean
-ostree_repo_stage_content_finish (OstreeRepo        *self,
+ostree_repo_write_content_finish (OstreeRepo        *self,
                                   GAsyncResult      *result,
                                   guchar           **out_csum,
                                   GError           **error)
 {
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
-  StageContentAsyncData *data;
+  WriteContentAsyncData *data;
 
-  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_stage_content_async);
+  g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ostree_repo_write_content_async);
 
   if (g_simple_async_result_propagate_error (simple, error))
     return FALSE;
@@ -1087,7 +1087,7 @@ create_empty_gvariant_dict (void)
 }
 
 /**
- * ostree_repo_stage_commit:
+ * ostree_repo_write_commit:
  * @self: Repo
  * @branch: Name of ref
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
@@ -1103,7 +1103,7 @@ create_empty_gvariant_dict (void)
  * and @root_metadata_checksum.
  */
 gboolean
-ostree_repo_stage_commit (OstreeRepo *self,
+ostree_repo_write_commit (OstreeRepo *self,
                           const char   *branch,
                           const char   *parent,
                           const char   *subject,
@@ -1135,7 +1135,7 @@ ostree_repo_stage_commit (OstreeRepo *self,
                           ostree_checksum_to_bytes_v (root_contents_checksum),
                           ostree_checksum_to_bytes_v (root_metadata_checksum));
   g_variant_ref_sink (commit);
-  if (!ostree_repo_stage_metadata (self, OSTREE_OBJECT_TYPE_COMMIT, NULL,
+  if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_COMMIT, NULL,
                                    commit, &commit_csum,
                                    cancellable, error))
     goto out;
@@ -1274,7 +1274,7 @@ apply_commit_filter (OstreeRepo            *self,
 }
 
 static gboolean
-stage_directory_to_mtree_internal (OstreeRepo                  *self,
+write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GFile                       *dir,
                                    OstreeMutableTree           *mtree,
                                    OstreeRepoCommitModifier    *modifier,
@@ -1331,7 +1331,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                 goto out;
             }
 
-          if (!_ostree_repo_stage_directory_meta (self, modified_info, xattrs, &child_file_csum,
+          if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,
                                                   cancellable, error))
             goto out;
 
@@ -1379,7 +1379,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                   if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
                     goto out;
 
-                  if (!stage_directory_to_mtree_internal (self, child, child_mtree,
+                  if (!write_directory_to_mtree_internal (self, child, child_mtree,
                                                           modifier, path,
                                                           cancellable, error))
                     goto out;
@@ -1432,7 +1432,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
                                                               &file_object_input, &file_obj_length,
                                                               cancellable, error))
                         goto out;
-                      if (!ostree_repo_stage_content (self, NULL, file_object_input, file_obj_length,
+                      if (!ostree_repo_write_content (self, NULL, file_object_input, file_obj_length,
                                                       &child_file_csum, cancellable, error))
                         goto out;
 
@@ -1458,7 +1458,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
 }
 
 /**
- * ostree_repo_stage_directory_to_mtree:
+ * ostree_repo_write_directory_to_mtree:
  * @self: Repo
  * @dir: Path to a directory
  * @mtree: Overlay directory contents into this tree
@@ -1470,7 +1470,7 @@ stage_directory_to_mtree_internal (OstreeRepo                  *self,
  * overlaying the resulting filesystem hierarchy into @mtree.
  */
 gboolean
-ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
+ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
                                       GFile                     *dir,
                                       OstreeMutableTree         *mtree,
                                       OstreeRepoCommitModifier  *modifier,
@@ -1481,7 +1481,7 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
   GPtrArray *path = NULL;
 
   path = g_ptr_array_new ();
-  if (!stage_directory_to_mtree_internal (self, dir, mtree, modifier, path,
+  if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
                                           cancellable, error))
     goto out;
 
@@ -1493,7 +1493,7 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
 }
 
 /**
- * ostree_repo_stage_mtree:
+ * ostree_repo_write_mtree:
  * @self: Repo
  * @mtree: Mutable tree
  * @out_contents_checksum: (out): Return location for ASCII checksum
@@ -1505,7 +1505,7 @@ ostree_repo_stage_directory_to_mtree (OstreeRepo                *self,
  * %OSTREE_OBJECT_TYPE_DIR_TREE object.
  */
 gboolean
-ostree_repo_stage_mtree (OstreeRepo           *self,
+ostree_repo_write_mtree (OstreeRepo           *self,
                          OstreeMutableTree    *mtree,
                          char                **out_contents_checksum,
                          GCancellable         *cancellable,
@@ -1541,7 +1541,7 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
           OstreeMutableTree *child_dir = value;
           char *child_dir_contents_checksum;
 
-          if (!ostree_repo_stage_mtree (self, child_dir, &child_dir_contents_checksum,
+          if (!ostree_repo_write_mtree (self, child_dir, &child_dir_contents_checksum,
                                         cancellable, error))
             goto out;
 
@@ -1558,7 +1558,7 @@ ostree_repo_stage_mtree (OstreeRepo           *self,
                                                          dir_contents_checksums,
                                                          dir_metadata_checksums);
 
-      if (!ostree_repo_stage_metadata (self, OSTREE_OBJECT_TYPE_DIR_TREE, NULL,
+      if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_DIR_TREE, NULL,
                                        serialized_tree, &contents_csum,
                                        cancellable, error))
         goto out;

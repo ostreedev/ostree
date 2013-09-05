@@ -109,7 +109,7 @@ gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       GCancellable         *cancellable,
                                       GError              **error);
 
-gboolean      ostree_repo_stage_metadata (OstreeRepo        *self,
+gboolean      ostree_repo_write_metadata (OstreeRepo        *self,
                                           OstreeObjectType   objtype,
                                           const char        *expected_checksum,
                                           GVariant          *object,
@@ -117,7 +117,7 @@ gboolean      ostree_repo_stage_metadata (OstreeRepo        *self,
                                           GCancellable      *cancellable,
                                           GError           **error);
 
-void          ostree_repo_stage_metadata_async (OstreeRepo              *self,
+void          ostree_repo_write_metadata_async (OstreeRepo              *self,
                                                 OstreeObjectType         objtype,
                                                 const char              *expected_checksum,
                                                 GVariant                *object,
@@ -125,12 +125,12 @@ void          ostree_repo_stage_metadata_async (OstreeRepo              *self,
                                                 GAsyncReadyCallback      callback,
                                                 gpointer                 user_data);
 
-gboolean      ostree_repo_stage_metadata_finish (OstreeRepo        *self,
+gboolean      ostree_repo_write_metadata_finish (OstreeRepo        *self,
                                                  GAsyncResult      *result,
                                                  guchar           **out_csum,
                                                  GError           **error);
 
-gboolean      ostree_repo_stage_content (OstreeRepo       *self,
+gboolean      ostree_repo_write_content (OstreeRepo       *self,
                                          const char       *expected_checksum,
                                          GInputStream     *object_input,
                                          guint64           length,
@@ -138,21 +138,21 @@ gboolean      ostree_repo_stage_content (OstreeRepo       *self,
                                          GCancellable     *cancellable,
                                          GError          **error);
 
-gboolean      ostree_repo_stage_metadata_trusted (OstreeRepo        *self,
+gboolean      ostree_repo_write_metadata_trusted (OstreeRepo        *self,
                                                   OstreeObjectType   objtype,
                                                   const char        *checksum,
                                                   GVariant          *variant,
                                                   GCancellable      *cancellable,
                                                   GError           **error);
 
-gboolean      ostree_repo_stage_content_trusted (OstreeRepo       *self,
+gboolean      ostree_repo_write_content_trusted (OstreeRepo       *self,
                                                  const char       *checksum,
                                                  GInputStream     *object_input,
                                                  guint64           length,
                                                  GCancellable     *cancellable,
                                                  GError          **error);
 
-void          ostree_repo_stage_content_async (OstreeRepo              *self,
+void          ostree_repo_write_content_async (OstreeRepo              *self,
                                                const char              *expected_checksum,
                                                GInputStream            *object,
                                                guint64                  length,
@@ -160,7 +160,7 @@ void          ostree_repo_stage_content_async (OstreeRepo              *self,
                                                GAsyncReadyCallback      callback,
                                                gpointer                 user_data);
 
-gboolean      ostree_repo_stage_content_finish (OstreeRepo        *self,
+gboolean      ostree_repo_write_content_finish (OstreeRepo        *self,
                                                 GAsyncResult      *result,
                                                 guchar           **out_csum,
                                                 GError           **error);
@@ -280,14 +280,14 @@ GType ostree_repo_commit_modifier_get_type (void);
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
-gboolean      ostree_repo_stage_directory_to_mtree (OstreeRepo                 *self,
+gboolean      ostree_repo_write_directory_to_mtree (OstreeRepo                 *self,
                                                     GFile                      *dir,
                                                     OstreeMutableTree          *mtree,
                                                     OstreeRepoCommitModifier   *modifier,
                                                     GCancellable               *cancellable,
                                                     GError                    **error);
 
-gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo                   *self,
+gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *self,
                                                   GFile                        *archive,
                                                   OstreeMutableTree            *tree,
                                                   OstreeRepoCommitModifier     *modifier,
@@ -295,13 +295,13 @@ gboolean      ostree_repo_stage_archive_to_mtree (OstreeRepo                   *
                                                   GCancellable                 *cancellable,
                                                   GError                      **error);
 
-gboolean      ostree_repo_stage_mtree (OstreeRepo         *self,
+gboolean      ostree_repo_write_mtree (OstreeRepo         *self,
                                        OstreeMutableTree  *mtree,
                                        char              **out_contents_checksum,
                                        GCancellable       *cancellable,
                                        GError            **error);
 
-gboolean      ostree_repo_stage_commit (OstreeRepo   *self,
+gboolean      ostree_repo_write_commit (OstreeRepo   *self,
                                         const char   *branch,
                                         const char   *parent,
                                         const char   *subject,
