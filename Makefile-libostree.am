@@ -34,6 +34,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-mutable-tree.c \
 	src/libostree/ostree-repo.c \
 	src/libostree/ostree-repo-checkout.c \
+	src/libostree/ostree-repo-commit.c \
 	src/libostree/ostree-repo-libarchive.c \
 	src/libostree/ostree-repo-prune.c \
 	src/libostree/ostree-repo-refs.c \
