@@ -1264,13 +1264,13 @@ ostree_repo_commit_transaction_with_stats (OstreeRepo     *self,
   if (!cleanup_tmpdir (self, cancellable, error))
     goto out;
 
-  if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
-    goto out;
-
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   self->in_transaction = FALSE;
+
+  if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
+    goto out;
 
   if (out_metadata_objects_total) *out_metadata_objects_total = self->txn_metadata_objects_total;
   if (out_metadata_objects_written) *out_metadata_objects_written = self->txn_metadata_objects_written;
@@ -1302,9 +1302,10 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
   if (!cleanup_tmpdir (self, cancellable, error))
     goto out;
 
-  self->in_transaction = FALSE;
   if (self->loose_object_devino_hash)
     g_hash_table_remove_all (self->loose_object_devino_hash);
+
+  self->in_transaction = FALSE;
 
   ret = TRUE;
  out:
