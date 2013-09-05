@@ -33,16 +33,6 @@ G_BEGIN_DECLS
 #define OSTREE_IS_REPO(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_REPO))
 
-GType ostree_repo_get_type (void);
-
-OstreeRepo* ostree_repo_new (GFile *path);
-
-OstreeRepo* ostree_repo_new_default (void);
-
-gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
-
-GFile *       ostree_repo_get_path (OstreeRepo  *self);
-
 /**
  * OstreeRepoMode:
  * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
@@ -56,9 +46,24 @@ typedef enum {
   OSTREE_REPO_MODE_ARCHIVE_Z2
 } OstreeRepoMode;
 
-gboolean       ostree_repo_mode_from_string (const char      *mode,
-                                             OstreeRepoMode  *out_mode,
-                                             GError         **error);
+gboolean ostree_repo_mode_from_string (const char      *mode,
+                                       OstreeRepoMode  *out_mode,
+                                       GError         **error);
+
+GType ostree_repo_get_type (void);
+
+OstreeRepo* ostree_repo_new (GFile *path);
+
+OstreeRepo* ostree_repo_new_default (void);
+
+gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
+
+gboolean      ostree_repo_create (OstreeRepo     *self,
+                                  OstreeRepoMode  mode,
+                                  GCancellable   *cancellable,
+                                  GError        **error);
+
+GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 

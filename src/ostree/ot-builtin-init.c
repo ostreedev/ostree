@@ -26,27 +26,19 @@
 #include "ostree.h"
 #include "libgsystem.h"
 
-static char *opt_mode = NULL;
+static char *opt_mode = "bare";
 
 static GOptionEntry options[] = {
   { "mode", 0, 0, G_OPTION_ARG_STRING, &opt_mode, "Initialize repository in given mode (bare, archive-z2)", NULL },
   { NULL }
 };
 
-#define DEFAULT_CONFIG_CONTENTS ("[core]\n" \
-                                 "repo_version=1\n")
-
-
 gboolean
 ostree_builtin_init (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
   gboolean ret = FALSE;
-  const char *mode_str = "bare";
-  GFile *repo_path = NULL;
-  gs_unref_object GFile *child = NULL;
-  gs_unref_object GFile *grandchild = NULL;
-  GString *config_data = NULL;
+  OstreeRepoMode mode;
 
   context = g_option_context_new ("- Initialize a new empty repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -54,74 +46,15 @@ ostree_builtin_init (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  repo_path = ostree_repo_get_path (repo);
-
-  child = g_file_get_child (repo_path, "config");
-
-  config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
-  if (opt_mode)
-    {
-      OstreeRepoMode mode;
-      if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
-        goto out;
-      mode_str = opt_mode;
-    }
-  g_string_append_printf (config_data, "mode=%s\n", mode_str);
-  if (!g_file_replace_contents (child,
-                                config_data->str,
-                                config_data->len,
-                                NULL, FALSE, 0, NULL,
-                                NULL, error))
+  if (!ostree_repo_mode_from_string (opt_mode, &mode, error))
     goto out;
 
-  g_clear_object (&child);
-  child = g_file_get_child (repo_path, "objects");
-  if (!g_file_make_directory (child, NULL, error))
-    goto out;
-
-  g_clear_object (&grandchild);
-  grandchild = g_file_get_child (child, "pack");
-  if (!g_file_make_directory (grandchild, NULL, error))
-    goto out;
-
-  g_clear_object (&child);
-  child = g_file_get_child (repo_path, "tmp");
-  if (!g_file_make_directory (child, NULL, error))
-    goto out;
-
-  g_clear_object (&child);
-  child = g_file_get_child (repo_path, "refs");
-  if (!g_file_make_directory (child, NULL, error))
-    goto out;
-
-  g_clear_object (&grandchild);
-  grandchild = g_file_get_child (child, "heads");
-  if (!g_file_make_directory (grandchild, NULL, error))
-    goto out;
-
-  g_clear_object (&grandchild);
-  grandchild = g_file_get_child (child, "remotes");
-  if (!g_file_make_directory (grandchild, NULL, error))
-    goto out;
-
-  g_clear_object (&child);
-  child = g_file_get_child (repo_path, "tags");
-  if (!g_file_make_directory (child, NULL, error))
-    goto out;
-
-  g_clear_object (&child);
-  child = g_file_get_child (repo_path, "remote-cache");
-  if (!g_file_make_directory (child, NULL, error))
-    goto out;
-
-  if (!ostree_repo_check (repo, error))
+  if (!ostree_repo_create (repo, mode, NULL, error))
     goto out;
 
   ret = TRUE;
  out:
   if (context)
     g_option_context_free (context);
-  if (config_data)
-    g_string_free (config_data, TRUE);
   return ret;
 }

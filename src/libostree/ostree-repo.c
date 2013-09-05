@@ -52,6 +52,12 @@
  * content files zlib-compressed.  It is suitable for non-root-owned
  * repositories that can be served via a static HTTP server.
  *
+ * Creating an #OstreeRepo does not invoke any file I/O, and thus needs
+ * to be initialized, either from an existing contents or with a new
+ * repository. If you have an existing repo, use ostree_repo_check()
+ * to load it from disk and check its validity. To initialize a new
+ * repository in the given filepath, use ostree_repo_create() instead.
+ *
  * To store content in the repo, first start a transaction with
  * ostree_repo_prepare_transaction().  Then create a
  * #OstreeMutableTree, and apply functions such as
@@ -311,6 +317,34 @@ ostree_repo_write_config (OstreeRepo *self,
   return ret;
 }
 
+static gboolean
+ostree_repo_mode_to_string (OstreeRepoMode   mode,
+                            const char     **out_mode,
+                            GError         **error)
+{
+  gboolean ret = FALSE;
+  const char *ret_mode;
+
+  switch (mode)
+    {
+    case OSTREE_REPO_MODE_BARE:
+      ret_mode = "bare";
+      break;
+    case OSTREE_REPO_MODE_ARCHIVE_Z2:
+      ret_mode ="archive-z2";
+      break;
+    default:
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid mode '%d'", mode);
+      goto out;
+    }
+
+  ret = TRUE;
+  *out_mode = ret_mode;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_repo_mode_from_string (const char      *mode,
                               OstreeRepoMode  *out_mode,
@@ -333,6 +367,81 @@ ostree_repo_mode_from_string (const char      *mode,
   ret = TRUE;
   *out_mode = ret_mode;
  out:
+  return ret;
+}
+
+#define DEFAULT_CONFIG_CONTENTS ("[core]\n" \
+                                 "repo_version=1\n")
+
+/**
+ * ostree_repo_create:
+ * @self: An #OstreeRepo
+ * @mode: The mode to store the repository in
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create the underlying structure on disk for the
+ * repository.
+ */
+gboolean
+ostree_repo_create (OstreeRepo     *self,
+                    OstreeRepoMode  mode,
+                    GCancellable   *cancellable,
+                    GError        **error)
+{
+  gboolean ret = FALSE;
+  GString *config_data = NULL;
+  gs_unref_object GFile *child = NULL;
+  gs_unref_object GFile *grandchild = NULL;
+  const char *mode_str;
+
+  if (!ostree_repo_mode_to_string (mode, &mode_str, error))
+    goto out;
+
+  if (!gs_file_ensure_directory (self->repodir, FALSE, cancellable, error))
+    goto out;
+
+  config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
+  g_string_append_printf (config_data, "mode=%s\n", mode_str);
+  if (!g_file_replace_contents (self->config_file,
+                                config_data->str,
+                                config_data->len,
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  if (!g_file_make_directory (self->objects_dir, cancellable, error))
+    goto out;
+
+  if (!g_file_make_directory (self->tmp_dir, cancellable, error))
+    goto out;
+
+  if (!g_file_make_directory (self->remote_cache_dir, cancellable, error))
+    goto out;
+
+  g_clear_object (&child);
+  child = g_file_get_child (self->repodir, "refs");
+  if (!g_file_make_directory (child, cancellable, error))
+    goto out;
+
+  g_clear_object (&grandchild);
+  grandchild = g_file_get_child (child, "heads");
+  if (!g_file_make_directory (grandchild, cancellable, error))
+    goto out;
+
+  g_clear_object (&grandchild);
+  grandchild = g_file_get_child (child, "remotes");
+  if (!g_file_make_directory (grandchild, cancellable, error))
+    goto out;
+
+  if (!ostree_repo_check (self, error))
+    goto out;
+
+  ret = TRUE;
+
+ out:
+  if (config_data)
+    g_string_free (config_data, TRUE);
   return ret;
 }
 
