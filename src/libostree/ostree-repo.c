@@ -1158,6 +1158,23 @@ devino_cache_lookup (OstreeRepo           *self,
   return g_hash_table_lookup (self->loose_object_devino_hash, &dev_ino);
 }
 
+/**
+ * ostree_repo_prepare_transaction:
+ * @self: An #OstreeRepo
+ * @enable_commit_hardlink_scan:
+ * @out_transaction_resume: (allow-none) (out): Whether this transaction
+ * is resuming from a previous one.
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Starts or resumes a transaction. In order to write to a repo, you
+ * need to start a transaction. You can complete the transaction with
+ * ostree_repo_commit_transaction(), or abort the transaction with
+ * ostree_repo_abort_transaction().
+ *
+ * Currently, transactions are not atomic, and aborting a transaction
+ * will not erase any data you  write during the transaction.
+ */
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
                                  gboolean        enable_commit_hardlink_scan,
