@@ -36,6 +36,16 @@ po
 ABOUT-NLS
 _build
 
+/doc/ostree-decl.txt
+/doc/ostree-overrides.txt
+/doc/ostree-undeclared.txt
+/doc/ostree-undocumented.txt
+/doc/ostree-unused.txt
+/doc/ostree.types
+/doc/version.xml
+/doc/tmpl
+/doc/html
+/doc/xml
 /doc/ostree.1
 
 /ostree
