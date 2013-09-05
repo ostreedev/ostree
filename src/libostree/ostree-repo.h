@@ -56,7 +56,9 @@ OstreeRepo* ostree_repo_new (GFile *path);
 
 OstreeRepo* ostree_repo_new_default (void);
 
-gboolean      ostree_repo_check (OstreeRepo  *self, GError **error);
+gboolean      ostree_repo_open   (OstreeRepo     *self,
+                                  GCancellable   *cancellable,
+                                  GError        **error);
 
 gboolean      ostree_repo_create (OstreeRepo     *self,
                                   OstreeRepoMode  mode,

@@ -224,7 +224,7 @@ ostree_run (int    argc,
     {
       GError *temp_error = NULL;
       repo = ostree_repo_new_default ();
-      if (!ostree_repo_check (repo, &temp_error))
+      if (!ostree_repo_open (repo, cancellable, &temp_error))
         {
           if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
@@ -246,7 +246,7 @@ ostree_run (int    argc,
       repo = ostree_repo_new (repo_file);
       if (!(command->flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
         {
-          if (!ostree_repo_check (repo, &error))
+          if (!ostree_repo_open (repo, cancellable, &error))
             goto out;
         }
     }

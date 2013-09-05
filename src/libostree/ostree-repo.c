@@ -54,7 +54,7 @@
  *
  * Creating an #OstreeRepo does not invoke any file I/O, and thus needs
  * to be initialized, either from an existing contents or with a new
- * repository. If you have an existing repo, use ostree_repo_check()
+ * repository. If you have an existing repo, use ostree_repo_open()
  * to load it from disk and check its validity. To initialize a new
  * repository in the given filepath, use ostree_repo_create() instead.
  *
@@ -434,7 +434,7 @@ ostree_repo_create (OstreeRepo     *self,
   if (!g_file_make_directory (grandchild, cancellable, error))
     goto out;
 
-  if (!ostree_repo_check (self, error))
+  if (!ostree_repo_open (self, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -446,7 +446,9 @@ ostree_repo_create (OstreeRepo     *self,
 }
 
 gboolean
-ostree_repo_check (OstreeRepo *self, GError **error)
+ostree_repo_open (OstreeRepo    *self,
+                  GCancellable  *cancellable,
+                  GError       **error)
 {
   gboolean ret = FALSE;
   gboolean is_archive;
@@ -467,7 +469,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
       goto out;
     }
 
-  if (!gs_file_ensure_directory (self->pending_dir, FALSE, NULL, error))
+  if (!gs_file_ensure_directory (self->pending_dir, FALSE, cancellable, error))
     goto out;
   
   self->config = g_key_file_new ();
@@ -514,7 +516,7 @@ ostree_repo_check (OstreeRepo *self, GError **error)
 
       self->parent_repo = ostree_repo_new (parent_repo_f);
 
-      if (!ostree_repo_check (self->parent_repo, error))
+      if (!ostree_repo_open (self->parent_repo, cancellable, error))
         {
           g_prefix_error (error, "While checking parent repository '%s': ",
                           gs_file_get_path_cached (parent_repo_f));

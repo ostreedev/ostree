@@ -93,7 +93,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
 
   repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
   repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (repo, error))
+  if (!ostree_repo_open (repo, cancellable, error))
     goto out;
 
   origin = ot_deployment_get_origin (merge_deployment);

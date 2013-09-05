@@ -829,7 +829,7 @@ ot_admin_get_repo (GFile         *sysroot,
   gs_unref_object GFile *repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
 
   ret_repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_check (ret_repo, error))
+  if (!ostree_repo_open (ret_repo, cancellable, error))
     goto out;
     
   ret = TRUE;

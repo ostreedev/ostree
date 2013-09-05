@@ -192,7 +192,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
   src_f = g_file_new_for_path (src_repo_path);
 
   data->src_repo = ostree_repo_new (src_f);
-  if (!ostree_repo_check (data->src_repo, error))
+  if (!ostree_repo_open (data->src_repo, cancellable, error))
     goto out;
 
   data->threadpool = ot_thread_pool_new_nproc (import_one_object_thread, data);
