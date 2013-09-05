@@ -24,6 +24,7 @@ export G_DEBUG=fatal-warnings
 
 export TEST_GPG_KEYID="472CDAFA"
 export TEST_GPG_HOME=${SRCDIR}/gpghome
+export OSTREE_GPG_HOME=${TEST_GPG_HOME}
 
 if test -n "${OT_TESTS_DEBUG}"; then
     set -x

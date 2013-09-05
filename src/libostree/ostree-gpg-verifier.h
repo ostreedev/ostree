@@ -1,0 +1,64 @@
+/* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
+ *
+ * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2013 Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
+ *
+ * Author: Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+ */
+
+//#pragma once
+
+#include "config.h"
+#include <glib-object.h>
+#include <gio/gio.h>
+
+G_BEGIN_DECLS
+
+#define OSTREE_TYPE_GPG_VERIFIER _ostree_gpg_verifier_get_type()
+#define OSTREE_GPG_VERIFIER(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST ((obj), OSTREE_TYPE_GPG_VERIFIER, OstreeGpgVerifier))
+#define OSTREE_IS_GPG_VERIFIER(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_GPG_VERIFIER))
+
+typedef struct OstreeGpgVerifier OstreeGpgVerifier;
+
+GType _ostree_gpg_verifier_get_type (void);
+
+OstreeGpgVerifier *_ostree_gpg_verifier_new (GCancellable   *cancellable,
+                                             GError        **error);
+
+gboolean      _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
+                                                    GFile             *file,
+                                                    GFile             *signature,
+                                                    gboolean          *had_valid_signature,
+                                                    GCancellable      *cancellable,
+                                                    GError           **error);
+
+void _ostree_gpg_verifier_set_homedir (OstreeGpgVerifier *self,
+                                       const gchar *path);
+
+gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
+                                                    GFile               *path,
+                                                    GCancellable        *cancellable,
+                                                    GError             **error);
+
+gboolean      _ostree_gpg_verifier_add_keyring (OstreeGpgVerifier   *self,
+                                                GFile               *path,
+                                                GCancellable        *cancellable,
+                                                GError             **error);
+G_END_DECLS

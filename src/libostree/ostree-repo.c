@@ -31,6 +31,8 @@
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-file.h"
+#include "ostree-repo-file-enumerator.h"
+#include "ostree-gpg-verifier.h"
 
 #ifdef HAVE_GPGME
 #include <locale.h>
@@ -403,6 +405,7 @@ ostree_repo_create (OstreeRepo     *self,
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
   g_string_append_printf (config_data, "mode=%s\n", mode_str);
+
   if (!g_file_replace_contents (self->config_file,
                                 config_data->str,
                                 config_data->len,
@@ -1643,6 +1646,136 @@ out:
     gpgme_release (context);
   if (signature_file)
     g_mapped_file_unref (signature_file);
+  return ret;
+}
+
+/**
+ * ostree_repo_verify_commit:
+ * @self: Repository
+ * @commit_checksum: ASCII SHA256 checksum
+ * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Check for a valid GPG signature on commit named by the ASCII
+ * checksum @commit_checksum.
+ */
+gboolean
+ostree_repo_verify_commit (OstreeRepo   *self,
+                           const gchar  *commit_checksum,
+                           GFile        *keyringdir,
+                           GFile        *extra_keyring,
+                           GCancellable *cancellable,
+                           GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object OstreeGpgVerifier *verifier = NULL;
+  gs_unref_variant GVariant *commit_variant = NULL;
+  gs_unref_object GFile *commit_tmp_path = NULL;
+  gs_unref_object GFile *keyringdir_ref = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *signaturedata = NULL;
+  gs_free gchar *commit_filename = NULL;
+  gint i, n;
+  gboolean had_valid_signataure = FALSE;
+
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit_checksum, &commit_variant,
+                                 error))
+    goto out;
+
+  verifier = _ostree_gpg_verifier_new (cancellable, error);
+  if (!verifier)
+    goto out;
+
+  if (keyringdir)
+    {
+      if (!_ostree_gpg_verifier_add_keyring_dir (verifier, keyringdir,
+                                                 cancellable, error))
+        goto out;
+    }
+  if (extra_keyring != NULL)
+    {
+      if (!_ostree_gpg_verifier_add_keyring (verifier, extra_keyring,
+                                             cancellable, error))
+        goto out;
+    }
+
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_prefix_error (error, "Failed to read detached metadata: ");
+      goto out;
+    }
+  
+  if (metadata)
+    signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
+  if (!signaturedata)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No signatures found");
+      goto out;
+    }
+
+  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                               &commit_tmp_path, NULL,
+                               cancellable, error))
+    goto out;
+  
+  if (!g_file_replace_contents (commit_tmp_path,
+                                (char*)g_variant_get_data (commit_variant),
+                                g_variant_get_size (commit_variant),
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  n = g_variant_n_children (signaturedata);
+  for (i = 0; i < n; i++)
+    {
+      GVariant *signature_variant = g_variant_get_child_value (signaturedata, i);
+      gs_unref_object GFile *temp_sig_path = NULL;
+
+      if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                                   &temp_sig_path, NULL,
+                                   cancellable, error))
+        goto out;
+
+      if (!g_file_replace_contents (temp_sig_path,
+                                    (char*)g_variant_get_data (signature_variant),
+                                    g_variant_get_size (signature_variant),
+                                    NULL, FALSE, 0, NULL,
+                                    cancellable, error))
+        goto out;
+
+      if (!_ostree_gpg_verifier_check_signature (verifier,
+                                                 commit_tmp_path,
+                                                 temp_sig_path,
+                                                 &had_valid_signataure,
+                                                 cancellable, error))
+        {
+          (void) gs_file_unlink (temp_sig_path, NULL, NULL);
+          goto out;
+        }
+      (void) gs_file_unlink (temp_sig_path, NULL, NULL);
+      if (had_valid_signataure)
+        break;
+    }
+  
+  if (!had_valid_signataure)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "GPG signatures found, but none are in trusted keyring");
+      goto out;
+    }
+  
+  ret = TRUE;
+out:
+  if (commit_tmp_path)
+    (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
   return ret;
 }
 

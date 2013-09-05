@@ -32,7 +32,7 @@ cd ${test_tmpdir}
 rm repo -rf
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init
-${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
 maxtries=`find ${repopath}/objects | wc -l`
 maxtries=`expr $maxtries \* 2`

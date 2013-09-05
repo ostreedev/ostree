@@ -104,11 +104,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
 
   if (origin_remote)
     {
+      OstreeRepoPullFlags pullflags = 0;
       char *refs_to_fetch[] = { origin_ref, NULL };
 
       g_print ("Fetching remote %s ref %s\n", origin_remote, origin_ref);
 
-      if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, OSTREE_REPO_PULL_FLAGS_NONE,
+      if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, pullflags,
                              cancellable, error))
         goto out;
     }

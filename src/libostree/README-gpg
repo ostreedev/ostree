@@ -1,0 +1,2 @@
+Any GPG keyring files ending in ".gpg" placed in this directory will
+be automatically trusted by OSTree.

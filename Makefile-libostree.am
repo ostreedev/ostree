@@ -57,6 +57,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-bootloader-uboot.c \
 	src/libostree/ostree-ordered-hash.h \
 	src/libostree/ostree-ordered-hash.c \
+	src/libostree/ostree-gpg-verifier.c \
+	src/libostree/ostree-gpg-verifier.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
@@ -102,5 +104,8 @@ pkgconfig_DATA += src/libostree/ostree-1.pc
 
 if USE_GPGME
 libostree_1_la_LIBADD += $(GPGME_LIBS)
+
+gpgreadme_DATA = src/libostree/README-gpg
+gpgreadmedir = $(pkgdatadir)
 endif
 

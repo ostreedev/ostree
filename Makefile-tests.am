@@ -23,6 +23,7 @@ insttestdir=$(pkglibexecdir)/installed-tests
 testfiles = test-basic \
 	test-archivez \
 	test-remote-add \
+        test-commit-sign \
 	test-corruption \
 	test-libarchive \
 	test-pull-archive-z \

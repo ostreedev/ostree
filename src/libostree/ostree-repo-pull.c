@@ -91,6 +91,8 @@ typedef struct {
   gboolean      transaction_resuming;
   volatile gint n_scanned_metadata;
   SoupURI       *fetching_sync_uri;
+  
+  gboolean          gpg_verify;
 
   GThread          *metadata_thread;
   GMainContext     *metadata_thread_context;
@@ -747,6 +749,19 @@ scan_commit_object (OtPullData         *pull_data,
       goto out;
     }
 
+#ifdef HAVE_GPGME
+  if (pull_data->gpg_verify)
+    {
+      if (!ostree_repo_verify_commit (pull_data->repo,
+                                      checksum,
+                                      NULL,
+                                      NULL,
+                                      cancellable,
+                                      error))
+        goto out;
+    }
+#endif
+
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
                                  &commit, error))
     goto out;
@@ -1233,6 +1248,14 @@ ostree_repo_pull (OstreeRepo               *self,
   if (!repo_get_string_key_inherit (self, remote_key, "url", &baseurl, error))
     goto out;
   pull_data->base_uri = soup_uri_new (baseurl);
+
+#ifdef HAVE_GPGME
+  if (!ot_keyfile_get_boolean_with_default (config, remote_key, "gpg-verify",
+                                            TRUE, &pull_data->gpg_verify, error))
+    goto out;
+#else
+  pull_data->gpg_verify = FALSE;
+#endif
 
   if (!ot_keyfile_get_boolean_with_default (config, remote_key, "tls-permissive",
                                             FALSE, &tls_permissive, error))

@@ -33,7 +33,7 @@ do_corrupt_pull_test() {
     rm repo -rf
     mkdir repo
     ${CMD_PREFIX} ostree --repo=repo init
-    ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
     if ${CMD_PREFIX} ostree --repo=repo pull origin main; then
         assert_not_reached "pull unexpectedly succeeded!"
     fi

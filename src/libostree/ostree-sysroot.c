@@ -232,7 +232,8 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
   if (!g_file_query_exists (dir, NULL))
     {
       gs_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
-      if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE, cancellable, error))
+      if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
+                               cancellable, error))
         goto out;
     }
 

@@ -41,12 +41,12 @@ echo "ok deploy command"
 # Commit + upgrade twice, so that we'll rotate out the original deployment
 bootcsum1=${bootcsum}
 os_repository_new_commit
-ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
 bootcsum2=${bootcsum}
 os_repository_new_commit "1"
 bootcsum3=${bootcsum}
-ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
 
 rev=${newrev}

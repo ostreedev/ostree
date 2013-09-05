@@ -132,7 +132,7 @@ ostree admin --sysroot=sysroot status
 echo "ok upgrade bare"
 
 os_repository_new_commit
-ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
 origrev=${rev}
 rev=${newrev}
