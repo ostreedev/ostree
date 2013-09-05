@@ -224,7 +224,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   GOptionContext *context;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
-  gboolean in_transaction = FALSE;
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
@@ -293,8 +292,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   if (!ostree_repo_prepare_transaction (repo, opt_link_checkout_speedup, NULL, cancellable, error))
     goto out;
-
-  in_transaction = TRUE;
 
   mtree = ostree_mutable_tree_new ();
 
@@ -422,20 +419,12 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
-
-      in_transaction = FALSE;
       
       if (!ostree_repo_write_ref (repo, NULL, opt_branch, commit_checksum, error))
         goto out;
-
     }
   else
     {
-      if (!ostree_repo_abort_transaction (repo, cancellable, error))
-        goto out;
-
-      in_transaction = FALSE;
-
       commit_checksum = g_strdup (parent);
     }
 
@@ -455,10 +444,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   ret = TRUE;
  out:
-  if (in_transaction)
-    {
-      (void) ostree_repo_abort_transaction (repo, cancellable, NULL);
-    }
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
   if (context)
     g_option_context_free (context);
   if (modifier)

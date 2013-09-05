@@ -662,6 +662,9 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
 
+  if (!self->in_transaction)
+    return TRUE;
+
   if (!cleanup_tmpdir (self, cancellable, error))
     goto out;
 
