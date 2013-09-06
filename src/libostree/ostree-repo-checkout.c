@@ -327,8 +327,8 @@ checkout_file_hardlink (OstreeRepo                  *self,
                         OstreeRepoCheckoutMode    mode,
                         OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                         GFile                    *source,
-                        GFile                    *destination,
                         int                       dirfd,
+                        const char               *name,
                         gboolean                 *out_was_supported,
                         GCancellable             *cancellable,
                         GError                  **error)
@@ -337,11 +337,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
   gboolean ret_was_supported = FALSE;
 
  again:
-  if (dirfd != -1 &&
-      linkat (-1, gs_file_get_path_cached (source),
-              dirfd, gs_file_get_basename_cached (destination), 0) != -1)
-    ret_was_supported = TRUE;
-  else if (link (gs_file_get_path_cached (source), gs_file_get_path_cached (destination)) != -1)
+  if (linkat (-1, gs_file_get_path_cached (source), dirfd, name, 0) != -1)
     ret_was_supported = TRUE;
   else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
     {
@@ -360,7 +356,7 @@ checkout_file_hardlink (OstreeRepo                  *self,
        *
        * So we can't make this atomic.  
        */
-      (void) unlink (gs_file_get_path_cached (destination));
+      (void) unlinkat (dirfd, name, 0);
       goto again;
       ret_was_supported = TRUE;
     }
@@ -447,6 +443,8 @@ static gboolean
 checkout_one_file (OstreeRepo                        *repo,
                    GFile                             *source,
                    GFileInfo                         *source_info,
+                   int                                destination_dfd,
+                   const char                        *destination_name,
                    GFile                             *destination,
                    OstreeRepoCheckoutMode             mode,
                    OstreeRepoCheckoutOverwriteMode    overwrite_mode,
@@ -547,7 +545,7 @@ checkout_one_file (OstreeRepo                        *repo,
       /* If we found one, try hardlinking */
       if (!checkout_file_hardlink (repo, mode,
                                    overwrite_mode, loose_path,
-                                   destination, -1,
+                                   destination_dfd, destination_name,
                                    &hardlink_supported, cancellable, error))
         {
           g_prefix_error (error, "Hardlinking loose object %s to %s: ", checksum,
@@ -607,6 +605,7 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   gboolean ret = FALSE;
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
+  int destination_dfd = -1;
 
   if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
     goto out;
@@ -627,6 +626,10 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                                         cancellable, 
                                         error);
   if (!dir_enum)
+    goto out;
+
+  if (!gs_file_open_dir_fd (destination, &destination_dfd,
+                            cancellable, error))
     goto out;
 
   while (TRUE)
@@ -654,7 +657,10 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
         }
       else
         {
-          if (!checkout_one_file (self, src_child, file_info, dest_path,
+          if (!checkout_one_file (self, src_child, file_info,
+                                  destination_dfd,
+                                  name,
+                                  dest_path,
                                   mode, overwrite_mode,
                                   cancellable, error))
             goto out;
@@ -663,6 +669,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 
   ret = TRUE;
  out:
+  if (destination_dfd != -1)
+    (void) close (destination_dfd);
   return ret;
 }
 
