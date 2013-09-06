@@ -227,15 +227,10 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
-  gs_unref_variant GVariant *parent_commit = NULL;
   gs_free char *contents_checksum = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
   gs_free char *tree_type = NULL;
   gs_unref_hashtable GHashTable *mode_adds = NULL;
-  gs_unref_variant GVariant *parent_content_csum_v = NULL;
-  gs_unref_variant GVariant *parent_metadata_csum_v = NULL;
-  gs_free char *parent_content_checksum = NULL;
-  gs_free char *parent_metadata_checksum = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
 
@@ -269,13 +264,6 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
     goto out;
-
-  if (opt_skip_if_unchanged && parent)
-    {
-      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                     parent, &parent_commit, error))
-        goto out;
-    }
 
   if (!opt_subject && !opt_body)
     {
@@ -390,17 +378,18 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   if (!ostree_repo_write_mtree (repo, mtree, &contents_checksum, cancellable, error))
     goto out;
 
-  if (opt_skip_if_unchanged && parent_commit)
+  if (opt_skip_if_unchanged && parent)
     {
-      g_variant_get_child (parent_commit, 6, "@ay", &parent_content_csum_v);
-      g_variant_get_child (parent_commit, 7, "@ay", &parent_metadata_csum_v);
+      const char *metadata_checksum;
+      gs_unref_object OstreeRepoFile *parent_root;
 
-      parent_content_checksum = ostree_checksum_from_bytes_v (parent_content_csum_v);
-      parent_metadata_checksum = ostree_checksum_from_bytes_v (parent_metadata_csum_v);
+      if (!ostree_repo_read_commit (repo, parent, (GFile **) &parent_root, cancellable, error))
+        goto out;
 
-      if (strcmp (contents_checksum, parent_content_checksum) == 0
-          && strcmp (ostree_mutable_tree_get_metadata_checksum (mtree),
-                     parent_metadata_checksum) == 0)
+      metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
+
+      if (strcmp (contents_checksum, ostree_repo_file_tree_get_contents_checksum (parent_root)) == 0 &&
+          strcmp (metadata_checksum, ostree_repo_file_tree_get_metadata_checksum (parent_root)) == 0)
         skip_commit = TRUE;
     }
 

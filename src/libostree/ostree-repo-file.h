@@ -66,6 +66,7 @@ void ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                           GVariant       *metadata);
 
 const char *ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self);
+const char *ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self);
 
 gboolean ostree_repo_file_is_tree (OstreeRepoFile  *self);
 

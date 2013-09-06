@@ -362,6 +362,12 @@ ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self)
   return self->tree_contents_checksum;
 }
 
+const char *
+ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self)
+{
+  return self->tree_metadata_checksum;
+}
+
 /**
  * ostree_repo_file_nontree_get_local:
  *
