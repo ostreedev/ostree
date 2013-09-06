@@ -97,6 +97,8 @@ ostree_repo_finalize (GObject *object)
 
   g_clear_object (&self->repodir);
   g_clear_object (&self->tmp_dir);
+  if (self->tmp_dir_fd)
+    (void) close (self->tmp_dir_fd);
   g_clear_object (&self->pending_dir);
   g_clear_object (&self->local_heads_dir);
   g_clear_object (&self->remote_heads_dir);
@@ -528,6 +530,9 @@ ostree_repo_open (OstreeRepo    *self,
                                             TRUE, &self->enable_uncompressed_cache, error))
     goto out;
 
+  if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
+    goto out;
+
   self->inited = TRUE;
   
   ret = TRUE;
@@ -719,6 +724,7 @@ stage_object (OstreeRepo         *self,
   const char *actual_checksum;
   gboolean do_commit;
   OstreeRepoMode repo_mode;
+  gs_free char *temp_filename = NULL;
   gs_unref_object GFile *temp_file = NULL;
   gs_unref_object GFile *raw_temp_file = NULL;
   gs_unref_object GFile *stored_path = NULL;
@@ -783,9 +789,10 @@ stage_object (OstreeRepo         *self,
       if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_regular)
         {
           gs_unref_object GOutputStream *temp_out = NULL;
-          if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644, &temp_file, &temp_out,
-                                       cancellable, error))
+          if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
+                                          cancellable, error))
             goto out;
+          temp_file = g_file_get_child (self->tmp_dir, temp_filename);
           if (g_output_stream_splice (temp_out, file_input, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
                                       cancellable, error) < 0)
             goto out;
@@ -805,10 +812,11 @@ stage_object (OstreeRepo         *self,
           gs_unref_object GConverter *zlib_compressor = NULL;
           gs_unref_object GOutputStream *compressed_out_stream = NULL;
 
-          if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                                       &temp_file, &temp_out,
-                                       cancellable, error))
+          if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644,
+                                          &temp_filename, &temp_out,
+                                          cancellable, error))
             goto out;
+          temp_file = g_file_get_child (self->tmp_dir, temp_filename);
           temp_file_is_regular = TRUE;
 
           file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
@@ -837,9 +845,10 @@ stage_object (OstreeRepo         *self,
   else
     {
       gs_unref_object GOutputStream *temp_out = NULL;
-      if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644, &temp_file, &temp_out,
-                                   cancellable, error))
+      if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
+                                      cancellable, error))
         goto out;
+      temp_file = g_file_get_child (self->tmp_dir, temp_filename);
       if (g_output_stream_splice (temp_out, checksum_input ? (GInputStream*)checksum_input : input,
                                   G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
                                   cancellable, error) < 0)
