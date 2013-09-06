@@ -290,7 +290,10 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       goto out;
     }
 
-  if (!ostree_repo_prepare_transaction (repo, opt_link_checkout_speedup, NULL, cancellable, error))
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    goto out;
+
+  if (opt_link_checkout_speedup && !ostree_repo_scan_hardlinks (repo, cancellable, error))
     goto out;
 
   mtree = ostree_mutable_tree_new ();

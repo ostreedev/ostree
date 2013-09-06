@@ -525,9 +525,45 @@ devino_cache_lookup (OstreeRepo           *self,
 }
 
 /**
+ * ostree_repo_scan_hardlinks:
+ * @self: An #OstreeRepo
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * When ostree builds a mutable tree from directory like in
+ * ostree_repo_write_directory_to_mtree(), it has to scan all files that you
+ * pass in and compute their checksums. If your commit contains hardlinks from
+ * ostree's existing repo, ostree can build a mapping of device numbers and
+ * inodes to their checksum.
+ *
+ * There is an upfront cost to creating this mapping, as this will scan the
+ * entire objects directory. If your commit is composed of mostly hardlinks to
+ * existing ostree objects, then this will speed up considerably, so call it
+ * before you call ostree_write_directory_to_mtree() or similar.
+ */
+gboolean
+ostree_repo_scan_hardlinks (OstreeRepo    *self,
+                            GCancellable  *cancellable,
+                            GError       **error)
+{
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
+
+  if (!self->loose_object_devino_hash)
+    self->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
+  g_hash_table_remove_all (self->loose_object_devino_hash);
+  if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
  * ostree_repo_prepare_transaction:
  * @self: An #OstreeRepo
- * @enable_commit_hardlink_scan:
  * @out_transaction_resume: (allow-none) (out): Whether this transaction
  * is resuming from a previous one.
  * @cancellable: Cancellable
@@ -543,7 +579,6 @@ devino_cache_lookup (OstreeRepo           *self,
  */
 gboolean
 ostree_repo_prepare_transaction (OstreeRepo     *self,
-                                 gboolean        enable_commit_hardlink_scan,
                                  gboolean       *out_transaction_resume,
                                  GCancellable   *cancellable,
                                  GError        **error)
@@ -574,15 +609,6 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   if (!g_file_make_symbolic_link (self->transaction_lock_path, transaction_str,
                                   cancellable, error))
     goto out;
-
-  if (enable_commit_hardlink_scan)
-    {
-      if (!self->loose_object_devino_hash)
-        self->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
-      g_hash_table_remove_all (self->loose_object_devino_hash);
-      if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
-        goto out;
-    }
 
   ret = TRUE;
   if (out_transaction_resume)

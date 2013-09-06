@@ -230,7 +230,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
         }
     }
 
-  if (!ostree_repo_prepare_transaction (data->dest_repo, FALSE, &transaction_resuming,
+  if (!ostree_repo_prepare_transaction (data->dest_repo, &transaction_resuming,
                                         cancellable, error))
     goto out;
 

@@ -1286,7 +1286,7 @@ ostree_repo_pull (OstreeRepo               *self,
         }
     }
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, FALSE, &pull_data->transaction_resuming,
+  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->transaction_resuming,
                                         cancellable, error))
     goto out;
 

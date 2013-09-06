@@ -112,8 +112,11 @@ struct _OstreeRepoTransactionStats {
 
 GType ostree_repo_transaction_stats_get_type (void);
 
+gboolean      ostree_repo_scan_hardlinks      (OstreeRepo     *self,
+                                               GCancellable   *cancellable,
+                                               GError        **error);
+
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
-                                               gboolean        enable_commit_hardlink_scan,
                                                gboolean       *out_transaction_resume,
                                                GCancellable   *cancellable,
                                                GError        **error);
