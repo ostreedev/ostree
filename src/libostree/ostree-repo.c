@@ -768,6 +768,32 @@ list_loose_objects (OstreeRepo                     *self,
 }
 
 static gboolean
+openat_allow_noent (int                 dfd,
+                    const char         *path,
+                    int                *fd,
+                    GCancellable       *cancellable,
+                    GError            **error)
+{
+  GError *temp_error = NULL;
+
+  if (!gs_file_openat_noatime (dfd, path, fd,
+                               cancellable, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          *fd = -1;
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
+static gboolean
 load_metadata_internal (OstreeRepo       *self,
                         OstreeObjectType  objtype,
                         const char       *sha256,
@@ -779,11 +805,8 @@ load_metadata_internal (OstreeRepo       *self,
                         GError          **error)
 {
   gboolean ret = FALSE;
-  GError *temp_error = NULL;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   int fd = -1;
-  gboolean have_loose_object = FALSE;
-  gs_unref_object GFile *object_path = NULL;
   gs_unref_object GInputStream *ret_stream = NULL;
   gs_unref_variant GVariant *ret_variant = NULL;
 
@@ -791,24 +814,11 @@ load_metadata_internal (OstreeRepo       *self,
 
   _ostree_loose_path (loose_path_buf, sha256, objtype, self->mode);
 
-  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                               cancellable, &temp_error))
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          have_loose_object = FALSE;
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-  else
-    have_loose_object = TRUE;
+  if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
+                           cancellable, error))
+    goto out;
 
-  if (have_loose_object)
+  if (fd != -1)
     {
       if (out_variant)
         {
@@ -852,7 +862,7 @@ load_metadata_internal (OstreeRepo       *self,
     }
   else if (error_if_not_found)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "No such metadata object %s.%s",
                    sha256, ostree_object_type_to_string (objtype));
       goto out;
@@ -890,73 +900,97 @@ ostree_repo_load_file (OstreeRepo         *self,
                        GError            **error)
 {
   gboolean ret = FALSE;
+  gboolean found = FALSE;
   OstreeRepoMode repo_mode;
-  gs_unref_object GFile *loose_path = NULL;
   gs_unref_object GInputStream *ret_input = NULL;
   gs_unref_object GFileInfo *ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
 
-  if (!_ostree_repo_find_object (self, OSTREE_OBJECT_TYPE_FILE, checksum, &loose_path,
-                                 cancellable, error))
-    goto out;
-
   repo_mode = ostree_repo_get_mode (self);
 
-  if (loose_path)
+  if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
-      switch (repo_mode)
+      char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+      int fd = -1;
+      struct stat stbuf;
+      gs_unref_object GInputStream *tmp_stream = NULL;
+
+      _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
+
+      if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
+                               cancellable, error))
+        goto out;
+
+      if (fd != -1)
         {
-        case OSTREE_REPO_MODE_ARCHIVE_Z2:
-          {
-            if (!ostree_content_file_parse (TRUE, loose_path, TRUE,
+          tmp_stream = g_unix_input_stream_new (fd, TRUE);
+          fd = -1; /* Transfer ownership */
+          
+          if (!gs_stream_fstat ((GFileDescriptorBased*) tmp_stream, &stbuf,
+                                cancellable, error))
+            goto out;
+          
+          if (!ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
                                             out_input ? &ret_input : NULL,
                                             &ret_file_info, &ret_xattrs,
                                             cancellable, error))
-              goto out;
-          }
-          break;
-        case OSTREE_REPO_MODE_BARE:
-          {
-            ret_file_info = g_file_query_info (loose_path, OSTREE_GIO_FAST_QUERYINFO,
-                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                               cancellable, error);
-            if (!ret_file_info)
-              goto out;
+            goto out;
 
-            if (out_xattrs)
-              {
-                if (!ostree_get_xattrs_for_file (loose_path, &ret_xattrs,
-                                                 cancellable, error))
-                  goto out;
-              }
-
-            if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
-              {
-                ret_input = (GInputStream*) gs_file_read_noatime (loose_path, cancellable, error);
-                if (!ret_input)
-                  {
-                    g_prefix_error (error, "Error opening loose file object %s: ", gs_file_get_path_cached (loose_path));
-                    goto out;
-                  }
-              }
-          }
-          break;
+          found = TRUE;
         }
-    }
-  else if (self->parent_repo)
-    {
-      if (!ostree_repo_load_file (self->parent_repo, checksum,
-                                  out_input ? &ret_input : NULL,
-                                  out_file_info ? &ret_file_info : NULL,
-                                  out_xattrs ? &ret_xattrs : NULL,
-                                  cancellable, error))
-        goto out;
     }
   else
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Couldn't find file object '%s'", checksum);
-      goto out;
+      gs_unref_object GFile *loose_path = NULL;
+
+      loose_path = _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+
+      if (!ot_gfile_query_info_allow_noent (loose_path, OSTREE_GIO_FAST_QUERYINFO,
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            &ret_file_info,
+                                            cancellable, error))
+        goto out;
+
+      if (ret_file_info)
+        {
+          if (out_xattrs)
+            {
+              if (!ostree_get_xattrs_for_file (loose_path, &ret_xattrs,
+                                               cancellable, error))
+                goto out;
+            }
+
+          if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
+            {
+              ret_input = (GInputStream*) gs_file_read_noatime (loose_path, cancellable, error);
+              if (!ret_input)
+                {
+                  g_prefix_error (error, "Error opening loose file object %s: ", gs_file_get_path_cached (loose_path));
+                  goto out;
+                }
+            }
+          
+          found = TRUE;
+        }
+    }
+  
+  if (!found)
+    {
+      if (self->parent_repo)
+        {
+          if (!ostree_repo_load_file (self->parent_repo, checksum,
+                                      out_input ? &ret_input : NULL,
+                                      out_file_info ? &ret_file_info : NULL,
+                                      out_xattrs ? &ret_xattrs : NULL,
+                                      cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Couldn't find file object '%s'", checksum);
+          goto out;
+        }
     }
 
   ret = TRUE;
