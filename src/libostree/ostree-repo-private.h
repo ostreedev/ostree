@@ -121,5 +121,12 @@ _ostree_repo_file_new_root (OstreeRepo  *repo,
                             const char  *contents_checksum,
                             const char  *metadata_checksum);
 
+OstreeRepoCommitFilterResult
+_ostree_repo_commit_modifier_apply (OstreeRepo               *self,
+                                    OstreeRepoCommitModifier *modifier,
+                                    const char               *path,
+                                    GFileInfo                *file_info,
+                                    GFileInfo               **out_modified_info);
+
 G_END_DECLS
 

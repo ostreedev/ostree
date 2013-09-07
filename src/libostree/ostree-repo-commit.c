@@ -1395,17 +1395,38 @@ struct OstreeRepoCommitModifier {
   GDestroyNotify destroy_notify;
 };
 
-static OstreeRepoCommitFilterResult
-apply_commit_filter (OstreeRepo            *self,
+OstreeRepoCommitFilterResult
+_ostree_repo_commit_modifier_apply (OstreeRepo               *self,
+                                    OstreeRepoCommitModifier *modifier,
+                                    const char               *path,
+                                    GFileInfo                *file_info,
+                                    GFileInfo               **out_modified_info)
+{
+  OstreeRepoCommitFilterResult result;
+  GFileInfo *modified_info;
+
+  if (modifier == NULL || modifier->filter == NULL)
+    {
+      *out_modified_info = g_object_ref (file_info);
+      return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+    }
+
+  modified_info = g_file_info_dup (file_info);
+  result = modifier->filter (self, path, modified_info, modifier->user_data);
+  *out_modified_info = modified_info;
+
+  return result;
+}
+
+static gboolean
+apply_commit_filter (OstreeRepo               *self,
                      OstreeRepoCommitModifier *modifier,
                      GPtrArray                *path,
                      GFileInfo                *file_info,
                      GFileInfo               **out_modified_info)
 {
   GString *path_buf;
-  guint i;
   OstreeRepoCommitFilterResult result;
-  GFileInfo *modified_info;
 
   if (modifier == NULL || modifier->filter == NULL)
     {
@@ -1419,6 +1440,7 @@ apply_commit_filter (OstreeRepo            *self,
     g_string_append_c (path_buf, '/');
   else
     {
+      guint i;
       for (i = 0; i < path->len; i++)
         {
           const char *elt = path->pdata[i];
@@ -1428,9 +1450,7 @@ apply_commit_filter (OstreeRepo            *self,
         }
     }
 
-  modified_info = g_file_info_dup (file_info);
-  result = modifier->filter (self, path_buf->str, modified_info, modifier->user_data);
-  *out_modified_info = modified_info;
+  result = _ostree_repo_commit_modifier_apply (self, modifier, path_buf->str, file_info, out_modified_info);
 
   g_string_free (path_buf, TRUE);
   return result;

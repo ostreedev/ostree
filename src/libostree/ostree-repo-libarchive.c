@@ -35,20 +35,6 @@
 
 #ifdef HAVE_LIBARCHIVE
 
-static GFileInfo *
-create_modified_file_info (GFileInfo               *info,
-                           OstreeRepoCommitModifier *modifier)
-{
-  GFileInfo *ret;
-
-  if (!modifier)
-    return (GFileInfo*)g_object_ref (info);
-
-  ret = g_file_info_dup (info);
-  
-  return ret;
-}
-
 static void
 propagate_libarchive_error (GError      **error,
                             struct archive *a)
@@ -58,10 +44,11 @@ propagate_libarchive_error (GError      **error,
 }
 
 static GFileInfo *
-file_info_from_archive_entry_and_modifier (struct archive_entry  *entry,
+file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
+                                           struct archive_entry *entry,
                                            OstreeRepoCommitModifier *modifier)
 {
-  GFileInfo *info = g_file_info_new ();
+  gs_unref_object GFileInfo *info = g_file_info_new ();
   GFileInfo *modified_info = NULL;
   const struct stat *st;
   guint32 file_type;
@@ -88,10 +75,10 @@ file_info_from_archive_entry_and_modifier (struct archive_entry  *entry,
       g_file_info_set_attribute_uint32 (info, "unix::rdev", st->st_rdev);
     }
 
-  modified_info = create_modified_file_info (info, modifier);
+  _ostree_repo_commit_modifier_apply (repo, modifier,
+                                      archive_entry_pathname (entry),
+                                      info, &modified_info);
 
-  g_object_unref (info);
-  
   return modified_info;
 }
 
@@ -230,7 +217,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
     }
   else
     {
-      file_info = file_info_from_archive_entry_and_modifier (entry, modifier);
+      file_info = file_info_from_archive_entry_and_modifier (self, entry, modifier);
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_UNKNOWN)
         {
@@ -287,10 +274,23 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
 }
 #endif
                           
+/**
+ * ostree_repo_write_archive_to_mtree:
+ * @self: An #OstreeRepo
+ * @archive: A path to an archive file
+ * @mtree: The #OstreeMutableTree to write to
+ * @modifier: (allow-none): Optional commit modifier
+ * @autocreate_parents: Autocreate parent directories
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ */
 gboolean
 ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
-                                    GFile                     *archive_f,
-                                    OstreeMutableTree         *root,
+                                    GFile                     *archive,
+                                    OstreeMutableTree         *mtree,
                                     OstreeRepoCommitModifier  *modifier,
                                     gboolean                   autocreate_parents,
                                     GCancellable             *cancellable,
@@ -311,7 +311,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   archive_read_support_compression_all (a);
 #endif
   archive_read_support_format_all (a);
-  if (archive_read_open_filename (a, gs_file_get_path_cached (archive_f), 8192) != ARCHIVE_OK)
+  if (archive_read_open_filename (a, gs_file_get_path_cached (archive), 8192) != ARCHIVE_OK)
     {
       propagate_libarchive_error (error, a);
       goto out;
@@ -340,7 +340,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
             goto out;
         }
 
-      if (!write_libarchive_entry_to_mtree (self, root, a,
+      if (!write_libarchive_entry_to_mtree (self, mtree, a,
                                             entry, modifier,
                                             autocreate_parents ? tmp_csum : NULL,
                                             cancellable, error))

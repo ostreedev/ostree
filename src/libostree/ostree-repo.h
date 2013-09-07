@@ -302,7 +302,7 @@ gboolean      ostree_repo_write_directory_to_mtree (OstreeRepo                 *
 
 gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *self,
                                                   GFile                        *archive,
-                                                  OstreeMutableTree            *tree,
+                                                  OstreeMutableTree            *mtree,
                                                   OstreeRepoCommitModifier     *modifier,
                                                   gboolean                      autocreate_parents,
                                                   GCancellable                 *cancellable,
