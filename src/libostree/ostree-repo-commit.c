@@ -197,8 +197,8 @@ write_object (OstreeRepo         *self,
 
   if (expected_checksum)
     {
-      if (!repo_find_object (self, objtype, expected_checksum, &stored_path,
-                             cancellable, error))
+      if (!_ostree_repo_find_object (self, objtype, expected_checksum, &stored_path,
+                                     cancellable, error))
         goto out;
     }
 
