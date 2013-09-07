@@ -116,5 +116,10 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
                                   const char  *commit,
                                   GError     **error);
 
+OstreeRepoFile *
+_ostree_repo_file_new_root (OstreeRepo  *repo,
+                            const char  *contents_checksum,
+                            const char  *metadata_checksum);
+
 G_END_DECLS
 

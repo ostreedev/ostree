@@ -1172,8 +1172,7 @@ create_empty_gvariant_dict (void)
  * @subject: Subject
  * @body: (allow-none): Body
  * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
- * @root_contents_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_TREE
- * @root_metadata_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_META
+ * @root: The tree to point the commit to
  * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
  * @cancellable: Cancellable
  * @error: Error
@@ -1182,26 +1181,24 @@ create_empty_gvariant_dict (void)
  * and @root_metadata_checksum.
  */
 gboolean
-ostree_repo_write_commit (OstreeRepo    *self,
-                          const char    *parent,
-                          const char    *subject,
-                          const char    *body,
-                          GVariant      *metadata,
-                          const char    *root_contents_checksum,
-                          const char    *root_metadata_checksum,
-                          char         **out_commit,
-                          GCancellable  *cancellable,
-                          GError       **error)
+ostree_repo_write_commit (OstreeRepo      *self,
+                          const char      *parent,
+                          const char      *subject,
+                          const char      *body,
+                          GVariant        *metadata,
+                          OstreeRepoFile  *root,
+                          char           **out_commit,
+                          GCancellable    *cancellable,
+                          GError         **error)
 {
   gboolean ret = FALSE;
   gs_free char *ret_commit = NULL;
   gs_unref_variant GVariant *commit = NULL;
   gs_free guchar *commit_csum = NULL;
   GDateTime *now = NULL;
+  OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
   g_return_val_if_fail (subject != NULL, FALSE);
-  g_return_val_if_fail (root_contents_checksum != NULL, FALSE);
-  g_return_val_if_fail (root_metadata_checksum != NULL, FALSE);
 
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",
@@ -1210,8 +1207,8 @@ ostree_repo_write_commit (OstreeRepo    *self,
                           g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0),
                           subject, body ? body : "",
                           GUINT64_TO_BE (g_date_time_to_unix (now)),
-                          ostree_checksum_to_bytes_v (root_contents_checksum),
-                          ostree_checksum_to_bytes_v (root_metadata_checksum));
+                          ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_contents_checksum (repo_root)),
+                          ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_metadata_checksum (repo_root)));
   g_variant_ref_sink (commit);
   if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_COMMIT, NULL,
                                    commit, &commit_csum,
@@ -1662,38 +1659,48 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
  * ostree_repo_write_mtree:
  * @self: Repo
  * @mtree: Mutable tree
- * @out_contents_checksum: (out): Return location for ASCII checksum
+ * @out_file: (out): An #OstreeRepoFile representing @mtree's root.
  * @cancellable: Cancellable
  * @error: Error
  *
  * Write all metadata objects for @mtree to repo; the resulting
- * @out_contents_checksum contains the checksum for the
- * %OSTREE_OBJECT_TYPE_DIR_TREE object.
+ * @out_file points to the %OSTREE_OBJECT_TYPE_DIR_TREE object that
+ * the @mtree represented.
  */
 gboolean
 ostree_repo_write_mtree (OstreeRepo           *self,
                          OstreeMutableTree    *mtree,
-                         char                **out_contents_checksum,
+                         GFile               **out_file,
                          GCancellable         *cancellable,
                          GError              **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  const char *existing_checksum;
-  gs_free char *ret_contents_checksum = NULL;
-  gs_unref_hashtable GHashTable *dir_metadata_checksums = NULL;
-  gs_unref_hashtable GHashTable *dir_contents_checksums = NULL;
-  gs_unref_variant GVariant *serialized_tree = NULL;
-  gs_free guchar *contents_csum = NULL;
+  const char *contents_checksum, *metadata_checksum;
+  gs_unref_object GFile *ret_file = NULL;
 
-  existing_checksum = ostree_mutable_tree_get_contents_checksum (mtree);
-  if (existing_checksum)
+  metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
+  if (!metadata_checksum)
     {
-      ret_contents_checksum = g_strdup (existing_checksum);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Can't commit an empty tree");
+      goto out;
+    }
+
+  contents_checksum = ostree_mutable_tree_get_contents_checksum (mtree);
+  if (contents_checksum)
+    {
+      ret_file = G_FILE (_ostree_repo_file_new_root (self, contents_checksum, metadata_checksum));
     }
   else
     {
+      gs_unref_hashtable GHashTable *dir_metadata_checksums = NULL;
+      gs_unref_hashtable GHashTable *dir_contents_checksums = NULL;
+      gs_unref_variant GVariant *serialized_tree = NULL;
+      gs_free guchar *contents_csum = NULL;
+      char contents_checksum_buf[65];
+
       dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                       (GDestroyNotify)g_free, (GDestroyNotify)g_free);
       dir_metadata_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1703,21 +1710,17 @@ ostree_repo_write_mtree (OstreeRepo           *self,
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *name = key;
-          const char *metadata_checksum;
+          gs_unref_object GFile *child_file = NULL;
           OstreeMutableTree *child_dir = value;
-          char *child_dir_contents_checksum;
 
-          if (!ostree_repo_write_mtree (self, child_dir, &child_dir_contents_checksum,
+          if (!ostree_repo_write_mtree (self, child_dir, &child_file,
                                         cancellable, error))
             goto out;
 
-          g_assert (child_dir_contents_checksum);
           g_hash_table_replace (dir_contents_checksums, g_strdup (name),
-                                child_dir_contents_checksum); /* Transfer ownership */
-          metadata_checksum = ostree_mutable_tree_get_metadata_checksum (child_dir);
-          g_assert (metadata_checksum);
+                                g_strdup (ostree_repo_file_tree_get_contents_checksum (OSTREE_REPO_FILE (child_file))));
           g_hash_table_replace (dir_metadata_checksums, g_strdup (name),
-                                g_strdup (metadata_checksum));
+                                g_strdup (ostree_repo_file_tree_get_metadata_checksum (OSTREE_REPO_FILE (child_file))));
         }
 
       serialized_tree = create_tree_variant_from_hashes (ostree_mutable_tree_get_files (mtree),
@@ -1728,11 +1731,15 @@ ostree_repo_write_mtree (OstreeRepo           *self,
                                        serialized_tree, &contents_csum,
                                        cancellable, error))
         goto out;
-      ret_contents_checksum = ostree_checksum_from_bytes (contents_csum);
+
+      ostree_checksum_inplace_from_bytes (contents_csum, contents_checksum_buf);
+      ostree_mutable_tree_set_contents_checksum (mtree, contents_checksum_buf);
+
+      ret_file = G_FILE (_ostree_repo_file_new_root (self, contents_checksum_buf, metadata_checksum));
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_contents_checksum, &ret_contents_checksum);
+  ot_transfer_out_value (out_file, &ret_file);
  out:
   return ret;
 }

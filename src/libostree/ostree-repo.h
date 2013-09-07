@@ -310,20 +310,19 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
 
 gboolean      ostree_repo_write_mtree (OstreeRepo         *self,
                                        OstreeMutableTree  *mtree,
-                                       char              **out_contents_checksum,
+                                       GFile             **out_file,
                                        GCancellable       *cancellable,
                                        GError            **error);
 
-gboolean      ostree_repo_write_commit (OstreeRepo   *self,
-                                        const char   *parent,
-                                        const char   *subject,
-                                        const char   *body,
-                                        GVariant     *metadata,
-                                        const char   *root_contents_checksum,
-                                        const char   *root_metadata_checksum,
-                                        char        **out_commit,
-                                        GCancellable *cancellable,
-                                        GError      **error);
+gboolean      ostree_repo_write_commit (OstreeRepo      *self,
+                                        const char      *parent,
+                                        const char      *subject,
+                                        const char      *body,
+                                        GVariant        *metadata,
+                                        OstreeRepoFile  *root,
+                                        char           **out_commit,
+                                        GCancellable    *cancellable,
+                                        GError         **error);
 
 gboolean      ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                                          const char      *checksum,

@@ -270,7 +270,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   gs_unref_object GFile *arg = NULL;
   gs_free char *parent = NULL;
   gs_free char *commit_checksum = NULL;
-  gs_free char *contents_checksum = NULL;
+  gs_unref_object GFile *root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *detached_metadata = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
@@ -432,38 +432,25 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                    "Unmatched statoverride paths");
       goto out;
     }
-          
-  if (!ostree_repo_write_mtree (repo, mtree, &contents_checksum, cancellable, error))
+
+  if (!ostree_repo_write_mtree (repo, mtree, &root, cancellable, error))
     goto out;
 
   if (opt_skip_if_unchanged && parent)
     {
-      const char *metadata_checksum;
-      gs_unref_object OstreeRepoFile *parent_root;
+      gs_unref_object GFile *parent_root;
 
-      if (!ostree_repo_read_commit (repo, parent, (GFile **) &parent_root, cancellable, error))
+      if (!ostree_repo_read_commit (repo, parent, &parent_root, cancellable, error))
         goto out;
 
-      metadata_checksum = ostree_mutable_tree_get_metadata_checksum (mtree);
-
-      if (strcmp (contents_checksum, ostree_repo_file_tree_get_contents_checksum (parent_root)) == 0 &&
-          strcmp (metadata_checksum, ostree_repo_file_tree_get_metadata_checksum (parent_root)) == 0)
+      if (g_file_equal (root, parent_root))
         skip_commit = TRUE;
     }
 
   if (!skip_commit)
     {
-      const char *root_metadata = ostree_mutable_tree_get_metadata_checksum (mtree);
-      
-      if (!root_metadata)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Can't commit an empty tree");
-          goto out;
-        }
-
-      if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body,
-                                     metadata, contents_checksum, root_metadata,
+      if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
+                                     OSTREE_REPO_FILE (root),
                                      &commit_checksum, cancellable, error))
         goto out;
 

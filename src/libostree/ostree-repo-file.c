@@ -104,10 +104,10 @@ set_error_noent (GFile *self, GError **error)
   return FALSE;
 }
 
-static OstreeRepoFile *
-ostree_repo_file_new_root (OstreeRepo *repo,
-                           const char *contents_checksum,
-                           const char *metadata_checksum)
+OstreeRepoFile *
+_ostree_repo_file_new_root (OstreeRepo *repo,
+                            const char *contents_checksum,
+                            const char *metadata_checksum)
 {
   OstreeRepoFile *self;
 
@@ -172,7 +172,7 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
   ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v),
                                       tree_metadata_csum);
 
-  ret = ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
+  ret = _ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
 
  out:
   return ret;
@@ -530,7 +530,7 @@ ostree_repo_file_dup (GFile *file)
   if (self->parent)
     return G_FILE (ostree_repo_file_new_child (self->parent, self->name));
   else
-    return G_FILE (ostree_repo_file_new_root (self->repo, self->tree_contents_checksum, self->tree_metadata_checksum));
+    return G_FILE (_ostree_repo_file_new_root (self->repo, self->tree_contents_checksum, self->tree_metadata_checksum));
 }
 
 static guint
