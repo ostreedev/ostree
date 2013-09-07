@@ -34,20 +34,16 @@
 
 static gboolean
 commit_loose_object_trusted (OstreeRepo        *self,
-                             const char        *checksum,
-                             OstreeObjectType   objtype,
+                             const char        *loose_path,
                              const char        *tempfile_name,
                              GCancellable      *cancellable,
                              GError           **error)
 {
   gboolean ret = FALSE;
   char loose_prefix[3];
-  char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
-  _ostree_loose_path (loose_objpath, checksum, objtype, self->mode);
-
-  loose_prefix[0] = loose_objpath[0];
-  loose_prefix[1] = loose_objpath[1];
+  loose_prefix[0] = loose_path[0];
+  loose_prefix[1] = loose_path[1];
   loose_prefix[2] = '\0';
   if (G_UNLIKELY (mkdirat (self->objects_dir_fd, loose_prefix, 0777) == -1))
     {
@@ -60,7 +56,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
     }
 
   if (G_UNLIKELY (renameat (self->tmp_dir_fd, tempfile_name,
-                            self->objects_dir_fd, loose_objpath) < 0))
+                            self->objects_dir_fd, loose_path) == -1))
     {
       if (errno != EEXIST)
         {
@@ -155,6 +151,7 @@ write_object (OstreeRepo         *self,
   GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
   gboolean is_symlink = FALSE;
+  char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
   g_return_val_if_fail (self->in_transaction, FALSE);
   
@@ -165,9 +162,15 @@ write_object (OstreeRepo         *self,
 
   if (expected_checksum)
     {
-      if (!_ostree_repo_find_object (self, objtype, expected_checksum, &stored_path,
-                                     cancellable, error))
+      if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype,
+                                          &have_obj, loose_objpath,
+                                          cancellable, error))
         goto out;
+      if (have_obj)
+        {
+          ret = TRUE;
+          goto out;
+        }
     }
 
   repo_mode = ostree_repo_get_mode (self);
@@ -290,8 +293,9 @@ write_object (OstreeRepo         *self,
         }
     }
           
-  if (!ostree_repo_has_object (self, objtype, actual_checksum, &have_obj,
-                               cancellable, error))
+  if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype,
+                                      &have_obj, loose_objpath,
+                                      cancellable, error))
     goto out;
           
   do_commit = !have_obj;
@@ -358,7 +362,7 @@ write_object (OstreeRepo         *self,
               (void) close (fd);
             }
         }
-      if (!commit_loose_object_trusted (self, actual_checksum, objtype, temp_filename,
+      if (!commit_loose_object_trusted (self, loose_objpath, temp_filename,
                                         cancellable, error))
         goto out;
       g_clear_pointer (&temp_filename, g_free);

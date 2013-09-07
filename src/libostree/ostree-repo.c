@@ -989,6 +989,43 @@ ostree_repo_load_object_stream (OstreeRepo         *self,
   return ret;
 }
 
+/*
+ * _ostree_repo_has_loose_object:
+ * @loose_path_buf: Buffer of size _OSTREE_LOOSE_PATH_MAX
+ *
+ * Locate object in repository; if it exists, @out_is_stored will be
+ * set to TRUE.  @loose_path_buf is always set to the loose path.
+ */
+gboolean
+_ostree_repo_has_loose_object (OstreeRepo           *self,
+                               const char           *checksum,
+                               OstreeObjectType      objtype,
+                               gboolean             *out_is_stored,
+                               char                 *loose_path_buf,
+                               GCancellable         *cancellable,
+                               GError             **error)
+{
+  gboolean ret = FALSE;
+  struct stat stbuf;
+  int res;
+
+  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  do
+    res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (res == -1 && errno != ENOENT)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret = TRUE;
+  *out_is_stored = (res != -1);
+ out:
+  return ret;
+}
+
 gboolean
 _ostree_repo_find_object (OstreeRepo           *self,
                           OstreeObjectType      objtype,
@@ -998,25 +1035,18 @@ _ostree_repo_find_object (OstreeRepo           *self,
                           GError             **error)
 {
   gboolean ret = FALSE;
-  struct stat stbuf;
-  gs_unref_object GFile *object_path = NULL;
-  gs_unref_object GFile *ret_stored_path = NULL;
+  gboolean has_object;
+  char loose_path[_OSTREE_LOOSE_PATH_MAX];
 
-  object_path = _ostree_repo_get_object_path (self, checksum, objtype);
-
-  if (lstat (gs_file_get_path_cached (object_path), &stbuf) == 0)
-    {
-      ret_stored_path = object_path;
-      object_path = NULL; /* Transfer ownership */
-    }
-  else if (errno != ENOENT)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+  if (!_ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path, 
+                                      cancellable, error))
+    goto out;
 
   ret = TRUE;
-  ot_transfer_out_value (out_stored_path, &ret_stored_path);
+  if (has_object)
+    *out_stored_path = g_file_resolve_relative_path (self->objects_dir, loose_path);
+  else
+    *out_stored_path = NULL;
 out:
   return ret;
 }
