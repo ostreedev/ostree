@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <glib-unix.h>
+#include <gio/gunixinputstream.h>
 #include "otutil.h"
 #include "libgsystem.h"
 
@@ -778,31 +779,62 @@ load_metadata_internal (OstreeRepo       *self,
                         GError          **error)
 {
   gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+  int fd = -1;
+  gboolean have_loose_object = FALSE;
   gs_unref_object GFile *object_path = NULL;
   gs_unref_object GInputStream *ret_stream = NULL;
   gs_unref_variant GVariant *ret_variant = NULL;
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
-  if (!_ostree_repo_find_object (self, objtype, sha256, &object_path,
-                                 cancellable, error))
-    goto out;
+  _ostree_loose_path (loose_path_buf, sha256, objtype, self->mode);
 
-  if (object_path != NULL)
+  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                               cancellable, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          have_loose_object = FALSE;
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+  else
+    have_loose_object = TRUE;
+
+  if (have_loose_object)
     {
       if (out_variant)
         {
-          if (!ot_util_variant_map (object_path, ostree_metadata_variant_type (objtype),
-                                    TRUE, &ret_variant, error))
+          GMappedFile *mfile;
+
+          mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+          if (!mfile)
             goto out;
+          fd = -1; /* Transfer ownership */
+          ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
+                                                 g_mapped_file_get_contents (mfile),
+                                                 g_mapped_file_get_length (mfile),
+                                                 TRUE,
+                                                 (GDestroyNotify) g_mapped_file_unref,
+                                                 mfile);
+          g_variant_ref_sink (ret_variant);
+
           if (out_size)
             *out_size = g_variant_get_size (ret_variant);
         }
       else if (out_stream)
         {
-          ret_stream = gs_file_read_noatime (object_path, cancellable, error);
+          ret_stream = g_unix_input_stream_new (fd, TRUE);
           if (!ret_stream)
             goto out;
+          fd = -1; /* Transfer ownership */
           if (out_size)
             {
               struct stat stbuf;
@@ -830,6 +862,8 @@ load_metadata_internal (OstreeRepo       *self,
   ot_transfer_out_value (out_variant, &ret_variant);
   ot_transfer_out_value (out_stream, &ret_stream);
  out:
+  if (fd != -1)
+    (void) close (fd);
   return ret;
 }
 
