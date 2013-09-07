@@ -370,11 +370,12 @@ gboolean       ostree_repo_checkout_gc (OstreeRepo        *self,
                                         GCancellable      *cancellable,
                                         GError           **error);
 
-gboolean       ostree_repo_read_commit (OstreeRepo *self,
-                                        const char *rev,
-                                        GFile       **out_root,
-                                        GCancellable *cancellable,
-                                        GError  **error);
+gboolean       ostree_repo_read_commit (OstreeRepo    *self,
+                                        const char    *ref,
+                                        GFile        **out_root,
+                                        char         **out_commit,
+                                        GCancellable  *cancellable,
+                                        GError        **error);
 
 /**
  * OstreeRepoListObjectsFlags:

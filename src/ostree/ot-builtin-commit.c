@@ -393,7 +393,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
             }
           else if (strcmp (tree_type, "ref") == 0)
             {
-              if (!ostree_repo_read_commit (repo, tree, &arg, cancellable, error))
+              if (!ostree_repo_read_commit (repo, tree, &arg, NULL, cancellable, error))
                 goto out;
 
               if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
@@ -440,7 +440,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
     {
       gs_unref_object GFile *parent_root;
 
-      if (!ostree_repo_read_commit (repo, parent, &parent_root, cancellable, error))
+      if (!ostree_repo_read_commit (repo, parent, &parent_root, NULL, cancellable, error))
         goto out;
 
       if (g_file_equal (root, parent_root))

@@ -60,7 +60,7 @@ process_one_checkout (OstreeRepo           *repo,
   gs_unref_object GFile *subtree = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
 
-  if (!ostree_repo_read_commit (repo, resolved_commit, &root, cancellable, error))
+  if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
     goto out;
 
   if (subpath)

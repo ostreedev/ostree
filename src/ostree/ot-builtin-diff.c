@@ -53,7 +53,7 @@ parse_file_or_commit (OstreeRepo  *repo,
     }
   else
     {
-      if (!ostree_repo_read_commit (repo, arg, &ret_file, cancellable, error))
+      if (!ostree_repo_read_commit (repo, arg, &ret_file, NULL, cancellable, error))
         goto out;
     }
 

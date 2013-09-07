@@ -1398,28 +1398,30 @@ ostree_repo_list_objects (OstreeRepo                  *self,
 /**
  * ostree_repo_read_commit:
  * @self: Repo
- * @rev: Revision (ref or ASCII checksum)
+ * @ref: Ref or ASCII checksum
  * @out_root: (out): An #OstreeRepoFile corresponding to the root
+ * @out_commit: (out): The resolved commit checksum
  * @cancellable: Cancellable
  * @error: Error
  *
  * Load the content for @rev into @out_root.
  */
 gboolean
-ostree_repo_read_commit (OstreeRepo *self,
-                         const char *rev,
+ostree_repo_read_commit (OstreeRepo   *self,
+                         const char   *ref,
                          GFile       **out_root,
+                         char        **out_commit,
                          GCancellable *cancellable,
                          GError **error)
 {
   gboolean ret = FALSE;
   gs_unref_object OstreeRepoFile *ret_root = NULL;
-  gs_free char *resolved_rev = NULL;
+  gs_free char *resolved_commit = NULL;
 
-  if (!ostree_repo_resolve_rev (self, rev, FALSE, &resolved_rev, error))
+  if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved_commit, error))
     goto out;
 
-  ret_root = _ostree_repo_file_new_for_commit (self, resolved_rev, error);
+  ret_root = _ostree_repo_file_new_for_commit (self, resolved_commit, error);
   if (!ret_root)
     goto out;
 
@@ -1428,6 +1430,7 @@ ostree_repo_read_commit (OstreeRepo *self,
 
   ret = TRUE;
   ot_transfer_out_value(out_root, (GFile **) &ret_root);
+  ot_transfer_out_value(out_commit, &resolved_commit);
  out:
   return ret;
 }

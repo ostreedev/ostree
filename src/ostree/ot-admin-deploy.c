@@ -216,7 +216,7 @@ checkout_deployment_tree (GFile             *sysroot,
   gs_unref_object GFile *deploy_target_path = NULL;
   gs_unref_object GFile *deploy_parent = NULL;
 
-  if (!ostree_repo_read_commit (repo, csum, &root, cancellable, error))
+  if (!ostree_repo_read_commit (repo, csum, &root, NULL, cancellable, error))
     goto out;
 
   file_info = g_file_query_info (root, OSTREE_GIO_FAST_QUERYINFO,
@@ -1115,7 +1115,7 @@ ot_admin_deploy (GFile             *sysroot,
       goto out;
     }
 
-  if (!ostree_repo_read_commit (repo, revision, &commit_root, cancellable, error))
+  if (!ostree_repo_read_commit (repo, revision, &commit_root, NULL, cancellable, error))
     goto out;
 
   if (!get_kernel_from_tree (commit_root, &tree_kernel_path, &tree_initramfs_path,

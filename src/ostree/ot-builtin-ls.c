@@ -260,7 +260,7 @@ ostree_builtin_ls (int argc, char **argv, OstreeRepo *repo, GCancellable *cancel
     }
   rev = argv[1];
 
-  if (!ostree_repo_read_commit (repo, rev, &root, cancellable, error))
+  if (!ostree_repo_read_commit (repo, rev, &root, NULL, cancellable, error))
     goto out;
 
   if (argc > 2)

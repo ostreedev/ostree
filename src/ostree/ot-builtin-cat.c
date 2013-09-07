@@ -78,7 +78,7 @@ ostree_builtin_cat (int argc, char **argv, OstreeRepo *repo, GCancellable *cance
     }
   rev = argv[1];
 
-  if (!ostree_repo_read_commit (repo, rev, &root, NULL, error))
+  if (!ostree_repo_read_commit (repo, rev, &root, NULL, NULL, error))
     goto out;
 
   stdout_stream = g_unix_output_stream_new (1, FALSE);
