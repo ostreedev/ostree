@@ -1192,7 +1192,7 @@ create_empty_gvariant_dict (void)
  * @self: Repo
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
  * @subject: Subject
- * @body: Body
+ * @body: (allow-none): Body
  * @root_contents_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_TREE
  * @root_metadata_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_META
  * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
