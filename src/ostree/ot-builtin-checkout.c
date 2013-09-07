@@ -56,20 +56,19 @@ process_one_checkout (OstreeRepo           *repo,
 {
   gboolean ret = FALSE;
   GError *tmp_error = NULL;
-  gs_unref_object OstreeRepoFile *root = NULL;
-  gs_unref_object OstreeRepoFile *subtree = NULL;
+  gs_unref_object GFile *root = NULL;
+  gs_unref_object GFile *subtree = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
 
-  root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, resolved_commit);
-  if (!ostree_repo_file_ensure_resolved (root, error))
+  if (!ostree_repo_read_commit (repo, resolved_commit, &root, cancellable, error))
     goto out;
-  
+
   if (subpath)
-    subtree = (OstreeRepoFile*)g_file_resolve_relative_path ((GFile*)root, subpath);
+    subtree = g_file_resolve_relative_path (root, subpath);
   else
     subtree = g_object_ref (root);
 
-  file_info = g_file_query_info ((GFile*)subtree, OSTREE_GIO_FAST_QUERYINFO,
+  file_info = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, &tmp_error);
   if (!file_info)
@@ -89,7 +88,7 @@ process_one_checkout (OstreeRepo           *repo,
 
   if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
                                   opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
-                                  target, subtree, file_info, cancellable, error))
+                                  target, OSTREE_REPO_FILE (subtree), file_info, cancellable, error))
     goto out;
                       
   ret = TRUE;

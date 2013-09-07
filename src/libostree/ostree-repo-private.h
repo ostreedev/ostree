@@ -111,5 +111,10 @@ _ostree_repo_update_refs (OstreeRepo        *self,
                           GCancellable      *cancellable,
                           GError           **error);
 
+OstreeRepoFile *
+_ostree_repo_file_new_for_commit (OstreeRepo  *repo,
+                                  const char  *commit,
+                                  GError     **error);
+
 G_END_DECLS
 

@@ -209,18 +209,17 @@ checkout_deployment_tree (GFile             *sysroot,
 {
   gboolean ret = FALSE;
   const char *csum = ot_deployment_get_csum (deployment);
-  gs_unref_object OstreeRepoFile *root = NULL;
+  gs_unref_object GFile *root = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
   gs_free char *checkout_target_name = NULL;
   gs_unref_object GFile *osdeploy_path = NULL;
   gs_unref_object GFile *deploy_target_path = NULL;
   gs_unref_object GFile *deploy_parent = NULL;
 
-  root = (OstreeRepoFile*)ostree_repo_file_new_root (repo, csum);
-  if (!ostree_repo_file_ensure_resolved (root, error))
+  if (!ostree_repo_read_commit (repo, csum, &root, cancellable, error))
     goto out;
 
-  file_info = g_file_query_info ((GFile*)root, OSTREE_GIO_FAST_QUERYINFO,
+  file_info = g_file_query_info (root, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                  cancellable, error);
   if (!file_info)
@@ -239,7 +238,7 @@ checkout_deployment_tree (GFile             *sysroot,
   g_print ("ostadmin: Creating deployment %s\n",
            gs_file_get_path_cached (deploy_target_path));
 
-  if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, root,
+  if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, OSTREE_REPO_FILE (root),
                                   file_info, cancellable, error))
     goto out;
 

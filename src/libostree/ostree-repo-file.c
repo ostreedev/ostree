@@ -33,10 +33,6 @@ struct OstreeRepoFile
   GObject parent_instance;
 
   OstreeRepo *repo;
-
-  char *commit;
-  GError *commit_resolve_error;
-  
   OstreeRepoFile *parent;
   int index;
   char *name;
@@ -65,8 +61,6 @@ ostree_repo_file_finalize (GObject *object)
   g_free (self->cached_file_checksum);
   g_free (self->tree_contents_checksum);
   g_free (self->tree_metadata_checksum);
-  g_free (self->commit);
-  g_clear_error (&self->commit_resolve_error);
   g_free (self->name);
 
   G_OBJECT_CLASS (ostree_repo_file_parent_class)->finalize (object);
@@ -110,40 +104,30 @@ set_error_noent (GFile *self, GError **error)
   return FALSE;
 }
 
-/**
- * ostree_repo_file_new_root:
- * @repo: Containing repo
- * @commit: SHA256 checksum
- *
- * Returns: (transfer full): A new #OstreeRepoFile corresponding to commit contents
- */
-GFile * 
-ostree_repo_file_new_root (OstreeRepo  *repo,
-                            const char  *commit)
+static OstreeRepoFile *
+ostree_repo_file_new_root (OstreeRepo *repo,
+                           const char *contents_checksum,
+                           const char *metadata_checksum)
 {
   OstreeRepoFile *self;
 
   g_return_val_if_fail (repo != NULL, NULL);
-  g_return_val_if_fail (commit != NULL, NULL);
-  g_return_val_if_fail (strlen (commit) == 64, NULL);
+  g_return_val_if_fail (contents_checksum != NULL, NULL);
+  g_return_val_if_fail (strlen (contents_checksum) == 64, NULL);
+  g_return_val_if_fail (metadata_checksum != NULL, NULL);
+  g_return_val_if_fail (strlen (metadata_checksum) == 64, NULL);
 
   self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
   self->repo = g_object_ref (repo);
-  self->commit = g_strdup (commit);
+  self->tree_contents_checksum = g_strdup (contents_checksum);
+  self->tree_metadata_checksum = g_strdup (metadata_checksum);
 
-  return G_FILE (self);
+  return self;
 }
 
-/**
- * ostree_repo_file_new_child:
- * @parent:
- * @name: Name for new child
- *
- * Returns: (transfer full): A new child file with the given name
- */
-GFile *
+static OstreeRepoFile *
 ostree_repo_file_new_child (OstreeRepoFile *parent,
-                             const char  *name)
+                            const char     *name)
 {
   OstreeRepoFile *self;
   size_t len;
@@ -156,51 +140,66 @@ ostree_repo_file_new_child (OstreeRepoFile *parent,
   if (self->name[len-1] == '/')
     self->name[len-1] = '\0';
 
-  return G_FILE (self);
+  return self;
 }
 
-static gboolean
-do_resolve_commit (OstreeRepoFile  *self,
-                   GError         **error)
+OstreeRepoFile *
+_ostree_repo_file_new_for_commit (OstreeRepo  *repo,
+                                  const char  *commit,
+                                  GError     **error)
 {
-  gboolean ret = FALSE;
-  gs_unref_variant GVariant *commit = NULL;
-  gs_unref_variant GVariant *root_contents = NULL;
-  gs_unref_variant GVariant *root_metadata = NULL;
+  OstreeRepoFile *ret = NULL;
+  gs_unref_variant GVariant *commit_v = NULL;
   gs_unref_variant GVariant *tree_contents_csum_v = NULL;
   gs_unref_variant GVariant *tree_metadata_csum_v = NULL;
-  char tmp_checksum[65];
+  char tree_contents_csum[65];
+  char tree_metadata_csum[65];
 
-  g_assert (self->parent == NULL);
+  g_return_val_if_fail (repo != NULL, NULL);
+  g_return_val_if_fail (commit != NULL, NULL);
+  g_return_val_if_fail (strlen (commit) == 64, NULL);
 
-  if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 self->commit, &commit, error))
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit, &commit_v, error))
     goto out;
 
   /* PARSE OSTREE_OBJECT_TYPE_COMMIT */
-  g_variant_get_child (commit, 6, "@ay", &tree_contents_csum_v);
+  g_variant_get_child (commit_v, 6, "@ay", &tree_contents_csum_v);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_contents_csum_v),
+                                      tree_contents_csum);
 
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_contents_csum_v), tmp_checksum);
+  g_variant_get_child (commit_v, 7, "@ay", &tree_metadata_csum_v);
+  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v),
+                                      tree_metadata_csum);
+
+  ret = ostree_repo_file_new_root (repo, tree_contents_csum, tree_metadata_csum);
+
+ out:
+  return ret;
+}
+
+static gboolean
+do_resolve (OstreeRepoFile  *self,
+            GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *root_contents = NULL;
+  gs_unref_variant GVariant *root_metadata = NULL;
+
+  g_assert (self->parent == NULL);
 
   if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
-                                 tmp_checksum,
-                                 &root_contents, error))
+                                 self->tree_contents_checksum, &root_contents, error))
     goto out;
 
-  g_variant_get_child (commit, 7, "@ay", &tree_metadata_csum_v);
-  ostree_checksum_inplace_from_bytes (g_variant_get_data (tree_metadata_csum_v), tmp_checksum);
-
   if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
-                                 tmp_checksum,
-                                 &root_metadata, error))
+                                 self->tree_metadata_checksum, &root_metadata, error))
     goto out;
   
   self->tree_metadata = root_metadata;
   root_metadata = NULL;
   self->tree_contents = root_contents;
   root_contents = NULL;
-  self->tree_contents_checksum = ostree_checksum_from_bytes_v (tree_contents_csum_v);
-  self->tree_metadata_checksum = ostree_checksum_from_bytes_v (tree_metadata_csum_v);
 
   ret = TRUE;
  out:
@@ -217,12 +216,15 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   gs_unref_variant GVariant *container = NULL;
   gs_unref_variant GVariant *tree_contents = NULL;
   gs_unref_variant GVariant *tree_metadata = NULL;
-  gs_unref_variant GVariant *content_csum_v = NULL;
+  gs_unref_variant GVariant *contents_csum_v = NULL;
   gs_unref_variant GVariant *metadata_csum_v = NULL;
   gs_free char *tmp_checksum = NULL;
 
+  if (!ostree_repo_file_ensure_resolved (self->parent, error))
+    goto out;
+
   i = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
-  
+
   if (i < 0)
     {
       set_error_noent ((GFile*)self, error);
@@ -239,15 +241,15 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       g_clear_pointer (&files_variant, (GDestroyNotify) g_variant_unref);
 
       g_variant_get_child (container, i, "(&s@ay@ay)",
-                           &name, &content_csum_v, &metadata_csum_v);
+                           &name, &contents_csum_v, &metadata_csum_v);
 
       g_free (tmp_checksum);
-      tmp_checksum = ostree_checksum_from_bytes_v (content_csum_v);
+      tmp_checksum = ostree_checksum_from_bytes_v (contents_csum_v);
       if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_TREE,
                                      tmp_checksum, &tree_contents,
                                      error))
         goto out;
-          
+
       g_free (tmp_checksum);
       tmp_checksum = ostree_checksum_from_bytes_v (metadata_csum_v);
       if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
@@ -259,7 +261,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
       tree_contents = NULL;
       self->tree_metadata = tree_metadata;
       tree_metadata = NULL;
-      self->tree_contents_checksum = ostree_checksum_from_bytes_v (content_csum_v);
+      self->tree_contents_checksum = ostree_checksum_from_bytes_v (contents_csum_v);
       self->tree_metadata_checksum = ostree_checksum_from_bytes_v (metadata_csum_v);
     }
   else
@@ -274,36 +276,26 @@ gboolean
 ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                    GError         **error)
 {
-  if (self->commit_resolve_error != NULL)
-    goto out;
+  gboolean ret = FALSE;
 
   if (self->parent == NULL)
     {
       if (self->tree_contents == NULL)
-        (void)do_resolve_commit (self, &(self->commit_resolve_error));
-    }
-  else if (self->index == -1)
-    {
-      if (!ostree_repo_file_ensure_resolved (self->parent, error))
-        goto out;
-      (void)do_resolve_nonroot (self, &(self->commit_resolve_error));
-    }
-  
- out:
-  if (self->commit_resolve_error)
-    {
-      if (error)
-	*error = g_error_copy (self->commit_resolve_error);
-      return FALSE;
+        if (!do_resolve (self, error))
+          goto out;
     }
   else
-    return TRUE;
-}
+    {
+      if (self->index == -1)
+        {
+          if (!do_resolve_nonroot (self, error))
+            goto out;
+        }
+    }
 
-const char *
-ostree_repo_file_get_commit (OstreeRepoFile  *self)
-{
-  return ostree_repo_file_get_root (self)->commit;
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 gboolean
@@ -507,7 +499,10 @@ ostree_repo_file_get_uri (GFile *file)
   path = gs_file_get_path_cached (file);
   uri_path = g_filename_to_uri (path, NULL, NULL);
   g_assert (g_str_has_prefix (uri_path, "file://"));
-  ret = g_strconcat ("ostree://", self->commit, uri_path+strlen("file://"), NULL);
+  ret = g_strconcat ("ostree://",
+                     self->tree_contents_checksum, "/", self->tree_metadata_checksum,
+                     uri_path+strlen("file://"),
+                     NULL);
   g_free (uri_path);
 
   return ret;
@@ -533,9 +528,9 @@ ostree_repo_file_dup (GFile *file)
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
 
   if (self->parent)
-    return ostree_repo_file_new_child (self->parent, self->name);
+    return G_FILE (ostree_repo_file_new_child (self->parent, self->name));
   else
-    return ostree_repo_file_new_root (self->repo, self->commit);
+    return G_FILE (ostree_repo_file_new_root (self->repo, self->tree_contents_checksum, self->tree_metadata_checksum));
 }
 
 static guint
@@ -546,7 +541,7 @@ ostree_repo_file_hash (GFile *file)
   if (self->parent)
     return g_file_hash (self->parent) + g_str_hash (self->name);
   else
-    return g_str_hash (self->commit);
+    return g_str_hash (self->tree_contents_checksum) + g_str_hash (self->tree_metadata_checksum);
 }
 
 static gboolean
@@ -558,12 +553,13 @@ ostree_repo_file_equal (GFile *file1,
 
   if (self1->parent && self2->parent)
     {
-      return g_str_equal (self1->name, self2->name)
-        && g_file_equal ((GFile*)self1->parent, (GFile*)self2->parent);
+      return (g_str_equal (self1->name, self2->name) &&
+              g_file_equal ((GFile*)self1->parent, (GFile*)self2->parent));
     }
   else if (!self1->parent && !self2->parent)
     {
-      return g_str_equal (self1->commit, self2->commit);
+      return (g_str_equal (self1->tree_contents_checksum, self2->tree_contents_checksum) &&
+              g_str_equal (self1->tree_metadata_checksum, self2->tree_metadata_checksum));
     }
   else
     return FALSE;
@@ -654,7 +650,7 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
   else
     filename = g_strdup (relative_path);
 
-  parent = (OstreeRepoFile*)ostree_repo_file_new_child (self, filename);
+  parent = ostree_repo_file_new_child (self, filename);
   g_free (filename);
     
   if (!rest)

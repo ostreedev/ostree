@@ -42,12 +42,6 @@ struct _OstreeRepoFileClass
 
 GType   ostree_repo_file_get_type (void) G_GNUC_CONST;
 
-GFile * ostree_repo_file_new_root (OstreeRepo  *repo,
-                                    const char  *commit);
-
-GFile * ostree_repo_file_new_child (OstreeRepoFile *parent,
-                                     const char  *name);
-
 gboolean ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                             GError         **error);
 
@@ -68,11 +62,10 @@ void ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
 const char *ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self);
 const char *ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self);
 
-gboolean ostree_repo_file_is_tree (OstreeRepoFile  *self);
+GVariant *ostree_repo_file_tree_get_contents (OstreeRepoFile *self);
+GVariant *ostree_repo_file_tree_get_metadata (OstreeRepoFile *self);
 
 const char * ostree_repo_file_get_checksum (OstreeRepoFile  *self);
-
-const char * ostree_repo_file_get_commit (OstreeRepoFile  *self);
 
 int     ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                             const char      *name,
@@ -86,9 +79,6 @@ gboolean ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                              GFileInfo      **out_info,
                                              GCancellable    *cancellable,
                                              GError         **error);
-
-GVariant *ostree_repo_file_tree_get_contents (OstreeRepoFile  *self);
-GVariant *ostree_repo_file_tree_get_metadata (OstreeRepoFile  *self);
 
 G_END_DECLS
 
