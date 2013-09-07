@@ -1358,6 +1358,52 @@ ostree_checksum_bytes_peek (GVariant *bytes)
   return g_variant_get_fixed_array (bytes, &n_elts, 1);
 }
 
+/*
+ * _ostree_loose_path:
+ * @buf: Output buffer, must be _OSTREE_LOOSE_PATH_MAX in size
+ * @checksum: ASCII checksum
+ * @objtype: Object type
+ * @mode: Repository mode
+ *
+ * Overwrite the contents of @buf with relative path for loose
+ * object.
+ */
+void
+_ostree_loose_path (char              *buf,
+                    const char        *checksum,
+                    OstreeObjectType   objtype,
+                    OstreeRepoMode     mode)
+{
+  _ostree_loose_path_with_suffix (buf, checksum, objtype, mode, "");
+}
+
+/*
+ * _ostree_loose_path_with_suffix:
+ * @buf: Output buffer, must be _OSTREE_LOOSE_PATH_MAX in size
+ * @checksum: ASCII checksum
+ * @objtype: Object type
+ * @mode: Repository mode
+ *
+ * Like _ostree_loose_path, but also append a further arbitrary
+ * suffix; useful for finding non-core objects.
+ */
+void
+_ostree_loose_path_with_suffix (char              *buf,
+                                const char        *checksum,
+                                OstreeObjectType   objtype,
+                                OstreeRepoMode     mode,
+                                const char        *suffix)
+{
+  *buf = checksum[0];
+  buf++;
+  *buf = checksum[1];
+  buf++;
+  snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s%s",
+            checksum + 2, ostree_object_type_to_string (objtype),
+            (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE_Z2) ? "z" : "",
+            suffix);
+}
+
 /**
  * ostree_get_relative_object_path:
  * @checksum: ASCII checksum string

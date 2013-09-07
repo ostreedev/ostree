@@ -33,19 +33,6 @@ G_BEGIN_DECLS
 #define OSTREE_IS_REPO(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_REPO))
 
-/**
- * OstreeRepoMode:
- * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
- * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
- *
- * See the documentation of #OstreeRepo for more information about the
- * possible modes.
- */
-typedef enum {
-  OSTREE_REPO_MODE_BARE,
-  OSTREE_REPO_MODE_ARCHIVE_Z2
-} OstreeRepoMode;
-
 gboolean ostree_repo_mode_from_string (const char      *mode,
                                        OstreeRepoMode  *out_mode,
                                        GError         **error);

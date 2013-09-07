@@ -104,6 +104,19 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
 
+/**
+ * OstreeRepoMode:
+ * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
+ * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
+ *
+ * See the documentation of #OstreeRepo for more information about the
+ * possible modes.
+ */
+typedef enum {
+  OSTREE_REPO_MODE_BARE,
+  OSTREE_REPO_MODE_ARCHIVE_Z2
+} OstreeRepoMode;
+
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
 gboolean ostree_validate_checksum_string (const char *sha256,

@@ -88,6 +88,8 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->local_heads_dir);
   g_clear_object (&self->remote_heads_dir);
   g_clear_object (&self->objects_dir);
+  if (self->objects_dir_fd != -1)
+    (void) close (self->objects_dir_fd);
   g_clear_object (&self->uncompressed_objects_dir);
   g_clear_object (&self->remote_cache_dir);
   g_clear_object (&self->config_file);
@@ -192,6 +194,7 @@ ostree_repo_init (OstreeRepo *self)
 {
   g_mutex_init (&self->cache_lock);
   g_mutex_init (&self->txn_stats_lock);
+  self->objects_dir_fd = -1;
 }
 
 /**
@@ -516,6 +519,9 @@ ostree_repo_open (OstreeRepo    *self,
                                             TRUE, &self->enable_uncompressed_cache, error))
     goto out;
 
+  if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
+    goto out;
+
   if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
     goto out;
 
@@ -567,6 +573,7 @@ _ostree_repo_get_file_object_path (OstreeRepo   *self,
 {
   return _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 }
+
 
 static gboolean
 append_object_dirs_from (OstreeRepo          *self,

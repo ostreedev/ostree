@@ -74,6 +74,23 @@ gboolean _ostree_write_variant_with_size (GOutputStream      *output,
                                           GCancellable       *cancellable,
                                           GError            **error);
 
+/* XX + / + checksum-2 + . + extension, but let's just use 256 for a
+ * bit of overkill.
+ */
+#define _OSTREE_LOOSE_PATH_MAX (256)
+
+void
+_ostree_loose_path (char              *buf,
+                    const char        *checksum,
+                    OstreeObjectType   objtype,
+                    OstreeRepoMode     repo_mode);
+
+void
+_ostree_loose_path_with_suffix (char              *buf,
+                                const char        *checksum,
+                                OstreeObjectType   objtype,
+                                OstreeRepoMode     repo_mode,
+                                const char        *suffix);
 
 G_END_DECLS
 
