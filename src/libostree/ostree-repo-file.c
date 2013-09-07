@@ -357,7 +357,7 @@ ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
 }
 
 const char *
-ostree_repo_file_tree_get_content_checksum (OstreeRepoFile  *self)
+ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self)
 {
   return self->tree_contents_checksum;
 }

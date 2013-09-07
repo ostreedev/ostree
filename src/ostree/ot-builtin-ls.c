@@ -92,7 +92,7 @@ print_one_file_text (GFile     *f,
   if (opt_checksum)
     {
       if (type == G_FILE_TYPE_DIRECTORY)
-        g_string_append_printf (buf, "%s ", ostree_repo_file_tree_get_content_checksum ((OstreeRepoFile*)f));
+        g_string_append_printf (buf, "%s ", ostree_repo_file_tree_get_contents_checksum ((OstreeRepoFile*)f));
       g_string_append_printf (buf, "%s ", ostree_repo_file_get_checksum ((OstreeRepoFile*)f));
     }
 

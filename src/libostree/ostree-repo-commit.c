@@ -1551,7 +1551,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
     }
 
   if (repo_dir && repo_dir_was_empty)
-    ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_content_checksum (repo_dir));
+    ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_contents_checksum (repo_dir));
 
   ret = TRUE;
  out:

@@ -231,8 +231,8 @@ ostree_diff_dirs (GFile          *a,
       OstreeRepoFile *a_repof = (OstreeRepoFile*) a;
       OstreeRepoFile *b_repof = (OstreeRepoFile*) b;
       
-      if (strcmp (ostree_repo_file_tree_get_content_checksum (a_repof),
-                  ostree_repo_file_tree_get_content_checksum (b_repof)) == 0)
+      if (strcmp (ostree_repo_file_tree_get_contents_checksum (a_repof),
+                  ostree_repo_file_tree_get_contents_checksum (b_repof)) == 0)
         {
           ret = TRUE;
           goto out;
