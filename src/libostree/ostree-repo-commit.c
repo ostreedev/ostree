@@ -720,6 +720,18 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
   g_hash_table_replace (self->txn_refs, refspec, g_strdup (checksum));
 }
 
+/**
+ * ostree_repo_commit_transaction:
+ * @self: An #OstreeRepo
+ * @out_stats: (allow-none) (out): A set of statisitics of things
+ * that happened during this transaction.
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Complete the transaction. Any refs set with
+ * ostree_repo_transaction_set_ref() or
+ * ostree_repo_transaction_set_refspec() will be written out.
+ */
 gboolean
 ostree_repo_commit_transaction (OstreeRepo                  *self,
                                 OstreeRepoTransactionStats  *out_stats,
