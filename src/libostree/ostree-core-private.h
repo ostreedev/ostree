@@ -74,6 +74,12 @@ gboolean _ostree_write_variant_with_size (GOutputStream      *output,
                                           GCancellable       *cancellable,
                                           GError            **error);
 
+gboolean
+_ostree_set_xattrs_fd (int            fd,
+                       GVariant      *xattrs,
+                       GCancellable  *cancellable,
+                       GError       **error);
+
 /* XX + / + checksum-2 + . + extension, but let's just use 256 for a
  * bit of overkill.
  */

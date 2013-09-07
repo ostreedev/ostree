@@ -36,6 +36,7 @@ struct OstreeRepo {
   GFile *objects_dir;
   int objects_dir_fd;
   GFile *uncompressed_objects_dir;
+  int uncompressed_objects_dir_fd;
   GFile *remote_cache_dir;
   GFile *config_file;
 
@@ -60,9 +61,11 @@ struct OstreeRepo {
   OstreeRepo *parent_repo;
 };
 
-GFile *
-_ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
-                                                 const char       *checksum);
+gboolean
+_ostree_repo_ensure_loose_objdir_at (int             dfd,
+                                     const char     *loose_path,
+                                     GCancellable   *cancellable,
+                                     GError        **error);
 
 GFile *
 _ostree_repo_get_file_object_path (OstreeRepo   *self,

@@ -23,10 +23,80 @@
 #include "config.h"
 
 #include <glib-unix.h>
+#include <attr/xattr.h>
+#include <gio/gfiledescriptorbased.h>
 #include "otutil.h"
 
 #include "ostree-repo-file.h"
+#include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+
+static gboolean
+checkout_object_for_uncompressed_cache (OstreeRepo      *self,
+                                        const char      *loose_path,
+                                        GFileInfo       *src_info,
+                                        GInputStream    *content,
+                                        GCancellable    *cancellable,
+                                        GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *temp_filename = NULL;
+  gs_unref_object GOutputStream *temp_out = NULL;
+  int fd;
+  int res;
+  guint32 file_mode;
+
+  /* Don't make setuid files in uncompressed cache */
+  file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
+  file_mode &= ~(S_ISUID|S_ISGID);
+
+  if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, file_mode,
+                                  &temp_filename, &temp_out,
+                                  cancellable, error))
+    goto out;
+
+  if (g_output_stream_splice (temp_out, content, 0, cancellable, error) < 0)
+    goto out;
+
+  if (!g_output_stream_flush (temp_out, cancellable, error))
+    goto out;
+
+  fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)temp_out);
+
+  do
+    res = fsync (fd);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (G_UNLIKELY (res == -1))
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (!g_output_stream_close (temp_out, cancellable, error))
+    goto out;
+
+  if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
+                                            loose_path,
+                                            cancellable, error))
+    goto out;
+
+  if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
+                            self->uncompressed_objects_dir_fd, loose_path) == -1))
+    {
+      if (errno != EEXIST)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "Storing file '%s': ", temp_filename);
+          goto out;
+        }
+      else
+        (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
 
 /*
  * create_file_from_input:
@@ -323,27 +393,34 @@ checkout_file_from_input (GFile          *file,
 }
 
 static gboolean
-checkout_file_hardlink (OstreeRepo                  *self,
-                        OstreeRepoCheckoutMode    mode,
-                        OstreeRepoCheckoutOverwriteMode    overwrite_mode,
-                        GFile                    *source,
-                        int                       dirfd,
-                        const char               *name,
-                        gboolean                 *out_was_supported,
-                        GCancellable             *cancellable,
-                        GError                  **error)
+checkout_file_hardlink (OstreeRepo                          *self,
+                        OstreeRepoCheckoutMode               mode,
+                        OstreeRepoCheckoutOverwriteMode      overwrite_mode,
+                        const char                          *loose_path,
+                        int                                  destination_dfd,
+                        const char                          *destination_name,
+                        gboolean                             allow_noent,
+                        gboolean                            *out_was_supported,
+                        GCancellable                        *cancellable,
+                        GError                             **error)
 {
   gboolean ret = FALSE;
   gboolean ret_was_supported = FALSE;
+  int srcfd = self->mode == OSTREE_REPO_MODE_BARE ?
+    self->objects_dir_fd : self->uncompressed_objects_dir_fd;
 
  again:
-  if (linkat (-1, gs_file_get_path_cached (source), dirfd, name, 0) != -1)
+  if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) != -1)
     ret_was_supported = TRUE;
   else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
     {
       /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
        * optimization of hardlinking instead of copying.
        */
+      ret_was_supported = FALSE;
+    }
+  else if (allow_noent && errno == ENOENT)
+    {
       ret_was_supported = FALSE;
     }
   else if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
@@ -356,9 +433,8 @@ checkout_file_hardlink (OstreeRepo                  *self,
        *
        * So we can't make this atomic.  
        */
-      (void) unlinkat (dirfd, name, 0);
+      (void) unlinkat (destination_dfd, destination_name, 0);
       goto again;
-      ret_was_supported = TRUE;
     }
   else
     {
@@ -369,72 +445,6 @@ checkout_file_hardlink (OstreeRepo                  *self,
   ret = TRUE;
   if (out_was_supported)
     *out_was_supported = ret_was_supported;
- out:
-  return ret;
-}
-
-static gboolean
-find_loose_for_checkout (OstreeRepo             *self,
-                         const char             *checksum,
-                         GFile                 **out_loose_path,
-                         GCancellable           *cancellable,
-                         GError                **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GFile *path = NULL;
-  struct stat stbuf;
-
-  do
-    {
-      switch (self->mode)
-        {
-        case OSTREE_REPO_MODE_BARE:
-          path = _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
-          break;
-        case OSTREE_REPO_MODE_ARCHIVE_Z2:
-          {
-            if (self->enable_uncompressed_cache)
-              path = _ostree_repo_get_uncompressed_object_cache_path (self, checksum);
-            else
-              path = NULL;
-          }
-          break;
-        }
-
-      if (!path)
-        {
-          self = self->parent_repo;
-          continue;
-        }
-
-      if (lstat (gs_file_get_path_cached (path), &stbuf) < 0)
-        {
-          if (errno != ENOENT)
-            {
-              ot_util_set_error_from_errno (error, errno);
-              goto out;
-            }
-          self = self->parent_repo;
-        }
-      else if (S_ISLNK (stbuf.st_mode))
-        {
-          /* Don't check out symbolic links via hardlink; it's very easy
-           * to hit the maximum number of hardlinks to an inode this way,
-           * especially since right now we have a lot of symbolic links to
-           * busybox.
-           *
-           * fs/ext4/ext4.h:#define EXT4_LINK_MAX		65000
-           */
-          self = self->parent_repo;
-        }
-      else
-        break;
-
-      g_clear_object (&path);
-    } while (self != NULL);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_loose_path, &path);
  out:
   return ret;
 }
@@ -454,61 +464,68 @@ checkout_one_file (OstreeRepo                        *repo,
   gboolean ret = FALSE;
   const char *checksum;
   gboolean is_symlink;
-  gboolean hardlink_supported;
-  gs_unref_object GFile *loose_path = NULL;
+  gboolean did_hardlink = FALSE;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   gs_unref_object GInputStream *input = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
-
-  /* Hack to avoid trying to create device files as a user */
-  if (mode == OSTREE_REPO_CHECKOUT_MODE_USER
-      && g_file_info_get_file_type (source_info) == G_FILE_TYPE_SPECIAL)
-    goto out;
 
   is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
 
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
 
-  /* We can only do hardlinks in these scenarios */
-  if (!is_symlink &&
-      ((repo->mode == OSTREE_REPO_MODE_BARE && mode == OSTREE_REPO_CHECKOUT_MODE_NONE)
-       || (repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && mode == OSTREE_REPO_CHECKOUT_MODE_USER)))
+  /* Try to do a hardlink first, if it's a regular file.  This also
+   * traverses all parent repos.
+   */
+  if (!is_symlink)
     {
-      if (!find_loose_for_checkout (repo, checksum, &loose_path,
-                                    cancellable, error))
-        goto out;
+      OstreeRepo *current_repo = repo;
+
+      while (current_repo)
+        {
+          gboolean is_bare = (current_repo->mode == OSTREE_REPO_MODE_BARE
+                              && mode == OSTREE_REPO_CHECKOUT_MODE_NONE);
+          gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+                                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER);
+
+          /* But only under these conditions */
+          if (is_bare || is_archive_z2_with_cache)
+            {
+              /* Override repo mode; for archive-z2 we're looking in
+                 the cache, which is in "bare" form */
+              _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
+              if (!checkout_file_hardlink (current_repo,
+                                           mode, overwrite_mode, loose_path_buf,
+                                           destination_dfd, destination_name,
+                                           TRUE, &did_hardlink,
+                                           cancellable, error))
+                goto out;
+              if (did_hardlink)
+                break;
+            }
+          current_repo = current_repo->parent_repo;
+        }
     }
-  /* Also, if we're archive-z and we didn't find an object, uncompress it now,
-   * stick it in the cache, and then hardlink to that.
+
+
+  /* Ok, if we're archive-z2 and we didn't find an object, uncompress
+   * it now, stick it in the cache, and then hardlink to that.
    */
   if (!is_symlink
-      && loose_path == NULL
+      && !did_hardlink
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && mode == OSTREE_REPO_CHECKOUT_MODE_USER
       && repo->enable_uncompressed_cache)
     {
-      gs_unref_object GFile *objdir = NULL;
-
-      loose_path = _ostree_repo_get_uncompressed_object_cache_path (repo, checksum);
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
         goto out;
 
-      objdir = g_file_get_parent (loose_path);
-      if (!gs_file_ensure_directory (objdir, TRUE, cancellable, error))
-        {
-          g_prefix_error (error, "Creating cache directory %s: ",
-                          gs_file_get_path_cached (objdir));
-          goto out;
-        }
+      /* Overwrite any parent repo from earlier */
+      _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
 
-      /* Use UNION_FILES to make this last-one-wins thread behavior
-       * for now; we lose deduplication potentially, but oh well
-       */ 
-      if (!checkout_file_from_input (loose_path,
-                                     OSTREE_REPO_CHECKOUT_MODE_USER,
-                                     OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES,
-                                     source_info, xattrs, 
-                                     input, cancellable, error))
+      if (!checkout_object_for_uncompressed_cache (repo, loose_path_buf,
+                                                   source_info, input,
+                                                   cancellable, error))
         {
           g_prefix_error (error, "Unpacking loose object %s: ", checksum);
           goto out;
@@ -538,24 +555,16 @@ checkout_one_file (OstreeRepo                        *repo,
         g_hash_table_insert (repo->updated_uncompressed_dirs, key, key);
       }
       g_mutex_unlock (&repo->cache_lock);
-    }
 
-  if (loose_path)
-    {
-      /* If we found one, try hardlinking */
-      if (!checkout_file_hardlink (repo, mode,
-                                   overwrite_mode, loose_path,
+      if (!checkout_file_hardlink (repo, mode, overwrite_mode, loose_path_buf,
                                    destination_dfd, destination_name,
-                                   &hardlink_supported, cancellable, error))
-        {
-          g_prefix_error (error, "Hardlinking loose object %s to %s: ", checksum,
-                          gs_file_get_path_cached (destination));
-          goto out;
-        }
+                                   FALSE, &did_hardlink,
+                                   cancellable, error))
+        goto out;
     }
 
-  /* Fall back to copy if there's no loose object, or we couldn't hardlink */
-  if (loose_path == NULL || !hardlink_supported)
+  /* Fall back to copy if we couldn't hardlink */
+  if (!did_hardlink)
     {
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
@@ -708,8 +717,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
       gs_free char *objdir_name = NULL;
 
       objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
-      objdir = ot_gfile_get_child_build_path (self->uncompressed_objects_dir, "objects",
-                                              objdir_name, NULL);
+      objdir = g_file_get_child (self->uncompressed_objects_dir, objdir_name);
 
       enumerator = g_file_enumerate_children (objdir, "standard::name,standard::type,unix::inode,unix::nlink", 
                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,

@@ -1036,6 +1036,43 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
   return ret_metadata;
 }
 
+gboolean
+_ostree_set_xattrs_fd (int            fd,
+                       GVariant      *xattrs,
+                       GCancellable  *cancellable,
+                       GError       **error)
+{
+  gboolean ret = FALSE;
+  int i, n;
+
+  n = g_variant_n_children (xattrs);
+  for (i = 0; i < n; i++)
+    {
+      const guint8* name;
+      gs_unref_variant GVariant *value = NULL;
+      const guint8* value_data;
+      gsize value_len;
+      int res;
+
+      g_variant_get_child (xattrs, i, "(^&ay@ay)",
+                           &name, &value);
+      value_data = g_variant_get_fixed_array (value, &value_len, 1);
+      
+      do
+        res = fsetxattr (fd, (char*)name, (char*)value_data, value_len, 0);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 /**
  * ostree_set_xattrs:
  * @f: a file

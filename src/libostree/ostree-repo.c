@@ -92,6 +92,8 @@ ostree_repo_finalize (GObject *object)
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
   g_clear_object (&self->uncompressed_objects_dir);
+  if (self->uncompressed_objects_dir_fd != -1)
+    (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->remote_cache_dir);
   g_clear_object (&self->config_file);
 
@@ -164,7 +166,7 @@ ostree_repo_constructed (GObject *object)
   self->remote_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/remotes");
 
   self->objects_dir = g_file_get_child (self->repodir, "objects");
-  self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
+  self->uncompressed_objects_dir = g_file_resolve_relative_path (self->repodir, "uncompressed-objects-cache/objects");
   self->remote_cache_dir = g_file_get_child (self->repodir, "remote-cache");
   self->config_file = g_file_get_child (self->repodir, "config");
 
@@ -196,6 +198,7 @@ ostree_repo_init (OstreeRepo *self)
   g_mutex_init (&self->cache_lock);
   g_mutex_init (&self->txn_stats_lock);
   self->objects_dir_fd = -1;
+  self->uncompressed_objects_dir_fd = -1;
 }
 
 /**
@@ -526,6 +529,16 @@ ostree_repo_open (OstreeRepo    *self,
   if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
     goto out;
 
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    {
+      if (!gs_file_ensure_directory (self->uncompressed_objects_dir, TRUE, cancellable, error))
+        goto out;
+      if (!gs_file_open_dir_fd (self->uncompressed_objects_dir,
+                                &self->uncompressed_objects_dir_fd,
+                                cancellable, error))
+        goto out;
+    }
+
   self->inited = TRUE;
 
   ret = TRUE;
@@ -644,8 +657,7 @@ _ostree_repo_get_loose_object_dirs (OstreeRepo       *self,
 
   if (ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
-      gs_unref_object GFile *cachedir = g_file_get_child (self->uncompressed_objects_dir, "objects");
-      if (!append_object_dirs_from (self, cachedir, ret_object_dirs,
+      if (!append_object_dirs_from (self, self->uncompressed_objects_dir, ret_object_dirs,
                                     cancellable, error))
         goto out;
     }

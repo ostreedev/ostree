@@ -32,6 +32,29 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-mutable-tree.h"
 
+gboolean
+_ostree_repo_ensure_loose_objdir_at (int             dfd,
+                                     const char     *loose_path,
+                                     GCancellable   *cancellable,
+                                     GError        **error)
+{
+  char loose_prefix[3];
+
+  loose_prefix[0] = loose_path[0];
+  loose_prefix[1] = loose_path[1];
+  loose_prefix[2] = '\0';
+  if (mkdirat (dfd, loose_prefix, 0777) == -1)
+    {
+      int errsv = errno;
+      if (G_UNLIKELY (errsv != EEXIST))
+        {
+          ot_util_set_error_from_errno (error, errsv);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
 static gboolean
 commit_loose_object_trusted (OstreeRepo        *self,
                              const char        *loose_path,
@@ -40,20 +63,10 @@ commit_loose_object_trusted (OstreeRepo        *self,
                              GError           **error)
 {
   gboolean ret = FALSE;
-  char loose_prefix[3];
 
-  loose_prefix[0] = loose_path[0];
-  loose_prefix[1] = loose_path[1];
-  loose_prefix[2] = '\0';
-  if (G_UNLIKELY (mkdirat (self->objects_dir_fd, loose_prefix, 0777) == -1))
-    {
-      int errsv = errno;
-      if (errsv != EEXIST)
-        {
-          ot_util_set_error_from_errno (error, errsv);
-          goto out;
-        }
-    }
+  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
+                                            cancellable, error))
+    goto out;
 
   if (G_UNLIKELY (renameat (self->tmp_dir_fd, tempfile_name,
                             self->objects_dir_fd, loose_path) == -1))
@@ -995,20 +1008,6 @@ _ostree_repo_get_object_path (OstreeRepo       *self,
                 && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2);
   relpath = ostree_get_relative_object_path (checksum, type, compressed);
   ret = g_file_resolve_relative_path (self->repodir, relpath);
-  g_free (relpath);
-
-  return ret;
-}
-
-GFile *
-_ostree_repo_get_uncompressed_object_cache_path (OstreeRepo       *self,
-                                                 const char       *checksum)
-{
-  char *relpath;
-  GFile *ret;
-
-  relpath = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_FILE, FALSE);
-  ret = g_file_resolve_relative_path (self->uncompressed_objects_dir, relpath);
   g_free (relpath);
 
   return ret;
