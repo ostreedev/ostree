@@ -315,7 +315,6 @@ gboolean      ostree_repo_write_mtree (OstreeRepo         *self,
                                        GError            **error);
 
 gboolean      ostree_repo_write_commit (OstreeRepo   *self,
-                                        const char   *branch,
                                         const char   *parent,
                                         const char   *subject,
                                         const char   *body,

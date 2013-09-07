@@ -1190,7 +1190,6 @@ create_empty_gvariant_dict (void)
 /**
  * ostree_repo_write_commit:
  * @self: Repo
- * @branch: Name of ref
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
  * @subject: Subject
  * @body: Body
@@ -1204,16 +1203,15 @@ create_empty_gvariant_dict (void)
  * and @root_metadata_checksum.
  */
 gboolean
-ostree_repo_write_commit (OstreeRepo *self,
-                          const char   *branch,
-                          const char   *parent,
-                          const char   *subject,
-                          const char   *body,
-                          const char   *root_contents_checksum,
-                          const char   *root_metadata_checksum,
-                          char        **out_commit,
-                          GCancellable *cancellable,
-                          GError      **error)
+ostree_repo_write_commit (OstreeRepo    *self,
+                          const char    *parent,
+                          const char    *subject,
+                          const char    *body,
+                          const char    *root_contents_checksum,
+                          const char    *root_metadata_checksum,
+                          char         **out_commit,
+                          GCancellable  *cancellable,
+                          GError       **error)
 {
   gboolean ret = FALSE;
   gs_free char *ret_commit = NULL;
@@ -1221,7 +1219,6 @@ ostree_repo_write_commit (OstreeRepo *self,
   gs_free guchar *commit_csum = NULL;
   GDateTime *now = NULL;
 
-  g_return_val_if_fail (branch != NULL, FALSE);
   g_return_val_if_fail (subject != NULL, FALSE);
   g_return_val_if_fail (root_contents_checksum != NULL, FALSE);
   g_return_val_if_fail (root_metadata_checksum != NULL, FALSE);

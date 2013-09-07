@@ -404,7 +404,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
           goto out;
         }
 
-      if (!ostree_repo_write_commit (repo, opt_branch, parent, opt_subject, opt_body,
+      if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body,
                                      contents_checksum, root_metadata,
                                      &commit_checksum, cancellable, error))
         goto out;
