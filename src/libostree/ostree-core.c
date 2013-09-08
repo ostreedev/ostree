@@ -1124,6 +1124,62 @@ _ostree_set_xattrs (GFile  *f,
   return ret;
 }
 
+/* Create a randomly-named symbolic link in @tempdir which points to
+ * @target.  The filename will be returned in @out_file.
+ *
+ * The reason this odd function exists is that the repo should only
+ * contain objects in their final state.  For bare repositories, we
+ * need to first create the symlink, then chown it, and apply all
+ * extended attributes, before finally rename()ing it into place.
+ *
+ * Furthermore for checkouts, we use this to implement union mode
+ * where we override existing files via tempfile+rename().
+ */
+gboolean
+_ostree_make_temporary_symlink_at (int             tmp_dirfd,
+                                   const char     *target,
+                                   char          **out_name,
+                                   GCancellable   *cancellable,
+                                   GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *tmpname = NULL;
+  guint i;
+  const int max_attempts = 128;
+
+  for (i = 0; i < max_attempts; i++)
+    {
+      g_free (tmpname);
+      tmpname = gsystem_fileutil_gen_tmp_name (NULL, NULL);
+      if (symlinkat (target, tmp_dirfd, tmpname) < 0)
+        {
+          if (errno == EEXIST)
+            continue;
+          else
+            {
+              int errsv = errno;
+              g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                                   g_strerror (errsv));
+              goto out;
+            }
+        }
+      else
+        break;
+    }
+  if (i == max_attempts)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Exhausted attempts to open temporary file");
+      goto out;
+    }
+
+  ret = TRUE;
+  gs_transfer_out_value (out_name, &tmpname);
+ out:
+  return ret;
+}
+
+
 /**
  * ostree_object_type_to_string:
  * @objtype: an #OstreeObjectType
