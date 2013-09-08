@@ -827,7 +827,8 @@ load_metadata_internal (OstreeRepo       *self,
           mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
           if (!mfile)
             goto out;
-          fd = -1; /* Transfer ownership */
+          (void) close (fd); /* Ignore errors, we have it mapped */
+          fd = -1;
           ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
                                                  g_mapped_file_get_contents (mfile),
                                                  g_mapped_file_get_length (mfile),
