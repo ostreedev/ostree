@@ -85,7 +85,6 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
-  g_clear_object (&self->pending_dir);
   g_clear_object (&self->local_heads_dir);
   g_clear_object (&self->remote_heads_dir);
   g_clear_object (&self->objects_dir);
@@ -161,7 +160,6 @@ ostree_repo_constructed (GObject *object)
   g_assert (self->repodir != NULL);
 
   self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
-  self->pending_dir = g_file_resolve_relative_path (self->repodir, "tmp/pending");
   self->local_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/heads");
   self->remote_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/remotes");
 
@@ -463,9 +461,6 @@ ostree_repo_open (OstreeRepo    *self,
                    gs_file_get_path_cached (self->objects_dir));
       goto out;
     }
-
-  if (!gs_file_ensure_directory (self->pending_dir, FALSE, cancellable, error))
-    goto out;
 
   self->config = g_key_file_new ();
   if (!g_key_file_load_from_file (self->config, gs_file_get_path_cached (self->config_file), 0, error))

@@ -30,7 +30,6 @@ struct OstreeRepo {
   GFile *repodir;
   GFile *tmp_dir;
   int    tmp_dir_fd;
-  GFile *pending_dir;
   GFile *local_heads_dir;
   GFile *remote_heads_dir;
   GFile *objects_dir;
