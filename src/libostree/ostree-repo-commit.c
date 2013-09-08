@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <glib-unix.h>
+#include <gio/gfiledescriptorbased.h>
 #include "otutil.h"
 #include "libgsystem.h"
 
@@ -57,28 +58,111 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
 
 static gboolean
 commit_loose_object_trusted (OstreeRepo        *self,
+                             OstreeObjectType   objtype,
                              const char        *loose_path,
-                             const char        *tempfile_name,
+                             GFile             *temp_file,
+                             const char        *temp_filename,
+                             gboolean           is_symlink,
+                             GFileInfo         *file_info,
+                             GVariant          *xattrs,
+                             GOutputStream     *temp_out,
                              GCancellable      *cancellable,
                              GError           **error)
 {
   gboolean ret = FALSE;
 
+  /* Special handling for symlinks in bare repositories */
+  if (is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
+    {
+      /* Now that we know the checksum is valid, apply uid/gid, mode bits,
+       * and extended attributes.
+       */
+      if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
+                                g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                AT_SYMLINK_NOFOLLOW) == -1))
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+              
+      /* Sadly we can't use at-relative API for symlink xattrs
+       * because there's no lsetxattrat.
+       */
+      if (xattrs != NULL)
+        {
+          if (!ostree_set_xattrs (temp_file, xattrs, cancellable, error))
+            goto out;
+        }
+    }
+  else
+    {
+      int fd;
+      int res;
+
+      g_assert (temp_out != NULL);
+
+      fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)temp_out);
+
+      if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
+        {
+          g_assert (file_info != NULL);
+
+          do
+            res = fchown (fd,
+                          g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                          g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
+          while (G_UNLIKELY (res == -1 && errno == EINTR));
+          if (G_UNLIKELY (res == -1))
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+
+          do
+            res = fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
+          while (G_UNLIKELY (res == -1 && errno == EINTR));
+          if (G_UNLIKELY (res == -1))
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+          
+          if (xattrs)
+            {
+              if (!_ostree_set_xattrs_fd (fd, xattrs, cancellable, error))
+                goto out;
+            }
+        }
+
+      /* Ensure that in case of a power cut, these files have the data we
+       * want.   See http://lwn.net/Articles/322823/
+       */
+      if (fsync (fd) == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+          
+      if (!g_output_stream_close (temp_out, cancellable, error))
+        goto out;
+    }
+  
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
                                             cancellable, error))
     goto out;
-
-  if (G_UNLIKELY (renameat (self->tmp_dir_fd, tempfile_name,
+  
+  if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
                             self->objects_dir_fd, loose_path) == -1))
     {
       if (errno != EEXIST)
         {
           ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "Storing file '%s': ", tempfile_name);
+          g_prefix_error (error, "Storing file '%s': ", temp_filename);
           goto out;
         }
       else
-        (void) unlinkat (self->tmp_dir_fd, tempfile_name, 0);
+        (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
     }
 
   ret = TRUE;
@@ -160,6 +244,7 @@ write_object (OstreeRepo         *self,
   gs_unref_object GInputStream *file_input = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
+  gs_unref_object GOutputStream *temp_out = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
@@ -222,12 +307,11 @@ write_object (OstreeRepo         *self,
        */
       if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_regular)
         {
-          gs_unref_object GOutputStream *temp_out = NULL;
           if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
                                           cancellable, error))
             goto out;
           temp_file = g_file_get_child (self->tmp_dir, temp_filename);
-          if (g_output_stream_splice (temp_out, file_input, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+          if (g_output_stream_splice (temp_out, file_input, 0,
                                       cancellable, error) < 0)
             goto out;
         }
@@ -243,7 +327,6 @@ write_object (OstreeRepo         *self,
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
         {
           gs_unref_variant GVariant *file_meta = NULL;
-          gs_unref_object GOutputStream *temp_out = NULL;
           gs_unref_object GConverter *zlib_compressor = NULL;
           gs_unref_object GOutputStream *compressed_out_stream = NULL;
 
@@ -264,31 +347,35 @@ write_object (OstreeRepo         *self,
             {
               zlib_compressor = (GConverter*)g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9);
               compressed_out_stream = g_converter_output_stream_new (temp_out, zlib_compressor);
+              /* Don't close the base; we'll do that later */
+              g_filter_output_stream_set_close_base_stream ((GFilterOutputStream*)compressed_out_stream, FALSE);
               
-              if (g_output_stream_splice (compressed_out_stream, file_input,
-                                          G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+              if (g_output_stream_splice (compressed_out_stream, file_input, 0,
                                           cancellable, error) < 0)
                 goto out;
-            }
 
-          if (!g_output_stream_close (temp_out, cancellable, error))
-            goto out;
+            }
         }
       else
         g_assert_not_reached ();
     }
   else
     {
-      gs_unref_object GOutputStream *temp_out = NULL;
       if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
                                       cancellable, error))
         goto out;
       temp_file = g_file_get_child (self->tmp_dir, temp_filename);
       if (g_output_stream_splice (temp_out, checksum_input ? (GInputStream*)checksum_input : input,
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                  0,
                                   cancellable, error) < 0)
         goto out;
       temp_file_is_regular = TRUE;
+    }
+
+  if (temp_out)
+    {
+      if (!g_output_stream_flush (temp_out, cancellable, error))
+        goto out;
     }
 
   if (!checksum)
@@ -315,69 +402,13 @@ write_object (OstreeRepo         *self,
 
   if (do_commit)
     {
-      if (objtype == OSTREE_OBJECT_TYPE_FILE && repo_mode == OSTREE_REPO_MODE_BARE)
-        {
-          g_assert (file_info != NULL);
-
-          /* Now that we know the checksum is valid, apply uid/gid, mode bits,
-           * and extended attributes.
-           */
-          if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
-                                    g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
-                                    g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
-                                    AT_SYMLINK_NOFOLLOW) == -1))
-            {
-              ot_util_set_error_from_errno (error, errno);
-              goto out;
-            }
-
-          /* Sadly we can't use at-relative API for xattrs because
-           * there's no lsetxattrat.
-           */
-          if (xattrs != NULL)
-            {
-              if (!ostree_set_xattrs (temp_file, xattrs, cancellable, error))
-                goto out;
-            }
-
-          /* symlinks are always 777, there's no lchmod().  Calling
-           * chmod() on them would apply to their target, which we
-           * definitely don't want.
-           */
-          if (!is_symlink)
-            {
-              int fd;
-              int res;
-
-              if (!gs_file_openat_noatime (self->tmp_dir_fd, temp_filename, &fd,
-                                           cancellable, error))
-                goto out;
-
-              do
-                res = fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
-              while (G_UNLIKELY (res == -1 && errno == EINTR));
-              if (G_UNLIKELY (res == -1))
-                {
-                  (void) close (fd);
-                  ot_util_set_error_from_errno (error, errno);
-                  goto out;
-                }
-
-              /* Ensure that in case of a power cut, these files have the data we
-               * want.   See http://lwn.net/Articles/322823/
-               */
-              if (fsync (fd) == -1)
-                {
-                  (void) close (fd);
-                  ot_util_set_error_from_errno (error, errno);
-                  goto out;
-                }
-              (void) close (fd);
-            }
-        }
-      if (!commit_loose_object_trusted (self, loose_objpath, temp_filename,
+      if (!commit_loose_object_trusted (self, objtype, loose_objpath,
+                                        temp_file, temp_filename,
+                                        is_symlink, file_info,
+                                        xattrs, temp_out,
                                         cancellable, error))
         goto out;
+
       g_clear_pointer (&temp_filename, g_free);
       g_clear_object (&temp_file);
     }
