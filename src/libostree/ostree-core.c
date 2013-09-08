@@ -1073,8 +1073,8 @@ _ostree_set_xattrs_fd (int            fd,
   return ret;
 }
 
-/**
- * ostree_set_xattrs:
+/*
+ * _ostree_set_xattrs:
  * @f: a file
  * @xattrs: Extended attribute list
  * @cancellable: Cancellable
@@ -1085,10 +1085,10 @@ _ostree_set_xattrs_fd (int            fd,
  * attributes.
  */
 gboolean
-ostree_set_xattrs (GFile  *f, 
-                   GVariant *xattrs, 
-                   GCancellable *cancellable, 
-                   GError **error)
+_ostree_set_xattrs (GFile  *f, 
+                    GVariant *xattrs, 
+                    GCancellable *cancellable, 
+                    GError **error)
 {
   const char *path;
   gboolean ret = FALSE;

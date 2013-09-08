@@ -176,9 +176,6 @@ gboolean ostree_get_xattrs_for_file (GFile         *f,
                                      GCancellable  *cancellable,
                                      GError       **error);
 
-gboolean ostree_set_xattrs (GFile *f, GVariant *xattrs,
-                            GCancellable *cancellable, GError **error);
-
 gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,

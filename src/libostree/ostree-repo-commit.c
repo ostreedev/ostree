@@ -91,7 +91,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
        */
       if (xattrs != NULL)
         {
-          if (!ostree_set_xattrs (temp_file, xattrs, cancellable, error))
+          if (!_ostree_set_xattrs (temp_file, xattrs, cancellable, error))
             goto out;
         }
     }

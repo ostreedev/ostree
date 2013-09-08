@@ -217,7 +217,7 @@ create_file_from_input (GFile            *dest_file,
 
   if (xattrs != NULL)
     {
-      if (!ostree_set_xattrs (dest_file, xattrs, cancellable, error))
+      if (!_ostree_set_xattrs (dest_file, xattrs, cancellable, error))
         goto out;
     }
 
