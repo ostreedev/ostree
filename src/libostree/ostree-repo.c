@@ -576,14 +576,6 @@ ostree_repo_get_parent (OstreeRepo  *self)
   return self->parent_repo;
 }
 
-GFile *
-_ostree_repo_get_file_object_path (OstreeRepo   *self,
-                                   const char   *checksum)
-{
-  return _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
-}
-
-
 static gboolean
 append_object_dirs_from (OstreeRepo          *self,
                          GFile               *dir,
@@ -885,6 +877,76 @@ load_metadata_internal (OstreeRepo       *self,
   return ret;
 }
 
+static gboolean
+query_info_for_bare_content_object (OstreeRepo      *self,
+                                    const char      *loose_path_buf,
+                                    GFileInfo      **out_info,
+                                    GCancellable    *cancellable,
+                                    GError         **error)
+{
+  gboolean ret = FALSE;
+  struct stat stbuf;
+  int res;
+  gs_unref_object GFileInfo *ret_info = NULL;
+
+  do
+    res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (res == -1)
+    {
+      if (errno == ENOENT)
+        {
+          *out_info = NULL;
+          ret = TRUE;
+          goto out;
+        }
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret_info = g_file_info_new ();
+
+  if (S_ISREG (stbuf.st_mode))
+    {
+      g_file_info_set_file_type (ret_info, G_FILE_TYPE_REGULAR);
+      g_file_info_set_size (ret_info, stbuf.st_size);
+    }
+  else if (S_ISLNK (stbuf.st_mode))
+    {
+      char targetbuf[PATH_MAX+1];
+      ssize_t len;
+
+      g_file_info_set_file_type (ret_info, G_FILE_TYPE_SYMBOLIC_LINK);
+      
+      do
+        len = readlinkat (self->objects_dir_fd, loose_path_buf, targetbuf, sizeof (targetbuf) - 1);
+      while (G_UNLIKELY (len == -1 && errno == EINTR));
+      if (len == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      targetbuf[len] = '\0';
+      g_file_info_set_symlink_target (ret_info, targetbuf);
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Not a regular file or symlink: %s", loose_path_buf);
+      goto out;
+    }
+
+  g_file_info_set_attribute_boolean (ret_info, "standard::is-symlink", S_ISLNK (stbuf.st_mode));
+  g_file_info_set_attribute_uint32 (ret_info, "unix::uid", stbuf.st_uid);
+  g_file_info_set_attribute_uint32 (ret_info, "unix::gid", stbuf.st_gid);
+  g_file_info_set_attribute_uint32 (ret_info, "unix::mode", stbuf.st_mode);
+
+  ret = TRUE;
+  gs_transfer_out_value (out_info, &ret_info);
+ out:
+  return ret;
+}
+
 /**
  * ostree_repo_load_file:
  * @self: Repo
@@ -949,33 +1011,34 @@ ostree_repo_load_file (OstreeRepo         *self,
     }
   else
     {
-      gs_unref_object GFile *loose_path = NULL;
+      char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
-      loose_path = _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+      _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
 
-      if (!ot_gfile_query_info_allow_noent (loose_path, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            &ret_file_info,
-                                            cancellable, error))
+      if (!query_info_for_bare_content_object (self, loose_path_buf,
+                                               &ret_file_info,
+                                               cancellable, error))
         goto out;
 
       if (ret_file_info)
         {
           if (out_xattrs)
             {
-              if (!ostree_get_xattrs_for_file (loose_path, &ret_xattrs,
+              gs_unref_object GFile *full_path =
+                    _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+
+              if (!ostree_get_xattrs_for_file (full_path, &ret_xattrs,
                                                cancellable, error))
                 goto out;
             }
 
           if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
             {
-              ret_input = (GInputStream*) gs_file_read_noatime (loose_path, cancellable, error);
-              if (!ret_input)
-                {
-                  g_prefix_error (error, "Error opening loose file object %s: ", gs_file_get_path_cached (loose_path));
-                  goto out;
-                }
+              int fd = -1;
+              if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                                           cancellable, error))
+                goto out;
+              ret_input = g_unix_input_stream_new (fd, TRUE);
             }
           
           found = TRUE;

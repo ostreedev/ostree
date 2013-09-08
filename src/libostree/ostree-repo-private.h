@@ -66,10 +66,6 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      GCancellable   *cancellable,
                                      GError        **error);
 
-GFile *
-_ostree_repo_get_file_object_path (OstreeRepo   *self,
-                                   const char   *checksum);
-
 gboolean
 _ostree_repo_find_object (OstreeRepo           *self,
                           OstreeObjectType      objtype,
