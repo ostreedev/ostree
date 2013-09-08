@@ -1466,27 +1466,34 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GError                     **error)
 {
   gboolean ret = FALSE;
-  gboolean repo_dir_was_empty = FALSE;
   OstreeRepoCommitFilterResult filter_result;
-  gs_unref_object OstreeRepoFile *repo_dir = NULL;
+  OstreeRepoFile *repo_dir = NULL;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFileInfo *child_info = NULL;
 
   g_debug ("Examining: %s", gs_file_get_path_cached (dir));
 
-  /* We can only reuse checksums directly if there's no modifier */
+  /* If the directory is already in the repository, we can try to
+   * reuse checksums to skip checksumming. */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
-    repo_dir = (OstreeRepoFile*)g_object_ref (dir);
+    repo_dir = (OstreeRepoFile *) dir;
 
   if (repo_dir)
     {
       if (!ostree_repo_file_ensure_resolved (repo_dir, error))
         goto out;
 
-      ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_get_checksum (repo_dir));
-      repo_dir_was_empty =
-        g_hash_table_size (ostree_mutable_tree_get_files (mtree)) == 0
-        && g_hash_table_size (ostree_mutable_tree_get_subdirs (mtree)) == 0;
+      ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_tree_get_metadata_checksum (repo_dir));
+
+      /* If the mtree was empty beforehand, the checksums on the mtree can simply
+       * become the checksums on the tree in the repo. Super simple. */
+      if (g_hash_table_size (ostree_mutable_tree_get_files (mtree)) == 0 &&
+          g_hash_table_size (ostree_mutable_tree_get_subdirs (mtree)) == 0)
+        {
+          ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_contents_checksum (repo_dir));
+          ret = TRUE;
+          goto out;
+        }
 
       filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
     }
@@ -1631,9 +1638,6 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
             }
         }
     }
-
-  if (repo_dir && repo_dir_was_empty)
-    ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_contents_checksum (repo_dir));
 
   ret = TRUE;
  out:
