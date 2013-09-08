@@ -369,17 +369,6 @@ ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self)
 }
 
 /**
- * ostree_repo_file_nontree_get_local:
- *
- * Returns: (transfer full): The real loose #GFile backing this object
- */
-GFile *
-ostree_repo_file_nontree_get_local (OstreeRepoFile  *self)
-{
-  return _ostree_repo_get_file_object_path (self->repo, ostree_repo_file_get_checksum (self));
-}
-
-/**
  * ostree_repo_file_get_repo:
  * @self:
  *
