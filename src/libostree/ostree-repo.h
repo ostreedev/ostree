@@ -318,11 +318,24 @@ gboolean      ostree_repo_write_commit (OstreeRepo   *self,
                                         const char   *parent,
                                         const char   *subject,
                                         const char   *body,
+                                        GVariant     *metadata,
                                         const char   *root_contents_checksum,
                                         const char   *root_metadata_checksum,
                                         char        **out_commit,
                                         GCancellable *cancellable,
                                         GError      **error);
+
+gboolean      ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
+                                                         const char      *checksum,
+                                                         GVariant       **out_metadata,
+                                                         GCancellable    *cancellable,
+                                                         GError         **error);
+
+gboolean      ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
+                                                          const char      *checksum,
+                                                          GVariant        *metadata,
+                                                          GCancellable    *cancellable,
+                                                          GError         **error);
 
 /**
  * OstreeRepoCheckoutMode:

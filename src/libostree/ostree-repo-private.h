@@ -74,6 +74,10 @@ _ostree_repo_find_object (OstreeRepo           *self,
                           GCancellable         *cancellable,
                           GError             **error);
 
+GFile *
+_ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
+                                             const char        *checksum);
+
 gboolean
 _ostree_repo_has_loose_object (OstreeRepo           *self,
                                const char           *checksum,

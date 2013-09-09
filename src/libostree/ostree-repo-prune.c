@@ -64,6 +64,13 @@ maybe_prune_loose_object (OtPruneData        *data,
 
           if (info)
             {
+              if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+                {
+                  gs_unref_object GFile *detached_metadata =
+                    _ostree_repo_get_commit_metadata_loose_path (data->repo, checksum);
+                  if (!ot_gfile_ensure_unlinked (detached_metadata, cancellable, error))
+                    goto out;
+                }
               if (!gs_file_unlink (objf, cancellable, error))
                 goto out;
               data->freed_bytes += g_file_info_get_size (info);

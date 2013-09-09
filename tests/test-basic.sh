@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..40"
+echo "1..41"
 
 . $(dirname $0)/libtest.sh
 
@@ -282,3 +282,12 @@ $OSTREE checkout test2 checkout-test2
 touch checkout-test2/sometestfile
 $OSTREE commit -s sometest -b test2 checkout-test2
 echo "ok commit with directory filename"
+
+$OSTREE commit -b test2 -s "Metadata string" --add-metadata-string=FOO=BAR --add-metadata-string=KITTENS=CUTE --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=test2
+$OSTREE show --print-metadata-key=FOO test2 > test2-meta
+assert_file_has_content test2-meta "BAR"
+$OSTREE show --print-metadata-key=KITTENS test2 > test2-meta
+assert_file_has_content test2-meta "CUTE"
+$OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
+assert_file_has_content test2-meta "HANCOCK"
+echo "ok metadata commit with strings"

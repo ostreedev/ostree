@@ -1171,6 +1171,7 @@ create_empty_gvariant_dict (void)
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
  * @subject: Subject
  * @body: (allow-none): Body
+ * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
  * @root_contents_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_TREE
  * @root_metadata_checksum: ASCII SHA256 checksum for %OSTREE_OBJECT_TYPE_DIR_META
  * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
@@ -1185,6 +1186,7 @@ ostree_repo_write_commit (OstreeRepo    *self,
                           const char    *parent,
                           const char    *subject,
                           const char    *body,
+                          GVariant      *metadata,
                           const char    *root_contents_checksum,
                           const char    *root_metadata_checksum,
                           char         **out_commit,
@@ -1203,7 +1205,7 @@ ostree_repo_write_commit (OstreeRepo    *self,
 
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",
-                          create_empty_gvariant_dict (),
+                          metadata ? metadata : create_empty_gvariant_dict (),
                           parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
                           g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0),
                           subject, body ? body : "",
@@ -1223,6 +1225,94 @@ ostree_repo_write_commit (OstreeRepo    *self,
  out:
   if (now)
     g_date_time_unref (now);
+  return ret;
+}
+
+GFile *
+_ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
+                                             const char        *checksum)
+{
+  gs_free char *commit_path = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_COMMIT, FALSE);
+  return ot_gfile_resolve_path_printf (self->repodir, "%smeta", commit_path);
+}
+
+/**
+ * ostree_repo_read_commit_detached_metadata:
+ * @self: Repo
+ * @checksum: ASCII SHA256 commit checksum
+ * @out_metadata: (out) (transfer full): Metadata associated with commit in with format "a{sv}", or %NULL if none exists
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * OSTree commits can have arbitrary metadata associated; this
+ * function retrieves them.  If none exists, @out_metadata will be set
+ * to %NULL.
+ */
+gboolean
+ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
+                                           const char      *checksum,
+                                           GVariant       **out_metadata,
+                                           GCancellable    *cancellable,
+                                           GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *metadata_path =
+    _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+  gs_unref_variant GVariant *ret_metadata = NULL;
+  GError *temp_error = NULL;
+  
+  if (!ot_util_variant_map (metadata_path, G_VARIANT_TYPE ("a{sv}"),
+                            TRUE, &ret_metadata, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_metadata, &ret_metadata);
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_write_commit_detached_metadata:
+ * @self: Repo
+ * @checksum: ASCII SHA256 commit checksum
+ * @metadata: (allow-none): Metadata to associate with commit in with format "a{sv}", or %NULL to delete
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Replace any existing metadata associated with commit referred to by
+ * @checksum with @metadata.  If @metadata is %NULL, then existing
+ * data will be deleted.
+ */
+gboolean
+ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
+                                            const char      *checksum,
+                                            GVariant        *metadata,
+                                            GCancellable    *cancellable,
+                                            GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *metadata_path =
+    _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+
+  if (!g_file_replace_contents (metadata_path,
+                                g_variant_get_data (metadata),
+                                g_variant_get_size (metadata),
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
   return ret;
 }
 
