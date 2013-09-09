@@ -1148,7 +1148,7 @@ ostree_repo_pull (OstreeRepo               *self,
   guint64 end_time;
 
   pull_data->async_error = error;
-  pull_data->main_context = g_main_context_get_thread_default ();
+  pull_data->main_context = g_main_context_ref_thread_default ();
   pull_data->loop = g_main_loop_new (pull_data->main_context, FALSE);
   pull_data->flags = flags;
 
