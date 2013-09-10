@@ -345,6 +345,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
     }
   else
     {
+      g_prefix_error (error, "Hardlinking %s to %s: ", loose_path, destination_name);
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
@@ -466,7 +467,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                    destination_dfd, destination_name,
                                    FALSE, &did_hardlink,
                                    cancellable, error))
-        goto out;
+        {
+          g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name);
+          goto out;
+        }
     }
 
   /* Fall back to copy if we couldn't hardlink */
@@ -481,8 +485,11 @@ checkout_one_file_at (OstreeRepo                        *repo,
           if (!checkout_file_unioning_from_input_at (mode, source_info, xattrs, input,
                                                      destination_dfd, destination_parent,
                                                      destination_name,
-                                                     cancellable, error))
-            goto out;
+                                                     cancellable, error)) 
+            {
+              g_prefix_error (error, "Union checkout of %s to %s: ", checksum, destination_name);
+              goto out;
+            }
         }
       else
         {
@@ -490,7 +497,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                             destination_dfd, destination_parent,
                                             destination_name,
                                             cancellable, error))
-            goto out;
+            {
+              g_prefix_error (error, "Checkout of %s to %s: ", checksum, destination_name);
+              goto out;
+            }
         }
     }
 
