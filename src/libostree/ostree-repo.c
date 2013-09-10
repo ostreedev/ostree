@@ -1415,21 +1415,21 @@ ostree_repo_read_commit (OstreeRepo   *self,
                          GError **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object OstreeRepoFile *ret_root = NULL;
+  gs_unref_object GFile *ret_root = NULL;
   gs_free char *resolved_commit = NULL;
 
   if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved_commit, error))
     goto out;
 
-  ret_root = _ostree_repo_file_new_for_commit (self, resolved_commit, error);
+  ret_root = (GFile*) _ostree_repo_file_new_for_commit (self, resolved_commit, error);
   if (!ret_root)
     goto out;
 
-  if (!ostree_repo_file_ensure_resolved (ret_root, error))
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)ret_root, error))
     goto out;
 
   ret = TRUE;
-  ot_transfer_out_value(out_root, (GFile **) &ret_root);
+  ot_transfer_out_value(out_root, &ret_root);
   ot_transfer_out_value(out_commit, &resolved_commit);
  out:
   return ret;
