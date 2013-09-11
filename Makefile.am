@@ -60,7 +60,7 @@ gir_DATA =
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA =
 
-EXTRA_DIST += autogen.sh COPYING.GPL COPYING.LGPL README.md
+EXTRA_DIST += autogen.sh COPYING README.md
 
 if BUILD_EMBEDDED_DEPENDENCIES
 OT_INTERNAL_GIO_UNIX_CFLAGS = \
