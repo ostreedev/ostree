@@ -1,16 +1,8 @@
 * Documentation
   - More gtk-doc
 
-* Rethink commit objects
-  - Drop the a{sv} per https://bugzilla.gnome.org/show_bug.cgi?id=673012
-  - Do we need freeform subject/body?  Or should it just be a generic
-    key-value store?
-  - Optional non-object metadata; e.g., "detached" GPG signatures which
-    are in the same file (to avoid double HTTP requests)
-  - Extended validation; SHA512+SHA256 checksum of all metadata along
-    with content object metadata (file size in particular) wouldn't take
-    too much extra time per commit, and would greatly strengthen resistance
-    to active hash collision attacks.
+* Local metadata packs
+  - Just to avoid lots of little files on each client
 
 * Hybrid SSL pull (fetch refs over SSL, content via plain HTTP)
 
@@ -27,6 +19,11 @@
 * Efficient delta format between commit objects, somewhat like
   Chromium autoupdate: set of operations to perform given previous
   object set to create new objects.
+
+* Flexible "prune" that allows keeping only a rolling subset of history.
+  For example, keep the last week, keep at least 1 build a week up
+  till a year ago, then 1 build a month, etc.  Optionally rewrite commit
+  parent history?
 
 * Tests of corrupted repositories, more error conditions
 
