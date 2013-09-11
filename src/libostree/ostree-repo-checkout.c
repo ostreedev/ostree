@@ -503,8 +503,11 @@ checkout_one_file_at (OstreeRepo                        *repo,
             }
         }
 
-      if (!g_input_stream_close (input, cancellable, error))
-        goto out;
+      if (input)
+        {
+          if (!g_input_stream_close (input, cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
