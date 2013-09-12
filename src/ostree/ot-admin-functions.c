@@ -748,7 +748,7 @@ ot_admin_list_deployments (GFile               *sysroot,
   gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
   gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
   guint i;
-  int bootversion;
+  int bootversion = -1;
 
   if (!read_current_bootversion (sysroot, &bootversion, cancellable, error))
     goto out;
