@@ -370,7 +370,7 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   if (!fetch_data.result_stream)
     goto out;
 
-  buf = (GMemoryOutputStream*)g_memory_output_stream_new_resizable ();
+  buf = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
   if (g_output_stream_splice ((GOutputStream*)buf, fetch_data.result_stream,
                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                               cancellable, error) < 0)
