@@ -24,6 +24,11 @@
 
 G_BEGIN_DECLS
 
+/**
+ * OstreeRepo:
+ *
+ * Private instance structure.
+ */
 struct OstreeRepo {
   GObject parent;
 

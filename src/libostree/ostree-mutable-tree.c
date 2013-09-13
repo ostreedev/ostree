@@ -27,6 +27,23 @@
 #include "ostree-core.h"
 #include "libgsystem.h"
 
+/**
+ * SECTION:libostree-mutable-tree
+ * @title: In-memory modifiable filesystem tree
+ * @short_description: Modifiable filesystem tree
+ *
+ * In order to commit content into an #OstreeRepo, it must first be
+ * imported into an #OstreeMutableTree.  There are several high level
+ * APIs to create an initiable #OstreeMutableTree from a physical
+ * filesystem directory, but they may also be computed
+ * programmatically.
+ */
+
+/**
+ * OstreeMutableTree:
+ *
+ * Private instance structure.
+ */
 struct OstreeMutableTree
 {
   GObject parent_instance;

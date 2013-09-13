@@ -21,6 +21,7 @@
 		<title>API Reference</title>
 		<xi:include href="xml/libostree-core.xml"/>
 		<xi:include href="xml/libostree-repo.xml"/>
+		<xi:include href="xml/libostree-mutable-tree.xml"/>
 
 		<index id="api-index-full">
 			<title>API Index</title>
