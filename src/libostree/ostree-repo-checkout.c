@@ -423,7 +423,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       && mode == OSTREE_REPO_CHECKOUT_MODE_USER
       && repo->enable_uncompressed_cache)
     {
-      if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
+      if (!ostree_repo_load_file (repo, checksum, &input, NULL, NULL,
                                   cancellable, error))
         goto out;
 
@@ -437,6 +437,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
           g_prefix_error (error, "Unpacking loose object %s: ", checksum);
           goto out;
         }
+      
+      g_clear_object (&input);
 
       /* Store the 2-byte objdir prefix (e.g. e3) in a set.  The basic
        * idea here is that if we had to unpack an object, it's very
