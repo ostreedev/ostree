@@ -34,7 +34,7 @@
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error);
+  gboolean (*fn) (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
@@ -56,7 +56,8 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
   const char *opt_sysroot = "/";
   const char *subcommand_name = NULL;
   OstreeAdminCommand *subcommand;
-  gs_unref_object GFile *sysroot = NULL;
+  gs_unref_object GFile *sysroot_path = NULL;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean want_help = FALSE;
   int in, out, i;
   gboolean skip;
@@ -170,7 +171,8 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
       goto out;
     }
 
-  sysroot = g_file_new_for_path (opt_sysroot);
+  sysroot_path = g_file_new_for_path (opt_sysroot);
+  sysroot = ostree_sysroot_new (sysroot_path);
   if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
     goto out;
  

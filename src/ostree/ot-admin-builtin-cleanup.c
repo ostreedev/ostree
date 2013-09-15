@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_cleanup (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_cleanup (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -46,7 +46,7 @@ ot_admin_builtin_cleanup (int argc, char **argv, GFile *sysroot, GCancellable *c
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_cleanup (sysroot, cancellable, error))
+  if (!ot_admin_cleanup (ostree_sysroot_get_path (sysroot), cancellable, error))
     goto out;
 
   ret = TRUE;

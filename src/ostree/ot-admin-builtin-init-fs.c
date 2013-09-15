@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_init_fs (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;

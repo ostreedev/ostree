@@ -47,7 +47,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *refspec;
@@ -77,10 +77,10 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *sysroot, GCancellable *ca
 
   refspec = argv[1];
 
-  if (!ot_admin_get_repo (sysroot, &repo, cancellable, error))
+  if (!ot_admin_get_repo (ostree_sysroot_get_path (sysroot), &repo, cancellable, error))
     goto out;
 
-  if (!ot_admin_list_deployments (sysroot, &current_bootversion, &current_deployments,
+  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion, &current_deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
@@ -90,7 +90,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *sysroot, GCancellable *ca
   /* Find the currently booted deployment, if any; we will ensure it
    * is present in the new deployment list.
    */
-  if (!ot_admin_require_deployment_or_osname (sysroot, current_deployments,
+  if (!ot_admin_require_deployment_or_osname (ostree_sysroot_get_path (sysroot), current_deployments,
                                               opt_osname,
                                               &booted_deployment,
                                               cancellable, error))
@@ -114,7 +114,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GFile *sysroot, GCancellable *ca
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
     goto out;
 
-  if (!ot_admin_deploy (sysroot, current_bootversion, current_deployments,
+  if (!ot_admin_deploy (ostree_sysroot_get_path (sysroot), current_bootversion, current_deployments,
                         opt_osname, revision, origin,
                         opt_kernel_argv, opt_retain,
                         booted_deployment, NULL,

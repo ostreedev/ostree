@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_os_init (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_os_init (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -48,7 +48,7 @@ ot_admin_builtin_os_init (int argc, char **argv, GFile *sysroot, GCancellable *c
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (sysroot, cancellable, error))
+  if (!ot_admin_ensure_initialized (ostree_sysroot_get_path (sysroot), cancellable, error))
     goto out;
 
   if (argc < 2)
@@ -59,7 +59,7 @@ ot_admin_builtin_os_init (int argc, char **argv, GFile *sysroot, GCancellable *c
 
   osname = argv[1];
 
-  deploy_dir = ot_gfile_get_child_build_path (sysroot, "ostree", "deploy", osname, NULL);
+  deploy_dir = ot_gfile_get_child_build_path (ostree_sysroot_get_path (sysroot), "ostree", "deploy", osname, NULL);
 
   /* Ensure core subdirectories of /var exist, since we need them for
    * dracut generation, and the host will want them too.  Note that at

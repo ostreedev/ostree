@@ -37,7 +37,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -59,16 +59,16 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *sysroot, GCancellable *canc
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
+  repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
 
-  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
+  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &bootversion, &deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  if (!ot_admin_require_deployment_or_osname (sysroot, deployments,
+  if (!ot_admin_require_deployment_or_osname (ostree_sysroot_get_path (sysroot), deployments,
                                               opt_osname, &deployment,
                                               cancellable, error))
     goto out;
@@ -83,7 +83,7 @@ ot_admin_builtin_diff (int argc, char **argv, GFile *sysroot, GCancellable *canc
       goto out;
     }
 
-  deployment_dir = ot_admin_get_deployment_directory (sysroot, deployment);
+  deployment_dir = ot_admin_get_deployment_directory (ostree_sysroot_get_path (sysroot), deployment);
 
   orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
   new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");

@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
@@ -61,14 +61,14 @@ ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *
   deploy_index_str = argv[1];
   deploy_index = atoi (deploy_index_str);
 
-  if (!ot_admin_list_deployments (sysroot, &current_bootversion, &current_deployments,
+  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion, &current_deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  if (!ot_admin_find_booted_deployment (sysroot, current_deployments, &booted_deployment,
+  if (!ot_admin_find_booted_deployment (ostree_sysroot_get_path (sysroot), current_deployments, &booted_deployment,
                                         cancellable, error))
     goto out;
 
@@ -95,7 +95,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *
   
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
-  if (!ot_admin_write_deployments (sysroot, current_bootversion,
+  if (!ot_admin_write_deployments (ostree_sysroot_get_path (sysroot), current_bootversion,
                                    current_bootversion ? 0 : 1, current_deployments,
                                    cancellable, error))
     goto out;
@@ -103,7 +103,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GFile *sysroot, GCancellable *
   g_print ("Deleted deployment %s.%d\n", ot_deployment_get_csum (target_deployment),
            ot_deployment_get_deployserial (target_deployment));
   
-  if (!ot_admin_cleanup (sysroot, cancellable, error))
+  if (!ot_admin_cleanup (ostree_sysroot_get_path (sysroot), cancellable, error))
     {
       g_prefix_error (error, "Performing final cleanup: ");
       goto out;

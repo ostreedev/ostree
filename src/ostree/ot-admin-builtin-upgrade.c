@@ -43,7 +43,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
@@ -70,7 +70,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_list_deployments (sysroot, &current_bootversion,
+  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion,
                                   &current_deployments,
                                   cancellable, error))
     {
@@ -78,7 +78,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
       goto out;
     }
 
-  if (!ot_admin_require_deployment_or_osname (sysroot, current_deployments,
+  if (!ot_admin_require_deployment_or_osname (ostree_sysroot_get_path (sysroot), current_deployments,
                                               opt_osname,
                                               &booted_deployment,
                                               cancellable, error))
@@ -88,10 +88,10 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
   merge_deployment = ot_admin_get_merge_deployment (current_deployments, opt_osname,
                                                     booted_deployment);
 
-  deployment_path = ot_admin_get_deployment_directory (sysroot, merge_deployment);
+  deployment_path = ot_admin_get_deployment_directory (ostree_sysroot_get_path (sysroot), merge_deployment);
   deployment_origin_path = ot_admin_get_deployment_origin_path (deployment_path);
 
-  repo_path = g_file_resolve_relative_path (sysroot, "ostree/repo");
+  repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
   repo = ostree_repo_new (repo_path);
   if (!ostree_repo_open (repo, cancellable, error))
     goto out;
@@ -135,7 +135,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
   else
     {
       gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
-      if (!ot_admin_deploy (sysroot,
+      if (!ot_admin_deploy (ostree_sysroot_get_path (sysroot),
                             current_bootversion, current_deployments,
                             opt_osname, new_revision, origin,
                             NULL, FALSE,
@@ -144,7 +144,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GFile *sysroot, GCancellable *c
                             cancellable, error))
         goto out;
 
-      if (opt_reboot && g_file_equal (sysroot, real_sysroot))
+      if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
         {
           gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
                                          cancellable, error,

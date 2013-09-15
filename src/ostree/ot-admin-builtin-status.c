@@ -34,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_status (int argc, char **argv, GFile *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -50,14 +50,14 @@ ot_admin_builtin_status (int argc, char **argv, GFile *sysroot, GCancellable *ca
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
+  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &bootversion, &deployments,
                                   cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
     }
 
-  if (!ot_admin_find_booted_deployment (sysroot, deployments,
+  if (!ot_admin_find_booted_deployment (ostree_sysroot_get_path (sysroot), deployments,
                                         &booted_deployment,
                                         cancellable, error))
     goto out;
@@ -70,7 +70,7 @@ ot_admin_builtin_status (int argc, char **argv, GFile *sysroot, GCancellable *ca
     {
       int subbootversion;
 
-      if (!ot_admin_read_current_subbootversion (sysroot, bootversion,
+      if (!ot_admin_read_current_subbootversion (ostree_sysroot_get_path (sysroot), bootversion,
                                                  &subbootversion,
                                                  cancellable, error))
         goto out;

@@ -27,6 +27,7 @@
 G_BEGIN_DECLS
 
 typedef struct OstreeRepo OstreeRepo;
+typedef struct OstreeSysroot OstreeSysroot;
 typedef struct OstreeMutableTree OstreeMutableTree;
 typedef struct OstreeRepoFile OstreeRepoFile;
 
