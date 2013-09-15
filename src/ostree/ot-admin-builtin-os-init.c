@@ -48,7 +48,7 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_ensure_initialized (ostree_sysroot_get_path (sysroot), cancellable, error))
+  if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)

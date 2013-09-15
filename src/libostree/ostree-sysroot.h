@@ -38,5 +38,9 @@ OstreeSysroot* ostree_sysroot_new_default (void);
 
 GFile *ostree_sysroot_get_path (OstreeSysroot *self);
 
+gboolean ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
+                                            GCancellable   *cancellable,
+                                            GError        **error);
+
 G_END_DECLS
 

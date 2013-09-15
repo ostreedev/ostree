@@ -40,6 +40,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gboolean ret = FALSE;
   gs_unref_object GFile *dir = NULL;
   gs_unref_object GFile *child = NULL;
+  gs_unref_object OstreeSysroot *target_sysroot = NULL;
   guint i;
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
 
@@ -56,6 +57,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancel
     }
 
   dir = g_file_new_for_path (argv[1]);
+  target_sysroot = ostree_sysroot_new (dir);
 
   for (i = 0; i < G_N_ELEMENTS(normal_toplevels); i++)
     {
@@ -75,7 +77,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancel
     goto out;
   g_clear_object (&child);
 
-  if (!ot_admin_ensure_initialized (dir, cancellable, error))
+  if (!ostree_sysroot_ensure_initialized (target_sysroot, cancellable, error))
     goto out;
 
   ret = TRUE;

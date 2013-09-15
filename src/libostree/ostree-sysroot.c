@@ -174,3 +174,52 @@ ostree_sysroot_get_path (OstreeSysroot  *self)
 {
   return self->path;
 }
+
+/**
+ * ostree_sysroot_ensure_initialized:
+ * @self:
+ *
+ * Ensure that @self is set up as a valid rootfs, by creating
+ * /ostree/repo, among other things.
+ */
+gboolean
+ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
+                                   GCancellable   *cancellable,
+                                   GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *dir = NULL;
+  gs_unref_object GFile *ostree_dir = NULL;
+
+  ostree_dir = g_file_get_child (self->path, "ostree");
+
+  g_clear_object (&dir);
+  dir = g_file_get_child (ostree_dir, "repo");
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
+    goto out;
+
+  g_clear_object (&dir);
+  dir = g_file_get_child (ostree_dir, "deploy");
+  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
+    goto out;
+
+  g_clear_object (&dir);
+  dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
+  if (!g_file_query_exists (dir, NULL))
+    {
+      gs_free char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
+                                                      gs_file_get_path_cached (ostree_dir));
+
+      if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
+                                          cancellable, error,
+                                          "ostree", opt_repo_arg, "init", NULL))
+        {
+          g_prefix_error (error, "Failed to initialize repository: ");
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
