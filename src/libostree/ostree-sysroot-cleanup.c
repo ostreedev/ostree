@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2012 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2013 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,16 +16,14 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- *
- * Author: Colin Walters <walters@verbum.org>
  */
 
 #include "config.h"
 
-#include "ot-admin-functions.h"
 #include "otutil.h"
-#include "ostree.h"
 #include "libgsystem.h"
+
+#include "ostree-sysroot-private.h"
 
 static gboolean
 list_deployment_dirs_for_os (GFile               *osdir,
@@ -78,7 +76,7 @@ list_deployment_dirs_for_os (GFile               *osdir,
       if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
         continue;
 
-      if (!ot_admin_parse_deploy_path_name (name, &csum, &deployserial, error))
+      if (!_ostree_sysroot_parse_deploy_path_name (name, &csum, &deployserial, error))
         goto out;
       
       deployment = ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1);
@@ -92,7 +90,7 @@ list_deployment_dirs_for_os (GFile               *osdir,
 }
 
 static gboolean
-list_all_deployment_directories (GFile               *sysroot,
+list_all_deployment_directories (OstreeSysroot       *self,
                                  GPtrArray          **out_deployments,
                                  GCancellable        *cancellable,
                                  GError             **error)
@@ -103,7 +101,7 @@ list_all_deployment_directories (GFile               *sysroot,
   gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
   GError *temp_error = NULL;
 
-  deploydir = g_file_resolve_relative_path (sysroot, "ostree/deploy");
+  deploydir = g_file_resolve_relative_path (self->path, "ostree/deploy");
 
   ret_deployments = g_ptr_array_new_with_free_func (g_object_unref);
 
@@ -178,7 +176,7 @@ parse_bootdir_name (const char *name,
 }
 
 static gboolean
-list_all_boot_directories (GFile               *sysroot,
+list_all_boot_directories (OstreeSysroot       *self,
                            GPtrArray          **out_bootdirs,
                            GCancellable        *cancellable,
                            GError             **error)
@@ -189,7 +187,7 @@ list_all_boot_directories (GFile               *sysroot,
   gs_unref_ptrarray GPtrArray *ret_bootdirs = NULL;
   GError *temp_error = NULL;
 
-  boot_ostree = g_file_resolve_relative_path (sysroot, "boot/ostree");
+  boot_ostree = g_file_resolve_relative_path (self->path, "boot/ostree");
 
   ret_bootdirs = g_ptr_array_new_with_free_func (g_object_unref);
 
@@ -243,7 +241,7 @@ list_all_boot_directories (GFile               *sysroot,
 }
 
 static gboolean
-cleanup_other_bootversions (GFile               *sysroot,
+cleanup_other_bootversions (OstreeSysroot       *self,
                             int                  bootversion,
                             int                  subbootversion,
                             GCancellable        *cancellable,
@@ -257,27 +255,27 @@ cleanup_other_bootversions (GFile               *sysroot,
   cleanup_bootversion = bootversion == 0 ? 1 : 0;
   cleanup_subbootversion = subbootversion == 0 ? 1 : 0;
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "boot/loader.%d", cleanup_bootversion);
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d", cleanup_bootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
   g_clear_object (&cleanup_boot_dir);
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d", cleanup_bootversion);
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d", cleanup_bootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
   g_clear_object (&cleanup_boot_dir);
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.0", cleanup_bootversion);
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.0", cleanup_bootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
   g_clear_object (&cleanup_boot_dir);
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.1", cleanup_bootversion);
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.1", cleanup_bootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
   g_clear_object (&cleanup_boot_dir);
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (sysroot, "ostree/boot.%d.%d", bootversion,
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.%d", bootversion,
                                                    cleanup_subbootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
@@ -289,7 +287,7 @@ cleanup_other_bootversions (GFile               *sysroot,
 }
 
 static gboolean
-cleanup_old_deployments (GFile               *sysroot,
+cleanup_old_deployments (OstreeSysroot       *self,
                          GPtrArray           *deployments,
                          GCancellable        *cancellable,
                          GError             **error)
@@ -304,8 +302,8 @@ cleanup_old_deployments (GFile               *sysroot,
   gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
   gs_unref_ptrarray GPtrArray *all_boot_dirs = NULL;
 
-  if (!ot_admin_util_get_devino (active_root, &root_device, &root_inode,
-                                 cancellable, error))
+  if (!_ostree_sysroot_get_devino (active_root, &root_device, &root_inode,
+                                   cancellable, error))
     goto out;
 
   active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, NULL, g_object_unref);
@@ -314,29 +312,29 @@ cleanup_old_deployments (GFile               *sysroot,
   for (i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
+      GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
       char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_insert (active_deployment_dirs, deployment_path, deployment_path);
       g_hash_table_insert (active_boot_checksums, bootcsum, bootcsum);
     }
 
-  if (!list_all_deployment_directories (sysroot, &all_deployment_dirs,
+  if (!list_all_deployment_directories (self, &all_deployment_dirs,
                                         cancellable, error))
     goto out;
   
   for (i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
-      gs_unref_object GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
-      gs_unref_object GFile *origin_path = ot_admin_get_deployment_origin_path (deployment_path);
+      gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
+      gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
       if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
         {
           guint32 device;
           guint64 inode;
 
-          if (!ot_admin_util_get_devino (deployment_path, &device, &inode,
-                                         cancellable, error))
+          if (!_ostree_sysroot_get_devino (deployment_path, &device, &inode,
+                                           cancellable, error))
             goto out;
 
           /* This shouldn't happen, because higher levels should
@@ -353,7 +351,7 @@ cleanup_old_deployments (GFile               *sysroot,
         }
     }
 
-  if (!list_all_boot_directories (sysroot, &all_boot_dirs,
+  if (!list_all_boot_directories (self, &all_boot_dirs,
                                   cancellable, error))
     goto out;
   
@@ -419,7 +417,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
 }
 
 static gboolean
-generate_deployment_refs_and_prune (GFile               *sysroot,
+generate_deployment_refs_and_prune (OstreeSysroot       *self,
                                     OstreeRepo          *repo,
                                     int                  bootversion,
                                     int                  subbootversion,
@@ -481,10 +479,19 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
   return ret;
 }
   
+/**
+ * ostree_sysroot_cleanup:
+ * @self: Sysroot
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Delete any state that resulted from a partially completed
+ * transaction, such as incomplete deployments.
+ */
 gboolean
-ot_admin_cleanup (GFile               *sysroot,
-                  GCancellable        *cancellable,
-                  GError             **error)
+ostree_sysroot_cleanup (OstreeSysroot       *self,
+                        GCancellable        *cancellable,
+                        GError             **error)
 {
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
@@ -492,28 +499,28 @@ ot_admin_cleanup (GFile               *sysroot,
   int bootversion;
   int subbootversion;
 
-  if (!ot_admin_list_deployments (sysroot, &bootversion, &deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (self, &bootversion, &deployments,
+                                        cancellable, error))
     goto out;
 
-  if (!ot_admin_read_current_subbootversion (sysroot, bootversion, &subbootversion,
-                                             cancellable, error))
+  if (!ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
+                                                   cancellable, error))
     goto out;
 
-  if (!cleanup_other_bootversions (sysroot, bootversion, subbootversion,
+  if (!cleanup_other_bootversions (self, bootversion, subbootversion,
                                    cancellable, error))
     goto out;
 
-  if (!cleanup_old_deployments (sysroot, deployments,
+  if (!cleanup_old_deployments (self, deployments,
                                 cancellable, error))
     goto out;
 
   if (deployments->len > 0)
     {
-      if (!ot_admin_get_repo (sysroot, &repo, cancellable, error))
+      if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
         goto out;
 
-      if (!generate_deployment_refs_and_prune (sysroot, repo, bootversion,
+      if (!generate_deployment_refs_and_prune (self, repo, bootversion,
                                                subbootversion, deployments,
                                                cancellable, error))
         goto out;

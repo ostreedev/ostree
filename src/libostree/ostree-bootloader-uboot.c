@@ -24,43 +24,43 @@
 
 #include "config.h"
 
-#include "ot-bootloader-uboot.h"
+#include "ostree-sysroot-private.h"
+#include "ostree-bootloader-uboot.h"
 #include "otutil.h"
-#include "ot-admin-functions.h"
 #include "libgsystem.h"
 
 #include <string.h>
 
-struct _OtBootloaderUboot
+struct _OstreeBootloaderUboot
 {
   GObject       parent_instance;
 
-  GFile        *sysroot;
-  GFile        *config_path;
+  OstreeSysroot  *sysroot;
+  GFile          *config_path;
 };
 
-typedef GObjectClass OtBootloaderUbootClass;
+typedef GObjectClass OstreeBootloaderUbootClass;
 
-static void ot_bootloader_uboot_bootloader_iface_init (OtBootloaderInterface *iface);
-G_DEFINE_TYPE_WITH_CODE (OtBootloaderUboot, ot_bootloader_uboot, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OT_TYPE_BOOTLOADER, ot_bootloader_uboot_bootloader_iface_init));
+static void ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface);
+G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderUboot, ostree_bootloader_uboot, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, ostree_bootloader_uboot_bootloader_iface_init));
 
 static gboolean
-ot_bootloader_uboot_query (OtBootloader *bootloader)
+ostree_bootloader_uboot_query (OstreeBootloader *bootloader)
 {
-  OtBootloaderUboot *self = OT_BOOTLOADER_UBOOT (bootloader);
+  OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
   return g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
 }
 
 static const char *
-ot_bootloader_uboot_get_name (OtBootloader *bootloader)
+ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
 {
   return "U-Boot";
 }
 
 static gboolean
-create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
+create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                                         int                    bootversion,
                                         GPtrArray             *new_lines,
                                         GCancellable          *cancellable,
@@ -70,8 +70,8 @@ create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
   OstreeBootconfigParser *config;
   const char *val;
 
-  if (!ot_admin_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
-                                          cancellable, error))
+  if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
+                                                 cancellable, error))
     return FALSE;
 
   /* U-Boot doesn't support a menu so just pick the first one since the list is ordered */
@@ -98,12 +98,12 @@ create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
 }
 
 static gboolean
-ot_bootloader_uboot_write_config (OtBootloader          *bootloader,
+ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
                                   int                    bootversion,
                                   GCancellable          *cancellable,
                                   GError               **error)
 {
-  OtBootloaderUboot *self = OT_BOOTLOADER_UBOOT (bootloader);
+  OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
   gs_unref_object GFile *new_config_path = NULL;
   gs_free char *config_contents = NULL;
   gs_free char *new_config_contents = NULL;
@@ -114,8 +114,8 @@ ot_bootloader_uboot_write_config (OtBootloader          *bootloader,
   if (!config_contents)
     return FALSE;
 
-  new_config_path = ot_gfile_resolve_path_printf (self->sysroot, "boot/loader.%d/uEnv.txt",
-                                                  bootversion);
+  new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.%d/uEnv.txt",
+                                                      bootversion);
 
   new_lines = g_ptr_array_new_with_free_func (g_free);
 
@@ -123,7 +123,7 @@ ot_bootloader_uboot_write_config (OtBootloader          *bootloader,
                                                cancellable, error))
     return FALSE;
 
-  new_config_contents = ot_admin_join_lines (new_lines);
+  new_config_contents = _ostree_sysroot_join_lines (new_lines);
 
   if (strcmp (new_config_contents, config_contents) != 0)
     {
@@ -139,42 +139,42 @@ ot_bootloader_uboot_write_config (OtBootloader          *bootloader,
 }
 
 static void
-ot_bootloader_uboot_finalize (GObject *object)
+ostree_bootloader_uboot_finalize (GObject *object)
 {
-  OtBootloaderUboot *self = OT_BOOTLOADER_UBOOT (object);
+  OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (object);
 
   g_clear_object (&self->sysroot);
   g_clear_object (&self->config_path);
 
-  G_OBJECT_CLASS (ot_bootloader_uboot_parent_class)->finalize (object);
+  G_OBJECT_CLASS (ostree_bootloader_uboot_parent_class)->finalize (object);
 }
 
 void
-ot_bootloader_uboot_init (OtBootloaderUboot *self)
+ostree_bootloader_uboot_init (OstreeBootloaderUboot *self)
 {
 }
 
 static void
-ot_bootloader_uboot_bootloader_iface_init (OtBootloaderInterface *iface)
+ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface)
 {
-  iface->query = ot_bootloader_uboot_query;
-  iface->get_name = ot_bootloader_uboot_get_name;
-  iface->write_config = ot_bootloader_uboot_write_config;
+  iface->query = ostree_bootloader_uboot_query;
+  iface->get_name = ostree_bootloader_uboot_get_name;
+  iface->write_config = ostree_bootloader_uboot_write_config;
 }
 
 void
-ot_bootloader_uboot_class_init (OtBootloaderUbootClass *class)
+ostree_bootloader_uboot_class_init (OstreeBootloaderUbootClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ot_bootloader_uboot_finalize;
+  object_class->finalize = ostree_bootloader_uboot_finalize;
 }
 
-OtBootloaderUboot *
-ot_bootloader_uboot_new (GFile *sysroot)
+OstreeBootloaderUboot *
+ostree_bootloader_uboot_new (OstreeSysroot *sysroot)
 {
-  OtBootloaderUboot *self = g_object_new (OT_TYPE_BOOTLOADER_UBOOT, NULL);
+  OstreeBootloaderUboot *self = g_object_new (OSTREE_TYPE_BOOTLOADER_UBOOT, NULL);
   self->sysroot = g_object_ref (sysroot);
-  self->config_path = g_file_resolve_relative_path (self->sysroot, "boot/uEnv.txt");
+  self->config_path = g_file_resolve_relative_path (self->sysroot->path, "boot/uEnv.txt");
   return self;
 }

@@ -61,8 +61,8 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   
   repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
 
-  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &bootversion, &deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (sysroot, &bootversion, &deployments,
+                                        cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
@@ -83,7 +83,7 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
       goto out;
     }
 
-  deployment_dir = ot_admin_get_deployment_directory (ostree_sysroot_get_path (sysroot), deployment);
+  deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
 
   orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
   new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");

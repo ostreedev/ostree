@@ -24,18 +24,18 @@
 
 #pragma once
 
-#include "ot-bootloader.h"
+#include "ostree-bootloader.h"
 
 G_BEGIN_DECLS
 
-#define OT_TYPE_BOOTLOADER_UBOOT (ot_bootloader_uboot_get_type ())
-#define OT_BOOTLOADER_UBOOT(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OT_TYPE_BOOTLOADER_UBOOT, OtBootloaderUboot))
-#define OT_IS_BOOTLOADER_UBOOT(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OT_TYPE_BOOTLOADER_UBOOT))
+#define OSTREE_TYPE_BOOTLOADER_UBOOT (ostree_bootloader_uboot_get_type ())
+#define OSTREE_BOOTLOADER_UBOOT(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_BOOTLOADER_UBOOT, OstreeBootloaderUboot))
+#define OSTREE_IS_BOOTLOADER_UBOOT(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_BOOTLOADER_UBOOT))
 
-typedef struct _OtBootloaderUboot OtBootloaderUboot;
+typedef struct _OstreeBootloaderUboot OstreeBootloaderUboot;
 
-GType ot_bootloader_uboot_get_type (void) G_GNUC_CONST;
+GType ostree_bootloader_uboot_get_type (void) G_GNUC_CONST;
 
-OtBootloaderUboot * ot_bootloader_uboot_new (GFile *sysroot);
+OstreeBootloaderUboot * ostree_bootloader_uboot_new (OstreeSysroot *sysroot);
 
 G_END_DECLS

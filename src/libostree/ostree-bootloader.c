@@ -19,45 +19,45 @@
  */
 
 #include "config.h"
-#include "ot-bootloader.h"
+#include "ostree-bootloader.h"
 #include "libgsystem.h"
 
-G_DEFINE_INTERFACE (OtBootloader, ot_bootloader, G_TYPE_OBJECT)
+G_DEFINE_INTERFACE (OstreeBootloader, ostree_bootloader, G_TYPE_OBJECT)
 
 static void
-ot_bootloader_default_init (OtBootloaderInterface *iface)
+ostree_bootloader_default_init (OstreeBootloaderInterface *iface)
 {
 }
 
 gboolean
-ot_bootloader_query (OtBootloader  *self)
+ostree_bootloader_query (OstreeBootloader  *self)
 {
-  g_return_val_if_fail (OT_IS_BOOTLOADER (self), FALSE);
+  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
-  return OT_BOOTLOADER_GET_IFACE (self)->query (self);
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->query (self);
 }
 
 /**
- * ot_bootloader_get_name:
+ * ostree_bootloader_get_name:
  *
  * Returns: (transfer none): Name of this bootloader
  */
 const char *
-ot_bootloader_get_name (OtBootloader  *self)
+ostree_bootloader_get_name (OstreeBootloader  *self)
 {
-  g_return_val_if_fail (OT_IS_BOOTLOADER (self), NULL);
+  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), NULL);
 
-  return OT_BOOTLOADER_GET_IFACE (self)->get_name (self);
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->get_name (self);
 }
 
 gboolean
-ot_bootloader_write_config (OtBootloader  *self,
+ostree_bootloader_write_config (OstreeBootloader  *self,
                             int            bootversion,
                             GCancellable  *cancellable,
                             GError       **error)
 {
-  g_return_val_if_fail (OT_IS_BOOTLOADER (self), FALSE);
+  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
-  return OT_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion, 
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion, 
                                                        cancellable, error);
 }

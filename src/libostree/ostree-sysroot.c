@@ -23,7 +23,9 @@
 #include "otutil.h"
 #include "libgsystem.h"
 
-#include "ostree-sysroot.h"
+#include "ostree-sysroot-private.h"
+#include "ostree-bootloader-uboot.h"
+#include "ostree-bootloader-syslinux.h"
 
 /**
  * SECTION:libostree-sysroot
@@ -35,14 +37,6 @@
  * Inside this directory is an #OstreeRepo in /ostree/repo, plus a set
  * of deployments in /ostree/deploy.
  */
-
-struct OstreeSysroot {
-  GObject parent;
-
-  GFile *path;
-  int sysroot_fd;
-};
-
 typedef struct {
   GObjectClass parent_class;
 } OstreeSysrootClass;
@@ -175,6 +169,28 @@ ostree_sysroot_get_path (OstreeSysroot  *self)
   return self->path;
 }
 
+gboolean
+_ostree_sysroot_get_devino (GFile         *path,
+                            guint32       *out_device,
+                            guint64       *out_inode,
+                            GCancellable  *cancellable,
+                            GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileInfo *finfo = g_file_query_info (path, "unix::device,unix::inode",
+                                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                        cancellable, error);
+
+  if (!finfo)
+    goto out;
+
+  ret = TRUE;
+  *out_device = g_file_info_get_attribute_uint32 (finfo, "unix::device");
+  *out_inode = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
+ out:
+  return ret;
+}
+
 /**
  * ostree_sysroot_ensure_initialized:
  * @self:
@@ -222,4 +238,604 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
   ret = TRUE;
  out:
   return ret;
+}
+
+static void
+match_info_cleanup (void *loc)
+{
+  GMatchInfo **match = (GMatchInfo**)loc;
+  if (*match) g_match_info_unref (*match);
+}
+
+gboolean
+_ostree_sysroot_parse_deploy_path_name (const char *name,
+                                        char      **out_csum,
+                                        int        *out_serial,
+                                        GError    **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
+  gs_free char *serial_str = NULL;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^([0-9a-f]+)\\.([0-9]+)$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, name, 0, &match))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid deploy name '%s', expected CHECKSUM.TREESERIAL", name);
+      goto out;
+    }
+
+  *out_csum = g_match_info_fetch (match, 1);
+  serial_str = g_match_info_fetch (match, 2);
+  *out_serial = (int)g_ascii_strtoll (serial_str, NULL, 10);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+
+/**
+ * ostree_sysroot_read_current_subbootversion:
+ * @self: Sysroot
+ * @bootversion: Current boot version
+ * @out_subbootversion: (out): The active subbootversion
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Determine the active subbootversion.
+ */
+gboolean
+ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
+                                            int            bootversion,
+                                            int           *out_subbootversion,
+                                            GCancellable  *cancellable,
+                                            GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *ostree_dir = g_file_get_child (self->path, "ostree");
+  gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
+  gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
+  gs_unref_object GFile *ostree_subbootdir = NULL;
+
+  if (!ot_gfile_query_symlink_target_allow_noent (ostree_bootdir, &ostree_subbootdir,
+                                                  cancellable, error))
+    goto out;
+
+  if (ostree_subbootdir == NULL)
+    {
+      *out_subbootversion = 0;
+    }
+  else
+    {
+      const char *current_subbootdir_name = gs_file_get_basename_cached (ostree_subbootdir);
+      if (g_str_has_suffix (current_subbootdir_name, ".0"))
+        *out_subbootversion = 0;
+      else if (g_str_has_suffix (current_subbootdir_name, ".1"))
+        *out_subbootversion = 1;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid target '%s' in %s",
+                       gs_file_get_path_cached (ostree_subbootdir),
+                       gs_file_get_path_cached (ostree_bootdir));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+_ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
+                                          int            bootversion,
+                                          GPtrArray    **out_loader_configs,
+                                          GCancellable  *cancellable,
+                                          GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  gs_unref_object GFile *loader_entries_dir = NULL;
+  gs_unref_ptrarray GPtrArray *ret_loader_configs = NULL;
+  GError *temp_error = NULL;
+
+  loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
+                                                     bootversion);
+  ret_loader_configs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  dir_enum = g_file_enumerate_children (loader_entries_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                        0, NULL, &temp_error);
+  if (!dir_enum)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          goto done;
+        } 
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  while (TRUE)
+    {
+      GFileInfo *file_info;
+      GFile *child;
+      const char *name;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      name = g_file_info_get_name (file_info);
+
+      if (g_str_has_prefix (name, "ostree-") &&
+          g_str_has_suffix (name, ".conf") &&
+          g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+        {
+          gs_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
+  
+          if (!ostree_bootconfig_parser_parse (config, child, cancellable, error))
+            {
+              g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (child));
+              goto out;
+            }
+
+          g_ptr_array_add (ret_loader_configs, g_object_ref (config));
+        }
+    }
+
+ done:
+  gs_transfer_out_value (out_loader_configs, &ret_loader_configs);
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+
+static gboolean
+read_current_bootversion (OstreeSysroot *self,
+                          int           *out_bootversion,
+                          GCancellable  *cancellable,
+                          GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *boot_loader_path = g_file_resolve_relative_path (self->path, "boot/loader");
+  gs_unref_object GFileInfo *info = NULL;
+  const char *target;
+  int ret_bootversion;
+
+  if (!ot_gfile_query_info_allow_noent (boot_loader_path, OSTREE_GIO_FAST_QUERYINFO,
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        &info,
+                                        cancellable, error))
+    goto out;
+
+  if (info == NULL)
+    ret_bootversion = 0;
+  else
+    {
+      if (g_file_info_get_file_type (info) != G_FILE_TYPE_SYMBOLIC_LINK)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Not a symbolic link: %s", gs_file_get_path_cached (boot_loader_path));
+          goto out;
+        }
+
+      target = g_file_info_get_symlink_target (info);
+      if (g_strcmp0 (target, "loader.0") == 0)
+        ret_bootversion = 0;
+      else if (g_strcmp0 (target, "loader.1") == 0)
+        ret_bootversion = 1;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid target '%s' in %s", target, gs_file_get_path_cached (boot_loader_path));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  *out_bootversion = ret_bootversion;
+ out:
+  return ret;
+}
+
+static gboolean
+parse_origin (OstreeSysroot   *self,
+              GFile           *deployment_path,
+              GKeyFile       **out_origin,
+              GCancellable    *cancellable,
+              GError         **error)
+{
+  gboolean ret = FALSE;
+  GKeyFile *ret_origin = NULL;
+  gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
+  gs_free char *origin_contents = NULL;
+  
+  if (!ot_gfile_load_contents_utf8_allow_noent (origin_path, &origin_contents,
+                                                cancellable, error))
+    goto out;
+
+  if (origin_contents)
+    {
+      ret_origin = g_key_file_new ();
+      if (!g_key_file_load_from_data (ret_origin, origin_contents, -1, 0, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  gs_transfer_out_value (out_origin, &ret_origin);
+ out:
+  if (error)
+    g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (origin_path));
+  if (ret_origin)
+    g_key_file_unref (ret_origin);
+  return ret;
+}
+
+static gboolean
+parse_bootlink (const char    *bootlink,
+                int           *out_entry_bootversion,
+                char         **out_osname,
+                char         **out_bootcsum,
+                int           *out_treebootserial,
+                GError       **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
+  gs_free char *bootversion_str = NULL;
+  gs_free char *treebootserial_str = NULL;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^/ostree/boot.([01])/([^/]+)/([^/]+)/([0-9]+)$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!g_regex_match (regex, bootlink, 0, &match))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid ostree= argument '%s', expected ostree=/ostree/boot.BOOTVERSION/OSNAME/BOOTCSUM/TREESERIAL", bootlink);
+      goto out;
+    }
+    
+  bootversion_str = g_match_info_fetch (match, 1);
+  *out_entry_bootversion = (int)g_ascii_strtoll (bootversion_str, NULL, 10);
+  *out_osname = g_match_info_fetch (match, 2);
+  *out_bootcsum = g_match_info_fetch (match, 3);
+  treebootserial_str = g_match_info_fetch (match, 4);
+  *out_treebootserial = (int)g_ascii_strtoll (treebootserial_str, NULL, 10);
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+parse_deployment (OstreeSysroot       *self,
+                  const char          *boot_link,
+                  OstreeDeployment   **out_deployment,
+                  GCancellable        *cancellable,
+                  GError             **error)
+{
+  gboolean ret = FALSE;
+  const char *relative_boot_link;
+  gs_unref_object OstreeDeployment *ret_deployment = NULL;
+  int entry_boot_version;
+  int treebootserial = -1;
+  int deployserial = -1;
+  gs_free char *osname = NULL;
+  gs_free char *bootcsum = NULL;
+  gs_free char *treecsum = NULL;
+  gs_unref_object GFile *treebootserial_link = NULL;
+  gs_unref_object GFileInfo *treebootserial_info = NULL;
+  gs_unref_object GFile *treebootserial_target = NULL;
+  GKeyFile *origin = NULL;
+      
+  if (!parse_bootlink (boot_link, &entry_boot_version,
+                       &osname, &bootcsum, &treebootserial,
+                       error))
+    goto out;
+
+  relative_boot_link = boot_link;
+  if (*relative_boot_link == '/')
+    relative_boot_link++;
+  treebootserial_link = g_file_resolve_relative_path (self->path, relative_boot_link);
+  treebootserial_info = g_file_query_info (treebootserial_link, OSTREE_GIO_FAST_QUERYINFO,
+                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                           cancellable, error);
+  if (!treebootserial_info)
+    goto out;
+
+  if (!ot_gfile_get_symlink_target_from_info (treebootserial_link, treebootserial_info,
+                                              &treebootserial_target, cancellable, error))
+    goto out;
+
+  if (!_ostree_sysroot_parse_deploy_path_name (gs_file_get_basename_cached (treebootserial_target),
+                                               &treecsum, &deployserial, error))
+    goto out;
+
+  if (!parse_origin (self, treebootserial_target, &origin,
+                     cancellable, error))
+    goto out;
+
+  ret_deployment = ostree_deployment_new (-1, osname, treecsum, deployserial,
+                                      bootcsum, treebootserial);
+  if (origin)
+    ostree_deployment_set_origin (ret_deployment, origin);
+
+  ret = TRUE;
+  gs_transfer_out_value (out_deployment, &ret_deployment);
+ out:
+  if (origin)
+    g_key_file_unref (origin);
+  return ret;
+}
+
+static char *
+get_ostree_kernel_arg_from_config (OstreeBootconfigParser  *config)
+{
+  const char *options;
+  char *ret = NULL;
+  char **opts, **iter;
+
+  options = ostree_bootconfig_parser_get (config, "options");
+  if (!options)
+    return NULL;
+
+  opts = g_strsplit (options, " ", -1);
+  for (iter = opts; *iter; iter++)
+    {
+      const char *opt = *iter;
+      if (g_str_has_prefix (opt, "ostree="))
+        {
+          ret = g_strdup (opt + strlen ("ostree="));
+          break;
+        }
+    }
+  g_strfreev (opts);
+
+  return ret;
+}
+
+static gboolean
+list_deployments_process_one_boot_entry (OstreeSysroot               *self,
+                                         OstreeBootconfigParser      *config,
+                                         GPtrArray                   *inout_deployments,
+                                         GCancellable                *cancellable,
+                                         GError                     **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *ostree_arg = NULL;
+  gs_unref_object OstreeDeployment *deployment = NULL;
+
+  ostree_arg = get_ostree_kernel_arg_from_config (config);
+  if (ostree_arg == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No ostree= kernel argument found");
+      goto out;
+    }
+  
+  if (!parse_deployment (self, ostree_arg, &deployment,
+                         cancellable, error))
+    goto out;
+  
+  ostree_deployment_set_bootconfig (deployment, config);
+
+  g_ptr_array_add (inout_deployments, g_object_ref (deployment));
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gint
+compare_deployments_by_boot_loader_version_reversed (gconstpointer     a_pp,
+                                                     gconstpointer     b_pp)
+{
+  OstreeDeployment *a = *((OstreeDeployment**)a_pp);
+  OstreeDeployment *b = *((OstreeDeployment**)b_pp);
+  OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
+  OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
+  const char *a_version = ostree_bootconfig_parser_get (a_bootconfig, "version");
+  const char *b_version = ostree_bootconfig_parser_get (b_bootconfig, "version");
+  
+  if (a_version && b_version)
+    {
+      int r = strverscmp (a_version, b_version);
+      /* Reverse */
+      return -r;
+    }
+  else if (a_version)
+    return -1;
+  else
+    return 1;
+}
+/**
+ * ostree_sysroot_list_deployments:
+ * @sysroot: Sysroot
+ * @out_current_bootversion: (out): Current bootversion
+ * @out_deployments: (out) (element-type OstreeDeployment): Deployment list
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Enumerate all deployments, in the boot order.  Also returns the
+ * active bootversion.
+ */
+gboolean
+ostree_sysroot_list_deployments (OstreeSysroot       *self,
+                                 int                 *out_current_bootversion,
+                                 GPtrArray          **out_deployments,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
+  gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
+  guint i;
+  int bootversion = -1;
+
+  if (!read_current_bootversion (self, &bootversion, cancellable, error))
+    goto out;
+
+  if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
+                                                 cancellable, error))
+    goto out;
+
+  ret_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  for (i = 0; i < boot_loader_configs->len; i++)
+    {
+      OstreeBootconfigParser *config = boot_loader_configs->pdata[i];
+
+      if (!list_deployments_process_one_boot_entry (self, config, ret_deployments,
+                                                    cancellable, error))
+        goto out;
+    }
+
+  g_ptr_array_sort (ret_deployments, compare_deployments_by_boot_loader_version_reversed);
+  for (i = 0; i < ret_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = ret_deployments->pdata[i];
+      ostree_deployment_set_index (deployment, i);
+    }
+
+  ret = TRUE;
+  *out_current_bootversion = bootversion;
+  gs_transfer_out_value (out_deployments, &ret_deployments);
+ out:
+  return ret;
+}
+
+/**
+ * ostree_sysroot_get_deployment_directory:
+ * @self: Sysroot
+ * @deployment: A deployment
+ *
+ * Returns: (transfer full): Path to deployment root directory
+ */
+GFile *
+ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
+                                         OstreeDeployment *deployment)
+{
+  gs_free char *path = g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d",
+                                        ostree_deployment_get_osname (deployment),
+                                        ostree_deployment_get_csum (deployment),
+                                        ostree_deployment_get_deployserial (deployment));
+  return g_file_resolve_relative_path (self->path, path);
+}
+
+/**
+ * ostree_sysroot_get_deployment_origin_path:
+ * @self: Sysroot
+ * @deployment: A deployment
+ *
+ * Returns: (transfer full): Path to deployment origin file
+ */
+GFile *
+ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path)
+{
+  gs_unref_object GFile *deployment_parent = g_file_get_parent (deployment_path);
+  return ot_gfile_resolve_path_printf (deployment_parent,
+                                       "%s.origin",
+                                       gs_file_get_path_cached (deployment_path));
+}
+
+
+/**
+ * ostree_sysroot_get_repo:
+ * @self: Sysroot
+ * @out_repo: (out): Repository in sysroot @self
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Retrieve the OSTree repository in sysroot @self.
+ */
+gboolean
+ostree_sysroot_get_repo (OstreeSysroot         *self,
+                         OstreeRepo   **out_repo,
+                         GCancellable  *cancellable,
+                         GError       **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object OstreeRepo *ret_repo = NULL;
+  gs_unref_object GFile *repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
+
+  ret_repo = ostree_repo_new (repo_path);
+  if (!ostree_repo_open (ret_repo, cancellable, error))
+    goto out;
+    
+  ret = TRUE;
+  ot_transfer_out_value (out_repo, &ret_repo);
+ out:
+  return ret;
+}
+
+
+/**
+ * ostree_sysroot_query_bootloader:
+ * @sysroot: Sysroot
+ *
+ * Returns: (transfer full): Currently active bootloader in @sysroot
+ */
+OstreeBootloader *
+ostree_sysroot_query_bootloader (OstreeSysroot *self)
+{
+  OstreeBootloaderSyslinux *syslinux;
+  OstreeBootloaderUboot    *uboot;
+
+  syslinux = ostree_bootloader_syslinux_new (self);
+  if (ostree_bootloader_query ((OstreeBootloader*)syslinux))
+    return (OstreeBootloader*) (syslinux);
+
+  uboot = ostree_bootloader_uboot_new (self);
+  if (ostree_bootloader_query ((OstreeBootloader*)uboot))
+    return (OstreeBootloader*) (uboot);
+
+  return NULL;
+}
+
+char *
+_ostree_sysroot_join_lines (GPtrArray  *lines)
+{
+  GString *buf = g_string_new ("");
+  guint i;
+  gboolean prev_was_empty = FALSE;
+
+  for (i = 0; i < lines->len; i++)
+    {
+      const char *line = lines->pdata[i];
+      /* Special bit to remove extraneous empty lines */
+      if (*line == '\0')
+        {
+          if (prev_was_empty || i == 0)
+            continue;
+          else
+            prev_was_empty = TRUE;
+        }
+      g_string_append (buf, line);
+      g_string_append_c (buf, '\n');
+    }
+  return g_string_free (buf, FALSE);
 }

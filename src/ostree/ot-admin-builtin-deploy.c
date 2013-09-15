@@ -77,11 +77,11 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   refspec = argv[1];
 
-  if (!ot_admin_get_repo (ostree_sysroot_get_path (sysroot), &repo, cancellable, error))
+  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 
-  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion, &current_deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion, &current_deployments,
+                                        cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;

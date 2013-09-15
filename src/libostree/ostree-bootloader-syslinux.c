@@ -20,43 +20,43 @@
 
 #include "config.h"
 
-#include "ot-bootloader-syslinux.h"
+#include "ostree-sysroot-private.h"
+#include "ostree-bootloader-syslinux.h"
 #include "otutil.h"
-#include "ot-admin-functions.h"
 #include "libgsystem.h"
 
 #include <string.h>
 
-struct _OtBootloaderSyslinux
+struct _OstreeBootloaderSyslinux
 {
   GObject       parent_instance;
 
-  GFile        *sysroot;
-  GFile        *config_path;
+  OstreeSysroot  *sysroot;
+  GFile          *config_path;
 };
 
-typedef GObjectClass OtBootloaderSyslinuxClass;
+typedef GObjectClass OstreeBootloaderSyslinuxClass;
 
-static void ot_bootloader_syslinux_bootloader_iface_init (OtBootloaderInterface *iface);
-G_DEFINE_TYPE_WITH_CODE (OtBootloaderSyslinux, ot_bootloader_syslinux, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OT_TYPE_BOOTLOADER, ot_bootloader_syslinux_bootloader_iface_init));
+static void ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface);
+G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderSyslinux, ostree_bootloader_syslinux, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, ostree_bootloader_syslinux_bootloader_iface_init));
 
 static gboolean
-ot_bootloader_syslinux_query (OtBootloader *bootloader)
+ostree_bootloader_syslinux_query (OstreeBootloader *bootloader)
 {
-  OtBootloaderSyslinux *self = OT_BOOTLOADER_SYSLINUX (bootloader);
+  OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
   return g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
 }
 
 static const char *
-ot_bootloader_syslinux_get_name (OtBootloader *bootloader)
+ostree_bootloader_syslinux_get_name (OstreeBootloader *bootloader)
 {
   return "syslinux";
 }
 
 static gboolean
-append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
+append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
                                         gboolean               regenerate_default,
                                         int                    bootversion,
                                         GPtrArray             *new_lines,
@@ -64,16 +64,16 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
                                         GError               **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
+  gs_unref_ptrarray GPtrArray *boostree_loader_configs = NULL;
   guint i;
 
-  if (!ot_admin_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
-                                          cancellable, error))
+  if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boostree_loader_configs,
+                                                 cancellable, error))
     goto out;
 
-  for (i = 0; i < boot_loader_configs->len; i++)
+  for (i = 0; i < boostree_loader_configs->len; i++)
     {
-      OstreeBootconfigParser *config = boot_loader_configs->pdata[i];
+      OstreeBootconfigParser *config = boostree_loader_configs->pdata[i];
       const char *val;
 
       val = ostree_bootconfig_parser_get (config, "title");
@@ -111,13 +111,13 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
 }
 
 static gboolean
-ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
+ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
                                      int                    bootversion,
                                      GCancellable          *cancellable,
                                      GError               **error)
 {
   gboolean ret = FALSE;
-  OtBootloaderSyslinux *self = OT_BOOTLOADER_SYSLINUX (bootloader);
+  OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
   gs_unref_object GFile *new_config_path = NULL;
   gs_free char *config_contents = NULL;
   gs_free char *new_config_contents = NULL;
@@ -131,7 +131,7 @@ ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
   char **iter;
   guint i;
 
-  new_config_path = ot_gfile_resolve_path_printf (self->sysroot, "boot/loader.%d/syslinux.cfg",
+  new_config_path = ot_gfile_resolve_path_printf (self->sysroot->path, "boot/loader.%d/syslinux.cfg",
                                                   bootversion);
 
   /* This should follow the symbolic link to the current bootversion. */
@@ -230,12 +230,12 @@ ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
   if (!saw_default)
     regenerate_default = TRUE;
 
-  if (!append_config_from_boot_loader_entries (self, regenerate_default,
+  if (!append_config_from_boostree_loader_entries (self, regenerate_default,
                                                bootversion, new_lines,
                                                cancellable, error))
     goto out;
 
-  new_config_contents = ot_admin_join_lines (new_lines);
+  new_config_contents = _ostree_sysroot_join_lines (new_lines);
 
   if (strcmp (new_config_contents, config_contents) != 0)
     {
@@ -254,42 +254,42 @@ ot_bootloader_syslinux_write_config (OtBootloader          *bootloader,
 }
 
 static void
-ot_bootloader_syslinux_finalize (GObject *object)
+ostree_bootloader_syslinux_finalize (GObject *object)
 {
-  OtBootloaderSyslinux *self = OT_BOOTLOADER_SYSLINUX (object);
+  OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (object);
 
   g_clear_object (&self->sysroot);
   g_clear_object (&self->config_path);
 
-  G_OBJECT_CLASS (ot_bootloader_syslinux_parent_class)->finalize (object);
+  G_OBJECT_CLASS (ostree_bootloader_syslinux_parent_class)->finalize (object);
 }
 
 void
-ot_bootloader_syslinux_init (OtBootloaderSyslinux *self)
+ostree_bootloader_syslinux_init (OstreeBootloaderSyslinux *self)
 {
 }
 
 static void
-ot_bootloader_syslinux_bootloader_iface_init (OtBootloaderInterface *iface)
+ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface)
 {
-  iface->query = ot_bootloader_syslinux_query;
-  iface->get_name = ot_bootloader_syslinux_get_name;
-  iface->write_config = ot_bootloader_syslinux_write_config;
+  iface->query = ostree_bootloader_syslinux_query;
+  iface->get_name = ostree_bootloader_syslinux_get_name;
+  iface->write_config = ostree_bootloader_syslinux_write_config;
 }
 
 void
-ot_bootloader_syslinux_class_init (OtBootloaderSyslinuxClass *class)
+ostree_bootloader_syslinux_class_init (OstreeBootloaderSyslinuxClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ot_bootloader_syslinux_finalize;
+  object_class->finalize = ostree_bootloader_syslinux_finalize;
 }
 
-OtBootloaderSyslinux *
-ot_bootloader_syslinux_new (GFile *sysroot)
+OstreeBootloaderSyslinux *
+ostree_bootloader_syslinux_new (OstreeSysroot *sysroot)
 {
-  OtBootloaderSyslinux *self = g_object_new (OT_TYPE_BOOTLOADER_SYSLINUX, NULL);
+  OstreeBootloaderSyslinux *self = g_object_new (OSTREE_TYPE_BOOTLOADER_SYSLINUX, NULL);
   self->sysroot = g_object_ref (sysroot);
-  self->config_path = g_file_resolve_relative_path (self->sysroot, "boot/syslinux/syslinux.cfg");
+  self->config_path = g_file_resolve_relative_path (self->sysroot->path, "boot/syslinux/syslinux.cfg");
   return self;
 }

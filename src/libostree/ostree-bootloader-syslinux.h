@@ -20,19 +20,19 @@
 
 #pragma once
 
-#include "ot-bootloader.h"
+#include "ostree-bootloader.h"
 
 G_BEGIN_DECLS
 
-#define OT_TYPE_BOOTLOADER_SYSLINUX (ot_bootloader_syslinux_get_type ())
-#define OT_BOOTLOADER_SYSLINUX(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OT_TYPE_BOOTLOADER_SYSLINUX, OtBootloaderSyslinux))
-#define OT_IS_BOOTLOADER_SYSLINUX(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OT_TYPE_BOOTLOADER_SYSLINUX))
+#define OSTREE_TYPE_BOOTLOADER_SYSLINUX (ostree_bootloader_syslinux_get_type ())
+#define OSTREE_BOOTLOADER_SYSLINUX(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_BOOTLOADER_SYSLINUX, OstreeBootloaderSyslinux))
+#define OSTREE_IS_BOOTLOADER_SYSLINUX(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_BOOTLOADER_SYSLINUX))
 
-typedef struct _OtBootloaderSyslinux OtBootloaderSyslinux;
+typedef struct _OstreeBootloaderSyslinux OstreeBootloaderSyslinux;
 
-GType ot_bootloader_syslinux_get_type (void) G_GNUC_CONST;
+GType ostree_bootloader_syslinux_get_type (void) G_GNUC_CONST;
 
-OtBootloaderSyslinux * ot_bootloader_syslinux_new (GFile *sysroot);
+OstreeBootloaderSyslinux * ostree_bootloader_syslinux_new (OstreeSysroot *sysroot);
 
 G_END_DECLS
 

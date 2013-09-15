@@ -50,8 +50,8 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &bootversion, &deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (sysroot, &bootversion, &deployments,
+                                        cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
@@ -70,7 +70,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
     {
       int subbootversion;
 
-      if (!ot_admin_read_current_subbootversion (ostree_sysroot_get_path (sysroot), bootversion,
+      if (!ostree_sysroot_read_current_subbootversion (sysroot, bootversion,
                                                  &subbootversion,
                                                  cancellable, error))
         goto out;

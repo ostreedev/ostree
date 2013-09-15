@@ -24,7 +24,6 @@
 
 #include <gio/gio.h>
 #include <ostree.h>
-#include "ot-bootloader.h"
 #include "ot-ordered-hash.h"
 
 G_BEGIN_DECLS

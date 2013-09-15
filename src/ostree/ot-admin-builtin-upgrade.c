@@ -70,9 +70,9 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion,
-                                  &current_deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion,
+                                        &current_deployments,
+                                        cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
@@ -88,8 +88,8 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   merge_deployment = ot_admin_get_merge_deployment (current_deployments, opt_osname,
                                                     booted_deployment);
 
-  deployment_path = ot_admin_get_deployment_directory (ostree_sysroot_get_path (sysroot), merge_deployment);
-  deployment_origin_path = ot_admin_get_deployment_origin_path (deployment_path);
+  deployment_path = ostree_sysroot_get_deployment_directory (sysroot, merge_deployment);
+  deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
 
   repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
   repo = ostree_repo_new (repo_path);

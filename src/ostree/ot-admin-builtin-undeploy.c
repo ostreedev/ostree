@@ -61,8 +61,8 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   deploy_index_str = argv[1];
   deploy_index = atoi (deploy_index_str);
 
-  if (!ot_admin_list_deployments (ostree_sysroot_get_path (sysroot), &current_bootversion, &current_deployments,
-                                  cancellable, error))
+  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion, &current_deployments,
+                                        cancellable, error))
     {
       g_prefix_error (error, "While listing deployments: ");
       goto out;
@@ -103,7 +103,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),
            ostree_deployment_get_deployserial (target_deployment));
   
-  if (!ot_admin_cleanup (ostree_sysroot_get_path (sysroot), cancellable, error))
+  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
     {
       g_prefix_error (error, "Performing final cleanup: ");
       goto out;

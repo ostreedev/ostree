@@ -59,18 +59,11 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-status.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtins.h \
-	src/ostree/ot-admin-cleanup.c \
 	src/ostree/ot-admin-util.c \
 	src/ostree/ot-admin-functions.h \
 	src/ostree/ot-admin-functions.c \
 	src/ostree/ot-admin-deploy.h \
 	src/ostree/ot-admin-deploy.c \
-	src/ostree/ot-bootloader.h \
-	src/ostree/ot-bootloader.c \
-	src/ostree/ot-bootloader-syslinux.h \
-	src/ostree/ot-bootloader-syslinux.c \
-	src/ostree/ot-bootloader-uboot.h \
-	src/ostree/ot-bootloader-uboot.c \
 	src/ostree/ot-ordered-hash.h \
 	src/ostree/ot-ordered-hash.c \
 	$(NULL)
