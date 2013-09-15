@@ -42,8 +42,8 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   int deploy_index;
   int current_bootversion;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
-  gs_unref_object OtDeployment *booted_deployment = NULL;
-  gs_unref_object OtDeployment *target_deployment = NULL;
+  gs_unref_object OstreeDeployment *booted_deployment = NULL;
+  gs_unref_object OstreeDeployment *target_deployment = NULL;
 
   context = g_option_context_new ("INDEX - Delete deployment INDEX");
 
@@ -100,8 +100,8 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
                                    cancellable, error))
     goto out;
 
-  g_print ("Deleted deployment %s.%d\n", ot_deployment_get_csum (target_deployment),
-           ot_deployment_get_deployserial (target_deployment));
+  g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),
+           ostree_deployment_get_deployserial (target_deployment));
   
   if (!ot_admin_cleanup (ostree_sysroot_get_path (sysroot), cancellable, error))
     {

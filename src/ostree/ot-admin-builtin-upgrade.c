@@ -55,11 +55,11 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gs_free char *new_revision = NULL;
   gs_unref_object GFile *deployment_path = NULL;
   gs_unref_object GFile *deployment_origin_path = NULL;
-  gs_unref_object OtDeployment *booted_deployment = NULL;
-  gs_unref_object OtDeployment *merge_deployment = NULL;
+  gs_unref_object OstreeDeployment *booted_deployment = NULL;
+  gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
-  gs_unref_object OtDeployment *new_deployment = NULL;
+  gs_unref_object OstreeDeployment *new_deployment = NULL;
   int current_bootversion;
   int new_bootversion;
   GKeyFile *origin;
@@ -84,7 +84,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
                                               cancellable, error))
     goto out;
   if (!opt_osname)
-    opt_osname = (char*)ot_deployment_get_osname (booted_deployment);
+    opt_osname = (char*)ostree_deployment_get_osname (booted_deployment);
   merge_deployment = ot_admin_get_merge_deployment (current_deployments, opt_osname,
                                                     booted_deployment);
 
@@ -96,7 +96,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!ostree_repo_open (repo, cancellable, error))
     goto out;
 
-  origin = ot_deployment_get_origin (merge_deployment);
+  origin = ostree_deployment_get_origin (merge_deployment);
   if (!origin)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -128,7 +128,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
                                 error))
     goto out;
 
-  if (strcmp (ot_deployment_get_csum (merge_deployment), new_revision) == 0)
+  if (strcmp (ostree_deployment_get_csum (merge_deployment), new_revision) == 0)
     {
       g_print ("Refspec %s is unchanged\n", origin_refspec);
     }

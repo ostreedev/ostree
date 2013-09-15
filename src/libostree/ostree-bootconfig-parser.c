@@ -20,10 +20,10 @@
 
 #include "config.h"
 
-#include "ot-config-parser.h"
+#include "ostree-bootconfig-parser.h"
 #include "libgsystem.h"
 
-struct _OtConfigParser
+struct _OstreeBootconfigParser
 {
   GObject       parent_instance;
 
@@ -34,15 +34,15 @@ struct _OtConfigParser
   GPtrArray    *lines;
 };
 
-typedef GObjectClass OtConfigParserClass;
+typedef GObjectClass OstreeBootconfigParserClass;
 
-G_DEFINE_TYPE (OtConfigParser, ot_config_parser, G_TYPE_OBJECT)
+G_DEFINE_TYPE (OstreeBootconfigParser, ostree_bootconfig_parser, G_TYPE_OBJECT)
 
 gboolean
-ot_config_parser_parse (OtConfigParser  *self,
-                        GFile           *path,
-                        GCancellable    *cancellable,
-                        GError         **error)
+ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
+                                GFile           *path,
+                                GCancellable    *cancellable,
+                                GError         **error)
 {
   gboolean ret = FALSE;
   gs_free char *contents = NULL;
@@ -88,22 +88,22 @@ ot_config_parser_parse (OtConfigParser  *self,
 }
 
 void
-ot_config_parser_set (OtConfigParser  *self,
-                      const char      *key,
-                      const char      *value)
+ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
+                              const char      *key,
+                              const char      *value)
 {
   g_hash_table_replace (self->options, g_strdup (key), g_strdup (value));
 }
 
 const char *
-ot_config_parser_get (OtConfigParser  *self,
-                      const char      *key)
+ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
+                              const char      *key)
 {
   return g_hash_table_lookup (self->options, key);
 }
 
 static gboolean
-write_key (OtConfigParser         *self,
+write_key (OstreeBootconfigParser         *self,
            GDataOutputStream      *out,
            const char             *key,
            const char             *value,
@@ -127,10 +127,10 @@ write_key (OtConfigParser         *self,
 }
            
 gboolean
-ot_config_parser_write (OtConfigParser   *self,
-                        GFile            *output,
-                        GCancellable     *cancellable,
-                        GError          **error)
+ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
+                                GFile            *output,
+                                GCancellable     *cancellable,
+                                GError          **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hashiter;
@@ -191,40 +191,38 @@ ot_config_parser_write (OtConfigParser   *self,
 }
 
 static void
-ot_config_parser_finalize (GObject *object)
+ostree_bootconfig_parser_finalize (GObject *object)
 {
-  OtConfigParser *self = OT_CONFIG_PARSER (object);
+  OstreeBootconfigParser *self = OSTREE_BOOTCONFIG_PARSER (object);
 
   g_hash_table_unref (self->options);
   g_ptr_array_unref (self->lines);
   g_free (self->separators);
 
-  G_OBJECT_CLASS (ot_config_parser_parent_class)->finalize (object);
+  G_OBJECT_CLASS (ostree_bootconfig_parser_parent_class)->finalize (object);
 }
 
 static void
-ot_config_parser_init (OtConfigParser *self)
+ostree_bootconfig_parser_init (OstreeBootconfigParser *self)
 {
   self->options = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   self->lines = g_ptr_array_new ();
 }
 
 void
-ot_config_parser_class_init (OtConfigParserClass *class)
+ostree_bootconfig_parser_class_init (OstreeBootconfigParserClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ot_config_parser_finalize;
+  object_class->finalize = ostree_bootconfig_parser_finalize;
 }
 
-OtConfigParser *
-ot_config_parser_new (const char *separators)
+OstreeBootconfigParser *
+ostree_bootconfig_parser_new (void)
 {
-  OtConfigParser *self = NULL;
+  OstreeBootconfigParser *self = NULL;
 
-  g_return_val_if_fail (separators != NULL && separators[0], NULL);
-
-  self = g_object_new (OT_TYPE_CONFIG_PARSER, NULL);
-  self->separators = g_strdup (separators);
+  self = g_object_new (OSTREE_TYPE_BOOTCONFIG_PARSER, NULL);
+  self->separators = g_strdup (" \t");
   return self;
 }

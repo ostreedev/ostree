@@ -24,8 +24,6 @@
 
 #include "ot-admin-functions.h"
 #include "ot-admin-deploy.h"
-#include "ot-deployment.h"
-#include "ot-config-parser.h"
 #include "ot-bootloader-syslinux.h"
 #include "otutil.h"
 #include "ostree-core.h"
@@ -202,13 +200,13 @@ merge_etc_changes (GFile          *orig_etc,
 static gboolean
 checkout_deployment_tree (GFile             *sysroot,
                           OstreeRepo        *repo,
-                          OtDeployment      *deployment,
+                          OstreeDeployment      *deployment,
                           GFile            **out_deployment_path,
                           GCancellable      *cancellable,
                           GError           **error)
 {
   gboolean ret = FALSE;
-  const char *csum = ot_deployment_get_csum (deployment);
+  const char *csum = ostree_deployment_get_csum (deployment);
   gs_unref_object GFile *root = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
   gs_free char *checkout_target_name = NULL;
@@ -226,9 +224,9 @@ checkout_deployment_tree (GFile             *sysroot,
     goto out;
 
   osdeploy_path = ot_gfile_get_child_build_path (sysroot, "ostree", "deploy",
-                                                 ot_deployment_get_osname (deployment),
+                                                 ostree_deployment_get_osname (deployment),
                                                  "deploy", NULL);
-  checkout_target_name = g_strdup_printf ("%s.%d", csum, ot_deployment_get_deployserial (deployment));
+  checkout_target_name = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
   deploy_target_path = g_file_get_child (osdeploy_path, checkout_target_name);
 
   deploy_parent = g_file_get_parent (deploy_target_path);
@@ -250,8 +248,8 @@ checkout_deployment_tree (GFile             *sysroot,
 
 static gboolean
 merge_configuration (GFile             *sysroot,
-                     OtDeployment      *previous_deployment,
-                     OtDeployment      *deployment,
+                     OstreeDeployment      *previous_deployment,
+                     OstreeDeployment      *deployment,
                      GFile             *deployment_path,
                      GCancellable      *cancellable,
                      GError           **error)
@@ -267,20 +265,20 @@ merge_configuration (GFile             *sysroot,
   if (previous_deployment)
     {
       gs_unref_object GFile *previous_path = NULL;
-      OtConfigParser *previous_bootconfig;
+      OstreeBootconfigParser *previous_bootconfig;
 
       previous_path = ot_admin_get_deployment_directory (sysroot, previous_deployment);
       source_etc_path = g_file_resolve_relative_path (previous_path, "etc");
       source_etc_pristine_path = g_file_resolve_relative_path (previous_path, "usr/etc");
 
-      previous_bootconfig = ot_deployment_get_bootconfig (previous_deployment);
+      previous_bootconfig = ostree_deployment_get_bootconfig (previous_deployment);
       if (previous_bootconfig)
         {
-          const char *previous_options = ot_config_parser_get (previous_bootconfig, "options");
+          const char *previous_options = ostree_bootconfig_parser_get (previous_bootconfig, "options");
           /* Completely overwrite the previous options here; we will extend
            * them later.
            */
-          ot_config_parser_set (ot_deployment_get_bootconfig (deployment), "options",
+          ostree_bootconfig_parser_set (ostree_deployment_get_bootconfig (deployment), "options",
                                 previous_options);
         }
     }
@@ -334,12 +332,12 @@ merge_configuration (GFile             *sysroot,
 
 static gboolean
 write_origin_file (GFile             *sysroot,
-                   OtDeployment      *deployment,
+                   OstreeDeployment      *deployment,
                    GCancellable      *cancellable,
                    GError           **error)
 {
   gboolean ret = FALSE;
-  GKeyFile *origin = ot_deployment_get_origin (deployment);
+  GKeyFile *origin = ostree_deployment_get_origin (deployment);
 
   if (origin)
     {
@@ -468,14 +466,14 @@ checksum_from_kernel_src (GFile        *src,
 static int
 sort_by_bootserial (gconstpointer ap, gconstpointer bp)
 {
-  OtDeployment **a_loc = (OtDeployment**)ap;
-  OtDeployment *a = *a_loc;
-  OtDeployment **b_loc = (OtDeployment**)bp;
-  OtDeployment *b = *b_loc;
+  OstreeDeployment **a_loc = (OstreeDeployment**)ap;
+  OstreeDeployment *a = *a_loc;
+  OstreeDeployment **b_loc = (OstreeDeployment**)bp;
+  OstreeDeployment *b = *b_loc;
 
-  if (ot_deployment_get_bootserial (a) == ot_deployment_get_bootserial (b))
+  if (ostree_deployment_get_bootserial (a) == ostree_deployment_get_bootserial (b))
     return 0;
-  else if (ot_deployment_get_bootserial (a) < ot_deployment_get_bootserial (b))
+  else if (ostree_deployment_get_bootserial (a) < ostree_deployment_get_bootserial (b))
     return -1;
   return 1;
 }
@@ -490,11 +488,11 @@ filter_deployments_by_bootcsum (GPtrArray    *deployments,
 
   for (i = 0; i < deployments->len; i++)
     {
-      OtDeployment *deployment = deployments->pdata[i];
+      OstreeDeployment *deployment = deployments->pdata[i];
       
-      if (strcmp (ot_deployment_get_osname (deployment), osname) != 0)
+      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
         continue;
-      if (strcmp (ot_deployment_get_bootcsum (deployment), bootcsum) != 0)
+      if (strcmp (ostree_deployment_get_bootcsum (deployment), bootcsum) != 0)
         continue;
       
       g_ptr_array_add (ret, deployment);
@@ -508,8 +506,8 @@ static void
 compute_new_deployment_list (int           current_bootversion,
                              GPtrArray    *current_deployments,
                              const char   *osname,
-                             OtDeployment *booted_deployment,
-                             OtDeployment *merge_deployment,
+                             OstreeDeployment *booted_deployment,
+                             OstreeDeployment *merge_deployment,
                              gboolean      retain,
                              const char   *revision,
                              const char   *bootcsum,
@@ -520,28 +518,28 @@ compute_new_deployment_list (int           current_bootversion,
   int new_index;
   guint new_deployserial = 0;
   int new_bootserial = 0;
-  gs_unref_object OtDeployment *new_deployment = NULL;
+  gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_ptrarray GPtrArray *matching_deployments_by_bootserial = NULL;
-  OtDeployment *deployment_to_delete = NULL;
+  OstreeDeployment *deployment_to_delete = NULL;
   gs_unref_ptrarray GPtrArray *ret_new_deployments = NULL;
   gboolean requires_new_bootversion;
 
   if (osname == NULL)
-    osname = ot_deployment_get_osname (booted_deployment);
+    osname = ostree_deployment_get_osname (booted_deployment);
 
   /* First, compute the serial for this deployment; we look
    * for other ones in this os with the same checksum.
    */
   for (i = 0; i < current_deployments->len; i++)
     {
-      OtDeployment *deployment = current_deployments->pdata[i];
+      OstreeDeployment *deployment = current_deployments->pdata[i];
       
-      if (strcmp (ot_deployment_get_osname (deployment), osname) != 0)
+      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
         continue;
-      if (strcmp (ot_deployment_get_csum (deployment), revision) != 0)
+      if (strcmp (ostree_deployment_get_csum (deployment), revision) != 0)
         continue;
 
-      new_deployserial = MAX(new_deployserial, ot_deployment_get_deployserial (deployment)+1);
+      new_deployserial = MAX(new_deployserial, ostree_deployment_get_deployserial (deployment)+1);
     }
 
   /* We retain by default (well, hardcoded now) one previous
@@ -558,14 +556,14 @@ compute_new_deployment_list (int           current_bootversion,
     {
       for (i = 0; i < current_deployments->len; i++)
         {
-          OtDeployment *deployment = current_deployments->pdata[i];
+          OstreeDeployment *deployment = current_deployments->pdata[i];
       
-          if (strcmp (ot_deployment_get_osname (deployment), osname) != 0)
+          if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
             continue;
 
           // Keep both the booted and merge deployments
-          if (ot_deployment_equal (deployment, booted_deployment) || 
-              ot_deployment_equal (deployment, merge_deployment))
+          if (ostree_deployment_equal (deployment, booted_deployment) || 
+              ostree_deployment_equal (deployment, merge_deployment))
             continue;
 
           deployment_to_delete = deployment;
@@ -577,24 +575,24 @@ compute_new_deployment_list (int           current_bootversion,
    */
   requires_new_bootversion =
     (deployment_to_delete == NULL) ||
-    (strcmp (ot_deployment_get_bootcsum (deployment_to_delete), bootcsum) != 0);
+    (strcmp (ostree_deployment_get_bootcsum (deployment_to_delete), bootcsum) != 0);
 
   ret_new_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  new_deployment = ot_deployment_new (0, osname, revision, new_deployserial,
+  new_deployment = ostree_deployment_new (0, osname, revision, new_deployserial,
                                       bootcsum, new_bootserial);
   g_ptr_array_add (ret_new_deployments, g_object_ref (new_deployment));
   new_index = 1;
   for (i = 0; i < current_deployments->len; i++)
     {
-      OtDeployment *orig_deployment = current_deployments->pdata[i];
-      gs_unref_object OtDeployment *deployment_clone = NULL;
+      OstreeDeployment *orig_deployment = current_deployments->pdata[i];
+      gs_unref_object OstreeDeployment *deployment_clone = NULL;
 
       if (orig_deployment == deployment_to_delete)
         continue;
 
-      deployment_clone = ot_deployment_clone (orig_deployment);
-      ot_deployment_set_index (deployment_clone, new_index);
+      deployment_clone = ostree_deployment_clone (orig_deployment);
+      ostree_deployment_set_index (deployment_clone, new_index);
       new_index++;
       g_ptr_array_add (ret_new_deployments, g_object_ref (deployment_clone));
     }
@@ -606,8 +604,8 @@ compute_new_deployment_list (int           current_bootversion,
                                                                        osname, bootcsum);
   for (i = 0; i < matching_deployments_by_bootserial->len; i++)
     {
-      OtDeployment *deployment = matching_deployments_by_bootserial->pdata[i];
-      ot_deployment_set_bootserial (deployment, i);
+      OstreeDeployment *deployment = matching_deployments_by_bootserial->pdata[i];
+      ostree_deployment_set_bootserial (deployment, i);
     }
 
   *out_new_deployments = ret_new_deployments;
@@ -671,15 +669,15 @@ print_deployment_set (gboolean    for_removal,
   g_hash_table_iter_init (&hashiter, set);
   while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
     {
-      OtDeployment *deployment = hashkey;
+      OstreeDeployment *deployment = hashkey;
 
       g_print ("  %c %s %s.%d",
-               for_removal ? '-' : '+', ot_deployment_get_osname (deployment),
-               ot_deployment_get_csum (deployment),
-               ot_deployment_get_deployserial (deployment));
+               for_removal ? '-' : '+', ostree_deployment_get_osname (deployment),
+               ostree_deployment_get_csum (deployment),
+               ostree_deployment_get_deployserial (deployment));
 
       if (!for_removal)
-        g_print (" index=%d", ot_deployment_get_index (deployment));
+        g_print (" index=%d", ostree_deployment_get_index (deployment));
       g_print ("\n");
     }
 }
@@ -688,8 +686,8 @@ static void
 print_deployment_diff (GPtrArray   *current_deployments,
                        GPtrArray   *new_deployments)
 {
-  gs_unref_hashtable GHashTable *curset = object_array_to_set (current_deployments, ot_deployment_hash, ot_deployment_equal);
-  gs_unref_hashtable GHashTable *newset = object_array_to_set (new_deployments, ot_deployment_hash, ot_deployment_equal);
+  gs_unref_hashtable GHashTable *curset = object_array_to_set (current_deployments, ostree_deployment_hash, ostree_deployment_equal);
+  gs_unref_hashtable GHashTable *newset = object_array_to_set (new_deployments, ostree_deployment_hash, ostree_deployment_equal);
   gs_unref_hashtable GHashTable *removed = NULL;
   gs_unref_hashtable GHashTable *added = NULL;
 
@@ -743,15 +741,15 @@ swap_bootlinks (GFile        *sysroot,
 
   for (i = 0; i < new_deployments->len; i++)
     {
-      OtDeployment *deployment = new_deployments->pdata[i];
+      OstreeDeployment *deployment = new_deployments->pdata[i];
       gs_free char *bootlink_pathname = g_strdup_printf ("%s/%s/%d",
-                                                         ot_deployment_get_osname (deployment),
-                                                         ot_deployment_get_bootcsum (deployment),
-                                                         ot_deployment_get_bootserial (deployment));
+                                                         ostree_deployment_get_osname (deployment),
+                                                         ostree_deployment_get_bootcsum (deployment),
+                                                         ostree_deployment_get_bootserial (deployment));
       gs_free char *bootlink_target = g_strdup_printf ("../../../deploy/%s/deploy/%s.%d",
-                                                       ot_deployment_get_osname (deployment),
-                                                       ot_deployment_get_csum (deployment),
-                                                       ot_deployment_get_deployserial (deployment));
+                                                       ostree_deployment_get_osname (deployment),
+                                                       ostree_deployment_get_csum (deployment),
+                                                       ostree_deployment_get_deployserial (deployment));
       gs_unref_object GFile *linkname = g_file_get_child (ostree_subbootdir, bootlink_pathname);
       gs_unref_object GFile *linkname_parent = g_file_get_parent (linkname);
 
@@ -822,15 +820,15 @@ parse_os_release (const char *contents,
 static gboolean
 install_deployment_kernel (GFile          *sysroot,
                            int             new_bootversion,
-                           OtDeployment   *deployment,
+                           OstreeDeployment   *deployment,
                            guint           n_deployments,
                            GCancellable   *cancellable,
                            GError        **error)
 
 {
   gboolean ret = FALSE;
-  const char *osname = ot_deployment_get_osname (deployment);
-  const char *bootcsum = ot_deployment_get_bootcsum (deployment);
+  const char *osname = ostree_deployment_get_osname (deployment);
+  const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   gs_unref_object GFile *bootdir = NULL;
   gs_unref_object GFile *bootcsumdir = NULL;
   gs_unref_object GFile *bootconfpath = NULL;
@@ -854,10 +852,10 @@ install_deployment_kernel (GFile          *sysroot,
   gs_free char *options_key = NULL;
   __attribute__((cleanup(ot_ordered_hash_cleanup))) OtOrderedHash *ohash = NULL;
   const char *val;
-  OtConfigParser *bootconfig;
+  OstreeBootconfigParser *bootconfig;
   gsize len;
 
-  bootconfig = ot_deployment_get_bootconfig (deployment);
+  bootconfig = ostree_deployment_get_bootconfig (deployment);
   deployment_dir = ot_admin_get_deployment_directory (sysroot, deployment);
 
   if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
@@ -870,8 +868,8 @@ install_deployment_kernel (GFile          *sysroot,
                                               bootcsum);
   bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%s-%d.conf",
                                                new_bootversion, osname, 
-                                               ot_deployment_get_csum (deployment),
-                                               ot_deployment_get_bootserial (deployment));
+                                               ostree_deployment_get_csum (deployment),
+                                               ostree_deployment_get_bootserial (deployment));
 
   if (!gs_file_ensure_directory (bootcsumdir, TRUE, cancellable, error))
     goto out;
@@ -925,35 +923,35 @@ install_deployment_kernel (GFile          *sysroot,
       goto out;
     }
   
-  title_key = g_strdup_printf ("ostree:%s:%d %s", ot_deployment_get_osname (deployment),
-                               ot_deployment_get_index (deployment),
+  title_key = g_strdup_printf ("ostree:%s:%d %s", ostree_deployment_get_osname (deployment),
+                               ostree_deployment_get_index (deployment),
                                val);
-  ot_config_parser_set (bootconfig, "title", title_key);
+  ostree_bootconfig_parser_set (bootconfig, "title", title_key);
 
-  version_key = g_strdup_printf ("%d", n_deployments - ot_deployment_get_index (deployment));
-  ot_config_parser_set (bootconfig, "version", version_key);
+  version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
+  ostree_bootconfig_parser_set (bootconfig, "version", version_key);
 
   linux_relpath = g_file_get_relative_path (bootdir, dest_kernel_path);
   linux_key = g_strconcat ("/", linux_relpath, NULL);
-  ot_config_parser_set (bootconfig, "linux", linux_key);
+  ostree_bootconfig_parser_set (bootconfig, "linux", linux_key);
 
   if (dest_initramfs_path)
     {
       initramfs_relpath = g_file_get_relative_path (bootdir, dest_initramfs_path);
       initrd_key = g_strconcat ("/", initramfs_relpath, NULL);
-      ot_config_parser_set (bootconfig, "initrd", initrd_key);
+      ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_key);
     }
 
-  val = ot_config_parser_get (bootconfig, "options");
+  val = ostree_bootconfig_parser_get (bootconfig, "options");
   ostree_kernel_arg = g_strdup_printf ("/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
-                                       ot_deployment_get_bootserial (deployment));
+                                       ostree_deployment_get_bootserial (deployment));
   ohash = ot_admin_parse_kernel_args (val);
   ot_ordered_hash_replace_key (ohash, "ostree", ostree_kernel_arg);
   options_key = ot_admin_kernel_arg_string_serialize (ohash);
-  ot_config_parser_set (bootconfig, "options", options_key);
+  ostree_bootconfig_parser_set (bootconfig, "options", options_key);
   
-  if (!ot_config_parser_write (ot_deployment_get_bootconfig (deployment), bootconfpath,
+  if (!ostree_bootconfig_parser_write (ostree_deployment_get_bootconfig (deployment), bootconfpath,
                                cancellable, error))
       goto out;
 
@@ -1025,7 +1023,7 @@ ot_admin_write_deployments (GFile             *sysroot,
     {
       for (i = 0; i < new_deployments->len; i++)
         {
-          OtDeployment *deployment = new_deployments->pdata[i];
+          OstreeDeployment *deployment = new_deployments->pdata[i];
           if (!install_deployment_kernel (sysroot, new_bootversion,
                                           deployment, new_deployments->len,
                                           cancellable, error))
@@ -1078,24 +1076,24 @@ ot_admin_deploy (GFile             *sysroot,
                  GKeyFile          *origin,
                  char             **add_kernel_argv,
                  gboolean           retain,
-                 OtDeployment      *booted_deployment,
-                 OtDeployment      *provided_merge_deployment,
-                 OtDeployment     **out_new_deployment,
+                 OstreeDeployment      *booted_deployment,
+                 OstreeDeployment      *provided_merge_deployment,
+                 OstreeDeployment     **out_new_deployment,
                  int               *out_new_bootversion,
                  GPtrArray        **out_new_deployments,
                  GCancellable      *cancellable,
                  GError           **error)
 {
   gboolean ret = FALSE;
-  OtDeployment *new_deployment;
-  gs_unref_object OtDeployment *merge_deployment = NULL;
+  OstreeDeployment *new_deployment;
+  gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
   gs_unref_object GFile *new_deployment_path = NULL;
   gs_free char *new_bootcsum = NULL;
-  gs_unref_object OtConfigParser *bootconfig = NULL;
+  gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   int new_bootversion;
 
@@ -1151,7 +1149,7 @@ ot_admin_deploy (GFile             *sysroot,
                                &new_deployments,
                                &new_bootversion);
   new_deployment = g_object_ref (new_deployments->pdata[0]);
-  ot_deployment_set_origin (new_deployment, origin);
+  ostree_deployment_set_origin (new_deployment, origin);
 
   print_deployment_diff (current_deployments, new_deployments);
 
@@ -1172,8 +1170,8 @@ ot_admin_deploy (GFile             *sysroot,
   /* Create an empty boot configuration; we will merge things into
    * it as we go.
    */
-  bootconfig = ot_config_parser_new (" ");
-  ot_deployment_set_bootconfig (new_deployment, bootconfig);
+  bootconfig = ostree_bootconfig_parser_new ();
+  ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
   if (!merge_configuration (sysroot, merge_deployment, new_deployment,
                             new_deployment_path,
@@ -1196,7 +1194,7 @@ ot_admin_deploy (GFile             *sysroot,
       __attribute__((cleanup(ot_ordered_hash_cleanup))) OtOrderedHash *ohash = NULL;
       gs_free char *new_options = NULL;
 
-      ohash = ot_admin_parse_kernel_args (ot_config_parser_get (bootconfig, "options"));
+      ohash = ot_admin_parse_kernel_args (ostree_bootconfig_parser_get (bootconfig, "options"));
 
       for (strviter = add_kernel_argv; *strviter; strviter++)
         {
@@ -1207,7 +1205,7 @@ ot_admin_deploy (GFile             *sysroot,
         }
 
       new_options = ot_admin_kernel_arg_string_serialize (ohash);
-      ot_config_parser_set (bootconfig, "options", new_options);
+      ostree_bootconfig_parser_set (bootconfig, "options", new_options);
     }
 
   if (!ot_admin_write_deployments (sysroot, current_bootversion, new_bootversion,
@@ -1222,7 +1220,7 @@ ot_admin_deploy (GFile             *sysroot,
    * done from the host.
    */
   {
-    gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (sysroot, "ostree/deploy/%s", ot_deployment_get_osname (new_deployment));
+    gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (sysroot, "ostree/deploy/%s", ostree_deployment_get_osname (new_deployment));
     gs_unref_object GFile *os_current_path = g_file_get_child (osdir, "current");
     gs_free char *target = g_file_get_relative_path (osdir, new_deployment_path);
     g_assert (target != NULL);

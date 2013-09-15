@@ -39,7 +39,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   GOptionContext *context;
   gboolean ret = FALSE;
   int bootversion;
-  gs_unref_object OtDeployment *booted_deployment = NULL;
+  gs_unref_object OstreeDeployment *booted_deployment = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   guint i;
 
@@ -77,15 +77,15 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
       for (i = 0; i < deployments->len; i++)
         {
-          OtDeployment *deployment = deployments->pdata[i];
+          OstreeDeployment *deployment = deployments->pdata[i];
           GKeyFile *origin;
 
           g_print ("%c %s %s.%d\n",
                    deployment == booted_deployment ? '*' : ' ',
-                   ot_deployment_get_osname (deployment),
-                   ot_deployment_get_csum (deployment),
-                   ot_deployment_get_deployserial (deployment));
-          origin = ot_deployment_get_origin (deployment);
+                   ostree_deployment_get_osname (deployment),
+                   ostree_deployment_get_csum (deployment),
+                   ostree_deployment_get_deployserial (deployment));
+          origin = ostree_deployment_get_origin (deployment);
           if (!origin)
             g_print ("    origin: none\n");
           else

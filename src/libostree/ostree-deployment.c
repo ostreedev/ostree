@@ -20,10 +20,10 @@
 
 #include "config.h"
 
-#include "ot-deployment.h"
+#include "ostree-deployment.h"
 #include "libgsystem.h"
 
-struct _OtDeployment
+struct _OstreeDeployment
 {
   GObject       parent_instance;
 
@@ -33,76 +33,76 @@ struct _OtDeployment
   int deployserial;  /* How many times this particular csum appears in deployment list */
   char *bootcsum;  /* Checksum of kernel+initramfs */
   int bootserial; /* An integer assigned to this tree per its ${bootcsum} */
-  OtConfigParser *bootconfig; /* Bootloader configuration */
+  OstreeBootconfigParser *bootconfig; /* Bootloader configuration */
   GKeyFile *origin; /* How to construct an upgraded version of this tree */
 };
 
-typedef GObjectClass OtDeploymentClass;
+typedef GObjectClass OstreeDeploymentClass;
 
-G_DEFINE_TYPE (OtDeployment, ot_deployment, G_TYPE_OBJECT)
+G_DEFINE_TYPE (OstreeDeployment, ostree_deployment, G_TYPE_OBJECT)
 
 const char *
-ot_deployment_get_csum (OtDeployment *self)
+ostree_deployment_get_csum (OstreeDeployment *self)
 {
   return self->csum;
 }
 
 const char *
-ot_deployment_get_bootcsum (OtDeployment *self)
+ostree_deployment_get_bootcsum (OstreeDeployment *self)
 {
   return self->bootcsum;
 }
 
 const char *
-ot_deployment_get_osname (OtDeployment *self)
+ostree_deployment_get_osname (OstreeDeployment *self)
 {
   return self->osname;
 }
 
 int
-ot_deployment_get_deployserial (OtDeployment *self)
+ostree_deployment_get_deployserial (OstreeDeployment *self)
 {
   return self->deployserial;
 }
 
 int
-ot_deployment_get_bootserial (OtDeployment *self)
+ostree_deployment_get_bootserial (OstreeDeployment *self)
 {
   return self->bootserial;
 }
 
-OtConfigParser *
-ot_deployment_get_bootconfig (OtDeployment *self)
+OstreeBootconfigParser *
+ostree_deployment_get_bootconfig (OstreeDeployment *self)
 {
   return self->bootconfig;
 }
 
 GKeyFile *
-ot_deployment_get_origin (OtDeployment *self)
+ostree_deployment_get_origin (OstreeDeployment *self)
 {
   return self->origin;
 }
 
 int
-ot_deployment_get_index (OtDeployment *self)
+ostree_deployment_get_index (OstreeDeployment *self)
 {
   return self->index;
 }
 
 void
-ot_deployment_set_index (OtDeployment *self, int index)
+ostree_deployment_set_index (OstreeDeployment *self, int index)
 {
   self->index = index;
 }
 
 void
-ot_deployment_set_bootserial (OtDeployment *self, int index)
+ostree_deployment_set_bootserial (OstreeDeployment *self, int index)
 {
   self->bootserial = index;
 }
 
 void
-ot_deployment_set_bootconfig (OtDeployment *self, OtConfigParser *bootconfig)
+ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser *bootconfig)
 {
   g_clear_object (&self->bootconfig);
   if (bootconfig)
@@ -110,55 +110,55 @@ ot_deployment_set_bootconfig (OtDeployment *self, OtConfigParser *bootconfig)
 }
 
 void
-ot_deployment_set_origin (OtDeployment *self, GKeyFile *origin)
+ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
 {
   g_clear_pointer (&self->origin, g_key_file_unref);
   if (origin)
     self->origin = g_key_file_ref (origin);
 }
 
-OtDeployment *
-ot_deployment_clone (OtDeployment *self)
+OstreeDeployment *
+ostree_deployment_clone (OstreeDeployment *self)
 {
-  OtDeployment *ret = ot_deployment_new (self->index, self->osname, self->csum,
+  OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
                                          self->deployserial,
                                          self->bootcsum, self->bootserial);
-  ot_deployment_set_bootconfig (ret, self->bootconfig);
-  ot_deployment_set_origin (ret, self->origin);
+  ostree_deployment_set_bootconfig (ret, self->bootconfig);
+  ostree_deployment_set_origin (ret, self->origin);
   return ret;
 }
 
 guint
-ot_deployment_hash (gconstpointer v)
+ostree_deployment_hash (gconstpointer v)
 {
-  OtDeployment *d = (OtDeployment*)v;
-  return g_str_hash (ot_deployment_get_osname (d)) +
-    g_str_hash (ot_deployment_get_csum (d)) +
-    ot_deployment_get_deployserial (d);
+  OstreeDeployment *d = (OstreeDeployment*)v;
+  return g_str_hash (ostree_deployment_get_osname (d)) +
+    g_str_hash (ostree_deployment_get_csum (d)) +
+    ostree_deployment_get_deployserial (d);
 }
 
 gboolean
-ot_deployment_equal (gconstpointer ap, gconstpointer bp)
+ostree_deployment_equal (gconstpointer ap, gconstpointer bp)
 {
-  OtDeployment *a = (OtDeployment*)ap;
-  OtDeployment *b = (OtDeployment*)bp;
+  OstreeDeployment *a = (OstreeDeployment*)ap;
+  OstreeDeployment *b = (OstreeDeployment*)bp;
   
   if (a == NULL && b == NULL)
     return TRUE;
   else if (a != NULL && b != NULL)
-    return g_str_equal (ot_deployment_get_osname (a),
-                        ot_deployment_get_osname (b)) &&
-      g_str_equal (ot_deployment_get_csum (a),
-                   ot_deployment_get_csum (b)) &&
-      ot_deployment_get_deployserial (a) == ot_deployment_get_deployserial (b);
+    return g_str_equal (ostree_deployment_get_osname (a),
+                        ostree_deployment_get_osname (b)) &&
+      g_str_equal (ostree_deployment_get_csum (a),
+                   ostree_deployment_get_csum (b)) &&
+      ostree_deployment_get_deployserial (a) == ostree_deployment_get_deployserial (b);
   else 
     return FALSE;
 }
 
 static void
-ot_deployment_finalize (GObject *object)
+ostree_deployment_finalize (GObject *object)
 {
-  OtDeployment *self = OT_DEPLOYMENT (object);
+  OstreeDeployment *self = OSTREE_DEPLOYMENT (object);
 
   g_free (self->osname);
   g_free (self->csum);
@@ -166,31 +166,31 @@ ot_deployment_finalize (GObject *object)
   g_clear_object (&self->bootconfig);
   g_clear_pointer (&self->origin, g_key_file_unref);
 
-  G_OBJECT_CLASS (ot_deployment_parent_class)->finalize (object);
+  G_OBJECT_CLASS (ostree_deployment_parent_class)->finalize (object);
 }
 
 void
-ot_deployment_init (OtDeployment *self)
+ostree_deployment_init (OstreeDeployment *self)
 {
 }
 
 void
-ot_deployment_class_init (OtDeploymentClass *class)
+ostree_deployment_class_init (OstreeDeploymentClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ot_deployment_finalize;
+  object_class->finalize = ostree_deployment_finalize;
 }
 
-OtDeployment *
-ot_deployment_new (int    index,
+OstreeDeployment *
+ostree_deployment_new (int    index,
                    const char  *osname,
                    const char  *csum,
                    int    deployserial,
                    const char  *bootcsum,
                    int    bootserial)
 {
-  OtDeployment *self;
+  OstreeDeployment *self;
   
   /* index may be -1 */
   g_return_val_if_fail (osname != NULL, NULL);
@@ -199,7 +199,7 @@ ot_deployment_new (int    index,
   /* We can have "disconnected" deployments that don't have a
      bootcsum/serial */
 
-  self = g_object_new (OT_TYPE_DEPLOYMENT, NULL);
+  self = g_object_new (OSTREE_TYPE_DEPLOYMENT, NULL);
   self->index = index;
   self->osname = g_strdup (osname);
   self->csum = g_strdup (csum);

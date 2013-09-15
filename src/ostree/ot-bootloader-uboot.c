@@ -67,7 +67,7 @@ create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
                                         GError               **error)
 {
   gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
-  OtConfigParser *config;
+  OstreeBootconfigParser *config;
   const char *val;
 
   if (!ot_admin_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
@@ -77,7 +77,7 @@ create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
   /* U-Boot doesn't support a menu so just pick the first one since the list is ordered */
   config = boot_loader_configs->pdata[0];
 
-  val = ot_config_parser_get (config, "linux");
+  val = ostree_bootconfig_parser_get (config, "linux");
   if (!val)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -86,11 +86,11 @@ create_config_from_boot_loader_entries (OtBootloaderUboot     *self,
     }
   g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image=%s", val));
 
-  val = ot_config_parser_get (config, "initrd");
+  val = ostree_bootconfig_parser_get (config, "initrd");
   if (val)
     g_ptr_array_add (new_lines, g_strdup_printf ("ramdisk_image=%s", val));
 
-  val = ot_config_parser_get (config, "options");
+  val = ostree_bootconfig_parser_get (config, "options");
   if (val)
     g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
 

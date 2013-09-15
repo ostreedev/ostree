@@ -58,8 +58,8 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
-  gs_unref_object OtDeployment *new_deployment = NULL;
-  gs_unref_object OtDeployment *booted_deployment = NULL;
+  gs_unref_object OstreeDeployment *new_deployment = NULL;
+  gs_unref_object OstreeDeployment *booted_deployment = NULL;
   gs_free char *revision = NULL;
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");

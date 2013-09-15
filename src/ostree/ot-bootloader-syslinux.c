@@ -73,10 +73,10 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
 
   for (i = 0; i < boot_loader_configs->len; i++)
     {
-      OtConfigParser *config = boot_loader_configs->pdata[i];
+      OstreeBootconfigParser *config = boot_loader_configs->pdata[i];
       const char *val;
 
-      val = ot_config_parser_get (config, "title");
+      val = ostree_bootconfig_parser_get (config, "title");
       if (!val)
         val = "(Untitled)";
 
@@ -87,7 +87,7 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
 
       g_ptr_array_add (new_lines, g_strdup_printf ("LABEL %s", val));
       
-      val = ot_config_parser_get (config, "linux");
+      val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -96,11 +96,11 @@ append_config_from_boot_loader_entries (OtBootloaderSyslinux  *self,
         }
       g_ptr_array_add (new_lines, g_strdup_printf ("\tKERNEL %s", val));
 
-      val = ot_config_parser_get (config, "initrd");
+      val = ostree_bootconfig_parser_get (config, "initrd");
       if (val)
         g_ptr_array_add (new_lines, g_strdup_printf ("\tINITRD %s", val));
 
-      val = ot_config_parser_get (config, "options");
+      val = ostree_bootconfig_parser_get (config, "options");
       if (val)
         g_ptr_array_add (new_lines, g_strdup_printf ("\tAPPEND %s", val));
     }

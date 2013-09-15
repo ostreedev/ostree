@@ -45,6 +45,10 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-file-enumerator.h \
 	src/libostree/ostree-sysroot.c \
 	src/libostree/ostree-sysroot.h \
+	src/libostree/ostree-bootconfig-parser.h \
+	src/libostree/ostree-bootconfig-parser.c \
+	src/libostree/ostree-deployment.h \
+	src/libostree/ostree-deployment.c \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

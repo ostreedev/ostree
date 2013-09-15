@@ -42,7 +42,7 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   GOptionContext *context;
   gboolean ret = FALSE;
   gs_unref_object GFile *repo_path = NULL;
-  gs_unref_object OtDeployment *deployment = NULL;
+  gs_unref_object OstreeDeployment *deployment = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
@@ -73,7 +73,7 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
                                               cancellable, error))
     goto out;
   if (deployment != NULL)
-    opt_osname = (char*)ot_deployment_get_osname (deployment);
+    opt_osname = (char*)ostree_deployment_get_osname (deployment);
   if (deployment == NULL)
     deployment = ot_admin_get_merge_deployment (deployments, opt_osname, deployment);
   if (deployment == NULL)

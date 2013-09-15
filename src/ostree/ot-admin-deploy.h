@@ -23,7 +23,7 @@
 #pragma once
 
 #include <gio/gio.h>
-#include "ot-deployment.h"
+#include <ostree.h>
 #include "ot-bootloader.h"
 #include "ot-ordered-hash.h"
 
@@ -44,9 +44,9 @@ gboolean ot_admin_deploy (GFile             *sysroot,
                           GKeyFile          *origin,
                           char             **add_kernel_argv,
                           gboolean           retain,
-                          OtDeployment      *booted_deployment,
-                          OtDeployment      *merge_deployment,
-                          OtDeployment     **out_new_deployment,
+                          OstreeDeployment      *booted_deployment,
+                          OstreeDeployment      *merge_deployment,
+                          OstreeDeployment     **out_new_deployment,
                           int               *out_new_bootversion,
                           GPtrArray        **out_new_deployments,
                           GCancellable      *cancellable,

@@ -23,8 +23,7 @@
 #pragma once
 
 #include <gio/gio.h>
-#include "ostree.h"
-#include "ot-deployment.h"
+#include <ostree.h>
 #include "ot-bootloader.h"
 #include "ot-ordered-hash.h"
 
@@ -79,30 +78,30 @@ gboolean ot_admin_list_deployments (GFile               *sysroot,
 
 gboolean ot_admin_find_booted_deployment (GFile               *sysroot,
                                           GPtrArray           *deployments,
-                                          OtDeployment       **out_deployment,
+                                          OstreeDeployment       **out_deployment,
                                           GCancellable        *cancellable,
                                           GError             **error);
 
 gboolean ot_admin_require_booted_deployment (GFile               *sysroot,
-                                             OtDeployment       **out_deployment,
+                                             OstreeDeployment       **out_deployment,
                                              GCancellable        *cancellable,
                                              GError             **error);
 
 gboolean ot_admin_require_deployment_or_osname (GFile               *sysroot,
                                                 GPtrArray           *deployment_list,
                                                 const char          *osname,
-                                                OtDeployment       **out_deployment,
+                                                OstreeDeployment       **out_deployment,
                                                 GCancellable        *cancellable,
                                                 GError             **error);
 
-OtDeployment *ot_admin_get_merge_deployment (GPtrArray         *deployment_list,
+OstreeDeployment *ot_admin_get_merge_deployment (GPtrArray         *deployment_list,
                                              const char        *osname,
-                                             OtDeployment      *booted_deployment);
+                                             OstreeDeployment      *booted_deployment);
 
 GFile *ot_admin_get_deployment_origin_path (GFile   *deployment_path);
 
 GFile *ot_admin_get_deployment_directory (GFile        *sysroot,
-                                          OtDeployment *deployment);
+                                          OstreeDeployment *deployment);
 
 gboolean ot_admin_get_repo (GFile         *sysroot,
                             OstreeRepo   **out_repo,

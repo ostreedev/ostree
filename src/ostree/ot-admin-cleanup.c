@@ -23,8 +23,6 @@
 #include "config.h"
 
 #include "ot-admin-functions.h"
-#include "ot-deployment.h"
-#include "ot-config-parser.h"
 #include "otutil.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -65,7 +63,7 @@ list_deployment_dirs_for_os (GFile               *osdir,
       const char *name;
       GFileInfo *file_info = NULL;
       GFile *child = NULL;
-      gs_unref_object OtDeployment *deployment = NULL;
+      gs_unref_object OstreeDeployment *deployment = NULL;
       gs_free char *csum = NULL;
       gint deployserial;
 
@@ -83,7 +81,7 @@ list_deployment_dirs_for_os (GFile               *osdir,
       if (!ot_admin_parse_deploy_path_name (name, &csum, &deployserial, error))
         goto out;
       
-      deployment = ot_deployment_new (-1, osname, csum, deployserial, NULL, -1);
+      deployment = ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1);
       g_ptr_array_add (inout_deployments, g_object_ref (deployment));
     }
 
@@ -315,9 +313,9 @@ cleanup_old_deployments (GFile               *sysroot,
 
   for (i = 0; i < deployments->len; i++)
     {
-      OtDeployment *deployment = deployments->pdata[i];
+      OstreeDeployment *deployment = deployments->pdata[i];
       GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
-      char *bootcsum = g_strdup (ot_deployment_get_bootcsum (deployment));
+      char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_insert (active_deployment_dirs, deployment_path, deployment_path);
       g_hash_table_insert (active_boot_checksums, bootcsum, bootcsum);
@@ -329,7 +327,7 @@ cleanup_old_deployments (GFile               *sysroot,
   
   for (i = 0; i < all_deployment_dirs->len; i++)
     {
-      OtDeployment *deployment = all_deployment_dirs->pdata[i];
+      OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
       gs_unref_object GFile *deployment_path = ot_admin_get_deployment_directory (sysroot, deployment);
       gs_unref_object GFile *origin_path = ot_admin_get_deployment_origin_path (deployment_path);
       if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
@@ -453,7 +451,7 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
 
   for (i = 0; i < deployments->len; i++)
     {
-      OtDeployment *deployment = deployments->pdata[i];
+      OstreeDeployment *deployment = deployments->pdata[i];
       gs_free char *refname = g_strdup_printf ("ostree/%d/%d/%u",
                                                bootversion, subbootversion,
                                                i);
@@ -461,7 +459,7 @@ generate_deployment_refs_and_prune (GFile               *sysroot,
       if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
         goto out;
 
-      ostree_repo_transaction_set_refspec (repo, refname, ot_deployment_get_csum (deployment));
+      ostree_repo_transaction_set_refspec (repo, refname, ostree_deployment_get_csum (deployment));
 
       if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
         goto out;
