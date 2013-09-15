@@ -53,6 +53,9 @@ typedef struct {
   GSimpleAsyncResult *result;
 } OstreeFetcherPendingURI;
 
+static void ostree_fetcher_pending_uri_done (OstreeFetcher *self,
+                                             OstreeFetcherPendingURI *pending);
+
 static void
 pending_uri_free (OstreeFetcherPendingURI *pending)
 {
@@ -60,6 +63,9 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
   pending->refcount--;
   if (pending->refcount > 0)
     return;
+
+  if (!pending->is_stream)
+    ostree_fetcher_pending_uri_done (pending->self, pending);
 
   soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
@@ -86,6 +92,11 @@ struct OstreeFetcher
   
   guint64 total_downloaded;
   guint total_requests;
+
+  /* Queue for libsoup, see bgo#708591 */
+  gint outstanding;
+  GQueue pending_queue;
+  gint max_outstanding;
 };
 
 G_DEFINE_TYPE (OstreeFetcher, ostree_fetcher, G_TYPE_OBJECT)
@@ -102,6 +113,8 @@ ostree_fetcher_finalize (GObject *object)
 
   g_hash_table_destroy (self->sending_messages);
   g_hash_table_destroy (self->message_to_request);
+
+  g_queue_clear (&self->pending_queue);
 
   G_OBJECT_CLASS (ostree_fetcher_parent_class)->finalize (object);
 }
@@ -137,12 +150,17 @@ on_request_unqueued (SoupSession  *session,
 static void
 ostree_fetcher_init (OstreeFetcher *self)
 {
+  gint max_conns;
+
+  g_queue_init (&self->pending_queue);
   self->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
                                                        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
                                                        SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
                                                        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_REQUESTER,
                                                        NULL);
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
+  g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
+  self->max_outstanding = 3 * max_conns;
 
   g_signal_connect (self->session, "request-started",
                     G_CALLBACK (on_request_started), self);
@@ -167,6 +185,47 @@ ostree_fetcher_new (GFile                    *tmpdir,
  
   return self;
 }
+
+static void
+on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
+
+static void
+ostree_fetcher_pending_uri_done (OstreeFetcher *self,
+                                 OstreeFetcherPendingURI *pending)
+{
+  OstreeFetcherPendingURI *p;
+
+  g_assert (!pending->is_stream);
+
+  self->outstanding--;
+  p = g_queue_pop_head (&self->pending_queue);
+  if (p != NULL)
+    {
+      self->outstanding++;
+      soup_request_send_async (p->request, p->cancellable,
+                           on_request_sent, p);
+    }
+}
+
+static void
+ostree_fetcher_queue_pending_uri (OstreeFetcher *self,
+                                  OstreeFetcherPendingURI *pending)
+{
+  g_assert (!pending->is_stream);
+
+  if (self->outstanding >= self->max_outstanding)
+    {
+      g_queue_push_tail (&self->pending_queue, pending);
+    }
+  else
+    {
+      self->outstanding++;
+      soup_request_send_async (pending->request, pending->cancellable,
+                           on_request_sent, pending);
+    }
+}
+
+
 
 static void
 on_splice_complete (GObject        *object,
@@ -351,9 +410,8 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                            soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
                            pending);
     }
-  
-  soup_request_send_async (pending->request, cancellable,
-                           on_request_sent, pending);
+
+  ostree_fetcher_queue_pending_uri (self, pending);
 
  out:
   if (local_error != NULL)
