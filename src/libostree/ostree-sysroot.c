@@ -800,17 +800,17 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
  * Returns: (transfer full): Currently active bootloader in @sysroot
  */
 OstreeBootloader *
-ostree_sysroot_query_bootloader (OstreeSysroot *self)
+_ostree_sysroot_query_bootloader (OstreeSysroot *self)
 {
   OstreeBootloaderSyslinux *syslinux;
   OstreeBootloaderUboot    *uboot;
 
-  syslinux = ostree_bootloader_syslinux_new (self);
-  if (ostree_bootloader_query ((OstreeBootloader*)syslinux))
+  syslinux = _ostree_bootloader_syslinux_new (self);
+  if (_ostree_bootloader_query ((OstreeBootloader*)syslinux))
     return (OstreeBootloader*) (syslinux);
 
-  uboot = ostree_bootloader_uboot_new (self);
-  if (ostree_bootloader_query ((OstreeBootloader*)uboot))
+  uboot = _ostree_bootloader_uboot_new (self);
+  if (_ostree_bootloader_query ((OstreeBootloader*)uboot))
     return (OstreeBootloader*) (uboot);
 
   return NULL;

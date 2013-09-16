@@ -70,8 +70,6 @@ gboolean ostree_sysroot_get_repo (OstreeSysroot         *self,
                                   GCancellable          *cancellable,
                                   GError               **error);
 
-OstreeBootloader *ostree_sysroot_query_bootloader (OstreeSysroot         *sysroot);
-
 
 gboolean ostree_sysroot_find_booted_deployment (OstreeSysroot       *sysroot,
                                                 GPtrArray           *deployments,

@@ -41,12 +41,12 @@ struct _OstreeBootloaderUboot
 
 typedef GObjectClass OstreeBootloaderUbootClass;
 
-static void ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface);
-G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderUboot, ostree_bootloader_uboot, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, ostree_bootloader_uboot_bootloader_iface_init));
+static void _ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface);
+G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderUboot, _ostree_bootloader_uboot, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_uboot_bootloader_iface_init));
 
 static gboolean
-ostree_bootloader_uboot_query (OstreeBootloader *bootloader)
+_ostree_bootloader_uboot_query (OstreeBootloader *bootloader)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
@@ -54,7 +54,7 @@ ostree_bootloader_uboot_query (OstreeBootloader *bootloader)
 }
 
 static const char *
-ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
+_ostree_bootloader_uboot_get_name (OstreeBootloader *bootloader)
 {
   return "U-Boot";
 }
@@ -98,7 +98,7 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
 }
 
 static gboolean
-ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
+_ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
                                   int                    bootversion,
                                   GCancellable          *cancellable,
                                   GError               **error)
@@ -139,39 +139,39 @@ ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
 }
 
 static void
-ostree_bootloader_uboot_finalize (GObject *object)
+_ostree_bootloader_uboot_finalize (GObject *object)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (object);
 
   g_clear_object (&self->sysroot);
   g_clear_object (&self->config_path);
 
-  G_OBJECT_CLASS (ostree_bootloader_uboot_parent_class)->finalize (object);
+  G_OBJECT_CLASS (_ostree_bootloader_uboot_parent_class)->finalize (object);
 }
 
 void
-ostree_bootloader_uboot_init (OstreeBootloaderUboot *self)
+_ostree_bootloader_uboot_init (OstreeBootloaderUboot *self)
 {
 }
 
 static void
-ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface)
+_ostree_bootloader_uboot_bootloader_iface_init (OstreeBootloaderInterface *iface)
 {
-  iface->query = ostree_bootloader_uboot_query;
-  iface->get_name = ostree_bootloader_uboot_get_name;
-  iface->write_config = ostree_bootloader_uboot_write_config;
+  iface->query = _ostree_bootloader_uboot_query;
+  iface->get_name = _ostree_bootloader_uboot_get_name;
+  iface->write_config = _ostree_bootloader_uboot_write_config;
 }
 
 void
-ostree_bootloader_uboot_class_init (OstreeBootloaderUbootClass *class)
+_ostree_bootloader_uboot_class_init (OstreeBootloaderUbootClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ostree_bootloader_uboot_finalize;
+  object_class->finalize = _ostree_bootloader_uboot_finalize;
 }
 
 OstreeBootloaderUboot *
-ostree_bootloader_uboot_new (OstreeSysroot *sysroot)
+_ostree_bootloader_uboot_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderUboot *self = g_object_new (OSTREE_TYPE_BOOTLOADER_UBOOT, NULL);
   self->sysroot = g_object_ref (sysroot);

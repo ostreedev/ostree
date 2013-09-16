@@ -992,10 +992,10 @@ ostree_sysroot_write_deployments (OstreeSysroot     *sysroot,
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_object OstreeBootloader *bootloader = ostree_sysroot_query_bootloader (sysroot);
+  gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (sysroot);
 
   if (bootloader)
-    g_print ("Detected bootloader: %s\n", ostree_bootloader_get_name (bootloader));
+    g_print ("Detected bootloader: %s\n", _ostree_bootloader_get_name (bootloader));
   else
     g_print ("Detected bootloader: (unknown)\n");
 
@@ -1043,8 +1043,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *sysroot,
           goto out;
         }
 
-      if (bootloader && !ostree_bootloader_write_config (bootloader, new_bootversion,
-                                                         cancellable, error))
+      if (bootloader && !_ostree_bootloader_write_config (bootloader, new_bootversion,
+                                                          cancellable, error))
           {
             g_prefix_error (error, "Bootloader write config: ");
             goto out;

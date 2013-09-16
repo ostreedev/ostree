@@ -24,7 +24,7 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_BOOTLOADER (ostree_bootloader_get_type ())
+#define OSTREE_TYPE_BOOTLOADER (_ostree_bootloader_get_type ())
 #define OSTREE_BOOTLOADER(inst) (G_TYPE_CHECK_INSTANCE_CAST ((inst), OSTREE_TYPE_BOOTLOADER, OstreeBootloader))
 #define OSTREE_IS_BOOTLOADER(inst) (G_TYPE_CHECK_INSTANCE_TYPE ((inst), OSTREE_TYPE_BOOTLOADER))
 #define OSTREE_BOOTLOADER_GET_IFACE(inst) (G_TYPE_INSTANCE_GET_INTERFACE ((inst), OSTREE_TYPE_BOOTLOADER, OstreeBootloaderInterface))
@@ -45,16 +45,16 @@ struct _OstreeBootloaderInterface
                                                    GError       **error);
 };
 
-GType ostree_bootloader_get_type (void) G_GNUC_CONST;
+GType _ostree_bootloader_get_type (void) G_GNUC_CONST;
 
-gboolean ostree_bootloader_query (OstreeBootloader *self);
+gboolean _ostree_bootloader_query (OstreeBootloader *self);
 
-const char *ostree_bootloader_get_name (OstreeBootloader  *self);
+const char *_ostree_bootloader_get_name (OstreeBootloader  *self);
 
-gboolean ostree_bootloader_write_config (OstreeBootloader  *self,
-                                         int            bootversion,
-                                         GCancellable  *cancellable,
-                                         GError       **error);
+gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
+                                          int            bootversion,
+                                          GCancellable  *cancellable,
+                                          GError       **error);
 
 G_END_DECLS
 

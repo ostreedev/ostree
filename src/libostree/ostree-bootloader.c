@@ -22,15 +22,15 @@
 #include "ostree-bootloader.h"
 #include "libgsystem.h"
 
-G_DEFINE_INTERFACE (OstreeBootloader, ostree_bootloader, G_TYPE_OBJECT)
+G_DEFINE_INTERFACE (OstreeBootloader, _ostree_bootloader, G_TYPE_OBJECT)
 
 static void
-ostree_bootloader_default_init (OstreeBootloaderInterface *iface)
+_ostree_bootloader_default_init (OstreeBootloaderInterface *iface)
 {
 }
 
 gboolean
-ostree_bootloader_query (OstreeBootloader  *self)
+_ostree_bootloader_query (OstreeBootloader  *self)
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
@@ -38,12 +38,12 @@ ostree_bootloader_query (OstreeBootloader  *self)
 }
 
 /**
- * ostree_bootloader_get_name:
+ * _ostree_bootloader_get_name:
  *
  * Returns: (transfer none): Name of this bootloader
  */
 const char *
-ostree_bootloader_get_name (OstreeBootloader  *self)
+_ostree_bootloader_get_name (OstreeBootloader  *self)
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), NULL);
 
@@ -51,7 +51,7 @@ ostree_bootloader_get_name (OstreeBootloader  *self)
 }
 
 gboolean
-ostree_bootloader_write_config (OstreeBootloader  *self,
+_ostree_bootloader_write_config (OstreeBootloader  *self,
                             int            bootversion,
                             GCancellable  *cancellable,
                             GError       **error)

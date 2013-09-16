@@ -60,5 +60,7 @@ OstreeOrderedHash *_ostree_sysroot_parse_kernel_args (const char *options);
 
 char * _ostree_sysroot_kernel_arg_string_serialize (OstreeOrderedHash *ohash);
 
+OstreeBootloader *_ostree_sysroot_query_bootloader (OstreeSysroot         *sysroot);
+
 G_END_DECLS
 

@@ -37,12 +37,12 @@ struct _OstreeBootloaderSyslinux
 
 typedef GObjectClass OstreeBootloaderSyslinuxClass;
 
-static void ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface);
-G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderSyslinux, ostree_bootloader_syslinux, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, ostree_bootloader_syslinux_bootloader_iface_init));
+static void _ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface);
+G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderSyslinux, _ostree_bootloader_syslinux, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_syslinux_bootloader_iface_init));
 
 static gboolean
-ostree_bootloader_syslinux_query (OstreeBootloader *bootloader)
+_ostree_bootloader_syslinux_query (OstreeBootloader *bootloader)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
@@ -50,7 +50,7 @@ ostree_bootloader_syslinux_query (OstreeBootloader *bootloader)
 }
 
 static const char *
-ostree_bootloader_syslinux_get_name (OstreeBootloader *bootloader)
+_ostree_bootloader_syslinux_get_name (OstreeBootloader *bootloader)
 {
   return "syslinux";
 }
@@ -111,7 +111,7 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
 }
 
 static gboolean
-ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
+_ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
                                      int                    bootversion,
                                      GCancellable          *cancellable,
                                      GError               **error)
@@ -254,39 +254,39 @@ ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
 }
 
 static void
-ostree_bootloader_syslinux_finalize (GObject *object)
+_ostree_bootloader_syslinux_finalize (GObject *object)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (object);
 
   g_clear_object (&self->sysroot);
   g_clear_object (&self->config_path);
 
-  G_OBJECT_CLASS (ostree_bootloader_syslinux_parent_class)->finalize (object);
+  G_OBJECT_CLASS (_ostree_bootloader_syslinux_parent_class)->finalize (object);
 }
 
 void
-ostree_bootloader_syslinux_init (OstreeBootloaderSyslinux *self)
+_ostree_bootloader_syslinux_init (OstreeBootloaderSyslinux *self)
 {
 }
 
 static void
-ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface)
+_ostree_bootloader_syslinux_bootloader_iface_init (OstreeBootloaderInterface *iface)
 {
-  iface->query = ostree_bootloader_syslinux_query;
-  iface->get_name = ostree_bootloader_syslinux_get_name;
-  iface->write_config = ostree_bootloader_syslinux_write_config;
+  iface->query = _ostree_bootloader_syslinux_query;
+  iface->get_name = _ostree_bootloader_syslinux_get_name;
+  iface->write_config = _ostree_bootloader_syslinux_write_config;
 }
 
 void
-ostree_bootloader_syslinux_class_init (OstreeBootloaderSyslinuxClass *class)
+_ostree_bootloader_syslinux_class_init (OstreeBootloaderSyslinuxClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
 
-  object_class->finalize = ostree_bootloader_syslinux_finalize;
+  object_class->finalize = _ostree_bootloader_syslinux_finalize;
 }
 
 OstreeBootloaderSyslinux *
-ostree_bootloader_syslinux_new (OstreeSysroot *sysroot)
+_ostree_bootloader_syslinux_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderSyslinux *self = g_object_new (OSTREE_TYPE_BOOTLOADER_SYSLINUX, NULL);
   self->sysroot = g_object_ref (sysroot);
