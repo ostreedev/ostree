@@ -38,7 +38,6 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   GOptionContext *context;
   const char *deploy_index_str;
   int deploy_index;
-  int current_bootversion;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
   gs_unref_object OstreeDeployment *booted_deployment = NULL;
   gs_unref_object OstreeDeployment *target_deployment = NULL;
@@ -56,19 +55,12 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
       goto out;
     }
 
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    goto out;
+  current_deployments = ostree_sysroot_get_deployments (sysroot);
+
   deploy_index_str = argv[1];
   deploy_index = atoi (deploy_index_str);
-
-  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion, &current_deployments,
-                                        cancellable, error))
-    {
-      g_prefix_error (error, "While listing deployments: ");
-      goto out;
-    }
-
-  if (!ostree_sysroot_find_booted_deployment (sysroot, current_deployments, &booted_deployment,
-                                              cancellable, error))
-    goto out;
 
   if (deploy_index < 0)
     {
@@ -84,7 +76,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
     }
   
   target_deployment = g_object_ref (current_deployments->pdata[deploy_index]);
-  if (target_deployment == booted_deployment)
+  if (target_deployment == ostree_sysroot_get_booted_deployment (sysroot))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "Cannot undeploy currently booted deployment %i", deploy_index);
@@ -93,8 +85,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
-  if (!ostree_sysroot_write_deployments (sysroot, current_bootversion,
-                                         current_bootversion ? 0 : 1, current_deployments,
+  if (!ostree_sysroot_write_deployments (sysroot, current_deployments,
                                          cancellable, error))
     goto out;
 

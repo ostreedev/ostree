@@ -46,6 +46,9 @@ ot_admin_builtin_cleanup (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    goto out;
+
   if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
     goto out;
 

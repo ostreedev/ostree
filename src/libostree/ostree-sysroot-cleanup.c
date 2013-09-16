@@ -242,8 +242,6 @@ list_all_boot_directories (OstreeSysroot       *self,
 
 static gboolean
 cleanup_other_bootversions (OstreeSysroot       *self,
-                            int                  bootversion,
-                            int                  subbootversion,
                             GCancellable        *cancellable,
                             GError             **error)
 {
@@ -252,8 +250,8 @@ cleanup_other_bootversions (OstreeSysroot       *self,
   int cleanup_subbootversion;
   gs_unref_object GFile *cleanup_boot_dir = NULL;
 
-  cleanup_bootversion = bootversion == 0 ? 1 : 0;
-  cleanup_subbootversion = subbootversion == 0 ? 1 : 0;
+  cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
+  cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;
 
   cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d", cleanup_bootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
@@ -275,7 +273,7 @@ cleanup_other_bootversions (OstreeSysroot       *self,
     goto out;
   g_clear_object (&cleanup_boot_dir);
 
-  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.%d", bootversion,
+  cleanup_boot_dir = ot_gfile_resolve_path_printf (self->path, "ostree/boot.%d.%d", self->bootversion,
                                                    cleanup_subbootversion);
   if (!gs_shutil_rm_rf (cleanup_boot_dir, cancellable, error))
     goto out;
@@ -288,7 +286,6 @@ cleanup_other_bootversions (OstreeSysroot       *self,
 
 static gboolean
 cleanup_old_deployments (OstreeSysroot       *self,
-                         GPtrArray           *deployments,
                          GCancellable        *cancellable,
                          GError             **error)
 {
@@ -309,9 +306,9 @@ cleanup_old_deployments (OstreeSysroot       *self,
   active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, NULL, g_object_unref);
   active_boot_checksums = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
 
-  for (i = 0; i < deployments->len; i++)
+  for (i = 0; i < self->deployments->len; i++)
     {
-      OstreeDeployment *deployment = deployments->pdata[i];
+      OstreeDeployment *deployment = self->deployments->pdata[i];
       GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
       char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
@@ -494,34 +491,23 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
                         GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
-  int bootversion;
-  int subbootversion;
 
-  if (!ostree_sysroot_list_deployments (self, &bootversion, &deployments,
-                                        cancellable, error))
+  g_return_val_if_fail (self->loaded, FALSE);
+
+  if (!cleanup_other_bootversions (self, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
-                                                   cancellable, error))
+  if (!cleanup_old_deployments (self, cancellable, error))
     goto out;
 
-  if (!cleanup_other_bootversions (self, bootversion, subbootversion,
-                                   cancellable, error))
-    goto out;
-
-  if (!cleanup_old_deployments (self, deployments,
-                                cancellable, error))
-    goto out;
-
-  if (deployments->len > 0)
+  if (self->deployments->len > 0)
     {
       if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
         goto out;
 
-      if (!generate_deployment_refs_and_prune (self, repo, bootversion,
-                                               subbootversion, deployments,
+      if (!generate_deployment_refs_and_prune (self, repo, self->bootversion,
+                                               self->subbootversion, self->deployments,
                                                cancellable, error))
         goto out;
     }

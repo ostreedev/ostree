@@ -38,8 +38,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  int bootversion;
-  gs_unref_object OstreeDeployment *booted_deployment = NULL;
+  OstreeDeployment *booted_deployment = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   guint i;
 
@@ -50,17 +49,11 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ostree_sysroot_list_deployments (sysroot, &bootversion, &deployments,
-                                        cancellable, error))
-    {
-      g_prefix_error (error, "While listing deployments: ");
-      goto out;
-    }
-
-  if (!ostree_sysroot_find_booted_deployment (sysroot, deployments,
-                                              &booted_deployment,
-                                              cancellable, error))
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
+
+  deployments = ostree_sysroot_get_deployments (sysroot);
+  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
 
   if (deployments->len == 0)
     {
@@ -68,13 +61,6 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
     }
   else
     {
-      int subbootversion;
-
-      if (!ostree_sysroot_read_current_subbootversion (sysroot, bootversion,
-                                                 &subbootversion,
-                                                 cancellable, error))
-        goto out;
-
       for (i = 0; i < deployments->len; i++)
         {
           OstreeDeployment *deployment = deployments->pdata[i];

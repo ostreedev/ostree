@@ -51,13 +51,9 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   const char *refspec;
   GOptionContext *context;
   GKeyFile *origin = NULL;
-  int current_bootversion;
-  int new_bootversion;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_unref_ptrarray GPtrArray *current_deployments = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
-  gs_unref_object OstreeDeployment *booted_deployment = NULL;
   gs_free char *revision = NULL;
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
@@ -75,23 +71,17 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   refspec = argv[1];
 
-  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion, &current_deployments,
-                                        cancellable, error))
-    {
-      g_prefix_error (error, "While listing deployments: ");
-      goto out;
-    }
+  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
+    goto out;
 
   /* Find the currently booted deployment, if any; we will ensure it
    * is present in the new deployment list.
    */
-  if (!ostree_sysroot_require_deployment_or_osname (sysroot, current_deployments,
-                                                    opt_osname,
-                                                    &booted_deployment,
-                                                    cancellable, error))
+  if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
+                                                     cancellable, error))
     {
       g_prefix_error (error, "Looking for booted deployment: ");
       goto out;
@@ -112,12 +102,12 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
     goto out;
 
-  if (!ostree_sysroot_deploy (sysroot, current_bootversion, current_deployments,
-                              opt_osname, revision, origin,
-                              opt_kernel_argv, opt_retain,
-                              booted_deployment, NULL,
-                              &new_deployment, &new_bootversion, &new_deployments,
-                              cancellable, error))
+  if (!ostree_sysroot_deploy_one_tree (sysroot,
+                                       opt_osname, revision, origin,
+                                       opt_kernel_argv, opt_retain,
+                                       NULL,
+                                       &new_deployment,
+                                       cancellable, error))
     goto out;
 
   ret = TRUE;

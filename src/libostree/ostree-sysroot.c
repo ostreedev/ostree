@@ -27,6 +27,12 @@
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 
+static gboolean
+find_booted_deployment (OstreeSysroot       *self,
+                        OstreeDeployment   **out_deployment,
+                        GCancellable        *cancellable,
+                        GError             **error);
+
 /**
  * SECTION:libostree-sysroot
  * @title: Root partition mount point
@@ -193,7 +199,9 @@ _ostree_sysroot_get_devino (GFile         *path,
 
 /**
  * ostree_sysroot_ensure_initialized:
- * @self:
+ * @self: Sysroot
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Ensure that @self is set up as a valid rootfs, by creating
  * /ostree/repo, among other things.
@@ -275,23 +283,12 @@ _ostree_sysroot_parse_deploy_path_name (const char *name,
   return ret;
 }
 
-
-/**
- * ostree_sysroot_read_current_subbootversion:
- * @self: Sysroot
- * @bootversion: Current boot version
- * @out_subbootversion: (out): The active subbootversion
- * @cancellable: Cancellable
- * @error: Error
- *
- * Determine the active subbootversion.
- */
 gboolean
-ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
-                                            int            bootversion,
-                                            int           *out_subbootversion,
-                                            GCancellable  *cancellable,
-                                            GError       **error)
+_ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
+                                             int            bootversion,
+                                             int           *out_subbootversion,
+                                             GCancellable  *cancellable,
+                                             GError       **error)
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *ostree_dir = g_file_get_child (self->path, "ostree");
@@ -664,60 +661,115 @@ compare_deployments_by_boot_loader_version_reversed (gconstpointer     a_pp,
   else
     return 1;
 }
+
 /**
- * ostree_sysroot_list_deployments:
- * @sysroot: Sysroot
- * @out_current_bootversion: (out): Current bootversion
- * @out_deployments: (out) (element-type OstreeDeployment): Deployment list
+ * ostree_sysroot_load:
+ * @self: Sysroot
  * @cancellable: Cancellable
  * @error: Error
  *
- * Enumerate all deployments, in the boot order.  Also returns the
- * active bootversion.
+ * Load deployment list, bootversion, and subbootversion from the
+ * rootfs @self.
  */
 gboolean
-ostree_sysroot_list_deployments (OstreeSysroot       *self,
-                                 int                 *out_current_bootversion,
-                                 GPtrArray          **out_deployments,
-                                 GCancellable        *cancellable,
-                                 GError             **error)
+ostree_sysroot_load (OstreeSysroot  *self,
+                     GCancellable   *cancellable,
+                     GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
-  gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
   guint i;
-  int bootversion = -1;
+  int bootversion;
+  int subbootversion;
+  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
+  gs_unref_ptrarray GPtrArray *deployments = NULL;
+
+  g_clear_pointer (&self->deployments, g_ptr_array_unref);
+  g_clear_pointer (&self->booted_deployment, g_object_unref);
+  self->bootversion = -1;
+  self->subbootversion = -1;
 
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
+    goto out;
+
+  if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
+                                                    cancellable, error))
     goto out;
 
   if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
                                                  cancellable, error))
     goto out;
 
-  ret_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   for (i = 0; i < boot_loader_configs->len; i++)
     {
       OstreeBootconfigParser *config = boot_loader_configs->pdata[i];
 
-      if (!list_deployments_process_one_boot_entry (self, config, ret_deployments,
+      if (!list_deployments_process_one_boot_entry (self, config, deployments,
                                                     cancellable, error))
         goto out;
     }
 
-  g_ptr_array_sort (ret_deployments, compare_deployments_by_boot_loader_version_reversed);
-  for (i = 0; i < ret_deployments->len; i++)
+  g_ptr_array_sort (deployments, compare_deployments_by_boot_loader_version_reversed);
+  for (i = 0; i < deployments->len; i++)
     {
-      OstreeDeployment *deployment = ret_deployments->pdata[i];
+      OstreeDeployment *deployment = deployments->pdata[i];
       ostree_deployment_set_index (deployment, i);
     }
 
+  if (!find_booted_deployment (self, &self->booted_deployment,
+                               cancellable, error))
+    goto out;
+
+  self->bootversion = bootversion;
+  self->subbootversion = subbootversion;
+  self->deployments = deployments;
+  deployments = NULL; /* Transfer ownership */
+  self->loaded = TRUE;
+
   ret = TRUE;
-  *out_current_bootversion = bootversion;
-  gs_transfer_out_value (out_deployments, &ret_deployments);
  out:
   return ret;
+}
+
+int
+ostree_sysroot_get_bootversion (OstreeSysroot   *self)
+{
+  return self->bootversion;
+}
+
+int
+ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
+{
+  return self->subbootversion;
+}
+
+/**
+ * ostree_sysroot_get_booted_deployment:
+ * @self: Sysroot
+ * 
+ * Returns: (transfer none): The currently booted deployment, or %NULL if none
+ */
+OstreeDeployment *
+ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
+{
+  return self->booted_deployment;
+}
+
+/**
+ * ostree_sysroot_get_deployments:
+ * @self: Sysroot
+ *
+ * Returns: (element-type OstreeDeployment) (transfer full): Ordered list of deployments
+ */
+GPtrArray *
+ostree_sysroot_get_deployments (OstreeSysroot  *self)
+{
+  GPtrArray *copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  guint i;
+  for (i = 0; i < self->deployments->len; i++)
+    g_ptr_array_add (copy, g_object_ref (self->deployments->pdata[i]));
+  return copy;
 }
 
 /**
@@ -740,8 +792,7 @@ ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
 
 /**
  * ostree_sysroot_get_deployment_origin_path:
- * @self: Sysroot
- * @deployment: A deployment
+ * @deployment_path: A deployment path
  *
  * Returns: (transfer full): Path to deployment origin file
  */
@@ -753,7 +804,6 @@ ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path)
                                        "%s.origin",
                                        gs_file_get_path_cached (deployment_path));
 }
-
 
 /**
  * ostree_sysroot_get_repo:
@@ -783,7 +833,6 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
  out:
   return ret;
 }
-
 
 /**
  * ostree_sysroot_query_bootloader:
@@ -852,32 +901,19 @@ parse_kernel_commandline (OstreeOrderedHash  **out_args,
   return ret;
 }
 
-/**
- * ostree_sysroot_find_booted_deployment:
- * @target_sysroot: Root directory
- * @deployments: (element-type OstreeDeployment): Loaded deployments
- * @out_deployment: (out): The currently booted deployment
- * @cancellable:
- * @error: 
- * 
- * If the system is currently booted into a deployment in
- * @deployments, set @out_deployment.  Note that if @target_sysroot is
- * not equal to "/", @out_deployment will always be set to %NULL.
- */
-gboolean
-ostree_sysroot_find_booted_deployment (OstreeSysroot       *self,
-                                       GPtrArray           *deployments,
-                                       OstreeDeployment   **out_deployment,
-                                       GCancellable        *cancellable,
-                                       GError             **error)
+static gboolean
+find_booted_deployment (OstreeSysroot       *self,
+                        OstreeDeployment   **out_deployment,
+                        GCancellable        *cancellable,
+                        GError             **error)
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *active_root = g_file_new_for_path ("/");
-  gs_unref_object OstreeSysroot *active_deployment_root = ostree_sysroot_new_default ();
   gs_unref_object OstreeDeployment *ret_deployment = NULL;
 
   if (g_file_equal (active_root, self->path))
     { 
+      gs_unref_object OstreeSysroot *active_deployment_root = ostree_sysroot_new_default ();
       guint i;
       const char *bootlink_arg;
       __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *kernel_args = NULL;
@@ -894,9 +930,9 @@ ostree_sysroot_find_booted_deployment (OstreeSysroot       *self,
       bootlink_arg = g_hash_table_lookup (kernel_args->table, "ostree");
       if (bootlink_arg)
         {
-          for (i = 0; i < deployments->len; i++)
+          for (i = 0; i < self->deployments->len; i++)
             {
-              OstreeDeployment *deployment = deployments->pdata[i];
+              OstreeDeployment *deployment = self->deployments->pdata[i];
               gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (active_deployment_root, deployment);
               guint32 device;
               guint64 inode;
@@ -924,34 +960,6 @@ ostree_sysroot_find_booted_deployment (OstreeSysroot       *self,
         }
     }
 
-  ret = TRUE;
-  ot_transfer_out_value (out_deployment, &ret_deployment);
- out:
-  return ret;
-}
-
-gboolean
-ostree_sysroot_require_deployment_or_osname (OstreeSysroot       *sysroot,
-                                             GPtrArray           *deployments,
-                                             const char          *osname,
-                                             OstreeDeployment   **out_deployment,
-                                             GCancellable        *cancellable,
-                                             GError             **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object OstreeDeployment *ret_deployment = NULL;
-
-  if (!ostree_sysroot_find_booted_deployment (sysroot, deployments, &ret_deployment,
-                                              cancellable, error))
-    goto out;
-
-  if (ret_deployment == NULL && osname == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Not currently booted into an OSTree system and no --os= argument given");
-      goto out;
-    }
-  
   ret = TRUE;
   ot_transfer_out_value (out_deployment, &ret_deployment);
  out:
@@ -1040,27 +1048,34 @@ _ostree_sysroot_kernel_arg_string_serialize (OstreeOrderedHash *ohash)
   return g_string_free (buf, FALSE);
 }
 
+/**
+ * ostree_sysroot_get_merge_deployment:
+ * @self: Sysroot
+ * @osname: (allow-none): Operating system group
+ *
+ * Find the deployment to use as a configuration merge source; this is
+ * the first one in the current deployment list which matches osname.
+ */
 OstreeDeployment *
-ostree_sysroot_get_merge_deployment (GPtrArray         *deployments,
-                                     const char        *osname,
-                                     OstreeDeployment  *booted_deployment)
+ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
+                                     const char        *osname)
 {
-  g_return_val_if_fail (osname != NULL || booted_deployment != NULL, NULL);
+  g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, NULL);
 
   if (osname == NULL)
-    osname = ostree_deployment_get_osname (booted_deployment);
+    osname = ostree_deployment_get_osname (self->booted_deployment);
 
-  if (booted_deployment &&
-      g_strcmp0 (ostree_deployment_get_osname (booted_deployment), osname) == 0)
+  if (self->booted_deployment &&
+      g_strcmp0 (ostree_deployment_get_osname (self->booted_deployment), osname) == 0)
     {
-      return g_object_ref (booted_deployment);
+      return g_object_ref (self->booted_deployment);
     }
   else
     {
       guint i;
-      for (i = 0; i < deployments->len; i++)
+      for (i = 0; i < self->deployments->len; i++)
         {
-          OstreeDeployment *deployment = deployments->pdata[i];
+          OstreeDeployment *deployment = self->deployments->pdata[i];
 
           if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
             continue;

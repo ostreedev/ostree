@@ -34,3 +34,25 @@ ot_origin_new_from_refspec (const char *refspec)
   g_key_file_set_string (ret, "origin", "refspec", refspec);
   return ret;
 }
+
+gboolean
+ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
+                                              const char          *osname,
+                                              GCancellable        *cancellable,
+                                              GError             **error)
+{
+  gboolean ret = FALSE;
+  OstreeDeployment *booted_deployment =
+    ostree_sysroot_get_booted_deployment (sysroot);
+
+  if (booted_deployment == NULL && osname == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Not currently booted into an OSTree system and no --os= argument given");
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}

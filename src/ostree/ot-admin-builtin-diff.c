@@ -46,10 +46,8 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
   gs_unref_object GFile *orig_etc_path = NULL;
   gs_unref_object GFile *new_etc_path = NULL;
-  int bootversion;
 
   context = g_option_context_new ("Diff current /etc configuration versus default");
 
@@ -58,27 +56,24 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  if (!ostree_sysroot_list_deployments (sysroot, &bootversion, &deployments,
-                                        cancellable, error))
-    {
-      g_prefix_error (error, "While listing deployments: ");
-      goto out;
-    }
-
-  if (!ostree_sysroot_require_deployment_or_osname (sysroot, deployments,
-                                                    opt_osname, &deployment,
-                                                    cancellable, error))
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
-  if (deployment != NULL)
-    opt_osname = (char*)ostree_deployment_get_osname (deployment);
-  if (deployment == NULL)
-    deployment = ostree_sysroot_get_merge_deployment (deployments, opt_osname, deployment);
-  if (deployment == NULL)
+
+  if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
+                                                     cancellable, error))
+    goto out;
+  if (opt_osname != NULL)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No deployment for OS '%s'", opt_osname);
-      goto out;
+      deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
+      if (deployment == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "No deployment for OS '%s'", opt_osname);
+          goto out;
+        }
     }
+  else
+    deployment = g_object_ref (ostree_sysroot_get_booted_deployment (sysroot));
 
   deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
 

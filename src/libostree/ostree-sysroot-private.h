@@ -30,6 +30,13 @@ struct OstreeSysroot {
 
   GFile *path;
   int sysroot_fd;
+
+  gboolean loaded;
+  
+  GPtrArray *deployments;
+  int bootversion;
+  int subbootversion;
+  OstreeDeployment *booted_deployment;
 };
 
 gboolean
@@ -38,6 +45,13 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
                                           GPtrArray    **out_loader_configs,
                                           GCancellable  *cancellable,
                                           GError       **error);
+
+gboolean
+_ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
+                                             int            bootversion,
+                                             int           *out_subbootversion,
+                                             GCancellable  *cancellable,
+                                             GError       **error);
 
 gboolean
 _ostree_sysroot_parse_deploy_path_name (const char *name,

@@ -507,8 +507,7 @@ compute_new_deployment_list (int           current_bootversion,
                              gboolean      retain,
                              const char   *revision,
                              const char   *bootcsum,
-                             GPtrArray   **out_new_deployments,
-                             int          *out_new_bootversion)
+                             GPtrArray   **out_new_deployments)
 {
   guint i;
   int new_index;
@@ -518,10 +517,6 @@ compute_new_deployment_list (int           current_bootversion,
   gs_unref_ptrarray GPtrArray *matching_deployments_by_bootserial = NULL;
   OstreeDeployment *deployment_to_delete = NULL;
   gs_unref_ptrarray GPtrArray *ret_new_deployments = NULL;
-  gboolean requires_new_bootversion;
-
-  if (osname == NULL)
-    osname = ostree_deployment_get_osname (booted_deployment);
 
   /* First, compute the serial for this deployment; we look
    * for other ones in this os with the same checksum.
@@ -566,13 +561,6 @@ compute_new_deployment_list (int           current_bootversion,
         }
     }
 
-  /* We need to update the bootloader only if the deployment we're
-   * removing uses a different kernel.
-   */
-  requires_new_bootversion =
-    (deployment_to_delete == NULL) ||
-    (strcmp (ostree_deployment_get_bootcsum (deployment_to_delete), bootcsum) != 0);
-
   ret_new_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
   new_deployment = ostree_deployment_new (0, osname, revision, new_deployserial,
@@ -606,11 +594,6 @@ compute_new_deployment_list (int           current_bootversion,
 
   *out_new_deployments = ret_new_deployments;
   ret_new_deployments = NULL;
-  g_assert (current_bootversion == 0 || current_bootversion == 1);
-  if (requires_new_bootversion)
-    *out_new_bootversion = (current_bootversion == 0) ? 1 : 0;
-  else
-    *out_new_bootversion = current_bootversion;
 }
 
 static GHashTable *
@@ -707,29 +690,34 @@ full_system_sync (GCancellable      *cancellable,
 }
 
 static gboolean
-swap_bootlinks (OstreeSysroot *sysroot,
-                int           current_bootversion,
+swap_bootlinks (OstreeSysroot *self,
+                int            bootversion,
                 GPtrArray    *new_deployments,
                 GCancellable *cancellable,
                 GError      **error)
 {
   gboolean ret = FALSE;
   guint i;
-  int old_subbootversion, new_subbootversion;
-  gs_unref_object GFile *ostree_dir = g_file_get_child (ostree_sysroot_get_path (sysroot), "ostree");
-  gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", current_bootversion);
+  int old_subbootversion;
+  int new_subbootversion;
+  gs_unref_object GFile *ostree_dir = g_file_get_child (self->path, "ostree");
+  gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
   gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
   gs_free char *ostree_subbootdir_name = NULL;
   gs_unref_object GFile *ostree_subbootdir = NULL;
 
-  if (!ostree_sysroot_read_current_subbootversion (sysroot, current_bootversion,
-                                                   &old_subbootversion,
-                                                   cancellable, error))
-    goto out;
+  if (bootversion != self->bootversion)
+    {
+      if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &old_subbootversion,
+                                                        cancellable, error))
+        goto out;
+    }
+  else
+    old_subbootversion = self->subbootversion;
 
   new_subbootversion = old_subbootversion == 0 ? 1 : 0;
 
-  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", current_bootversion, new_subbootversion);
+  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   ostree_subbootdir = g_file_resolve_relative_path (ostree_dir, ostree_subbootdir_name);
 
   if (!gs_file_ensure_directory (ostree_subbootdir, TRUE, cancellable, error))
@@ -982,38 +970,91 @@ swap_bootloader (OstreeSysroot  *sysroot,
   return ret;
 }
 
+static GHashTable *
+bootcsum_counts_for_deployment_list (GPtrArray   *deployments)
+{
+  guint i;
+  GHashTable *ret = 
+    g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OstreeDeployment *deployment = deployments->pdata[i];
+      const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+      gpointer orig_key;
+      gpointer countp;
+
+      if (!g_hash_table_lookup_extended (ret, bootcsum, &orig_key, &countp))
+        {
+          g_hash_table_insert (ret, (char*)bootcsum, GUINT_TO_POINTER (0));
+        }
+      else
+        {
+          guint count = GPOINTER_TO_UINT (countp);
+          g_hash_table_replace (ret, (char*)bootcsum, GUINT_TO_POINTER (count + 1));
+        }
+    }
+  return ret;
+}
+
 /**
  * ostree_sysroot_write_deployments:
  * @self: Sysroot
- * @current_bootversion: 0 or 1 for active boot version
- * @new_bootversion: 0 or 1 for new bootversion
  * @new_deployments: (element-type OstreeDeployment): List of new deployments
  * @cancellable: Cancellable
  * @error: Error
  *
- * Complete the deployment of @new_deployments by updating either the
- * bootloader configuration (if @current_bootversion and the new
- * version @new_bootversion differ), or swapping the bootlinks if
- * they're the same.
+ * Assuming @new_deployments have already been deployed in place on
+ * disk, atomically update bootloader configuration.
  */
 gboolean
 ostree_sysroot_write_deployments (OstreeSysroot     *self,
-                                  int                current_bootversion,
-                                  int                new_bootversion,
                                   GPtrArray         *new_deployments,
                                   GCancellable      *cancellable,
                                   GError           **error)
 {
   gboolean ret = FALSE;
   guint i;
+  gboolean requires_new_bootversion = FALSE;
   gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (self);
+
+  /* Determine whether or not we need to touch the bootloader
+   * configuration.  If we have an equal number of deployments and
+   * more strongly an equal number of deployments per bootcsum, then
+   * we can just swap the subbootversion bootlinks.
+   */
+  if (new_deployments->len != self->deployments->len)
+    requires_new_bootversion = TRUE;
+  else
+    {
+      GHashTableIter hashiter;
+      gpointer hkey, hvalue;
+      gs_unref_hashtable GHashTable *orig_bootcsum_to_count
+        = bootcsum_counts_for_deployment_list (self->deployments);
+      gs_unref_hashtable GHashTable *new_bootcsum_to_count
+        = bootcsum_counts_for_deployment_list (new_deployments);
+
+      g_hash_table_iter_init (&hashiter, orig_bootcsum_to_count);
+      while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
+        {
+          guint orig_count = GPOINTER_TO_UINT (hvalue);
+          gpointer new_countp = g_hash_table_lookup (new_bootcsum_to_count, hkey);
+          guint new_count = GPOINTER_TO_UINT (new_countp);
+
+          if (orig_count != new_count)
+            {
+              requires_new_bootversion = TRUE;
+              break;
+            }
+        }
+    }
 
   if (bootloader)
     g_print ("Detected bootloader: %s\n", _ostree_bootloader_get_name (bootloader));
   else
     g_print ("Detected bootloader: (unknown)\n");
 
-  if (current_bootversion == new_bootversion)
+  if (!requires_new_bootversion)
     {
       if (!full_system_sync (cancellable, error))
         {
@@ -1021,7 +1062,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           goto out;
         }
 
-      if (!swap_bootlinks (self, current_bootversion,
+      if (!swap_bootlinks (self, self->bootversion,
                            new_deployments,
                            cancellable, error))
         {
@@ -1031,6 +1072,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     }
   else
     {
+      int new_bootversion = self->bootversion ? 0 : 1;
       for (i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *deployment = new_deployments->pdata[i];
@@ -1059,12 +1101,12 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
       if (bootloader && !_ostree_bootloader_write_config (bootloader, new_bootversion,
                                                           cancellable, error))
-          {
-            g_prefix_error (error, "Bootloader write config: ");
-            goto out;
-          }
+        {
+          g_prefix_error (error, "Bootloader write config: ");
+          goto out;
+        }
 
-      if (!swap_bootloader (self, current_bootversion, new_bootversion,
+      if (!swap_bootloader (self, self->bootversion, new_bootversion,
                             cancellable, error))
         {
           g_prefix_error (error, "Final bootloader swap: ");
@@ -1072,25 +1114,25 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         }
     }
 
+  /* Now reload from disk */
+  if (!ostree_sysroot_load (self, cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   return ret;
 }
                             
 /**
- * ostree_sysroot_deploy:
- * @current_bootversion: Active bootversion
- * @current_deployments: (element-type OstreeDeployment): Active deployments
+ * ostree_sysroot_deploy_one_tree:
+ * @self: Sysroot
  * @osname: (allow-none): osname to use for merge deployment
  * @revision: Checksum to add
  * @origin: (allow-none): Origin to use for upgrades
  * @add_kernel_argv: (allow-none): Append these arguments to kernel configuration
  * @retain: If %TRUE, then do not delete earlier deployment
- * @booted_deployment: (allow-none): Retain this deployment
  * @provided_merge_deployment: (allow-none): Use this deployment for merge path
  * @out_new_deployment: (out): The new deployment path
- * @out_new_bootversion: (out): The new bootversion
- * @out_new_deployments: (out) (element-type OstreeDeployment): Full list of new deployments
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -1098,21 +1140,16 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
  * then an earlier deployment will be garbage collected.
  */
 gboolean
-ostree_sysroot_deploy (OstreeSysroot     *self,
-                       int                current_bootversion,
-                       GPtrArray         *current_deployments,
-                       const char        *osname,
-                       const char        *revision,
-                       GKeyFile          *origin,
-                       char             **add_kernel_argv,
-                       gboolean           retain,
-                       OstreeDeployment  *booted_deployment,
-                       OstreeDeployment  *provided_merge_deployment,
-                       OstreeDeployment **out_new_deployment,
-                       int               *out_new_bootversion,
-                       GPtrArray        **out_new_deployments,
-                       GCancellable      *cancellable,
-                       GError           **error)
+ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
+                                const char        *osname,
+                                const char        *revision,
+                                GKeyFile          *origin,
+                                char             **add_kernel_argv,
+                                gboolean           retain,
+                                OstreeDeployment  *provided_merge_deployment,
+                                OstreeDeployment **out_new_deployment,
+                                GCancellable      *cancellable,
+                                GError           **error)
 {
   gboolean ret = FALSE;
   OstreeDeployment *new_deployment;
@@ -1125,7 +1162,11 @@ ostree_sysroot_deploy (OstreeSysroot     *self,
   gs_free char *new_bootcsum = NULL;
   gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
-  int new_bootversion;
+
+  g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, FALSE);
+
+  if (osname == NULL)
+    osname = ostree_deployment_get_osname (self->booted_deployment);
 
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
     goto out;
@@ -1168,20 +1209,18 @@ ostree_sysroot_deploy (OstreeSysroot     *self,
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);
   else
-    merge_deployment = ostree_sysroot_get_merge_deployment (current_deployments, osname,
-                                                            booted_deployment); 
+    merge_deployment = ostree_sysroot_get_merge_deployment (self, osname);
 
-  compute_new_deployment_list (current_bootversion,
-                               current_deployments, osname,
-                               booted_deployment, merge_deployment,
+  compute_new_deployment_list (self->bootversion,
+                               self->deployments, osname,
+                               self->booted_deployment, merge_deployment,
                                retain,
                                revision, new_bootcsum,
-                               &new_deployments,
-                               &new_bootversion);
+                               &new_deployments);
   new_deployment = g_object_ref (new_deployments->pdata[0]);
   ostree_deployment_set_origin (new_deployment, origin);
 
-  print_deployment_diff (current_deployments, new_deployments);
+  print_deployment_diff (self->deployments, new_deployments);
 
   /* Check out the userspace tree onto the filesystem */
   if (!checkout_deployment_tree (self, repo, new_deployment, &new_deployment_path,
@@ -1238,8 +1277,7 @@ ostree_sysroot_deploy (OstreeSysroot     *self,
       ostree_bootconfig_parser_set (bootconfig, "options", new_options);
     }
 
-  if (!ostree_sysroot_write_deployments (self, current_bootversion, new_bootversion,
-                                         new_deployments, cancellable, error))
+  if (!ostree_sysroot_write_deployments (self, new_deployments, cancellable, error))
     goto out;
 
   g_print ("Transaction complete, performing cleanup\n");
@@ -1269,8 +1307,6 @@ ostree_sysroot_deploy (OstreeSysroot     *self,
 
   ret = TRUE;
   ot_transfer_out_value (out_new_deployment, &new_deployment);
-  *out_new_bootversion = new_bootversion;
-  ot_transfer_out_value (out_new_deployments, &new_deployments)
  out:
   return ret;
 }

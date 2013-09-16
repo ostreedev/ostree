@@ -53,13 +53,8 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gs_free char *new_revision = NULL;
   gs_unref_object GFile *deployment_path = NULL;
   gs_unref_object GFile *deployment_origin_path = NULL;
-  gs_unref_object OstreeDeployment *booted_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
-  gs_unref_ptrarray GPtrArray *current_deployments = NULL;
-  gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
-  int current_bootversion;
-  int new_bootversion;
   GKeyFile *origin;
 
   context = g_option_context_new ("Construct new tree from current origin and deploy it, if it changed");
@@ -68,23 +63,15 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (!ostree_sysroot_list_deployments (sysroot, &current_bootversion,
-                                        &current_deployments,
-                                        cancellable, error))
-    {
-      g_prefix_error (error, "While listing deployments: ");
-      goto out;
-    }
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    goto out;
 
-  if (!ostree_sysroot_require_deployment_or_osname (sysroot, current_deployments,
-                                                    opt_osname,
-                                                    &booted_deployment,
-                                                    cancellable, error))
+  if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
+                                                     cancellable, error))
     goto out;
   if (!opt_osname)
-    opt_osname = (char*)ostree_deployment_get_osname (booted_deployment);
-  merge_deployment = ostree_sysroot_get_merge_deployment (current_deployments, opt_osname,
-                                                          booted_deployment);
+    opt_osname = (char*)ostree_deployment_get_osname (ostree_sysroot_get_booted_deployment (sysroot));
+  merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname); 
 
   deployment_path = ostree_sysroot_get_deployment_directory (sysroot, merge_deployment);
   deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
@@ -131,13 +118,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   else
     {
       gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
-      if (!ostree_sysroot_deploy (sysroot,
-                                  current_bootversion, current_deployments,
-                                  opt_osname, new_revision, origin,
-                                  NULL, FALSE,
-                                  booted_deployment, merge_deployment,
-                                  &new_deployment, &new_bootversion, &new_deployments,
-                                  cancellable, error))
+      if (!ostree_sysroot_deploy_one_tree (sysroot,
+                                           opt_osname, new_revision, origin,
+                                           NULL, FALSE,
+                                           merge_deployment,
+                                           &new_deployment,
+                                           cancellable, error))
         goto out;
 
       if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
