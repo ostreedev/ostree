@@ -24,8 +24,6 @@
 
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ot-admin-deploy.h"
-#include "ot-ordered-hash.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -68,8 +66,8 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
       goto out;
     }
 
-  if (!ot_admin_find_booted_deployment (ostree_sysroot_get_path (sysroot), current_deployments, &booted_deployment,
-                                        cancellable, error))
+  if (!ostree_sysroot_find_booted_deployment (sysroot, current_deployments, &booted_deployment,
+                                              cancellable, error))
     goto out;
 
   if (deploy_index < 0)
@@ -95,9 +93,9 @@ ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCance
   
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
-  if (!ot_admin_write_deployments (ostree_sysroot_get_path (sysroot), current_bootversion,
-                                   current_bootversion ? 0 : 1, current_deployments,
-                                   cancellable, error))
+  if (!ostree_sysroot_write_deployments (sysroot, current_bootversion,
+                                         current_bootversion ? 0 : 1, current_deployments,
+                                         cancellable, error))
     goto out;
 
   g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),

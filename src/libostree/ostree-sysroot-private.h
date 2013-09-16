@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ostree.h"
+#include "ostree-ordered-hash.h"
 
 G_BEGIN_DECLS
 
@@ -52,6 +53,12 @@ _ostree_sysroot_get_devino (GFile         *path,
                             GError       **error);
 
 char *_ostree_sysroot_join_lines (GPtrArray  *lines);
+
+char *_ostree_sysroot_split_keyeq (char *str);
+
+OstreeOrderedHash *_ostree_sysroot_parse_kernel_args (const char *options);
+
+char * _ostree_sysroot_kernel_arg_string_serialize (OstreeOrderedHash *ohash);
 
 G_END_DECLS
 

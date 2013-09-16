@@ -27,17 +27,17 @@ G_BEGIN_DECLS
 typedef struct {
   GPtrArray  *order;
   GHashTable *table;
-} OtOrderedHash;
+} OstreeOrderedHash;
 
-OtOrderedHash *ot_ordered_hash_new (void);
-void ot_ordered_hash_free (OtOrderedHash *ohash);
-void ot_ordered_hash_cleanup (void *loc);
-void ot_ordered_hash_replace_key_take (OtOrderedHash  *ohash,
-                                       char         *key,
-                                       const char   *value);
-void ot_ordered_hash_replace_key (OtOrderedHash  *ohash,
-                                  const char   *key,
-                                  const char   *val);
+OstreeOrderedHash *_ostree_ordered_hash_new (void);
+void _ostree_ordered_hash_free (OstreeOrderedHash *ohash);
+void _ostree_ordered_hash_cleanup (void *loc);
+void _ostree_ordered_hash_replace_key_take (OstreeOrderedHash  *ohash,
+                                            char         *key,
+                                            const char   *value);
+void _ostree_ordered_hash_replace_key (OstreeOrderedHash  *ohash,
+                                       const char   *key,
+                                       const char   *val);
 
 
 G_END_DECLS

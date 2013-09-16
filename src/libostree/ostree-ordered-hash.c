@@ -20,21 +20,21 @@
 
 #include "config.h"
 
-#include "ot-ordered-hash.h"
+#include "ostree-ordered-hash.h"
 #include "libgsystem.h"
 
-OtOrderedHash *
-ot_ordered_hash_new (void)
+OstreeOrderedHash *
+_ostree_ordered_hash_new (void)
 {
-  OtOrderedHash *ret;
-  ret = g_new0 (OtOrderedHash, 1);
+  OstreeOrderedHash *ret;
+  ret = g_new0 (OstreeOrderedHash, 1);
   ret->order = g_ptr_array_new_with_free_func (g_free);
   ret->table = g_hash_table_new (g_str_hash, g_str_equal);
   return ret;
 }
 
 void
-ot_ordered_hash_free (OtOrderedHash *ohash)
+_ostree_ordered_hash_free (OstreeOrderedHash *ohash)
 {
   if (!ohash)
     return;
@@ -44,13 +44,13 @@ ot_ordered_hash_free (OtOrderedHash *ohash)
 }
 
 void
-ot_ordered_hash_cleanup (void *loc)
+_ostree_ordered_hash_cleanup (void *loc)
 {
-  ot_ordered_hash_free (*((OtOrderedHash**)loc));
+  _ostree_ordered_hash_free (*((OstreeOrderedHash**)loc));
 }
 
 void
-ot_ordered_hash_replace_key_take (OtOrderedHash   *ohash,
+_ostree_ordered_hash_replace_key_take (OstreeOrderedHash   *ohash,
                                   char            *key,
                                   const char      *value)
 {
@@ -63,7 +63,7 @@ ot_ordered_hash_replace_key_take (OtOrderedHash   *ohash,
 }
 
 void
-ot_ordered_hash_replace_key (OtOrderedHash  *ohash,
+_ostree_ordered_hash_replace_key (OstreeOrderedHash  *ohash,
                              const char     *key,
                              const char     *val)
 {
@@ -79,5 +79,5 @@ ot_ordered_hash_replace_key (OtOrderedHash  *ohash,
   valblock = g_string_free (buf, FALSE);
   valp = valblock + keylen + 1;
 
-  ot_ordered_hash_replace_key_take (ohash, valblock, valp);
+  _ostree_ordered_hash_replace_key_take (ohash, valblock, valp);
 }

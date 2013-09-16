@@ -68,14 +68,14 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
       goto out;
     }
 
-  if (!ot_admin_require_deployment_or_osname (ostree_sysroot_get_path (sysroot), deployments,
-                                              opt_osname, &deployment,
-                                              cancellable, error))
+  if (!ostree_sysroot_require_deployment_or_osname (sysroot, deployments,
+                                                    opt_osname, &deployment,
+                                                    cancellable, error))
     goto out;
   if (deployment != NULL)
     opt_osname = (char*)ostree_deployment_get_osname (deployment);
   if (deployment == NULL)
-    deployment = ot_admin_get_merge_deployment (deployments, opt_osname, deployment);
+    deployment = ostree_sysroot_get_merge_deployment (deployments, opt_osname, deployment);
   if (deployment == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,

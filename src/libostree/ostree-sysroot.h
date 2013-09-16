@@ -73,5 +73,46 @@ gboolean ostree_sysroot_get_repo (OstreeSysroot         *self,
 OstreeBootloader *ostree_sysroot_query_bootloader (OstreeSysroot         *sysroot);
 
 
+gboolean ostree_sysroot_find_booted_deployment (OstreeSysroot       *sysroot,
+                                                GPtrArray           *deployments,
+                                                OstreeDeployment   **out_deployment,
+                                                GCancellable        *cancellable,
+                                                GError             **error);
+
+gboolean ostree_sysroot_require_deployment_or_osname (OstreeSysroot       *sysroot,
+                                                      GPtrArray           *deployment_list,
+                                                      const char          *osname,
+                                                      OstreeDeployment   **out_deployment,
+                                                      GCancellable        *cancellable,
+                                                      GError             **error);
+
+gboolean ostree_sysroot_write_deployments (OstreeSysroot     *sysroot,
+                                           int                current_bootversion,
+                                           int                new_bootversion,
+                                           GPtrArray         *new_deployments,
+                                           GCancellable      *cancellable,
+                                           GError           **error);
+
+gboolean ostree_sysroot_deploy (OstreeSysroot     *sysroot,
+                                int                current_bootversion,
+                                GPtrArray         *current_deployments,
+                                const char        *osname,
+                                const char        *revision,
+                                GKeyFile          *origin,
+                                char             **add_kernel_argv,
+                                gboolean           retain,
+                                OstreeDeployment  *booted_deployment,
+                                OstreeDeployment  *merge_deployment,
+                                OstreeDeployment **out_new_deployment,
+                                int               *out_new_bootversion,
+                                GPtrArray        **out_new_deployments,
+                                GCancellable      *cancellable,
+                                GError           **error);
+
+
+OstreeDeployment *ostree_sysroot_get_merge_deployment (GPtrArray         *deployment_list,
+                                                       const char        *osname,
+                                                       OstreeDeployment  *booted_deployment);
+
 G_END_DECLS
 

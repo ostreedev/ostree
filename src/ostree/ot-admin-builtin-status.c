@@ -57,9 +57,9 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       goto out;
     }
 
-  if (!ot_admin_find_booted_deployment (ostree_sysroot_get_path (sysroot), deployments,
-                                        &booted_deployment,
-                                        cancellable, error))
+  if (!ostree_sysroot_find_booted_deployment (sysroot, deployments,
+                                              &booted_deployment,
+                                              cancellable, error))
     goto out;
 
   if (deployments->len == 0)

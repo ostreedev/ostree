@@ -24,8 +24,6 @@
 
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ot-admin-deploy.h"
-#include "ot-ordered-hash.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -90,10 +88,10 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   /* Find the currently booted deployment, if any; we will ensure it
    * is present in the new deployment list.
    */
-  if (!ot_admin_require_deployment_or_osname (ostree_sysroot_get_path (sysroot), current_deployments,
-                                              opt_osname,
-                                              &booted_deployment,
-                                              cancellable, error))
+  if (!ostree_sysroot_require_deployment_or_osname (sysroot, current_deployments,
+                                                    opt_osname,
+                                                    &booted_deployment,
+                                                    cancellable, error))
     {
       g_prefix_error (error, "Looking for booted deployment: ");
       goto out;
@@ -114,12 +112,12 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
     goto out;
 
-  if (!ot_admin_deploy (ostree_sysroot_get_path (sysroot), current_bootversion, current_deployments,
-                        opt_osname, revision, origin,
-                        opt_kernel_argv, opt_retain,
-                        booted_deployment, NULL,
-                        &new_deployment, &new_bootversion, &new_deployments,
-                        cancellable, error))
+  if (!ostree_sysroot_deploy (sysroot, current_bootversion, current_deployments,
+                              opt_osname, revision, origin,
+                              opt_kernel_argv, opt_retain,
+                              booted_deployment, NULL,
+                              &new_deployment, &new_bootversion, &new_deployments,
+                              cancellable, error))
     goto out;
 
   ret = TRUE;

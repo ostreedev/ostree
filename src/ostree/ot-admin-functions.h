@@ -24,55 +24,8 @@
 
 #include <gio/gio.h>
 #include <ostree.h>
-#include "ot-ordered-hash.h"
 
 G_BEGIN_DECLS
-
-char *ot_admin_util_split_keyeq (char *str);
-
-gboolean ot_admin_util_get_devino (GFile         *path,
-                                   guint32       *out_device,
-                                   guint64       *out_inode,
-                                   GCancellable  *cancellable,
-                                   GError       **error);
-
-gboolean ot_admin_ensure_initialized (GFile         *ostree_dir, 
-				      GCancellable  *cancellable,
-				      GError       **error);
-
-gboolean ot_admin_check_os (GFile         *sysroot, 
-                            const char    *osname,
-                            GCancellable  *cancellable,
-                            GError       **error);
-
-OtOrderedHash *ot_admin_parse_kernel_args (const char *options);
-char * ot_admin_kernel_arg_string_serialize (OtOrderedHash *ohash);
-
-gboolean ot_admin_find_booted_deployment (GFile               *sysroot,
-                                          GPtrArray           *deployments,
-                                          OstreeDeployment       **out_deployment,
-                                          GCancellable        *cancellable,
-                                          GError             **error);
-
-gboolean ot_admin_require_booted_deployment (GFile               *sysroot,
-                                             OstreeDeployment       **out_deployment,
-                                             GCancellable        *cancellable,
-                                             GError             **error);
-
-gboolean ot_admin_require_deployment_or_osname (GFile               *sysroot,
-                                                GPtrArray           *deployment_list,
-                                                const char          *osname,
-                                                OstreeDeployment       **out_deployment,
-                                                GCancellable        *cancellable,
-                                                GError             **error);
-
-OstreeDeployment *ot_admin_get_merge_deployment (GPtrArray         *deployment_list,
-                                             const char        *osname,
-                                             OstreeDeployment      *booted_deployment);
-
-gboolean ot_admin_get_default_ostree_dir (GFile        **out_ostree_dir,
-                                          GCancellable  *cancellable,
-                                          GError       **error);
 
 GKeyFile *ot_origin_new_from_refspec (const char *refspec);
 
