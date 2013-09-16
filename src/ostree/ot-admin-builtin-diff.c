@@ -41,7 +41,6 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  gs_unref_object GFile *repo_path = NULL;
   gs_unref_object OstreeDeployment *deployment = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
@@ -59,8 +58,6 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
   
-  repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
-
   if (!ostree_sysroot_list_deployments (sysroot, &bootversion, &deployments,
                                         cancellable, error))
     {

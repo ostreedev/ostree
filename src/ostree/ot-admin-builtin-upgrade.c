@@ -47,7 +47,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gboolean ret = FALSE;
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_unref_object GFile *repo_path = NULL;
   gs_free char *origin_refspec = NULL;
   gs_free char *origin_remote = NULL;
   gs_free char *origin_ref = NULL;
@@ -90,9 +89,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   deployment_path = ostree_sysroot_get_deployment_directory (sysroot, merge_deployment);
   deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
 
-  repo_path = g_file_resolve_relative_path (ostree_sysroot_get_path (sysroot), "ostree/repo");
-  repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_open (repo, cancellable, error))
+  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 
   origin = ostree_deployment_get_origin (merge_deployment);
