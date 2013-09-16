@@ -206,12 +206,11 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
   gboolean ret = FALSE;
   gs_unref_object GFile *dir = NULL;
   gs_unref_object GFile *ostree_dir = NULL;
+  gs_unref_object GFile *repo_dir = NULL;
 
   ostree_dir = g_file_get_child (self->path, "ostree");
-
-  g_clear_object (&dir);
-  dir = g_file_get_child (ostree_dir, "repo");
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
+  repo_dir = g_file_get_child (ostree_dir, "repo");
+  if (!gs_file_ensure_directory (repo_dir, TRUE, cancellable, error))
     goto out;
 
   g_clear_object (&dir);
@@ -223,16 +222,9 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
   dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
     {
-      gs_free char *opt_repo_arg = g_strdup_printf ("--repo=%s/repo",
-                                                      gs_file_get_path_cached (ostree_dir));
-
-      if (!gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_NULL,
-                                          cancellable, error,
-                                          "ostree", opt_repo_arg, "init", NULL))
-        {
-          g_prefix_error (error, "Failed to initialize repository: ");
-          goto out;
-        }
+      gs_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
+      if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
