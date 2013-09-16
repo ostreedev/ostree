@@ -84,14 +84,14 @@ gboolean ostree_sysroot_require_deployment_or_osname (OstreeSysroot       *sysro
                                                       GCancellable        *cancellable,
                                                       GError             **error);
 
-gboolean ostree_sysroot_write_deployments (OstreeSysroot     *sysroot,
+gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                            int                current_bootversion,
                                            int                new_bootversion,
                                            GPtrArray         *new_deployments,
                                            GCancellable      *cancellable,
                                            GError           **error);
 
-gboolean ostree_sysroot_deploy (OstreeSysroot     *sysroot,
+gboolean ostree_sysroot_deploy (OstreeSysroot     *self,
                                 int                current_bootversion,
                                 GPtrArray         *current_deployments,
                                 const char        *osname,
