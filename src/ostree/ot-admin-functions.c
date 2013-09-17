@@ -56,3 +56,57 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
  out:
   return ret;
 }
+
+gboolean
+ot_admin_complete_deploy_one (OstreeSysroot      *sysroot,
+                              const char         *osname,
+                              OstreeDeployment   *new_deployment,
+                              OstreeDeployment   *merge_deployment,
+                              gboolean            opt_retain,
+                              GCancellable       *cancellable,
+                              GError            **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  OstreeDeployment *booted_deployment = NULL;
+  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+
+  deployments = ostree_sysroot_get_deployments (sysroot);
+  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+
+  g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OstreeDeployment *deployment = deployments->pdata[i];
+      
+      /* Keep deployments with different osnames, as well as the
+       * booted and merge deployments
+       */
+      if (opt_retain ||
+          strcmp (ostree_deployment_get_osname (deployment), osname) != 0 ||
+          ostree_deployment_equal (deployment, booted_deployment) ||
+          ostree_deployment_equal (deployment, merge_deployment))
+        {
+          g_ptr_array_add (new_deployments, g_object_ref (deployment));
+        }
+      else
+        {
+          g_print ("ostadmin: Will delete deployment osname=%s %s.%u\n",
+                   ostree_deployment_get_osname (deployment),
+                   ostree_deployment_get_csum (deployment),
+                   ostree_deployment_get_deployserial (deployment));
+        }
+    }
+
+  if (!ostree_sysroot_write_deployments (sysroot, new_deployments, cancellable, error))
+    goto out;
+
+  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}

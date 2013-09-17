@@ -1070,6 +1070,10 @@ ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
   if (osname == NULL)
     osname = ostree_deployment_get_osname (self->booted_deployment);
 
+  /* If we're booted into the OS into which we're deploying, then
+   * merge the currently *booted* configuration, rather than the most
+   * recently deployed.
+   */
   if (self->booted_deployment &&
       g_strcmp0 (ostree_deployment_get_osname (self->booted_deployment), osname) == 0)
     {

@@ -25,11 +25,11 @@
 
 #include "ostree-sysroot-private.h"
 
-static gboolean
-list_deployment_dirs_for_os (GFile               *osdir,
-                             GPtrArray           *inout_deployments,
-                             GCancellable        *cancellable,
-                             GError             **error)
+gboolean
+_ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
+                                             GPtrArray           *inout_deployments,
+                                             GCancellable        *cancellable,
+                                             GError             **error)
 {
   gboolean ret = FALSE;
   const char *osname = gs_file_get_basename_cached (osdir);
@@ -136,7 +136,8 @@ list_all_deployment_directories (OstreeSysroot       *self,
       if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
         continue;
       
-      if (!list_deployment_dirs_for_os (child, ret_deployments, cancellable, error))
+      if (!_ostree_sysroot_list_deployment_dirs_for_os (child, ret_deployments,
+                                                        cancellable, error))
         goto out;
     }
   
@@ -340,7 +341,6 @@ cleanup_old_deployments (OstreeSysroot       *self,
           if (device == root_device && inode == root_inode)
             continue;
 
-          g_print ("ostadmin: Deleting deployment %s\n", gs_file_get_path_cached (deployment_path));
           if (!gs_shutil_rm_rf (deployment_path, cancellable, error))
             goto out;
           if (!gs_shutil_rm_rf (origin_path, cancellable, error))
@@ -365,7 +365,6 @@ cleanup_old_deployments (OstreeSysroot       *self,
       if (g_hash_table_lookup (active_boot_checksums, bootcsum))
         continue;
 
-      g_print ("ostadmin: Deleting bootdir %s\n", gs_file_get_path_cached (bootdir));
       if (!gs_shutil_rm_rf (bootdir, cancellable, error))
         goto out;
     }

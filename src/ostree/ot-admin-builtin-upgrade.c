@@ -125,12 +125,31 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   else
     {
       gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
+      
+      /* Here we perform cleanup of any leftover data from previous
+       * partial failures.  This avoids having to call gs_shutil_rm_rf()
+       * at random points throughout the process.
+       *
+       * TODO: Add /ostree/transaction file, and only do this cleanup if
+       * we find it.
+       */
+      if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+        {
+          g_prefix_error (error, "Performing initial cleanup: ");
+          goto out;
+        }
+
       if (!ostree_sysroot_deploy_one_tree (sysroot,
                                            opt_osname, new_revision, origin,
-                                           NULL, FALSE,
+                                           NULL,
                                            merge_deployment,
                                            &new_deployment,
                                            cancellable, error))
+        goto out;
+
+      if (!ot_admin_complete_deploy_one (sysroot, opt_osname,
+                                         new_deployment, merge_deployment, FALSE,
+                                         cancellable, error))
         goto out;
 
       if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))

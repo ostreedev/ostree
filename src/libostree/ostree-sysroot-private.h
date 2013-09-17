@@ -61,6 +61,12 @@ _ostree_sysroot_parse_deploy_path_name (const char *name,
                                         GError    **error);
 
 gboolean
+_ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
+                                             GPtrArray           *inout_deployments,
+                                             GCancellable        *cancellable,
+                                             GError             **error);
+
+gboolean
 _ostree_sysroot_get_devino (GFile         *path,
                             guint32       *out_device,
                             guint64       *out_inode,

@@ -143,17 +143,12 @@ ostree admin --sysroot=sysroot status
 
 echo "ok upgrade"
 
+assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
-assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.4/etc/os-release 'NAME=TestOS'
-ostree admin --sysroot=sysroot undeploy 2
+ostree admin --sysroot=sysroot undeploy 1
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
-assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.4
+assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
 
-assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.3/etc/os-release 'NAME=TestOS'
-ostree admin --sysroot=sysroot undeploy 2
-assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.3
-
-assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ostree admin --sysroot=sysroot undeploy 0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${newrev}.0
 ostree admin --sysroot=sysroot status

@@ -459,224 +459,6 @@ checksum_from_kernel_src (GFile        *src,
   return TRUE;
 }
 
-static int
-sort_by_bootserial (gconstpointer ap, gconstpointer bp)
-{
-  OstreeDeployment **a_loc = (OstreeDeployment**)ap;
-  OstreeDeployment *a = *a_loc;
-  OstreeDeployment **b_loc = (OstreeDeployment**)bp;
-  OstreeDeployment *b = *b_loc;
-
-  if (ostree_deployment_get_bootserial (a) == ostree_deployment_get_bootserial (b))
-    return 0;
-  else if (ostree_deployment_get_bootserial (a) < ostree_deployment_get_bootserial (b))
-    return -1;
-  return 1;
-}
-
-static GPtrArray *
-filter_deployments_by_bootcsum (GPtrArray    *deployments,
-                                const char   *osname,
-                                const char   *bootcsum)
-{
-  GPtrArray *ret = g_ptr_array_new ();
-  guint i;
-
-  for (i = 0; i < deployments->len; i++)
-    {
-      OstreeDeployment *deployment = deployments->pdata[i];
-      
-      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-        continue;
-      if (strcmp (ostree_deployment_get_bootcsum (deployment), bootcsum) != 0)
-        continue;
-      
-      g_ptr_array_add (ret, deployment);
-    }
-  g_ptr_array_sort (ret, sort_by_bootserial);
-
-  return ret;
-}
-
-static void
-compute_new_deployment_list (int           current_bootversion,
-                             GPtrArray    *current_deployments,
-                             const char   *osname,
-                             OstreeDeployment *booted_deployment,
-                             OstreeDeployment *merge_deployment,
-                             gboolean      retain,
-                             const char   *revision,
-                             const char   *bootcsum,
-                             GPtrArray   **out_new_deployments)
-{
-  guint i;
-  int new_index;
-  guint new_deployserial = 0;
-  int new_bootserial = 0;
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
-  gs_unref_ptrarray GPtrArray *matching_deployments_by_bootserial = NULL;
-  OstreeDeployment *deployment_to_delete = NULL;
-  gs_unref_ptrarray GPtrArray *ret_new_deployments = NULL;
-
-  /* First, compute the serial for this deployment; we look
-   * for other ones in this os with the same checksum.
-   */
-  for (i = 0; i < current_deployments->len; i++)
-    {
-      OstreeDeployment *deployment = current_deployments->pdata[i];
-      
-      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-        continue;
-      if (strcmp (ostree_deployment_get_csum (deployment), revision) != 0)
-        continue;
-
-      new_deployserial = MAX(new_deployserial, ostree_deployment_get_deployserial (deployment)+1);
-    }
-
-  /* We retain by default (well, hardcoded now) one previous
-   * deployment for this OS, plus the booted deployment.  Usually, we
-   * have one previous, one into which we're booted, and we're
-   * deploying a new one.  So the old previous will get swapped out,
-   * and booted becomes previous.
-   *
-   * But if the user then upgrades again, we will end up pruning the
-   * front of the deployment list.  We never delete the running
-   * deployment.
-   */
-  if (!retain)
-    {
-      for (i = 0; i < current_deployments->len; i++)
-        {
-          OstreeDeployment *deployment = current_deployments->pdata[i];
-      
-          if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-            continue;
-
-          // Keep both the booted and merge deployments
-          if (ostree_deployment_equal (deployment, booted_deployment) || 
-              ostree_deployment_equal (deployment, merge_deployment))
-            continue;
-
-          deployment_to_delete = deployment;
-        }
-    }
-
-  ret_new_deployments = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-
-  new_deployment = ostree_deployment_new (0, osname, revision, new_deployserial,
-                                      bootcsum, new_bootserial);
-  g_ptr_array_add (ret_new_deployments, g_object_ref (new_deployment));
-  new_index = 1;
-  for (i = 0; i < current_deployments->len; i++)
-    {
-      OstreeDeployment *orig_deployment = current_deployments->pdata[i];
-      gs_unref_object OstreeDeployment *deployment_clone = NULL;
-
-      if (orig_deployment == deployment_to_delete)
-        continue;
-
-      deployment_clone = ostree_deployment_clone (orig_deployment);
-      ostree_deployment_set_index (deployment_clone, new_index);
-      new_index++;
-      g_ptr_array_add (ret_new_deployments, g_object_ref (deployment_clone));
-    }
-
-  /* Just renumber the deployments for the OS we're adding; we don't
-   * handle anything else at the moment.
-   */
-  matching_deployments_by_bootserial = filter_deployments_by_bootcsum (ret_new_deployments,
-                                                                       osname, bootcsum);
-  for (i = 0; i < matching_deployments_by_bootserial->len; i++)
-    {
-      OstreeDeployment *deployment = matching_deployments_by_bootserial->pdata[i];
-      ostree_deployment_set_bootserial (deployment, i);
-    }
-
-  *out_new_deployments = ret_new_deployments;
-  ret_new_deployments = NULL;
-}
-
-static GHashTable *
-object_array_to_set (GPtrArray   *objlist,
-                     GHashFunc    hashfunc,
-                     GEqualFunc   equalfunc)
-{
-  GHashTable *ret = g_hash_table_new_full (hashfunc, equalfunc, g_object_unref, NULL);
-  guint i;
-
-  for (i = 0; i < objlist->len; i++)
-    {
-      GObject *obj = g_object_ref (objlist->pdata[i]);
-      g_hash_table_insert (ret, obj, obj);
-    }
-  
-  return ret;
-}
-
-static GHashTable *
-object_set_subtract (GHashTable *a, GHashTable *b)
-{
-  GHashTable *ret = g_hash_table_new_full (NULL, NULL, g_object_unref, NULL);
-  GHashTableIter hashiter;
-  gpointer hashkey, hashvalue;
-  
-  g_hash_table_iter_init (&hashiter, a);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
-    {
-      if (!g_hash_table_contains (b, hashkey))
-        {
-          GObject *o = g_object_ref (hashkey);
-          g_hash_table_insert (ret, o, o);
-        }
-    }
-
-  return ret;
-}
-
-static void
-print_deployment_set (gboolean    for_removal,
-                      GHashTable *set)
-{
-  GHashTableIter hashiter;
-  gpointer hashkey, hashvalue;
-
-  if (g_hash_table_size (set) == 0)
-    return;
-
-  g_print ("%s\n", for_removal ? "removed:" : "added: ");
-
-  g_hash_table_iter_init (&hashiter, set);
-  while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
-    {
-      OstreeDeployment *deployment = hashkey;
-
-      g_print ("  %c %s %s.%d",
-               for_removal ? '-' : '+', ostree_deployment_get_osname (deployment),
-               ostree_deployment_get_csum (deployment),
-               ostree_deployment_get_deployserial (deployment));
-
-      if (!for_removal)
-        g_print (" index=%d", ostree_deployment_get_index (deployment));
-      g_print ("\n");
-    }
-}
-
-static void
-print_deployment_diff (GPtrArray   *current_deployments,
-                       GPtrArray   *new_deployments)
-{
-  gs_unref_hashtable GHashTable *curset = object_array_to_set (current_deployments, ostree_deployment_hash, ostree_deployment_equal);
-  gs_unref_hashtable GHashTable *newset = object_array_to_set (new_deployments, ostree_deployment_hash, ostree_deployment_equal);
-  gs_unref_hashtable GHashTable *removed = NULL;
-  gs_unref_hashtable GHashTable *added = NULL;
-
-  removed = object_set_subtract (curset, newset);
-  added = object_set_subtract (newset, curset);
-
-  print_deployment_set (TRUE, removed);
-  print_deployment_set (FALSE, added);
-}
-
 /* FIXME: We should really do individual fdatasync() on files/dirs,
  * since this causes us to block on unrelated I/O.  However, it's just
  * safer for now.
@@ -970,7 +752,8 @@ swap_bootloader (OstreeSysroot  *sysroot,
 }
 
 static GHashTable *
-bootcsum_counts_for_deployment_list (GPtrArray   *deployments)
+bootcsum_counts_for_deployment_list (GPtrArray   *deployments,
+                                     gboolean     set_bootserial)
 {
   guint i;
   GHashTable *ret = 
@@ -984,7 +767,52 @@ bootcsum_counts_for_deployment_list (GPtrArray   *deployments)
 
       count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootcsum));
       g_hash_table_replace (ret, (char*)bootcsum, GUINT_TO_POINTER (count + 1));
+
+      if (set_bootserial)
+        ostree_deployment_set_bootserial (deployment, count);
     }
+  return ret;
+}
+
+/* TEMPORARY HACK: Add a "current" symbolic link that's easy to
+ * follow inside the gnome-ostree build scripts.  This isn't atomic,
+ * but that doesn't matter because it's only used by deployments
+ * done from the host.
+ */
+static gboolean
+create_current_symlinks (OstreeSysroot         *self,
+                         GCancellable          *cancellable,
+                         GError               **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  gs_unref_hashtable GHashTable *created_current_for_osname =
+    g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *deployment = self->deployments->pdata[i];
+      const char *osname = ostree_deployment_get_osname (deployment);
+
+      if (!g_hash_table_lookup (created_current_for_osname, osname))
+        {
+          gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
+          gs_unref_object GFile *os_current_path = g_file_get_child (osdir, "current");
+          gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
+          gs_free char *target = g_file_get_relative_path (osdir, deployment_path);
+          
+          g_assert (target != NULL);
+          
+          if (!ot_gfile_atomic_symlink_swap (os_current_path, target,
+                                             cancellable, error))
+            goto out;
+
+          g_hash_table_insert (created_current_for_osname, (char*)osname, GUINT_TO_POINTER (1));
+        }
+    }
+
+  ret = TRUE;
+ out:
   return ret;
 }
 
@@ -1007,8 +835,15 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   gboolean ret = FALSE;
   guint i;
   gboolean requires_new_bootversion = FALSE;
+  gboolean found_booted_deployment = FALSE;
+  gs_unref_hashtable GHashTable *new_bootcsum_to_count = NULL;
 
   g_assert (self->loaded);
+
+  /* Calculate the total number of deployments per bootcsums; while we
+   * are doing this, assign a bootserial to each new deployment.
+   */
+  new_bootcsum_to_count = bootcsum_counts_for_deployment_list (new_deployments, TRUE);
 
   /* Determine whether or not we need to touch the bootloader
    * configuration.  If we have an equal number of deployments and
@@ -1022,9 +857,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       GHashTableIter hashiter;
       gpointer hkey, hvalue;
       gs_unref_hashtable GHashTable *orig_bootcsum_to_count
-        = bootcsum_counts_for_deployment_list (self->deployments);
-      gs_unref_hashtable GHashTable *new_bootcsum_to_count
-        = bootcsum_counts_for_deployment_list (new_deployments);
+        = bootcsum_counts_for_deployment_list (self->deployments, FALSE);
 
       g_hash_table_iter_init (&hashiter, orig_bootcsum_to_count);
       while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
@@ -1039,6 +872,22 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
               break;
             }
         }
+    }
+
+  for (i = 0; i < new_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = new_deployments->pdata[i];
+      
+      if (deployment == self->booted_deployment)
+        found_booted_deployment = TRUE;
+
+      ostree_deployment_set_index (deployment, i);
+    }
+
+  if (self->booted_deployment && !found_booted_deployment)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Attempting to remove booted deployment");
+      goto out;
     }
 
   if (!requires_new_bootversion)
@@ -1108,6 +957,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         }
     }
 
+  g_print ("Transaction complete, performing cleanup\n");
+
   /* Now reload from disk */
   if (!ostree_sysroot_load (self, cancellable, error))
     {
@@ -1115,7 +966,57 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       goto out;
     }
 
+  if (!create_current_symlinks (self, cancellable, error))
+    goto out;
+
+  /* And finally, cleanup of any leftover data.
+   */
+  if (!ostree_sysroot_cleanup (self, cancellable, error))
+    {
+      g_prefix_error (error, "Performing final cleanup: ");
+      goto out;
+    }
+
   ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+allocate_deployserial (OstreeSysroot           *self,
+                       const char              *osname,
+                       const char              *revision,
+                       int                     *out_deployserial,
+                       GCancellable            *cancellable,
+                       GError                 **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  int new_deployserial = 0;
+  gs_unref_object GFile *osdir = NULL;
+  gs_unref_ptrarray GPtrArray *tmp_current_deployments =
+    g_ptr_array_new_with_free_func (g_object_unref);
+
+  osdir = ot_gfile_get_child_build_path (self->path, "ostree/deploy", osname, NULL);
+  
+  if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
+                                                    cancellable, error))
+    goto out;
+
+  for (i = 0; i < tmp_current_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = tmp_current_deployments->pdata[i];
+      
+      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
+        continue;
+      if (strcmp (ostree_deployment_get_csum (deployment), revision) != 0)
+        continue;
+
+      new_deployserial = MAX(new_deployserial, ostree_deployment_get_deployserial (deployment)+1);
+    }
+
+  ret = TRUE;
+  *out_deployserial = new_deployserial;
  out:
   return ret;
 }
@@ -1127,14 +1028,13 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
  * @revision: Checksum to add
  * @origin: (allow-none): Origin to use for upgrades
  * @add_kernel_argv: (allow-none): Append these arguments to kernel configuration
- * @retain: If %TRUE, then do not delete earlier deployment
  * @provided_merge_deployment: (allow-none): Use this deployment for merge path
  * @out_new_deployment: (out): The new deployment path
  * @cancellable: Cancellable
  * @error: Error
  *
- * Add a new deployment with revision @revision; if @retain is %FALSE,
- * then an earlier deployment will be garbage collected.
+ * Check out deployment tree with revision @revision, performing a 3
+ * way merge with @provided_merge_deployment for configuration.
  */
 gboolean
 ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
@@ -1142,14 +1042,14 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
                                 const char        *revision,
                                 GKeyFile          *origin,
                                 char             **add_kernel_argv,
-                                gboolean           retain,
                                 OstreeDeployment  *provided_merge_deployment,
                                 OstreeDeployment **out_new_deployment,
                                 GCancellable      *cancellable,
                                 GError           **error)
 {
   gboolean ret = FALSE;
-  OstreeDeployment *new_deployment;
+  gint new_deployserial;
+  gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *commit_root = NULL;
@@ -1158,7 +1058,6 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
   gs_unref_object GFile *new_deployment_path = NULL;
   gs_free char *new_bootcsum = NULL;
   gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
-  gs_unref_ptrarray GPtrArray *new_deployments = NULL;
 
   g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, FALSE);
 
@@ -1167,19 +1066,6 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
 
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
     goto out;
-
-  /* Here we perform cleanup of any leftover data from previous
-   * partial failures.  This avoids having to call gs_shutil_rm_rf()
-   * at random points throughout the process.
-   *
-   * TODO: Add /ostree/transaction file, and only do this cleanup if
-   * we find it.
-   */
-  if (!ostree_sysroot_cleanup (self, cancellable, error))
-    {
-      g_prefix_error (error, "Performing initial cleanup: ");
-      goto out;
-    }
 
   if (!ostree_repo_read_commit (repo, revision, &commit_root, NULL, cancellable, error))
     goto out;
@@ -1199,25 +1085,16 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
         goto out;
     }
 
-  /* If we're booted into the OS into which we're deploying, then
-   * merge the currently *booted* configuration, rather than the most
-   * recently deployed.
-   */
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);
-  else
-    merge_deployment = ostree_sysroot_get_merge_deployment (self, osname);
 
-  compute_new_deployment_list (self->bootversion,
-                               self->deployments, osname,
-                               self->booted_deployment, merge_deployment,
-                               retain,
-                               revision, new_bootcsum,
-                               &new_deployments);
-  new_deployment = g_object_ref (new_deployments->pdata[0]);
+  if (!allocate_deployserial (self, osname, revision, &new_deployserial,
+                              cancellable, error))
+    goto out;
+
+  new_deployment = ostree_deployment_new (0, osname, revision, new_deployserial,
+                                          new_bootcsum, -1);
   ostree_deployment_set_origin (new_deployment, origin);
-
-  print_deployment_diff (self->deployments, new_deployments);
 
   /* Check out the userspace tree onto the filesystem */
   if (!checkout_deployment_tree (self, repo, new_deployment, &new_deployment_path,
@@ -1272,34 +1149,6 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
 
       new_options = _ostree_sysroot_kernel_arg_string_serialize (ohash);
       ostree_bootconfig_parser_set (bootconfig, "options", new_options);
-    }
-
-  if (!ostree_sysroot_write_deployments (self, new_deployments, cancellable, error))
-    goto out;
-
-  g_print ("Transaction complete, performing cleanup\n");
-
-  /* TEMPORARY HACK: Add a "current" symbolic link that's easy to
-   * follow inside the gnome-ostree build scripts.  This isn't atomic,
-   * but that doesn't matter because it's only used by deployments
-   * done from the host.
-   */
-  {
-    gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", ostree_deployment_get_osname (new_deployment));
-    gs_unref_object GFile *os_current_path = g_file_get_child (osdir, "current");
-    gs_free char *target = g_file_get_relative_path (osdir, new_deployment_path);
-    g_assert (target != NULL);
-    if (!ot_gfile_atomic_symlink_swap (os_current_path, target,
-                                       cancellable, error))
-      goto out;
-  }
-
-  /* And finally, cleanup of any leftover data.
-   */
-  if (!ostree_sysroot_cleanup (self, cancellable, error))
-    {
-      g_prefix_error (error, "Performing final cleanup: ");
-      goto out;
     }
 
   ret = TRUE;

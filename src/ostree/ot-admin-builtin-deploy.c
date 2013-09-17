@@ -54,6 +54,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
+  gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_free char *revision = NULL;
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
@@ -102,12 +103,31 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
     goto out;
 
+  merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
+
+  /* Here we perform cleanup of any leftover data from previous
+   * partial failures.  This avoids having to call gs_shutil_rm_rf()
+   * at random points throughout the process.
+   *
+   * TODO: Add /ostree/transaction file, and only do this cleanup if
+   * we find it.
+   */
+  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+    {
+      g_prefix_error (error, "Performing initial cleanup: ");
+      goto out;
+    }
+
   if (!ostree_sysroot_deploy_one_tree (sysroot,
                                        opt_osname, revision, origin,
-                                       opt_kernel_argv, opt_retain,
-                                       NULL,
+                                       opt_kernel_argv, merge_deployment,
                                        &new_deployment,
                                        cancellable, error))
+    goto out;
+
+  if (!ot_admin_complete_deploy_one (sysroot, opt_osname,
+                                     new_deployment, merge_deployment, opt_retain,
+                                     cancellable, error))
     goto out;
 
   ret = TRUE;
