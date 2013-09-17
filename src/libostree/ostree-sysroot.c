@@ -29,6 +29,7 @@
 
 static gboolean
 find_booted_deployment (OstreeSysroot       *self,
+                        GPtrArray           *deployments,
                         OstreeDeployment   **out_deployment,
                         GCancellable        *cancellable,
                         GError             **error);
@@ -717,7 +718,7 @@ ostree_sysroot_load (OstreeSysroot  *self,
       ostree_deployment_set_index (deployment, i);
     }
 
-  if (!find_booted_deployment (self, &self->booted_deployment,
+  if (!find_booted_deployment (self, deployments, &self->booted_deployment,
                                cancellable, error))
     goto out;
 
@@ -903,6 +904,7 @@ parse_kernel_commandline (OstreeOrderedHash  **out_args,
 
 static gboolean
 find_booted_deployment (OstreeSysroot       *self,
+                        GPtrArray           *deployments,
                         OstreeDeployment   **out_deployment,
                         GCancellable        *cancellable,
                         GError             **error)
@@ -930,9 +932,9 @@ find_booted_deployment (OstreeSysroot       *self,
       bootlink_arg = g_hash_table_lookup (kernel_args->table, "ostree");
       if (bootlink_arg)
         {
-          for (i = 0; i < self->deployments->len; i++)
+          for (i = 0; i < deployments->len; i++)
             {
-              OstreeDeployment *deployment = self->deployments->pdata[i];
+              OstreeDeployment *deployment = deployments->pdata[i];
               gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (active_deployment_root, deployment);
               guint32 device;
               guint64 inode;
