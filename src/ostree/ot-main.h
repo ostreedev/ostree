@@ -36,8 +36,6 @@ typedef struct {
   int flags; /* OstreeBuiltinFlags */
 } OstreeCommand;
 
-int ostree_main (int    argc, char **argv, OstreeCommand  *commands);
-
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
 int ostree_usage (char **argv, OstreeCommand *commands, gboolean is_error);

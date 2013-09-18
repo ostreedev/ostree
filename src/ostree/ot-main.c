@@ -262,25 +262,3 @@ ostree_run (int    argc,
     }
   return 0;
 }
-
-int
-ostree_main (int    argc,
-             char **argv,
-             OstreeCommand *commands)
-{
-  GError *error = NULL;
-  int ret;
-
-  ret = ostree_run (argc, argv, commands, &error);
-
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    ostree_usage (argv, commands, TRUE);
-
-  if (error)
-    {
-      g_message ("%s", error->message);
-      g_error_free (error);
-    }
-
-  return ret;
-}

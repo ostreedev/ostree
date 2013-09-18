@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 #include <locale.h>
 
 #include "ot-main.h"
@@ -75,7 +76,15 @@ main (int    argc,
 
   if (error != NULL)
     {
-      g_message ("%s", error->message);
+      int is_tty = isatty (1);
+      const char *prefix = "";
+      const char *suffix = "";
+      if (is_tty)
+        {
+          prefix = "\x1b[31m\x1b[1m"; /* red, bold */
+          suffix = "\x1b[22m\x1b[0m"; /* bold off, color reset */
+        }
+      g_printerr ("%serror: %s%s\n", prefix, suffix, error->message);
       g_error_free (error);
     }
 
