@@ -169,6 +169,14 @@ gboolean      ostree_repo_write_metadata_trusted (OstreeRepo        *self,
                                                   GCancellable      *cancellable,
                                                   GError           **error);
 
+gboolean      ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
+                                                         OstreeObjectType   objtype,
+                                                         const char        *checksum,
+                                                         GInputStream      *object_input,
+                                                         guint64            length,
+                                                         GCancellable      *cancellable,
+                                                         GError           **error);
+
 gboolean      ostree_repo_write_content_trusted (OstreeRepo       *self,
                                                  const char       *checksum,
                                                  GInputStream     *object_input,

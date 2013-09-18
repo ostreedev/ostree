@@ -61,32 +61,26 @@ import_one_object (OtLocalCloneData *data,
                    GError        **error)
 {
   gboolean ret = FALSE;
+  guint64 length;
+  gs_unref_object GInputStream *object = NULL;
+  
+  if (!ostree_repo_load_object_stream (data->src_repo, objtype, checksum,
+                                       &object, &length,
+                                       cancellable, error))
+    goto out;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      guint64 length;
-      gs_unref_object GInputStream *file_object = NULL;
-
-      if (!ostree_repo_load_object_stream (data->src_repo, objtype, checksum,
-                                           &file_object, &length,
-                                           cancellable, error))
-        goto out;
-
       if (!ostree_repo_write_content_trusted (data->dest_repo, checksum,
-                                              file_object, length,
+                                              object, length,
                                               cancellable, error))
         goto out;
     }
   else
     {
-      gs_unref_variant GVariant *metadata = NULL;
-
-      if (!ostree_repo_load_variant (data->src_repo, objtype, checksum, &metadata,
-                                     error))
-        goto out;
-
-      if (!ostree_repo_write_metadata_trusted (data->dest_repo, objtype, checksum, metadata,
-                                               cancellable, error))
+      if (!ostree_repo_write_metadata_stream_trusted (data->dest_repo, objtype,
+                                                      checksum, object, length,
+                                                      cancellable, error))
         goto out;
     }
 

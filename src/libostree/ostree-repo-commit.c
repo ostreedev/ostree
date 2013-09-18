@@ -824,6 +824,33 @@ ostree_repo_write_metadata (OstreeRepo         *self,
 }
 
 /**
+ * ostree_repo_write_metadata_stream_trusted:
+ * @self: Repo
+ * @objtype: Object type
+ * @checksum: Store object with this ASCII SHA256 checksum
+ * @object_input: Metadata object stream
+ * @length: Length, may be 0 for unknown
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Store the metadata object @variant; the provided @checksum is
+ * trusted.
+ */
+gboolean
+ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
+                                           OstreeObjectType   objtype,
+                                           const char        *checksum,
+                                           GInputStream      *object_input,
+                                           guint64            length,
+                                           GCancellable      *cancellable,
+                                           GError           **error)
+{
+  /* Ignore provided length for now */
+  return write_object (self, objtype, checksum, object_input, 0, NULL,
+                       cancellable, error);
+}
+
+/**
  * ostree_repo_write_metadata_trusted:
  * @self: Repo
  * @objtype: Object type
