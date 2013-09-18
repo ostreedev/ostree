@@ -128,6 +128,15 @@ AS_IF([test "x$with_dracut" = "xyes"], [
   ])
 ])
 
+dnl for tests
+AC_PATH_PROG(GJS, [gjs])
+if test -n "$GJS"; then
+  have_gjs=yes
+else
+  have_gjs=no
+fi
+AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
+
 AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
@@ -146,6 +155,7 @@ echo "
     libsoup (retrieve remote HTTP repositories):  $with_soup
     libarchive (parse tar files directly):        $with_libarchive
     documentation:                                $enable_gtk_doc
+    gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut"
 AS_IF([test "x$with_dracut" = "xyes"], [
     echo "    systemd unit dir:                             $with_systemdsystemunitdir"
