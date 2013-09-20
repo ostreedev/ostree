@@ -72,6 +72,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!opt_osname)
     opt_osname = (char*)ostree_deployment_get_osname (ostree_sysroot_get_booted_deployment (sysroot));
   merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname); 
+  if (merge_deployment == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No previous deployment for OS '%s'", opt_osname);
+      goto out;
+    }
 
   deployment_path = ostree_sysroot_get_deployment_directory (sysroot, merge_deployment);
   deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
