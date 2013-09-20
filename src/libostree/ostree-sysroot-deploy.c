@@ -850,10 +850,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   bootcsumdir = ot_gfile_resolve_path_printf (bootdir, "ostree/%s-%s",
                                               osname,
                                               bootcsum);
-  bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%s-%d.conf",
+  bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%d.conf",
                                                new_bootversion, osname, 
-                                               ostree_deployment_get_csum (deployment),
-                                               ostree_deployment_get_bootserial (deployment));
+                                               ostree_deployment_get_index (deployment));
 
   if (!gs_file_ensure_directory (bootcsumdir, TRUE, cancellable, error))
     goto out;
