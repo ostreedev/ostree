@@ -1057,6 +1057,8 @@ _ostree_sysroot_kernel_arg_string_serialize (OstreeOrderedHash *ohash)
  *
  * Find the deployment to use as a configuration merge source; this is
  * the first one in the current deployment list which matches osname.
+ *
+ * Returns: (transfer full): Configuration merge deployment
  */
 OstreeDeployment *
 ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,

@@ -71,12 +71,24 @@ ostree_deployment_get_bootserial (OstreeDeployment *self)
   return self->bootserial;
 }
 
+/**
+ * ostree_deployment_get_bootconfig:
+ * @self: Deployment
+ *
+ * Returns: (transfer none): Boot configuration
+ */
 OstreeBootconfigParser *
 ostree_deployment_get_bootconfig (OstreeDeployment *self)
 {
   return self->bootconfig;
 }
 
+/**
+ * ostree_deployment_get_origin:
+ * @self: Deployment
+ *
+ * Returns: (transfer none): Origin
+ */
 GKeyFile *
 ostree_deployment_get_origin (OstreeDeployment *self)
 {
@@ -117,6 +129,12 @@ ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
     self->origin = g_key_file_ref (origin);
 }
 
+/**
+ * ostree_deployment_clone:
+ * @self: Deployment
+ *
+ * Returns: (transfer full): New deep copy of @self
+ */
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
