@@ -22,7 +22,6 @@
 
 #include "ostree-repo.h"
 #include "ostree-deployment.h"
-#include "ostree-bootloader.h"
 
 G_BEGIN_DECLS
 

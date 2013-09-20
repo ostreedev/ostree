@@ -22,6 +22,7 @@
 
 #include "ostree.h"
 #include "ostree-ordered-hash.h"
+#include "ostree-bootloader.h"
 
 G_BEGIN_DECLS
 
