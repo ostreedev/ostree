@@ -34,6 +34,7 @@ rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runt
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
 ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin --sysroot=sysroot status
 
 echo "ok deploy command"
 
@@ -46,6 +47,7 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf 
 assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a kernel'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot status
 
 echo "ok layout"
 
@@ -61,7 +63,6 @@ assert_not_has_dir sysroot/ostree/boot.1.1
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf 'options.* root=LABEL=MOO'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
-
 ostree admin --sysroot=sysroot status
 
 echo "ok second deploy"
@@ -73,6 +74,7 @@ assert_not_has_dir sysroot/boot/loader.1
 # But swap subbootversion
 assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
+ostree admin --sysroot=sysroot status
 
 echo "ok third deploy (swap)"
 
@@ -83,6 +85,7 @@ assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf
 assert_has_file sysroot/boot/loader/entries/ostree-otheros-${rev}-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot status
 
 echo "ok independent deploy"
 
@@ -93,6 +96,7 @@ assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-release 'NAME=TestOS'
 assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-2.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot status
 
 echo "ok fourth deploy (retain)"
 
@@ -106,6 +110,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-rele
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-config-file 'a new local config file'
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/aconfigfile
+ostree admin --sysroot=sysroot status
 
 echo "ok deploy with modified /etc"
 
@@ -122,10 +127,9 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/a-ne
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/new-default-dir/moo "a new default dir and file"
 # And persist /etc changes from before
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
+ostree admin --sysroot=sysroot status
 
 echo "ok upgrade bare"
-
-ostree admin --sysroot=sysroot status
 
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
@@ -135,10 +139,9 @@ rev=${newrev}
 newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
+ostree admin --sysroot=sysroot status
 
 echo "ok upgrade"
-
-ostree admin --sysroot=sysroot status
 
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${origrev}.4/etc/os-release 'NAME=TestOS'
@@ -153,5 +156,6 @@ assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${origrev}.3
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ostree admin --sysroot=sysroot undeploy 0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${newrev}.0
+ostree admin --sysroot=sysroot status
 
 echo "ok undeploy"

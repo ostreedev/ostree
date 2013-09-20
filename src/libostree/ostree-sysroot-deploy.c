@@ -1018,6 +1018,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   gboolean requires_new_bootversion = FALSE;
   gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (self);
 
+  g_assert (self->loaded);
+
   /* Determine whether or not we need to touch the bootloader
    * configuration.  If we have an equal number of deployments and
    * more strongly an equal number of deployments per bootcsum, then
@@ -1116,7 +1118,10 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
   /* Now reload from disk */
   if (!ostree_sysroot_load (self, cancellable, error))
-    goto out;
+    {
+      g_prefix_error (error, "Reloading deployments after commit: ");
+      goto out;
+    }
 
   ret = TRUE;
  out:
