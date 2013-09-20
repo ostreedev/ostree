@@ -39,20 +39,24 @@ assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 echo "ok deploy command"
 
 # Commit + upgrade twice, so that we'll rotate out the original deployment
-orig_bootcsum=${bootcsum}
+bootcsum1=${bootcsum}
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
-os_repository_new_commit
+bootcsum2=${bootcsum}
+os_repository_new_commit "1"
+bootcsum3=${bootcsum}
 ostree --repo=sysroot/ostree/repo remote add testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
 
 rev=${newrev}
 newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
-assert_not_streq ${orig_bootcsum} ${bootcsum}
-assert_not_has_dir sysroot/boot/ostree/testos-${orig_bootcsum}
+assert_not_streq ${bootcsum1} ${bootcsum2}
+assert_not_streq ${bootcsum2} ${bootcsum3}
+assert_not_has_dir sysroot/boot/ostree/testos-${bootcsum1}
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
+assert_has_dir sysroot/boot/ostree/testos-${bootcsum2}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 
 echo "ok deploy and GC /boot"

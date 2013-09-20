@@ -239,10 +239,15 @@ EOF
 
 os_repository_new_commit ()
 {
+    boot_checksum_iteration=$1
+    echo "BOOT ITERATION: $boot_checksum_iteration"
+    if test -z "$boot_checksum_iteration"; then
+	boot_checksum_iteration=0
+    fi
     cd ${test_tmpdir}/osdata
     rm boot/*
-    echo "new: a kernel" > boot/vmlinuz-3.6.0
-    echo "new: an initramfs" > boot/initramfs-3.6.0
+    echo "new: a kernel ${boot_checksum_iteration}" > boot/vmlinuz-3.6.0
+    echo "new: an initramfs ${boot_checksum_iteration}" > boot/initramfs-3.6.0
     bootcsum=$(cat boot/vmlinuz-3.6.0 boot/initramfs-3.6.0 | sha256sum | cut -f 1 -d ' ')
     export bootcsum
     mv boot/vmlinuz-3.6.0 boot/vmlinuz-3.6.0-${bootcsum}

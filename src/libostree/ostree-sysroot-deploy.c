@@ -980,18 +980,10 @@ bootcsum_counts_for_deployment_list (GPtrArray   *deployments)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
       const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-      gpointer orig_key;
-      gpointer countp;
+      guint count;
 
-      if (!g_hash_table_lookup_extended (ret, bootcsum, &orig_key, &countp))
-        {
-          g_hash_table_insert (ret, (char*)bootcsum, GUINT_TO_POINTER (0));
-        }
-      else
-        {
-          guint count = GPOINTER_TO_UINT (countp);
-          g_hash_table_replace (ret, (char*)bootcsum, GUINT_TO_POINTER (count + 1));
-        }
+      count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootcsum));
+      g_hash_table_replace (ret, (char*)bootcsum, GUINT_TO_POINTER (count + 1));
     }
   return ret;
 }
