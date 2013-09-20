@@ -1096,16 +1096,16 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           goto out;
         }
 
-      if (!full_system_sync (cancellable, error))
-        {
-          g_prefix_error (error, "Full sync: ");
-          goto out;
-        }
-
       if (bootloader && !_ostree_bootloader_write_config (bootloader, new_bootversion,
                                                           cancellable, error))
         {
           g_prefix_error (error, "Bootloader write config: ");
+          goto out;
+        }
+
+      if (!full_system_sync (cancellable, error))
+        {
+          g_prefix_error (error, "Full sync: ");
           goto out;
         }
 
