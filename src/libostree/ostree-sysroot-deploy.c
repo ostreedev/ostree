@@ -1016,7 +1016,6 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   gboolean ret = FALSE;
   guint i;
   gboolean requires_new_bootversion = FALSE;
-  gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (self);
 
   g_assert (self->loaded);
 
@@ -1051,11 +1050,6 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         }
     }
 
-  if (bootloader)
-    g_print ("Detected bootloader: %s\n", _ostree_bootloader_get_name (bootloader));
-  else
-    g_print ("Detected bootloader: (unknown)\n");
-
   if (!requires_new_bootversion)
     {
       if (!full_system_sync (cancellable, error))
@@ -1075,6 +1069,13 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   else
     {
       int new_bootversion = self->bootversion ? 0 : 1;
+      gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (self);
+
+      if (bootloader)
+        g_print ("Detected bootloader: %s\n", _ostree_bootloader_get_name (bootloader));
+      else
+        g_print ("Detected bootloader: (unknown)\n");
+      
       for (i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *deployment = new_deployments->pdata[i];
