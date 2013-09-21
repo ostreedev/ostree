@@ -30,6 +30,7 @@ testfiles = test-basic \
 	test-pull-resume \
 	test-admin-deploy-1 \
 	test-admin-deploy-2 \
+	test-admin-deploy-uboot \
 	test-setuid \
 	test-xattrs \
 	$(NULL)
