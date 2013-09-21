@@ -43,9 +43,9 @@ echo "ok deploy command"
 assert_not_has_dir sysroot/boot/loader.0
 # Ensure uEnv.txt exists and has proper values
 assert_has_file sysroot/boot/loader.1/uEnv.txt
-linux=$(grep linux sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-initrd=$(grep initrd sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-options=$(grep options sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2-4)
+linux=$(grep linux sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+initrd=$(grep initrd sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+options=$(grep options sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2-4)
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "kernel_image=$linux"
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "ramdisk_image=$initrd"
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "bootargs=$options"
@@ -61,14 +61,14 @@ assert_not_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.1.0
 assert_not_has_dir sysroot/ostree/boot.1.1
 # Ensure we propagated kernel arguments from previous deployment
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf 'options.* root=LABEL=MOO console=ttySO,115200n8'
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.* root=LABEL=MOO console=ttySO,115200n8'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
 # Ensure uEnv.txt has proper values
 assert_has_file sysroot/boot/loader.0/uEnv.txt
-linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-options=$(grep options sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2-4)
+linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+options=$(grep options sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2-4)
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "kernel_image=$linux"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "ramdisk_image=$initrd"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "bootargs=$options"
@@ -86,9 +86,9 @@ assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
 # Ensure uEnv.txt has proper values
 assert_has_file sysroot/boot/loader.0/uEnv.txt
-linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-options=$(grep options sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2-4)
+linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+options=$(grep options sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2-4)
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "kernel_image=$linux"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "ramdisk_image=$initrd"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "bootargs=$options"
@@ -98,15 +98,15 @@ echo "ok third deploy (swap)"
 ostree admin --sysroot=sysroot deploy --os=otheros testos/buildmaster/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf
-assert_has_file sysroot/boot/loader/entries/ostree-otheros-${rev}-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-testos-1.conf
+assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 # Ensure uEnv.txt has proper values
 assert_has_file sysroot/boot/loader.1/uEnv.txt
-linux=$(grep linux sysroot/boot/loader.1/entries/ostree-otheros-${rev}-0.conf | cut -d ' ' -f 2)
-initrd=$(grep initrd sysroot/boot/loader.1/entries/ostree-otheros-${rev}-0.conf | cut -d ' ' -f 2)
-options=$(grep options sysroot/boot/loader/entries/ostree-otheros-${rev}-0.conf | cut -d ' ' -f 2-4)
+linux=$(grep linux sysroot/boot/loader.1/entries/ostree-otheros-0.conf | cut -d ' ' -f 2)
+initrd=$(grep initrd sysroot/boot/loader.1/entries/ostree-otheros-0.conf | cut -d ' ' -f 2)
+options=$(grep options sysroot/boot/loader/entries/ostree-otheros-0.conf | cut -d ' ' -f 2-4)
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "kernel_image=$linux"
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "ramdisk_image=$initrd"
 assert_file_has_content sysroot/boot/loader.1/uEnv.txt "bootargs=$options"
@@ -116,15 +116,15 @@ echo "ok independent deploy"
 ostree admin --sysroot=sysroot deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
-assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf
+assert_has_file sysroot/boot/loader/entries/ostree-testos-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-release 'NAME=TestOS'
-assert_has_file sysroot/boot/loader/entries/ostree-testos-${rev}-2.conf
+assert_has_file sysroot/boot/loader/entries/ostree-testos-2.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
 # Ensure uEnv.txt has proper values
 assert_has_file sysroot/boot/loader.0/uEnv.txt
-linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2)
-options=$(grep options sysroot/boot/loader/entries/ostree-testos-${rev}-0.conf | cut -d ' ' -f 2-4)
+linux=$(grep linux sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+initrd=$(grep initrd sysroot/boot/loader.0/entries/ostree-testos-0.conf | cut -d ' ' -f 2)
+options=$(grep options sysroot/boot/loader/entries/ostree-testos-0.conf | cut -d ' ' -f 2-4)
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "kernel_image=$linux"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "ramdisk_image=$initrd"
 assert_file_has_content sysroot/boot/loader.0/uEnv.txt "bootargs=$options"
