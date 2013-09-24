@@ -53,9 +53,6 @@ typedef struct {
   GSimpleAsyncResult *result;
 } OstreeFetcherPendingURI;
 
-static void ostree_fetcher_pending_uri_done (OstreeFetcher *self,
-                                             OstreeFetcherPendingURI *pending);
-
 static void
 pending_uri_free (OstreeFetcherPendingURI *pending)
 {
@@ -63,9 +60,6 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
   pending->refcount--;
   if (pending->refcount > 0)
     return;
-
-  if (!pending->is_stream)
-    ostree_fetcher_pending_uri_done (pending->self, pending);
 
   soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
@@ -190,20 +184,16 @@ static void
 on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
 
 static void
-ostree_fetcher_pending_uri_done (OstreeFetcher *self,
-                                 OstreeFetcherPendingURI *pending)
+ostree_fetcher_process_pending_queue (OstreeFetcher *self)
 {
-  OstreeFetcherPendingURI *p;
 
-  g_assert (!pending->is_stream);
-
-  self->outstanding--;
-  p = g_queue_pop_head (&self->pending_queue);
-  if (p != NULL)
+  while (g_queue_peek_head (&self->pending_queue) != NULL &&
+         self->outstanding < self->max_outstanding)
     {
+      OstreeFetcherPendingURI *next = g_queue_pop_head (&self->pending_queue);
       self->outstanding++;
-      soup_request_send_async (p->request, p->cancellable,
-                           on_request_sent, p);
+      soup_request_send_async (next->request, next->cancellable,
+                               on_request_sent, next);
     }
 }
 
@@ -213,19 +203,10 @@ ostree_fetcher_queue_pending_uri (OstreeFetcher *self,
 {
   g_assert (!pending->is_stream);
 
-  if (self->outstanding >= self->max_outstanding)
-    {
-      g_queue_push_tail (&self->pending_queue, pending);
-    }
-  else
-    {
-      self->outstanding++;
-      soup_request_send_async (pending->request, pending->cancellable,
-                           on_request_sent, pending);
-    }
+  g_queue_push_tail (&self->pending_queue, pending);
+
+  ostree_fetcher_process_pending_queue (self);
 }
-
-
 
 static void
 on_splice_complete (GObject        *object,
@@ -243,6 +224,12 @@ on_splice_complete (GObject        *object,
                                  pending->cancellable, &local_error);
   if (!file_info)
     goto out;
+
+  /* Now that we've finished downloading, continue with other queued
+   * requests.
+   */
+  pending->self->outstanding--;
+  ostree_fetcher_process_pending_queue (pending->self);
 
   filesize = g_file_info_get_size (file_info);
   if (filesize < pending->content_length)
