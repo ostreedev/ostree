@@ -994,7 +994,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
       pull_data->n_outstanding_content_fetches++;
       pull_data->n_requested_content++;
     }
-  fetch_data = g_new (FetchObjectData, 1);
+  fetch_data = g_new0 (FetchObjectData, 1);
   fetch_data->pull_data = pull_data;
   fetch_data->object = g_variant_ref (object_name);
   fetch_data->is_detached_meta = is_detached_meta;
