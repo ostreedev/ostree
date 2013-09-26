@@ -124,6 +124,12 @@ do_print_metadata_key (OstreeRepo     *repo,
       if (!ostree_repo_read_commit_detached_metadata (repo, resolved_rev, &metadata,
                                                       NULL, error))
         goto out;
+      if (metadata == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "No detached metadata for commit %s", resolved_rev);
+          goto out;
+        }
     }
   
   if (!g_variant_lookup (metadata, key, "&s", &value))
