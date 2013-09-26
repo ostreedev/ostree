@@ -1256,8 +1256,10 @@ GFile *
 _ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
                                              const char        *checksum)
 {
-  gs_free char *commit_path = ostree_get_relative_object_path (checksum, OSTREE_OBJECT_TYPE_COMMIT, FALSE);
-  return ot_gfile_resolve_path_printf (self->repodir, "%smeta", commit_path);
+  char buf[_OSTREE_LOOSE_PATH_MAX];
+  _ostree_loose_path_with_suffix (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT, self->mode,
+                                  "meta");
+  return g_file_resolve_relative_path (self->objects_dir, buf);
 }
 
 /**
@@ -1327,6 +1329,10 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   gboolean ret = FALSE;
   gs_unref_object GFile *metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+
+  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
+                                            cancellable, error))
+    goto out;
 
   if (!g_file_replace_contents (metadata_path,
                                 g_variant_get_data (metadata),
