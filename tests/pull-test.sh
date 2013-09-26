@@ -31,3 +31,11 @@ cd checkout-origin-main
 assert_file_has_content firstfile '^first$'
 assert_file_has_content baz/cow '^moo$'
 echo "ok pull contents"
+
+cd ${test_tmpdir}
+ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+$OSTREE show --print-detached-metadata-key=SIGNATURE main > main-meta
+assert_file_has_content main-meta "HANCOCK"
+echo "ok pull detached metadata"

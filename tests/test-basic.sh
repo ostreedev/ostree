@@ -291,3 +291,11 @@ assert_file_has_content test2-meta "CUTE"
 $OSTREE show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
 echo "ok metadata commit with strings"
+
+cd ${test_tmpdir}
+rm repo2 -rf
+mkdir repo2
+${CMD_PREFIX} ostree --repo=repo2 init
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo
+echo "ok pull-local after commit metadata"
+

@@ -78,6 +78,23 @@ import_one_object (OtLocalCloneData *data,
     }
   else
     {
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          gs_unref_variant GVariant *detached_meta = NULL;
+          
+          if (!ostree_repo_read_commit_detached_metadata (data->src_repo,
+                                                          checksum, &detached_meta,
+                                                          cancellable, error))
+            goto out;
+
+          if (detached_meta)
+            {
+              if (!ostree_repo_write_commit_detached_metadata (data->src_repo,
+                                                               checksum, detached_meta,
+                                                               cancellable, error))
+                goto out;
+            }
+        }
       if (!ostree_repo_write_metadata_stream_trusted (data->dest_repo, objtype,
                                                       checksum, object, length,
                                                       cancellable, error))

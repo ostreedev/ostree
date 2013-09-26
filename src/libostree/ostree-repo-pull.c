@@ -56,6 +56,7 @@
 #include "config.h"
 
 #include "ostree.h"
+#include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-fetcher.h"
 #include "otutil.h"
@@ -65,6 +66,7 @@ typedef struct {
     PULL_MSG_SCAN_IDLE,
     PULL_MSG_MAIN_IDLE,
     PULL_MSG_FETCH,
+    PULL_MSG_FETCH_DETACHED_METADATA,
     PULL_MSG_SCAN,
     PULL_MSG_QUIT
   } t;
@@ -121,6 +123,7 @@ typedef struct {
   OtPullData  *pull_data;
   GVariant    *object;
   GFile       *temp_path;
+  gboolean     is_detached_meta;
 } FetchObjectData;
 
 static SoupURI *
@@ -232,6 +235,7 @@ pull_worker_message_new (int msgtype, gpointer data)
       break;
     case PULL_MSG_SCAN:
     case PULL_MSG_FETCH:
+    case PULL_MSG_FETCH_DETACHED_METADATA:
       msg->d.item = data;
       break;
     case PULL_MSG_QUIT:
@@ -654,6 +658,11 @@ on_metadata_writed (GObject           *object,
 }
 
 static void
+enqueue_one_object_request (OtPullData        *pull_data,
+                            GVariant          *object_name,
+                            gboolean           is_detached_meta);
+
+static void
 meta_fetch_on_complete (GObject           *object,
                         GAsyncResult      *result,
                         gpointer           user_data)
@@ -666,23 +675,47 @@ meta_fetch_on_complete (GObject           *object,
   GError *local_error = NULL;
   GError **error = &local_error;
 
-  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
-  if (!fetch_data->temp_path)
-    goto out;
-
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
-
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
 
-  if (!ot_util_variant_map (fetch_data->temp_path, ostree_metadata_variant_type (objtype),
-                            FALSE, &metadata, error))
-    goto out;
+  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  if (!fetch_data->temp_path)
+    {
+      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        goto out;
+      else if (fetch_data->is_detached_meta)
+        {
+          /* There isn't any detached metadata, just fetch the commit */
+          g_clear_error (&local_error);
+          enqueue_one_object_request (pull_data, fetch_data->object, FALSE);
+        }
 
-  ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
-                                    pull_data->cancellable,
-                                    on_metadata_writed, fetch_data);
+      goto out;
+    }
 
-  pull_data->n_outstanding_metadata_write_requests++;
+  if (fetch_data->is_detached_meta)
+    {
+      if (!ot_util_variant_map (fetch_data->temp_path, G_VARIANT_TYPE ("a{sv}"),
+                                FALSE, &metadata, error))
+        goto out;
+      if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
+                                                       pull_data->cancellable, error))
+        goto out;
+
+      enqueue_one_object_request (pull_data, fetch_data->object, FALSE);
+    }
+  else
+    {
+      if (!ot_util_variant_map (fetch_data->temp_path, ostree_metadata_variant_type (objtype),
+                                FALSE, &metadata, error))
+        goto out;
+      
+      ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
+                                        pull_data->cancellable,
+                                        on_metadata_writed, fetch_data);
+      pull_data->n_outstanding_metadata_write_requests++;
+    }
+
  out:
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
@@ -769,9 +802,14 @@ scan_one_metadata_object (OtPullData         *pull_data,
       char *duped_checksum = g_strdup (tmp_checksum);
       g_hash_table_insert (pull_data->requested_metadata, duped_checksum, duped_checksum);
       
-      ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
-                              pull_worker_message_new (PULL_MSG_FETCH,
-                                                       g_variant_ref (object)));
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
+                                pull_worker_message_new (PULL_MSG_FETCH_DETACHED_METADATA,
+                                                         g_variant_ref (object)));
+      else
+        ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
+                                pull_worker_message_new (PULL_MSG_FETCH,
+                                                         g_variant_ref (object)));
     }
   else if (is_stored)
     {
@@ -918,6 +956,53 @@ metadata_thread_main (gpointer user_data)
   return NULL;
 }
 
+static void
+enqueue_one_object_request (OtPullData        *pull_data,
+                            GVariant          *object_name,
+                            gboolean           is_detached_meta)
+{
+  const char *checksum;
+  OstreeObjectType objtype;
+  SoupURI *obj_uri = NULL;
+  gboolean is_meta;
+  FetchObjectData *fetch_data;
+  gs_free char *objpath = NULL;
+
+  ostree_object_name_deserialize (object_name, &checksum, &objtype);
+
+  if (is_detached_meta)
+    {
+      char buf[_OSTREE_LOOSE_PATH_MAX];
+      _ostree_loose_path_with_suffix (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                                      pull_data->remote_mode, "meta");
+      obj_uri = suburi_new (pull_data->base_uri, "objects", buf, NULL);
+    }
+  else
+    {
+      objpath = ostree_get_relative_object_path (checksum, objtype, TRUE);
+      obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
+    }
+
+  is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
+  if (is_meta)
+    {
+      pull_data->n_outstanding_metadata_fetches++;
+      pull_data->n_requested_metadata++;
+    }
+  else
+    {
+      pull_data->n_outstanding_content_fetches++;
+      pull_data->n_requested_content++;
+    }
+  fetch_data = g_new (FetchObjectData, 1);
+  fetch_data->pull_data = pull_data;
+  fetch_data->object = g_variant_ref (object_name);
+  fetch_data->is_detached_meta = is_detached_meta;
+  ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
+                                                 is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
+  soup_uri_free (obj_uri);
+}
+
 static gboolean
 on_metadata_objects_to_fetch_ready (gint         fd,
                                     GIOCondition condition,
@@ -948,36 +1033,14 @@ on_metadata_objects_to_fetch_ready (gint         fd,
                                   pull_worker_message_new (PULL_MSG_MAIN_IDLE, GUINT_TO_POINTER (pull_data->idle_serial)));
         }
     }
-  else if (msg->t == PULL_MSG_FETCH)
+  else if (msg->t == PULL_MSG_FETCH || msg->t == PULL_MSG_FETCH_DETACHED_METADATA)
     {
-      const char *checksum;
-      gs_free char *objpath = NULL;
-      OstreeObjectType objtype;
-      SoupURI *obj_uri = NULL;
-      gboolean is_meta;
-      FetchObjectData *fetch_data;
-      
-      ostree_object_name_deserialize (msg->d.item, &checksum, &objtype);
-      objpath = ostree_get_relative_object_path (checksum, objtype, TRUE);
-      obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
+      gboolean is_detached_meta;
 
-      is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
-      if (is_meta)
-        {
-          pull_data->n_outstanding_metadata_fetches++;
-          pull_data->n_requested_metadata++;
-        }
-      else
-        {
-          pull_data->n_outstanding_content_fetches++;
-          pull_data->n_requested_content++;
-        }
-      fetch_data = g_new (FetchObjectData, 1);
-      fetch_data->pull_data = pull_data;
-      fetch_data->object = g_variant_ref (msg->d.item);
-      ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
-                                        is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
-      soup_uri_free (obj_uri);
+      is_detached_meta = msg->t == PULL_MSG_FETCH_DETACHED_METADATA;
+      
+      enqueue_one_object_request (pull_data, msg->d.item, is_detached_meta);
+
       g_variant_unref (msg->d.item);
     }
   else
