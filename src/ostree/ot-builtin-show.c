@@ -107,7 +107,7 @@ do_print_metadata_key (OstreeRepo     *repo,
                        GError        **error)
 {
   gboolean ret = FALSE;
-  const char *value;
+  gs_unref_variant GVariant *value = NULL;
   gs_unref_variant GVariant *commit = NULL;
   gs_unref_variant GVariant *metadata = NULL;
 
@@ -132,10 +132,15 @@ do_print_metadata_key (OstreeRepo     *repo,
         }
     }
   
-  if (!g_variant_lookup (metadata, key, "&s", &value))
-    goto out;
+  value = g_variant_lookup_value (metadata, key, NULL);
+  if (!value)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No such metadata key '%s'", key);
+      goto out;
+    }
 
-  g_print ("%s\n", value);
+  ot_dump_variant (value);
 
   ret = TRUE;
  out:
