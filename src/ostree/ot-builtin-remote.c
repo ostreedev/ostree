@@ -26,7 +26,10 @@
 #include "ostree.h"
 #include "otutil.h"
 
+char **opt_set;
+
 static GOptionEntry options[] = {
+  { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { NULL }
 };
 
@@ -38,6 +41,24 @@ usage_error (GOptionContext *context, const char *message, GError **error)
   g_free (help);
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        message);
+}
+
+static gboolean
+parse_keyvalue (const char  *keyvalue,
+                char       **out_key,
+                char       **out_value,
+                GError     **error)
+{
+  const char *eq = strchr (keyvalue, '=');
+  if (!eq)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Missing '=' in KEY=VALUE for --set");
+      return FALSE;
+    }
+  *out_key = g_strndup (keyvalue, eq - keyvalue);
+  *out_value = g_strdup (eq + 1);
+  return TRUE;
 }
 
 gboolean
@@ -69,6 +90,7 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   if (!strcmp (op, "add"))
     {
       char *key;
+      char **iter;
       if (argc < 4)
         {
           usage_error (context, "NAME and URL must be specified", error);
@@ -81,6 +103,19 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
       key = g_strdup_printf ("remote \"%s\"", argv[2]);
       g_key_file_set_string (config, key, "url", argv[3]);
+
+      for (iter = opt_set; iter && *iter; iter++)
+        {
+          const char *keyvalue = *iter;
+          gs_free char *subkey = NULL;
+          gs_free char *subvalue = NULL;
+
+          if (!parse_keyvalue (keyvalue, &subkey, &subvalue, error))
+            goto out;
+
+          g_key_file_set_string (config, key, subkey, subvalue);
+        }
+
       if (branches->len > 0)
         g_key_file_set_string_list (config, key, "branches",
                                     (const char *const *)branches->pdata,
