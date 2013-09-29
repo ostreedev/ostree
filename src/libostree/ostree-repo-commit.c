@@ -1329,14 +1329,17 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   gboolean ret = FALSE;
   gs_unref_object GFile *metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+  gs_unref_variant GVariant *normalized = NULL;
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
                                             cancellable, error))
     goto out;
 
+  normalized = g_variant_get_normal_form (metadata);
+
   if (!g_file_replace_contents (metadata_path,
-                                g_variant_get_data (metadata),
-                                g_variant_get_size (metadata),
+                                g_variant_get_data (normalized),
+                                g_variant_get_size (normalized),
                                 NULL, FALSE, 0, NULL,
                                 cancellable, error))
     goto out;
