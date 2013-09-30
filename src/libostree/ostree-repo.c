@@ -670,72 +670,59 @@ _ostree_repo_get_loose_object_dirs (OstreeRepo       *self,
 }
 
 static gboolean
-list_loose_object_dir (OstreeRepo             *self,
-                       GFile                  *dir,
+list_loose_objects_at (OstreeRepo             *self,
                        GHashTable             *inout_objects,
+                       const char             *prefix,
+                       int                     dfd,
                        GCancellable           *cancellable,
                        GError                **error)
 {
   gboolean ret = FALSE;
-  const char *dirname = NULL;
-  const char *dot = NULL;
-  gs_unref_object GFileEnumerator *enumerator = NULL;
-  GString *checksum = NULL;
+  DIR *d = NULL;
+  struct dirent *dent;
 
-  dirname = gs_file_get_basename_cached (dir);
-
-  /* We're only querying name */
-  enumerator = g_file_enumerate_children (dir, "standard::name,standard::type",
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          cancellable,
-                                          error);
-  if (!enumerator)
-    goto out;
-
-  while (TRUE)
+  d = fdopendir (dfd);
+  if (!d)
     {
-      GFileInfo *file_info;
-      const char *name;
-      guint32 type;
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  while ((dent = readdir (d)) != NULL)
+    {
+      const char *name = dent->d_name;
+      const char *dot;
       OstreeObjectType objtype;
+      char buf[65];
 
-      if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
-                                       NULL, error))
-        goto out;
-      if (file_info == NULL)
-        break;
-
-      type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
-
-      if (type == G_FILE_TYPE_DIRECTORY)
-        continue;
-
-      name = g_file_info_get_attribute_byte_string (file_info, "standard::name");
-
-      if (g_str_has_suffix (name, ".file"))
-        objtype = OSTREE_OBJECT_TYPE_FILE;
-      else if (g_str_has_suffix (name, ".dirtree"))
-        objtype = OSTREE_OBJECT_TYPE_DIR_TREE;
-      else if (g_str_has_suffix (name, ".dirmeta"))
-        objtype = OSTREE_OBJECT_TYPE_DIR_META;
-      else if (g_str_has_suffix (name, ".commit"))
-        objtype = OSTREE_OBJECT_TYPE_COMMIT;
-      else
+      if (strcmp (name, ".") == 0 ||
+          strcmp (name, "..") == 0)
         continue;
 
       dot = strrchr (name, '.');
-      g_assert (dot);
+      if (!dot)
+        continue;
+
+      if (strcmp (dot, ".file") == 0)
+        objtype = OSTREE_OBJECT_TYPE_FILE;
+      else if (strcmp (dot, ".dirtree") == 0)
+        objtype = OSTREE_OBJECT_TYPE_DIR_TREE;
+      else if (strcmp (dot, ".dirmeta") == 0)
+        objtype = OSTREE_OBJECT_TYPE_DIR_META;
+      else if (strcmp (dot, ".commit") == 0)
+        objtype = OSTREE_OBJECT_TYPE_COMMIT;
+      else
+        continue;
 
       if ((dot - name) == 62)
         {
           GVariant *key, *value;
 
-          if (checksum)
-            g_string_free (checksum, TRUE);
-          checksum = g_string_new (dirname);
-          g_string_append_len (checksum, name, 62);
+          memcpy (buf, prefix, 2);
+          memcpy (buf + 2, name, 62);
+          buf[sizeof(buf)-1] = '\0';
 
-          key = ostree_object_name_serialize (checksum->str, objtype);
+          key = ostree_object_name_serialize (buf, objtype);
           value = g_variant_new ("(b@as)",
                                  TRUE, g_variant_new_strv (NULL, 0));
           /* transfer ownership */
@@ -746,8 +733,8 @@ list_loose_object_dir (OstreeRepo             *self,
 
   ret = TRUE;
  out:
-  if (checksum)
-    g_string_free (checksum, TRUE);
+  if (d)
+    (void) closedir (d);
   return ret;
 }
 
@@ -758,16 +745,30 @@ list_loose_objects (OstreeRepo                     *self,
                     GError                        **error)
 {
   gboolean ret = FALSE;
-  guint i;
-  gs_unref_ptrarray GPtrArray *object_dirs = NULL;
+  guint c;
+  int dfd = -1;
+  static const gchar hexchars[] = "0123456789abcdef";
 
-  if (!_ostree_repo_get_loose_object_dirs (self, &object_dirs, cancellable, error))
-    goto out;
-
-  for (i = 0; i < object_dirs->len; i++)
+  for (c = 0; c < 255; c++)
     {
-      GFile *objdir = object_dirs->pdata[i];
-      if (!list_loose_object_dir (self, objdir, inout_objects, cancellable, error))
+      char buf[3];
+      buf[0] = hexchars[c >> 4];
+      buf[1] = hexchars[c & 0xF];
+      buf[2] = '\0';
+      dfd = openat (self->objects_dir_fd, buf, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+      if (dfd == -1)
+        {
+          if (errno == ENOENT)
+            continue;
+          else
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
+      /* Takes ownership of dfd */
+      if (!list_loose_objects_at (self, inout_objects, buf, dfd,
+                                  cancellable, error))
         goto out;
     }
 
