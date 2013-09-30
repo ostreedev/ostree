@@ -1012,7 +1012,7 @@ _ostree_repo_get_object_path (OstreeRepo       *self,
 
   compressed = (type == OSTREE_OBJECT_TYPE_FILE
                 && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2);
-  relpath = ostree_get_relative_object_path (checksum, type, compressed);
+  relpath = _ostree_get_relative_object_path (checksum, type, compressed);
   ret = g_file_resolve_relative_path (self->repodir, relpath);
   g_free (relpath);
 

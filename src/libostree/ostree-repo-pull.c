@@ -994,7 +994,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
     }
   else
     {
-      objpath = ostree_get_relative_object_path (checksum, objtype, TRUE);
+      objpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
       obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
     }
 

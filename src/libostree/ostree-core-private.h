@@ -95,6 +95,11 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
  */
 #define _OSTREE_LOOSE_PATH_MAX (256)
 
+char *
+_ostree_get_relative_object_path (const char        *checksum,
+                                  OstreeObjectType   type,
+                                  gboolean           compressed);
+
 void
 _ostree_loose_path (char              *buf,
                     const char        *checksum,
