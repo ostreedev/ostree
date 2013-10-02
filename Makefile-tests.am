@@ -57,7 +57,7 @@ gpginsttest_DATA = tests/gpghome/secring.gpg \
 
 %.test: tests/%.js Makefile
 	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
-	 echo 'Exec=$(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
+	 echo 'Exec=env TESTDATADIR=$(pkglibexecdir)/installed-tests $(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
 	 echo 'Type=session' >> $@.tmp; \
 	 mv $@.tmp $@)
 
@@ -65,9 +65,10 @@ testmetadir = $(datadir)/installed-tests/$(PACKAGE)
 testmeta_DATA = $(testfiles:=.test)
 
 if BUILDOPT_GJS
-insttest_SCRIPTS += tests/test-core.js
-testmeta_DATA += test-core.test
+insttest_SCRIPTS += tests/test-core.js \
+	tests/test-sysroot.js \
+	$(NULL)
+testmeta_DATA += test-core.test test-sysroot.test
 endif
-
 
 endif
