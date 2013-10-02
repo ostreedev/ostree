@@ -621,18 +621,23 @@ cleanup_tmpdir (OstreeRepo        *self,
 {
   gboolean ret = FALSE;
   gs_unref_object GFileEnumerator *enumerator = NULL;
+  guint64 curtime_secs;
 
-  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name",
+  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name,time::modified",
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                           cancellable,
                                           error);
   if (!enumerator)
     goto out;
 
+  curtime_secs = g_get_real_time () / 1000000;
+
   while (TRUE)
     {
       GFileInfo *file_info;
       GFile *path;
+      guint64 mtime;
+      guint64 delta;
 
       if (!gs_file_enumerator_iterate (enumerator, &file_info, &path,
                                        cancellable, error))
@@ -640,8 +645,20 @@ cleanup_tmpdir (OstreeRepo        *self,
       if (file_info == NULL)
         break;
 
-      if (!gs_shutil_rm_rf (path, cancellable, error))
-        goto out;
+      mtime = g_file_info_get_attribute_uint64 (file_info, "time::modified");
+      if (mtime > curtime_secs)
+        continue;
+      /* Only delete files older than a day.  To do better, we would
+       * need to coordinate between multiple processes in a reliable
+       * fashion.  See
+       * https://bugzilla.gnome.org/show_bug.cgi?id=709115
+       */
+      delta = curtime_secs - mtime;
+      if (delta > 60*60*24)
+        {
+          if (!gs_shutil_rm_rf (path, cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
