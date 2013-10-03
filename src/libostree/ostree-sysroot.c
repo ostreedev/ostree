@@ -762,7 +762,7 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
  * ostree_sysroot_get_deployments:
  * @self: Sysroot
  *
- * Returns: (element-type OstreeDeployment) (transfer full): Ordered list of deployments
+ * Returns: (element-type OstreeDeployment) (transfer container): Ordered list of deployments
  */
 GPtrArray *
 ostree_sysroot_get_deployments (OstreeSysroot  *self)

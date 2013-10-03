@@ -155,6 +155,13 @@ ostree_deployment_hash (gconstpointer v)
     ostree_deployment_get_deployserial (d);
 }
 
+/**
+ * ostree_deployment_equal:
+ * @ap: (type OstreeDeployment): A deployment
+ * @bp: (type OstreeDeployment): A deployment
+ *
+ * Returns: %TRUE if deployments have the same osname, csum, and deployserial
+ */
 gboolean
 ostree_deployment_equal (gconstpointer ap, gconstpointer bp)
 {
