@@ -84,5 +84,9 @@ gboolean ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
 OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
                                                        const char        *osname);
 
+
+GKeyFile *ostree_sysroot_origin_new_from_refspec (OstreeSysroot      *self,
+                                                  const char         *refspec);
+
 G_END_DECLS
 

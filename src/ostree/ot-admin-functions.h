@@ -27,8 +27,6 @@
 
 G_BEGIN_DECLS
 
-GKeyFile *ot_origin_new_from_refspec (const char *refspec);
-
 gboolean
 ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
                                               const char          *osname,

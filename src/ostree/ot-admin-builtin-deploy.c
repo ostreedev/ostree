@@ -97,7 +97,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
     }
   else
     {
-      origin = ot_origin_new_from_refspec (refspec);
+      origin = ostree_sysroot_origin_new_from_refspec (sysroot, refspec);
     }
 
   if (!ostree_repo_resolve_rev (repo, refspec, FALSE, &revision, error))
