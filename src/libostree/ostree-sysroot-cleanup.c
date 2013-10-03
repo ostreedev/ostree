@@ -304,7 +304,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
                                    cancellable, error))
     goto out;
 
-  active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, NULL, g_object_unref);
+  active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
   active_boot_checksums = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
 
   for (i = 0; i < self->deployments->len; i++)
@@ -313,8 +313,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
       GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
       char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
-      g_hash_table_insert (active_deployment_dirs, deployment_path, deployment_path);
-      g_hash_table_insert (active_boot_checksums, bootcsum, bootcsum);
+      g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
+      g_hash_table_replace (active_boot_checksums, bootcsum, bootcsum);
     }
 
   if (!list_all_deployment_directories (self, &all_deployment_dirs,
