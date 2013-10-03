@@ -244,9 +244,13 @@ EOF
 os_repository_new_commit ()
 {
     boot_checksum_iteration=$1
+    content_iteration=$2
     echo "BOOT ITERATION: $boot_checksum_iteration"
     if test -z "$boot_checksum_iteration"; then
 	boot_checksum_iteration=0
+    fi
+    if test -z "$content_iteration"; then
+	content_iteration=0
     fi
     cd ${test_tmpdir}/osdata
     rm boot/*
@@ -260,6 +264,8 @@ os_repository_new_commit ()
     echo "a new default config file" > usr/etc/a-new-default-config-file
     mkdir -p usr/etc/new-default-dir
     echo "a new default dir and file" > usr/etc/new-default-dir/moo
+
+    echo "content iteration ${content_iteration}" > usr/bin/content-iteration
 
     ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
     cd ${test_tmpdir}

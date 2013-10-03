@@ -27,6 +27,11 @@ function assertEquals(a, b) {
 	throw new Error("assertion failed " + JSON.stringify(a) + " == " + JSON.stringify(b));
 }
 
+function assertNotEquals(a, b) {
+    if (a == b)
+	throw new Error("assertion failed " + JSON.stringify(a) + " != " + JSON.stringify(b));
+}
+
 function libtestExec(shellCode) {
     let testdatadir = GLib.getenv("TESTDATADIR");
     let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
@@ -42,12 +47,108 @@ libtestExec('setup_os_repository archive-z2 syslinux');
 let upstreamRepo = OSTree.Repo.new(Gio.File.new_for_path('testos-repo'));
 upstreamRepo.open(null);
 
-let [,rev] = upstreamRepo.resolve_rev('testos/buildmaster/x86_64-runtime', false);
+let runtimeRef = 'testos/buildmaster/x86_64-runtime';
+let [,rev] = upstreamRepo.resolve_rev(runtimeRef, false);
 
 print("testos => " + rev);
+
+//// TEST: We should have no deployments
 
 let sysroot = OSTree.Sysroot.new(Gio.File.new_for_path('sysroot'));
 sysroot.load(null);
 let deployments = sysroot.get_deployments();
 assertEquals(deployments.length, 0);
 
+//// Add the remote, and do a pull
+
+let [,sysrootRepo] = sysroot.get_repo(null);
+let sysrootRepoConfig = sysrootRepo.get_config();
+let testosRefSection = 'remote "testos"';
+sysrootRepoConfig.set_string(testosRefSection, 'url', 'file://' + upstreamRepo.get_path().get_path());
+sysrootRepoConfig.set_boolean(testosRefSection, 'gpg-verify', false);
+sysrootRepoConfig.set_string_list(testosRefSection, 'branches', [runtimeRef]);
+
+sysrootRepo.pull('testos', null, 0, null);
+
+//// TEST: We can deploy one tree
+
+let mergeDeployment = sysroot.get_merge_deployment('testos');
+
+let origin = sysroot.origin_new_from_refspec(runtimeRef);
+let [,deployment] = sysroot.deploy_one_tree('testos', rev, origin,
+					    null, mergeDeployment,
+					    null);
+let newDeployments = deployments;
+deployments = null;
+newDeployments.unshift(deployment);
+sysroot.write_deployments(newDeployments, null);
+deployments = sysroot.get_deployments();
+assertEquals(deployments.length, newDeployments.length);
+assertEquals(deployments[0].get_csum(), deployment.get_csum());
+
+let deploymentPath = sysroot.get_deployment_directory(deployment);
+assertEquals(deploymentPath.query_exists(null), true);
+
+print("OK one deployment");
+
+/// TEST: We can delete the deployment, going back to empty
+sysroot.write_deployments([], null);
+
+print("OK empty deployments");
+
+assertEquals(deploymentPath.query_exists(null), false);
+
+//// Ok, redeploy, then add a new revision upstream and pull it
+
+let [,deployment] = sysroot.deploy_one_tree('testos', rev, origin,
+					    null, mergeDeployment,
+					    null);
+newDeployments = deployments;
+deployments = null;
+newDeployments.unshift(deployment);
+print(JSON.stringify(newDeployments));
+sysroot.write_deployments(newDeployments, null);
+
+libtestExec('os_repository_new_commit');
+
+sysrootRepo.pull('testos', null, 0, null);
+
+let [,newRev] = upstreamRepo.resolve_rev(runtimeRef, false);
+
+print("testos => " + newRev);
+assertNotEquals(rev, newRev);
+
+mergeDeployment = sysroot.get_merge_deployment('testos');
+assertEquals(mergeDeployment.get_csum(), deployment.get_csum());
+let [,newDeployment] = sysroot.deploy_one_tree('testos', newRev, origin,
+					       null, mergeDeployment,
+					       null);
+newDeployments = [newDeployment, mergeDeployment];
+assertNotEquals(mergeDeployment.get_bootcsum(), newDeployment.get_bootcsum());
+assertNotEquals(mergeDeployment.get_csum(), newDeployment.get_csum());
+sysroot.write_deployments(newDeployments, null);
+deployments = sysroot.get_deployments();
+assertEquals(deployments.length, 2);
+assertEquals(deploymentPath.query_exists(null), true);
+let newDeploymentPath = sysroot.get_deployment_directory(newDeployment);
+assertEquals(newDeploymentPath.query_exists(null), true);
+
+print("OK two deployments");
+
+libtestExec('os_repository_new_commit 0 1');
+
+sysrootRepo.pull('testos', null, 0, null);
+
+let [,thirdRev] = sysrootRepo.resolve_rev(runtimeRef, false);
+assertNotEquals(newRev, thirdRev);
+
+mergeDeployment = sysroot.get_merge_deployment('testos');
+let [,thirdDeployment] = sysroot.deploy_one_tree('testos', thirdRev, origin,
+						 null, mergeDeployment,
+						 null);
+assertEquals(mergeDeployment.get_bootcsum(), thirdDeployment.get_bootcsum());
+assertNotEquals(mergeDeployment.get_csum(), thirdDeployment.get_csum());
+newDeployments = [deployment, newDeployment, thirdDeployment];
+sysroot.write_deployments(newDeployments, null);
+deployments = sysroot.get_deployments();
+assertEquals(deployments.length, 3);
