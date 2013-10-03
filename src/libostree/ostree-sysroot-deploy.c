@@ -910,11 +910,17 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     {
       int new_bootversion = self->bootversion ? 0 : 1;
       gs_unref_object OstreeBootloader *bootloader = _ostree_sysroot_query_bootloader (self);
+      gs_unref_object GFile *new_loader_entries_dir = NULL;
 
       if (bootloader)
         g_print ("Detected bootloader: %s\n", _ostree_bootloader_get_name (bootloader));
       else
         g_print ("Detected bootloader: (unknown)\n");
+
+      new_loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
+                                                             new_bootversion);
+      if (!gs_file_ensure_directory (new_loader_entries_dir, TRUE, cancellable, error))
+        goto out;
       
       for (i = 0; i < new_deployments->len; i++)
         {
