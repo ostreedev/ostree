@@ -33,7 +33,7 @@ typedef struct _OstreeDeployment OstreeDeployment;
 GType ostree_deployment_get_type (void) G_GNUC_CONST;
 
 guint ostree_deployment_hash (gconstpointer v);
-gboolean ostree_deployment_equal (gconstpointer a, gconstpointer b);
+gboolean ostree_deployment_equal (gconstpointer ap, gconstpointer bp);
 
 OstreeDeployment * ostree_deployment_new (int    index,
                                   const char  *osname,
