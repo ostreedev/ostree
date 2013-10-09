@@ -1150,7 +1150,7 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
   for (i = 0; i < max_attempts; i++)
     {
       g_free (tmpname);
-      tmpname = gsystem_fileutil_gen_tmp_name (NULL, NULL);
+      tmpname = gs_fileutil_gen_tmp_name (NULL, NULL);
       if (symlinkat (target, tmp_dirfd, tmpname) < 0)
         {
           if (errno == EEXIST)
