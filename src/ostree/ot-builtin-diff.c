@@ -178,8 +178,8 @@ ostree_builtin_diff (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
 
   if (opt_stats)
     {
-      gs_unref_hashtable GHashTable *reachable_a = ostree_repo_traverse_new_reachable ();
-      gs_unref_hashtable GHashTable *reachable_b = ostree_repo_traverse_new_reachable ();
+      gs_unref_hashtable GHashTable *reachable_a = NULL;
+      gs_unref_hashtable GHashTable *reachable_b = NULL;
       gs_unref_hashtable GHashTable *reachable_intersection = NULL;
       gs_free char *rev_a = NULL;
       gs_free char *rev_b = NULL;
@@ -193,9 +193,9 @@ ostree_builtin_diff (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       if (!ostree_repo_resolve_rev (repo, target, FALSE, &rev_b, error))
         goto out;
 
-      if (!ostree_repo_traverse_commit (repo, rev_a, -1, reachable_a, cancellable, error))
+      if (!ostree_repo_traverse_commit (repo, rev_a, -1, &reachable_a, cancellable, error))
         goto out;
-      if (!ostree_repo_traverse_commit (repo, rev_b, -1, reachable_b, cancellable, error))
+      if (!ostree_repo_traverse_commit (repo, rev_b, -1, &reachable_b, cancellable, error))
         goto out;
 
       a_size = g_hash_table_size (reachable_a);

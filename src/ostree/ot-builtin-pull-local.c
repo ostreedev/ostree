@@ -256,8 +256,8 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
         {
           const char *checksum = value;
           
-          if (!ostree_repo_traverse_commit (data->src_repo, checksum, 0, source_objects,
-                                            cancellable, error))
+          if (!ostree_repo_traverse_commit_union (data->src_repo, checksum, 0, source_objects,
+                                                  cancellable, error))
             goto out;
         }
     }
@@ -268,9 +268,10 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = key;
+          gs_unref_hashtable GHashTable *tmp_source_objects = NULL;
 
-          if (!ostree_repo_traverse_commit (data->src_repo, checksum, 0, source_objects,
-                                            cancellable, error))
+          if (!ostree_repo_traverse_commit_union (data->src_repo, checksum, 0, source_objects,
+                                                  cancellable, error))
             goto out;
         }
     }

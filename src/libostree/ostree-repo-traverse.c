@@ -38,7 +38,7 @@ GHashTable *
 ostree_repo_traverse_new_reachable (void)
 {
   return g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                (GDestroyNotify)g_variant_unref, NULL);
+                                NULL, (GDestroyNotify)g_variant_unref);
 }
 
 static gboolean
@@ -125,33 +125,28 @@ traverse_dirtree_internal (OstreeRepo      *repo,
   return ret;
 }
 
-gboolean
-ostree_repo_traverse_dirtree (OstreeRepo      *repo,
-                              const char      *dirtree_checksum,
-                              GHashTable      *inout_reachable,
-                              GCancellable    *cancellable,
-                              GError         **error)
-{
-  return traverse_dirtree_internal (repo, dirtree_checksum, 0,
-                                    inout_reachable, cancellable, error);
-}
-
 /**
- * ostree_traverse_commit:
+ * ostree_repo_traverse_commit_union: (skip)
+ * @repo: Repo
+ * @commit_checksum: ASCII SHA256 checksum
+ * @maxdepth: Traverse this many parent commits, -1 for unlimited
+ * @inout_reachable: Set of reachable objects
+ * @cancellable: Cancellable
+ * @error: Error
  *
- * Add to @inout_reachable all objects reachable from
- * @commit_checksum, traversing @maxdepth parent commits.
+ * Update the set @inout_reachable containing all objects reachable
+ * from @commit_checksum, traversing @maxdepth parent commits.
  */
 gboolean
-ostree_repo_traverse_commit (OstreeRepo      *repo,
-                             const char      *commit_checksum,
-                             int              maxdepth,
-                             GHashTable      *inout_reachable,
-                             GCancellable    *cancellable,
-                             GError         **error)
+ostree_repo_traverse_commit_union (OstreeRepo      *repo,
+                                   const char      *commit_checksum,
+                                   int              maxdepth,
+                                   GHashTable      *inout_reachable,
+                                   GCancellable    *cancellable,
+                                   GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char*tmp_checksum = NULL;
+  gs_free char *tmp_checksum = NULL;
 
   while (TRUE)
     {
@@ -205,7 +200,7 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
         }
 
       tmp_checksum = ostree_checksum_from_bytes_v (content_csum_bytes);
-      if (!ostree_repo_traverse_dirtree (repo, tmp_checksum, inout_reachable, cancellable, error))
+      if (!traverse_dirtree_internal (repo, tmp_checksum, 0, inout_reachable, cancellable, error))
         goto out;
 
       if (maxdepth == -1 || maxdepth > 0)
@@ -225,6 +220,40 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
     }
 
   ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_traverse_commit:
+ * @repo: Repo
+ * @commit_checksum: ASCII SHA256 checksum
+ * @maxdepth: Traverse this many parent commits, -1 for unlimited
+ * @out_reachable: (out) (element-type GVariant GVariant): Set of reachable objects
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create a new set @out_reachable containing all objects reachable
+ * from @commit_checksum, traversing @maxdepth parent commits.
+ */
+gboolean
+ostree_repo_traverse_commit (OstreeRepo      *repo,
+                             const char      *commit_checksum,
+                             int              maxdepth,
+                             GHashTable     **out_reachable,
+                             GCancellable    *cancellable,
+                             GError         **error)
+{
+  gboolean ret;
+  gs_unref_hashtable GHashTable *ret_reachable =
+    ostree_repo_traverse_new_reachable ();
+
+  if (!ostree_repo_traverse_commit_union (repo, commit_checksum, maxdepth,
+                                          ret_reachable, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  gs_transfer_out_value (out_reachable, &ret_reachable);
  out:
   return ret;
 }

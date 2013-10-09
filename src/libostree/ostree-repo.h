@@ -414,18 +414,19 @@ gboolean ostree_repo_list_objects (OstreeRepo                  *self,
 
 GHashTable *ostree_repo_traverse_new_reachable (void);
 
-gboolean ostree_repo_traverse_dirtree (OstreeRepo         *repo,
-                                       const char         *commit_checksum,
-                                       GHashTable         *inout_reachable,
-                                       GCancellable       *cancellable,
-                                       GError            **error);
-
 gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       const char         *commit_checksum,
                                       int                 maxdepth,
-                                      GHashTable         *inout_reachable,
+                                      GHashTable        **out_reachable,
                                       GCancellable       *cancellable,
                                       GError            **error);
+
+gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
+                                            const char         *commit_checksum,
+                                            int                 maxdepth,
+                                            GHashTable         *inout_reachable,
+                                            GCancellable       *cancellable,
+                                            GError            **error);
 
 /**
  * OstreeRepoPruneFlags:

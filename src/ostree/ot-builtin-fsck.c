@@ -200,8 +200,8 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       g_assert (objtype == OSTREE_OBJECT_TYPE_COMMIT);
 
-      if (!ostree_repo_traverse_commit (repo, checksum, 0, reachable_objects,
-                                        cancellable, error))
+      if (!ostree_repo_traverse_commit_union (repo, checksum, 0, reachable_objects,
+                                              cancellable, error))
         goto out;
     }
 
