@@ -32,6 +32,7 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-checksum-input-stream.h"
 #include "ostree-mutable-tree.h"
+#include "ostree-varint.h"
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
@@ -170,6 +171,129 @@ commit_loose_object_trusted (OstreeRepo        *self,
   return ret;
 }
 
+typedef struct
+{
+  gsize unpacked;
+  gsize archived;
+} OstreeContentSizeCacheEntry;
+
+static OstreeContentSizeCacheEntry *
+content_size_cache_entry_new (gsize unpacked,
+                              gsize archived)
+{
+  OstreeContentSizeCacheEntry *entry = g_slice_new0 (OstreeContentSizeCacheEntry);
+
+  entry->unpacked = unpacked;
+  entry->archived = archived;
+
+  return entry;
+}
+
+static void
+content_size_cache_entry_free (gpointer entry)
+{
+  if (entry)
+    g_slice_free (OstreeContentSizeCacheEntry, entry);
+}
+
+static void
+repo_store_size_entry (OstreeRepo       *self,
+                       const gchar      *checksum,
+                       gsize             unpacked,
+                       gsize             archived)
+{
+  if (G_UNLIKELY (self->object_sizes == NULL))
+    self->object_sizes = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                g_free, content_size_cache_entry_free);
+
+  g_hash_table_replace (self->object_sizes,
+                        g_strdup (checksum),
+                        content_size_cache_entry_new (unpacked, archived));
+}
+
+static int
+compare_ascii_checksums_for_sorting (gconstpointer  a_pp,
+                                     gconstpointer  b_pp)
+{
+  char *a = *((char**)a_pp);
+  char *b = *((char**)b_pp);
+
+  return strcmp (a, b);
+}
+
+/**
+ * Create sizes metadata GVariant and add it to the metadata variant given.
+*/
+static gboolean
+add_size_index_to_metadata (OstreeRepo        *self,
+                            GVariant          *original_metadata,
+                            GVariant         **out_metadata,
+                            GCancellable      *cancellable,
+                            GError           **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+    
+  if (original_metadata)
+    {
+      builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
+    }
+  else
+    {
+      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+    }
+
+  if (self->object_sizes &&
+      g_hash_table_size (self->object_sizes) > 0)
+    {
+      GHashTableIter entries = { 0 };
+      gchar *e_checksum = NULL;
+      OstreeContentSizeCacheEntry *e_size = NULL;
+      GVariantBuilder index_builder;
+      guint i;
+      gs_unref_ptrarray GPtrArray *sorted_keys = NULL;
+      
+      g_hash_table_iter_init (&entries, self->object_sizes);
+      g_variant_builder_init (&index_builder,
+                              G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
+
+      /* Sort the checksums so we can bsearch if desired */
+      sorted_keys = g_ptr_array_new ();
+      while (g_hash_table_iter_next (&entries,
+                                     (gpointer *) &e_checksum,
+                                     (gpointer *) &e_size))
+        g_ptr_array_add (sorted_keys, e_checksum);
+      g_ptr_array_sort (sorted_keys, compare_ascii_checksums_for_sorting);
+
+      for (i = 0; i < sorted_keys->len; i++)
+        {
+          guint8 csum[32];
+          const char *e_checksum = sorted_keys->pdata[i];
+          GString *buffer = g_string_new (NULL);
+
+          ostree_checksum_inplace_to_bytes (e_checksum, csum);
+          g_string_append_len (buffer, (char*)csum, 32);
+
+          e_size = g_hash_table_lookup (self->object_sizes, e_checksum);
+          _ostree_write_varuint64 (buffer, e_size->archived);
+          _ostree_write_varuint64 (buffer, e_size->unpacked);
+
+          g_variant_builder_add (&index_builder, "@ay",
+                                 ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
+          g_string_free (buffer, TRUE);
+        }
+      
+      g_variant_builder_add (builder, "{sv}", "ostree.sizes",
+                             g_variant_builder_end (&index_builder));
+    }
+    
+  ret = TRUE;
+  *out_metadata = g_variant_builder_end (builder);
+  g_variant_ref_sink (*out_metadata);
+
+  return ret;
+}
+
 static gboolean
 write_object (OstreeRepo         *self,
               OstreeObjectType    objtype,
@@ -198,6 +322,8 @@ write_object (OstreeRepo         *self,
   gboolean temp_file_is_regular;
   gboolean is_symlink = FALSE;
   char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
+  gsize unpacked_size = 0;
+  gboolean indexable = FALSE;
 
   g_return_val_if_fail (self->in_transaction, FALSE);
   
@@ -278,6 +404,9 @@ write_object (OstreeRepo         *self,
           gs_unref_object GConverter *zlib_compressor = NULL;
           gs_unref_object GOutputStream *compressed_out_stream = NULL;
 
+          if (self->generate_sizes)
+            indexable = TRUE;
+
           if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644,
                                           &temp_filename, &temp_out,
                                           cancellable, error))
@@ -298,10 +427,10 @@ write_object (OstreeRepo         *self,
               /* Don't close the base; we'll do that later */
               g_filter_output_stream_set_close_base_stream ((GFilterOutputStream*)compressed_out_stream, FALSE);
               
-              if (g_output_stream_splice (compressed_out_stream, file_input, 0,
-                                          cancellable, error) < 0)
+              unpacked_size = g_output_stream_splice (compressed_out_stream, file_input,
+                                                      0, cancellable, error);
+              if (unpacked_size < 0)
                 goto out;
-
             }
         }
       else
@@ -341,6 +470,18 @@ write_object (OstreeRepo         *self,
         }
     }
           
+  if (indexable)
+    {
+      gsize archived_size;
+      gs_unref_object GFileInfo *compressed_info =
+        g_file_query_info (temp_file, G_FILE_ATTRIBUTE_STANDARD_SIZE, 0,
+                           cancellable, error);
+      if (!compressed_info)
+        goto out;
+      archived_size = g_file_info_get_size (compressed_info);
+      repo_store_size_entry (self, actual_checksum, unpacked_size, archived_size);
+    }
+
   if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype,
                                       &have_obj, loose_objpath,
                                       cancellable, error))
@@ -1238,15 +1379,21 @@ ostree_repo_write_commit (OstreeRepo      *self,
   gboolean ret = FALSE;
   gs_free char *ret_commit = NULL;
   gs_unref_variant GVariant *commit = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
   gs_free guchar *commit_csum = NULL;
   GDateTime *now = NULL;
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
   g_return_val_if_fail (subject != NULL, FALSE);
 
+  /* Add sizes information to our metadata object */
+  if (!add_size_index_to_metadata (self, metadata, &new_metadata,
+                                   cancellable, error))
+    goto out;
+
   now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",
-                          metadata ? metadata : create_empty_gvariant_dict (),
+                          new_metadata ? new_metadata : create_empty_gvariant_dict (),
                           parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
                           g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0),
                           subject, body ? body : "",
@@ -1525,6 +1672,11 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
   gs_unref_object GFileInfo *child_info = NULL;
 
   g_debug ("Examining: %s", gs_file_get_path_cached (dir));
+
+  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+    {
+      self->generate_sizes = TRUE;
+    }
 
   /* If the directory is already in the repository, we can try to
    * reuse checksums to skip checksumming. */

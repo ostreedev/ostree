@@ -80,9 +80,10 @@ testmeta_DATA += test-varint.test
 
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
+	tests/test-sizes.js \
 	tests/test-sysroot.js \
 	$(NULL)
-testmeta_DATA += test-core.test test-sysroot.test
+testmeta_DATA += test-core.test test-sizes.test test-sysroot.test
 endif
 
 endif

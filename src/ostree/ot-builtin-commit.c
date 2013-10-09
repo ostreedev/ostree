@@ -45,6 +45,7 @@ static gboolean opt_table_output;
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
 #endif
+static gboolean opt_generate_sizes;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
@@ -65,6 +66,7 @@ static GOptionEntry options[] = {
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "key-id"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
 #endif
+  { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { NULL }
 };
 
@@ -284,6 +286,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   gs_unref_object OstreeMutableTree *mtree = NULL;
   gs_free char *tree_type = NULL;
   gs_unref_hashtable GHashTable *mode_adds = NULL;
+  OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
 
@@ -319,12 +322,17 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       goto out;
     }
 
-  if (opt_owner_uid >= 0 || opt_owner_gid >= 0 || opt_statoverride_file != NULL
+  if (opt_no_xattrs)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
+  if (opt_generate_sizes)
+    flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
+
+  if (flags != 0
+      || opt_owner_uid >= 0
+      || opt_owner_gid >= 0
+      || opt_statoverride_file != NULL
       || opt_no_xattrs)
     {
-      OstreeRepoCommitModifierFlags flags = 0;
-      if (opt_no_xattrs)
-        flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds, NULL);
     }
 

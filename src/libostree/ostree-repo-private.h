@@ -24,6 +24,8 @@
 
 G_BEGIN_DECLS
 
+#define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
+
 /**
  * OstreeRepo:
  *
@@ -57,10 +59,12 @@ struct OstreeRepo {
   gboolean in_transaction;
   GHashTable *loose_object_devino_hash;
   GHashTable *updated_uncompressed_dirs;
+  GHashTable *object_sizes;
 
   GKeyFile *config;
   OstreeRepoMode mode;
   gboolean enable_uncompressed_cache;
+  gboolean generate_sizes;
 
   OstreeRepo *parent_repo;
 };

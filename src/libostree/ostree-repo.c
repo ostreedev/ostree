@@ -116,6 +116,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
   g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
 
