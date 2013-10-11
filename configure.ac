@@ -79,7 +79,7 @@ AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
   GOBJECT_INTROSPECTION_CHECK([1.34.0])
 ])
-AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test x$found_introspection = xyes)
+AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
 LIBGPGME_DEPENDENCY="1.1.8"
 
@@ -154,12 +154,14 @@ AS_IF([test "x$with_dracut" = "xyes"], [
 ])
 
 dnl for tests
-AC_PATH_PROG(GJS, [gjs])
-if test -n "$GJS"; then
-  have_gjs=yes
-else
-  have_gjs=no
-fi
+AS_IF([test "x$found_introspection" = xyes], [
+  AC_PATH_PROG(GJS, [gjs])
+  if test -n "$GJS"; then
+    have_gjs=yes
+  else
+    have_gjs=no
+  fi
+], [have_gjs=no])
 AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
 
 AC_CONFIG_FILES([
