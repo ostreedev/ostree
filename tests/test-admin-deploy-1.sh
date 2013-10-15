@@ -101,6 +101,7 @@ ostree admin --sysroot=sysroot status
 echo "ok fourth deploy (retain)"
 
 echo "a new local config file" > sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-config-file
+rm -r  sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/testdirectory
 rm sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 ln -s /ENOENT sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/a-new-broken-symlink
 ostree admin --sysroot=sysroot deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime

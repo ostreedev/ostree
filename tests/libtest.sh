@@ -218,6 +218,8 @@ EOF
     echo "a config file" > usr/etc/aconfigfile
     mkdir -p usr/etc/NetworkManager
     echo "a default daemon file" > usr/etc/NetworkManager/nm.conf
+    mkdir -p usr/etc/testdirectory
+    echo "a default daemon file" > usr/etc/testdirectory/test
 
     ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
     

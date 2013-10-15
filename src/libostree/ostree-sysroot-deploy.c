@@ -161,7 +161,7 @@ merge_etc_changes (GFile          *orig_etc,
       g_assert (path);
       target_file = g_file_resolve_relative_path (new_etc, path);
 
-      if (!ot_gfile_ensure_unlinked (target_file, cancellable, error))
+      if (!gs_shutil_rm_rf (target_file, cancellable, error))
         goto out;
     }
 
