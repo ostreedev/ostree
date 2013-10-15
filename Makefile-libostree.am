@@ -25,6 +25,7 @@ libostreeincludedir = $(includedir)/ostree-1
 libostreeinclude_HEADERS = $(libostree_public_headers)
 
 libostree_1_la_SOURCES = \
+	src/libostree/ostree-core-private.h \
 	src/libostree/ostree-core.c \
 	src/libostree/ostree-checksum-input-stream.c \
 	src/libostree/ostree-checksum-input-stream.h \
@@ -109,5 +110,6 @@ libostree_1_la_LIBADD += $(GPGME_LIBS)
 
 gpgreadme_DATA = src/libostree/README-gpg
 gpgreadmedir = $(pkgdatadir)
+EXTRA_DIST += src/libostree/README-gpg
 endif
 
