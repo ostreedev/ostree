@@ -1502,7 +1502,6 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gpgme_data_t commit_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
   int signature_fd = -1;
-  gpgme_sign_result_t result;
   GMappedFile *signature_file = NULL;
   
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
@@ -1595,8 +1594,6 @@ ostree_repo_sign_commit (OstreeRepo     *self,
       goto out;
     }
   
-  result = gpgme_op_sign_result (context);
-
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
     goto out;
   
