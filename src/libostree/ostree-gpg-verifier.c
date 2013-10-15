@@ -21,6 +21,8 @@
  * Author: Sjoerd Simons <sjoerd.simons@collabora.co.uk>
  */
 
+#include "config.h"
+
 #include "ostree-gpg-verifier.h"
 #include "otutil.h"
 
