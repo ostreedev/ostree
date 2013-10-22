@@ -33,7 +33,7 @@ depends() {
 
 install() {
     dracut_install ostree-prepare-root
-    inst_simple "$moddir/ostree-prepare-root.service" "${systemdsystemunitdir}/ostree-prepare-root.service"
+    inst_simple "${systemdsystemunitdir}/ostree-prepare-root.service"
     mkdir -p "${initdir}${systemdsystemconfdir}/initrd-switch-root.target.wants"
     ln_r "${systemdsystemunitdir}/ostree-prepare-root.service" \
         "${systemdsystemconfdir}/initrd-switch-root.target.wants/ostree-prepare-root.service"

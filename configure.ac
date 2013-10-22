@@ -143,7 +143,14 @@ AC_ARG_WITH(dracut,
               [with_dracut=no])
 AM_CONDITIONAL(BUILDOPT_DRACUT, test x$with_dracut = xyes)
 
-AS_IF([test "x$with_dracut" = "xyes"], [
+AC_ARG_WITH(mkinitcpio,
+            AS_HELP_STRING([--with-mkinitcpio],
+                           [Install mkinitcpio module (default: no)]),,
+              [with_mkinitcpio=no])
+AM_CONDITIONAL(BUILDOPT_MKINITCPIO, test x$with_mkinitcpio = xyes)
+
+AS_IF([test "x$with_dracut" = "xyes" || test "x$with_mkinitcpio" = "xyes"], [
+  with_systemd=yes
   AC_ARG_WITH([systemdsystemunitdir],
               AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
               [],
@@ -152,6 +159,7 @@ AS_IF([test "x$with_dracut" = "xyes"], [
     AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
   ])
 ])
+AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
 
 dnl for tests
 AS_IF([test "x$found_introspection" = xyes], [
@@ -184,8 +192,9 @@ echo "
     gpgme (sign commits):                         $with_gpgme
     documentation:                                $enable_gtk_doc
     gjs-based tests:                              $have_gjs
-    dracut:                                       $with_dracut"
-AS_IF([test "x$with_dracut" = "xyes"], [
+    dracut:                                       $with_dracut
+    mkinitcpio:                                   $with_mkinitcpio"
+AS_IF([test "x$with_systemd" = "xyes"], [
     echo "    systemd unit dir:                             $with_systemdsystemunitdir"
 ])
 echo ""

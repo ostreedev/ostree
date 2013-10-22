@@ -20,18 +20,29 @@
 if BUILDOPT_DRACUT
 # Not using $(libdir) here is intentional, dracut modules go in prefix/lib
 dracutmoddir = $(prefix)/lib/dracut/modules.d/98ostree
-dracutmod_SCRIPTS = src/dracut/module-setup.sh
-dracutmod_DATA = src/dracut/ostree-prepare-root.service
-
-systemdsystemunit_DATA = src/dracut/ostree-remount.service
+dracutmod_SCRIPTS = src/boot/dracut/module-setup.sh
 
 dracutconfdir = $(sysconfdir)/dracut.conf.d
-dracutconf_DATA = src/dracut/ostree.conf
+dracutconf_DATA = src/boot/dracut/ostree.conf
 endif
 
-EXTRA_DIST += src/dracut/module-setup.sh \
-	src/dracut/ostree-prepare-root.service \
-	src/dracut/ostree-remount.service \
-	src/dracut/ostree.conf \
+if BUILDOPT_MKINITCPIO
+mkinitcpioinstalldir = $(prefix)/lib/initcpio/install
+mkinitcpioinstall_SCRIPTS = src/boot/mkinitcpio/ostree
+
+mkinitcpioconfdir = $(sysconfdir)
+mkinitcpioconf_DATA = src/boot/mkinitcpio/ostree-mkinitcpio.conf
+endif
+
+if BUILDOPT_SYSTEMD
+systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
+	src/boot/ostree-remount.service
+endif
+
+EXTRA_DIST += src/boot/dracut/module-setup.sh \
+	src/boot/dracut/ostree.conf \
+	src/boot/mkinitcpio/ostree \
+	src/boot/ostree-prepare-root.service \
+	src/boot/ostree-remount.service \
 	$(NULL)
 

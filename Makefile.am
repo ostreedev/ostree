@@ -108,7 +108,7 @@ include Makefile-libostree.am
 include Makefile-ostree.am
 include Makefile-switchroot.am
 include Makefile-tests.am
-include Makefile-dracut.am
+include Makefile-boot.am
 
 install-data-hook: $(INSTALL_DATA_HOOKS)
 
