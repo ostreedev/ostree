@@ -24,6 +24,7 @@
 
 #include "ostree-core.h"
 #include "ostree-types.h"
+#include "ostree-async-progress.h"
 
 G_BEGIN_DECLS
 
@@ -461,6 +462,7 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            const char             *remote_name,
                            char                  **refs_to_fetch,
                            OstreeRepoPullFlags     flags,
+                           OstreeAsyncProgress    *progress,
                            GCancellable           *cancellable,
                            GError                **error);
 

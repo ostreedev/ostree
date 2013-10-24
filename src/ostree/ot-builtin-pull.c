@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include "ot-builtins.h"
+#include "ot-builtins-common.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -37,7 +38,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   gboolean ret = FALSE;
   const char *remote;
   OstreeRepoPullFlags pullflags = 0;
+  GSConsole *console = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
+  gs_unref_object OstreeAsyncProgress *progress = NULL;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
   g_option_context_add_main_entries (context, options, NULL);
@@ -61,9 +64,16 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       g_ptr_array_add (refs_to_fetch, NULL);
     }
 
+  console = gs_console_get ();
+  if (console)
+    progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+
   if (!ostree_repo_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
-                    pullflags, cancellable, error))
+                         pullflags, progress, cancellable, error))
     goto out;
+
+  if (console)
+    gs_console_end_status_line (console, NULL, NULL);
  
   ret = TRUE;
  out:

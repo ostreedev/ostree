@@ -24,6 +24,7 @@
 
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
+#include "ot-builtins-common.h"
 #include "ostree.h"
 #include "otutil.h"
 #include "libgsystem.h"
@@ -106,10 +107,16 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
     {
       OstreeRepoPullFlags pullflags = 0;
       char *refs_to_fetch[] = { origin_ref, NULL };
+      GSConsole *console;
+      gs_unref_object OstreeAsyncProgress *progress = NULL;
+
+      console = gs_console_get ();
+      if (console)
+        progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
 
       g_print ("Fetching remote %s ref %s\n", origin_remote, origin_ref);
 
-      if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, pullflags,
+      if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, pullflags, progress,
                              cancellable, error))
         goto out;
     }

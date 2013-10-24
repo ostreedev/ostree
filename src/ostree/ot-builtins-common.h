@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011,2013 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2013 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,12 +20,8 @@
 
 #pragma once
 
-#include <ostree-async-progress.h>
-#include <ostree-core.h>
-#include <ostree-repo.h>
-#include <ostree-mutable-tree.h>
-#include <ostree-repo-file.h>
-#include <ostree-sysroot.h>
-#include <ostree-deployment.h>
-#include <ostree-bootconfig-parser.h>
-#include <ostree-diff.h>
+#include <ostree.h>
+
+void
+ot_common_pull_progress (OstreeAsyncProgress       *progress,
+                         gpointer                   user_data);

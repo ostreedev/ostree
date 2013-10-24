@@ -20,6 +20,8 @@
 bin_PROGRAMS += ostree
 
 ostree_SOURCES = src/ostree/main.c \
+	src/ostree/ot-builtins-common.h \
+	src/ostree/ot-builtins-common.c \
 	src/ostree/ot-builtin-admin.c \
 	src/ostree/ot-builtins.h \
 	src/ostree/ot-builtin-cat.c \

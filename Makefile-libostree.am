@@ -25,6 +25,7 @@ libostreeincludedir = $(includedir)/ostree-1
 libostreeinclude_HEADERS = $(libostree_public_headers)
 
 libostree_1_la_SOURCES = \
+	src/libostree/ostree-async-progress.c \
 	src/libostree/ostree-core-private.h \
 	src/libostree/ostree-core.c \
 	src/libostree/ostree-checksum-input-stream.c \

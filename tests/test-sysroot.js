@@ -68,7 +68,7 @@ sysrootRepoConfig.set_string(testosRefSection, 'url', 'file://' + upstreamRepo.g
 sysrootRepoConfig.set_boolean(testosRefSection, 'gpg-verify', false);
 sysrootRepoConfig.set_string_list(testosRefSection, 'branches', [runtimeRef]);
 
-sysrootRepo.pull('testos', null, 0, null);
+sysrootRepo.pull('testos', null, 0, null, null);
 
 //// TEST: We can deploy one tree
 
@@ -111,7 +111,7 @@ sysroot.write_deployments(newDeployments, null);
 
 libtestExec('os_repository_new_commit');
 
-sysrootRepo.pull('testos', null, 0, null);
+sysrootRepo.pull('testos', null, 0, null, null);
 
 let [,newRev] = upstreamRepo.resolve_rev(runtimeRef, false);
 
@@ -137,7 +137,7 @@ print("OK two deployments");
 
 libtestExec('os_repository_new_commit 0 1');
 
-sysrootRepo.pull('testos', null, 0, null);
+sysrootRepo.pull('testos', null, 0, null, null);
 
 let [,thirdRev] = sysrootRepo.resolve_rev(runtimeRef, false);
 assertNotEquals(newRev, thirdRev);

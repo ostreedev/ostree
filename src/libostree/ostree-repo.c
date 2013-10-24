@@ -1454,6 +1454,7 @@ ostree_repo_read_commit (OstreeRepo   *self,
  * @remote_name: Name of remote
  * @refs_to_fetch: (array zero-terminated=1) (element-type utf8) (allow-none): Optional list of refs; if %NULL, fetch all configured refs
  * @flags: Options controlling fetch behavior
+ * @progress: (allow-none): Progress
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -1467,6 +1468,7 @@ ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
                   char                    **refs_to_fetch,
                   OstreeRepoPullFlags       flags,
+                  OstreeAsyncProgress      *progress,
                   GCancellable             *cancellable,
                   GError                  **error)
 {

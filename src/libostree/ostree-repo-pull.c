@@ -87,6 +87,7 @@ typedef struct {
   GMainContext    *main_context;
   GMainLoop    *loop;
   GCancellable *cancellable;
+  OstreeAsyncProgress *progress;
 
   gboolean      transaction_resuming;
   volatile gint n_scanned_metadata;
@@ -179,47 +180,35 @@ suburi_new (SoupURI   *base,
 }
 
 static gboolean
-uri_fetch_update_status (gpointer user_data)
+update_progress (gpointer user_data)
 {
   OtPullData *pull_data = user_data;
-  GString *status;
-  guint outstanding_writes;
-  guint outstanding_fetches;
+  guint outstanding_writes = pull_data->n_outstanding_content_write_requests +
+    pull_data->n_outstanding_metadata_write_requests;
+  guint outstanding_fetches = pull_data->n_outstanding_content_fetches +
+    pull_data->n_outstanding_metadata_fetches;
+  guint64 bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+  guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
+  guint requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
+  guint n_scanned_metadata = g_atomic_int_get (&pull_data->n_scanned_metadata);
  
-  status = g_string_new ("");
+  g_assert (pull_data->progress);
 
-  outstanding_fetches = pull_data->n_outstanding_content_fetches + pull_data->n_outstanding_metadata_fetches;
-  outstanding_writes = pull_data->n_outstanding_content_write_requests + pull_data->n_outstanding_metadata_write_requests;
+  ostree_async_progress_set_uint (pull_data->progress, "outstanding-fetches", outstanding_fetches);
+  ostree_async_progress_set_uint (pull_data->progress, "outstanding-writes", outstanding_writes);
+  ostree_async_progress_set_uint (pull_data->progress, "fetched", fetched);
+  ostree_async_progress_set_uint (pull_data->progress, "requested", requested);
+  ostree_async_progress_set_uint (pull_data->progress, "scanned-metadata", n_scanned_metadata);
+  ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
 
   if (pull_data->fetching_sync_uri)
     {
       gs_free char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
-      g_string_append_printf (status, "Requesting %s", uri_string);
+      gs_free char *status_string = g_strconcat ("Requesting %s", uri_string, NULL);
+      ostree_async_progress_set_status (pull_data->progress, status_string);
     }
-  else if (outstanding_fetches)
-    {
-      guint64 bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
-      guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
-      guint requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
-      gs_free char *formatted_bytes_transferred = NULL;
-
-      formatted_bytes_transferred = g_format_size_full (bytes_transferred, 0);
-
-      g_string_append_printf (status, "Receiving objects: %u%% (%u/%u) %s",
-                              (guint)((((double)fetched) / requested) * 100),
-                              fetched, requested, formatted_bytes_transferred);
-    }
-  else if (outstanding_writes > 0)
-    g_string_append_printf (status, "Writing objects: %u", outstanding_writes);
-  else if (!pull_data->metadata_scan_idle)
-    g_string_append_printf (status, "Scanning metadata: %u",
-                            g_atomic_int_get (&pull_data->n_scanned_metadata));
   else
-    g_string_append_printf (status, "Idle");
-
-  gs_console_begin_status_line (gs_console_get (), status->str, NULL, NULL);
-
-  g_string_free (status, TRUE);
+    ostree_async_progress_set_status (pull_data->progress, NULL);
 
   return TRUE;
 }
@@ -303,31 +292,23 @@ static gboolean
 run_mainloop_monitor_fetcher (OtPullData   *pull_data)
 {
   GSource *update_timeout = NULL;
-  GSConsole *console;
   GSource *idle_src;
 
-  console = gs_console_get ();
-
-  if (console)
+  if (pull_data->progress)
     {
-      gs_console_begin_status_line (console, "", NULL, NULL);
-
       update_timeout = g_timeout_source_new_seconds (1);
-      g_source_set_callback (update_timeout, uri_fetch_update_status, pull_data, NULL);
+      g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
       g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
       g_source_unref (update_timeout);
     }
-  
+
   idle_src = g_idle_source_new ();
   g_source_set_callback (idle_src, idle_check_outstanding_requests, pull_data, NULL);
   g_source_attach (idle_src, pull_data->main_context);
   g_main_loop_run (pull_data->loop);
 
-  if (console)
-    {
-      gs_console_end_status_line (console, NULL, NULL);
-      g_source_destroy (update_timeout);
-    }
+  if (update_timeout)
+    g_source_destroy (update_timeout);
 
   return !pull_data->caught_error;
 }
@@ -1198,6 +1179,7 @@ ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
                   char                    **refs_to_fetch,
                   OstreeRepoPullFlags       flags,
+                  OstreeAsyncProgress      *progress,
                   GCancellable             *cancellable,
                   GError                  **error)
 {
@@ -1231,6 +1213,7 @@ ostree_repo_pull (OstreeRepo               *self,
   pull_data->flags = flags;
 
   pull_data->repo = self;
+  pull_data->progress = progress;
 
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
