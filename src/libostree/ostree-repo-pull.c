@@ -420,7 +420,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       const char *filename;
       gboolean file_is_stored;
       gs_unref_variant GVariant *csum = NULL;
-      gs_free char *file_checksum;
+      gs_free char *file_checksum = NULL;
 
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
