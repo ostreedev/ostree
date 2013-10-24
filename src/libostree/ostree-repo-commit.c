@@ -221,9 +221,9 @@ compare_ascii_checksums_for_sorting (gconstpointer  a_pp,
   return strcmp (a, b);
 }
 
-/**
+/*
  * Create sizes metadata GVariant and add it to the metadata variant given.
-*/
+ */
 static gboolean
 add_size_index_to_metadata (OstreeRepo        *self,
                             GVariant          *original_metadata,

@@ -229,7 +229,7 @@ gboolean ostree_checksum_file_async_finish (GFile          *f,
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
-/** VALIDATION **/
+/* VALIDATION */
 
 gboolean ostree_validate_structureof_objtype (guchar    objtype,
                                               GError   **error);
