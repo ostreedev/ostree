@@ -1333,7 +1333,7 @@ ostree_repo_load_variant_if_exists (OstreeRepo       *self,
  * @self: Repo
  * @objtype: Expected object type
  * @sha256: Checksum string
- * @out_variant: (out): (transfer full): Metadata object
+ * @out_variant: (out) (transfer full): Metadata object
  * @error: Error
  *
  * Load the metadata object @sha256 of type @objtype, storing the
