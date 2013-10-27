@@ -305,3 +305,8 @@ assert_file_has_content repo/config 'tls-permissive=true'
 assert_file_has_content repo/config 'remote\.example\.com'
 echo "ok remote add with set"
 
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo remote show-url aremote > aremote-url.txt
+assert_file_has_content aremote-url.txt 'http.*remote\.example\.com/repo'
+echo "ok remote show-url"
+

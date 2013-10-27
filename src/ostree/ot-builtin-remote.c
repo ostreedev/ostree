@@ -67,33 +67,38 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *op;
+  gs_free char *key = NULL;
   guint i;
   gs_unref_ptrarray GPtrArray *branches = NULL;
   GKeyFile *config = NULL;
 
-  context = g_option_context_new ("OPERATION [args] - Control remote repository configuration");
+  context = g_option_context_new ("OPERATION NAME [args] - Control remote repository configuration");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
     goto out;
 
-  if (argc < 2)
+  if (argc < 3)
     {
-      usage_error (context, "OPERATION must be specified", error);
+      if (argc == 1)
+        usage_error (context, "OPERATION must be specified", error);
+      else
+        usage_error (context, "NAME must be specified", error);
+
       goto out;
     }
 
   op = argv[1];
+  key = g_strdup_printf ("remote \"%s\"", argv[2]);
 
   config = ostree_repo_copy_config (repo);
 
   if (!strcmp (op, "add"))
     {
-      char *key;
       char **iter;
       if (argc < 4)
         {
-          usage_error (context, "NAME and URL must be specified", error);
+          usage_error (context, "URL must be specified", error);
           goto out;
         }
 
@@ -101,7 +106,6 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       for (i = 4; i < argc; i++)
         g_ptr_array_add (branches, argv[i]);
 
-      key = g_strdup_printf ("remote \"%s\"", argv[2]);
       g_key_file_set_string (config, key, "url", argv[3]);
 
       for (iter = opt_set; iter && *iter; iter++)
@@ -121,6 +125,16 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                     (const char *const *)branches->pdata,
                                     branches->len);
       g_free (key);
+    }
+  else if (!strcmp (op, "show-url"))
+    {
+      gs_free char *url;
+
+      url = g_key_file_get_string (config, key, "url", error);
+      if (url == NULL)
+        goto out;
+
+      g_print ("%s\n", url);
     }
   else
     {
