@@ -77,7 +77,8 @@ ot_admin_complete_deploy_one (OstreeSysroot      *sysroot,
        * booted and merge deployments
        */
       if (opt_retain ||
-          strcmp (ostree_deployment_get_osname (deployment), osname) != 0 ||
+          (osname != NULL &&
+           strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
           ostree_deployment_equal (deployment, booted_deployment) ||
           ostree_deployment_equal (deployment, merge_deployment))
         {
