@@ -70,8 +70,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
                                                      cancellable, error))
     goto out;
-  if (!opt_osname)
-    opt_osname = (char*)ostree_deployment_get_osname (ostree_sysroot_get_booted_deployment (sysroot));
   merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname); 
   if (merge_deployment == NULL)
     {

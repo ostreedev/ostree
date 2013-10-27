@@ -67,6 +67,9 @@ ot_admin_complete_deploy_one (OstreeSysroot      *sysroot,
   deployments = ostree_sysroot_get_deployments (sysroot);
   booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
 
+  if (osname == NULL && booted_deployment)
+    osname = ostree_deployment_get_osname (booted_deployment);
+
   g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
 
   for (i = 0; i < deployments->len; i++)
