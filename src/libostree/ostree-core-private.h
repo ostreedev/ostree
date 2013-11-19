@@ -75,15 +75,6 @@ gboolean _ostree_write_variant_with_size (GOutputStream      *output,
                                           GError            **error);
 
 gboolean
-_ostree_set_xattrs_fd (int            fd,
-                       GVariant      *xattrs,
-                       GCancellable  *cancellable,
-                       GError       **error);
-
-gboolean _ostree_set_xattrs (GFile *f, GVariant *xattrs,
-                             GCancellable *cancellable, GError **error);
-
-gboolean
 _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    const char     *target,
                                    char          **out_name,

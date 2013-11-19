@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <gio/gfiledescriptorbased.h>
-#include <attr/xattr.h>
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-chain-input-stream.h"
@@ -198,151 +197,6 @@ ostree_validate_rev (const char *rev,
  out:
   if (match)
     g_match_info_unref (match);
-  return ret;
-}
-
-static char *
-canonicalize_xattrs (char *xattr_string, size_t len)
-{
-  char *p;
-  GSList *xattrs = NULL;
-  GSList *iter;
-  GString *result;
-
-  result = g_string_new (0);
-
-  p = xattr_string;
-  while (p < xattr_string+len)
-    {
-      xattrs = g_slist_prepend (xattrs, p);
-      p += strlen (p) + 1;
-    }
-
-  xattrs = g_slist_sort (xattrs, (GCompareFunc) strcmp);
-  for (iter = xattrs; iter; iter = iter->next) {
-    g_string_append (result, iter->data);
-    g_string_append_c (result, '\0');
-  }
-
-  g_slist_free (xattrs);
-  return g_string_free (result, FALSE);
-}
-
-static gboolean
-read_xattr_name_array (const char *path,
-                       const char *xattrs,
-                       size_t      len,
-                       GVariantBuilder *builder,
-                       GError  **error)
-{
-  gboolean ret = FALSE;
-  const char *p;
-
-  p = xattrs;
-  while (p < xattrs+len)
-    {
-      ssize_t bytes_read;
-      char *buf;
-      gs_unref_bytes GBytes *bytes = NULL;
-
-      bytes_read = lgetxattr (path, p, NULL, 0);
-      if (bytes_read < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "lgetxattr (%s, %s) failed: ", path, p);
-          goto out;
-        }
-      if (bytes_read == 0)
-        continue;
-
-      buf = g_malloc (bytes_read);
-      bytes = g_bytes_new_take (buf, bytes_read);
-      if (lgetxattr (path, p, buf, bytes_read) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "lgetxattr (%s, %s) failed: ", path, p);
-          goto out;
-        }
-      
-      g_variant_builder_add (builder, "(@ay@ay)",
-                             g_variant_new_bytestring (p),
-                             ot_gvariant_new_ay_bytes (bytes));
-
-      p = p + strlen (p) + 1;
-    }
-  
-  ret = TRUE;
- out:
-  return ret;
-}
-
-/**
- * ostree_get_xattrs_for_file:
- * @f: a #GFile
- * @out_xattrs: (out): A new #GVariant containing the extended attributes
- * @cancellable: Cancellable
- * @error: Error
- *
- * Read all extended attributes of @f in a canonical sorted order, and
- * set @out_xattrs with the result.
- *
- * If the filesystem does not support extended attributes, @out_xattrs
- * will have 0 elements, and this function will return successfully.
- */
-gboolean
-ostree_get_xattrs_for_file (GFile         *f,
-                            GVariant     **out_xattrs,
-                            GCancellable  *cancellable,
-                            GError       **error)
-{
-  gboolean ret = FALSE;
-  const char *path;
-  ssize_t bytes_read;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
-  gs_free char *xattr_names = NULL;
-  gs_free char *xattr_names_canonical = NULL;
-  GVariantBuilder builder;
-  gboolean builder_initialized = FALSE;
-
-  path = gs_file_get_path_cached (f);
-
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a(ayay)"));
-  builder_initialized = TRUE;
-
-  bytes_read = llistxattr (path, NULL, 0);
-
-  if (bytes_read < 0)
-    {
-      if (errno != ENOTSUP)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "llistxattr (%s) failed: ", path);
-          goto out;
-        }
-    }
-  else if (bytes_read > 0)
-    {
-      xattr_names = g_malloc (bytes_read);
-      if (llistxattr (path, xattr_names, bytes_read) < 0)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "llistxattr (%s) failed: ", path);
-          goto out;
-        }
-      xattr_names_canonical = canonicalize_xattrs (xattr_names, bytes_read);
-      
-      if (!read_xattr_name_array (path, xattr_names_canonical, bytes_read, &builder, error))
-        goto out;
-    }
-
-  ret_xattrs = g_variant_builder_end (&builder);
-  g_variant_ref_sink (ret_xattrs);
-  
-  ret = TRUE;
-  ot_transfer_out_value (out_xattrs, &ret_xattrs);
- out:
-  if (!builder_initialized)
-    g_variant_builder_clear (&builder);
   return ret;
 }
 
@@ -902,7 +756,7 @@ ostree_checksum_file (GFile            *f,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!ostree_get_xattrs_for_file (f, &xattrs, cancellable, error))
+      if (!gs_file_get_all_xattrs (f, &xattrs, cancellable, error))
         goto out;
     }
 
@@ -1034,94 +888,6 @@ ostree_create_directory_metadata (GFileInfo    *dir_info,
   g_variant_ref_sink (ret_metadata);
 
   return ret_metadata;
-}
-
-gboolean
-_ostree_set_xattrs_fd (int            fd,
-                       GVariant      *xattrs,
-                       GCancellable  *cancellable,
-                       GError       **error)
-{
-  gboolean ret = FALSE;
-  int i, n;
-
-  n = g_variant_n_children (xattrs);
-  for (i = 0; i < n; i++)
-    {
-      const guint8* name;
-      gs_unref_variant GVariant *value = NULL;
-      const guint8* value_data;
-      gsize value_len;
-      int res;
-
-      g_variant_get_child (xattrs, i, "(^&ay@ay)",
-                           &name, &value);
-      value_data = g_variant_get_fixed_array (value, &value_len, 1);
-      
-      do
-        res = fsetxattr (fd, (char*)name, (char*)value_data, value_len, 0);
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-/*
- * _ostree_set_xattrs:
- * @f: a file
- * @xattrs: Extended attribute list
- * @cancellable: Cancellable
- * @error: Error
- *
- * For each attribute in @xattrs, replace the value (if any) of @f for
- * that attribute.  This function does not clear other existing
- * attributes.
- */
-gboolean
-_ostree_set_xattrs (GFile  *f, 
-                    GVariant *xattrs, 
-                    GCancellable *cancellable, 
-                    GError **error)
-{
-  const char *path;
-  gboolean ret = FALSE;
-  int i, n;
-
-  path = gs_file_get_path_cached (f);
-
-  n = g_variant_n_children (xattrs);
-  for (i = 0; i < n; i++)
-    {
-      const guint8* name;
-      GVariant *value;
-      const guint8* value_data;
-      gsize value_len;
-      gboolean loop_err;
-
-      g_variant_get_child (xattrs, i, "(^&ay@ay)",
-                           &name, &value);
-      value_data = g_variant_get_fixed_array (value, &value_len, 1);
-      
-      loop_err = lsetxattr (path, (char*)name, (char*)value_data, value_len, 0) < 0;
-      g_clear_pointer (&value, (GDestroyNotify) g_variant_unref);
-      if (loop_err)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          g_prefix_error (error, "lsetxattr (%s, %s) failed: ", path, name);
-          goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  return ret;
 }
 
 /* Create a randomly-named symbolic link in @tempdir which points to

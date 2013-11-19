@@ -167,11 +167,6 @@ void ostree_object_from_string (const char *str,
                                 gchar     **out_checksum,
                                 OstreeObjectType *out_objtype);
 
-gboolean ostree_get_xattrs_for_file (GFile         *f,
-                                     GVariant     **out_xattrs,
-                                     GCancellable  *cancellable,
-                                     GError       **error);
-
 gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,

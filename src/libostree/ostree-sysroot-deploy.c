@@ -23,27 +23,33 @@
 #include "config.h"
 
 #include "ostree-sysroot-private.h"
+#include "ostree-core-private.h"
 #include "otutil.h"
 #include "libgsystem.h"
 
 /**
- * copy_one_config_file:
+ * copy_modified_config_file:
  *
  * Copy @file from @modified_etc to @new_etc, overwriting any existing
- * file there.
+ * file there.  The @file may refer to a regular file, a symbolic
+ * link, or a directory.  Directories will be copied recursively.
+ *
+ * Note this function does not (yet) handle the case where a directory
+ * needed by a modified file is deleted in a newer tree.
  */
 static gboolean
-copy_one_config_file (GFile              *orig_etc,
-                      GFile              *modified_etc,
-                      GFile              *new_etc,
-                      GFile              *src,
-                      GCancellable       *cancellable,
-                      GError            **error)
+copy_modified_config_file (GFile              *orig_etc,
+                           GFile              *modified_etc,
+                           GFile              *new_etc,
+                           GFile              *src,
+                           GCancellable       *cancellable,
+                           GError            **error)
 {
   gboolean ret = FALSE;
   gs_unref_object GFileInfo *src_info = NULL;
+  gs_unref_object GFileInfo *parent_info = NULL;
   gs_unref_object GFile *dest = NULL;
-  gs_unref_object GFile *parent = NULL;
+  gs_unref_object GFile *dest_parent = NULL;
   gs_free char *relative_path = NULL;
   
   relative_path = g_file_get_relative_path (modified_etc, src);
@@ -55,49 +61,28 @@ copy_one_config_file (GFile              *orig_etc,
   if (!src_info)
     goto out;
 
+  dest_parent = g_file_get_parent (dest);
+  if (!ot_gfile_query_info_allow_noent (dest_parent, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        &parent_info, cancellable, error))
+    goto out;
+  if (!parent_info)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "New tree removes parent directory '%s', cannot merge",
+                   gs_file_get_path_cached (dest_parent));
+      goto out;
+    }
+
+  if (!gs_shutil_rm_rf (dest, cancellable, error))
+    goto out;
+
   if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_DIRECTORY)
     {
-      gs_unref_object GFileEnumerator *src_enum = NULL;
-      gs_unref_object GFileInfo *child_info = NULL;
-      GError *temp_error = NULL;
-
-      /* FIXME actually we need to copy permissions and xattrs */
-      if (!gs_file_ensure_directory (dest, TRUE, cancellable, error))
+      if (!gs_shutil_cp_a (src, dest, cancellable, error))
         goto out;
-
-      src_enum = g_file_enumerate_children (src, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            cancellable, error);
-
-      while ((child_info = g_file_enumerator_next_file (src_enum, cancellable, error)) != NULL)
-        {
-          gs_unref_object GFile *child = g_file_get_child (src, g_file_info_get_name (child_info));
-
-          if (!copy_one_config_file (orig_etc, modified_etc, new_etc, child,
-                                     cancellable, error))
-            goto out;
-        }
-      g_clear_object (&child_info);
-      if (temp_error != NULL)
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
     }
   else
     {
-      parent = g_file_get_parent (dest);
-
-      /* FIXME actually we need to copy permissions and xattrs */
-      if (!gs_file_ensure_directory (parent, TRUE, cancellable, error))
-        goto out;
-      
-      /* We unlink here because otherwise gio throws an error on
-       * dangling symlinks.
-       */
-      if (!ot_gfile_ensure_unlinked (dest, cancellable, error))
-        goto out;
-
       if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
                         cancellable, NULL, NULL, error))
         goto out;
@@ -169,16 +154,16 @@ merge_etc_changes (GFile          *orig_etc,
     {
       OstreeDiffItem *diff = modified->pdata[i];
 
-      if (!copy_one_config_file (orig_etc, modified_etc, new_etc, diff->target,
-                                 cancellable, error))
+      if (!copy_modified_config_file (orig_etc, modified_etc, new_etc, diff->target,
+                                      cancellable, error))
         goto out;
     }
   for (i = 0; i < added->len; i++)
     {
       GFile *file = added->pdata[i];
 
-      if (!copy_one_config_file (orig_etc, modified_etc, new_etc, file,
-                                 cancellable, error))
+      if (!copy_modified_config_file (orig_etc, modified_etc, new_etc, file,
+                                      cancellable, error))
         goto out;
     }
 

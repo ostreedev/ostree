@@ -92,7 +92,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
        */
       if (xattrs != NULL)
         {
-          if (!_ostree_set_xattrs (temp_file, xattrs, cancellable, error))
+          if (!gs_file_set_all_xattrs (temp_file, xattrs, cancellable, error))
             goto out;
         }
     }
@@ -131,7 +131,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           
           if (xattrs)
             {
-              if (!_ostree_set_xattrs_fd (fd, xattrs, cancellable, error))
+              if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
                 goto out;
             }
         }
@@ -1722,7 +1722,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
           g_debug ("Adding: %s", gs_file_get_path_cached (dir));
           if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
             {
-              if (!ostree_get_xattrs_for_file (dir, &xattrs, cancellable, error))
+              if (!gs_file_get_all_xattrs (dir, &xattrs, cancellable, error))
                 goto out;
             }
 
@@ -1818,7 +1818,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                       if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
                         {
                           g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
-                          if (!ostree_get_xattrs_for_file (child, &xattrs, cancellable, error))
+                          if (!gs_file_get_all_xattrs (child, &xattrs, cancellable, error))
                             goto out;
                         }
 

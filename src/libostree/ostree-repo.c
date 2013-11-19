@@ -1039,8 +1039,8 @@ ostree_repo_load_file (OstreeRepo         *self,
               gs_unref_object GFile *full_path =
                     _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 
-              if (!ostree_get_xattrs_for_file (full_path, &ret_xattrs,
-                                               cancellable, error))
+              if (!gs_file_get_all_xattrs (full_path, &ret_xattrs,
+                                           cancellable, error))
                 goto out;
             }
 

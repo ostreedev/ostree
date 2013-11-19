@@ -145,7 +145,7 @@ write_regular_file_content (OstreeRepoCheckoutMode mode,
               
       if (xattrs)
         {
-          if (!_ostree_set_xattrs_fd (fd, xattrs, cancellable, error))
+          if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
             goto out;
         }
     }
@@ -194,7 +194,7 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
       if (xattrs)
         {
           gs_unref_object GFile *path = g_file_get_child (destination_parent, destination_name);
-          if (!_ostree_set_xattrs (path, xattrs, cancellable, error))
+          if (!gs_file_set_all_xattrs (path, xattrs, cancellable, error))
             goto out;
         }
     }
@@ -261,7 +261,7 @@ checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
       if (xattrs)
         {
           gs_unref_object GFile *temp_path = g_file_get_child (destination_parent, temp_filename);
-          if (!_ostree_set_xattrs (temp_path, xattrs, cancellable, error))
+          if (!gs_file_set_all_xattrs (temp_path, xattrs, cancellable, error))
             goto out;
         }
     }
@@ -588,7 +588,7 @@ checkout_tree_at (OstreeRepo                        *self,
 
       if (xattrs)
         {
-          if (!_ostree_set_xattrs_fd (destination_dfd, xattrs, cancellable, error))
+          if (!gs_fd_set_all_xattrs (destination_dfd, xattrs, cancellable, error))
             goto out;
         }
     }
