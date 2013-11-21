@@ -83,6 +83,7 @@ struct OstreeFetcher
   GHashTable *sending_messages; /*  SoupMessage */
 
   GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
+  GHashTable *output_stream_set; /* set<GOutputStream> */
   
   guint64 total_downloaded;
   guint total_requests;
@@ -107,6 +108,7 @@ ostree_fetcher_finalize (GObject *object)
 
   g_hash_table_destroy (self->sending_messages);
   g_hash_table_destroy (self->message_to_request);
+  g_hash_table_destroy (self->output_stream_set);
 
   g_queue_clear (&self->pending_queue);
 
@@ -165,6 +167,7 @@ ostree_fetcher_init (OstreeFetcher *self)
                                                   (GDestroyNotify)g_object_unref);
   self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
                                                     (GDestroyNotify)pending_uri_free);
+  self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
 }
 
 OstreeFetcher *
@@ -217,6 +220,9 @@ on_splice_complete (GObject        *object,
   gs_unref_object GFileInfo *file_info = NULL;
   goffset filesize;
   GError *local_error = NULL;
+
+  if (pending->out_stream)
+    g_hash_table_remove (pending->self->output_stream_set, pending->out_stream);
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   file_info = g_file_query_info (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
@@ -308,8 +314,10 @@ on_request_sent (GObject        *object,
                                                                pending->cancellable, &local_error));
       if (!pending->out_stream)
         goto out;
+      g_hash_table_add (pending->self->output_stream_set, g_object_ref (pending->out_stream));
       g_output_stream_splice_async (pending->out_stream, pending->request_body, flags, G_PRIORITY_DEFAULT,
                                     pending->cancellable, on_splice_complete, pending);
+      
     }
   else
     {
@@ -536,7 +544,26 @@ ostree_fetcher_query_state_text (OstreeFetcher              *self)
 guint64
 ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
-  return self->total_downloaded;
+  guint64 ret = self->total_downloaded;
+  GHashTableIter hiter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&hiter, self->output_stream_set);
+  while (g_hash_table_iter_next (&hiter, &key, &value))
+    {
+      GFileOutputStream *stream = key;
+      GFileInfo *finfo;
+
+      finfo = g_file_output_stream_query_info (stream, "standard::size",
+                                               NULL, NULL);
+      if (finfo)
+        {
+          ret += g_file_info_get_size (finfo);
+          g_object_unref (finfo);
+        }
+    }
+  
+  return ret;
 }
 
 guint
