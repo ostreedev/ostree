@@ -23,7 +23,7 @@ OnFailure=emergency.service
 Conflicts=umount.target
 After=-.mount
 After=systemd-remount-fs.service
-Before=local-fs.target umount.target
+Before=local-fs.target umount.target systemd-random-seed.service
 
 [Service]
 Type=oneshot
