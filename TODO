@@ -41,3 +41,7 @@
 
 * Possibly move all of the "regular" commands to be "ostree repo" ?  Then
   we'd have: "ostree repo pull", "ostree repo ls", etc.
+
+* Multiple backends (BTRFS, etc.)
+
+* PackageKit backend
