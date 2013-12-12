@@ -310,3 +310,10 @@ ${CMD_PREFIX} ostree --repo=repo remote show-url aremote > aremote-url.txt
 assert_file_has_content aremote-url.txt 'http.*remote\.example\.com/repo'
 echo "ok remote show-url"
 
+cd ${test_tmpdir}
+rm -rf test2-checkout
+$OSTREE checkout test2 test2-checkout
+stat '--format=%Y' test2-checkout/baz/cow > cow-mtime
+assert_file_has_content cow-mtime 0
+echo "ok content mtime"
+

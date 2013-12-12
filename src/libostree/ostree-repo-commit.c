@@ -100,6 +100,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
     {
       int fd;
       int res;
+      struct timespec times[2];
 
       g_assert (temp_out != NULL);
 
@@ -133,6 +134,23 @@ commit_loose_object_trusted (OstreeRepo        *self,
             {
               if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
                 goto out;
+            }
+
+          /* To satisfy tools such as guile which compare mtimes
+           * to determine whether or not source files need to be compiled,
+           * set the modification time to 0.
+           */
+          times[0].tv_sec = 0; /* atime */
+          times[0].tv_nsec = UTIME_OMIT;
+          times[1].tv_sec = 0; /* mtime */
+          times[1].tv_nsec = 0;
+          do
+            res = futimens (fd, times);
+          while (G_UNLIKELY (res == -1 && errno == EINTR));
+          if (G_UNLIKELY (res == -1))
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
             }
         }
 
