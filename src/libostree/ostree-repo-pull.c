@@ -204,7 +204,7 @@ update_progress (gpointer user_data)
   if (pull_data->fetching_sync_uri)
     {
       gs_free char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
-      gs_free char *status_string = g_strconcat ("Requesting %s", uri_string, NULL);
+      gs_free char *status_string = g_strconcat ("Requesting ", uri_string, NULL);
       ostree_async_progress_set_status (pull_data->progress, status_string);
     }
   else
