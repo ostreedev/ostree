@@ -1718,7 +1718,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
   if (!signaturedata)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No signatures found");
+                   "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
       goto out;
     }
 
