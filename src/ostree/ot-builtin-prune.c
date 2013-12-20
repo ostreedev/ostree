@@ -70,10 +70,10 @@ ostree_builtin_prune (int argc, char **argv, OstreeRepo *repo, GCancellable *can
   if (n_objects_pruned == 0)
     g_print ("No unreachable objects\n");
   else if (pruneflags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE)
-    g_print ("Would delete: %u objects, freeing %s bytes\n",
+    g_print ("Would delete: %u objects, freeing %s\n",
              n_objects_pruned, formatted_freed_size);
   else
-    g_print ("Deleted %u objects, %s bytes freed\n",
+    g_print ("Deleted %u objects, %s freed\n",
              n_objects_pruned, formatted_freed_size);
 
   ret = TRUE;
