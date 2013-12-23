@@ -466,7 +466,6 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            GCancellable           *cancellable,
                            GError                **error);
 
-#ifdef HAVE_GPGME
 gboolean ostree_repo_sign_commit (OstreeRepo     *self,
                                   const gchar    *commit_checksum,
                                   const gchar    *key_id,
@@ -480,7 +479,6 @@ gboolean ostree_repo_verify_commit (OstreeRepo   *self,
                                     GFile        *extra_keyring,
                                     GCancellable *cancellable,
                                     GError      **error);
-#endif
 
 G_END_DECLS
 

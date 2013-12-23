@@ -1478,7 +1478,6 @@ ostree_repo_pull (OstreeRepo               *self,
 }
 #endif
 
-#ifdef HAVE_GPGME
 gboolean
 ostree_repo_sign_commit (OstreeRepo     *self,
                          const gchar    *commit_checksum,
@@ -1487,6 +1486,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                          GCancellable   *cancellable,
                          GError        **error)
 {
+#ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object GFile *commit_path = NULL;
   gs_unref_variant GVariant *metadata = NULL;
@@ -1648,6 +1648,11 @@ out:
   if (signature_file)
     g_mapped_file_unref (signature_file);
   return ret;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree was compiled without GPG support");
+  return FALSE;
+#endif
 }
 
 /**
@@ -1670,6 +1675,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
+#ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
@@ -1778,6 +1784,9 @@ out:
   if (commit_tmp_path)
     (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
   return ret;
-}
-
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree was compiled without GPG support");
+  return FALSE;
 #endif
+}
