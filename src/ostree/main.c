@@ -57,7 +57,6 @@ static OstreeCommand commands[] = {
 #ifdef HAVE_LIBSOUP 
   { "trivial-httpd", ostree_builtin_trivial_httpd, OSTREE_BUILTIN_FLAG_NO_REPO },
 #endif
-  { "write-refs", ostree_builtin_write_refs, 0 },
   { NULL }
 };
 

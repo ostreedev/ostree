@@ -41,7 +41,6 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-reset.c \
 	src/ostree/ot-builtin-rev-parse.c \
 	src/ostree/ot-builtin-show.c \
-	src/ostree/ot-builtin-write-refs.c \
 	src/ostree/ot-main.h \
 	src/ostree/ot-main.c \
 	src/ostree/ot-dump.h \
