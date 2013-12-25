@@ -27,9 +27,11 @@
 #include "otutil.h"
 
 char **opt_set;
+gboolean opt_no_gpg_verify;
 
 static GOptionEntry options[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
+  { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
   { NULL }
 };
 
@@ -124,6 +126,10 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
         g_key_file_set_string_list (config, key, "branches",
                                     (const char *const *)branches->pdata,
                                     branches->len);
+
+      if (opt_no_gpg_verify)
+        g_key_file_set_boolean (config, key, "gpg-verify", FALSE);
+
       g_free (key);
     }
   else if (!strcmp (op, "show-url"))

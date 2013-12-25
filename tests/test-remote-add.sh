@@ -21,10 +21,14 @@ set -e
 
 . $(dirname $0)/libtest.sh
 
-echo '1..2'
+echo '1..3'
 
 setup_test_repository "bare"
 $OSTREE remote add origin http://example.com/ostree/gnome
 echo "ok remote add"
 assert_file_has_content $test_tmpdir/repo/config "example.com"
 echo "ok config"
+
+$OSTREE remote add --no-gpg-verify another http://another.com/repo
+assert_file_has_content $test_tmpdir/repo/config "gpg-verify=false"
+echo "ok remote no gpg-verify"
