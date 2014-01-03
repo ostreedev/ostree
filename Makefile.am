@@ -15,16 +15,15 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
-AM_CPPFLAGS = -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
+include Makefile-decls.am
+
+ACLOCAL_AMFLAGS += -I m4 ${ACLOCAL_FLAGS}
+AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DOSTREE_FEATURES='"$(OSTREE_FEATURES)"' \
 	-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_34 -DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_34 \
 	-DSOUP_VERSION_MIN_REQUIRED=SOUP_VERSION_2_40 -DSOUP_VERSION_MAX_ALLOWED=SOUP_VERSION_40
-AM_CFLAGS = $(WARN_CFLAGS)
-DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --disable-maintainer-mode
-
-# Subdirectories
-SUBDIRS =
+AM_CFLAGS += $(WARN_CFLAGS)
+DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc --disable-maintainer-mode
 
 if BUILD_EMBEDDED_DEPENDENCIES
 SUBDIRS += embedded-dependencies
@@ -35,30 +34,6 @@ SUBDIRS += .
 if ENABLE_GTK_DOC
 SUBDIRS += doc
 endif
-
-# Common variables
-NULL = 
-INSTALL_DATA_HOOKS =
-BUILT_SOURCES =
-MANPAGES =
-CLEANFILES =
-EXTRA_DIST =
-bin_PROGRAMS =
-sbin_PROGRAMS =
-bin_SCRIPTS =
-lib_LTLIBRARIES =
-libexec_PROGRAMS =
-noinst_LTLIBRARIES =
-noinst_PROGRAMS =
-privlibdir = $(pkglibdir)
-privlib_LTLIBRARIES =
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA =
-INTROSPECTION_GIRS = 
-girdir = $(datadir)/gir-1.0
-gir_DATA =
-typelibdir = $(libdir)/girepository-1.0
-typelib_DATA =
 
 EXTRA_DIST += autogen.sh COPYING README.md
 
@@ -109,9 +84,6 @@ include Makefile-ostree.am
 include Makefile-switchroot.am
 include Makefile-tests.am
 include Makefile-boot.am
-
-install-data-hook: $(INSTALL_DATA_HOOKS)
-
 
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
