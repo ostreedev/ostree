@@ -27,7 +27,7 @@ setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
 
-echo "1..8"
+echo "1..9"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -77,6 +77,8 @@ assert_not_has_dir sysroot/ostree/boot.0.1
 ostree admin --sysroot=sysroot status
 
 echo "ok third deploy (swap)"
+
+ostree admin --sysroot=sysroot os-init otheros
 
 ostree admin --sysroot=sysroot deploy --os=otheros testos/buildmaster/x86_64-runtime
 assert_not_has_dir sysroot/boot/loader.0
@@ -155,3 +157,8 @@ assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${newrev}.0
 ostree admin --sysroot=sysroot status
 
 echo "ok undeploy"
+
+if ostree admin --sysroot=sysroot deploy --os=unknown testos:testos/buildmaster/x86_64-runtime; then
+    assert_not_reached "Unexpected successful deploy of unknown OS"
+fi
+echo "ok deploy with unknown OS"

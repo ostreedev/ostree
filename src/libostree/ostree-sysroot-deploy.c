@@ -1043,6 +1043,7 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
+  gs_unref_object GFile *osdeploydir = NULL;
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
@@ -1054,6 +1055,14 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
 
   if (osname == NULL)
     osname = ostree_deployment_get_osname (self->booted_deployment);
+
+  osdeploydir = ot_gfile_get_child_build_path (self->path, "ostree", "deploy", osname, NULL);
+  if (!g_file_query_exists (osdeploydir, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No OS named \"%s\" known", osname);
+      goto out;
+    }
 
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
     goto out;
