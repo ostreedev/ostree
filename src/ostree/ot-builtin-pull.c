@@ -66,7 +66,10 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
 
   console = gs_console_get ();
   if (console)
-    progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+    {
+      gs_console_begin_status_line (console, "", NULL, NULL);
+      progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+    }
 
   if (!ostree_repo_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
                          pullflags, progress, cancellable, error))

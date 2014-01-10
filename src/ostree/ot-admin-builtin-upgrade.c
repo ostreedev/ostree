@@ -110,7 +110,10 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
 
       console = gs_console_get ();
       if (console)
-        progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+        {
+          gs_console_begin_status_line (console, "", NULL, NULL);
+          progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+        }
 
       g_print ("Fetching remote %s ref %s\n", origin_remote, origin_ref);
 
