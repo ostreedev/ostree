@@ -32,6 +32,7 @@
 static gboolean opt_no_bootloader;
 static gboolean opt_retain;
 static char **opt_kernel_argv;
+static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
 
@@ -40,6 +41,7 @@ static GOptionEntry options[] = {
   { "origin-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_origin_path, "Specify origin file", NULL },
   { "no-bootloader", 0, 0, G_OPTION_ARG_NONE, &opt_no_bootloader, "Don't update bootloader", NULL },
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployment", NULL },
+  { "karg-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_proc_cmdline, "Import current /proc/cmdline", NULL },
   { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like --karg=root=/dev/sda1", NULL },
   { NULL }
 };
@@ -56,6 +58,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_free char *revision = NULL;
+  gs_unref_ptrarray GPtrArray *kargs = NULL;
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
 
@@ -118,9 +121,48 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       goto out;
     }
 
+  kargs = g_ptr_array_new_with_free_func (g_free);
+
+  if (opt_kernel_proc_cmdline)
+    {
+      gs_unref_object GFile *proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
+      gs_free char *proc_cmdline = NULL;
+      gsize proc_cmdline_len = 0;
+      gs_strfreev char **proc_cmdline_args = NULL;
+      char **strviter;
+
+      if (!g_file_load_contents (proc_cmdline_path, cancellable,
+                                 &proc_cmdline, &proc_cmdline_len,
+                                 NULL, error))
+        goto out;
+
+      proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
+      for (strviter = proc_cmdline_args; strviter && *strviter; strviter++)
+        {
+          char *arg = *strviter;
+          g_strchomp (arg);
+          g_ptr_array_add (kargs, arg);
+          *strviter = NULL; /* transfer ownership */
+        }
+    }
+
+  if (opt_kernel_argv)
+    {
+      char **strviter;
+      for (strviter = opt_kernel_argv; strviter && *strviter; strviter++)
+        {
+          const char *arg = *strviter;
+          char *val = g_strdup (arg);
+          g_strchomp (val);
+          g_ptr_array_add (kargs, val);
+        }
+    }
+
+  g_ptr_array_add (kargs, NULL);
+
   if (!ostree_sysroot_deploy_one_tree (sysroot,
                                        opt_osname, revision, origin,
-                                       opt_kernel_argv, merge_deployment,
+                                       (char**)kargs->pdata, merge_deployment,
                                        &new_deployment,
                                        cancellable, error))
     goto out;
