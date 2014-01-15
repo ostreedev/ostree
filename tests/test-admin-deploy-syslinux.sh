@@ -1,7 +1,6 @@
 #!/bin/bash
 #
 # Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
-# Copyright (C) 2013 Javier Martinez <javier.martinez@collabora.co.uk>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -24,7 +23,7 @@ set -e
 
 echo "1..1"
 
-setup_os_repository "archive-z2" "uboot"
+setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
 

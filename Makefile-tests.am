@@ -32,7 +32,7 @@ testfiles = test-basic \
 	test-pull-corruption \
 	test-pull-resume \
 	test-gpg-signed-commit \
-	test-admin-deploy-1 \
+	test-admin-deploy-syslinux \
 	test-admin-deploy-2 \
 	test-admin-deploy-karg \
 	test-admin-deploy-etcmerge-cornercases \
@@ -48,6 +48,7 @@ testmeta_DATA = $(testfiles:=.test)
 insttest_DATA = tests/archive-test.sh \
 	tests/pull-test.sh \
 	tests/libtest.sh \
+	tests/admin-test.sh \
 	$(NULL)
 
 gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome

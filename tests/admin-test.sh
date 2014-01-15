@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,14 +18,6 @@
 # Boston, MA 02111-1307, USA.
 
 set -e
-
-. $(dirname $0)/libtest.sh
-
-echo "1..1"
-
-setup_os_repository "archive-z2" "syslinux"
-
-echo "ok setup"
 
 echo "1..9"
 
