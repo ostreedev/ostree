@@ -34,6 +34,7 @@ testfiles = test-basic \
 	test-gpg-signed-commit \
 	test-admin-deploy-1 \
 	test-admin-deploy-2 \
+	test-admin-deploy-karg \
 	test-admin-deploy-etcmerge-cornercases \
 	test-admin-deploy-uboot \
 	test-setuid \

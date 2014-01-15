@@ -737,8 +737,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
 }
 
 static GHashTable *
-bootcsum_counts_for_deployment_list (GPtrArray   *deployments,
-                                     gboolean     set_bootserial)
+assign_bootserials (GPtrArray   *deployments)
 {
   guint i;
   GHashTable *ret = 
@@ -751,10 +750,47 @@ bootcsum_counts_for_deployment_list (GPtrArray   *deployments,
       guint count;
 
       count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootcsum));
-      g_hash_table_replace (ret, (char*)bootcsum, GUINT_TO_POINTER (count + 1));
+      g_hash_table_replace (ret, (char*) bootcsum,
+                            GUINT_TO_POINTER (count + 1));
 
-      if (set_bootserial)
-        ostree_deployment_set_bootserial (deployment, count);
+      ostree_deployment_set_bootserial (deployment, count);
+    }
+  return ret;
+}
+
+static GHashTable *
+bootconfig_counts_for_deployment_list (GPtrArray   *deployments)
+{
+  guint i;
+  GHashTable *ret = 
+    g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OstreeDeployment *deployment = deployments->pdata[i];
+      const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
+      const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
+      GChecksum *bootconfig_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+      const char *bootconfig_checksum_str;
+      __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *ohash = NULL;
+      gs_free char *boot_options_without_ostree = NULL;
+      guint count;
+      
+      /* We checksum the kernel arguments *except* ostree= */
+      ohash = _ostree_sysroot_parse_kernel_args (boot_options);
+      _ostree_ordered_hash_replace_key (ohash, "ostree", "");
+      boot_options_without_ostree = _ostree_sysroot_kernel_arg_string_serialize (ohash);
+
+      g_checksum_update (bootconfig_checksum, (guint8*)bootcsum, strlen (bootcsum));
+      g_checksum_update (bootconfig_checksum, (guint8*)boot_options_without_ostree,
+                         strlen (boot_options_without_ostree));
+
+      bootconfig_checksum_str = g_checksum_get_string (bootconfig_checksum);
+
+      count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootconfig_checksum_str));
+      g_hash_table_replace (ret, g_strdup (bootconfig_checksum_str),
+                            GUINT_TO_POINTER (count + 1));
     }
   return ret;
 }
@@ -821,19 +857,17 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   guint i;
   gboolean requires_new_bootversion = FALSE;
   gboolean found_booted_deployment = FALSE;
-  gs_unref_hashtable GHashTable *new_bootcsum_to_count = NULL;
 
   g_assert (self->loaded);
 
-  /* Calculate the total number of deployments per bootcsums; while we
-   * are doing this, assign a bootserial to each new deployment.
+  /* Assign a bootserial to each new deployment.
    */
-  new_bootcsum_to_count = bootcsum_counts_for_deployment_list (new_deployments, TRUE);
+  assign_bootserials (new_deployments);
 
   /* Determine whether or not we need to touch the bootloader
-   * configuration.  If we have an equal number of deployments and
-   * more strongly an equal number of deployments per bootcsum, then
-   * we can just swap the subbootversion bootlinks.
+   * configuration.  If we have an equal number of deployments with
+   * matching bootloader configuration, then we can just swap the
+   * subbootversion bootlinks.
    */
   if (new_deployments->len != self->deployments->len)
     requires_new_bootversion = TRUE;
@@ -841,14 +875,16 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     {
       GHashTableIter hashiter;
       gpointer hkey, hvalue;
-      gs_unref_hashtable GHashTable *orig_bootcsum_to_count
-        = bootcsum_counts_for_deployment_list (self->deployments, FALSE);
+      gs_unref_hashtable GHashTable *new_bootconfig_to_count = 
+        bootconfig_counts_for_deployment_list (new_deployments);
+      gs_unref_hashtable GHashTable *orig_bootconfig_to_count
+        = bootconfig_counts_for_deployment_list (self->deployments);
 
-      g_hash_table_iter_init (&hashiter, orig_bootcsum_to_count);
+      g_hash_table_iter_init (&hashiter, orig_bootconfig_to_count);
       while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
         {
           guint orig_count = GPOINTER_TO_UINT (hvalue);
-          gpointer new_countp = g_hash_table_lookup (new_bootcsum_to_count, hkey);
+          gpointer new_countp = g_hash_table_lookup (new_bootconfig_to_count, hkey);
           guint new_count = GPOINTER_TO_UINT (new_countp);
 
           if (orig_count != new_count)
