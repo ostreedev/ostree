@@ -71,15 +71,15 @@ gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                            GCancellable      *cancellable,
                                            GError           **error);
 
-gboolean ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
-                                         const char        *osname,
-                                         const char        *revision,
-                                         GKeyFile          *origin,
-                                         char             **add_kernel_argv,
-                                         OstreeDeployment  *provided_merge_deployment,
-                                         OstreeDeployment **out_new_deployment,
-                                         GCancellable      *cancellable,
-                                         GError           **error);
+gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
+                                     const char        *osname,
+                                     const char        *revision,
+                                     GKeyFile          *origin,
+                                     OstreeDeployment  *provided_merge_deployment,
+                                     char             **override_kernel_argv,
+                                     OstreeDeployment **out_new_deployment,
+                                     GCancellable      *cancellable,
+                                     GError           **error);
 
 OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
                                                        const char        *osname);

@@ -601,7 +601,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   gs_free char *version_key = NULL;
   gs_free char *ostree_kernel_arg = NULL;
   gs_free char *options_key = NULL;
-  __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *ohash = NULL;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   const char *val;
   OstreeBootconfigParser *bootconfig;
   gsize len;
@@ -693,12 +693,14 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     }
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
-  ostree_kernel_arg = g_strdup_printf ("/ostree/boot.%d/%s/%s/%d",
+
+  ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
                                        ostree_deployment_get_bootserial (deployment));
-  ohash = _ostree_sysroot_parse_kernel_args (val);
-  _ostree_ordered_hash_replace_key (ohash, "ostree", ostree_kernel_arg);
-  options_key = _ostree_sysroot_kernel_arg_string_serialize (ohash);
+  kargs = _ostree_kernel_args_from_string (val);
+  _ostree_kernel_args_replace_take (kargs, ostree_kernel_arg);
+  ostree_kernel_arg = NULL;
+  options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
   
   if (!ostree_bootconfig_parser_write (ostree_deployment_get_bootconfig (deployment), bootconfpath,
@@ -773,14 +775,14 @@ bootconfig_counts_for_deployment_list (GPtrArray   *deployments)
       const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
       GChecksum *bootconfig_checksum = g_checksum_new (G_CHECKSUM_SHA256);
       const char *bootconfig_checksum_str;
-      __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *ohash = NULL;
+      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
       gs_free char *boot_options_without_ostree = NULL;
       guint count;
       
       /* We checksum the kernel arguments *except* ostree= */
-      ohash = _ostree_sysroot_parse_kernel_args (boot_options);
-      _ostree_ordered_hash_replace_key (ohash, "ostree", "");
-      boot_options_without_ostree = _ostree_sysroot_kernel_arg_string_serialize (ohash);
+      kargs = _ostree_kernel_args_from_string (boot_options);
+      _ostree_kernel_args_replace (kargs, "ostree");
+      boot_options_without_ostree = _ostree_kernel_args_to_string (kargs);
 
       g_checksum_update (bootconfig_checksum, (guint8*)bootcsum, strlen (bootcsum));
       g_checksum_update (bootconfig_checksum, (guint8*)boot_options_without_ostree,
@@ -1049,13 +1051,13 @@ allocate_deployserial (OstreeSysroot           *self,
 }
                             
 /**
- * ostree_sysroot_deploy_one_tree:
+ * ostree_sysroot_deploy_tree:
  * @self: Sysroot
  * @osname: (allow-none): osname to use for merge deployment
  * @revision: Checksum to add
  * @origin: (allow-none): Origin to use for upgrades
- * @add_kernel_argv: (allow-none): Append these arguments to kernel configuration
  * @provided_merge_deployment: (allow-none): Use this deployment for merge path
+ * @override_kernel_argv: (allow-none) (array zero-terminated=1) (element-type utf8): Use these as kernel arguments; if %NULL, inherit options from provided_merge_deployment
  * @out_new_deployment: (out): The new deployment path
  * @cancellable: Cancellable
  * @error: Error
@@ -1064,15 +1066,15 @@ allocate_deployserial (OstreeSysroot           *self,
  * way merge with @provided_merge_deployment for configuration.
  */
 gboolean
-ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
-                                const char        *osname,
-                                const char        *revision,
-                                GKeyFile          *origin,
-                                char             **add_kernel_argv,
-                                OstreeDeployment  *provided_merge_deployment,
-                                OstreeDeployment **out_new_deployment,
-                                GCancellable      *cancellable,
-                                GError           **error)
+ostree_sysroot_deploy_tree (OstreeSysroot     *self,
+                            const char        *osname,
+                            const char        *revision,
+                            GKeyFile          *origin,
+                            OstreeDeployment  *provided_merge_deployment,
+                            char             **override_kernel_argv,
+                            OstreeDeployment **out_new_deployment,
+                            GCancellable      *cancellable,
+                            GError           **error)
 {
   gboolean ret = FALSE;
   gint new_deployserial;
@@ -1160,30 +1162,17 @@ ostree_sysroot_deploy_one_tree (OstreeSysroot     *self,
       goto out;
     }
 
-  /* We have inherited kernel arguments from the previous deployment;
-   * now, override/extend that with arguments provided by the command
-   * line.
-   * 
-   * After this, install_deployment_kernel() will set the other boot
+  /* After this, install_deployment_kernel() will set the other boot
    * options and write it out to disk.
    */
-  if (add_kernel_argv)
+  if (override_kernel_argv)
     {
-      char **strviter;
-      __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *ohash = NULL;
+      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
       gs_free char *new_options = NULL;
 
-      ohash = _ostree_sysroot_parse_kernel_args (ostree_bootconfig_parser_get (bootconfig, "options"));
-
-      for (strviter = add_kernel_argv; *strviter; strviter++)
-        {
-          char *karg = g_strdup (*strviter);
-          const char *val = _ostree_sysroot_split_keyeq (karg);
-        
-          _ostree_ordered_hash_replace_key_take (ohash, karg, val);
-        }
-
-      new_options = _ostree_sysroot_kernel_arg_string_serialize (ohash);
+      kargs = _ostree_kernel_args_new ();
+      _ostree_kernel_args_append_argv (kargs, override_kernel_argv);
+      new_options = _ostree_kernel_args_to_string (kargs);
       ostree_bootconfig_parser_set (bootconfig, "options", new_options);
     }
 

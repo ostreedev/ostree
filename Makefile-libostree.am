@@ -19,6 +19,15 @@
 
 include Makefile-libostree-defines.am
 
+noinst_LTLIBRARIES += libostree-kernel-args.la
+
+libostree_kernel_args_la_SOURCES = \
+	src/libostree/ostree-kernel-args.h \
+	src/libostree/ostree-kernel-args.c \
+	$(NULL)
+libostree_kernel_args_la_CFLAGS = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libostree_kernel_args_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS)
+
 lib_LTLIBRARIES += libostree-1.la
 
 libostreeincludedir = $(includedir)/ostree-1
@@ -59,8 +68,6 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-bootloader-syslinux.c \
 	src/libostree/ostree-bootloader-uboot.h \
 	src/libostree/ostree-bootloader-uboot.c \
-	src/libostree/ostree-ordered-hash.h \
-	src/libostree/ostree-ordered-hash.c \
 	src/libostree/ostree-gpg-verifier.c \
 	src/libostree/ostree-gpg-verifier.h \
 	$(NULL)
@@ -72,7 +79,7 @@ endif
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libgsystem -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -export-symbols-regex '^ostree_'
-libostree_1_la_LIBADD = libotutil.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+libostree_1_la_LIBADD = libotutil.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS)
 
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)

@@ -27,11 +27,14 @@
 #include "ostree.h"
 #include "otutil.h"
 
+#include "../libostree/ostree-kernel-args.h"
+
 #include <glib/gi18n.h>
 
 static gboolean opt_no_bootloader;
 static gboolean opt_retain;
 static char **opt_kernel_argv;
+static char **opt_kernel_argv_append;
 static gboolean opt_kernel_proc_cmdline;
 static char *opt_osname;
 static char *opt_origin_path;
@@ -42,7 +45,8 @@ static GOptionEntry options[] = {
   { "no-bootloader", 0, 0, G_OPTION_ARG_NONE, &opt_no_bootloader, "Don't update bootloader", NULL },
   { "retain", 0, 0, G_OPTION_ARG_NONE, &opt_retain, "Do not delete previous deployment", NULL },
   { "karg-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_kernel_proc_cmdline, "Import current /proc/cmdline", NULL },
-  { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like --karg=root=/dev/sda1", NULL },
+  { "karg", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "KEY=VALUE" },
+  { "karg-append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_kernel_argv_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "KEY=VALUE" },
   { NULL }
 };
 
@@ -58,7 +62,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_free char *revision = NULL;
-  gs_unref_ptrarray GPtrArray *kargs = NULL;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
 
@@ -121,51 +125,56 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       goto out;
     }
 
-  kargs = g_ptr_array_new_with_free_func (g_free);
+  kargs = _ostree_kernel_args_new ();
 
+  /* If they want the current kernel's args, they very likely don't
+   * want the ones from the merge.
+   */
   if (opt_kernel_proc_cmdline)
     {
       gs_unref_object GFile *proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
       gs_free char *proc_cmdline = NULL;
       gsize proc_cmdline_len = 0;
       gs_strfreev char **proc_cmdline_args = NULL;
-      char **strviter;
 
       if (!g_file_load_contents (proc_cmdline_path, cancellable,
                                  &proc_cmdline, &proc_cmdline_len,
                                  NULL, error))
         goto out;
 
+      g_strchomp (proc_cmdline);
+
       proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
-      for (strviter = proc_cmdline_args; strviter && *strviter; strviter++)
-        {
-          char *arg = *strviter;
-          g_strchomp (arg);
-          g_ptr_array_add (kargs, arg);
-          *strviter = NULL; /* transfer ownership */
-        }
+      _ostree_kernel_args_replace_argv (kargs, proc_cmdline_args);
+    }
+  else if (merge_deployment)
+    {
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
+      gs_strfreev char **previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+
+      _ostree_kernel_args_replace_argv (kargs, previous_args);
     }
 
   if (opt_kernel_argv)
     {
-      char **strviter;
-      for (strviter = opt_kernel_argv; strviter && *strviter; strviter++)
-        {
-          const char *arg = *strviter;
-          char *val = g_strdup (arg);
-          g_strchomp (val);
-          g_ptr_array_add (kargs, val);
-        }
+      _ostree_kernel_args_replace_argv (kargs, opt_kernel_argv);
     }
 
-  g_ptr_array_add (kargs, NULL);
+  if (opt_kernel_argv_append)
+    {
+      _ostree_kernel_args_append_argv (kargs, opt_kernel_argv_append);
+    }
 
-  if (!ostree_sysroot_deploy_one_tree (sysroot,
-                                       opt_osname, revision, origin,
-                                       (char**)kargs->pdata, merge_deployment,
-                                       &new_deployment,
-                                       cancellable, error))
-    goto out;
+  {
+    gs_strfreev char **kargs_strv = _ostree_kernel_args_to_strv (kargs);
+
+    if (!ostree_sysroot_deploy_tree (sysroot,
+                                     opt_osname, revision, origin,
+                                     merge_deployment, kargs_strv,
+                                     &new_deployment,
+                                     cancellable, error))
+      goto out;
+  }
 
   if (!ot_admin_complete_deploy_one (sysroot, opt_osname,
                                      new_deployment, merge_deployment, opt_retain,

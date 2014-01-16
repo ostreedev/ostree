@@ -147,12 +147,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
           goto out;
         }
 
-      if (!ostree_sysroot_deploy_one_tree (sysroot,
-                                           opt_osname, new_revision, origin,
-                                           NULL,
-                                           merge_deployment,
-                                           &new_deployment,
-                                           cancellable, error))
+      if (!ostree_sysroot_deploy_tree (sysroot,
+                                       opt_osname, new_revision, origin,
+                                       merge_deployment,
+                                       NULL,
+                                       &new_deployment,
+                                       cancellable, error))
         goto out;
 
       if (!ot_admin_complete_deploy_one (sysroot, opt_osname,

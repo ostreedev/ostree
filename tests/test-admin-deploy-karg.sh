@@ -52,3 +52,13 @@ ostree admin --sysroot=sysroot deploy --karg-proc-cmdline --os=testos testos:tes
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*root=.'
 
 echo "ok deploy --karg-proc-cmdline"
+
+ostree admin --sysroot=sysroot status
+ostree admin --sysroot=sysroot undeploy 0
+
+ostree admin --sysroot=sysroot deploy  --os=testos --karg-append=APPENDARG=VALAPPEND --karg-append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
+
+echo "ok deploy --karg-append"

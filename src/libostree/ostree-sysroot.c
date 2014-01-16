@@ -884,9 +884,9 @@ _ostree_sysroot_join_lines (GPtrArray  *lines)
 }
 
 static gboolean
-parse_kernel_commandline (OstreeOrderedHash  **out_args,
-                          GCancellable    *cancellable,
-                          GError         **error)
+parse_kernel_commandline (OstreeKernelArgs  **out_args,
+                          GCancellable       *cancellable,
+                          GError            **error)
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *proc_cmdline = g_file_new_for_path ("/proc/cmdline");
@@ -897,8 +897,10 @@ parse_kernel_commandline (OstreeOrderedHash  **out_args,
                              error))
     goto out;
 
+  g_strchomp (contents);
+
   ret = TRUE;
-  *out_args = _ostree_sysroot_parse_kernel_args (contents);;
+  *out_args = _ostree_kernel_args_from_string (contents);
  out:
   return ret;
 }
@@ -919,7 +921,7 @@ find_booted_deployment (OstreeSysroot       *self,
       gs_unref_object OstreeSysroot *active_deployment_root = ostree_sysroot_new_default ();
       guint i;
       const char *bootlink_arg;
-      __attribute__((cleanup(_ostree_ordered_hash_cleanup))) OstreeOrderedHash *kernel_args = NULL;
+      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kernel_args = NULL;
       guint32 root_device;
       guint64 root_inode;
       
@@ -930,7 +932,7 @@ find_booted_deployment (OstreeSysroot       *self,
       if (!parse_kernel_commandline (&kernel_args, cancellable, error))
         goto out;
       
-      bootlink_arg = g_hash_table_lookup (kernel_args->table, "ostree");
+      bootlink_arg = _ostree_kernel_args_get_last_value (kernel_args, "ostree");
       if (bootlink_arg)
         {
           for (i = 0; i < deployments->len; i++)
@@ -967,88 +969,6 @@ find_booted_deployment (OstreeSysroot       *self,
   ot_transfer_out_value (out_deployment, &ret_deployment);
  out:
   return ret;
-}
-
-OstreeOrderedHash *
-_ostree_sysroot_parse_kernel_args (const char *options)
-{
-  OstreeOrderedHash *ret;
-  char **args;
-  char **iter;
-
-  ret = _ostree_ordered_hash_new ();
-
-  if (!options)
-    return ret;
-  
-  args = g_strsplit (options, " ", -1);
-  for (iter = args; *iter; iter++)
-    {
-      char *arg = *iter;
-      char *val;
-      
-      val = _ostree_sysroot_split_keyeq (arg);
-
-      g_ptr_array_add (ret->order, arg);
-      g_hash_table_insert (ret->table, arg, val);
-    }
-
-  return ret;
-}
-
-/*
- * Modify @arg which should be of the form key=value to make @arg just
- * contain key.  Return a pointer to the start of value.
- */
-char *
-_ostree_sysroot_split_keyeq (char *arg)
-{
-  char *eq;
-      
-  eq = strchr (arg, '=');
-  if (eq)
-    {
-      /* Note key/val are in one malloc block,
-       * so we don't free val...
-       */
-      *eq = '\0';
-      return eq+1;
-    }
-  else
-    {
-      /* ...and this allows us to insert a constant
-       * string.
-       */
-      return "";
-    }
-}
-
-char *
-_ostree_sysroot_kernel_arg_string_serialize (OstreeOrderedHash *ohash)
-{
-  guint i;
-  GString *buf = g_string_new ("");
-  gboolean first = TRUE;
-
-  for (i = 0; i < ohash->order->len; i++)
-    {
-      const char *key = ohash->order->pdata[i];
-      const char *val = g_hash_table_lookup (ohash->table, key);
-
-      g_assert (val != NULL);
-
-      if (first)
-        first = FALSE;
-      else
-        g_string_append_c (buf, ' ');
-
-      if (*val)
-        g_string_append_printf (buf, "%s=%s", key, val);
-      else
-        g_string_append (buf, key);
-    }
-
-  return g_string_free (buf, FALSE);
 }
 
 /**
