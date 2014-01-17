@@ -385,7 +385,7 @@ write_object (OstreeRepo         *self,
 
       if (!(temp_file_is_regular || is_symlink))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Unsupported file type %u", g_file_info_get_file_type (file_info));
           goto out;
         }
@@ -1785,9 +1785,25 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
           if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
             {
+              GFileType file_type;
+
               child = g_file_get_child (dir, name);
 
-              if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_DIRECTORY)
+              file_type = g_file_info_get_file_type (child_info);
+              switch (file_type)
+                {
+                case G_FILE_TYPE_DIRECTORY:
+                case G_FILE_TYPE_SYMBOLIC_LINK:
+                case G_FILE_TYPE_REGULAR:
+                  break;
+                default:
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Unsupported file type: '%s'",
+                               gs_file_get_path_cached (child));
+                  goto out;
+                }
+
+              if (file_type == G_FILE_TYPE_DIRECTORY)
                 {
                   if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
                     goto out;

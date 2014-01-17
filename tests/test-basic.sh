@@ -317,3 +317,14 @@ stat '--format=%Y' test2-checkout/baz/cow > cow-mtime
 assert_file_has_content cow-mtime 0
 echo "ok content mtime"
 
+cd ${test_tmpdir}
+rm -rf test2-checkout
+mkdir -p test2-checkout
+cd test2-checkout
+mkfifo afifo
+if $OSTREE commit -b test2 -s "Attempt to commit a FIFO" 2>../errmsg; then
+    assert_not_reached "Committing a FIFO unexpetedly succeeded!"
+    assert_file_has_content ../errmsg "Unsupported file type"
+fi
+echo "ok commit of fifo was rejected"
+
