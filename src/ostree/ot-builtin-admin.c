@@ -45,6 +45,7 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "upgrade", ot_admin_builtin_upgrade },
   { "cleanup", ot_admin_builtin_cleanup },
   { "status", ot_admin_builtin_status },
+  { "switch", ot_admin_builtin_switch },
   { "config-diff", ot_admin_builtin_diff },
   { NULL, NULL }
 };

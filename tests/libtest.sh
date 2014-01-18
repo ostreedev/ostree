@@ -226,6 +226,13 @@ EOF
     echo "a new executable" > usr/bin/sh
     ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
 
+    cd ${test_tmpdir}
+    cp -a osdata osdata-devel
+    cd osdata-devel
+    mkdir -p usr/include
+    echo "a development header" > usr/include/foo.h
+    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-devel -s "Build"
+
     ostree --repo=${test_tmpdir}/testos-repo fsck -q
 
     cd ${test_tmpdir}

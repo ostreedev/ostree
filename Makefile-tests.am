@@ -35,6 +35,7 @@ testfiles = test-basic \
 	test-admin-deploy-syslinux \
 	test-admin-deploy-2 \
 	test-admin-deploy-karg \
+	test-admin-deploy-switch \
 	test-admin-deploy-etcmerge-cornercases \
 	test-admin-deploy-uboot \
 	test-setuid \
