@@ -75,9 +75,9 @@ sysrootRepo.pull('testos', null, 0, null, null);
 let mergeDeployment = sysroot.get_merge_deployment('testos');
 
 let origin = sysroot.origin_new_from_refspec(runtimeRef);
-let [,deployment] = sysroot.deploy_one_tree('testos', rev, origin,
-					    null, mergeDeployment,
-					    null);
+let [,deployment] = sysroot.deploy_tree('testos', rev, origin,
+					mergeDeployment, null,
+					null);
 let newDeployments = deployments;
 deployments = null;
 newDeployments.unshift(deployment);
@@ -100,9 +100,9 @@ assertEquals(deploymentPath.query_exists(null), false);
 
 //// Ok, redeploy, then add a new revision upstream and pull it
 
-let [,deployment] = sysroot.deploy_one_tree('testos', rev, origin,
-					    null, mergeDeployment,
-					    null);
+let [,deployment] = sysroot.deploy_tree('testos', rev, origin,
+					mergeDeployment, null,
+					null);
 newDeployments = deployments;
 deployments = null;
 newDeployments.unshift(deployment);
@@ -120,9 +120,9 @@ assertNotEquals(rev, newRev);
 
 mergeDeployment = sysroot.get_merge_deployment('testos');
 assertEquals(mergeDeployment.get_csum(), deployment.get_csum());
-let [,newDeployment] = sysroot.deploy_one_tree('testos', newRev, origin,
-					       null, mergeDeployment,
-					       null);
+let [,newDeployment] = sysroot.deploy_tree('testos', newRev, origin,
+					   mergeDeployment, null,
+					   null);
 newDeployments = [newDeployment, mergeDeployment];
 assertNotEquals(mergeDeployment.get_bootcsum(), newDeployment.get_bootcsum());
 assertNotEquals(mergeDeployment.get_csum(), newDeployment.get_csum());
@@ -143,9 +143,9 @@ let [,thirdRev] = sysrootRepo.resolve_rev(runtimeRef, false);
 assertNotEquals(newRev, thirdRev);
 
 mergeDeployment = sysroot.get_merge_deployment('testos');
-let [,thirdDeployment] = sysroot.deploy_one_tree('testos', thirdRev, origin,
-						 null, mergeDeployment,
-						 null);
+let [,thirdDeployment] = sysroot.deploy_tree('testos', thirdRev, origin,
+					     mergeDeployment, null,
+					     null);
 assertEquals(mergeDeployment.get_bootcsum(), thirdDeployment.get_bootcsum());
 assertNotEquals(mergeDeployment.get_csum(), thirdDeployment.get_csum());
 newDeployments = [deployment, newDeployment, thirdDeployment];
