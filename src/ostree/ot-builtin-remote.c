@@ -134,7 +134,7 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
     }
   else if (!strcmp (op, "show-url"))
     {
-      gs_free char *url;
+      gs_free char *url = NULL;
 
       url = g_key_file_get_string (config, key, "url", error);
       if (url == NULL)

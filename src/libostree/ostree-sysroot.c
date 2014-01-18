@@ -680,8 +680,8 @@ ostree_sysroot_load (OstreeSysroot  *self,
 {
   gboolean ret = FALSE;
   guint i;
-  int bootversion;
-  int subbootversion;
+  int bootversion = 0;
+  int subbootversion = 0;
   gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
 

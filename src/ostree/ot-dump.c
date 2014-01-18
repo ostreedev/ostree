@@ -91,7 +91,7 @@ dump_commit (GVariant            *variant,
   const gchar *subject;
   const gchar *body;
   guint64 timestamp;
-  gs_free gchar *str;
+  gs_free gchar *str = NULL;
 
   /* See OSTREE_COMMIT_GVARIANT_FORMAT */
   g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,
