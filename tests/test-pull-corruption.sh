@@ -39,7 +39,8 @@ do_corrupt_pull_test() {
     fi
     rm -rf ${repopath}
     cp -a ${repopath}.orig ${repopath}
-    if ${CMD_PREFIX} ostree --repo=repo pull origin main && ${CMD_PREFIX} ostree --repo=repo fsck; then
+    ${CMD_PREFIX} ostree --repo=repo pull origin main
+    if ${CMD_PREFIX} ostree --repo=repo fsck; then
         echo "ok pull with correct data worked"
     else
         assert_not_reached "pull with correct data failed!"
