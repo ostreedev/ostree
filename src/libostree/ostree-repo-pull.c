@@ -901,6 +901,7 @@ on_metadata_objects_to_scan_ready (gint         fd,
       else if (msg->t == PULL_MSG_QUIT)
         {
           g_free (msg);
+          g_debug ("pull: Processing PULL_MSG_QUIT");
           g_main_loop_quit (pull_data->metadata_thread_loop);
         }
       else
@@ -908,10 +909,14 @@ on_metadata_objects_to_scan_ready (gint         fd,
       }
     
   if (last_idle_msg)
-    ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
-                            last_idle_msg);
+    {
+      g_debug ("pull: Processing PULL_MSG_MAIN_IDLE");
+      ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
+                              last_idle_msg);
+    }
   
   /* When we have no queue to process, notify the main thread */
+  g_debug ("pull: Sending SCAN_IDLE");
   ot_waitable_queue_push (pull_data->metadata_objects_to_fetch,
                           pull_worker_message_new (PULL_MSG_SCAN_IDLE, GUINT_TO_POINTER (0)));
 
@@ -1401,6 +1406,10 @@ ostree_repo_pull (OstreeRepo               *self,
   if (!run_mainloop_monitor_fetcher (pull_data))
     goto out;
   
+  g_assert_cmpint (pull_data->n_outstanding_metadata_fetches, ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding_metadata_write_requests, ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding_content_write_requests, ==, 0);
 
   g_hash_table_iter_init (&hash_iter, updated_refs);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
