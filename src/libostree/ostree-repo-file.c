@@ -719,6 +719,9 @@ query_child_info_dir (OstreeRepo               *repo,
 
   ret_info = g_file_info_new ();
 
+  g_file_info_set_attribute_uint32 (ret_info, "standard::type",
+                                    G_FILE_TYPE_DIRECTORY);
+  
   if (g_file_attribute_matcher_matches (matcher, "unix::mode"))
     {
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_META,
