@@ -67,3 +67,10 @@ _build
 /test-remote-add.test
 /test-setuid.test
 /test-xattrs.test
+test-varint
+test*.test
+
+*.tar.xz
+*.src.rpm
+packaging/*.spec
+
