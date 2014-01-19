@@ -47,21 +47,9 @@ do_corrupt_pull_test() {
     fi
 }
 
-# Corrupt .dirmeta
-someobject=$(find ${repopath} -name '*.dirmeta' | head -1)
-echo "garbage garbage garbage" > ${someobject}
+# FIXME - ignore errors here since gjs in RHEL7 has the final
+# unrooting bug
+gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
+assert_file_has_content corrupted-status.txt 'Changed byte'
 do_corrupt_pull_test
-echo "ok corrupt dirmeta"
-
-# Corrupt .dirtree
-someobject=$(find ${repopath} -name '*.dirtree' | head -1)
-echo "garbage garbage garbage" > ${someobject}
-do_corrupt_pull_test
-echo "ok corrupt dirtree"
-
-# Corrupt .filez
-someobject=$(find ${repopath} -name '*.filez' | head -1)
-otherobject=$(find ${repopath} -name '*.filez' | head -2 | tail -1)
-cp ${someobject} ${otherobject}
-do_corrupt_pull_test
-echo "ok corrupt filez"
+echo "ok corruption $iteration"

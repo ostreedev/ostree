@@ -50,6 +50,7 @@ insttest_DATA = tests/archive-test.sh \
 	tests/pull-test.sh \
 	tests/libtest.sh \
 	tests/admin-test.sh \
+	tests/corrupt-repo-ref.js \
 	$(NULL)
 
 gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome
