@@ -73,38 +73,13 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
 
-  if (!ot_admin_require_booted_deployment_or_osname (sysroot, opt_osname,
-                                                     cancellable, error))
-    goto out;
-  merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname); 
-  if (merge_deployment == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No previous deployment for OS '%s'", opt_osname);
-      goto out;
-    }
-
-  deployment_path = ostree_sysroot_get_deployment_directory (sysroot, merge_deployment);
-  deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
-
   if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 
-  origin = ostree_deployment_get_origin (merge_deployment);
-  if (!origin)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No origin known for current deployment");
-      goto out;
-    }
-  origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
-  if (!origin_refspec)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No origin/refspec in current deployment origin; cannot change via ostree");
-      goto out;
-    }
-  if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
+  if (!ot_admin_deploy_prepare (sysroot, opt_osname, &merge_deployment,
+                                &origin_remote, &origin_ref,
+                                &origin,
+                                cancellable, error))
     goto out;
 
   if (strcmp (origin_ref, new_ref) == 0)
@@ -113,6 +88,16 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
                    "Old and new refs are equal: %s", new_ref);
       goto out;
     }
+
+  {
+    gs_free char *new_refspec = NULL;
+    if (origin_remote)
+      new_refspec = g_strconcat (origin_remote, ":", new_ref, NULL);
+    else
+      new_refspec = g_strdup (new_ref);
+    g_key_file_unref (origin);
+    origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
+  }
 
   if (origin_remote)
     {

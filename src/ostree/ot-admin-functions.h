@@ -34,6 +34,16 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
                                               GError             **error);
 
 gboolean
+ot_admin_deploy_prepare (OstreeSysroot      *sysroot,
+                         const char         *osname,
+                         OstreeDeployment  **merge_deployment,
+                         char              **origin_remote,
+                         char              **origin_ref,
+                         GKeyFile          **out_origin,
+                         GCancellable        *cancellable,
+                         GError             **error);
+
+gboolean
 ot_admin_complete_deploy_one (OstreeSysroot      *sysroot,
                               const char         *osname,
                               OstreeDeployment   *new_deployment,
