@@ -104,6 +104,7 @@ typedef struct {
   GHashTable       *requested_content; /* Maps object name to itself */
   guint             checking_metadata_scan_complete : 1;
   guint             metadata_scan_complete : 1;
+  gboolean          was_idle;
   guint             idle_serial;
   guint             n_outstanding_metadata_fetches;
   guint             n_outstanding_metadata_write_requests;
@@ -253,24 +254,6 @@ throw_async_error (OtPullData          *pull_data,
     }
 }
 
-static gboolean
-termination_condition (OtPullData           *pull_data,
-                       gboolean              current_fetch_idle,
-                       gboolean              current_write_idle)
-{
-  /* This is true in the phase when we're fetching refs */
-  if (pull_data->metadata_objects_to_scan == NULL)
-    {
-      if (!pull_data->fetching_sync_uri)
-        return TRUE;
-    }
-  else if (pull_data->metadata_scan_complete && current_fetch_idle && current_write_idle)
-    {
-      return TRUE;
-    }
-  return FALSE;
-}
-
 static void
 check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                          GError              *error)
@@ -279,24 +262,37 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                  pull_data->n_outstanding_content_fetches == 0);
   gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0 &&
                                  pull_data->n_outstanding_content_write_requests == 0);
+  gboolean current_idle = current_fetch_idle && current_write_idle;
 
   g_debug ("pull: scanning: %u fetching: %u staging: %u",
            !pull_data->metadata_scan_complete, !current_fetch_idle, !current_write_idle);
 
   throw_async_error (pull_data, error);
 
-  if (pull_data->metadata_objects_to_scan &&
-      !pull_data->checking_metadata_scan_complete &&
-      !pull_data->metadata_scan_complete &&
-      (current_fetch_idle && current_write_idle))
+  /* This is true in the phase when we're fetching refs */
+  if (pull_data->metadata_objects_to_scan == NULL)
     {
-      pull_data->checking_metadata_scan_complete = TRUE;
+      if (!pull_data->fetching_sync_uri)
+        g_main_loop_quit (pull_data->loop);
+      return;
+    }
+
+  if (pull_data->was_idle && !current_idle)
+    {
+      /* We transitioned to !idle */
+      g_debug ("pull: No longer idle");
       pull_data->idle_serial++;
+      pull_data->was_idle = FALSE;
+    }
+  else if (!pull_data->was_idle && current_idle)
+    {
+      pull_data->was_idle = TRUE;
       g_debug ("Sending new MSG_IDLE with serial %u", pull_data->idle_serial);
       ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
                               pull_worker_message_new (PULL_MSG_IDLE, GUINT_TO_POINTER (pull_data->idle_serial)));
     }
-  else if (termination_condition (pull_data, current_fetch_idle, current_write_idle))
+
+  if (pull_data->metadata_scan_complete && current_idle)
     g_main_loop_quit (pull_data->loop);
 }
 
