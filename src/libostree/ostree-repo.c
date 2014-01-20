@@ -1478,6 +1478,17 @@ ostree_repo_pull (OstreeRepo               *self,
 }
 #endif
 
+/**
+ * ostree_repo_sign_commit:
+ * @self: Self
+ * @commit_checksum: SHA256 of given commit to sign
+ * @key_id: Use this GPG key id
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a commit.
+ */
 gboolean
 ostree_repo_sign_commit (OstreeRepo     *self,
                          const gchar    *commit_checksum,
