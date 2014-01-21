@@ -36,7 +36,7 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  const char *remote;
+  gs_free char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
   GSConsole *console = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
@@ -53,14 +53,28 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       ot_util_usage_error (context, "REMOTE must be specified", error);
       goto out;
     }
-  remote = argv[1];
 
-  if (argc > 2)
+
+  if (strchr (argv[1], ':') == NULL)
     {
-      int i;
+      remote = g_strdup (argv[1]);
+      if (argc > 2)
+        {
+          int i;
+          refs_to_fetch = g_ptr_array_new ();
+          for (i = 2; i < argc; i++)
+            g_ptr_array_add (refs_to_fetch, argv[i]);
+          g_ptr_array_add (refs_to_fetch, NULL);
+        }
+    }
+  else
+    {
+      char *ref_to_fetch;
       refs_to_fetch = g_ptr_array_new ();
-      for (i = 2; i < argc; i++)
-        g_ptr_array_add (refs_to_fetch, argv[i]);
+      if (!ostree_parse_refspec (argv[1], &remote, &ref_to_fetch, error))
+        goto out;
+      /* Transfer ownership */
+      g_ptr_array_add (refs_to_fetch, ref_to_fetch);
       g_ptr_array_add (refs_to_fetch, NULL);
     }
 
