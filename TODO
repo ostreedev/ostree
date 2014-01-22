@@ -12,11 +12,9 @@
     investigate something like http://www.sqlite.org/wal.html for having
     a shared file.
 
-* Indexed metadata pack objects for bare repositories at least;
-  no reason to inflict thousands of little metadata files on
-  each client.
-
-* Efficient delta format between commit objects, somewhat like
+* https://bugzilla.gnome.org/show_bug.cgi?id=721799
+  https://mail.gnome.org/archives/ostree-list/2013-July/msg00005.html
+  Efficient delta format between commit objects, somewhat like
   Chromium autoupdate: set of operations to perform given previous
   object set to create new objects.
 
@@ -33,11 +31,8 @@
 
 * Improve library
 
-* ostree admin install: Pull in host data, such as uids and /etc/fstab
-
-* ostree admin undeploy <osname> <tree>
-
-* ostree admin uninstall <osname>
+* Reintroduce "ostree admin install": Could pull in host data,
+  such as uids and /etc/fstab.
 
 * Possibly move all of the "regular" commands to be "ostree repo" ?  Then
   we'd have: "ostree repo pull", "ostree repo ls", etc.
