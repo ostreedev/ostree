@@ -264,9 +264,6 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                  pull_data->n_outstanding_content_write_requests == 0);
   gboolean current_idle = current_fetch_idle && current_write_idle;
 
-  g_debug ("pull: scanning: %u fetching: %u staging: %u",
-           !pull_data->metadata_scan_complete, !current_fetch_idle, !current_write_idle);
-
   throw_async_error (pull_data, error);
 
   /* This is true in the phase when we're fetching refs */
@@ -293,7 +290,11 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
     }
 
   if (pull_data->metadata_scan_complete && current_idle)
-    g_main_loop_quit (pull_data->loop);
+    {
+      g_debug ("pull: metadata scan complete and idle, exiting mainloop");
+
+      g_main_loop_quit (pull_data->loop);
+    }
 }
 
 static gboolean
@@ -610,6 +611,14 @@ content_fetch_on_complete (GObject        *object,
 }
 
 static void
+note_metadata_not_complete (OtPullData *pull_data)
+{
+  if (pull_data->metadata_scan_complete)
+    g_debug ("pull: Transition metadata scan complete -> not complete");
+  pull_data->metadata_scan_complete = FALSE;
+}
+
+static void
 on_metadata_writed (GObject           *object,
                     GAsyncResult      *result,
                     gpointer           user_data)
@@ -644,7 +653,7 @@ on_metadata_writed (GObject           *object,
       goto out;
     }
 
-  pull_data->metadata_scan_complete = FALSE;
+  note_metadata_not_complete (pull_data);
   ot_waitable_queue_push (pull_data->metadata_objects_to_scan,
                           pull_worker_message_new (PULL_MSG_SCAN,
                                                   g_variant_ref (fetch_data->object)));
@@ -1032,13 +1041,16 @@ on_metadata_objects_to_fetch_ready (gint         fd,
     {
       pull_data->checking_metadata_scan_complete = FALSE;
       if (msg->d.idle_serial == pull_data->idle_serial)
-        pull_data->metadata_scan_complete = TRUE;
+        {
+          g_debug ("marking metadata scan as complete");
+          pull_data->metadata_scan_complete = TRUE;
+        }
     }
   else if (msg->t == PULL_MSG_FETCH || msg->t == PULL_MSG_FETCH_DETACHED_METADATA)
     {
       gboolean is_detached_meta;
 
-      pull_data->metadata_scan_complete = FALSE;
+      note_metadata_not_complete (pull_data);
 
       is_detached_meta = msg->t == PULL_MSG_FETCH_DETACHED_METADATA;
       
