@@ -23,6 +23,7 @@ ConditionPathExists=/etc/initrd-release
 OnFailure=emergency.service
 After=initrd-switch-root.target
 Before=initrd-switch-root.service
+Before=plymouth-switch-root.service
 
 [Service]
 Type=oneshot
