@@ -62,7 +62,10 @@
 		  short.  In the OSTree model, operating systems no
 		  longer live in the physical "/" root directory.
 		  Instead, they parallel install to the new toplevel
-		  <literal>/ostree</literal> directory.
+		  <filename>/ostree</filename> directory.  Each
+		  installed system gets its own
+		  <filename>/ostree/deploy/<replaceable>osname</replaceable></filename>
+		  directory.
 		</para>
 		<para>
 		  Unlike <literal>rpm</literal> or
@@ -70,6 +73,14 @@
 		  complete filesystem trees.  It has no built-in
 		  knowledge of what components went into creating the
 		  filesystem tree.
+		</para>
+		<para>
+		  It is possible to use OSTree in several modes; the
+		  most basic form is to replicate pre-built trees from
+		  a build server.  Usually, these pre-built trees are
+		  derived from packages.  You might also be using
+		  OSTree underneath a higher level tool which computes
+		  filesystem trees locally.
 		</para>
 		<para>
 		  It must be emphasized that OSTree only supports
@@ -104,30 +115,74 @@
 
 		</variablelist>
 
-                <para>The following commands are understood:</para>
+                <para>System administrators will primarily interact
+                with OSTree via the subcommand <command>ostree
+                admin</command>.</para>
 
                 <variablelist>
                         <varlistentry>
-                                <term><command>checkout</command></term>
+                                <term><command>admin upgrade</command></term>
 
-                                <listitem><para>Extract a given branch into the filesystem.</para></listitem>
+                                <listitem><para>If you are replicating
+                                from a build server, this command will
+                                download the latest version for the
+                                current ref, and deploy it.  Reboot
+                                the system for the changes to take
+                                effect.</para></listitem>
                         </varlistentry>
                         <varlistentry>
-                                <term><command>checksum</command></term>
+                                <term><command>admin switch</command></term>
 
-                                <listitem><para>Compute the OSTree checksum of the given files.</para></listitem>
+                                <listitem><para>Choose a different ref
+                                to track from the same remote as the
+                                current tree.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>admin deploy</command></term>
+
+                                <listitem><para>This is a relatively
+                                low level command - takes a particular
+                                commit or revision, and sets it up for
+                                the next boot.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>config-diff</command></term>
+
+                                <listitem><para>See changes to
+                                <filename>/etc</filename> as compared
+                                to the current default (from
+                                <filename>/usr/etc</filename>).
+                                </para></listitem>
+                        </varlistentry>
+		</variablelist>
+
+                <para>Both administrators and operating system
+                builders may interact with OSTree via the regular
+                filesystem manipulation commands.  
+                </para>
+		
+		<variablelist>
+                        <varlistentry>
+                                <term><command>init</command></term>
+
+                                <listitem><para>Initialize a new
+                                repository.  Must be given the path to
+                                an existing (empty) directory.  If you
+                                want to serve a repository over plain
+                                HTTP, use
+                                <literal>archive-z2</literal> for
+                                <option>--mode</option></para></listitem>
                         </varlistentry>
                         <varlistentry>
                                 <term><command>diff</command></term>
 
-                                <listitem><para>Concisely list differences between the given branch revisions,
-				without checking them out into the filesystem.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>init</command></term>
-
-                                <listitem><para>Initialize a repository.</para></listitem>
-
+                                <listitem><para>Concisely list
+                                differences between the given refs,
+                                without checking them out into the
+                                physical filesystem.  If only one ref
+                                is provided, the parent commit will be
+                                assumed to be the diff source.
+                                </para></listitem>
                         </varlistentry>
                         <varlistentry>
                                 <term><command>commit</command></term>
@@ -136,22 +191,6 @@
                                 trees (from the local filesystem, a
                                 tarball, or a specified revision for
                                 example), create a new commit using those contents.
-                                </para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>compose</command></term>
-
-                                <listitem><para>A specialized type of
-                                commit, intended for merging together
-                                many separate filesystem trees such as
-                                build artifacts.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>local-clone</command></term>
-
-                                <listitem><para>Efficiently copy
-                                objects and references from one local
-                                repository into another.
                                 </para></listitem>
                         </varlistentry>
                         <varlistentry>
@@ -180,12 +219,6 @@
                                 <listitem><para>Show the SHA256 corresponding to a given rev.</para></listitem>
                         </varlistentry>
                         <varlistentry>
-                                <term><command>run-triggers</command></term>
-
-                                <listitem><para>Regenerate cache files in the given operating system tree.</para></listitem>
-                        </varlistentry>
-
-                        <varlistentry>
                                 <term><command>show</command></term>
 
                                 <listitem><para>Given an OSTree SHA256 checksum, display its contents.</para></listitem>
@@ -210,13 +243,6 @@
 				<listitem><para><command>ostree</command> respects the traditional pager envrionment variable.</para></listitem>
                         </varlistentry>
                 </variablelist>
-        </refsect1>
-
-        <refsect1>
-                <title>See Also</title>
-                <para>
-                        <citerefentry><refentrytitle>ostbuild</refentrytitle><manvolnum>1</manvolnum></citerefentry>
-                </para>
         </refsect1>
 
 </refentry>
