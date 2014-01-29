@@ -1611,6 +1611,9 @@ struct OstreeRepoCommitModifier {
   OstreeRepoCommitFilter filter;
   gpointer user_data;
   GDestroyNotify destroy_notify;
+
+  OstreeRepoCommitModifierXattrCallback xattr_callback;
+  gpointer xattr_user_data;
 };
 
 OstreeRepoCommitFilterResult
@@ -1636,21 +1639,10 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
   return result;
 }
 
-static gboolean
-apply_commit_filter (OstreeRepo               *self,
-                     OstreeRepoCommitModifier *modifier,
-                     GPtrArray                *path,
-                     GFileInfo                *file_info,
-                     GFileInfo               **out_modified_info)
+static char *
+ptrarray_path_join (GPtrArray  *path)
 {
   GString *path_buf;
-  OstreeRepoCommitFilterResult result;
-
-  if (modifier == NULL || modifier->filter == NULL)
-    {
-      *out_modified_info = g_object_ref (file_info);
-      return OSTREE_REPO_COMMIT_FILTER_ALLOW;
-    }
 
   path_buf = g_string_new ("");
 
@@ -1668,10 +1660,23 @@ apply_commit_filter (OstreeRepo               *self,
         }
     }
 
-  result = _ostree_repo_commit_modifier_apply (self, modifier, path_buf->str, file_info, out_modified_info);
+  return g_string_free (path_buf, FALSE);
+}
 
-  g_string_free (path_buf, TRUE);
-  return result;
+static gboolean
+apply_commit_filter (OstreeRepo               *self,
+                     OstreeRepoCommitModifier *modifier,
+                     const char               *relpath,
+                     GFileInfo                *file_info,
+                     GFileInfo               **out_modified_info)
+{
+  if (modifier == NULL || modifier->filter == NULL)
+    {
+      *out_modified_info = g_object_ref (file_info);
+      return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+    }
+
+  return _ostree_repo_commit_modifier_apply (self, modifier, relpath, file_info, out_modified_info);
 }
 
 static gboolean
@@ -1726,6 +1731,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       gs_unref_variant GVariant *xattrs = NULL;
       gs_free guchar *child_file_csum = NULL;
       gs_free char *tmp_checksum = NULL;
+      gs_free char *relpath = NULL;
 
       child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -1733,7 +1739,10 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       if (!child_info)
         goto out;
 
-      filter_result = apply_commit_filter (self, modifier, path, child_info, &modified_info);
+      if (modifier != NULL)
+        relpath = ptrarray_path_join (path);
+
+      filter_result = apply_commit_filter (self, modifier, relpath, child_info, &modified_info);
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
@@ -1771,6 +1780,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
           gs_unref_object GFile *child = NULL;
           gs_unref_object GFileInfo *modified_info = NULL;
           gs_unref_object OstreeMutableTree *child_mtree = NULL;
+          gs_free char *child_relpath = NULL;
           const char *name;
 
           if (!gs_file_enumerator_iterate (dir_enum, &child_info, NULL,
@@ -1781,7 +1791,11 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
           name = g_file_info_get_name (child_info);
           g_ptr_array_add (path, (char*)name);
-          filter_result = apply_commit_filter (self, modifier, path, child_info, &modified_info);
+
+          if (modifier != NULL)
+            child_relpath = ptrarray_path_join (path);
+
+          filter_result = apply_commit_filter (self, modifier, child_relpath, child_info, &modified_info);
 
           if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
             {
@@ -1842,14 +1856,19 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                     }
                   else
                     {
-                     if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
+                      if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
                         {
                           file_input = (GInputStream*)g_file_read (child, cancellable, error);
                           if (!file_input)
                             goto out;
                         }
 
-                      if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
+                      if (modifier && modifier->xattr_callback)
+                        {
+                          xattrs = modifier->xattr_callback (self, child_relpath, child_info,
+                                                             modifier->xattr_user_data);
+                        }
+                      else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
                         {
                           g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
                           if (!gs_file_get_all_xattrs (child, &xattrs, cancellable, error))
@@ -2054,6 +2073,26 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   g_free (modifier);
   return;
 }
+
+/**
+ * ostree_repo_commit_modifier_set_xattr_callback:
+ * @modifier: An #OstreeRepoCommitModifier
+ * @callback: Function to be invoked, should return extended attributes for path
+ * @user_data: (closure): Data for @callback:
+ *
+ * If set, this function should return extended attributes to use for
+ * the given path.  This is useful for things like SELinux, where a build
+ * system can label the files as it's committing to the repository.
+ */
+void
+ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier  *modifier,
+                                                OstreeRepoCommitModifierXattrCallback  callback,
+                                                gpointer                               user_data)
+{
+  modifier->xattr_callback = callback;
+  modifier->xattr_user_data = user_data;
+}
+
 
 G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
                     ostree_repo_commit_modifier_ref,

@@ -300,6 +300,15 @@ OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (OstreeRepoCommitModif
 
 GType ostree_repo_commit_modifier_get_type (void);
 
+typedef GVariant *(*OstreeRepoCommitModifierXattrCallback) (OstreeRepo     *repo,
+                                                            const char     *path,
+                                                            GFileInfo      *file_info,
+                                                            gpointer        user_data);
+
+void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier              *modifier,
+                                                     OstreeRepoCommitModifierXattrCallback  callback,
+                                                     gpointer                               user_data);
+
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
