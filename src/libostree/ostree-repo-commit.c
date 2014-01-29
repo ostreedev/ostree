@@ -1613,6 +1613,7 @@ struct OstreeRepoCommitModifier {
   GDestroyNotify destroy_notify;
 
   OstreeRepoCommitModifierXattrCallback xattr_callback;
+  GDestroyNotify xattr_destroy;
   gpointer xattr_user_data;
 };
 
@@ -2070,6 +2071,9 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   if (modifier->destroy_notify)
     modifier->destroy_notify (modifier->user_data);
 
+  if (modifier->xattr_destroy)
+    modifier->xattr_destroy (modifier->xattr_user_data);
+
   g_free (modifier);
   return;
 }
@@ -2078,7 +2082,8 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
  * ostree_repo_commit_modifier_set_xattr_callback:
  * @modifier: An #OstreeRepoCommitModifier
  * @callback: Function to be invoked, should return extended attributes for path
- * @user_data: (closure): Data for @callback:
+ * @destroy: Destroy notification
+ * @user_data: Data for @callback:
  *
  * If set, this function should return extended attributes to use for
  * the given path.  This is useful for things like SELinux, where a build
@@ -2087,9 +2092,11 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
 void
 ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier  *modifier,
                                                 OstreeRepoCommitModifierXattrCallback  callback,
+                                                GDestroyNotify                         destroy,
                                                 gpointer                               user_data)
 {
   modifier->xattr_callback = callback;
+  modifier->xattr_destroy = destroy;
   modifier->xattr_user_data = user_data;
 }
 

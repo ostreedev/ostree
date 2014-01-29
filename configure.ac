@@ -139,6 +139,31 @@ AS_IF([ test x$with_libarchive != xno ], [
 if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarchive"; fi
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
+dnl This is what is in RHEL7 anyways
+SELINUX_DEPENDENCY="libselinux >= 2.2.1"
+
+AC_ARG_WITH(selinux,
+	    AS_HELP_STRING([--without-selinux], [Do not use SELinux]),
+	    :, with_selinux=maybe)
+
+AS_IF([ test x$with_selinux != xno ], [
+    AC_MSG_CHECKING([for $SELINUX_DEPENDENCY])
+    PKG_CHECK_EXISTS($SELINUX_DEPENDENCY, have_selinux=yes, have_selinux=no)
+    AC_MSG_RESULT([$have_selinux])
+    AS_IF([ test x$have_selinux = xno && test x$with_selinux != xmaybe ], [
+       AC_MSG_ERROR([SELinux is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_selinux = xyes], [
+        AC_DEFINE(HAVE_SELINUX, 1, [Define if we have libselinux.pc])
+	PKG_CHECK_MODULES(OT_DEP_SELINUX, $SELINUX_DEPENDENCY)
+	with_selinux=yes
+    ], [
+	with_selinux=no
+    ])
+], [ with_selinux=no ])
+if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
+AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
+
 AC_ARG_WITH(dracut,
             AS_HELP_STRING([--with-dracut],
                            [Install dracut module (default: no)]),,
@@ -190,6 +215,7 @@ echo "
     embedded dependencies:                        $enable_embedded_dependencies
     introspection:                                $found_introspection
     libsoup (retrieve remote HTTP repositories):  $with_soup
+    SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
     gpgme (sign commits):                         $with_gpgme
     documentation:                                $enable_gtk_doc

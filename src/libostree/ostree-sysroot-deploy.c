@@ -22,6 +22,11 @@
 
 #include "config.h"
 
+#ifdef HAVE_SELINUX
+#include <selinux/selinux.h>
+#include <selinux/label.h>
+#endif
+
 #include "ostree-sysroot-private.h"
 #include "ostree-core-private.h"
 #include "otutil.h"
@@ -227,6 +232,273 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   return ret;
 }
 
+#ifdef HAVE_SELINUX
+static gboolean
+get_selinux_policy_root (OstreeSysroot  *sysroot,
+                         GFile         **out_policy_root,
+                         GCancellable   *cancellable,
+                         GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *etc_selinux_dir = NULL;
+  gs_unref_object GFile *policy_config_path = NULL;
+  gs_unref_object GFile *ret_policy_root = NULL;
+  gs_unref_object GFileInputStream *filein = NULL;
+  gs_unref_object GDataInputStream *datain = NULL;
+  gboolean enabled = FALSE;
+  char *policytype = NULL;
+  const char *selinux_prefix = "SELINUX=";
+  const char *selinuxtype_prefix = "SELINUXTYPE=";
+
+  etc_selinux_dir = g_file_resolve_relative_path (sysroot->path, "etc/selinux");
+  policy_config_path = g_file_get_child (etc_selinux_dir, "config");
+
+  if (g_file_query_exists (policy_config_path, NULL))
+    {
+      filein = g_file_read (policy_config_path, cancellable, error);
+      if (!filein)
+        goto out;
+
+      datain = g_data_input_stream_new ((GInputStream*)filein);
+
+      while (TRUE)
+        {
+          gsize len;
+          GError *temp_error = NULL;
+          gs_free char *line = g_data_input_stream_read_line_utf8 (datain, &len,
+                                                                   cancellable, &temp_error);
+      
+          if (temp_error)
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+
+          if (!line)
+            break;
+      
+          if (g_str_has_prefix (line, selinuxtype_prefix))
+            {
+              policytype = g_strstrip (g_strdup (line + strlen (selinuxtype_prefix))); 
+            }
+          else if (g_str_has_prefix (line, selinux_prefix))
+            {
+              const char *enabled_str = line + strlen (selinux_prefix);
+              if (g_ascii_strncasecmp (enabled_str, "enforcing", strlen ("enforcing")) == 0 ||
+                  g_ascii_strncasecmp (enabled_str, "permissive", strlen ("permissive")) == 0)
+                enabled = TRUE;
+            }
+        }
+    }
+
+  if (enabled)
+    ret_policy_root = g_file_get_child (etc_selinux_dir, policytype);
+    
+  ret = TRUE;
+  gs_transfer_out_value (out_policy_root, &ret_policy_root);
+ out:
+  return ret;
+}
+
+static char *
+ptrarray_path_join (GPtrArray  *path)
+{
+  GString *path_buf;
+
+  path_buf = g_string_new ("");
+
+  if (path->len == 0)
+    g_string_append_c (path_buf, '/');
+  else
+    {
+      guint i;
+      for (i = 0; i < path->len; i++)
+        {
+          const char *elt = path->pdata[i];
+
+          g_string_append_c (path_buf, '/');
+          g_string_append (path_buf, elt);
+        }
+    }
+
+  return g_string_free (path_buf, FALSE);
+}
+
+static gboolean
+relabel_one_path (GFile         *path,
+                  GFileInfo     *info,
+                  GPtrArray     *path_parts,
+                  struct selabel_handle *hnd,
+                  GCancellable   *cancellable,
+                  GError        **error)
+{
+  gboolean ret = FALSE;
+  guint32 mode;
+  gs_free char *relpath = NULL;
+  char *con = NULL;
+
+  mode = g_file_info_get_attribute_uint32 (info, "unix::mode");
+
+  relpath = ptrarray_path_join (path_parts);
+
+  if (selabel_lookup_raw (hnd, &con, relpath, mode) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "selabel_lookup_raw(%s, %u): %s",
+                   relpath, mode, strerror (errno));
+      goto out;
+    }
+
+  if (S_ISLNK (mode))
+    {
+      if (lsetfilecon (gs_file_get_path_cached (path), con) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "lsetfilecon(%s): %s",
+                       gs_file_get_path_cached (path), strerror (errno));
+          goto out;
+        }
+    }
+  else
+    {
+      if (setfilecon (gs_file_get_path_cached (path), con) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "setfilecon(%s): %s",
+                       gs_file_get_path_cached (path), strerror (errno));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  if (con) freecon (con);
+  return ret;
+}
+
+static gboolean
+relabel_recursively (GFile          *dir,
+                     GFileInfo      *dir_info,
+                     GPtrArray      *path_parts,
+                     struct selabel_handle *hnd,
+                     GCancellable   *cancellable,
+                     GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileEnumerator *direnum = NULL;
+
+  if (!relabel_one_path (dir, dir_info, path_parts, hnd,
+                         cancellable, error))
+    goto out;
+
+  direnum = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
+                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                       cancellable, error);
+  if (!direnum)
+    goto out;
+  
+  while (TRUE)
+    {
+      GFileInfo *file_info;
+      GFile *child;
+      GFileType ftype;
+
+      if (!gs_file_enumerator_iterate (direnum, &file_info, &child,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      g_ptr_array_add (path_parts, (char*)gs_file_get_basename_cached (child));
+
+      ftype = g_file_info_get_file_type (file_info);
+      if (ftype == G_FILE_TYPE_DIRECTORY)
+        {
+          if (!relabel_recursively (child, file_info, path_parts, hnd,
+                                    cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!relabel_one_path (child, file_info, path_parts, hnd,
+                                 cancellable, error))
+            goto out;
+        }
+
+      g_ptr_array_remove_index (path_parts, path_parts->len - 1);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+#endif
+
+static gboolean
+relabel_etc (OstreeSysroot          *sysroot,
+             GFile                  *deployment_etc_path,
+             GCancellable           *cancellable,
+             GError                **error)
+{
+#ifdef HAVE_SELINUX
+  gboolean ret = FALSE;
+  gs_unref_object GFile *policy_root = NULL;
+
+  if (!get_selinux_policy_root (sysroot, &policy_root,
+                                cancellable, error))
+    goto out;
+
+  if (policy_root)
+    {
+      struct selabel_handle *hnd;
+      gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+      gs_unref_object GFileInfo *root_info = NULL;
+
+      g_print ("ostadmin: Using SELinux policy '%s'\n", gs_file_get_basename_cached (policy_root));
+
+      if (selinux_set_policy_root (gs_file_get_path_cached (policy_root)) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "selinux_set_policy_root(%s): %s",
+                       gs_file_get_path_cached (policy_root),
+                       strerror (errno));
+          goto out;
+        }
+      hnd = selabel_open (SELABEL_CTX_FILE, NULL, 0);
+      if (!hnd)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "selabel_open(SELABEL_CTX_FILE): %s",
+                       strerror (errno));
+          goto out;
+        }
+
+      root_info = g_file_query_info (deployment_etc_path, OSTREE_GIO_FAST_QUERYINFO,
+                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                     cancellable, error);
+      if (!root_info)
+        goto out;
+
+      g_ptr_array_add (path_parts, "etc");
+      if (!relabel_recursively (deployment_etc_path, root_info, path_parts, hnd,
+                                cancellable, error))
+        {
+          g_prefix_error (error, "Relabeling /etc: ");
+          goto out;
+        }
+    }
+  else
+    g_print ("ostadmin: No SELinux policy found\n");
+
+  ret = TRUE;
+ out:
+  return ret;
+#else
+  return TRUE;
+#endif
+}
+
 static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
                      OstreeDeployment      *previous_deployment,
@@ -291,6 +563,8 @@ merge_configuration (OstreeSysroot         *sysroot,
       g_assert (!etc_exists);
       if (!gs_shutil_cp_a (deployment_usretc_path, deployment_etc_path,
                            cancellable, error))
+        goto out;
+      if (!relabel_etc (sysroot, deployment_etc_path, cancellable, error))
         goto out;
       g_print ("ostadmin: Created %s\n", gs_file_get_path_cached (deployment_etc_path));
     }

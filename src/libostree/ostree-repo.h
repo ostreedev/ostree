@@ -307,6 +307,7 @@ typedef GVariant *(*OstreeRepoCommitModifierXattrCallback) (OstreeRepo     *repo
 
 void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier              *modifier,
                                                      OstreeRepoCommitModifierXattrCallback  callback,
+                                                     GDestroyNotify                         destroy,
                                                      gpointer                               user_data);
 
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
