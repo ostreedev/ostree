@@ -1549,14 +1549,23 @@ ostree_repo_sign_commit (OstreeRepo     *self,
     }
 
   info = gpgme_ctx_get_engine_info (context);
+
+  if ((err = gpgme_set_protocol (context, GPGME_PROTOCOL_OpenPGP)) !=
+      GPG_ERR_NO_ERROR)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to set gpg protocol");
+      goto out;
+    }
   
   if (homedir != NULL)
     {
-      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, info->file_name, homedir))
+      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, "ostree", homedir))
           != GPG_ERR_NO_ERROR)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to set gpg homedir");
+                       "Unable to set gpg homedir to '%s'",
+                       homedir);
           goto out;
         }
     }
@@ -1565,7 +1574,8 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   if ((err = gpgme_get_key (context, key_id, &key, 1)) != GPG_ERR_NO_ERROR)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No gpg key found with the given key-id");
+                   "No gpg key found with ID %s (homedir: %s)", key_id,
+                   homedir ? homedir : "<default>");
       goto out;
     }
   
