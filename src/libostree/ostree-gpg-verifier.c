@@ -77,17 +77,14 @@ ostree_gpg_verifier_initable_init (GInitable        *initable,
   OstreeGpgVerifier *self = (OstreeGpgVerifier*)initable;
   const char *default_keyring_path = g_getenv ("OSTREE_GPG_HOME");
   gs_unref_object GFile *default_keyring_dir = NULL;
-  gs_unref_object GFile *default_pubring_file = NULL;
   gs_unref_object GFile *default_pubring = NULL;
 
   if (!default_keyring_path)
     default_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
 
   default_keyring_dir = g_file_new_for_path (default_keyring_path);
-  default_pubring_file = g_file_get_child (default_keyring_dir, "pubring.gpg");
-
-  if (!_ostree_gpg_verifier_add_keyring (self, default_pubring_file,
-                                         cancellable, error))
+  if (!_ostree_gpg_verifier_add_keyring_dir (self, default_keyring_dir,
+                                             cancellable, error))
     goto out;
 
   ret = TRUE;
