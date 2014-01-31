@@ -183,7 +183,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
 
   g_main_context_push_thread_default (maincontext);
 
-  context = gs_subprocess_context_newv ("gpgv", NULL);
+  context = gs_subprocess_context_newv (GPGVPATH, NULL);
   gs_subprocess_context_set_stdin_disposition (context,
                                                GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
   gs_subprocess_context_set_stdout_disposition (context,

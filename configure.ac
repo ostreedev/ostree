@@ -101,6 +101,8 @@ AS_IF([ test x$with_gpgme != xno ], [
    AS_IF([ test x$have_gpgme = xyes], [
        AC_DEFINE(HAVE_GPGME, 1, [Define if we have gpgme])
        with_gpgme=yes
+       AC_PATH_PROG(GPGVPATH, [gpgv2 gpgv])
+       AC_SUBST(GPGVPATH)
        ], [ with_gpgme=no ])
 ], [ with_gpgme=no ])
 if test x$with_gpgme != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"; fi
