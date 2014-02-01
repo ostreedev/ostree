@@ -1751,7 +1751,12 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
           g_debug ("Adding: %s", gs_file_get_path_cached (dir));
-          if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
+          if (modifier && modifier->xattr_callback)
+            {
+              xattrs = modifier->xattr_callback (self, relpath, child_info,
+                                                 modifier->xattr_user_data);
+            }
+          else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
             {
               if (!gs_file_get_all_xattrs (dir, &xattrs, cancellable, error))
                 goto out;
