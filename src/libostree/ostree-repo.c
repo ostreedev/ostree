@@ -553,6 +553,24 @@ ostree_repo_open (OstreeRepo    *self,
 }
 
 /**
+ * ostree_repo_set_disable_fsync:
+ * @self: An #OstreeRepo
+ * @disable_fsync: If %TRUE, do not fsync
+ *
+ * Disable requests to fsync() to stable storage during commits.  This
+ * option should only be used by build system tools which are creating
+ * disposable virtual machines, or have higher level mechanisms for
+ * ensuring data consistency.
+ */
+void
+ostree_repo_set_disable_fsync (OstreeRepo    *self,
+                               gboolean       disable_fsync)
+{
+  self->disable_fsync = disable_fsync;
+}
+
+
+/**
  * ostree_repo_get_path:
  * @self:
  *

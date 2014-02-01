@@ -157,10 +157,13 @@ commit_loose_object_trusted (OstreeRepo        *self,
       /* Ensure that in case of a power cut, these files have the data we
        * want.   See http://lwn.net/Articles/322823/
        */
-      if (fsync (fd) == -1)
+      if (!self->disable_fsync)
         {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
+          if (fsync (fd) == -1)
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
         }
           
       if (!g_output_stream_close (temp_out, cancellable, error))

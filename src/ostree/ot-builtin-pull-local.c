@@ -30,9 +30,11 @@
 #include "otutil.h"
 
 static char *opt_remote;
+static gboolean opt_disable_fsync;
 
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
+  { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { NULL }
 };
 
@@ -205,6 +207,9 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
   data->src_repo = ostree_repo_new (src_f);
   if (!ostree_repo_open (data->src_repo, cancellable, error))
     goto out;
+
+  if (opt_disable_fsync)
+    ostree_repo_set_disable_fsync (data->dest_repo, TRUE);
 
   data->threadpool = ot_thread_pool_new_nproc (import_one_object_thread, data);
 

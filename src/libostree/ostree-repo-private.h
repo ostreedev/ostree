@@ -57,6 +57,7 @@ struct OstreeRepo {
 
   gboolean inited;
   gboolean in_transaction;
+  gboolean disable_fsync;
   GHashTable *loose_object_devino_hash;
   GHashTable *updated_uncompressed_dirs;
   GHashTable *object_sizes;
