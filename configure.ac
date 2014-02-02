@@ -140,7 +140,7 @@ if test x$with_libarchive != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libarc
 AM_CONDITIONAL(USE_LIBARCHIVE, test $with_libarchive != no)
 
 dnl This is what is in RHEL7 anyways
-SELINUX_DEPENDENCY="libselinux >= 2.2.1"
+SELINUX_DEPENDENCY="libselinux >= 2.1.13"
 
 AC_ARG_WITH(selinux,
 	    AS_HELP_STRING([--without-selinux], [Do not use SELinux]),
