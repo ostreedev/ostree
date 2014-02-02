@@ -27,7 +27,8 @@
 #include "libgsystem.h"
 
 static gboolean
-get_file_checksum (GFile  *f,
+get_file_checksum (OstreeDiffFlags  flags,
+                   GFile *f,
                    GFileInfo *f_info,
                    char  **out_checksum,
                    GCancellable *cancellable,
@@ -43,8 +44,25 @@ get_file_checksum (GFile  *f,
     }
   else
     {
-      if (!ostree_checksum_file (f, OSTREE_OBJECT_TYPE_FILE,
-                                 &csum, cancellable, error))
+      gs_unref_variant GVariant *xattrs = NULL;
+      gs_unref_object GInputStream *in = NULL;
+
+      if (!(flags & OSTREE_DIFF_FLAGS_IGNORE_XATTRS))
+        {
+          if (!gs_file_get_all_xattrs (f, &xattrs, cancellable, error))
+            goto out;
+        }
+
+      if (g_file_info_get_file_type (f_info) == G_FILE_TYPE_REGULAR)
+        {
+          in = (GInputStream*)g_file_read (f, cancellable, error);
+          if (!in)
+            goto out;
+        }
+
+      if (!ostree_checksum_file_from_input (f_info, xattrs, in,
+                                            OSTREE_OBJECT_TYPE_FILE,
+                                            &csum, cancellable, error))
         goto out;
       ret_checksum = ostree_checksum_from_bytes (csum);
     }
@@ -101,7 +119,8 @@ diff_item_new (GFile          *a,
 }
 
 static gboolean
-diff_files (GFile           *a,
+diff_files (OstreeDiffFlags  flags,
+            GFile           *a,
             GFileInfo       *a_info,
             GFile           *b,
             GFileInfo       *b_info,
@@ -114,9 +133,9 @@ diff_files (GFile           *a,
   gs_free char *checksum_b = NULL;
   OstreeDiffItem *ret_item = NULL;
 
-  if (!get_file_checksum (a, a_info, &checksum_a, cancellable, error))
+  if (!get_file_checksum (flags, a, a_info, &checksum_a, cancellable, error))
     goto out;
-  if (!get_file_checksum (b, b_info, &checksum_b, cancellable, error))
+  if (!get_file_checksum (flags, b, b_info, &checksum_b, cancellable, error))
     goto out;
 
   if (strcmp (checksum_a, checksum_b) != 0)
@@ -184,6 +203,7 @@ diff_add_dir_recurse (GFile          *d,
 
 /**
  * ostree_diff_dirs:
+ * @flags: Flags
  * @a: First directory path
  * @b: First directory path
  * @modified: (element-type OstreeDiffItem): Modified files
@@ -194,7 +214,8 @@ diff_add_dir_recurse (GFile          *d,
  * sets of #OstreeDiffItem in @modified, @removed, and @added.
  */
 gboolean
-ostree_diff_dirs (GFile          *a,
+ostree_diff_dirs (OstreeDiffFlags flags,
+                  GFile          *a,
                   GFile          *b,
                   GPtrArray      *modified,
                   GPtrArray      *removed,
@@ -295,7 +316,7 @@ ostree_diff_dirs (GFile          *a,
             {
               OstreeDiffItem *diff_item = NULL;
 
-              if (!diff_files (child_a, child_a_info, child_b, child_b_info, &diff_item,
+              if (!diff_files (flags, child_a, child_a_info, child_b, child_b_info, &diff_item,
                                cancellable, error))
                 goto out;
               
@@ -304,7 +325,7 @@ ostree_diff_dirs (GFile          *a,
 
               if (child_a_type == G_FILE_TYPE_DIRECTORY)
                 {
-                  if (!ostree_diff_dirs (child_a, child_b, modified,
+                  if (!ostree_diff_dirs (flags, child_a, child_b, modified,
                                          removed, added, cancellable, error))
                     goto out;
                 }

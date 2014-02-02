@@ -126,7 +126,16 @@ merge_etc_changes (GFile          *orig_etc,
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
 
-  if (!ostree_diff_dirs (orig_etc, modified_etc, modified, removed, added,
+  /* For now, ignore changes to xattrs; the problem is that
+   * security.selinux will be different between the /usr/etc labels
+   * and the ones in the real /etc, so they all show up as different.
+   *
+   * This means that if you want to change the security context of a
+   * file, to have that change persist across upgrades, you must also
+   * modify the content of the file.
+   */
+  if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
+                         orig_etc, modified_etc, modified, removed, added,
                          cancellable, error))
     {
       g_prefix_error (error, "While computing configuration diff: ");
@@ -234,7 +243,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
 
 #ifdef HAVE_SELINUX
 static gboolean
-get_selinux_policy_root (OstreeSysroot  *sysroot,
+get_selinux_policy_root (GFile          *deployment_etc,
                          GFile         **out_policy_root,
                          GCancellable   *cancellable,
                          GError        **error)
@@ -250,7 +259,7 @@ get_selinux_policy_root (OstreeSysroot  *sysroot,
   const char *selinux_prefix = "SELINUX=";
   const char *selinuxtype_prefix = "SELINUXTYPE=";
 
-  etc_selinux_dir = g_file_resolve_relative_path (sysroot->path, "etc/selinux");
+  etc_selinux_dir = g_file_get_child (deployment_etc, "selinux");
   policy_config_path = g_file_get_child (etc_selinux_dir, "config");
 
   if (g_file_query_exists (policy_config_path, NULL))
@@ -435,25 +444,30 @@ relabel_recursively (GFile          *dir,
 
 #endif
 
+typedef struct {
+  gboolean have_policy;
+#ifdef HAVE_SELINUX
+  struct selabel_handle *hnd;
+#endif
+} OstreeLabelingContext;
+
 static gboolean
-relabel_etc (OstreeSysroot          *sysroot,
-             GFile                  *deployment_etc_path,
-             GCancellable           *cancellable,
-             GError                **error)
+init_labeling_context (GFile                         *deployment_etc,
+                       OstreeLabelingContext         *secontext,
+                       GCancellable                  *cancellable,
+                       GError                       **error)
 {
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
   gs_unref_object GFile *policy_root = NULL;
 
-  if (!get_selinux_policy_root (sysroot, &policy_root,
+  if (!get_selinux_policy_root (deployment_etc, &policy_root,
                                 cancellable, error))
     goto out;
 
   if (policy_root)
     {
-      struct selabel_handle *hnd;
-      gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
-      gs_unref_object GFileInfo *root_info = NULL;
+      secontext->have_policy = TRUE;
 
       g_print ("ostadmin: Using SELinux policy '%s'\n", gs_file_get_basename_cached (policy_root));
 
@@ -465,31 +479,158 @@ relabel_etc (OstreeSysroot          *sysroot,
                        strerror (errno));
           goto out;
         }
-      hnd = selabel_open (SELABEL_CTX_FILE, NULL, 0);
-      if (!hnd)
+      secontext->hnd = selabel_open (SELABEL_CTX_FILE, NULL, 0);
+      if (!secontext->hnd)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "selabel_open(SELABEL_CTX_FILE): %s",
                        strerror (errno));
           goto out;
         }
+    }
+  else
+    secontext->have_policy = FALSE;
 
-      root_info = g_file_query_info (deployment_etc_path, OSTREE_GIO_FAST_QUERYINFO,
+  ret = TRUE;
+ out:
+  return ret;
+#else
+  secontext->have_policy = FALSE;
+  return TRUE;
+#endif
+}
+
+static void
+ostree_labeling_context_cleanup (OstreeLabelingContext *secontext)
+{
+  if (secontext->hnd)
+    selabel_close (secontext->hnd);
+}
+
+static gboolean
+selinux_relabel_dir (OstreeSysroot                 *sysroot,
+                     OstreeLabelingContext  *secontext,
+                     GFile                         *dir,
+                     const char                    *prefix,
+                     GCancellable                  *cancellable,
+                     GError                       **error)
+{
+#ifdef HAVE_SELINUX
+  gboolean ret = FALSE;
+  gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+  gs_unref_object GFileInfo *root_info = NULL;
+
+  if (secontext->have_policy)
+    {
+      root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                      cancellable, error);
       if (!root_info)
         goto out;
 
-      g_ptr_array_add (path_parts, "etc");
-      if (!relabel_recursively (deployment_etc_path, root_info, path_parts, hnd,
+      g_ptr_array_add (path_parts, (char*)prefix);
+      if (!relabel_recursively (dir, root_info, path_parts, secontext->hnd,
                                 cancellable, error))
         {
-          g_prefix_error (error, "Relabeling /etc: ");
+          g_prefix_error (error, "Relabeling /%s: ", prefix);
           goto out;
         }
     }
-  else
-    g_print ("ostadmin: No SELinux policy found\n");
+
+  ret = TRUE;
+ out:
+  return ret;
+#else
+  return TRUE;
+#endif
+}
+
+static gboolean
+selinux_relabel_file (OstreeLabelingContext         *secontext,
+                      GFile                         *path,
+                      const char                    *prefix,
+                      GCancellable                  *cancellable,
+                      GError                       **error)
+{
+#ifdef HAVE_SELINUX
+  gboolean ret = FALSE;
+
+  if (secontext->have_policy)
+    {
+      gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+      gs_unref_object GFileInfo *file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
+                                                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                                cancellable, error);
+      if (!file_info)
+        goto out;
+
+      g_ptr_array_add (path_parts, (char*)prefix);
+      g_ptr_array_add (path_parts, (char*)gs_file_get_basename_cached (path));
+      if (!relabel_one_path (path, file_info, path_parts, secontext->hnd,
+                             cancellable, error))
+        {
+          g_prefix_error (error, "Relabeling /%s/%s: ", prefix,
+                          gs_file_get_basename_cached (path));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+#else
+  return TRUE;
+#endif
+}
+
+static gboolean
+selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
+                               OstreeLabelingContext  *secontext,
+                               GFile                         *deployment_var_path,
+                               GCancellable                  *cancellable,
+                               GError                       **error)
+{
+#ifdef HAVE_SELINUX
+  gboolean ret = FALSE;
+
+  if (secontext->have_policy)
+    {
+      /* This is a bit of a hack; we should change the code at some
+       * point in the distant future to only create (and label) /var
+       * when doing a deployment.
+       */
+      gs_unref_object GFile *deployment_var_labeled = 
+        g_file_get_child (deployment_var_path, ".ostree-selabeled");
+      gs_unref_object GFile *deployment_var_labeled_tmp = 
+        g_file_get_child (deployment_var_path, ".ostree-selabeled.tmp");
+      
+      if (!g_file_query_exists (deployment_var_labeled, NULL))
+        {
+          g_print ("ostadmin: Didn't find '%s', relabeling /var\n",
+                   gs_file_get_path_cached (deployment_var_labeled));
+
+          if (!selinux_relabel_dir (sysroot, secontext,
+                                    deployment_var_path, "var",
+                                    cancellable, error))
+            {
+              g_prefix_error (error, "Relabeling /var: ");
+              goto out;
+            }
+
+          if (!g_file_replace_contents (deployment_var_labeled_tmp, "", 0, NULL, FALSE,
+                                        G_FILE_CREATE_REPLACE_DESTINATION, NULL,
+                                        cancellable, error))
+            goto out;
+          
+          if (!selinux_relabel_file (secontext, deployment_var_labeled_tmp, "var",
+                                     cancellable, error))
+            goto out;
+
+          if (!gs_file_rename (deployment_var_labeled_tmp, deployment_var_labeled,
+                               cancellable, error))
+            goto out;
+        }
+    }
 
   ret = TRUE;
  out:
@@ -503,9 +644,9 @@ static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
                      OstreeDeployment      *previous_deployment,
                      OstreeDeployment      *deployment,
-                     GFile             *deployment_path,
-                     GCancellable      *cancellable,
-                     GError           **error)
+                     GFile                 *deployment_path,
+                     GCancellable          *cancellable,
+                     GError               **error)
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *source_etc_path = NULL;
@@ -560,11 +701,20 @@ merge_configuration (OstreeSysroot         *sysroot,
   
   if (usretc_exists)
     {
+      __attribute__((cleanup(ostree_labeling_context_cleanup))) OstreeLabelingContext new_default_secontext = { 0, };
+
+      /* TODO - set out labels as we copy files */
       g_assert (!etc_exists);
       if (!gs_shutil_cp_a (deployment_usretc_path, deployment_etc_path,
                            cancellable, error))
         goto out;
-      if (!relabel_etc (sysroot, deployment_etc_path, cancellable, error))
+
+      if (!init_labeling_context (deployment_etc_path, &new_default_secontext,
+                                  cancellable, error))
+        goto out;
+
+      if (!selinux_relabel_dir (sysroot, &new_default_secontext, deployment_etc_path, "etc",
+                                cancellable, error))
         goto out;
       g_print ("ostadmin: Created %s\n", gs_file_get_path_cached (deployment_etc_path));
     }
@@ -1352,10 +1502,13 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 {
   gboolean ret = FALSE;
   gint new_deployserial;
+  __attribute__((cleanup(ostree_labeling_context_cleanup))) OstreeLabelingContext secontext = { 0, };
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *osdeploydir = NULL;
+  gs_unref_object GFile *deployment_var = NULL;
+  gs_unref_object GFile *deployment_etc = NULL;
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
@@ -1375,6 +1528,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                    "No OS named \"%s\" known", osname);
       goto out;
     }
+
+  deployment_var = g_file_get_child (osdeploydir, "var");
 
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
     goto out;
@@ -1435,6 +1590,15 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       g_prefix_error (error, "During /etc merge: ");
       goto out;
     }
+
+  deployment_etc = g_file_get_child (new_deployment_path, "etc");
+
+  if (!init_labeling_context (deployment_etc, &secontext, cancellable, error))
+    goto out;
+  
+  if (!selinux_relabel_var_if_needed (self, &secontext, deployment_var,
+                                      cancellable, error))
+    goto out;
 
   /* After this, install_deployment_kernel() will set the other boot
    * options and write it out to disk.

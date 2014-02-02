@@ -27,6 +27,11 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+  OSTREE_DIFF_FLAGS_NONE = 0,
+  OSTREE_DIFF_FLAGS_IGNORE_XATTRS = (1 << 0)
+} OstreeDiffFlags;
+
 typedef struct _OstreeDiffItem OstreeDiffItem;
 struct _OstreeDiffItem
 {
@@ -47,7 +52,8 @@ void ostree_diff_item_unref (OstreeDiffItem *diffitem);
 
 GType ostree_diff_item_get_type (void);
 
-gboolean ostree_diff_dirs (GFile          *a,
+gboolean ostree_diff_dirs (OstreeDiffFlags flags,
+                           GFile          *a,
                            GFile          *b,
                            GPtrArray      *modified,
                            GPtrArray      *removed,

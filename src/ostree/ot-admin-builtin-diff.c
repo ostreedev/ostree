@@ -83,7 +83,8 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  if (!ostree_diff_dirs (orig_etc_path, new_etc_path, modified, removed, added,
+  if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_IGNORE_XATTRS,
+                         orig_etc_path, new_etc_path, modified, removed, added,
                          cancellable, error))
     goto out;
 
