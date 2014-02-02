@@ -503,8 +503,10 @@ init_labeling_context (GFile                         *deployment_etc,
 static void
 ostree_labeling_context_cleanup (OstreeLabelingContext *secontext)
 {
+#ifdef HAVE_SELINUX
   if (secontext->hnd)
     selabel_close (secontext->hnd);
+#endif
 }
 
 static gboolean
@@ -545,6 +547,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
 #endif
 }
 
+#ifdef HAVE_SELINUX
 static gboolean
 selinux_relabel_file (OstreeLabelingContext         *secontext,
                       GFile                         *path,
@@ -552,7 +555,6 @@ selinux_relabel_file (OstreeLabelingContext         *secontext,
                       GCancellable                  *cancellable,
                       GError                       **error)
 {
-#ifdef HAVE_SELINUX
   gboolean ret = FALSE;
 
   if (secontext->have_policy)
@@ -578,10 +580,8 @@ selinux_relabel_file (OstreeLabelingContext         *secontext,
   ret = TRUE;
  out:
   return ret;
-#else
-  return TRUE;
-#endif
 }
+#endif
 
 static gboolean
 selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
