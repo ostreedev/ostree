@@ -63,8 +63,11 @@ typedef struct {
   guint             n_outstanding_metadata_write_requests;
   guint             n_outstanding_content_fetches;
   guint             n_outstanding_content_write_requests;
+  guint             n_outstanding_deltapart_fetches;
+  guint             n_outstanding_deltapart_write_requests;
   gint              n_requested_metadata;
   gint              n_requested_content;
+  guint             n_fetched_deltaparts;
   guint             n_fetched_metadata;
   guint             n_fetched_content;
 
@@ -87,6 +90,12 @@ typedef struct {
   GVariant    *object;
   gboolean     is_detached_meta;
 } FetchObjectData;
+
+typedef struct {
+  OtPullData  *pull_data;
+  GVariant *objects;
+  char *expected_checksum;
+} FetchStaticDeltaData;
 
 static SoupURI *
 suburi_new (SoupURI   *base,
@@ -158,9 +167,11 @@ update_progress (gpointer user_data)
     return FALSE;
 
   outstanding_writes = pull_data->n_outstanding_content_write_requests +
-    pull_data->n_outstanding_metadata_write_requests;
+    pull_data->n_outstanding_metadata_write_requests +
+    pull_data->n_outstanding_deltapart_write_requests;
   outstanding_fetches = pull_data->n_outstanding_content_fetches +
-    pull_data->n_outstanding_metadata_fetches;
+    pull_data->n_outstanding_metadata_fetches +
+    pull_data->n_outstanding_deltapart_fetches;
   bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
   fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
   requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
@@ -211,9 +222,11 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                          GError              *error)
 {
   gboolean current_fetch_idle = (pull_data->n_outstanding_metadata_fetches == 0 &&
-                                 pull_data->n_outstanding_content_fetches == 0);
+                                 pull_data->n_outstanding_content_fetches == 0 &&
+                                 pull_data->n_outstanding_deltapart_fetches == 0);
   gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0 &&
-                                 pull_data->n_outstanding_content_write_requests == 0);
+                                 pull_data->n_outstanding_content_write_requests == 0 &&
+                                 pull_data->n_outstanding_deltapart_write_requests == 0 );
   gboolean current_idle = current_fetch_idle && current_write_idle;
 
   throw_async_error (pull_data, error);
@@ -729,12 +742,110 @@ meta_fetch_on_complete (GObject           *object,
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
-  throw_async_error (pull_data, local_error);
+  check_outstanding_requests_handle_error (pull_data, local_error);
   if (local_error)
     {
       g_variant_unref (fetch_data->object);
       g_free (fetch_data);
     }
+}
+
+static void
+fetch_static_delta_data_free (gpointer  data)
+{
+  FetchStaticDeltaData *fetch_data = data;
+  g_free (fetch_data->expected_checksum);
+  g_variant_unref (fetch_data->objects);
+  g_free (fetch_data);
+}
+
+static void
+on_static_delta_written (GObject           *object,
+                         GAsyncResult      *result,
+                         gpointer           user_data)
+{
+  FetchStaticDeltaData *fetch_data = user_data;
+  OtPullData *pull_data = fetch_data->pull_data;
+  GError *local_error = NULL;
+  GError **error = &local_error;
+
+  g_debug ("execute static delta part %s complete", fetch_data->expected_checksum);
+
+  if (!_ostree_static_delta_part_execute_finish (pull_data->repo, result, error))
+    goto out;
+
+ out:
+  g_assert (pull_data->n_outstanding_deltapart_write_requests > 0);
+  pull_data->n_outstanding_deltapart_write_requests--;
+  check_outstanding_requests_handle_error (pull_data, local_error);
+  /* Always free state */
+  fetch_static_delta_data_free (fetch_data);
+}
+
+static void
+static_deltapart_fetch_on_complete (GObject           *object,
+                                    GAsyncResult      *result,
+                                    gpointer           user_data)
+{
+  FetchStaticDeltaData *fetch_data = user_data;
+  OtPullData *pull_data = fetch_data->pull_data;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_object GFile *temp_path = NULL;
+  gs_unref_object GInputStream *in = NULL;
+  gs_free char *actual_checksum = NULL;
+  gs_free guint8 *csum = NULL;
+  GError *local_error = NULL;
+  GError **error = &local_error;
+
+  g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
+
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  if (!temp_path)
+    goto out;
+
+  in = (GInputStream*)g_file_read (temp_path, pull_data->cancellable, error);
+  if (!in)
+    goto out;
+  
+  /* TODO - consider making async */
+  if (!ot_gio_checksum_stream (in, &csum, pull_data->cancellable, error))
+    goto out;
+
+  actual_checksum = ostree_checksum_from_bytes (csum);
+
+  if (strcmp (actual_checksum, fetch_data->expected_checksum) != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted static delta part; checksum expected='%s' actual='%s'",
+                   fetch_data->expected_checksum, actual_checksum);
+      goto out;
+    }
+
+  /* Might as well close the fd here */
+  (void) g_input_stream_close (in, NULL, NULL);
+
+  {
+    gs_unref_bytes GBytes *delta_data
+      = gs_file_map_readonly (temp_path, pull_data->cancellable, error);
+    if (!delta_data)
+      goto out;
+
+    _ostree_static_delta_part_execute_async (pull_data->repo,
+                                             fetch_data->objects,
+                                             delta_data,
+                                             pull_data->cancellable,
+                                             on_static_delta_written,
+                                             fetch_data);
+    pull_data->n_outstanding_deltapart_write_requests++;
+  }
+
+ out:
+  g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
+  pull_data->n_outstanding_deltapart_fetches--;
+  pull_data->n_fetched_deltaparts++;
+  check_outstanding_requests_handle_error (pull_data, local_error);
+  if (local_error)
+    fetch_static_delta_data_free (fetch_data);
 }
 
 static gboolean
@@ -1076,58 +1187,280 @@ load_remote_repo_config (OtPullData    *pull_data,
   return ret;
 }
 
-#if 0
 static gboolean
-request_static_delta_meta_sync (OtPullData  *pull_data,
-                                const char  *ref,
-                                const char  *checksum,
-                                GVariant   **out_delta_meta,
-                                GCancellable *cancellable,
-                                GError     **error)
+fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
+                                           const char      *from_revision,
+                                           const char      *checksum,
+                                           GBytes          *superblock_data,
+                                           GCancellable    *cancellable,
+                                           GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *from_revision = NULL;
+  gs_free char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
+  gs_unref_bytes GBytes *detached_meta_data = NULL;
   SoupURI *target_uri = NULL;
-  gs_unref_variant GVariant *ret_delta_meta = NULL;
+  gs_unref_object GFile *temp_input_path = NULL;
+  gs_unref_object GOutputStream *temp_input_stream = NULL;
+  gs_unref_object GInputStream *superblock_in = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
 
-  if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE, &from_revision, error))
+  target_uri = suburi_new (pull_data->base_uri, meta_path, NULL);
+
+  if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, FALSE,
+                                       &detached_meta_data,
+                                       pull_data->cancellable, error))
+    {
+      g_prefix_error (error, "GPG verification enabled, but failed to fetch metadata: ");
+      goto out;
+    }
+
+  superblock_in = g_memory_input_stream_new_from_bytes (superblock_data);
+
+  if (!gs_file_open_in_tmpdir (pull_data->repo->tmp_dir, 0644,
+                               &temp_input_path, &temp_input_stream,
+                               cancellable, error))
     goto out;
 
-  if (from_revision == NULL)
-    {
-      initiate_commit_scan (pull_data, checksum);
-    }
-  else
-    {
-      gs_free char *delta_name = _ostree_get_relative_static_delta_path (from_revision, checksum);
-      gs_unref_bytes GBytes *delta_meta_data = NULL;
-      gs_unref_variant GVariant *delta_meta = NULL;
+  if (0 > g_output_stream_splice (temp_input_stream, superblock_in,
+                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                  cancellable, error))
+    goto out;
 
-      target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+  metadata = ot_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
+                                        detached_meta_data,
+                                        FALSE);
 
-      if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
-                                           &delta_meta_data,
-                                           pull_data->cancellable, error))
-        goto out;
+  if (!_ostree_repo_gpg_verify_file_with_metadata (pull_data->repo, temp_input_path,
+                                                   metadata, NULL, NULL,
+                                                   cancellable, error))
+    goto out;
 
-      if (delta_meta_data)
-        {
-          ret_delta_meta = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_META_FORMAT,
-                                                      delta_meta_data, FALSE);
-        }
-    }
-  
   ret = TRUE;
-  gs_transfer_out_value (out_delta_meta, &ret_delta_meta);
  out:
   return ret;
 }
-#endif
 
-static void
-process_one_static_delta_meta (OtPullData   *pull_data,
-                               GVariant     *delta_meta)
+static gboolean
+request_static_delta_superblock_sync (OtPullData  *pull_data,
+                                      const char  *from_revision,
+                                      const char  *to_revision,
+                                      GVariant   **out_delta_superblock,
+                                      GCancellable *cancellable,
+                                      GError     **error)
 {
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *ret_delta_superblock = NULL;
+  gs_free char *delta_name = _ostree_get_relative_static_delta_path (from_revision, to_revision);
+  gs_unref_bytes GBytes *delta_superblock_data = NULL;
+  gs_unref_bytes GBytes *delta_meta_data = NULL;
+  gs_unref_variant GVariant *delta_superblock = NULL;
+  SoupURI *target_uri = NULL;
+  
+  target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+  
+  if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
+                                       &delta_superblock_data,
+                                       pull_data->cancellable, error))
+    goto out;
+  
+  if (delta_superblock_data)
+    {
+      if (pull_data->gpg_verify)
+        {
+          if (!fetch_metadata_to_verify_delta_superblock (pull_data,
+                                                          from_revision,
+                                                          to_revision,
+                                                          delta_superblock_data,
+                                                          pull_data->cancellable, error))
+            goto out;
+        }
+
+      ret_delta_superblock = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                                        delta_superblock_data, FALSE);
+    }
+  
+  ret = TRUE;
+  gs_transfer_out_value (out_delta_superblock, &ret_delta_superblock);
+ out:
+  return ret;
+}
+
+static gboolean
+process_one_static_delta_fallback (OtPullData   *pull_data,
+                                   GVariant     *fallback_object,
+                                   GCancellable *cancellable,
+                                   GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *csum_v = NULL;
+  gs_free char *checksum = NULL;
+  guint8 objtype_y;
+  OstreeObjectType objtype;
+  gboolean is_stored;
+  guint64 compressed_size, uncompressed_size;
+
+  g_variant_get (fallback_object, "(y@aytt)",
+                 &objtype_y, &csum_v, &compressed_size, &uncompressed_size);
+  if (!ostree_validate_structureof_objtype (objtype_y, error))
+    goto out;
+  if (!ostree_validate_structureof_csum_v (csum_v, error))
+    goto out;
+
+  objtype = (OstreeObjectType)objtype_y;
+  checksum = ostree_checksum_from_bytes_v (csum_v);
+
+  if (!ostree_repo_has_object (pull_data->repo, objtype, checksum,
+                               &is_stored,
+                               cancellable, error))
+    goto out;
+
+  if (!is_stored)
+    { 
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        {
+          if (!g_hash_table_lookup (pull_data->requested_metadata, checksum))
+            {
+              gboolean do_fetch_detached;
+              g_hash_table_insert (pull_data->requested_metadata, checksum, checksum);
+              
+              do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
+              enqueue_one_object_request (pull_data, checksum, objtype, do_fetch_detached);
+              checksum = NULL;  /* Transfer ownership */
+            }
+        }
+      else
+        {
+          if (!g_hash_table_lookup (pull_data->requested_content, checksum))
+            {
+              g_hash_table_insert (pull_data->requested_content, checksum, checksum);
+              enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, FALSE);
+              checksum = NULL;  /* Transfer ownership */
+            }
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+process_one_static_delta (OtPullData   *pull_data,
+                          const char   *from_revision,
+                          const char   *to_revision,
+                          GVariant     *delta_superblock,
+                          GCancellable *cancellable,
+                          GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *headers = NULL;
+  gs_unref_variant GVariant *fallback_objects = NULL;
+  guint i, n;
+
+  /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
+  headers = g_variant_get_child_value (delta_superblock, 6);
+  fallback_objects = g_variant_get_child_value (delta_superblock, 7);
+
+  /* First process the fallbacks */
+  n = g_variant_n_children (fallback_objects);
+  for (i = 0; i < n; i++)
+    {
+      gs_unref_variant GVariant *fallback_object =
+        g_variant_get_child_value (fallback_objects, i);
+
+      if (!process_one_static_delta_fallback (pull_data,
+                                              fallback_object,
+                                              cancellable, error))
+        goto out;
+    }
+
+  /* Write the to-commit object */
+  {
+    gs_unref_variant GVariant *to_csum_v = NULL;
+    gs_free char *to_checksum = NULL;
+    gs_unref_variant GVariant *to_commit = NULL;
+    gboolean have_to_commit;
+
+    to_csum_v = g_variant_get_child_value (delta_superblock, 3);
+    if (!ostree_validate_structureof_csum_v (to_csum_v, error))
+      goto out;
+    to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
+
+    if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
+                                 &have_to_commit, cancellable, error))
+      goto out;
+    
+    if (!have_to_commit)
+      {
+        FetchObjectData *fetch_data = g_new0 (FetchObjectData, 1);
+        fetch_data->pull_data = pull_data;
+        fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
+        fetch_data->is_detached_meta = FALSE;
+
+        to_commit = g_variant_get_child_value (delta_superblock, 4);
+
+        ostree_repo_write_metadata_async (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
+                                          to_commit,
+                                          pull_data->cancellable,
+                                          on_metadata_writed, fetch_data);
+        pull_data->n_outstanding_metadata_write_requests++;
+      }
+  }
+
+  n = g_variant_n_children (headers);
+  for (i = 0; i < n; i++)
+    {
+      const guchar *csum;
+      gs_unref_variant GVariant *header = NULL;
+      gboolean have_all = FALSE;
+      SoupURI *target_uri = NULL;
+      gs_free char *deltapart_path = NULL;
+      FetchStaticDeltaData *fetch_data;
+      gs_unref_variant GVariant *csum_v = NULL;
+      gs_unref_variant GVariant *objects = NULL;
+      guint64 size, usize;
+
+      header = g_variant_get_child_value (headers, i);
+      g_variant_get (header, "(@aytt@ay)", &csum_v, &size, &usize, &objects);
+
+      csum = ostree_checksum_bytes_peek_validate (csum_v, error);
+      if (!csum)
+        goto out;
+
+      if (!_ostree_repo_static_delta_part_have_all_objects (pull_data->repo,
+                                                            objects,
+                                                            &have_all,
+                                                            cancellable, error))
+        goto out;
+
+      if (have_all)
+        {
+          g_debug ("Have all objects from static delta %s-%s part %u",
+                   from_revision, to_revision,
+                   i);
+          continue;
+        }
+
+      fetch_data = g_new0 (FetchStaticDeltaData, 1);
+      fetch_data->pull_data = pull_data;
+      fetch_data->objects = g_variant_ref (objects);
+      fetch_data->expected_checksum = ostree_checksum_from_bytes_v (csum_v);
+
+      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
+
+      target_uri = suburi_new (pull_data->base_uri, deltapart_path, NULL);
+      _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
+                                                      pull_data->cancellable,
+                                                      static_deltapart_fetch_on_complete,
+                                                      fetch_data);
+      pull_data->n_outstanding_deltapart_fetches++;
+      soup_uri_free (target_uri);
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /* documented in ostree-repo.c */
@@ -1185,6 +1518,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
   guint i;
+  gs_free char *remote_key = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
   gs_free char *metalink_url_str = NULL;
@@ -1560,15 +1894,37 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *checksum = value;
-      if (!scan_one_metadata_object (pull_data, checksum, OSTREE_OBJECT_TYPE_COMMIT,
-                                     0, pull_data->cancellable, error))
-        goto out;
-    }
+      gs_free char *from_revision = NULL;
+      const char *ref = key;
+      const char *to_revision = value;
+      GVariant *delta_superblock = NULL;
 
-  for (i = 0; i < pull_data->static_delta_metas->len; i++)
-    {
-      process_one_static_delta_meta (pull_data, pull_data->static_delta_metas->pdata[i]);
+      if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
+                                    &from_revision, error))
+        goto out;
+
+      if (from_revision && g_strcmp0 (from_revision, to_revision) != 0)
+        {
+          if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
+                                                     &delta_superblock, cancellable, error))
+            goto out;
+        }
+          
+      if (!delta_superblock)
+        {
+          g_debug ("no delta superblock for %s-%s", from_revision, to_revision);
+          if (!scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT,
+                                         0, pull_data->cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_debug ("processing delta superblock for %s-%s", from_revision, to_revision);
+          if (!process_one_static_delta (pull_data, from_revision, to_revision,
+                                         delta_superblock,
+                                         cancellable, error))
+            goto out;
+        }
     }
 
   idle_src = g_idle_source_new ();
@@ -1633,10 +1989,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else
         shift = 1024;
 
-      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds", 
+      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s; %u delta parts fetched, "
+                             "transferred in %u seconds",
                              pull_data->n_fetched_metadata, pull_data->n_fetched_content,
                              (guint64)(bytes_transferred / shift),
                              shift == 1 ? "B" : "KiB",
+                             pull_data->n_fetched_deltaparts,
                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
       ostree_async_progress_set_status (pull_data->progress, msg);
     }

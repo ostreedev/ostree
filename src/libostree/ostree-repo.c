@@ -2752,9 +2752,8 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
   gs_unref_variant_builder GVariantBuilder *builder = NULL;
-  gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
-  gs_unref_variant GVariant *signaturedata = NULL;
 
   if (!ostree_repo_read_commit_detached_metadata (self,
                                                   commit_checksum,
@@ -2767,27 +2766,11 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
       goto out;
     }
 
-  if (metadata)
-    {
-      builder = ot_util_variant_builder_from_variant (metadata, G_VARIANT_TYPE ("a{sv}"));
-      signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
-      if (signaturedata)
-        signature_builder = ot_util_variant_builder_from_variant (signaturedata, G_VARIANT_TYPE ("aay"));
-    }
-  if (!builder)
-    builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-  if (!signature_builder)
-    signature_builder = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
-
-  g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
-
-  g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
-  
-  metadata = g_variant_builder_end (builder);
+  new_metadata = _ostree_detached_metadata_append_gpg_sig (metadata, signature_bytes);
 
   if (!ostree_repo_write_commit_detached_metadata (self,
                                                    commit_checksum,
-                                                   metadata,
+                                                   new_metadata,
                                                    cancellable,
                                                    error))
     {
@@ -2801,34 +2784,21 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
   return ret;
 }
 
-/**
- * ostree_repo_sign_commit:
- * @self: Self
- * @commit_checksum: SHA256 of given commit to sign
- * @key_id: Use this GPG key id
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
- * Add a GPG signature to a commit.
- */
-gboolean
-ostree_repo_sign_commit (OstreeRepo     *self,
-                         const gchar    *commit_checksum,
-                         const gchar    *key_id,
-                         const gchar    *homedir,
-                         GCancellable   *cancellable,
-                         GError        **error)
+static gboolean
+sign_data (OstreeRepo     *self,
+           GBytes         *input_data,
+           const gchar    *key_id,
+           const gchar    *homedir,
+           GBytes        **out_signature,
+           GCancellable   *cancellable,
+           GError        **error)
 {
 #ifdef HAVE_GPGME
   gboolean ret = FALSE;
-  gs_unref_object GFile *commit_path = NULL;
-  gs_free gchar *commit_filename = NULL;
   gs_unref_object GFile *tmp_signature_file = NULL;
   gs_unref_object GOutputStream *tmp_signature_output = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_bytes GBytes *signature_bytes = NULL;
   gpgme_ctx_t context = NULL;
+  gs_unref_bytes GBytes *ret_signature = NULL;
   gpgme_engine_info_t info;
   gpgme_error_t err;
   gpgme_key_t key = NULL;
@@ -2836,10 +2806,6 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gpgme_data_t signature_buffer = NULL;
   int signature_fd = -1;
   GMappedFile *signature_file = NULL;
-  
-  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
-                                 commit_checksum, &commit_variant, error))
-    goto out;
   
   if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
                                &tmp_signature_file, &tmp_signature_output,
@@ -2895,13 +2861,16 @@ ostree_repo_sign_commit (OstreeRepo     *self,
       goto out;
     }
   
-  if ((err = gpgme_data_new_from_mem (&commit_buffer, g_variant_get_data (commit_variant),
-                                      g_variant_get_size (commit_variant), FALSE)) != GPG_ERR_NO_ERROR)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to create buffer from commit file");
-      goto out;
-    }
+  {
+    gsize len;
+    const char *buf = g_bytes_get_data (input_data, &len);
+    if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Failed to create buffer from commit file");
+        goto out;
+      }
+  }
   
   signature_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)tmp_signature_output);
   if (signature_fd < 0)
@@ -2932,13 +2901,10 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   signature_file = gs_file_map_noatime (tmp_signature_file, cancellable, error);
   if (!signature_file)
     goto out;
-  signature_bytes = g_mapped_file_get_bytes (signature_file);
+  ret_signature = g_mapped_file_get_bytes (signature_file);
   
-  if (!ostree_repo_append_gpg_signature (self, commit_checksum, signature_bytes,
-                                         cancellable, error))
-    goto out;
-
   ret = TRUE;
+  gs_transfer_out_value (out_signature, &ret_signature);
 out:
   if (commit_buffer)
     gpgme_data_release (commit_buffer);
@@ -2958,7 +2924,134 @@ out:
 #endif
 }
 
-static gboolean
+/**
+ * ostree_repo_sign_commit:
+ * @self: Self
+ * @commit_checksum: SHA256 of given commit to sign
+ * @key_id: Use this GPG key id
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a commit.
+ */
+gboolean
+ostree_repo_sign_commit (OstreeRepo     *self,
+                         const gchar    *commit_checksum,
+                         const gchar    *key_id,
+                         const gchar    *homedir,
+                         GCancellable   *cancellable,
+                         GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_bytes GBytes *commit_data = NULL;
+  gs_unref_bytes GBytes *signature_data = NULL;
+  gs_unref_variant GVariant *commit_variant = NULL;
+
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit_checksum, &commit_variant, error))
+    goto out;
+
+  /* This has the same lifecycle as the variant, so we can just
+   * use static.
+   */
+  signature_data = g_bytes_new_static (g_variant_get_data (commit_variant),
+                                       g_variant_get_size (commit_variant));
+
+  if (!sign_data (self, signature_data, key_id, homedir,
+                  &signature_data,
+                  cancellable, error))
+    goto out;
+
+  if (!ostree_repo_append_gpg_signature (self, commit_checksum, signature_data,
+                                         cancellable, error))
+    goto out;
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+/**
+ * ostree_repo_sign_delta:
+ * @self: Self
+ * @from_commit: SHA256 of starting commit to sign
+ * @to_commit: SHA256 of target commit to sign
+ * @key_id: Use this GPG key id
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a static delta.
+ */
+gboolean
+ostree_repo_sign_delta (OstreeRepo     *self,
+                        const gchar    *from_commit,
+                        const gchar    *to_commit,
+                        const gchar    *key_id,
+                        const gchar    *homedir,
+                        GCancellable   *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_bytes GBytes *delta_data = NULL;
+  gs_unref_bytes GBytes *signature_data = NULL;
+  gs_unref_variant GVariant *commit_variant = NULL;
+  gs_free char *delta_path = NULL;
+  gs_unref_object GFile *delta_file = NULL;
+  gs_unref_object char *detached_metadata_relpath = NULL;
+  gs_unref_object GFile *detached_metadata_path = NULL;
+  gs_unref_variant GVariant *existing_detached_metadata = NULL;
+  gs_unref_variant GVariant *normalized = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
+  GError *temp_error = NULL;
+
+  detached_metadata_relpath =
+    _ostree_get_relative_static_delta_detachedmeta_path (from_commit, to_commit);
+  detached_metadata_path = g_file_resolve_relative_path (self->repodir, detached_metadata_relpath);
+
+  delta_path = _ostree_get_relative_static_delta_path (from_commit, to_commit);
+  delta_file = g_file_resolve_relative_path (self->repodir, delta_path);
+  delta_data = gs_file_map_readonly (delta_file, cancellable, error);
+  if (!delta_data)
+    goto out;
+  
+  if (!ot_util_variant_map (detached_metadata_path, G_VARIANT_TYPE ("a{sv}"),
+                            TRUE, &existing_detached_metadata, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  if (!sign_data (self, delta_data, key_id, homedir,
+                  &signature_data,
+                  cancellable, error))
+    goto out;
+
+  new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_detached_metadata, signature_data);
+
+  normalized = g_variant_get_normal_form (new_metadata);
+
+  if (!g_file_replace_contents (detached_metadata_path,
+                                g_variant_get_data (normalized),
+                                g_variant_get_size (normalized),
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
 _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
                                             GFile               *path,
                                             GVariant            *metadata,

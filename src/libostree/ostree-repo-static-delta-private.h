@@ -32,6 +32,8 @@ G_BEGIN_DECLS
 /**
  * OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT:
  *
+ *   y  compression type (0: none, 'z': zlib)
+ *   ---
  *   ay data source
  *   ay operations
  */
@@ -51,17 +53,34 @@ G_BEGIN_DECLS
 
 #define OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "(ayttay)"
 
+
 /**
- * OSTREE_STATIC_DELTA_META_FORMAT:
+ * OSTREE_STATIC_DELTA_FALLBACK_FORMAT:
+ *
+ * y: objtype
+ * ay: checksum
+ * t: compressed size
+ * t: uncompressed size
+ *
+ * Object to fetch invididually; includes compressed/uncompressed size.
+ */
+#define OSTREE_STATIC_DELTA_FALLBACK_FORMAT "(yaytt)"
+
+/**
+ * OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT:
  *
  * A .delta object is a custom binary format.  It has the following high
  * level form:
  *
  * delta-descriptor:
  *   metadata: a{sv}
- *   timestamp: guint64
+ *   t: timestamp
+ *   from: ay checksum
+ *   to: ay checksum
+ *   commit: new commit object
  *   ARRAY[(csum from, csum to)]: ay
  *   ARRAY[delta-meta-entry]
+ *   array[fallback]
  *
  * The metadata would include things like a version number, as well as
  * extended verification data like a GPG signature.
@@ -70,22 +89,51 @@ G_BEGIN_DECLS
  * fetched and applied before this one.  This is a fairly generic
  * recursion mechanism that would potentially allow saving significant
  * storage space on the server.
+ *
+ * The heart of the static delta: the array of delta parts.
+ *
+ * Finally, we have the fallback array, which is the set of objects to
+ * fetch individually - the compiler determined it wasn't worth
+ * duplicating the space.
  */ 
-#define OSTREE_STATIC_DELTA_META_FORMAT "(a{sv}taya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT ")"
+#define OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT "(a{sv}tayay" OSTREE_COMMIT_GVARIANT_STRING "aya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")"
+
+gboolean _ostree_static_delta_part_validate (OstreeRepo     *repo,
+                                             GFile          *part_path,
+                                             guint           part_offset,
+                                             const char     *expected_checksum,
+                                             GCancellable   *cancellable,
+                                             GError        **error);
 
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                             GVariant        *header,
-                                            GVariant        *part,
+                                            GBytes          *partdata,
                                             GCancellable    *cancellable,
                                             GError         **error);
 
+gboolean _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
+                                                GVariant        *header,
+                                                GVariant        *part,
+                                                GCancellable    *cancellable,
+                                                GError         **error);
+
+void _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
+                                              GVariant        *header,
+                                              GBytes          *partdata,
+                                              GCancellable    *cancellable,
+                                              GAsyncReadyCallback  callback,
+                                              gpointer         user_data);
+
+gboolean _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
+                                                   GAsyncResult    *result,
+                                                   GError         **error); 
+
 typedef enum {
-  OSTREE_STATIC_DELTA_OP_FETCH = 1,
-  OSTREE_STATIC_DELTA_OP_WRITE = 2,
-  OSTREE_STATIC_DELTA_OP_GUNZIP = 3,
-  OSTREE_STATIC_DELTA_OP_CLOSE = 4,
-  OSTREE_STATIC_DELTA_OP_READOBJECT = 5,
-  OSTREE_STATIC_DELTA_OP_READPAYLOAD = 6
+  OSTREE_STATIC_DELTA_OP_WRITE = 1,
+  OSTREE_STATIC_DELTA_OP_GUNZIP = 2,
+  OSTREE_STATIC_DELTA_OP_CLOSE = 3,
+  OSTREE_STATIC_DELTA_OP_READOBJECT = 4,
+  OSTREE_STATIC_DELTA_OP_READPAYLOAD = 5
 } OstreeStaticDeltaOpCode;
 
 gboolean
@@ -93,5 +141,12 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
                                            guint8       **out_checksums_array,
                                            guint         *out_n_checksums,
                                            GError       **error);
+
+gboolean
+_ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
+                                                 GVariant               *checksum_array,
+                                                 gboolean               *out_have_all,
+                                                 GCancellable           *cancellable,
+                                                 GError                **error);
 G_END_DECLS
 

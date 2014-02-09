@@ -57,18 +57,20 @@ function permuteDirectory() {
 
 permuteDirectory 1 files
 ostree --repo=repo commit -b test -s test --tree=dir=files
-ostree static-delta --repo=repo
+ostree static-delta --repo=repo list
 
 origrev=$(ostree --repo=repo rev-parse test^)
 newrev=$(ostree --repo=repo rev-parse test)
-ostree static-delta --repo=repo --from=${origrev} --to=${newrev}
+ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev}
 
-assert_has_dir repo/deltas/${origrev}-${newrev}
+origstart=$(echo ${origrev} | dd bs=1 count=2 2>/dev/null)
+origend=$(echo ${origrev} | dd bs=1 skip=2 2>/dev/null)
+assert_has_dir repo/deltas/${origstart}/${origend}-${newrev}
 
 mkdir repo2
 ostree --repo=repo2 init --mode=archive-z2
 ostree --repo=repo2 pull-local repo ${origrev}
 
-ostree --repo=repo2 static-delta --apply=repo/deltas/${origrev}-${newrev}
+ostree --repo=repo2 static-delta apply-offline repo/deltas/${origstart}/${origend}-${newrev}
 ostree --repo=repo2 fsck
 ostree --repo=repo2 show ${newrev}
