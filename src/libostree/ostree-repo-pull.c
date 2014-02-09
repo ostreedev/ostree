@@ -1261,7 +1261,6 @@ ostree_repo_pull (OstreeRepo               *self,
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
-  gs_unref_hashtable GHashTable *updated_refs = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
   gs_free char *remote_mode_str = NULL;
   GSource *queue_src = NULL;
@@ -1344,7 +1343,6 @@ ostree_repo_pull (OstreeRepo               *self,
   pull_data->static_delta_metas = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  updated_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   if (refs_to_fetch != NULL)
@@ -1416,11 +1414,8 @@ ostree_repo_pull (OstreeRepo               *self,
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      const char *ref = key;
       const char *checksum = value;
-
       initiate_commit_scan (pull_data, checksum);
-      g_hash_table_insert (updated_refs, g_strdup (ref), g_strdup (checksum));
     }
 
   for (i = 0; i < pull_data->static_delta_metas->len; i++)
@@ -1444,7 +1439,7 @@ ostree_repo_pull (OstreeRepo               *self,
   g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_content_write_requests, ==, 0);
 
-  g_hash_table_iter_init (&hash_iter, updated_refs);
+  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *ref = key;
