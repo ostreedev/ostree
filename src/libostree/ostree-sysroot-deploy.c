@@ -32,6 +32,8 @@
 #include "otutil.h"
 #include "libgsystem.h"
 
+#define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
+
 /**
  * copy_modified_config_file:
  *
@@ -1410,7 +1412,10 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         }
     }
 
-  g_print ("Transaction complete, performing cleanup\n");
+  gs_log_structured_print_id_v (OSTREE_DEPLOYMENT_COMPLETE_ID,
+                                "Transaction complete; bootconfig swap: %s deployment count change: %i)",
+                                requires_new_bootversion ? "yes" : "no",
+                                new_deployments->len - self->deployments->len);
 
   /* Now reload from disk */
   if (!ostree_sysroot_load (self, cancellable, error))
