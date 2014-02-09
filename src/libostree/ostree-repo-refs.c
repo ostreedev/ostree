@@ -570,50 +570,6 @@ ostree_repo_list_refs (OstreeRepo       *self,
   return ret;
 }
 
-static gboolean
-write_ref_summary (OstreeRepo      *self,
-                   GCancellable    *cancellable,
-                   GError         **error)
-{
-  gboolean ret = FALSE;
-  GHashTableIter hash_iter;
-  gpointer key, value;
-  gsize bytes_written;
-  gs_unref_hashtable GHashTable *all_refs = NULL;
-  gs_unref_object GFile *summary_path = NULL;
-  gs_unref_object GOutputStream *out = NULL;
-  gs_free char *buf = NULL;
-
-  if (!ostree_repo_list_refs (self, NULL, &all_refs, cancellable, error))
-    goto out;
-
-  summary_path = g_file_resolve_relative_path (ostree_repo_get_path (self),
-                                               "refs/summary");
-
-  out = (GOutputStream*) g_file_replace (summary_path, NULL, FALSE, 0, cancellable, error);
-  if (!out)
-    goto out;
-  
-  g_hash_table_iter_init (&hash_iter, all_refs);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *name = key;
-      const char *sha256 = value;
-
-      g_free (buf);
-      buf = g_strdup_printf ("%s %s\n", sha256, name);
-      if (!g_output_stream_write_all (out, buf, strlen (buf), &bytes_written, cancellable, error))
-        goto out;
-    }
-
-  if (!g_output_stream_close (out, cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 static gboolean      
 write_refspec (OstreeRepo    *self,
                const char    *refspec,
@@ -680,12 +636,6 @@ _ostree_repo_update_refs (OstreeRepo        *self,
       const char *rev = value;
 
       if (!write_refspec (self, refspec, rev, cancellable, error))
-        goto out;
-    }
-
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
-    {
-      if (!write_ref_summary (self, cancellable, error))
         goto out;
     }
 

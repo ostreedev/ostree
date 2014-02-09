@@ -1110,60 +1110,6 @@ on_metadata_objects_to_fetch_ready (gint         fd,
 }
 
 static gboolean
-parse_ref_summary (const char    *contents,
-                   GHashTable   **out_refs,
-                   GError       **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_refs = NULL;
-  char **lines = NULL;
-  char **iter = NULL;
-  char *ref = NULL;
-  char *sha256 = NULL;
-
-  ret_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-
-  lines = g_strsplit_set (contents, "\n", -1);
-  for (iter = lines; *iter; iter++)
-    {
-      const char *line = *iter;
-      const char *spc;
-
-      if (!*line)
-        continue;
-
-      spc = strchr (line, ' ');
-      if (!spc)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid ref summary file; missing ' ' in line");
-          goto out;
-        }
-
-      g_free (ref);
-      ref = g_strdup (spc + 1);
-      if (!ostree_validate_rev (ref, error))
-        goto out;
-      
-      g_free (sha256);
-      sha256 = g_strndup (line, spc - line);
-      if (!ostree_validate_checksum_string (sha256, error))
-        goto out;
-
-      g_hash_table_replace (ret_refs, ref, sha256);
-      /* Transfer ownership */
-      ref = NULL;
-      sha256 = NULL;
-    }
-
-  ret = TRUE;
-  ot_transfer_out_value (out_refs, &ret_refs);
- out:
-  g_strfreev (lines);
-  return ret;
-}
-
-static gboolean
 repo_get_string_key_inherit (OstreeRepo          *repo,
                              const char          *section,
                              const char          *key,
@@ -1314,7 +1260,6 @@ ostree_repo_pull (OstreeRepo               *self,
   gs_free char *remote_key = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
-  gs_free char *summary_data = NULL;
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *updated_refs = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
@@ -1322,7 +1267,6 @@ ostree_repo_pull (OstreeRepo               *self,
   GSource *queue_src = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
-  SoupURI *summary_uri = NULL;
   GKeyFile *config = NULL;
   GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
@@ -1428,72 +1372,27 @@ ostree_repo_pull (OstreeRepo               *self,
     }
   else
     {
-      GError *temp_error = NULL;
-      gboolean fetch_all_refs;
+      char **branches_iter;
 
-      configured_branches = g_key_file_get_string_list (config, remote_key, "branches", NULL, &temp_error);
-      if (configured_branches == NULL && temp_error != NULL)
+      configured_branches = g_key_file_get_string_list (config, remote_key, "branches", NULL, NULL);
+      branches_iter = configured_branches;
+
+      if (!(branches_iter && *branches_iter))
         {
-          if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
-            {
-              g_clear_error (&temp_error);
-              fetch_all_refs = TRUE;
-            }
-          else
-            {
-              g_propagate_error (error, temp_error);
-              goto out;
-            }
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "No configured branches for remote %s", pull_data->remote_name);
+          goto out;
         }
-      else
-        fetch_all_refs = FALSE;
-
-      if (fetch_all_refs)
+      for (;branches_iter && *branches_iter; branches_iter++)
         {
-          summary_uri = soup_uri_copy (pull_data->base_uri);
-          path = g_build_filename (soup_uri_get_path (summary_uri), "refs", "summary", NULL);
-          soup_uri_set_path (summary_uri, path);
-          
-          if (!fetch_uri_contents_utf8_sync (pull_data, summary_uri, &summary_data, cancellable, error))
-            goto out;
-          
-          if (!parse_ref_summary (summary_data, &requested_refs_to_fetch, error))
-            goto out;
-        }
-      else
-        {
-          char **branches_iter = configured_branches;
-
-          if (!(branches_iter && *branches_iter))
-            g_print ("No configured branches for remote %s\n", pull_data->remote_name);
-          for (;branches_iter && *branches_iter; branches_iter++)
-            {
-              const char *branch = *branches_iter;
-              char *contents;
-              GVariant *descriptor_data = NULL;
+          const char *branch = *branches_iter;
+          char *contents;
               
-              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
-                goto out;
+          if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
+            goto out;
 
-              initiate_commit_scan (pull_data, contents);
-#if 0
-              if (!request_static_delta_meta_sync (pull_data, branch, contents,
-                                                   &descriptor_data, cancellable, error))
-                goto out;
-#endif
-
-              if (!descriptor_data)
-                {
-                  /* Transfer ownership of contents */
-                  g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
-                }
-              else
-                {
-                  /* Transfer ownership of delta descriptor */
-                  g_ptr_array_add (pull_data->static_delta_metas, descriptor_data);
-                  g_free (contents);
-                }
-            }
+          /* Transfer ownership of contents */
+          g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
         }
     }
 
@@ -1616,7 +1515,5 @@ ostree_repo_pull (OstreeRepo               *self,
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
-  if (summary_uri)
-    soup_uri_free (summary_uri);
   return ret;
 }
