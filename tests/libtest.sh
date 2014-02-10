@@ -23,8 +23,8 @@ test_tmpdir=$(pwd)
 export G_DEBUG=fatal-warnings
 
 export TEST_GPG_KEYID="472CDAFA"
-export TEST_GPG_HOME=${SRCDIR}/gpghome
-export OSTREE_GPG_HOME=${TEST_GPG_HOME}
+export TEST_GPG_KEYHOME=${SRCDIR}/gpghome
+export OSTREE_GPG_HOME=${TEST_GPG_KEYHOME}/trusted
 
 if test -n "${OT_TESTS_DEBUG}"; then
     set -x

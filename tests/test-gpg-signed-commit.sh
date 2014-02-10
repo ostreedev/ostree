@@ -28,7 +28,7 @@ fi
 setup_test_repository "archive-z2"
 
 cd ${test_tmpdir}
-${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_HOME} --tree=dir=files
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
 $OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
 # We at least got some content here and ran through the code; later
 # tests will actually do verification
@@ -36,6 +36,6 @@ assert_file_has_content test2-gpgsigs 'byte '
 
 # Now sign a commit 3 times (with the same key)
 cd ${test_tmpdir}
-${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_HOME} --tree=dir=files
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
 $OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
 assert_file_has_content test2-gpgsigs 'byte '

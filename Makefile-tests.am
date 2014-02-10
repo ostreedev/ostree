@@ -60,8 +60,13 @@ insttest_DATA = tests/archive-test.sh \
 
 gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome
 gpginsttest_DATA = tests/gpghome/secring.gpg \
-	tests/gpghome/pubring.gpg \
 	tests/gpghome/trustdb.gpg
+gpginsttest_trusteddir = $(pkglibexecdir)/installed-tests/gpghome/trusted
+gpginsttest_trusted_DATA = tests/gpghome/trusted/pubring.gpg
+
+install-gpg-data-hook:
+	ln -s trusted/pubring.gpg $(DESTDIR)$(gpginsttestdir)/pubring.gpg 
+INSTALL_DATA_HOOKS += install-gpg-data-hook
 
 %.test: tests/%.sh Makefile
 	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
