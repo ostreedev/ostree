@@ -1697,42 +1697,21 @@ out:
 #endif
 }
 
-/**
- * ostree_repo_verify_commit:
- * @self: Repository
- * @commit_checksum: ASCII SHA256 checksum
- * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
- * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
- * @cancellable: Cancellable
- * @error: Error
- *
- * Check for a valid GPG signature on commit named by the ASCII
- * checksum @commit_checksum.
- */
-gboolean
-ostree_repo_verify_commit (OstreeRepo   *self,
-                           const gchar  *commit_checksum,
-                           GFile        *keyringdir,
-                           GFile        *extra_keyring,
-                           GCancellable *cancellable,
-                           GError      **error)
+static gboolean
+_ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
+                                            GFile               *path,
+                                            GVariant            *metadata,
+                                            GFile               *keyringdir,
+                                            GFile               *extra_keyring,
+                                            GCancellable        *cancellable,
+                                            GError             **error)
 {
 #ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_object GFile *commit_tmp_path = NULL;
-  gs_unref_object GFile *keyringdir_ref = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *signaturedata = NULL;
-  gs_free gchar *commit_filename = NULL;
   gint i, n;
   gboolean had_valid_signataure = FALSE;
-
-  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
-                                 commit_checksum, &commit_variant,
-                                 error))
-    goto out;
 
   verifier = _ostree_gpg_verifier_new (cancellable, error);
   if (!verifier)
@@ -1751,16 +1730,6 @@ ostree_repo_verify_commit (OstreeRepo   *self,
         goto out;
     }
 
-  if (!ostree_repo_read_commit_detached_metadata (self,
-                                                  commit_checksum,
-                                                  &metadata,
-                                                  cancellable,
-                                                  error))
-    {
-      g_prefix_error (error, "Failed to read detached metadata: ");
-      goto out;
-    }
-  
   if (metadata)
     signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
   if (!signaturedata)
@@ -1769,18 +1738,6 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                    "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
       goto out;
     }
-
-  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                               &commit_tmp_path, NULL,
-                               cancellable, error))
-    goto out;
-  
-  if (!g_file_replace_contents (commit_tmp_path,
-                                (char*)g_variant_get_data (commit_variant),
-                                g_variant_get_size (commit_variant),
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
-    goto out;
 
   n = g_variant_n_children (signaturedata);
   for (i = 0; i < n; i++)
@@ -1801,7 +1758,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
         goto out;
 
       if (!_ostree_gpg_verifier_check_signature (verifier,
-                                                 commit_tmp_path,
+                                                 path,
                                                  temp_sig_path,
                                                  &had_valid_signataure,
                                                  cancellable, error))
@@ -1820,15 +1777,80 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                    "GPG signatures found, but none are in trusted keyring");
       goto out;
     }
-  
+
   ret = TRUE;
-out:
-  if (commit_tmp_path)
-    (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
+ out:
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "This version of ostree was compiled without GPG support");
   return FALSE;
 #endif
+}
+
+/**
+ * ostree_repo_verify_commit:
+ * @self: Repository
+ * @commit_checksum: ASCII SHA256 checksum
+ * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Check for a valid GPG signature on commit named by the ASCII
+ * checksum @commit_checksum.
+ */
+gboolean
+ostree_repo_verify_commit (OstreeRepo   *self,
+                           const gchar  *commit_checksum,
+                           GFile        *keyringdir,
+                           GFile        *extra_keyring,
+                           GCancellable *cancellable,
+                           GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *commit_variant = NULL;
+  gs_unref_object GFile *commit_tmp_path = NULL;
+  gs_unref_object GFile *keyringdir_ref = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_free gchar *commit_filename = NULL;
+
+  /* Create a temporary file for the commit */
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit_checksum, &commit_variant,
+                                 error))
+    goto out;
+  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                               &commit_tmp_path, NULL,
+                               cancellable, error))
+    goto out;
+  if (!g_file_replace_contents (commit_tmp_path,
+                                (char*)g_variant_get_data (commit_variant),
+                                g_variant_get_size (commit_variant),
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  /* Load the metadata */
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_prefix_error (error, "Failed to read detached metadata: ");
+      goto out;
+    }
+  
+  if (!_ostree_repo_gpg_verify_file_with_metadata (self,
+                                                   commit_tmp_path, metadata,
+                                                   keyringdir, extra_keyring,
+                                                   cancellable, error))
+    goto out;
+  
+  ret = TRUE;
+out:
+  if (commit_tmp_path)
+    (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
+  return ret;
 }
