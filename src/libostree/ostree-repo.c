@@ -1581,7 +1581,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   
   if (homedir != NULL)
     {
-      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, "ostree", homedir))
+      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
           != GPG_ERR_NO_ERROR)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
