@@ -215,7 +215,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                             FALSE, &meta, error))
     goto out;
 
-  headers = g_variant_get_child_value (meta, 2);
+  headers = g_variant_get_child_value (meta, 3);
   n = g_variant_n_children (headers);
   for (i = 0; i < n; i++)
     {

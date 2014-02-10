@@ -365,10 +365,15 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       metadata_source = tmp_metadata;
     }
 
-  delta_descriptor = g_variant_new ("(@(a(ss)a(say))aya(ayttay))",
-                                    metadata_source,
-                                    g_variant_builder_new (G_VARIANT_TYPE ("ay")),
-                                    part_headers);
+  {
+    GDateTime *now = g_date_time_new_now_utc ();
+    delta_descriptor = g_variant_new ("(@(a(ss)a(say))taya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT ")",
+                                      metadata_source,
+                                      GUINT64_TO_BE (g_date_time_to_unix (now)),
+                                      g_variant_builder_new (G_VARIANT_TYPE ("ay")),
+                                      part_headers);
+    g_date_time_unref (now);
+  }
 
   if (!ot_util_variant_save (descriptor_path, delta_descriptor, cancellable, error))
     goto out;

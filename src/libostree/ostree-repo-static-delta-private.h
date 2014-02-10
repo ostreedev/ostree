@@ -59,6 +59,7 @@ G_BEGIN_DECLS
  *
  * delta-descriptor:
  *   metadata: a{sv}
+ *   timestamp: guint64
  *   ARRAY[(csum from, csum to)]: ay
  *   ARRAY[delta-part-header]
  *
@@ -70,7 +71,7 @@ G_BEGIN_DECLS
  * recursion mechanism that would potentially allow saving significant
  * storage space on the server.
  */ 
-#define OSTREE_STATIC_DELTA_META_FORMAT "(a{sv}aya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT ")"
+#define OSTREE_STATIC_DELTA_META_FORMAT "(a{sv}taya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT ")"
 
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                             GVariant        *header,
