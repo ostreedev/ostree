@@ -96,6 +96,16 @@ ot_admin_builtin_os_init (int argc, char **argv, OstreeSysroot *sysroot, GCancel
         }
     }
 
+  dir = ot_gfile_get_child_build_path (deploy_dir, "var", "lock", NULL);
+  if (!g_file_test (gs_file_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
+    {
+      if (symlink ("../run/lock", gs_file_get_path_cached (dir)) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
   g_print ("%s initialized as OSTree root\n", gs_file_get_path_cached (deploy_dir));
 
   ret = TRUE;
