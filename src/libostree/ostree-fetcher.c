@@ -153,6 +153,8 @@ ostree_fetcher_init (OstreeFetcher *self)
                                                        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
                                                        SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
                                                        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_REQUESTER,
+                                                       SOUP_SESSION_TIMEOUT, 60,
+                                                       SOUP_SESSION_IDLE_TIMEOUT, 60,
                                                        NULL);
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
