@@ -65,7 +65,7 @@ gpginsttest_trusteddir = $(pkglibexecdir)/installed-tests/gpghome/trusted
 gpginsttest_trusted_DATA = tests/gpghome/trusted/pubring.gpg
 
 install-gpg-data-hook:
-	ln -s trusted/pubring.gpg $(DESTDIR)$(gpginsttestdir)/pubring.gpg 
+	ln -sf trusted/pubring.gpg $(DESTDIR)$(gpginsttestdir)/pubring.gpg 
 INSTALL_DATA_HOOKS += install-gpg-data-hook
 
 %.test: tests/%.sh Makefile
