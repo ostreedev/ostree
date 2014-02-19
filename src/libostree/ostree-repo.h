@@ -25,6 +25,7 @@
 #include "ostree-core.h"
 #include "ostree-types.h"
 #include "ostree-async-progress.h"
+#include "ostree-sepolicy.h"
 
 G_BEGIN_DECLS
 
@@ -312,6 +313,9 @@ void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier   
                                                      OstreeRepoCommitModifierXattrCallback  callback,
                                                      GDestroyNotify                         destroy,
                                                      gpointer                               user_data);
+
+void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              *modifier,
+                                               OstreeSePolicy                        *sepolicy);
 
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);

@@ -1618,6 +1618,8 @@ struct OstreeRepoCommitModifier {
   OstreeRepoCommitModifierXattrCallback xattr_callback;
   GDestroyNotify xattr_destroy;
   gpointer xattr_user_data;
+
+  OstreeSePolicy *sepolicy;
 };
 
 OstreeRepoCommitFilterResult
@@ -1681,6 +1683,67 @@ apply_commit_filter (OstreeRepo               *self,
     }
 
   return _ostree_repo_commit_modifier_apply (self, modifier, relpath, file_info, out_modified_info);
+}
+
+static gboolean
+get_modified_xattrs (OstreeRepo                       *self,
+                     OstreeRepoCommitModifier         *modifier,
+                     const char                       *relpath,
+                     GFileInfo                        *file_info,
+                     GFile                            *path,
+                     GVariant                        **out_xattrs,
+                     GCancellable                     *cancellable,
+                     GError                          **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
+
+  if (modifier && modifier->xattr_callback)
+    {
+      ret_xattrs = modifier->xattr_callback (self, relpath, file_info,
+                                             modifier->xattr_user_data);
+    }
+  else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
+    {
+      if (!gs_file_get_all_xattrs (path, &ret_xattrs, cancellable, error))
+        goto out;
+    }
+
+  if (modifier->sepolicy)
+    {
+      gs_free char *label = NULL;
+
+      if (!ostree_sepolicy_get_label (modifier->sepolicy, relpath,
+                                      g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
+                                      &label, cancellable, error))
+        goto out;
+
+      if (label)
+        {
+          GVariantBuilder *builder;
+
+          if (ret_xattrs)
+            builder = ot_util_variant_builder_from_variant (ret_xattrs,
+                                                            G_VARIANT_TYPE ("a(ayay)"));
+          else
+            builder = g_variant_builder_new (G_VARIANT_TYPE ("a(ayay)"));
+
+          g_variant_builder_add_value (builder,
+                                       g_variant_new ("(@ay@ay)",
+                                                      g_variant_new_bytestring ("security.selinux"),
+                                                      g_variant_new_bytestring (label)));
+          if (ret_xattrs)
+            g_variant_unref (ret_xattrs);
+
+          ret_xattrs = g_variant_builder_end (builder);
+          g_variant_ref_sink (ret_xattrs);
+        }
+    }
+  
+  ret = TRUE;
+  gs_transfer_out_value (out_xattrs, &ret_xattrs);
+ out:
+  return ret;
 }
 
 static gboolean
@@ -1751,16 +1814,10 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
           g_debug ("Adding: %s", gs_file_get_path_cached (dir));
-          if (modifier && modifier->xattr_callback)
-            {
-              xattrs = modifier->xattr_callback (self, relpath, child_info,
-                                                 modifier->xattr_user_data);
-            }
-          else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
-            {
-              if (!gs_file_get_all_xattrs (dir, &xattrs, cancellable, error))
-                goto out;
-            }
+          if (!get_modified_xattrs (self, modifier, relpath, child_info, dir,
+                                    &xattrs,
+                                    cancellable, error))
+            goto out;
 
           if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,
                                                   cancellable, error))
@@ -1872,17 +1929,11 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                             goto out;
                         }
 
-                      if (modifier && modifier->xattr_callback)
-                        {
-                          xattrs = modifier->xattr_callback (self, child_relpath, child_info,
-                                                             modifier->xattr_user_data);
-                        }
-                      else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
-                        {
-                          g_clear_pointer (&xattrs, (GDestroyNotify) g_variant_unref);
-                          if (!gs_file_get_all_xattrs (child, &xattrs, cancellable, error))
-                            goto out;
-                        }
+                      if (!get_modified_xattrs (self, modifier,
+                                                child_relpath, child_info, child,
+                                                &xattrs,
+                                                cancellable, error))
+                        goto out;
 
                       if (!ostree_raw_file_to_content_stream (file_input,
                                                               modified_info, xattrs,
@@ -2082,6 +2133,8 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   if (modifier->xattr_destroy)
     modifier->xattr_destroy (modifier->xattr_user_data);
 
+  g_clear_object (&modifier->sepolicy);
+
   g_free (modifier);
   return;
 }
@@ -2094,8 +2147,9 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
  * @user_data: Data for @callback:
  *
  * If set, this function should return extended attributes to use for
- * the given path.  This is useful for things like SELinux, where a build
- * system can label the files as it's committing to the repository.
+ * the given path.  This is useful for things like ACLs and SELinux,
+ * where a build system can label the files as it's committing to the
+ * repository.
  */
 void
 ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier  *modifier,
@@ -2108,6 +2162,27 @@ ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier  *modif
   modifier->xattr_user_data = user_data;
 }
 
+/**
+ * ostree_repo_commit_modifier_set_sepolicy:
+ * @modifier: An #OstreeRepoCommitModifier
+ * @sepolicy: (allow-none): Policy to use for labeling
+ *
+ * If @policy is non-%NULL, use it to look up labels to use for
+ * "security.selinux" extended attributes.
+ *
+ * Note that any policy specified this way operates in addition to any
+ * extended attributes provided via
+ * ostree_repo_commit_modifier_set_xattr_callback().  However if both
+ * specify a value for "security.selinux", then the one from the
+ * policy wins.
+ */
+void
+ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              *modifier,
+                                          OstreeSePolicy                        *sepolicy)
+{
+  g_clear_object (&modifier->sepolicy);
+  modifier->sepolicy = sepolicy ? g_object_ref (sepolicy) : NULL;
+}
 
 G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
                     ostree_repo_commit_modifier_ref,
