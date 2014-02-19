@@ -44,6 +44,19 @@ Requires: %{name} = %{version}-%{release}
 %description devel
 The %{name}-devel package includes the header files for the %{name} library.
 
+%package        selinux
+Summary:        SELinux policy module for %{name}
+Group:          System Environment/Base
+Requires:       %{name} = %{version}-%{release}
+Requires:       policycoreutils, libselinux-utils
+Requires(post): selinux-policy-base, policycoreutils
+Requires(postun): policycoreutils
+BuildRequires:  selinux-policy-devel
+BuildArch:      noarch
+
+%description    selinux
+This package installs and sets up the SELinux policy security module for %{name}.
+
 %prep
 %setup -q -n ostree-%{version}
 
@@ -69,6 +82,14 @@ rm -rf $RPM_BUILD_ROOT
 %preun
 %systemd_preun ostree-remount.service
 
+%post selinux
+semodule -n -i %{_datadir}/selinux/packages/%{name}.pp
+
+%postun selinux
+if [ $1 -eq 0 ]; then
+    semodule -n -r %{name}
+fi
+
 %files
 %doc COPYING README.md
 %{_bindir}/ostree
@@ -91,3 +112,6 @@ rm -rf $RPM_BUILD_ROOT
 %dir %{_datadir}/gtk-doc/html/ostree
 %{_datadir}/gtk-doc/html/ostree
 %{_datadir}/gir-1.0/OSTree-1.0.gir
+
+%files selinux
+%attr(0600,root,root) %{_datadir}/selinux/packages/%{name}.pp

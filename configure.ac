@@ -203,6 +203,7 @@ AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
 doc/Makefile
+selinux/Makefile
 src/libostree/ostree-1.pc
 ])
 AC_OUTPUT

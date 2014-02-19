@@ -31,6 +31,10 @@ endif
 
 SUBDIRS += .
 
+if USE_SELINUX
+SUBDIRS += selinux
+endif
+
 if ENABLE_GTK_DOC
 SUBDIRS += doc
 endif
