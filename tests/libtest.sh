@@ -223,6 +223,8 @@ EOF
 
     ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
     
+    # Ensure these commits have distinct second timestamps
+    sleep 2
     echo "a new executable" > usr/bin/sh
     ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
 
@@ -248,6 +250,15 @@ EOF
 	    setup_os_boot_uboot
             ;;
     esac
+    
+    cd ${test_tmpdir}
+    mkdir ${test_tmpdir}/httpd
+    cd httpd
+    ln -s ${test_tmpdir} ostree
+    ostree trivial-httpd --daemonize -p ${test_tmpdir}/httpd-port $args
+    port=$(cat ${test_tmpdir}/httpd-port)
+    echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
+    cd ${oldpwd} 
 }
 
 os_repository_new_commit ()

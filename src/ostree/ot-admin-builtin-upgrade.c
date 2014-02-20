@@ -34,11 +34,13 @@
 #include <glib/gi18n.h>
 
 static gboolean opt_reboot;
+static gboolean opt_allow_downgrade;
 static char *opt_osname;
 
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Specify operating system root to use", NULL },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
+  { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade, "Permit deployment of chronologically older trees", NULL },
   { NULL }
 };
 
@@ -109,6 +111,44 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   else
     {
       gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
+
+      if (!opt_allow_downgrade)
+        {
+          const char *old_revision = ostree_deployment_get_csum (merge_deployment);
+          gs_unref_variant GVariant *old_commit = NULL;
+          gs_unref_variant GVariant *new_commit = NULL;
+
+          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                         old_revision,
+                                         &old_commit,
+                                         error))
+            goto out;
+          
+          if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                         new_revision, &new_commit,
+                                         error))
+            goto out;
+
+          if (ostree_commit_get_timestamp (old_commit) > ostree_commit_get_timestamp (new_commit))
+            {
+              GDateTime *old_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (old_commit));
+              GDateTime *new_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (new_commit));
+              gs_free char *old_ts_str = NULL;
+              gs_free char *new_ts_str = NULL;
+
+              g_assert (old_ts);
+              g_assert (new_ts);
+              old_ts_str = g_date_time_format (old_ts, "%c");
+              new_ts_str = g_date_time_format (new_ts, "%c");
+              g_date_time_unref (old_ts);
+              g_date_time_unref (new_ts);
+
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Upgrade target revision '%s' with timestamp '%s' is chronologically older than current revision '%s' with timestamp '%s'; use --allow-downgrade to permit",
+                           new_revision, new_ts_str, old_revision, old_ts_str);
+              goto out;
+            }
+        }
       
       /* Here we perform cleanup of any leftover data from previous
        * partial failures.  This avoids having to call gs_shutil_rm_rf()

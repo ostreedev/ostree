@@ -37,6 +37,7 @@ testfiles = test-basic \
 	test-admin-deploy-switch \
 	test-admin-deploy-etcmerge-cornercases \
 	test-admin-deploy-uboot \
+	test-admin-upgrade-not-backwards \
 	test-setuid \
 	test-delta \
 	test-xattrs \

@@ -250,5 +250,6 @@ gboolean ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
                                               GError       **error);
 
 gchar *  ostree_commit_get_parent            (GVariant  *commit_variant);
+guint64  ostree_commit_get_timestamp         (GVariant  *commit_variant);
 
 G_END_DECLS

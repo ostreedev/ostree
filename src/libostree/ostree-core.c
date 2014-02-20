@@ -1755,3 +1755,11 @@ ostree_commit_get_parent (GVariant  *commit_variant)
     return NULL;
   return ostree_checksum_from_bytes_v (bytes);
 }
+
+guint64
+ostree_commit_get_timestamp (GVariant  *commit_variant)
+{
+  guint64 ret;
+  g_variant_get_child (commit_variant, 5, "t", &ret);
+  return GUINT64_FROM_BE (ret);
+}
