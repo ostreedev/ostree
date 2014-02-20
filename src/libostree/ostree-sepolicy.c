@@ -73,9 +73,9 @@ ostree_sepolicy_finalize (GObject *object)
   OstreeSePolicy *self = OSTREE_SEPOLICY (object);
 
   g_clear_object (&self->path);
+#ifdef HAVE_SELINUX
   g_clear_object (&self->selinux_policy_root);
   g_clear_pointer (&self->selinux_policy_name, g_free);
-#ifdef HAVE_SELINUX
   if (self->selinux_hnd)
     {
       selabel_close (self->selinux_hnd);
