@@ -1709,7 +1709,7 @@ get_modified_xattrs (OstreeRepo                       *self,
         goto out;
     }
 
-  if (modifier->sepolicy)
+  if (modifier && modifier->sepolicy)
     {
       gs_free char *label = NULL;
 
