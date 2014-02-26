@@ -190,11 +190,10 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
           goto out;
         }
           
-      /* Fall back to filename based setting here due to lack of lsetxattrat */
       if (xattrs)
         {
-          gs_unref_object GFile *path = g_file_get_child (destination_parent, destination_name);
-          if (!gs_file_set_all_xattrs (path, xattrs, cancellable, error))
+          if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
+                                               xattrs, cancellable, error))
             goto out;
         }
     }
@@ -260,8 +259,8 @@ checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
           
       if (xattrs)
         {
-          gs_unref_object GFile *temp_path = g_file_get_child (destination_parent, temp_filename);
-          if (!gs_file_set_all_xattrs (temp_path, xattrs, cancellable, error))
+          if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
+                                               xattrs, cancellable, error))
             goto out;
         }
     }

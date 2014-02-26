@@ -87,12 +87,10 @@ commit_loose_object_trusted (OstreeRepo        *self,
           goto out;
         }
               
-      /* Sadly we can't use at-relative API for symlink xattrs
-       * because there's no lsetxattrat.
-       */
       if (xattrs != NULL)
         {
-          if (!gs_file_set_all_xattrs (temp_file, xattrs, cancellable, error))
+          if (!gs_dfd_and_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
+                                               xattrs, cancellable, error))
             goto out;
         }
     }
