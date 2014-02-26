@@ -46,7 +46,6 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   GOptionContext *context;
   const char *new_ref = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_free char *origin_refspec = NULL;
   gs_free char *origin_remote = NULL;
   gs_free char *origin_ref = NULL;
   gs_free char *new_revision = NULL;
@@ -124,11 +123,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
                                 error))
     goto out;
 
-  if (strcmp (ostree_deployment_get_csum (merge_deployment), new_revision) == 0)
-    {
-      g_print ("Refspec %s is unchanged\n", origin_refspec);
-    }
-  else
+  if (TRUE)
     {
       gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
       
