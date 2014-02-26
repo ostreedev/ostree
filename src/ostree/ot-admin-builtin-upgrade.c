@@ -50,9 +50,9 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gboolean ret = FALSE;
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_free char *origin_refspec = NULL;
   gs_free char *origin_remote = NULL;
   gs_free char *origin_ref = NULL;
+  gs_free char *origin_refspec = NULL;
   gs_free char *new_revision = NULL;
   gs_unref_object GFile *deployment_path = NULL;
   gs_unref_object GFile *deployment_origin_path = NULL;
@@ -98,12 +98,17 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
       if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, pullflags, progress,
                              cancellable, error))
         goto out;
+      
+      origin_refspec = g_strconcat (origin_remote, ":", origin_ref, NULL);
     }
+  else
+    origin_refspec = g_strdup (origin_ref);
 
-  if (!ostree_repo_resolve_rev (repo, origin_ref, FALSE, &new_revision,
+
+  if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &new_revision,
                                 error))
     goto out;
-
+  
   if (strcmp (ostree_deployment_get_csum (merge_deployment), new_revision) == 0)
     {
       g_print ("Refspec %s is unchanged\n", origin_refspec);
