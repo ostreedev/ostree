@@ -105,14 +105,14 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       GSConsole *console;
       gs_unref_object OstreeAsyncProgress *progress = NULL;
 
+      g_print ("Fetching remote %s ref %s\n", origin_remote, new_ref);
+
       console = gs_console_get ();
       if (console)
         {
           gs_console_begin_status_line (console, "", NULL, NULL);
           progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
         }
-
-      g_print ("Fetching remote %s ref %s\n", origin_remote, new_ref);
 
       if (!ostree_repo_pull (repo, origin_remote, refs_to_fetch, pullflags, progress,
                              cancellable, error))
