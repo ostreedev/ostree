@@ -550,9 +550,12 @@ checkout_tree_at (OstreeRepo                        *self,
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GFileEnumerator *dir_enum = NULL;
 
+  /* Create initially with mode 0700, then chown/chmod only when we're
+   * done.  This avoids anyone else being able to operate on partially
+   * constructed dirs.
+   */
   do
-    res = mkdirat (destination_parent_fd, destination_name,
-                   g_file_info_get_attribute_uint32 (source_info, "unix::mode"));
+    res = mkdirat (destination_parent_fd, destination_name, 0700);
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1)
     {
@@ -569,19 +572,9 @@ checkout_tree_at (OstreeRepo                        *self,
                             cancellable, error))
     goto out;
 
+  /* Set the xattrs now, so any derived labeling works */
   if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
-      do
-        res = fchown (destination_dfd,
-                      g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
-                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"));
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (G_UNLIKELY (res == -1))
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-
       if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
         goto out;
 
@@ -630,6 +623,33 @@ checkout_tree_at (OstreeRepo                        *self,
                                      mode, overwrite_mode,
                                      cancellable, error))
             goto out;
+        }
+    }
+
+  /* We do fchmod/fchown last so that no one else could access the
+   * partially created directory and change content we're laying out.
+   */
+  if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+    {
+      do
+        res = fchmod (destination_dfd,
+                      g_file_info_get_attribute_uint32 (source_info, "unix::mode"));
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      do
+        res = fchown (destination_dfd,
+                      g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
+                      g_file_info_get_attribute_uint32 (source_info, "unix::gid"));
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
         }
     }
 
