@@ -93,6 +93,23 @@ parse_ostree_cmdline (void)
   return ret;
 }
 
+/* This is an API for other projects to determine whether or not the
+ * currently running system is ostree-controlled.
+ */
+static void
+touch_run_ostree (void)
+{
+  int fd;
+  
+  fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY, 0640);
+  /* We ignore failures here in case /run isn't mounted...not much we
+   * can do about that, but we don't want to fail.
+   */
+  if (fd == -1)
+    return;
+  (void) close (fd);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -188,6 +205,8 @@ main(int argc, char *argv[])
 	  exit (1);
 	}
     }
+
+  touch_run_ostree ();
 
   /* This is a bit hacky - move our deployment to /sysroot, since
    * systemd's initrd-switch-root target hardcodes looking for it
