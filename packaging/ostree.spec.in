@@ -64,7 +64,8 @@ This package installs and sets up the SELinux policy security module for %{name}
 env NOCONFIGURE=1 ./autogen.sh
 %configure --disable-silent-rules \
 	   --enable-gtk-doc \
-	   --disable-libarchive \
+	   --with-selinux \
+	   --enable-selinux-custom-policy \
 	   --with-dracut
 make %{?_smp_mflags}
 
