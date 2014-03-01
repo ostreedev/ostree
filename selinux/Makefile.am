@@ -20,3 +20,5 @@ ostree.pp: ostree.fc ostree.if ostree.te
 
 selinuxpkgdir = $(datadir)/selinux/packages
 selinuxpkg_DATA = ostree.pp
+
+EXTRA_DIST = ostree.fc ostree.if ostree.te

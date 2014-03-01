@@ -31,7 +31,7 @@ endif
 
 SUBDIRS += .
 
-if USE_SELINUX
+if BUILD_SELINUX_CUSTOM_POLICY
 SUBDIRS += selinux
 endif
 
