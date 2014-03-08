@@ -76,7 +76,6 @@ typedef struct {
 typedef struct {
   OtPullData  *pull_data;
   GVariant    *object;
-  GFile       *temp_path;
   gboolean     is_detached_meta;
 } FetchObjectData;
 
@@ -512,8 +511,6 @@ content_fetch_on_write_complete (GObject        *object,
  out:
   pull_data->n_outstanding_content_write_requests--;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  (void) gs_file_unlink (fetch_data->temp_path, NULL, NULL);
-  g_object_unref (fetch_data->temp_path);
   g_variant_unref (fetch_data->object);
   g_free (fetch_data);
 }
@@ -533,22 +530,33 @@ content_fetch_on_complete (GObject        *object,
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GInputStream *file_in = NULL;
   gs_unref_object GInputStream *object_input = NULL;
+  gs_unref_object GFile *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
 
-  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
-  if (!fetch_data->temp_path)
+  temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  if (!temp_path)
     goto out;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
-
-  if (!ostree_content_file_parse (TRUE, fetch_data->temp_path, FALSE,
+  
+  if (!ostree_content_file_parse (TRUE, temp_path, FALSE,
                                   &file_in, &file_info, &xattrs,
                                   cancellable, error))
-    goto out;
+    {
+      /* If it appears corrupted, delete it */
+      (void) gs_file_unlink (temp_path, NULL, NULL);
+      goto out;
+    }
+
+  /* Also, delete it now that we've opened it, we'll hold
+   * a reference to the fd.  If we fail to write later, then
+   * the temp space will be cleaned up.
+   */
+  (void) gs_file_unlink (temp_path, NULL, NULL);
 
   if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
                                           &object_input, &length,
@@ -607,8 +615,6 @@ on_metadata_writed (GObject           *object,
 
  out:
   pull_data->n_outstanding_metadata_write_requests--;
-  (void) gs_file_unlink (fetch_data->temp_path, NULL, NULL);
-  g_object_unref (fetch_data->temp_path);
   g_variant_unref (fetch_data->object);
   g_free (fetch_data);
 
@@ -623,6 +629,7 @@ meta_fetch_on_complete (GObject           *object,
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_object GFile *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
   GError *local_error = NULL;
@@ -631,8 +638,8 @@ meta_fetch_on_complete (GObject           *object,
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
 
-  fetch_data->temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
-  if (!fetch_data->temp_path)
+  temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  if (!temp_path)
     {
       if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         goto out;
@@ -648,9 +655,13 @@ meta_fetch_on_complete (GObject           *object,
 
   if (fetch_data->is_detached_meta)
     {
-      if (!ot_util_variant_map (fetch_data->temp_path, G_VARIANT_TYPE ("a{sv}"),
+      if (!ot_util_variant_map (temp_path, G_VARIANT_TYPE ("a{sv}"),
                                 FALSE, &metadata, error))
         goto out;
+
+      /* Now delete it, see comment in corresponding content fetch path */
+      (void) gs_file_unlink (temp_path, NULL, NULL);
+
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
                                                        pull_data->cancellable, error))
         goto out;
@@ -659,9 +670,11 @@ meta_fetch_on_complete (GObject           *object,
     }
   else
     {
-      if (!ot_util_variant_map (fetch_data->temp_path, ostree_metadata_variant_type (objtype),
+      if (!ot_util_variant_map (temp_path, ostree_metadata_variant_type (objtype),
                                 FALSE, &metadata, error))
         goto out;
+
+      (void) gs_file_unlink (temp_path, NULL, NULL);
       
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
