@@ -989,7 +989,6 @@ request_static_delta_meta_sync (OtPullData  *pull_data,
 
       if (delta_meta_data)
         {
-          g_print ("Using static delta\n"); 
           ret_delta_meta = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_META_FORMAT,
                                                       delta_meta_data, FALSE);
         }
@@ -1217,13 +1216,11 @@ ostree_repo_pull (OstreeRepo               *self,
           
       if (original_rev && strcmp (checksum, original_rev) == 0)
         {
-          g_print ("remote %s is unchanged from %s\n", remote_ref, original_rev);
         }
       else
         {
           ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name, ref, checksum);
 
-          g_print ("remote %s is now %s\n", remote_ref, checksum);
         }
     }
 
@@ -1236,15 +1233,19 @@ ostree_repo_pull (OstreeRepo               *self,
   if (bytes_transferred > 0)
     {
       guint shift; 
+      gs_free char *msg = NULL;
+
       if (bytes_transferred < 1024)
         shift = 1;
       else
         shift = 1024;
-      g_print ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds\n", 
-               pull_data->n_fetched_metadata, pull_data->n_fetched_content,
-               (guint64)(bytes_transferred / shift),
-               shift == 1 ? "B" : "KiB",
-               (guint) ((end_time - start_time) / G_USEC_PER_SEC));
+
+      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds", 
+                             pull_data->n_fetched_metadata, pull_data->n_fetched_content,
+                             (guint64)(bytes_transferred / shift),
+                             shift == 1 ? "B" : "KiB",
+                             (guint) ((end_time - start_time) / G_USEC_PER_SEC));
+      ostree_async_progress_set_status (pull_data->progress, msg);
     }
 
   ret = TRUE;
