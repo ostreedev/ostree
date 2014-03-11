@@ -132,7 +132,6 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
                                     NULL, FALSE, G_FILE_CREATE_NONE,
                                     NULL, cancellable, error))
         return FALSE;
-      g_print ("Saved new version of %s\n", gs_file_get_path_cached (self->config_path));
     }
 
   return TRUE;
