@@ -38,6 +38,9 @@ typedef struct {
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
+#ifdef HAVE_SELINUX
+  { "selinux-ensure-labeled", ot_admin_builtin_selinux_ensure_labeled },
+#endif
   { "os-init", ot_admin_builtin_os_init },
   { "init-fs", ot_admin_builtin_init_fs },
   { "deploy", ot_admin_builtin_deploy },
