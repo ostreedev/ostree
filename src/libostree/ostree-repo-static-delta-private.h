@@ -61,7 +61,7 @@ G_BEGIN_DECLS
  *   metadata: a{sv}
  *   timestamp: guint64
  *   ARRAY[(csum from, csum to)]: ay
- *   ARRAY[delta-part-header]
+ *   ARRAY[delta-meta-entry]
  *
  * The metadata would include things like a version number, as well as
  * extended verification data like a GPG signature.

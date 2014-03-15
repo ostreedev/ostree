@@ -31,6 +31,9 @@
 
 * Improve library
 
+* Do HTTP requests as unprivileged user (particularly before we've
+  done GPG verification)
+
 * Reintroduce "ostree admin install": Could pull in host data,
   such as uids and /etc/fstab.
 
