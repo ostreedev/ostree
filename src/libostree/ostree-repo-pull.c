@@ -1245,7 +1245,10 @@ ostree_repo_pull (OstreeRepo               *self,
                              (guint64)(bytes_transferred / shift),
                              shift == 1 ? "B" : "KiB",
                              (guint) ((end_time - start_time) / G_USEC_PER_SEC));
-      ostree_async_progress_set_status (pull_data->progress, msg);
+      if (pull_data->progress)
+        ostree_async_progress_set_status (pull_data->progress, msg);
+      else
+        g_print ("%s\n", msg);
     }
 
   ret = TRUE;
