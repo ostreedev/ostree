@@ -1500,6 +1500,74 @@ ostree_repo_pull (OstreeRepo               *self,
 #endif
 
 /**
+ * ostree_repo_append_gpg_signature:
+ * @self: Self
+ * @commit_checksum: SHA256 of given commit to sign
+ * @signature_bytes: Signature data
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Append a GPG signature to a commit.
+ */
+gboolean
+ostree_repo_append_gpg_signature (OstreeRepo     *self,
+                                  const gchar    *commit_checksum,
+                                  GBytes         *signature_bytes,
+                                  GCancellable   *cancellable,
+                                  GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+  gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
+  gs_unref_variant GVariant *signaturedata = NULL;
+
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to read existing detached metadata");
+      goto out;
+    }
+
+  if (metadata)
+    {
+      builder = ot_util_variant_builder_from_variant (metadata, G_VARIANT_TYPE ("a{sv}"));
+      signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
+      if (signaturedata)
+        signature_builder = ot_util_variant_builder_from_variant (signaturedata, G_VARIANT_TYPE ("aay"));
+    }
+  if (!builder)
+    builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+  if (!signature_builder)
+    signature_builder = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
+
+  g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
+
+  g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
+  
+  metadata = g_variant_builder_end (builder);
+
+  if (!ostree_repo_write_commit_detached_metadata (self,
+                                                   commit_checksum,
+                                                   metadata,
+                                                   cancellable,
+                                                   error))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to read existing detached metadata");
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
  * ostree_repo_sign_commit:
  * @self: Self
  * @commit_checksum: SHA256 of given commit to sign
@@ -1521,14 +1589,10 @@ ostree_repo_sign_commit (OstreeRepo     *self,
 #ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object GFile *commit_path = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
   gs_free gchar *commit_filename = NULL;
   gs_unref_object GFile *tmp_signature_file = NULL;
   gs_unref_object GOutputStream *tmp_signature_output = NULL;
-  gs_unref_variant_builder GVariantBuilder *builder = NULL;
-  gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_variant GVariant *signaturedata = NULL;
   gs_unref_bytes GBytes *signature_bytes = NULL;
   gpgme_ctx_t context;
   gpgme_engine_info_t info;
@@ -1543,17 +1607,6 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                                  commit_checksum, &commit_variant, error))
     goto out;
   
-  if (!ostree_repo_read_commit_detached_metadata (self,
-                                                  commit_checksum,
-                                                  &metadata,
-                                                  cancellable,
-                                                  error))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to read existing detached metadata");
-      goto out;
-    }
-
   if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
                                &tmp_signature_file, &tmp_signature_output,
                                cancellable, error))
@@ -1647,35 +1700,9 @@ ostree_repo_sign_commit (OstreeRepo     *self,
     goto out;
   signature_bytes = g_mapped_file_get_bytes (signature_file);
   
-  // Now read the file and put its contents into the result GVariant
-  if (metadata)
-    {
-      builder = ot_util_variant_builder_from_variant (metadata, G_VARIANT_TYPE ("a{sv}"));
-      signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
-      if (signaturedata)
-        signature_builder = ot_util_variant_builder_from_variant (signaturedata, G_VARIANT_TYPE ("aay"));
-    }
-  if (!builder)
-    builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-  if (!signature_builder)
-    signature_builder = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
-
-  g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
-
-  g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
-  
-  metadata = g_variant_builder_end (builder);
-
-  if (!ostree_repo_write_commit_detached_metadata (self,
-                                                   commit_checksum,
-                                                   metadata,
-                                                   cancellable,
-                                                   error))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to read existing detached metadata");
-      goto out;
-    }
+  if (!ostree_repo_append_gpg_signature (self, commit_checksum, signature_bytes,
+                                         cancellable, error))
+    goto out;
 
   ret = TRUE;
 out:
