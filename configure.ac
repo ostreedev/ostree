@@ -164,12 +164,6 @@ AS_IF([ test x$with_selinux != xno ], [
 if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
 AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
 
-dnl FIXME remove this
-AC_ARG_ENABLE(selinux-custom-policy,
-	    AS_HELP_STRING([--enable-selinux-custom-policy], [Custom policy overrides]),,
-	    enable_selinux_custom_policy=no)
-AM_CONDITIONAL(BUILD_SELINUX_CUSTOM_POLICY, test x$enable_selinux_custom_policy = xyes)
-
 AC_ARG_WITH(dracut,
             AS_HELP_STRING([--with-dracut],
                            [Install dracut module (default: no)]),,
@@ -209,7 +203,6 @@ AC_CONFIG_FILES([
 Makefile
 embedded-dependencies/Makefile
 doc/Makefile
-selinux/Makefile
 src/libostree/ostree-1.pc
 ])
 AC_OUTPUT

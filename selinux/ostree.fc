@@ -1,9 +1,0 @@
-# Core definitions
-
-/sysroot	-d	gen_context(system_u:object_r:usr_t,s0)
-/ostree		-d	gen_context(system_u:object_r:usr_t,s0)
-/ostree		-l	gen_context(system_u:object_r:usr_t,s0)
-/media		-l	gen_context(system_u:object_r:mnt_t,s0)
-/mnt		-l	gen_context(system_u:object_r:mnt_t,s0)
-/var/roothome	-d	gen_context(system_u:object_r:admin_home_t,s0)
-/var/home	-d	gen_context(system_u:object_r:home_root_t,s0)

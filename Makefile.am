@@ -31,10 +31,6 @@ endif
 
 SUBDIRS += .
 
-if BUILD_SELINUX_CUSTOM_POLICY
-SUBDIRS += selinux
-endif
-
 if ENABLE_GTK_DOC
 SUBDIRS += doc
 endif
