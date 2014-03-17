@@ -38,6 +38,30 @@ typedef GObjectClass OstreeBootconfigParserClass;
 
 G_DEFINE_TYPE (OstreeBootconfigParser, ostree_bootconfig_parser, G_TYPE_OBJECT)
 
+/**
+ * ostree_bootconfig_parser_clone:
+ * @self: Bootconfig to clone
+ * 
+ * Returns: (transfer full): Copy of @self
+ */
+OstreeBootconfigParser *
+ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
+{
+  OstreeBootconfigParser *parser = ostree_bootconfig_parser_new ();
+  guint i;
+  GHashTableIter hashiter;
+  gpointer k, v;
+
+  for (i = 0; i < self->lines->len; i++)
+    g_ptr_array_add (parser->lines, g_variant_ref (self->lines->pdata[i]));
+
+  g_hash_table_iter_init (&hashiter, self->options);
+  while (g_hash_table_iter_next (&hashiter, &k, &v))
+    g_hash_table_replace (parser->options, g_strdup (k), g_strdup (v));
+
+  return parser;
+}
+
 gboolean
 ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
                                 GFile           *path,

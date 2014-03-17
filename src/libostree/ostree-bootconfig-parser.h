@@ -34,6 +34,8 @@ GType ostree_bootconfig_parser_get_type (void) G_GNUC_CONST;
 
 OstreeBootconfigParser * ostree_bootconfig_parser_new (void);
 
+OstreeBootconfigParser * ostree_bootconfig_parser_clone (OstreeBootconfigParser *self);
+
 gboolean ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
                                          GFile           *path,
                                          GCancellable    *cancellable,
