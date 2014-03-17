@@ -39,6 +39,7 @@ static OstreeAdminInstUtilCommand admin_instutil_subcommands[] = {
 #ifdef HAVE_SELINUX
   { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled },
 #endif
+  { "set-kargs", ot_admin_instutil_builtin_set_kargs },
   { NULL, NULL }
 };
 
