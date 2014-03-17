@@ -23,8 +23,7 @@
 #include <string.h>
 #include <glib-unix.h>
 
-#include "ot-admin-builtins.h"
-#include "ot-admin-functions.h"
+#include "ot-admin-instutil-builtins.h"
 
 #include "otutil.h"
 
@@ -175,7 +174,7 @@ selinux_relabel_dir (OstreeSePolicy                *sepolicy,
 }
 
 gboolean
-ot_admin_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *policy_name;

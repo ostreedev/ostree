@@ -56,13 +56,15 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-diff.c \
 	src/ostree/ot-admin-builtin-deploy.c \
 	src/ostree/ot-admin-builtin-undeploy.c \
+	src/ostree/ot-admin-builtin-instutil.c \
 	src/ostree/ot-admin-builtin-cleanup.c \
 	src/ostree/ot-admin-builtin-os-init.c \
-	src/ostree/ot-admin-builtin-selinux-ensure-labeled.c \
 	src/ostree/ot-admin-builtin-status.c \
 	src/ostree/ot-admin-builtin-switch.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
 	src/ostree/ot-admin-builtins.h \
+	src/ostree/ot-admin-instutil-builtin-selinux-ensure-labeled.c \
+	src/ostree/ot-admin-instutil-builtins.h \
 	src/ostree/ot-admin-functions.h \
 	src/ostree/ot-admin-functions.c \
 	$(NULL)

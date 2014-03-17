@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,18 +16,16 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
- *
- * Author: Colin Walters <walters@verbum.org>
  */
 
 #include "config.h"
 
 #include "ot-builtins.h"
+#include "ot-admin-instutil-builtins.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ot-main.h"
 #include "ostree.h"
-#include "ostree-repo-file.h"
 #include "libgsystem.h"
 
 #include <glib/gi18n.h>
@@ -35,40 +33,24 @@
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-} OstreeAdminCommand;
+} OstreeAdminInstUtilCommand;
 
-static OstreeAdminCommand admin_subcommands[] = {
-  { "os-init", ot_admin_builtin_os_init },
-  { "init-fs", ot_admin_builtin_init_fs },
-  { "instutil", ot_admin_builtin_instutil },
-  { "deploy", ot_admin_builtin_deploy },
-  { "undeploy", ot_admin_builtin_undeploy },
-  { "upgrade", ot_admin_builtin_upgrade },
-  { "cleanup", ot_admin_builtin_cleanup },
-  { "status", ot_admin_builtin_status },
-  { "switch", ot_admin_builtin_switch },
-  { "config-diff", ot_admin_builtin_diff },
+static OstreeAdminInstUtilCommand admin_instutil_subcommands[] = {
+#ifdef HAVE_SELINUX
+  { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled },
+#endif
   { NULL, NULL }
 };
 
 gboolean
-ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  const char *opt_sysroot = "/";
+  OstreeAdminInstUtilCommand *subcommand;
   const char *subcommand_name = NULL;
-  OstreeAdminCommand *subcommand;
-  gs_unref_object GFile *sysroot_path = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean want_help = FALSE;
   int in, out, i;
   gboolean skip;
-
-  /*
-   * Parse the global options. We rearrange the options as
-   * necessary, in order to pass relevant options through
-   * to the commands, but also have them take effect globally.
-   */
 
   for (in = 1, out = 1; in < argc; in++, out++)
     {
@@ -93,21 +75,10 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
             {
               want_help = TRUE;
             }
-          else if (g_str_equal (argv[in], "--sysroot") && in + 1 < argc)
-            {
-              opt_sysroot = argv[in + 1];
-              skip = TRUE;
-              in++;
-            }
-          else if (g_str_has_prefix (argv[in], "--sysroot="))
-            {
-              opt_sysroot = argv[in] + 10;
-              skip = TRUE;
-            }
           else if (subcommand_name == NULL)
             {
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown or invalid admin option: %s", argv[in]);
+                           "Unknown or invalid admin instutil option: %s", argv[in]);
               goto out;
             }
         }
@@ -128,7 +99,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
                   if (subcommand_name == NULL)
                     {
                       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Unknown or invalid admin option: %s", argv[in]);
+                                   "Unknown or invalid admin instutil option: %s", argv[in]);
                       goto out;
                     }
                   break;
@@ -147,8 +118,8 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
 
   if (subcommand_name == NULL || want_help)
     {
-      subcommand = admin_subcommands;
-      g_print ("usage: ostree admin --sysroot=PATH COMMAND [options]\n");
+      subcommand = admin_instutil_subcommands;
+      g_print ("usage: ostree admin instutil COMMAND [options]\n");
       g_print ("Builtin commands:\n");
       while (subcommand->name)
         {
@@ -158,7 +129,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
       return subcommand_name == NULL ? 1 : 0;
     }
 
-  subcommand = admin_subcommands;
+  subcommand = admin_instutil_subcommands;
   while (subcommand->name)
     {
       if (g_strcmp0 (subcommand_name, subcommand->name) == 0)
@@ -169,12 +140,10 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
   if (!subcommand->name)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Unknown admin command '%s'", subcommand_name);
+                   "Unknown admin instutil command '%s'", subcommand_name);
       goto out;
     }
 
-  sysroot_path = g_file_new_for_path (opt_sysroot);
-  sysroot = ostree_sysroot_new (sysroot_path);
   if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
     goto out;
  
