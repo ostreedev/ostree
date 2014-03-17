@@ -1437,3 +1437,55 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   return ret;
 }
 
+/**
+ * ostree_sysroot_deployment_set_kargs:
+ * @self: Sysroot
+ * @deployment: A deployment
+ * @new_kargs: (array zero-terminated=1) (element-type utf8): Replace deployment's kernel arguments
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Entirely replace the kernel arguments of @deployment with the
+ * values in @new_kargs.
+ */
+gboolean
+ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
+                                     OstreeDeployment  *deployment,
+                                     char             **new_kargs,
+                                     GCancellable      *cancellable,
+                                     GError           **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+  gs_unref_object OstreeDeployment *new_deployment = NULL;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+  gs_free char *new_options = NULL;
+  OstreeBootconfigParser *new_bootconfig;
+
+  new_deployment = ostree_deployment_clone (deployment);
+  new_bootconfig = ostree_deployment_get_bootconfig (new_deployment);
+
+  kargs = _ostree_kernel_args_new ();
+  _ostree_kernel_args_append_argv (kargs, new_kargs);
+  new_options = _ostree_kernel_args_to_string (kargs);
+  ostree_bootconfig_parser_set (new_bootconfig, "options", new_options);
+
+  for (i = 0; i < self->deployments->len; i++)
+    {
+      OstreeDeployment *cur = self->deployments->pdata[i];
+      if (cur == deployment)
+        g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      else
+        g_ptr_array_add (new_deployments, g_object_ref (cur));
+    }
+
+  if (!ostree_sysroot_write_deployments (self, new_deployments,
+                                         cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+

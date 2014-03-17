@@ -66,6 +66,12 @@ gboolean ostree_sysroot_get_repo (OstreeSysroot         *self,
                                   GCancellable          *cancellable,
                                   GError               **error);
 
+gboolean ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
+                                              OstreeDeployment  *deployment,
+                                              char             **new_kargs,
+                                              GCancellable      *cancellable,
+                                              GError           **error);
+
 gboolean ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                            GPtrArray         *new_deployments,
                                            GCancellable      *cancellable,

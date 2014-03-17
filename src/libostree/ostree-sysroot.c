@@ -1029,4 +1029,3 @@ ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *sysroot,
   g_key_file_set_string (ret, "origin", "refspec", refspec);
   return ret;
 }
-
