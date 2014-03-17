@@ -138,11 +138,30 @@ ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
+  gs_unref_object OstreeBootconfigParser *new_bootconfig = NULL;
+  GKeyFile *new_origin = NULL;
   OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
-                                         self->deployserial,
-                                         self->bootcsum, self->bootserial);
-  ostree_deployment_set_bootconfig (ret, self->bootconfig);
-  ostree_deployment_set_origin (ret, self->origin);
+                                                 self->deployserial,
+                                                 self->bootcsum, self->bootserial);
+
+  new_bootconfig = ostree_bootconfig_parser_clone (self->bootconfig);
+  ostree_deployment_set_bootconfig (ret, new_bootconfig);
+
+  if (self->origin)
+    {
+      gs_free char *data = NULL;
+      gsize len;
+      gboolean success;
+
+      data = g_key_file_to_data (self->origin, &len, NULL);
+      g_assert (data);
+
+      new_origin = g_key_file_new ();
+      success = g_key_file_load_from_data (new_origin, data, len, 0, NULL);
+      g_assert (success);
+      
+      ostree_deployment_set_origin (ret, new_origin);
+    }
   return ret;
 }
 
