@@ -89,11 +89,11 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
                          pullflags, progress, cancellable, error))
     goto out;
 
+  ret = TRUE;
+ out:
   if (console)
     gs_console_end_status_line (console, NULL, NULL);
  
-  ret = TRUE;
- out:
   if (context)
     g_option_context_free (context);
   return ret;
