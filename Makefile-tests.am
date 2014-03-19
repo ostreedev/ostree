@@ -102,9 +102,8 @@ test_rollsum_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
 	tests/test-sizes.js \
-	tests/test-sysroot.js \
 	$(NULL)
-testmeta_DATA += test-core.test test-sizes.test test-sysroot.test
+testmeta_DATA += test-core.test test-sizes.test
 endif
 
 endif
