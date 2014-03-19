@@ -20,6 +20,7 @@
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 
+const GSystem = imports.gi.GSystem;
 const OSTree = imports.gi.OSTree;
 
 function assertEquals(a, b) {
@@ -35,11 +36,13 @@ function assertNotEquals(a, b) {
 function libtestExec(shellCode) {
     let testdatadir = GLib.getenv("TESTDATADIR");
     let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
-    let cmdline = 'bash -c ' + GLib.shell_quote('. ' + GLib.shell_quote(libtestPath) + '; ' + shellCode);
-    print("shellcode=" +cmdline);
-    let [,stdout,stderr,estatus] = GLib.spawn_command_line_sync(cmdline);
-    print(stderr);
-    GLib.spawn_check_exit_status(estatus);
+    let proc = GSystem.Subprocess.new_simple_argv(['bash', '-c',
+						   '. ' + GLib.shell_quote(libtestPath) + '; ' + shellCode],
+						  GSystem.SubprocessStreamDisposition.INHERIT,
+						  GSystem.SubprocessStreamDisposition.INHERIT,
+						  null);
+    proc.init(null);
+    proc.wait_sync_check(null);
 }
 
 libtestExec('setup_os_repository archive-z2 syslinux');
