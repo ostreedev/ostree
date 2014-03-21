@@ -1230,7 +1230,7 @@ ostree_repo_pull (OstreeRepo               *self,
   end_time = g_get_monotonic_time ();
 
   bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
-  if (bytes_transferred > 0)
+  if (bytes_transferred > 0 && pull_data->progress)
     {
       guint shift; 
       gs_free char *msg = NULL;
@@ -1245,10 +1245,7 @@ ostree_repo_pull (OstreeRepo               *self,
                              (guint64)(bytes_transferred / shift),
                              shift == 1 ? "B" : "KiB",
                              (guint) ((end_time - start_time) / G_USEC_PER_SEC));
-      if (pull_data->progress)
-        ostree_async_progress_set_status (pull_data->progress, msg);
-      else
-        g_print ("%s\n", msg);
+      ostree_async_progress_set_status (pull_data->progress, msg);
     }
 
   ret = TRUE;
