@@ -121,6 +121,48 @@
 
                 <variablelist>
                         <varlistentry>
+                                <term><command>admin os-init NAME</command></term>
+
+                                <listitem><para>Initialize the
+                                deployment location for an operating
+                                system with name
+                                <replaceable>NAME</replaceable>. Each
+                                deployment location is comprised of a
+                                single shared <filename>var</filename>
+                                and a set of
+                                deployments (chroots).</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>admin init-fs PATH</command></term>
+
+                                <listitem><para>Initialize a root filesystem
+                                in PATH by creating top level directories with
+                                proper permissions.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>admin deploy</command></term>
+
+                                <listitem><para>This is a relatively
+                                low level command - takes a particular
+                                commit or revision, and sets it up for
+                                the next boot.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>admin undeploy INDEX</command></term>
+
+                                <listitem><para>Remove the previously
+                                <replaceable>INDEX</replaceable>
+                                deployed tree from the bootloader
+                                configuration.</para></listitem>
+                        </varlistentry>
+                        <varlistentry>
+                                <term><command>admin cleanup</command></term>
+
+                                <listitem><para>Delete untagged
+                                deployments and repository objects.</para>
+                                </listitem>
+                        </varlistentry>
+                        <varlistentry>
                                 <term><command>admin upgrade</command></term>
 
                                 <listitem><para>If you are replicating
@@ -131,19 +173,17 @@
                                 effect.</para></listitem>
                         </varlistentry>
                         <varlistentry>
+                                <term><command>admin status</command></term>
+
+                                <listitem><para>Show and list the deployments.
+                                </para></listitem>
+                        </varlistentry>
+                        <varlistentry>
                                 <term><command>admin switch</command></term>
 
                                 <listitem><para>Choose a different ref
                                 to track from the same remote as the
                                 current tree.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin deploy</command></term>
-
-                                <listitem><para>This is a relatively
-                                low level command - takes a particular
-                                commit or revision, and sets it up for
-                                the next boot.</para></listitem>
                         </varlistentry>
                         <varlistentry>
                                 <term><command>admin config-diff</command></term>
