@@ -146,7 +146,7 @@
                                 the next boot.</para></listitem>
                         </varlistentry>
                         <varlistentry>
-                                <term><command>config-diff</command></term>
+                                <term><command>admin config-diff</command></term>
 
                                 <listitem><para>See changes to
                                 <filename>/etc</filename> as compared
