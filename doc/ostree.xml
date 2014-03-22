@@ -240,7 +240,7 @@
                 <variablelist>
                         <varlistentry>
                                 <term><varname>$PAGER</varname></term>
-				<listitem><para><command>ostree</command> respects the traditional pager envrionment variable.</para></listitem>
+				<listitem><para><command>ostree</command> respects the traditional pager environment variable.</para></listitem>
                         </varlistentry>
                 </variablelist>
         </refsect1>
