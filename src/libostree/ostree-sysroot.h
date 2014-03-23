@@ -94,5 +94,18 @@ OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
 GKeyFile *ostree_sysroot_origin_new_from_refspec (OstreeSysroot      *self,
                                                   const char         *refspec);
 
+typedef enum {
+  OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NONE = 0,
+  OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN = (1 << 0)
+} OstreeSysrootSimpleWriteDeploymentFlags;
+
+gboolean ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
+                                                 const char         *osname,
+                                                 OstreeDeployment   *new_deployment,
+                                                 OstreeDeployment   *merge_deployment,
+                                                 OstreeSysrootSimpleWriteDeploymentFlags flags,
+                                                 GCancellable       *cancellable,
+                                                 GError            **error);
+
 G_END_DECLS
 

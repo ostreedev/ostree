@@ -148,9 +148,11 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
                                        cancellable, error))
         goto out;
 
-      if (!ot_admin_complete_deploy_one (sysroot, opt_osname,
-                                         new_deployment, merge_deployment, FALSE,
-                                         cancellable, error))
+      if (!ostree_sysroot_simple_write_deployment (sysroot, opt_osname,
+                                                   new_deployment,
+                                                   merge_deployment,
+                                                   0,
+                                                   cancellable, error))
         goto out;
 
       if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))

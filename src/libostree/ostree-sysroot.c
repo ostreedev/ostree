@@ -1029,3 +1029,74 @@ ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *sysroot,
   g_key_file_set_string (ret, "origin", "refspec", refspec);
   return ret;
 }
+
+/**
+ * ostree_sysroot_simple_write_deployment:
+ * @sysroot: Sysroot
+ * @osname: (allow-none): OS name
+ * @new_deployment: Prepend this deployment to the list
+ * @merge_deployment: (allow-none): Use this deployment for configuration merge
+ * @flags: Flags controlling behavior
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prepend @new_deployment to the list of deployments, commit, and
+ * cleanup.  By default, all other deployments for the given @osname
+ * except the merge deployment and the booted deployment will be
+ * garbage collected.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN is
+ * specified, then all current deployments will be kept.
+ */
+gboolean
+ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
+                                        const char         *osname,
+                                        OstreeDeployment   *new_deployment,
+                                        OstreeDeployment   *merge_deployment,
+                                        OstreeSysrootSimpleWriteDeploymentFlags flags,
+                                        GCancellable       *cancellable,
+                                        GError            **error)
+{
+  gboolean ret = FALSE;
+  guint i;
+  OstreeDeployment *booted_deployment = NULL;
+  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+  gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
+
+  deployments = ostree_sysroot_get_deployments (sysroot);
+  booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
+
+  if (osname == NULL && booted_deployment)
+    osname = ostree_deployment_get_osname (booted_deployment);
+
+  g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+
+  for (i = 0; i < deployments->len; i++)
+    {
+      OstreeDeployment *deployment = deployments->pdata[i];
+      
+      /* Keep deployments with different osnames, as well as the
+       * booted and merge deployments
+       */
+      if (retain ||
+          (osname != NULL &&
+           strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
+          ostree_deployment_equal (deployment, booted_deployment) ||
+          ostree_deployment_equal (deployment, merge_deployment))
+        {
+          g_ptr_array_add (new_deployments, g_object_ref (deployment));
+        }
+    }
+
+  if (!ostree_sysroot_write_deployments (sysroot, new_deployments, cancellable, error))
+    goto out;
+
+  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
