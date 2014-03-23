@@ -26,6 +26,7 @@
 #include <ostree-mutable-tree.h>
 #include <ostree-repo-file.h>
 #include <ostree-sysroot.h>
+#include <ostree-sysroot-upgrader.h>
 #include <ostree-deployment.h>
 #include <ostree-bootconfig-parser.h>
 #include <ostree-diff.h>
