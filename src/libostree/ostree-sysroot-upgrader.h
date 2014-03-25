@@ -45,6 +45,8 @@ GKeyFile *ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self);
 gboolean ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFile *origin,
                                              GCancellable *cancellable, GError **error);
 
+char *ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self);
+
 gboolean ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
                                                    const char     *from_rev,
                                                    const char     *to_rev,

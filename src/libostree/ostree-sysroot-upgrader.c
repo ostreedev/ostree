@@ -330,6 +330,20 @@ ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self,
 }
 
 /**
+ * ostree_sysroot_upgrader_get_origin_description:
+ * @self: Upgrader
+ *
+ * Returns: A one-line descriptive summary of the origin, or %NULL if unknown
+ */
+char *
+ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self)
+{
+  if (!self->origin)
+    return NULL;
+  return g_key_file_get_string (self->origin, "origin", "refspec", NULL);
+}
+
+/**
  * ostree_sysroot_upgrader_check_timestamps:
  * @repo: Repo
  * @from_rev: From revision
