@@ -115,6 +115,12 @@ ostree_sysroot_upgrader_initable_init (GInitable        *initable,
       g_assert (booted_deployment);
       self->osname = g_strdup (ostree_deployment_get_osname (booted_deployment));
     }
+  else if (self->osname[0] == '\0')
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid empty osname");
+      goto out;
+    }
 
   self->merge_deployment = ostree_sysroot_get_merge_deployment (self->sysroot, self->osname); 
   if (self->merge_deployment == NULL)
