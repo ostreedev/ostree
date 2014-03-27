@@ -145,6 +145,8 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   ret = TRUE;
  out:
+  if (console)
+    gs_console_end_status_line (console, NULL, NULL);
   if (new_origin)
     g_key_file_unref (new_origin);
   if (context)

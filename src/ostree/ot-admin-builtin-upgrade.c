@@ -108,6 +108,8 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
 
   ret = TRUE;
  out:
+  if (console)
+    gs_console_end_status_line (console, NULL, NULL);
   if (context)
     g_option_context_free (context);
   return ret;
