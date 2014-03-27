@@ -447,10 +447,13 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                                 error))
     goto out;
 
-  if (!ostree_repo_pull (repo, self->origin_remote, refs_to_fetch,
-                         flags, progress,
-                         cancellable, error))
-    goto out;
+  if (self->origin_remote)
+    {
+      if (!ostree_repo_pull (repo, self->origin_remote, refs_to_fetch,
+                             flags, progress,
+                             cancellable, error))
+        goto out;
+    }
 
   if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &self->new_revision,
                                 error))
