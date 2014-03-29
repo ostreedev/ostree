@@ -1005,41 +1005,40 @@ assign_bootserials (GPtrArray   *deployments)
   return ret;
 }
 
-static GHashTable *
-bootconfig_counts_for_deployment_list (GPtrArray   *deployments)
+static gboolean
+deployment_bootconfigs_equal (OstreeDeployment *a,
+                              OstreeDeployment *b)
 {
-  guint i;
-  GHashTable *ret = 
-    g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
+  const char *a_bootcsum = ostree_deployment_get_bootcsum (a);
+  const char *b_bootcsum = ostree_deployment_get_bootcsum (b);
 
-  for (i = 0; i < deployments->len; i++)
-    {
-      OstreeDeployment *deployment = deployments->pdata[i];
-      const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (deployment);
-      const char *boot_options = ostree_bootconfig_parser_get (bootconfig, "options");
-      GChecksum *bootconfig_checksum = g_checksum_new (G_CHECKSUM_SHA256);
-      const char *bootconfig_checksum_str;
-      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
-      gs_free char *boot_options_without_ostree = NULL;
-      guint count;
+  if (strcmp (a_bootcsum, b_bootcsum) != 0)
+    return FALSE;
+
+  {
+    OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
+    OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
+    const char *a_boot_options = ostree_bootconfig_parser_get (a_bootconfig, "options");
+    const char *b_boot_options = ostree_bootconfig_parser_get (b_bootconfig, "options");
+    __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *a_kargs = NULL;
+    __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *b_kargs = NULL;
+    gs_free char *a_boot_options_without_ostree = NULL;
+    gs_free char *b_boot_options_without_ostree = NULL;
       
-      /* We checksum the kernel arguments *except* ostree= */
-      kargs = _ostree_kernel_args_from_string (boot_options);
-      _ostree_kernel_args_replace (kargs, "ostree");
-      boot_options_without_ostree = _ostree_kernel_args_to_string (kargs);
+    /* We checksum the kernel arguments *except* ostree= */
+    a_kargs = _ostree_kernel_args_from_string (a_boot_options);
+    _ostree_kernel_args_replace (a_kargs, "ostree");
+    a_boot_options_without_ostree = _ostree_kernel_args_to_string (a_kargs);
 
-      g_checksum_update (bootconfig_checksum, (guint8*)bootcsum, strlen (bootcsum));
-      g_checksum_update (bootconfig_checksum, (guint8*)boot_options_without_ostree,
-                         strlen (boot_options_without_ostree));
+    b_kargs = _ostree_kernel_args_from_string (b_boot_options);
+    _ostree_kernel_args_replace (b_kargs, "ostree");
+    b_boot_options_without_ostree = _ostree_kernel_args_to_string (b_kargs);
 
-      bootconfig_checksum_str = g_checksum_get_string (bootconfig_checksum);
+    if (strcmp (a_boot_options_without_ostree, b_boot_options_without_ostree) != 0)
+      return FALSE;
+  }
 
-      count = GPOINTER_TO_UINT (g_hash_table_lookup (ret, bootconfig_checksum_str));
-      g_hash_table_replace (ret, g_strdup (bootconfig_checksum_str),
-                            GUINT_TO_POINTER (count + 1));
-    }
-  return ret;
+  return TRUE;
 }
 
 /* TEMPORARY HACK: Add a "current" symbolic link that's easy to
@@ -1120,21 +1119,10 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     requires_new_bootversion = TRUE;
   else
     {
-      GHashTableIter hashiter;
-      gpointer hkey, hvalue;
-      gs_unref_hashtable GHashTable *new_bootconfig_to_count = 
-        bootconfig_counts_for_deployment_list (new_deployments);
-      gs_unref_hashtable GHashTable *orig_bootconfig_to_count
-        = bootconfig_counts_for_deployment_list (self->deployments);
-
-      g_hash_table_iter_init (&hashiter, orig_bootconfig_to_count);
-      while (g_hash_table_iter_next (&hashiter, &hkey, &hvalue))
+      for (i = 0; i < new_deployments->len; i++)
         {
-          guint orig_count = GPOINTER_TO_UINT (hvalue);
-          gpointer new_countp = g_hash_table_lookup (new_bootconfig_to_count, hkey);
-          guint new_count = GPOINTER_TO_UINT (new_countp);
-
-          if (orig_count != new_count)
+          if (!deployment_bootconfigs_equal (new_deployments->pdata[i],
+                                             self->deployments->pdata[i]))
             {
               requires_new_bootversion = TRUE;
               break;
