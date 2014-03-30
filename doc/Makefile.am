@@ -108,7 +108,7 @@ include $(top_srcdir)/gtk-doc.make
 man1_MANS =
 
 if ENABLE_GTK_DOC
-man1_MANS += ostree.1
+man1_MANS += ostree.1 ostree.repo.5 ostree.repo-config.5
 
 XSLTPROC_FLAGS = \
         --nonet \
@@ -122,6 +122,8 @@ XSLTPROC_MAN = \
 	$(XSLTPROC) $(XSLTPROC_FLAGS) http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
 
 .xml.1:
+	$(AM_V_GEN) $(XSLTPROC_MAN) $<
+.xml.5:
 	$(AM_V_GEN) $(XSLTPROC_MAN) $<
 
 endif # ENABLE_GTK_DOC

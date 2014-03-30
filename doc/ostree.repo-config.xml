@@ -1,0 +1,123 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2014 Colin Walters <walters@verbum.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree.repo-config">
+
+  <refentryinfo>
+    <title>ostree.repo-config</title>
+    <productname>OSTree</productname>
+
+    <authorgroup>
+      <author>
+        <contrib>Developer</contrib>
+        <firstname>Colin</firstname>
+        <surname>Walters</surname>
+        <email>walters@verbum.org</email>
+      </author>
+    </authorgroup>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>ostree.repo-config</refentrytitle>
+    <manvolnum>5</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>ostree.repo-config</refname>
+    <refpurpose>OSTree repository configuration</refpurpose>
+  </refnamediv>
+
+  <refsect1>
+    <title>Description</title>
+
+    <para>
+      The <filename>config</filename> file in an OSTree
+      repository is a "keyfile" in the <ulink
+      url="http://standards.freedesktop.org/desktop-entry-spec/latest/">XDG
+      Desktop Entry Specification</ulink> format.  It has
+      several global flags, as well as zero or more remote
+      entries which describe how to access remote
+      repositories.
+    </para>
+    
+    <para>
+      See <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry> for more information
+      about OSTree repositories.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>[core] Section Options</title>
+
+    <para>
+      Repository-global options.  The following entries are defined:
+    </para>
+
+    <variablelist>
+      <varlistentry>
+        <term><varname>mode</varname></term>
+        <listitem><para>One of <literal>bare</literal> or <literal>archive-z2</literal>.  </para></listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>repo_version</varname></term>
+        <listitem><para>Currently, this must be set to <literal>1</literal>.</para></listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>[remote "name"] Section Options</title>
+    
+    <para>
+      Describes a remote repository location.
+    </para>
+
+    <variablelist>
+      <varlistentry>
+        <term><varname>url</varname></term>
+        <listitem><para>Must be present; declares URL for accessing
+        this remote.  The only supported schemes are the moment are
+        <literal>file</literal>, <literal>http</literal>, and
+        <literal>https</literal>.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><varname>gpg-verify</varname></term>
+        <listitem><para>A boolean value, defaults to <tt>true</tt>.
+        Controls whether or not OSTree will require commits to be
+        signed by a known GPG key.  For more information, see the
+        <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+        manual under GPG.</para></listitem>
+      </varlistentry>
+    </variablelist>
+
+  </refsect1>
+  
+  <refsect1>
+    <title>See Also</title>
+    <para>
+      <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>, <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+    </para>
+  </refsect1>
+</refentry>
