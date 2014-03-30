@@ -268,21 +268,20 @@
         </refsect1>
 
         <refsect1>
-                <title>Exit status</title>
+                <title>GPG verification</title>
 
-                <para>On success 0 is returned, a non-zero failure
-                code otherwise.</para>
-        </refsect1>
+		<para>OSTree supports signing commits with GPG.  The
+		set of trusted keys is stored as keyring files in
+		<filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any key in
+		any keyring in that directory may be used to sign commits.
+		</para>
+	</refsect1>
 
-        <refsect1>
-                <title>Environment</title>
-
-                <variablelist>
-                        <varlistentry>
-                                <term><varname>$PAGER</varname></term>
-				<listitem><para><command>ostree</command> respects the traditional pager environment variable.</para></listitem>
-                        </varlistentry>
-                </variablelist>
-        </refsect1>
+	<refsect1>
+	  <title>See Also</title>
+	  <para>
+	    <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+	  </para>
+	</refsect1>
 
 </refentry>
