@@ -431,7 +431,7 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
   gboolean ret = FALSE;
   gs_unref_object OstreeRepo *repo = NULL;
   char *refs_to_fetch[] = { self->origin_ref, NULL };
-  gs_free char *from_revision = NULL;
+  const char *from_revision = NULL;
   gs_free char *new_revision = NULL;
   gs_free char *origin_refspec = NULL;
 
@@ -443,9 +443,8 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
   else
     origin_refspec = g_strdup (self->origin_ref);
 
-  if (!ostree_repo_resolve_rev (repo, origin_refspec, TRUE, &from_revision,
-                                error))
-    goto out;
+  g_assert (self->merge_deployment);
+  from_revision = ostree_deployment_get_csum (self->merge_deployment);
 
   if (self->origin_remote)
     {
