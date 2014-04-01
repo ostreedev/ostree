@@ -630,7 +630,7 @@ checkout_tree_at (OstreeRepo                        *self,
   /* We do fchmod/fchown last so that no one else could access the
    * partially created directory and change content we're laying out.
    */
-  if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+  if (!did_exist)
     {
       do
         res = fchmod (destination_dfd,
@@ -641,7 +641,10 @@ checkout_tree_at (OstreeRepo                        *self,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
+    }
 
+  if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+    {
       do
         res = fchown (destination_dfd,
                       g_file_info_get_attribute_uint32 (source_info, "unix::uid"),
