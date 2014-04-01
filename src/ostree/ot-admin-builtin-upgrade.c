@@ -61,6 +61,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   GSConsole *console;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
+  OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
 
   context = g_option_context_new ("Construct new tree from current origin and deploy it, if it changed");
   g_option_context_add_main_entries (context, options, NULL);
@@ -83,7 +84,11 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
     }
 
-  if (!ostree_sysroot_upgrader_pull (upgrader, 0, 0, progress, &changed,
+  if (opt_allow_downgrade)
+    upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER;
+
+  if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
+                                     progress, &changed,
                                      cancellable, error))
     goto out;
 

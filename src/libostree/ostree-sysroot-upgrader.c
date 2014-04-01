@@ -464,8 +464,11 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
     }
   else
     {
+      gboolean allow_older = (upgrader_flags & OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER) > 0;
+
       *out_changed = TRUE;
-      if (from_revision)
+
+      if (from_revision && !allow_older)
         {
           if (!ostree_sysroot_upgrader_check_timestamps (repo, from_revision,
                                                          self->new_revision,
