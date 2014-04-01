@@ -58,7 +58,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gs_unref_object GFile *deployment_origin_path = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
-  GSConsole *console;
+  GSConsole *console = NULL;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;

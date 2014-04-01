@@ -58,7 +58,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
-  GSConsole *console;
+  GSConsole *console = NULL;
   GKeyFile *old_origin;
   GKeyFile *new_origin = NULL;
 
