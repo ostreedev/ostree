@@ -147,6 +147,7 @@ static void
 ostree_fetcher_init (OstreeFetcher *self)
 {
   gint max_conns;
+  const char *http_proxy;
 
   g_queue_init (&self->pending_queue);
   self->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
@@ -156,6 +157,22 @@ ostree_fetcher_init (OstreeFetcher *self)
                                                        SOUP_SESSION_TIMEOUT, 60,
                                                        SOUP_SESSION_IDLE_TIMEOUT, 60,
                                                        NULL);
+
+  http_proxy = g_getenv ("http_proxy");
+  if (http_proxy)
+    {
+      SoupURI *proxy_uri = soup_uri_new (http_proxy);
+      if (!proxy_uri)
+        {
+          g_warning ("Invalid proxy URI '%s'", http_proxy);
+        }
+      else
+        {
+          g_object_set (self->session, SOUP_SESSION_PROXY_URI, proxy_uri, NULL);
+          soup_uri_free (proxy_uri);
+        }
+    }
+
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
   self->max_outstanding = 3 * max_conns;
