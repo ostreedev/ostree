@@ -59,6 +59,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   GSConsole *console = NULL;
+  gboolean in_status_line = FALSE;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
@@ -81,6 +82,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   if (console)
     {
       gs_console_begin_status_line (console, "", NULL, NULL);
+      in_status_line = TRUE;
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
     }
 
@@ -91,6 +93,12 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
                                      progress, &changed,
                                      cancellable, error))
     goto out;
+
+  if (in_status_line)
+    {
+      gs_console_end_status_line (console, NULL, NULL);
+      in_status_line = FALSE;
+    }
 
   if (!changed)
     {
@@ -113,7 +121,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancel
 
   ret = TRUE;
  out:
-  if (console)
+  if (in_status_line)
     gs_console_end_status_line (console, NULL, NULL);
   if (context)
     g_option_context_free (context);

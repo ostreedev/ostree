@@ -59,6 +59,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   GSConsole *console = NULL;
+  gboolean in_status_line = FALSE;
   GKeyFile *old_origin;
   GKeyFile *new_origin = NULL;
 
@@ -113,6 +114,12 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
     }
 
+  if (in_status_line)
+    {
+      gs_console_end_status_line (console, NULL, NULL);
+      in_status_line = FALSE;
+    }
+
   if (!ostree_sysroot_upgrader_pull (upgrader, 0, 0, progress, &changed,
                                      cancellable, error))
     goto out;
@@ -145,7 +152,7 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   ret = TRUE;
  out:
-  if (console)
+  if (in_status_line)
     gs_console_end_status_line (console, NULL, NULL);
   if (new_origin)
     g_key_file_unref (new_origin);
