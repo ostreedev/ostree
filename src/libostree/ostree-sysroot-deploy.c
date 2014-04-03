@@ -1133,9 +1133,19 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   for (i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
+      gs_unref_object GFile *deployment_root = NULL;
       
       if (deployment == self->booted_deployment)
         found_booted_deployment = TRUE;
+      
+      deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
+      if (!g_file_query_exists (deployment_root, NULL))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unable to find expected deployment root: %s",
+                       gs_file_get_path_cached (deployment_root));
+          goto out;
+        }
 
       ostree_deployment_set_index (deployment, i);
     }
