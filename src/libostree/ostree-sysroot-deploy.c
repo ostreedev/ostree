@@ -1203,6 +1203,9 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           goto out;
         }
 
+      g_debug ("Using bootloader: %s", bootloader ?
+               g_type_name (G_TYPE_FROM_INSTANCE (bootloader)) : "(none)");
+
       if (bootloader && !_ostree_bootloader_write_config (bootloader, new_bootversion,
                                                           cancellable, error))
         {
