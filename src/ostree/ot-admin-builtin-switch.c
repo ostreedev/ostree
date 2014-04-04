@@ -120,7 +120,12 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       in_status_line = FALSE;
     }
 
-  if (!ostree_sysroot_upgrader_pull (upgrader, 0, 0, progress, &changed,
+  /* Always allow older...there's not going to be a chronological
+   * relationship necessarily.
+   */
+  if (!ostree_sysroot_upgrader_pull (upgrader, 0,
+                                     OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER,
+                                     progress, &changed,
                                      cancellable, error))
     goto out;
 
