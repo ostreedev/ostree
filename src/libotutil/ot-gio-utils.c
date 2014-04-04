@@ -386,6 +386,7 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
   gs_unref_object GFile *parent = g_file_get_parent (path);
   gs_free char *tmpname = g_strconcat (gs_file_get_basename_cached (path), ".tmp", NULL);
   gs_unref_object GFile *tmppath = g_file_get_child (parent, tmpname);
+  int parent_dfd = -1;
 
   if (!ot_gfile_ensure_unlinked (tmppath, cancellable, error))
     goto out;
@@ -393,10 +394,28 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
   if (!g_file_make_symbolic_link (tmppath, target, cancellable, error))
     goto out;
 
+  if (!gs_file_open_dir_fd (parent, &parent_dfd, cancellable, error))
+    goto out;
+
+  /* Ensure the link has hit disk */
+  if (fsync (parent_dfd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   if (!gs_file_rename (tmppath, path, cancellable, error))
     goto out;
 
+  /* And sync again for good measure */
+  if (fsync (parent_dfd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   ret = TRUE;
  out:
+  if (parent_dfd != -1) (void) close (parent_dfd);
   return ret;
 }
