@@ -69,6 +69,11 @@ gboolean ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
                                                   GCancellable   *cancellable,
                                                   GError        **error);
 
+gboolean ot_gfile_replace_contents_fsync (GFile          *path,
+                                          GBytes         *contents,
+                                          GCancellable   *cancellable,
+                                          GError        **error);
+
 gboolean ot_gfile_ensure_unlinked (GFile         *path,
                                    GCancellable  *cancellable,
                                    GError       **error);

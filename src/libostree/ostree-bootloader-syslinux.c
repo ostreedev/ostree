@@ -236,12 +236,15 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
     goto out;
 
   new_config_contents = _ostree_sysroot_join_lines (new_lines);
+  {
+    gs_unref_bytes GBytes *new_config_contents_bytes =
+      g_bytes_new_static (new_config_contents,
+                          strlen (new_config_contents));
 
-  if (!g_file_replace_contents (new_config_path, new_config_contents,
-                                strlen (new_config_contents), 
-                                NULL, FALSE, G_FILE_CREATE_NONE,
-                                NULL, cancellable, error))
-    goto out;
+    if (!ot_gfile_replace_contents_fsync (new_config_path, new_config_contents_bytes,
+                                          cancellable, error))
+      goto out;
+  }
   
   ret = TRUE;
  out:

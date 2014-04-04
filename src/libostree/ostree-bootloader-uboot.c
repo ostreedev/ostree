@@ -124,12 +124,15 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
     return FALSE;
 
   new_config_contents = _ostree_sysroot_join_lines (new_lines);
+  {
+    gs_unref_bytes GBytes *new_config_contents_bytes =
+      g_bytes_new_static (new_config_contents,
+                          strlen (new_config_contents));
 
-  if (!g_file_replace_contents (new_config_path, new_config_contents,
-                                strlen (new_config_contents),
-                                NULL, FALSE, G_FILE_CREATE_NONE,
-                                NULL, cancellable, error))
-    return FALSE;
+    if (!ot_gfile_replace_contents_fsync (new_config_path, new_config_contents_bytes,
+                                          cancellable, error))
+      return FALSE;
+  }
 
   return TRUE;
 }

@@ -25,6 +25,7 @@
 #include <gio/gio.h>
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
+#include <gio/gfiledescriptorbased.h>
 
 #include <string.h>
 
@@ -268,6 +269,66 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
+  return ret;
+}
+
+/**
+ * ot_gfile_replace_contents_fsync:
+ * 
+ * Like g_file_replace_contents(), except always uses fdatasync().
+ */
+gboolean
+ot_gfile_replace_contents_fsync (GFile          *path,
+                                 GBytes         *contents,
+                                 GCancellable   *cancellable,
+                                 GError        **error)
+{
+  gboolean ret = FALSE;
+  int fd;
+  gs_unref_object GFile *parent = NULL;
+  gs_unref_object GFile *tmpfile = NULL;
+  gs_unref_object GOutputStream *stream = NULL;
+  gs_unref_object GInputStream *instream = NULL;
+
+  parent = g_file_get_parent (path);
+
+  if (!gs_file_open_in_tmpdir (parent, 0644, &tmpfile, &stream,
+                               cancellable, error))
+    goto out;
+
+  g_assert (G_IS_FILE_DESCRIPTOR_BASED (stream));
+  fd = g_file_descriptor_based_get_fd (G_FILE_DESCRIPTOR_BASED (stream));
+
+  instream = g_memory_input_stream_new_from_bytes (contents);
+
+  if (posix_fallocate (fd, 0, g_bytes_get_size (contents)) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (g_output_stream_splice (stream, instream, 0,
+                              cancellable, error) < 0)
+    goto out;
+
+  if (fdatasync (fd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (!g_output_stream_close (stream, cancellable, error))
+    goto out;
+
+  if (!gs_file_rename (tmpfile, path, cancellable, error))
+    goto out;
+
+  g_clear_object (&tmpfile);
+
+  ret = TRUE;
+ out:
+  if (tmpfile)
+    (void) gs_file_unlink (tmpfile, NULL, NULL);
   return ret;
 }
 
