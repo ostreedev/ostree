@@ -16,14 +16,6 @@ set -e
 
 mkdir -p m4
 
-# Fetch submodules if needed
-if test ! -f src/libgsystem/README;
-then
-  echo "+ Setting up submodules"
-  git submodule init
-  git submodule update
-fi
-
 GTKDOCIZE=$(which gtkdocize 2>/dev/null)
 if test -z $GTKDOCIZE; then
         echo "You don't have gtk-doc installed, and thus won't be able to generate the documentation."
