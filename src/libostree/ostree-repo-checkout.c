@@ -657,6 +657,16 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
+  /* Finally, fsync to ensure all entries are on disk.  Ultimately
+   * this should be configurable for the case where we're constructing
+   * buildroots.
+   */
+  if (fsync (destination_dfd) == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   ret = TRUE;
  out:
   if (destination_dfd != -1)
