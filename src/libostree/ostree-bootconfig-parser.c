@@ -21,7 +21,7 @@
 #include "config.h"
 
 #include "ostree-bootconfig-parser.h"
-#include "libgsystem.h"
+#include "otutil.h"
 
 struct _OstreeBootconfigParser
 {
@@ -126,28 +126,16 @@ ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
   return g_hash_table_lookup (self->options, key);
 }
 
-static gboolean
-write_key (OstreeBootconfigParser         *self,
-           GDataOutputStream      *out,
-           const char             *key,
-           const char             *value,
-           GCancellable           *cancellable,
-           GError                **error)
+static void
+write_key (OstreeBootconfigParser    *self,
+           GString                   *buf,
+           const char                *key,
+           const char                *value)
 {
-  gboolean ret = FALSE;
-
-  if (!g_data_output_stream_put_string (out, key, cancellable, error))
-    goto out;
-  if (!g_data_output_stream_put_byte (out, self->separators[0], cancellable, error))
-    goto out;
-  if (!g_data_output_stream_put_string (out, value, cancellable, error))
-    goto out;
-  if (!g_data_output_stream_put_byte (out, '\n', cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
+  g_string_append (buf, key);
+  g_string_append_c (buf, self->separators[0]);
+  g_string_append (buf, value);
+  g_string_append_c (buf, '\n');
 }
            
 gboolean
@@ -159,18 +147,12 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
   gboolean ret = FALSE;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
-  gs_unref_object GOutputStream *out = NULL;
-  gs_unref_object GDataOutputStream *dataout = NULL;
+  GString *buf = g_string_new ("");
+  gs_unref_bytes GBytes *bytes = NULL;
   guint i;
   gs_unref_hashtable GHashTable *written_overrides = NULL;
 
   written_overrides = g_hash_table_new (g_str_hash, g_str_equal);
-
-  out = (GOutputStream*)g_file_replace (output, NULL, FALSE, 0, cancellable, error);
-  if (!out)
-    goto out;
-
-  dataout = g_data_output_stream_new (out);
 
   for (i = 0; i < self->lines->len; i++)
     {
@@ -184,15 +166,12 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
       value = g_hash_table_lookup (self->options, key);
       if (value == NULL)
         {
-          if (!g_data_output_stream_put_string (dataout, line, cancellable, error))
-            goto out;
-          if (!g_data_output_stream_put_byte (dataout, '\n', cancellable, error))
-            goto out;
+          g_string_append (buf, line);
+          g_string_append_c (buf, '\n');
         }
       else
         {
-          if (!write_key (self, dataout, key, value, cancellable, error))
-            goto out;
+          write_key (self, buf, key, value);
           g_hash_table_insert (written_overrides, (gpointer)key, (gpointer)key);
         }
     }
@@ -202,15 +181,19 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
     {
       if (g_hash_table_lookup (written_overrides, hashkey))
         continue;
-      if (!write_key (self, dataout, hashkey, hashvalue, cancellable, error))
-        goto out;
+      write_key (self, buf, hashkey, hashvalue);
     }
 
-  if (!g_output_stream_close ((GOutputStream*)dataout, cancellable, error))
+  bytes = g_string_free_to_bytes (buf);
+  buf = NULL;
+
+  if (!ot_gfile_replace_contents_fsync (output, bytes,
+                                        cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
+  if (buf) g_string_free (buf, TRUE);
   return ret;
 }
 
