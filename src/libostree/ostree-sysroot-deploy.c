@@ -964,6 +964,12 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                cancellable, error))
       goto out;
 
+  /* Now sync out parent directories */
+  if (!ot_util_fsync_directory (bootcsumdir, cancellable, error))
+    goto out;
+  if (!ot_util_fsync_directory (bootconfpath_parent, cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   return ret;
