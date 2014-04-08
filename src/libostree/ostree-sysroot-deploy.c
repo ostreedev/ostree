@@ -91,6 +91,8 @@ copy_modified_config_file (GFile              *orig_etc,
           if (!gs_file_sync_data (dest, cancellable, error))
             goto out;
         }
+      if (!ot_util_fsync_directory (dest_parent, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
