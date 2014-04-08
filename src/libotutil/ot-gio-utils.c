@@ -248,7 +248,7 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
                                          GCancellable   *cancellable,
                                          GError        **error)
 {
-  gboolean ret = TRUE;
+  gboolean ret = FALSE;
   GError *temp_error = NULL;
   gs_free char *ret_contents = NULL;
 
