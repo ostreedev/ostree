@@ -284,16 +284,23 @@ ot_gfile_replace_contents_fsync (GFile          *path,
                                  GError        **error)
 {
   gboolean ret = FALSE;
+  int parent_dfd;
   int fd;
+  const char *target_basename = gs_file_get_basename_cached (path);
   gs_unref_object GFile *parent = NULL;
-  gs_unref_object GFile *tmpfile = NULL;
+  gs_free char *tmpname = NULL;
   gs_unref_object GOutputStream *stream = NULL;
   gs_unref_object GInputStream *instream = NULL;
 
   parent = g_file_get_parent (path);
 
-  if (!gs_file_open_in_tmpdir (parent, 0644, &tmpfile, &stream,
-                               cancellable, error))
+  if (!gs_file_open_dir_fd (parent, &parent_dfd,
+                            cancellable, error))
+    goto out;
+
+  if (!gs_file_open_in_tmpdir_at (parent_dfd, 0644,
+                                  &tmpname, &stream,
+                                  cancellable, error))
     goto out;
 
   g_assert (G_IS_FILE_DESCRIPTOR_BASED (stream));
@@ -320,15 +327,20 @@ ot_gfile_replace_contents_fsync (GFile          *path,
   if (!g_output_stream_close (stream, cancellable, error))
     goto out;
 
-  if (!gs_file_rename (tmpfile, path, cancellable, error))
-    goto out;
+  if (renameat (parent_dfd, tmpname, parent_dfd, target_basename) == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
 
-  g_clear_object (&tmpfile);
+  g_clear_pointer (&tmpname, g_free);
 
   ret = TRUE;
  out:
-  if (tmpfile)
-    (void) gs_file_unlink (tmpfile, NULL, NULL);
+  if (tmpname)
+    (void) unlinkat (parent_dfd, tmpname, 0);
+  if (parent_dfd != -1)
+    (void) close (parent_dfd);
   return ret;
 }
 
