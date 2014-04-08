@@ -365,6 +365,107 @@ ot_gfile_ensure_unlinked (GFile         *path,
 }
 
 /**
+ * ot_util_fsync_directory:
+ * @dir: Path to a directory
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Ensure that all entries in directory @dir are on disk.
+ */
+gboolean
+ot_util_fsync_directory (GFile         *dir,
+                         GCancellable  *cancellable,
+                         GError       **error)
+{
+  gboolean ret = FALSE;
+  int dfd = -1;
+
+  if (!gs_file_open_dir_fd (dir, &dfd, cancellable, error))
+    goto out;
+
+  if (fsync (dfd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (dfd != -1)
+    (void) close (dfd);
+  return ret;
+}
+
+/**
+ * ot_util_ensure_directory_and_fsync:
+ * @dir: Path to a directory
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create @dir (and all intermediate parent directories), ensuring
+ * that all entries are on disk.
+ */
+gboolean
+ot_util_ensure_directory_and_fsync (GFile         *dir,
+                                    GCancellable  *cancellable,
+                                    GError       **error)
+{
+  gboolean ret = FALSE;
+  int parentfd = -1;
+  const char *basename = gs_file_get_basename_cached (dir);
+  gs_unref_object GFile *parent = g_file_get_parent (dir);
+  
+ again:
+  parentfd = open (gs_file_get_path_cached (parent),
+                   O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+  if (parentfd == -1)
+    {
+      if (errno == ENOENT)
+        {
+          if (!ot_util_ensure_directory_and_fsync (parent, cancellable, error))
+            goto out;
+          goto again;
+        }
+      else
+        {
+          int errsv = errno;
+          g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                       "opendir: %s", g_strerror (errsv));
+          goto out;
+        }
+    }
+  
+  if (mkdirat (parentfd, basename, 0777) == -1)
+    {
+      if (errno == EEXIST)
+        {
+          ;
+        }
+      else
+        {
+          int errsv = errno;
+          g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                       "mkdirat: %s", g_strerror (errsv));
+          goto out;
+        }
+    }
+
+  if (fsync (parentfd) == -1)
+    {
+      int errsv = errno;
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errsv),
+                   "fsync: %s", g_strerror (errsv));
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (parentfd != -1)
+    (void) close (parentfd);
+  return ret;
+}
+
+/**
  * ot_gfile_atomic_symlink_swap:
  * @path: Replace the contents of this symbolic link
  * @target: New symbolic link target

@@ -83,5 +83,13 @@ gboolean ot_gfile_atomic_symlink_swap (GFile          *path,
                                        GCancellable   *cancellable,
                                        GError        **error);
 
+gboolean ot_util_ensure_directory_and_fsync (GFile         *dir,
+                                             GCancellable  *cancellable,
+                                             GError       **error);
+
+gboolean ot_util_fsync_directory (GFile         *dir,
+                                  GCancellable  *cancellable,
+                                  GError       **error);
+
 G_END_DECLS
 
