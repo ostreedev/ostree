@@ -576,16 +576,21 @@ write_origin_file (OstreeSysroot         *sysroot,
     {
       gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (sysroot, deployment);
       gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
+      gs_unref_object GFile *origin_parent = g_file_get_parent (origin_path);
       gs_free char *contents = NULL;
       gsize len;
+      gs_unref_bytes GBytes *contents_bytes = NULL;
 
       contents = g_key_file_to_data (origin, &len, error);
       if (!contents)
         goto out;
+      contents_bytes = g_bytes_new_static (contents, len);
 
-      if (!g_file_replace_contents (origin_path, contents, len, NULL, FALSE,
-                                    G_FILE_CREATE_REPLACE_DESTINATION, NULL,
-                                    cancellable, error))
+      if (!ot_gfile_replace_contents_fsync (origin_path, contents_bytes,
+                                            cancellable, error))
+        goto out;
+
+      if (!ot_util_fsync_directory (origin_parent, cancellable, error))
         goto out;
     }
 
