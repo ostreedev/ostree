@@ -86,6 +86,11 @@ copy_modified_config_file (GFile              *orig_etc,
       if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
                         cancellable, NULL, NULL, error))
         goto out;
+      if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_REGULAR)
+        {
+          if (!gs_file_sync_data (dest, cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
