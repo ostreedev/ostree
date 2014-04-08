@@ -220,7 +220,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   deploy_target_path = g_file_get_child (osdeploy_path, checkout_target_name);
 
   deploy_parent = g_file_get_parent (deploy_target_path);
-  if (!gs_file_ensure_directory (deploy_parent, TRUE, cancellable, error))
+  if (!ot_util_ensure_directory_and_fsync (deploy_parent, cancellable, error))
     goto out;
   
   g_print ("ostadmin: Creating deployment %s\n",
@@ -732,7 +732,7 @@ swap_bootlinks (OstreeSysroot *self,
   ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   ostree_subbootdir = g_file_resolve_relative_path (ostree_dir, ostree_subbootdir_name);
 
-  if (!gs_file_ensure_directory (ostree_subbootdir, TRUE, cancellable, error))
+  if (!ot_util_ensure_directory_and_fsync (ostree_subbootdir, cancellable, error))
     goto out;
 
   for (i = 0; i < new_deployments->len; i++)
@@ -749,9 +749,9 @@ swap_bootlinks (OstreeSysroot *self,
       gs_unref_object GFile *linkname = g_file_get_child (ostree_subbootdir, bootlink_pathname);
       gs_unref_object GFile *linkname_parent = g_file_get_parent (linkname);
 
-      if (!gs_file_ensure_directory (linkname_parent, TRUE, cancellable, error))
+      if (!ot_util_ensure_directory_and_fsync (linkname_parent, cancellable, error))
         goto out;
-
+      
       if (!g_file_make_symbolic_link (linkname, bootlink_target, cancellable, error))
         goto out;
     }
@@ -866,10 +866,10 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                                new_bootversion, osname, 
                                                ostree_deployment_get_index (deployment));
 
-  if (!gs_file_ensure_directory (bootcsumdir, TRUE, cancellable, error))
+  if (!ot_util_ensure_directory_and_fsync (bootcsumdir, cancellable, error))
     goto out;
   bootconfpath_parent = g_file_get_parent (bootconfpath);
-  if (!gs_file_ensure_directory (bootconfpath_parent, TRUE, cancellable, error))
+  if (!ot_util_ensure_directory_and_fsync (bootconfpath_parent, cancellable, error))
     goto out;
 
   dest_kernel_name = remove_checksum_from_kernel_name (gs_file_get_basename_cached (tree_kernel_path),
@@ -1180,7 +1180,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
       new_loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
                                                              new_bootversion);
-      if (!gs_file_ensure_directory (new_loader_entries_dir, TRUE, cancellable, error))
+      if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
         goto out;
       
       for (i = 0; i < new_deployments->len; i++)
