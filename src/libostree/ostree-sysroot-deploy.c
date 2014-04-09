@@ -20,12 +20,262 @@
 
 #include "config.h"
 
+#include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
+
 #include "ostree-sysroot-private.h"
 #include "ostree-core-private.h"
 #include "otutil.h"
 #include "libgsystem.h"
 
 #define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
+
+/* FIXME when we depend on new enough libgsystem, move to
+ * gs_dfd_and_name_get_all_xattrs().
+ */
+static gboolean
+dfd_and_name_get_all_xattrs (int            dfd,
+                             const char    *name,
+                             GVariant     **out_xattrs,
+                             GCancellable  *cancellable,
+                             GError       **error)
+{
+  /* A workaround for the lack of lgetxattrat(), thanks to Florian Weimer:
+   * https://mail.gnome.org/archives/ostree-list/2014-February/msg00017.html
+   */
+  gs_free char *path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, name);
+  gs_unref_object GFile *fpath = g_file_new_for_path (path);
+  return gs_file_get_all_xattrs (fpath, out_xattrs,
+                                 cancellable, error);
+}
+
+static gboolean
+copy_one_file_fsync_at (int              src_parent_dfd,
+                        int              dest_parent_dfd,
+                        struct stat     *stbuf,
+                        const char      *name,
+                        GCancellable    *cancellable,
+                        GError         **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *src_xattrs = NULL;
+
+  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, name,
+                                    &src_xattrs,
+                                    cancellable, error))
+    goto out;
+
+  if (S_ISREG (stbuf->st_mode))
+    {
+      /* Note the objects take ownership of the fds */
+      int src_fd = -1;
+      int dest_fd = -1;
+      gs_unref_object GInputStream *in = NULL;
+      gs_unref_object GOutputStream *out = NULL;
+
+      src_fd = openat (src_parent_dfd, name, O_RDONLY | O_NOFOLLOW | O_NOCTTY | O_NOATIME | O_CLOEXEC);
+      if (src_fd == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      in = g_unix_input_stream_new (src_fd, TRUE);
+
+      dest_fd = openat (dest_parent_dfd, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
+                        stbuf->st_mode);
+      if (dest_fd == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      out = g_unix_output_stream_new (dest_fd, TRUE);
+
+      if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
+        goto out;
+
+      if (fchown (dest_fd, stbuf->st_uid, stbuf->st_gid) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      if (fchmod (dest_fd, stbuf->st_mode) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      if (fdatasync (dest_fd) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      /* Output stream destructor takes care of close */
+    }
+  else if (S_ISLNK (stbuf->st_mode))
+    {
+      char targetbuf[PATH_MAX+1];
+      size_t len;
+
+      do
+        len = readlinkat (src_parent_dfd, name, targetbuf, sizeof (targetbuf) - 1);
+      while (G_UNLIKELY (len == -1 && errno == EINTR));
+      if (len == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      targetbuf[len] = '\0';
+      if (symlinkat (targetbuf, dest_parent_dfd, name) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      if (fchownat (dest_parent_dfd, name,
+                    stbuf->st_uid, stbuf->st_gid,
+                    AT_SYMLINK_NOFOLLOW) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unable to copy non-regular/non-symlink file '%s'",
+                   name);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+copy_dir_recurse_fsync (DIR             *src_parent_dir,
+                        int              dest_parent_dfd,
+                        const char      *name,
+                        GCancellable    *cancellable,
+                        GError         **error)
+{
+  gboolean ret = FALSE;
+  struct stat src_stbuf;
+  int src_parent_dfd = dirfd (src_parent_dir);
+  int src_dfd = -1;
+  int dest_dfd = -1;
+  DIR *srcd = NULL;
+  struct dirent *dent;
+  gs_unref_variant GVariant *xattrs = NULL;
+
+  src_dfd = openat (src_parent_dfd, name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+  if (src_dfd == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  /* Create with mode 0700, we'll fchmod/fchown later */
+  if (mkdirat (dest_parent_dfd, name, 0700) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  dest_dfd = openat (dest_parent_dfd, name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+  if (dest_dfd == -1)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  /* Clone all xattrs first, so we get the SELinux security context
+   * right.  This will allow other users access if they have ACLs, but
+   * oh well.
+   */ 
+  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, name,
+                                    &xattrs,
+                                    cancellable, error))
+    goto out;
+  if (!gs_fd_set_all_xattrs (dest_dfd, xattrs,
+                             cancellable, error))
+    goto out;
+
+  srcd = fdopendir (src_dfd);
+  if (!srcd)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  while ((dent = readdir (srcd)) != NULL)
+    {
+      const char *name = dent->d_name;
+      struct stat child_stbuf;
+
+      if (strcmp (name, ".") == 0 ||
+          strcmp (name, "..") == 0)
+        continue;
+
+      if (fstatat (src_dfd, name, &child_stbuf,
+                   AT_SYMLINK_NOFOLLOW) != 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      if (S_ISDIR (child_stbuf.st_mode))
+        {
+          if (!copy_dir_recurse_fsync (srcd, dest_dfd, name,
+                                       cancellable, error))
+            goto out;
+        }
+      else
+        {
+          if (!copy_one_file_fsync_at (src_dfd, dest_dfd,
+                                       &child_stbuf, name,
+                                       cancellable, error))
+            goto out;
+        }
+    }
+
+  if (fstat (src_dfd, &src_stbuf) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  /* And finally, fsync the fd */
+  if (fsync (dest_dfd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (srcd)
+    {
+      (void) closedir (srcd);
+      /* Note the srcd owns src_dfd */
+      src_dfd = -1;
+    }
+  if (src_dfd != -1)
+    (void) close (src_dfd);
+  if (dest_dfd != -1)
+    (void) close (dest_dfd);
+  return ret;
+}
 
 /**
  * copy_modified_config_file:
@@ -46,11 +296,15 @@ copy_modified_config_file (GFile              *orig_etc,
                            GError            **error)
 {
   gboolean ret = FALSE;
+  gs_unref_object GFile *src_parent = g_file_get_parent (src);
   gs_unref_object GFileInfo *src_info = NULL;
   gs_unref_object GFileInfo *parent_info = NULL;
   gs_unref_object GFile *dest = NULL;
   gs_unref_object GFile *dest_parent = NULL;
   gs_free char *relative_path = NULL;
+  DIR *src_parent_dir = NULL;
+  int src_parent_dfd = -1;
+  int dest_parent_dfd = -1;
   
   relative_path = g_file_get_relative_path (modified_etc, src);
   g_assert (relative_path);
@@ -78,7 +332,29 @@ copy_modified_config_file (GFile              *orig_etc,
 
   if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_DIRECTORY)
     {
-      if (!gs_shutil_cp_a (src, dest, cancellable, error))
+      src_parent_dfd = open (gs_file_get_path_cached (src_parent),
+                             O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+      if (src_parent_dfd == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      src_parent_dir = fdopendir (src_parent_dfd);
+      if (!src_parent_dir)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      dest_parent_dfd = open (gs_file_get_path_cached (dest_parent),
+                              O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+      if (dest_parent_dfd == -1)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+      if (!copy_dir_recurse_fsync (src_parent_dir, dest_parent_dfd,
+                                   gs_file_get_basename_cached (src),
+                                   cancellable, error))
         goto out;
     }
   else
@@ -97,6 +373,15 @@ copy_modified_config_file (GFile              *orig_etc,
 
   ret = TRUE;
  out:
+  if (src_parent_dir)
+    {
+      (void) closedir (src_parent_dir);
+      src_parent_dfd = -1;
+    }
+  if (src_parent_dfd != -1)
+    (void) close (src_parent_dfd);
+  if (dest_parent_dfd != -1)
+    (void) close (dest_parent_dfd);
   return ret;
 }
 
