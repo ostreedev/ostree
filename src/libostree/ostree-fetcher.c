@@ -22,6 +22,8 @@
 
 #include "config.h"
 
+#include <gio/gfiledescriptorbased.h>
+
 #include "ostree-fetcher.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -240,8 +242,15 @@ on_splice_complete (GObject        *object,
   goffset filesize;
   GError *local_error = NULL;
 
+  /* Close it here since we do an async fstat(), where we don't want
+   * to hit a bad fd.
+   */
   if (pending->out_stream)
-    g_hash_table_remove (pending->self->output_stream_set, pending->out_stream);
+    {
+      if (!g_output_stream_close (pending->out_stream, pending->cancellable, &local_error))
+        goto out;
+      g_hash_table_remove (pending->self->output_stream_set, pending->out_stream);
+    }
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   file_info = g_file_query_info (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
@@ -283,7 +292,7 @@ on_request_sent (GObject        *object,
   OstreeFetcherPendingURI *pending = user_data;
   GError *local_error = NULL;
   gs_unref_object SoupMessage *msg = NULL;
-  GOutputStreamSpliceFlags flags = G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET;
+  GOutputStreamSpliceFlags flags = G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE;
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
@@ -571,14 +580,12 @@ ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
   while (g_hash_table_iter_next (&hiter, &key, &value))
     {
       GFileOutputStream *stream = key;
-      GFileInfo *finfo;
-
-      finfo = g_file_output_stream_query_info (stream, "standard::size",
-                                               NULL, NULL);
-      if (finfo)
+      struct stat stbuf;
+      
+      if (G_IS_FILE_DESCRIPTOR_BASED (stream))
         {
-          ret += g_file_info_get_size (finfo);
-          g_object_unref (finfo);
+          if (gs_stream_fstat ((GFileDescriptorBased*)stream, &stbuf, NULL, NULL))
+            ret += stbuf.st_size;
         }
     }
   

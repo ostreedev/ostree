@@ -229,6 +229,7 @@ run_mainloop_monitor_fetcher (OtPullData   *pull_data)
   if (pull_data->progress)
     {
       update_timeout = g_timeout_source_new_seconds (1);
+      g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
       g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
       g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
       g_source_unref (update_timeout);
