@@ -25,10 +25,6 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 AM_CFLAGS += $(WARN_CFLAGS)
 DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc --disable-maintainer-mode
 
-if BUILD_EMBEDDED_DEPENDENCIES
-SUBDIRS += embedded-dependencies
-endif
-
 SUBDIRS += .
 
 if ENABLE_GTK_DOC
@@ -37,33 +33,10 @@ endif
 
 EXTRA_DIST += autogen.sh COPYING README.md
 
-if BUILD_EMBEDDED_DEPENDENCIES
-OT_INTERNAL_GIO_UNIX_CFLAGS = \
-	-I$(top_builddir)/embedded-dependencies/EMBEDDEPS/include/glib-2.0 \
-	-I$(top_builddir)/embedded-dependencies/EMBEDDEPS/include/gio-unix-2.0 \
-	-I$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/glib-2.0/include \
-	$(NULL)
-OT_INTERNAL_GIO_UNIX_LIBS = \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libglib-2.0.so \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libgthread-2.0.so \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libgmodule-2.0.so \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libgobject-2.0.so \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libgio-2.0.so \
-	$(NULL)
-OT_INTERNAL_SOUP_CFLAGS = \
-	$(OT_INTERNAL_GIO_UNIX_CFLAGS) \
-	-I$(top_builddir)/embedded-dependencies/EMBEDDEPS/include/libsoup-2.4 \
-	$(NULL)
-OT_INTERNAL_SOUP_LIBS = \
-	$(OT_INTERNAL_GIO_UNIX_LIBS) \
-	$(top_builddir)/embedded-dependencies/EMBEDDEPS/lib/libsoup-2.4.so \
-	$(NULL)
-else
 OT_INTERNAL_GIO_UNIX_CFLAGS = $(OT_DEP_GIO_UNIX_CFLAGS)
 OT_INTERNAL_GIO_UNIX_LIBS = $(OT_DEP_GIO_UNIX_LIBS)
 OT_INTERNAL_SOUP_CFLAGS = $(OT_DEP_SOUP_CFLAGS)
 OT_INTERNAL_SOUP_LIBS = $(OT_DEP_SOUP_LIBS)
-endif
 
 if BUILDOPT_INTROSPECTION
 include $(INTROSPECTION_MAKEFILE)

@@ -42,37 +42,28 @@ AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from l
 
 PKG_PROG_PKG_CONFIG
 
-AC_ARG_ENABLE(embedded-dependencies,
-	    AS_HELP_STRING([--enable-embedded-dependencies], [Use embedded GLib and libsoup copies]),,
-	    enable_embedded_dependencies=no)
-AM_CONDITIONAL(BUILD_EMBEDDED_DEPENDENCIES, test x$enable_embedded_dependencies = xyes)
-AS_IF([test x$enable_embedded_dependencies = xyes], [
-  echo "NOTICE: Embedded dependencies (GLib and libsoup) enabled"
-  with_soup=yes
-], [
-  GIO_DEPENDENCY="gio-unix-2.0 >= 2.34.0 libgsystem >= 2014.2"
-  PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
+GIO_DEPENDENCY="gio-unix-2.0 >= 2.34.0 libgsystem >= 2014.2"
+PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
-  SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
-  AC_ARG_WITH(soup,
+SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
+AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
 	    [], [with_soup=check])
-  AS_IF([test x$with_soup != xno ], [
-    AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
-    PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
-    AC_MSG_RESULT([$have_soup])
+AS_IF([test x$with_soup != xno ], [
+  AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
+  PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
+  AC_MSG_RESULT([$have_soup])
     AS_IF([ test x$have_soup = xno && test x$with_soup != xcheck], [
        AC_MSG_ERROR([libsoup is enabled but could not be found])
-    ])
-    AS_IF([test x$have_soup = xyes], [
-	PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
-        AC_DEFINE(HAVE_LIBSOUP, 1, [Define if we have libsoup.pc])
-	with_soup=yes
-    ], [
-	with_soup=no
-    ])
-  ], [ with_soup=no ])
-])
+  ])
+  AS_IF([test x$have_soup = xyes], [
+    PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
+    AC_DEFINE(HAVE_LIBSOUP, 1, [Define if we have libsoup.pc])
+    with_soup=yes
+  ], [
+    with_soup=no
+  ])
+], [ with_soup=no ])
 if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
 
@@ -201,7 +192,6 @@ AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
 
 AC_CONFIG_FILES([
 Makefile
-embedded-dependencies/Makefile
 doc/Makefile
 src/libostree/ostree-1.pc
 ])
@@ -212,7 +202,6 @@ echo "
     ===============
 
 
-    embedded dependencies:                        $enable_embedded_dependencies
     introspection:                                $found_introspection
     libsoup (retrieve remote HTTP repositories):  $with_soup
     SELinux:                                      $with_selinux

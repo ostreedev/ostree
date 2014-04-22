@@ -1,3 +1,0 @@
-embedded-deps-download:
-	test -d glib || git clone --depth=1 git://git.gnome.org/glib -b master glib
-	test -d libsoup || git clone --depth=1 git://git.gnome.org/libsoup -b master libsoup
