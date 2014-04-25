@@ -287,7 +287,9 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
   fetch_data.pull_data = pull_data;
 
   pull_data->fetching_sync_uri = uri;
-  ostree_fetcher_stream_uri_async (pull_data->fetcher, uri, cancellable,
+  ostree_fetcher_stream_uri_async (pull_data->fetcher, uri,
+                                   OSTREE_MAX_METADATA_SIZE,
+                                   cancellable,
                                    fetch_uri_sync_on_complete, &fetch_data);
 
   run_mainloop_monitor_fetcher (pull_data);
@@ -883,7 +885,9 @@ enqueue_one_object_request (OtPullData        *pull_data,
   fetch_data->pull_data = pull_data;
   fetch_data->object = ostree_object_name_serialize (checksum, objtype);
   fetch_data->is_detached_meta = is_detached_meta;
-  ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri, pull_data->cancellable,
+  ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
+                                                 is_meta ? OSTREE_MAX_METADATA_SIZE : 0,
+                                                 pull_data->cancellable,
                                                  is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
   soup_uri_free (obj_uri);
 }

@@ -23,7 +23,7 @@ set -e
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..1'
+echo '1..2'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig

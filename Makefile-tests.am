@@ -29,6 +29,7 @@ testfiles = test-basic \
 	test-libarchive \
 	test-pull-archive-z \
 	test-pull-corruption \
+	test-pull-large-metadata \
 	test-pull-resume \
 	test-gpg-signed-commit \
 	test-admin-deploy-syslinux \

@@ -551,6 +551,20 @@ write_object (OstreeRepo         *self,
                                         cancellable, error))
         goto out;
 
+      if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+        {
+          if (G_UNLIKELY (file_object_length > OSTREE_MAX_METADATA_WARN_SIZE))
+            {
+              gs_free char *metasize = g_format_size (file_object_length);
+              gs_free char *warnsize = g_format_size (OSTREE_MAX_METADATA_WARN_SIZE);
+              gs_free char *maxsize = g_format_size (OSTREE_MAX_METADATA_SIZE);
+              g_warning ("metadata object %s is %s, which is larger than the warning threshold of %s." \
+                         "  The hard limit on metadata size is %s.  Put large content in the tree itself, not in metadata.",
+                         actual_checksum,
+                         metasize, warnsize, maxsize);
+            }
+        }
+
       g_clear_pointer (&temp_filename, g_free);
       g_clear_object (&temp_file);
     }
@@ -1049,16 +1063,35 @@ ostree_repo_write_metadata (OstreeRepo         *self,
                             GCancellable       *cancellable,
                             GError            **error)
 {
+  gboolean ret = FALSE;
   gs_unref_object GInputStream *input = NULL;
   gs_unref_variant GVariant *normalized = NULL;
 
   normalized = g_variant_get_normal_form (object);
+
+  if (G_UNLIKELY (g_variant_get_size (normalized) > OSTREE_MAX_METADATA_SIZE))
+    {
+      gs_free char *input_bytes = g_format_size (g_variant_get_size (normalized));
+      gs_free char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Metadata object of type '%s' is %s; maximum metadata size is %s",
+                   ostree_object_type_to_string (objtype),
+                   input_bytes,
+                   max_bytes);
+      goto out;
+    }
+
   input = ot_variant_read (normalized);
 
-  return write_object (self, objtype, expected_checksum,
-                       input, g_variant_get_size (normalized),
-                       out_csum,
-                       cancellable, error);
+  if (!write_object (self, objtype, expected_checksum,
+                     input, g_variant_get_size (normalized),
+                     out_csum,
+                     cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /**

@@ -29,9 +29,19 @@ G_BEGIN_DECLS
 /**
  * OSTREE_MAX_METADATA_SIZE:
  * 
- * Maximum permitted size in bytes of metadata objects.
+ * Maximum permitted size in bytes of metadata objects.  This is an
+ * arbitrary number, but really, no one should be putting humongous
+ * data in metadata.
  */
-#define OSTREE_MAX_METADATA_SIZE (1 << 26)
+#define OSTREE_MAX_METADATA_SIZE (10 * 1024 * 1024)
+
+/**
+ * OSTREE_MAX_METADATA_WARN_SIZE:
+ * 
+ * Objects committed above this size will be allowed, but a warning
+ * will be emitted.
+ */
+#define OSTREE_MAX_METADATA_WARN_SIZE (7 * 1024 * 1024)
 
 /**
  * OSTREE_MAX_RECURSION:
