@@ -80,7 +80,8 @@ typedef enum {
  * u - mode
  * a(ayay) - xattrs
  */
-#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE ("(uuua(ayay))")
+#define OSTREE_DIRMETA_GVARIANT_STRING "(uuua(ayay))"
+#define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_DIRMETA_GVARIANT_STRING)
 
 /**
  * OSTREE_TREE_GVARIANT_FORMAT:
@@ -88,7 +89,8 @@ typedef enum {
  * a(say) - array of (filename, checksum) for files
  * a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories
  */
-#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE ("(a(say)a(sayay))")
+#define OSTREE_TREE_GVARIANT_STRING "(a(say)a(sayay))"
+#define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_TREE_GVARIANT_STRING)
 
 /**
  * OSTREE_COMMIT_GVARIANT_FORMAT:
@@ -102,7 +104,8 @@ typedef enum {
  * ay - Root tree contents
  * ay - Root tree metadata
  */
-#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE ("(a{sv}aya(say)sstayay)")
+#define OSTREE_COMMIT_GVARIANT_STRING "(a{sv}aya(say)sstayay)"
+#define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_COMMIT_GVARIANT_STRING)
 
 /**
  * OstreeRepoMode:
