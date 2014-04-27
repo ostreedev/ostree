@@ -269,7 +269,7 @@ ostree_builtin_show (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
               gs_unref_variant GVariant *xattrs = NULL;
               GFileType filetype;
               
-              if (!ostree_repo_load_file (repo, resolved_rev, NULL, &finfo, &xattrs,
+              if (!ostree_repo_load_file (repo, rev, NULL, &finfo, &xattrs,
                                           cancellable, error))
                 goto out;
 
