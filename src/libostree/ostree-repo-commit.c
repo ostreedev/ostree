@@ -314,6 +314,30 @@ add_size_index_to_metadata (OstreeRepo        *self,
 }
 
 static gboolean
+fallocate_stream (GFileDescriptorBased      *stream,
+                  goffset                    size,
+                  GCancellable              *cancellable,
+                  GError                   **error)
+{
+  gboolean ret = FALSE;
+  int fd = g_file_descriptor_based_get_fd (stream);
+
+  if (size > 0)
+    {
+      int r = posix_fallocate (fd, 0, size);
+      if (r != 0)
+        {
+          ot_util_set_error_from_errno (error, r);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 write_object (OstreeRepo         *self,
               OstreeObjectType    objtype,
               const char         *expected_checksum,
@@ -400,9 +424,16 @@ write_object (OstreeRepo         *self,
        */
       if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_regular)
         {
+          guint64 size = g_file_info_get_size (file_info);
+
           if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
                                           cancellable, error))
             goto out;
+
+          if (!fallocate_stream ((GFileDescriptorBased*)temp_out, size,
+                                 cancellable, error))
+            goto out;
+
           temp_file = g_file_get_child (self->tmp_dir, temp_filename);
           if (g_output_stream_splice (temp_out, file_input, 0,
                                       cancellable, error) < 0)
@@ -460,6 +491,11 @@ write_object (OstreeRepo         *self,
       if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
                                       cancellable, error))
         goto out;
+
+      if (!fallocate_stream ((GFileDescriptorBased*)temp_out, file_object_length,
+                             cancellable, error))
+        goto out;
+
       temp_file = g_file_get_child (self->tmp_dir, temp_filename);
       if (g_output_stream_splice (temp_out, checksum_input ? (GInputStream*)checksum_input : input,
                                   0,
@@ -996,7 +1032,9 @@ ostree_repo_write_metadata (OstreeRepo         *self,
   normalized = g_variant_get_normal_form (object);
   input = ot_variant_read (normalized);
 
-  return write_object (self, objtype, expected_checksum, input, 0, out_csum,
+  return write_object (self, objtype, expected_checksum,
+                       input, g_variant_get_size (normalized),
+                       out_csum,
                        cancellable, error);
 }
 
@@ -1022,8 +1060,7 @@ ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
                                            GCancellable      *cancellable,
                                            GError           **error)
 {
-  /* Ignore provided length for now */
-  return write_object (self, objtype, checksum, object_input, 0, NULL,
+  return write_object (self, objtype, checksum, object_input, length, NULL,
                        cancellable, error);
 }
 
@@ -1053,7 +1090,9 @@ ostree_repo_write_metadata_trusted (OstreeRepo         *self,
   normalized = g_variant_get_normal_form (variant);
   input = ot_variant_read (normalized);
 
-  return write_object (self, type, checksum, input, 0, NULL,
+  return write_object (self, type, checksum,
+                       input, g_variant_get_size (normalized),
+                       NULL,
                        cancellable, error);
 }
 
