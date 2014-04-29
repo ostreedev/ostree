@@ -203,7 +203,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
         g_main_loop_quit (pull_data->loop);
       break;
     case OSTREE_PULL_PHASE_FETCHING_OBJECTS:
-      if (current_idle)
+      if (current_idle && !pull_data->fetching_sync_uri)
         {
           g_debug ("pull: idle, exiting mainloop");
           
