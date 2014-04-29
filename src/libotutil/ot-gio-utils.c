@@ -308,10 +308,14 @@ ot_gfile_replace_contents_fsync (GFile          *path,
 
   instream = g_memory_input_stream_new_from_bytes (contents);
 
-  if (posix_fallocate (fd, 0, g_bytes_get_size (contents)) != 0)
+  if (g_bytes_get_size (contents) > 0)
     {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
+      int r = posix_fallocate (fd, 0, g_bytes_get_size (contents));
+      if (r != 0)
+        {
+          ot_util_set_error_from_errno (error, r);
+          goto out;
+        }
     }
 
   if (g_output_stream_splice (stream, instream, 0,
