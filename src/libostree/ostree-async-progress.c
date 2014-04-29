@@ -63,6 +63,8 @@ struct OstreeAsyncProgress
   GHashTable *uint_values;
   GHashTable *uint64_values;
 
+  gboolean dead;
+
   char *status;
 };
 
@@ -184,9 +186,12 @@ ostree_async_progress_set_status (OstreeAsyncProgress       *self,
                                   const char                *status)
 {
   g_mutex_lock (&self->lock);
-  g_free (self->status);
-  self->status = g_strdup (status);
-  ensure_callback_locked (self);
+  if (!self->dead)
+    {
+      g_free (self->status);
+      self->status = g_strdup (status);
+      ensure_callback_locked (self);
+    }
   g_mutex_unlock (&self->lock);
 }
 
@@ -210,6 +215,9 @@ update_key (OstreeAsyncProgress   *self,
   gpointer qkey = GUINT_TO_POINTER (g_quark_from_string (key));
 
   g_mutex_lock (&self->lock);
+
+  if (self->dead)
+    goto out;
 
   if (g_hash_table_lookup_extended (hash, qkey, NULL, &orig_value))
     {
@@ -269,4 +277,34 @@ ostree_async_progress_new_and_connect (void (*changed) (OstreeAsyncProgress *sel
   OstreeAsyncProgress *ret = ostree_async_progress_new ();
   g_signal_connect (ret, "changed", G_CALLBACK (changed), user_data);
   return ret;
+}
+
+/**
+ * ostree_async_progress_finish:
+ * @self: Self
+ *
+ * Process any pending signals, ensuring the main context is cleared
+ * of sources used by this object.  Also ensures that no further
+ * events will be queued.
+ */
+void
+ostree_async_progress_finish (OstreeAsyncProgress *self)
+{
+  gboolean emit_changed = FALSE;
+
+  g_mutex_lock (&self->lock);
+  if (!self->dead)
+    {
+      self->dead = TRUE;
+      if (self->idle_source)
+        {
+          g_source_destroy (self->idle_source);
+          self->idle_source = NULL;
+          emit_changed = TRUE;
+        }
+    }
+  g_mutex_unlock (&self->lock);
+
+  if (emit_changed)
+    g_signal_emit (self, signals[CHANGED], 0);
 }

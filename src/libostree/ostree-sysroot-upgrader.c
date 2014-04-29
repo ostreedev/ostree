@@ -452,6 +452,9 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                              flags, progress,
                              cancellable, error))
         goto out;
+
+      if (progress)
+        ostree_async_progress_finish (progress);
     }
 
   if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &self->new_revision,

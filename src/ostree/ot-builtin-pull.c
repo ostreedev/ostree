@@ -89,6 +89,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
                          pullflags, progress, cancellable, error))
     goto out;
 
+  if (progress)
+    ostree_async_progress_finish (progress);
+
   ret = TRUE;
  out:
   if (console)
