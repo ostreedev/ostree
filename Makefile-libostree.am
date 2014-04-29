@@ -41,6 +41,12 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-checksum-input-stream.h \
 	src/libostree/ostree-chain-input-stream.c \
 	src/libostree/ostree-chain-input-stream.h \
+	src/libostree/ostree-lzma-common.c \
+	src/libostree/ostree-lzma-common.h \
+	src/libostree/ostree-lzma-compressor.c \
+	src/libostree/ostree-lzma-compressor.h \
+	src/libostree/ostree-lzma-decompressor.c \
+	src/libostree/ostree-lzma-decompressor.h \
 	src/libostree/ostree-varint.h \
 	src/libostree/ostree-varint.c \
 	src/libostree/ostree-diff.c \
@@ -83,9 +89,9 @@ libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
 	$(NULL)
 endif
 
-libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" -DGPGVPATH=\"$(GPGVPATH)\" $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" -DGPGVPATH=\"$(GPGVPATH)\" $(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_LZMA_CFLAGS)
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -export-symbols-regex '^ostree_'
-libostree_1_la_LIBADD = libotutil.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS)
+libostree_1_la_LIBADD = libotutil.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS)
 
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
