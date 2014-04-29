@@ -293,11 +293,14 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
   run_mainloop_monitor_fetcher (pull_data);
   if (!fetch_data.result_stream)
     {
-      if (allow_noent && g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      if (allow_noent)
         {
-          g_clear_error (error);
-          ret = TRUE;
-          *out_contents = NULL;
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (error);
+              ret = TRUE;
+              *out_contents = NULL;
+            }
         }
       goto out;
     }
