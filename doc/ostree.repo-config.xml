@@ -104,29 +104,11 @@ Boston, MA 02111-1307, USA.
 
       <varlistentry>
         <term><varname>gpg-verify</varname></term>
-        <listitem><para>A boolean value, defaults to true.
+        <listitem><para>A boolean value, defaults to <tt>true</tt>.
         Controls whether or not OSTree will require commits to be
         signed by a known GPG key.  For more information, see the
         <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
         manual under GPG.</para></listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term><varname>tls-permissive</varname></term>
-        <listitem><para>A boolean value, defaults to false.  By
-        default, server TLS certificates will be checked against the
-        system certificate store.  If this variable is set, any
-        certificate will be accepted.</para></listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term><varname>tls-client-cert-path</varname></term>
-        <listitem><para>Path to file for client-side certificate, to present when making requests to this repository.</para></listitem>
-      </varlistentry>
-
-      <varlistentry>
-        <term><varname>tls-client-key-path</varname></term>
-        <listitem><para>Path to file containing client-side certificate key, to present when making requests to this repository.</para></listitem>
       </varlistentry>
     </variablelist>
 
