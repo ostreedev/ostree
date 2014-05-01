@@ -63,12 +63,21 @@ AS_IF([test x$with_soup != xno ], [
     PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
     AC_DEFINE(HAVE_LIBSOUP, 1, [Define if we have libsoup.pc])
     with_soup=yes
+    save_CFLAGS=$CFLAGS
+    CFLAGS=$OT_DEP_SOUP_CFLAGS
+    have_libsoup_client_certs=no
+    AC_CHECK_DECL([SOUP_SESSION_TLS_INTERACTION], [
+        AC_DEFINE(HAVE_LIBSOUP_CLIENT_CERTS, 1, [Define if we have libsoup client certs])
+        have_libsoup_client_certs=yes
+        ], [], [#include <libsoup/soup.h>])
+    CFLAGS=$save_CFLAGS
   ], [
     with_soup=no
   ])
 ], [ with_soup=no ])
 if test x$with_soup != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libsoup"; fi
 AM_CONDITIONAL(USE_LIBSOUP, test x$with_soup != xno)
+AM_CONDITIONAL(HAVE_LIBSOUP_CLIENT_CERTS, test x$have_libsoup_client_certs = xyes)
 
 m4_ifdef([GOBJECT_INTROSPECTION_CHECK], [
   GOBJECT_INTROSPECTION_CHECK([1.34.0])

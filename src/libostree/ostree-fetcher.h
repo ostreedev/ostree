@@ -54,6 +54,9 @@ GType   ostree_fetcher_get_type (void) G_GNUC_CONST;
 OstreeFetcher *ostree_fetcher_new (GFile                     *tmpdir,
                                    OstreeFetcherConfigFlags   flags);
 
+void ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
+                                     GTlsCertificate *cert);
+
 char * ostree_fetcher_query_state_text (OstreeFetcher              *self);
 
 guint64 ostree_fetcher_bytes_transferred (OstreeFetcher       *self);

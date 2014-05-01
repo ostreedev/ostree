@@ -1086,6 +1086,41 @@ ostree_repo_pull (OstreeRepo               *self,
   pull_data->fetcher = ostree_fetcher_new (pull_data->repo->tmp_dir,
                                            fetcher_flags);
 
+  {
+    gs_free char *tls_client_cert_path = NULL;
+    gs_free char *tls_client_key_path = NULL;
+
+    if (!ot_keyfile_get_value_with_default (config, remote_key,
+                                            "tls-client-cert-path",
+                                            NULL, &tls_client_cert_path, error))
+      goto out;
+    if (!ot_keyfile_get_value_with_default (config, remote_key,
+                                            "tls-client-key-path",
+                                            NULL, &tls_client_key_path, error))
+      goto out;
+
+    if ((tls_client_cert_path != NULL) != (tls_client_key_path != NULL))
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "\"%s\" must specify both \"tls-client-cert-path\" and \"tls-client-key-path\"", remote_key);
+        goto out;
+      }
+    else if (tls_client_cert_path)
+      {
+        gs_unref_object GTlsCertificate *client_cert = NULL;
+
+        g_assert (tls_client_key_path);
+
+        client_cert = g_tls_certificate_new_from_files (tls_client_cert_path,
+                                                        tls_client_key_path,
+                                                        error);
+        if (!client_cert)
+          goto out;
+
+        ostree_fetcher_set_client_cert (pull_data->fetcher, client_cert);
+      }
+  }
+
   if (!pull_data->base_uri)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

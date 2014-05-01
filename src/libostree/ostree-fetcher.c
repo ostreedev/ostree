@@ -25,6 +25,9 @@
 #include <gio/gfiledescriptorbased.h>
 
 #include "ostree-fetcher.h"
+#ifdef HAVE_LIBSOUP_CLIENT_CERTS
+#include "ostree-tls-cert-interaction.h"
+#endif
 #include "ostree.h"
 #include "otutil.h"
 #include "libgsystem.h"
@@ -79,6 +82,8 @@ struct OstreeFetcher
 
   GFile *tmpdir;
 
+  GTlsCertificate *client_cert;
+
   SoupSession *session;
   SoupRequester *requester;
 
@@ -107,6 +112,7 @@ ostree_fetcher_finalize (GObject *object)
 
   g_clear_object (&self->session);
   g_clear_object (&self->tmpdir);
+  g_clear_object (&self->client_cert);
 
   g_hash_table_destroy (self->sending_messages);
   g_hash_table_destroy (self->message_to_request);
@@ -175,6 +181,9 @@ ostree_fetcher_init (OstreeFetcher *self)
         }
     }
 
+  if (g_getenv ("OSTREE_DEBUG_HTTP"))
+    soup_session_add_feature (self->session, (SoupSessionFeature*)soup_logger_new (SOUP_LOGGER_LOG_BODY, 500));
+
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
   self->max_outstanding = 3 * max_conns;
@@ -204,6 +213,24 @@ ostree_fetcher_new (GFile                    *tmpdir,
   return self;
 }
 
+void
+ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
+                                GTlsCertificate *cert)
+{
+  g_clear_object (&fetcher->client_cert);
+  fetcher->client_cert = g_object_ref (cert);
+  if (fetcher->client_cert)
+    {
+#ifdef HAVE_LIBSOUP_CLIENT_CERTS
+      gs_unref_object GTlsInteraction *interaction =
+        (GTlsInteraction*)ostree_tls_cert_interaction_new (fetcher->client_cert);
+      g_object_set (fetcher->session, "tls-interaction", interaction, NULL);
+#else
+      g_warning ("This version of OSTree is compiled without client side certificate support");
+#endif
+    }
+}
+
 static void
 on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
 
@@ -215,6 +242,7 @@ ostree_fetcher_process_pending_queue (OstreeFetcher *self)
          self->outstanding < self->max_outstanding)
     {
       OstreeFetcherPendingURI *next = g_queue_pop_head (&self->pending_queue);
+
       self->outstanding++;
       soup_request_send_async (next->request, next->cancellable,
                                on_request_sent, next);

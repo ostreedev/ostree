@@ -1,6 +1,6 @@
 # Makefile for C source code
 #
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -86,6 +86,12 @@ libostree_1_la_SOURCES = \
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
 	src/libostree/ostree-libarchive-input-stream.c \
+	$(NULL)
+endif
+if HAVE_LIBSOUP_CLIENT_CERTS
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-tls-cert-interaction.c \
+	src/libostree/ostree-tls-cert-interaction.h \
 	$(NULL)
 endif
 
