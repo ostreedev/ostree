@@ -353,7 +353,10 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
     {
       gs_free char *portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));
       if (g_strcmp0 ("-", opt_port_file) == 0)
-        fputs (portstr, stdout); // not g_print - this must go to stdout, not a handler
+        {
+          fputs (portstr, stdout); // not g_print - this must go to stdout, not a handler
+          fflush (stdout);
+        }
       else if (!g_file_set_contents (opt_port_file, portstr, strlen (portstr), error))
         goto out;
     }
