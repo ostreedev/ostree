@@ -131,6 +131,19 @@ Boston, MA 02111-1307, USA.
     </variablelist>
 
   </refsect1>
+
+  <refsect1>
+    <title>/etc/ostree/remotes.d</title>
+
+    <para>
+      In addition to the <filename>/ostree/repo/config</filename>
+      file, remotes may also be specified in
+      <filename>/etc/ostree/remotes.d</filename>.  The remote
+      configuration file must end in <literal>.conf</literal>; files
+      whose name does not end in <literal>.conf</literal> will be
+      ignored.
+    </para>
+  </refsect1>
   
   <refsect1>
     <title>See Also</title>

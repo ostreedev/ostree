@@ -95,7 +95,9 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif
 
-libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -DLOCALEDIR=\"$(datadir)/locale\" -DGPGVPATH=\"$(GPGVPATH)\" $(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_LZMA_CFLAGS)
+libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
+	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
+	-DGPGVPATH=\"$(GPGVPATH)\" $(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_LZMA_CFLAGS)
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -export-symbols-regex '^ostree_'
 libostree_1_la_LIBADD = libotutil.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS)
 
@@ -139,3 +141,6 @@ gpgreadmedir = $(pkgdatadir)/trusted.gpg.d
 EXTRA_DIST += src/libostree/README-gpg
 endif
 
+install-mkdir-remotes-d-hook:
+	mkdir -p $(sysconfdir)/ostree/remotes.d
+INSTALL_DATA_HOOKS += install-mkdir-remotes-d-hook

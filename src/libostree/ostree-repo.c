@@ -224,6 +224,12 @@ ostree_repo_new (GFile *path)
   return g_object_new (OSTREE_TYPE_REPO, "path", path, NULL);
 }
 
+static GFile *
+get_default_repo_path (void)
+{
+  return g_file_new_for_path ("/ostree/repo");
+}
+
 /**
  * ostree_repo_new_default:
  *
@@ -245,9 +251,22 @@ ostree_repo_new_default (void)
     }
   else
     {
-      gs_unref_object GFile *default_repo_path = g_file_new_for_path ("/ostree/repo");
+      gs_unref_object GFile *default_repo_path = get_default_repo_path ();
       return ostree_repo_new (default_repo_path);
     }
+}
+
+/**
+ * ostree_repo_is_system:
+ * @repo: Repository
+ *
+ * Returns: %TRUE if this repository is the root-owned system global repository
+ */
+gboolean
+ostree_repo_is_system (OstreeRepo   *repo)
+{
+  gs_unref_object GFile *default_repo_path = get_default_repo_path ();
+  return g_file_equal (repo->repodir, default_repo_path);
 }
 
 /**
@@ -452,6 +471,137 @@ ostree_repo_create (OstreeRepo     *self,
   return ret;
 }
 
+static gboolean
+enumerate_directory_allow_noent (GFile               *dirpath,
+                                 const char          *queryargs,
+                                 GFileQueryInfoFlags  queryflags,
+                                 GFileEnumerator    **out_direnum,
+                                 GCancellable        *cancellable,
+                                 GError             **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  gs_unref_object GFileEnumerator *ret_direnum = NULL;
+
+  ret_direnum = g_file_enumerate_children (dirpath, queryargs, queryflags,
+                                           cancellable, &temp_error);
+  if (!ret_direnum)
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          ret = TRUE;
+        }
+      else
+        g_propagate_error (error, temp_error);
+
+      goto out;
+    }
+
+  ret = TRUE;
+  gs_transfer_out_value (out_direnum, &ret_direnum);
+ out:
+  return ret;
+}
+
+GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
+#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
+
+static gboolean
+append_one_remote_config (OstreeRepo      *self,
+                          GFile           *path,
+                          GCancellable    *cancellable,
+                          GError         **error)
+{
+  gboolean ret = FALSE;
+  local_cleanup_keyfile GKeyFile *remotedata = g_key_file_new ();
+  gs_strfreev char **groups = NULL;
+  char **iter;
+
+  if (!g_key_file_load_from_file (remotedata, gs_file_get_path_cached (path),
+                                  0, error))
+    goto out;
+
+  groups = g_key_file_get_groups (remotedata, NULL);
+  for (iter = groups; iter && *iter; iter++)
+    {
+      const char *group = *iter;
+      char **subiter;
+      gs_strfreev char **keys = NULL;
+              
+      /* Whitelist of allowed groups for now */
+      if (!g_str_has_prefix (group, "remote \""))
+        continue;
+
+      if (g_key_file_has_group (self->config, group))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Multiple specifications found for %s", group);
+          goto out;
+        }
+              
+      keys = g_key_file_get_keys (remotedata, group, NULL, NULL);
+      g_assert (keys);
+      for (subiter = keys; subiter && *subiter; subiter++)
+        {
+          const char *key = *subiter;
+          gs_free char *value = g_key_file_get_value (remotedata, group, key, NULL);
+          g_assert (value);
+          g_key_file_set_value (self->config, group, key, value);
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+                                 
+static gboolean
+append_remotes_d (OstreeRepo          *self,
+                  GCancellable        *cancellable,
+                  GError             **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *etc_ostree_remotes_d = NULL;
+  gs_unref_object GFileEnumerator *direnum = NULL;
+
+  etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
+  if (!enumerate_directory_allow_noent (etc_ostree_remotes_d, OSTREE_GIO_FAST_QUERYINFO, 0,
+                                        &direnum,
+                                        cancellable, error))
+    goto out;
+  if (direnum)
+    {
+      while (TRUE)
+        {
+          GFileInfo *file_info;
+          GFile *path;
+          const char *name;
+          guint32 type;
+
+          if (!gs_file_enumerator_iterate (direnum, &file_info, &path,
+                                           NULL, error))
+            goto out;
+          if (file_info == NULL)
+            break;
+
+          name = g_file_info_get_attribute_byte_string (file_info, "standard::name");
+          type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
+
+          if (type == G_FILE_TYPE_REGULAR &&
+              g_str_has_suffix (name, ".conf"))
+            {
+              if (!append_one_remote_config (self, path, cancellable, error))
+                goto out;
+            }
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 ostree_repo_open (OstreeRepo    *self,
                   GCancellable  *cancellable,
@@ -530,6 +680,9 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
                                             TRUE, &self->enable_uncompressed_cache, error))
+    goto out;
+
+  if (!append_remotes_d (self, cancellable, error))
     goto out;
 
   if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
