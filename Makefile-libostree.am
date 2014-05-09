@@ -142,5 +142,5 @@ EXTRA_DIST += src/libostree/README-gpg
 endif
 
 install-mkdir-remotes-d-hook:
-	mkdir -p $(sysconfdir)/ostree/remotes.d
+	mkdir -p $(DESTDIR)$(sysconfdir)/ostree/remotes.d
 INSTALL_DATA_HOOKS += install-mkdir-remotes-d-hook
