@@ -44,11 +44,13 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  const char *new_ref = NULL;
+  const char *new_provided_refspec = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *origin_refspec = NULL;
   gs_free char *origin_remote = NULL;
   gs_free char *origin_ref = NULL;
+  gs_free char *new_remote = NULL;
+  gs_free char *new_ref = NULL;
   gs_free char *new_refspec = NULL;
   gs_free char *new_revision = NULL;
   gs_unref_object GFile *deployment_path = NULL;
@@ -75,7 +77,9 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       goto out;
     }
 
-  new_ref = argv[1];
+  new_provided_refspec = argv[1];
+  if (!ostree_parse_refspec (new_provided_refspec, &new_remote, &new_ref, error))
+    goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -90,11 +94,11 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   
   if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
     goto out;
-  
-  if (origin_remote)
-    new_refspec = g_strconcat (origin_remote, ":", new_ref, NULL);
+
+  if (!new_remote)
+    new_refspec = g_strconcat (origin_remote, ":", new_provided_refspec, NULL);
   else
-    new_refspec = g_strdup (new_ref);
+    new_refspec = g_strdup (new_provided_refspec);
 
   if (strcmp (origin_refspec, new_refspec) == 0)
     {
