@@ -50,3 +50,7 @@ ostree admin --sysroot=sysroot status > status.txt
 assert_file_has_content status.txt anothertestos
 
 echo "ok switch remotes"
+
+ostree admin --sysroot=sysroot switch --os=testos testos:
+
+echo "ok switch remote only"

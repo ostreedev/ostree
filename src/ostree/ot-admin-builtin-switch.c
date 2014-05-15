@@ -78,8 +78,6 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
     }
 
   new_provided_refspec = argv[1];
-  if (!ostree_parse_refspec (new_provided_refspec, &new_remote, &new_ref, error))
-    goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -95,11 +93,24 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
     goto out;
 
-  if (!new_remote)
-    new_refspec = g_strconcat (origin_remote, ":", new_provided_refspec, NULL);
+  /* Allow just switching remotes */
+  if (g_str_has_suffix (new_provided_refspec, ":"))
+    {
+      new_remote = g_strdup (new_provided_refspec);
+      new_remote[strlen(new_remote)-1] = '\0';
+      new_ref = g_strdup (origin_ref);
+    }
   else
-    new_refspec = g_strdup (new_provided_refspec);
-
+    {
+      if (!ostree_parse_refspec (new_provided_refspec, &new_remote, &new_ref, error))
+        goto out;
+    }
+  
+  if (!new_remote)
+    new_refspec = g_strconcat (origin_remote, ":", new_ref, NULL);
+  else
+    new_refspec = g_strconcat (new_remote, ":", new_ref, NULL);
+  
   if (strcmp (origin_refspec, new_refspec) == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
