@@ -179,22 +179,11 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeS
   gboolean ret = FALSE;
   const char *policy_name;
   gs_unref_object GFile *subpath = NULL;
-  const char *prefix;
+  const char *prefix = NULL;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment;
   gs_unref_object GFile *deployment_path = NULL;
-
-  if (argc < 3)
-    {
-      g_printerr ("usage: %s SUBPATH PREFIX\n", argv[0]);
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Option processing failed");
-      goto out;
-    }
-  
-  subpath = g_file_new_for_path (argv[1]);
-  prefix = argv[2];
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -208,6 +197,17 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeS
     }
   first_deployment = deployments->pdata[0];
   deployment_path = ostree_sysroot_get_deployment_directory (sysroot, first_deployment);
+
+  if (argc >= 2)
+    {
+      subpath = g_file_new_for_path (argv[1]);
+      prefix = argv[2];
+    }
+  else
+    {
+      subpath = g_object_ref (deployment_path);
+      prefix = "";
+    }
 
   sepolicy = ostree_sepolicy_new (deployment_path, cancellable, error);
   if (!sepolicy)
