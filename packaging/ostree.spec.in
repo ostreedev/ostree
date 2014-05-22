@@ -15,6 +15,7 @@ BuildRequires: gtk-doc
 # Core requirements
 BuildRequires: pkgconfig(gio-unix-2.0)
 BuildRequires: pkgconfig(libsoup-2.4)
+BuildRequires: pkgconfig(libgsystem)
 BuildRequires: libattr-devel
 # Extras
 BuildRequires: pkgconfig(libarchive)
