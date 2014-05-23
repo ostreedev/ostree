@@ -28,8 +28,8 @@
 * Structured output from commandline?  ostree --output={table,gvariant} ?
 
 * Better output on a tty - progress bars
-
-* Improve library
+  Needs size metadata; see https://bugzilla.gnome.org/show_bug.cgi?id=709050
+  https://bugzilla.gnome.org/show_bug.cgi?id=721799
 
 * Do HTTP requests as unprivileged user (particularly before we've
   done GPG verification)
