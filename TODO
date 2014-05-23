@@ -33,6 +33,7 @@
 
 * Do HTTP requests as unprivileged user (particularly before we've
   done GPG verification)
+  https://bugzilla.gnome.org/show_bug.cgi?id=730037
 
 * Reintroduce "ostree admin install": Could pull in host data,
   such as uids and /etc/fstab.
