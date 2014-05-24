@@ -28,6 +28,8 @@
 #include "otutil.h"
 #include "libgsystem.h"
 
+#define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"
+#define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
 #define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
 
 /* FIXME when we depend on new enough libgsystem, move to
@@ -429,13 +431,11 @@ merge_etc_changes (GFile          *orig_etc,
       goto out;
     }
 
-  if (modified->len > 0 || removed->len > 0 || added->len > 0)
-    g_print ("ostadmin: Processing /etc: %u modified, %u removed, %u added\n", 
-             modified->len,
-             removed->len,
-             added->len);
-  else
-    g_print ("ostadmin: No modified configuration\n");
+  gs_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
+                                "Copying /etc changes: %u modified, %u removed, %u added", 
+                                modified->len,
+                                removed->len,
+                                added->len);
 
   for (i = 0; i < removed->len; i++)
     {
@@ -713,8 +713,9 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
       
   if (!g_file_query_exists (deployment_var_labeled, NULL))
     {
-      g_print ("ostadmin: Didn't find '%s', relabeling /var\n",
-               gs_file_get_path_cached (deployment_var_labeled));
+      gs_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
+                                    "Relabeling /var (no stamp file '%s' found)",
+                                    gs_file_get_path_cached (deployment_var_labeled));
 
       if (!selinux_relabel_dir (sysroot, sepolicy,
                                 deployment_var_path, "var",
@@ -833,10 +834,6 @@ merge_configuration (OstreeSysroot         *sysroot,
       if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path, 
                               cancellable, error))
         goto out;
-    }
-  else
-    {
-      g_print ("ostadmin: No previous configuration changes to merge\n");
     }
 
   ret = TRUE;
