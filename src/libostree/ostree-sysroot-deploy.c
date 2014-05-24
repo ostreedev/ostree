@@ -515,9 +515,6 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!ot_util_ensure_directory_and_fsync (deploy_parent, cancellable, error))
     goto out;
   
-  g_print ("ostadmin: Creating deployment %s\n",
-           gs_file_get_path_cached (deploy_target_path));
-
   if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, OSTREE_REPO_FILE (root),
                                   file_info, cancellable, error))
     goto out;
