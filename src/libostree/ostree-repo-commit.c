@@ -368,8 +368,6 @@ write_object (OstreeRepo         *self,
   gsize unpacked_size = 0;
   gboolean indexable = FALSE;
 
-  g_return_val_if_fail (self->in_transaction, FALSE);
-  
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
@@ -928,6 +926,31 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
     refspec = g_strdup (ref);
 
   g_hash_table_replace (self->txn_refs, refspec, g_strdup (checksum));
+}
+
+/**
+ * ostree_repo_set_ref_immediate:
+ * @self: An #OstreeRepo
+ * @remote: (allow-none): A remote for the ref
+ * @ref: The ref to write
+ * @checksum: The checksum to point it to
+ * @cancellable: GCancellable
+ * @error: GError
+ *
+ * This is like ostree_repo_transaction_set_ref(), except it may be
+ * invoked outside of a transaction.  This is presently safe for the
+ * case where we're creating or overwriting an existing ref.
+ */
+gboolean
+ostree_repo_set_ref_immediate (OstreeRepo *self,
+                               const char *remote,
+                               const char *ref,
+                               const char *checksum,
+                               GCancellable  *cancellable,
+                               GError       **error)
+{
+  return _ostree_repo_write_ref (self, remote, ref, checksum,
+                                 cancellable, error);
 }
 
 /**

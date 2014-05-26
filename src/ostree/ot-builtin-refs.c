@@ -67,18 +67,20 @@ ostree_builtin_refs (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
     }
   else
     {
-      if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-        goto out;
-
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
           const char *refspec = hashkey;
-          ostree_repo_transaction_set_refspec (repo, refspec, NULL);
-        }
+          gs_free char *remote = NULL;
+          gs_free char *ref = NULL;
 
-      if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
-        goto out;
+          if (!ostree_parse_refspec (refspec, &remote, &ref, error))
+            goto out;
+          
+          if (!ostree_repo_set_ref_immediate (repo, remote, ref, NULL,
+                                              cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;

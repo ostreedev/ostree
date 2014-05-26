@@ -133,6 +133,13 @@ void          ostree_repo_transaction_set_ref     (OstreeRepo *self,
                                                    const char *ref,
                                                    const char *checksum);
 
+gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
+                                             const char *remote,
+                                             const char *ref,
+                                             const char *checksum,
+                                             GCancellable  *cancellable,
+                                             GError       **error);
+
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       OstreeObjectType      objtype,
                                       const char           *checksum,

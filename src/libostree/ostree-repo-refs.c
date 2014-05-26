@@ -570,20 +570,16 @@ ostree_repo_list_refs (OstreeRepo       *self,
   return ret;
 }
 
-static gboolean      
-write_refspec (OstreeRepo    *self,
-               const char    *refspec,
-               const char    *rev,
-               GCancellable  *cancellable,
-               GError       **error)
+gboolean      
+_ostree_repo_write_ref (OstreeRepo    *self,
+                        const char    *remote,
+                        const char    *ref,
+                        const char    *rev,
+                        GCancellable  *cancellable,
+                        GError       **error)
 {
   gboolean ret = FALSE;
-  gs_free char *remote = NULL;
-  gs_free char *name = NULL;
   gs_unref_object GFile *dir = NULL;
-
-  if (!ostree_parse_refspec (refspec, &remote, &name, error))
-    goto out;
 
   if (remote == NULL)
     dir = g_object_ref (self->local_heads_dir);
@@ -600,7 +596,7 @@ write_refspec (OstreeRepo    *self,
 
   if (rev == NULL)
     {
-      gs_unref_object GFile *child = g_file_resolve_relative_path (dir, name);
+      gs_unref_object GFile *child = g_file_resolve_relative_path (dir, ref);
 
       if (g_file_query_exists (child, cancellable))
         {
@@ -610,7 +606,7 @@ write_refspec (OstreeRepo    *self,
     }
   else
     {
-      if (!write_checksum_file (dir, name, rev, cancellable, error))
+      if (!write_checksum_file (dir, ref, rev, cancellable, error))
         goto out;
     }
 
@@ -634,8 +630,14 @@ _ostree_repo_update_refs (OstreeRepo        *self,
     {
       const char *refspec = key;
       const char *rev = value;
+      gs_free char *remote = NULL;
+      gs_free char *ref = NULL;
 
-      if (!write_refspec (self, refspec, rev, cancellable, error))
+      if (!ostree_parse_refspec (refspec, &remote, &ref, error))
+        goto out;
+
+      if (!_ostree_repo_write_ref (self, remote, ref, rev,
+                                   cancellable, error))
         goto out;
     }
 
