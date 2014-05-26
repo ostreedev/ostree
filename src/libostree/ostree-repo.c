@@ -682,8 +682,15 @@ ostree_repo_open (OstreeRepo    *self,
                                             TRUE, &self->enable_uncompressed_cache, error))
     goto out;
 
-  if (!append_remotes_d (self, cancellable, error))
-    goto out;
+  {
+    gs_unref_object GFile *default_repo_path = get_default_repo_path ();
+    
+    if (g_file_equal (self->repodir, default_repo_path))
+      {
+        if (!append_remotes_d (self, cancellable, error))
+          goto out;
+      }
+  }
 
   if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
     goto out;
