@@ -875,7 +875,7 @@ ensure_txn_refs (OstreeRepo *self)
  * @refspec: The refspec to write
  * @checksum: The checksum to point it to
  *
- * Like ostree_repo_transaction_set__ref(), but takes concatenated
+ * Like ostree_repo_transaction_set_ref(), but takes concatenated
  * @refspec format as input instead of separate remote and name
  * arguments.
  */
@@ -933,7 +933,7 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
 /**
  * ostree_repo_commit_transaction:
  * @self: An #OstreeRepo
- * @out_stats: (allow-none) (out): A set of statisitics of things
+ * @out_stats: (allow-none) (out): A set of statistics of things
  * that happened during this transaction.
  * @cancellable: Cancellable
  * @error: Error
