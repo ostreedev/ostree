@@ -378,6 +378,7 @@ on_request_sent (GObject        *object,
   else
     {
       g_simple_async_result_complete (pending->result);
+      g_object_unref (pending->result);
     }
   
  out:
@@ -385,6 +386,7 @@ on_request_sent (GObject        *object,
     {
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);
+      g_object_unref (pending->result);
     }
 }
 
@@ -469,6 +471,7 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
     {
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);
+      g_object_unref (pending->result);
     }
 }
 
