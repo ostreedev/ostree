@@ -22,6 +22,7 @@
 
 #include "otutil.h"
 #include "libgsystem.h"
+#include "ostree-linuxfsutil.h"
 
 #include "ostree-sysroot-private.h"
 
@@ -341,6 +342,9 @@ cleanup_old_deployments (OstreeSysroot       *self,
           if (device == root_device && inode == root_inode)
             continue;
 
+          if (!_ostree_linuxfs_alter_immutable_flag (deployment_path, FALSE,
+                                                     cancellable, error))
+            goto out;
           if (!gs_shutil_rm_rf (deployment_path, cancellable, error))
             goto out;
           if (!gs_shutil_rm_rf (origin_path, cancellable, error))

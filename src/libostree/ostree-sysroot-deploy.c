@@ -25,6 +25,7 @@
 
 #include "ostree-sysroot-private.h"
 #include "ostree-core-private.h"
+#include "ostree-linuxfsutil.h"
 #include "otutil.h"
 #include "libgsystem.h"
 
@@ -1713,6 +1714,10 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 
   if (!selinux_relabel_var_if_needed (self, sepolicy, deployment_var,
                                       cancellable, error))
+    goto out;
+
+  if (!_ostree_linuxfs_alter_immutable_flag (new_deployment_path, TRUE,
+                                             cancellable, error))
     goto out;
 
   /* After this, install_deployment_kernel() will set the other boot
