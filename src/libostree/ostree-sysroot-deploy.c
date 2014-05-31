@@ -1390,15 +1390,15 @@ deployment_bootconfigs_equal (OstreeDeployment *a,
   return TRUE;
 }
 
-/* TEMPORARY HACK: Add a "current" symbolic link that's easy to
- * follow inside the gnome-ostree build scripts.  This isn't atomic,
- * but that doesn't matter because it's only used by deployments
- * done from the host.
+/* This used to be a temporary hack to create "current" symbolic link
+ * that's easy to follow inside the gnome-ostree build scripts (now
+ * gnome-continuous).  It wasn't atomic, and nowadays people can use
+ * the OSTree API to find deployments.
  */
 static gboolean
-create_current_symlinks (OstreeSysroot         *self,
-                         GCancellable          *cancellable,
-                         GError               **error)
+cleanup_legacy_current_symlinks (OstreeSysroot         *self,
+                                 GCancellable          *cancellable,
+                                 GError               **error)
 {
   gboolean ret = FALSE;
   guint i;
@@ -1409,22 +1409,11 @@ create_current_symlinks (OstreeSysroot         *self,
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       const char *osname = ostree_deployment_get_osname (deployment);
+      gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
+      gs_unref_object GFile *legacy_link = g_file_get_child (osdir, "current");
 
-      if (!g_hash_table_lookup (created_current_for_osname, osname))
-        {
-          gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
-          gs_unref_object GFile *os_current_path = g_file_get_child (osdir, "current");
-          gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
-          gs_free char *target = g_file_get_relative_path (osdir, deployment_path);
-          
-          g_assert (target != NULL);
-          
-          if (!ot_gfile_atomic_symlink_swap (os_current_path, target,
-                                             cancellable, error))
-            goto out;
-
-          g_hash_table_insert (created_current_for_osname, (char*)osname, GUINT_TO_POINTER (1));
-        }
+      if (!ot_gfile_ensure_unlinked (legacy_link, cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
@@ -1590,7 +1579,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       goto out;
     }
 
-  if (!create_current_symlinks (self, cancellable, error))
+  if (!cleanup_legacy_current_symlinks (self, cancellable, error))
     goto out;
 
   /* And finally, cleanup of any leftover data.
