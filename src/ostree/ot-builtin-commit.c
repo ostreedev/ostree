@@ -46,6 +46,7 @@ static char **opt_key_ids;
 static char *opt_gpg_homedir;
 #endif
 static gboolean opt_generate_sizes;
+static gboolean opt_disable_fsync;
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
@@ -67,6 +68,7 @@ static GOptionEntry options[] = {
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
 #endif
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
+  { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { NULL }
 };
 
@@ -326,6 +328,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_generate_sizes)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
+  if (opt_disable_fsync)
+    ostree_repo_set_disable_fsync (repo, TRUE);
 
   if (flags != 0
       || opt_owner_uid >= 0
