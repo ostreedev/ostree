@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/statvfs.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -42,8 +43,15 @@ main(int argc, char *argv[])
   const char *remounts[] = { "/sysroot", "/etc", "/home", "/root", "/tmp", "/var", NULL };
   struct stat stbuf;
   int i;
+  struct statvfs stvfsbuf;
 
-  if (access ("/", W_OK) == -1)
+  if (statvfs ("/", &stvfsbuf) == -1)
+    {
+      perror ("statvfs(/): ");
+      exit (1);
+    }
+
+  if (stvfsbuf.f_flag & ST_RDONLY)
     {
       /* If / isn't writable, don't do any remounts; we don't want
        * to clear the readonly flag in that case.
