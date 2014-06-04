@@ -38,8 +38,9 @@
  * Alter the immutable flag of object referred to by @fd; may be a
  * regular file or a directory.
  *
- * If the operation is not supported by the underlying filesystem,
- * this function will silently do nothing.
+ * If the operation is not supported by the underlying filesystem, or
+ * we are running without sufficient privileges, this function will
+ * silently do nothing.
  */
 gboolean
 _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
@@ -50,12 +51,18 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
   gboolean ret = FALSE;
   unsigned long flags;
   int r;
+  static gint no_alter_immutable = 0;
+
+  if (g_atomic_int_get (&no_alter_immutable))
+    return TRUE;
 
   r = ioctl (fd, EXT2_IOC_GETFLAGS, &flags);
   if (r == -1)
     {
       int errsv = errno;
-      if (errsv == EOPNOTSUPP || errsv == ENOTTY)
+      if (errsv == EPERM)
+        g_atomic_int_set (&no_alter_immutable, 1);
+      else if (errsv == EOPNOTSUPP || errsv == ENOTTY)
         ;
       else
         {
@@ -75,7 +82,9 @@ _ostree_linuxfs_fd_alter_immutable_flag (int            fd,
       if (r == -1)
         {
           int errsv = errno;
-          if (errsv == EOPNOTSUPP || errsv == ENOTTY)
+          if (errsv == EPERM)
+            g_atomic_int_set (&no_alter_immutable, 1);
+          else if (errsv == EOPNOTSUPP || errsv == ENOTTY)
             ;
           else
             {
