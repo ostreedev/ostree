@@ -83,6 +83,30 @@ Boston, MA 02111-1307, USA.
         <term><varname>repo_version</varname></term>
         <listitem><para>Currently, this must be set to <literal>1</literal>.</para></listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><varname>fsync</varname></term>
+        <listitem><para>Boolean value controlling whether or not to
+        ensure files are on stable storage when performing operations
+        such as commits, pulls, and checkouts.  Defaults to
+        <literal>true</literal>.</para>
+	<para>
+	  If you disable fsync, OSTree will no longer be robust
+	  against kernel crashes or power loss.
+	</para>
+	<para>
+	  You might choose to disable this for local development
+	  repositories, under the assumption they can be recreated from
+	  source.  Similarly, you could disable for a mirror where you could
+	  re-pull.
+	</para>
+	<para>
+	  For the system repository, you might choose to disable fsync
+	  if you have uninterruptable power supplies and a well tested
+	  kernel.
+	</para>
+	</listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 

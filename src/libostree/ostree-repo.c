@@ -683,6 +683,17 @@ ostree_repo_open (OstreeRepo    *self,
     goto out;
 
   {
+    gboolean do_fsync;
+    
+    if (!ot_keyfile_get_boolean_with_default (self->config, "core", "fsync",
+                                              TRUE, &do_fsync, error))
+      goto out;
+    
+    if (!do_fsync)
+      ostree_repo_set_disable_fsync (self, TRUE);
+  }
+
+  {
     gs_unref_object GFile *default_repo_path = get_default_repo_path ();
     
     if (g_file_equal (self->repodir, default_repo_path))
