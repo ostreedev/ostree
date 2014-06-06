@@ -73,7 +73,7 @@ ostree_builtin_cat (int argc, char **argv, OstreeRepo *repo, GCancellable *cance
 
   if (argc <= 2)
     {
-      ot_util_usage_error (context, "An COMMIT and at least one PATH argument are required", error);
+      ot_util_usage_error (context, "A COMMIT and at least one PATH argument are required", error);
       goto out;
     }
   rev = argv[1];
