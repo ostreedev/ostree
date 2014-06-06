@@ -1067,8 +1067,16 @@ ostree_repo_pull (OstreeRepo               *self,
   config = ostree_repo_get_config (self);
 
   remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
+  if (!g_key_file_has_group (config, remote_key))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No remote '%s' found in " SYSCONFDIR "/ostree/remotes.d",
+                   remote_key);
+      goto out;
+    }
   if (!repo_get_string_key_inherit (self, remote_key, "url", &baseurl, error))
     goto out;
+
   pull_data->base_uri = soup_uri_new (baseurl);
 
 #ifdef HAVE_GPGME
