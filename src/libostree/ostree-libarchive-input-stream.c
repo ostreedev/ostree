@@ -31,7 +31,7 @@ enum {
   PROP_ARCHIVE
 };
 
-G_DEFINE_TYPE (OstreeLibarchiveInputStream, ostree_libarchive_input_stream, G_TYPE_INPUT_STREAM)
+G_DEFINE_TYPE (OstreeLibarchiveInputStream, _ostree_libarchive_input_stream, G_TYPE_INPUT_STREAM)
 
 struct _OstreeLibarchiveInputStreamPrivate {
   struct archive *archive;
@@ -57,11 +57,11 @@ static gboolean ostree_libarchive_input_stream_close        (GInputStream       
 static void
 ostree_libarchive_input_stream_finalize (GObject *object)
 {
-  G_OBJECT_CLASS (ostree_libarchive_input_stream_parent_class)->finalize (object);
+  G_OBJECT_CLASS (_ostree_libarchive_input_stream_parent_class)->finalize (object);
 }
 
 static void
-ostree_libarchive_input_stream_class_init (OstreeLibarchiveInputStreamClass *klass)
+_ostree_libarchive_input_stream_class_init (OstreeLibarchiveInputStreamClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
@@ -132,7 +132,7 @@ ostree_libarchive_input_stream_get_property (GObject    *object,
 }
 
 static void
-ostree_libarchive_input_stream_init (OstreeLibarchiveInputStream *self)
+_ostree_libarchive_input_stream_init (OstreeLibarchiveInputStream *self)
 {
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
 					    OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM,
@@ -141,7 +141,7 @@ ostree_libarchive_input_stream_init (OstreeLibarchiveInputStream *self)
 }
 
 GInputStream *
-ostree_libarchive_input_stream_new (struct archive *a)
+_ostree_libarchive_input_stream_new (struct archive *a)
 {
   OstreeLibarchiveInputStream *stream;
 

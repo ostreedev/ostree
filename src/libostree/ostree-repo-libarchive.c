@@ -100,7 +100,7 @@ import_libarchive_entry_file (OstreeRepo           *self,
     return FALSE;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    archive_stream = ostree_libarchive_input_stream_new (a);
+    archive_stream = _ostree_libarchive_input_stream_new (a);
   
   if (!ostree_raw_file_to_content_stream (archive_stream, file_info, NULL,
                                           &file_object_input, &length, cancellable, error))

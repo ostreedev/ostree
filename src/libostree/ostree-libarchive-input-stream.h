@@ -26,7 +26,7 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM         (ostree_libarchive_input_stream_get_type ())
+#define OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM         (_ostree_libarchive_input_stream_get_type ())
 #define OSTREE_LIBARCHIVE_INPUT_STREAM(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, OstreeLibarchiveInputStream))
 #define OSTREE_LIBARCHIVE_INPUT_STREAM_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM, OstreeLibarchiveInputStreamClass))
 #define OSTREE_IS_LIBARCHIVE_INPUT_STREAM(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_LIBARCHIVE_INPUT_STREAM))
@@ -58,9 +58,9 @@ struct _OstreeLibarchiveInputStreamClass
   void (*_g_reserved5) (void);
 };
 
-GType          ostree_libarchive_input_stream_get_type     (void) G_GNUC_CONST;
+GType          _ostree_libarchive_input_stream_get_type     (void) G_GNUC_CONST;
 
-GInputStream * ostree_libarchive_input_stream_new          (struct archive  *a);
+GInputStream * _ostree_libarchive_input_stream_new          (struct archive  *a);
 
 G_END_DECLS
 
