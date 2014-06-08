@@ -139,7 +139,7 @@ update_progress (gpointer user_data)
     pull_data->n_outstanding_metadata_write_requests;
   guint outstanding_fetches = pull_data->n_outstanding_content_fetches +
     pull_data->n_outstanding_metadata_fetches;
-  guint64 bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+  guint64 bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
   guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
   guint requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
   guint n_scanned_metadata = pull_data->n_scanned_metadata;
@@ -258,7 +258,7 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   OstreeFetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+  data->result_stream = _ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
                                                           result, data->pull_data->async_error);
   data->pull_data->fetching_sync_uri = NULL;
   g_main_loop_quit (data->pull_data->loop);
@@ -287,7 +287,7 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
   fetch_data.pull_data = pull_data;
 
   pull_data->fetching_sync_uri = uri;
-  ostree_fetcher_stream_uri_async (pull_data->fetcher, uri,
+  _ostree_fetcher_stream_uri_async (pull_data->fetcher, uri,
                                    OSTREE_MAX_METADATA_SIZE,
                                    cancellable,
                                    fetch_uri_sync_on_complete, &fetch_data);
@@ -540,7 +540,7 @@ content_fetch_on_complete (GObject        *object,
   const char *checksum;
   OstreeObjectType objtype;
 
-  temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
   if (!temp_path)
     goto out;
 
@@ -644,7 +644,7 @@ meta_fetch_on_complete (GObject           *object,
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
 
-  temp_path = ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
   if (!temp_path)
     {
       if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -885,7 +885,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   fetch_data->pull_data = pull_data;
   fetch_data->object = ostree_object_name_serialize (checksum, objtype);
   fetch_data->is_detached_meta = is_detached_meta;
-  ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
+  _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
                                                  is_meta ? OSTREE_MAX_METADATA_SIZE : 0,
                                                  pull_data->cancellable,
                                                  is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
@@ -1087,7 +1087,7 @@ ostree_repo_pull (OstreeRepo               *self,
   if (tls_permissive)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
-  pull_data->fetcher = ostree_fetcher_new (pull_data->repo->tmp_dir,
+  pull_data->fetcher = _ostree_fetcher_new (pull_data->repo->tmp_dir,
                                            fetcher_flags);
 
   {
@@ -1121,7 +1121,7 @@ ostree_repo_pull (OstreeRepo               *self,
         if (!client_cert)
           goto out;
 
-        ostree_fetcher_set_client_cert (pull_data->fetcher, client_cert);
+        _ostree_fetcher_set_client_cert (pull_data->fetcher, client_cert);
       }
   }
 
@@ -1272,7 +1272,7 @@ ostree_repo_pull (OstreeRepo               *self,
 
   end_time = g_get_monotonic_time ();
 
-  bytes_transferred = ostree_fetcher_bytes_transferred (pull_data->fetcher);
+  bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
   if (bytes_transferred > 0 && pull_data->progress)
     {
       guint shift; 

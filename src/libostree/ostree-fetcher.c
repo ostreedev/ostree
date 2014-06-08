@@ -103,10 +103,10 @@ struct OstreeFetcher
   gint max_outstanding;
 };
 
-G_DEFINE_TYPE (OstreeFetcher, ostree_fetcher, G_TYPE_OBJECT)
+G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
 
 static void
-ostree_fetcher_finalize (GObject *object)
+_ostree_fetcher_finalize (GObject *object)
 {
   OstreeFetcher *self;
 
@@ -122,15 +122,15 @@ ostree_fetcher_finalize (GObject *object)
 
   g_queue_clear (&self->pending_queue);
 
-  G_OBJECT_CLASS (ostree_fetcher_parent_class)->finalize (object);
+  G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
 
 static void
-ostree_fetcher_class_init (OstreeFetcherClass *klass)
+_ostree_fetcher_class_init (OstreeFetcherClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-  gobject_class->finalize = ostree_fetcher_finalize;
+  gobject_class->finalize = _ostree_fetcher_finalize;
 }
 
 static void
@@ -154,7 +154,7 @@ on_request_unqueued (SoupSession  *session,
 }
 
 static void
-ostree_fetcher_init (OstreeFetcher *self)
+_ostree_fetcher_init (OstreeFetcher *self)
 {
   gint max_conns;
   const char *http_proxy;
@@ -203,7 +203,7 @@ ostree_fetcher_init (OstreeFetcher *self)
 }
 
 OstreeFetcher *
-ostree_fetcher_new (GFile                    *tmpdir,
+_ostree_fetcher_new (GFile                    *tmpdir,
                     OstreeFetcherConfigFlags  flags)
 {
   OstreeFetcher *self = (OstreeFetcher*)g_object_new (OSTREE_TYPE_FETCHER, NULL);
@@ -216,7 +216,7 @@ ostree_fetcher_new (GFile                    *tmpdir,
 }
 
 void
-ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
+_ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
                                 GTlsCertificate *cert)
 {
   g_clear_object (&fetcher->client_cert);
@@ -528,7 +528,7 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 }
 
 void
-ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
+_ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                SoupURI               *uri,
                                                guint64                max_size,
                                                GCancellable          *cancellable,
@@ -543,7 +543,7 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
 
   pending = ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, cancellable,
                                                  callback, user_data,
-                                                 ostree_fetcher_request_uri_with_partial_async);
+                                                 _ostree_fetcher_request_uri_with_partial_async);
 
   if (!ot_gfile_query_info_allow_noent (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -574,14 +574,14 @@ ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
 }
 
 GFile *
-ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
+_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
                                                 GAsyncResult          *result,
                                                 GError               **error)
 {
   GSimpleAsyncResult *simple;
   OstreeFetcherPendingURI *pending;
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_request_uri_with_partial_async), FALSE);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, _ostree_fetcher_request_uri_with_partial_async), FALSE);
 
   simple = G_SIMPLE_ASYNC_RESULT (result);
   if (g_simple_async_result_propagate_error (simple, error))
@@ -592,7 +592,7 @@ ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
 }
 
 void
-ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
+_ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  SoupURI               *uri,
                                  guint64                max_size,
                                  GCancellable          *cancellable,
@@ -605,7 +605,7 @@ ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
 
   pending = ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, cancellable,
                                                  callback, user_data,
-                                                 ostree_fetcher_stream_uri_async);
+                                                 _ostree_fetcher_stream_uri_async);
 
   if (SOUP_IS_REQUEST_HTTP (pending->request))
     {
@@ -619,14 +619,14 @@ ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
 }
 
 GInputStream *
-ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                   GAsyncResult          *result,
                                   GError               **error)
 {
   GSimpleAsyncResult *simple;
   OstreeFetcherPendingURI *pending;
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_stream_uri_async), FALSE);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, _ostree_fetcher_stream_uri_async), FALSE);
 
   simple = G_SIMPLE_ASYNC_RESULT (result);
   if (g_simple_async_result_propagate_error (simple, error))
@@ -650,7 +650,7 @@ format_size_pair (guint64 start,
 }
 
 char *
-ostree_fetcher_query_state_text (OstreeFetcher              *self)
+_ostree_fetcher_query_state_text (OstreeFetcher              *self)
 {
   guint n_active;
 
@@ -700,7 +700,7 @@ ostree_fetcher_query_state_text (OstreeFetcher              *self)
 }
 
 guint64
-ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
+_ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
   guint64 ret = self->total_downloaded;
   GHashTableIter hiter;
@@ -723,7 +723,7 @@ ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 }
 
 guint
-ostree_fetcher_get_n_requests (OstreeFetcher       *self)
+_ostree_fetcher_get_n_requests (OstreeFetcher       *self)
 {
   return self->total_requests;
 }
