@@ -225,7 +225,7 @@ ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
     {
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
       gs_unref_object GTlsInteraction *interaction =
-        (GTlsInteraction*)ostree_tls_cert_interaction_new (fetcher->client_cert);
+        (GTlsInteraction*)_ostree_tls_cert_interaction_new (fetcher->client_cert);
       g_object_set (fetcher->session, "tls-interaction", interaction, NULL);
 #else
       g_warning ("This version of OSTree is compiled without client side certificate support");

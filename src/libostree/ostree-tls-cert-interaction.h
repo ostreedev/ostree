@@ -22,7 +22,7 @@
 
 G_BEGIN_DECLS
 
-#define OSTREE_TYPE_TLS_CERT_INTERACTION         (ostree_tls_cert_interaction_get_type ())
+#define OSTREE_TYPE_TLS_CERT_INTERACTION         (_ostree_tls_cert_interaction_get_type ())
 #define OSTREE_TLS_CERT_INTERACTION(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), OSTREE_TYPE_TLS_CERT_INTERACTION, OstreeTlsCertInteraction))
 #define OSTREE_TLS_CERT_INTERACTION_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), OSTREE_TYPE_TLS_CERT_INTERACTION, OstreeTlsCertInteractionClass))
 #define OSTREE_IS_TLS_CERT_INTERACTION(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), OSTREE_TYPE_TLS_CERT_INTERACTION))
@@ -32,8 +32,8 @@ G_BEGIN_DECLS
 typedef struct _OstreeTlsCertInteraction        OstreeTlsCertInteraction;
 typedef struct _OstreeTlsCertInteractionClass   OstreeTlsCertInteractionClass;
 
-GType                       ostree_tls_cert_interaction_get_type    (void) G_GNUC_CONST;
+GType                       _ostree_tls_cert_interaction_get_type    (void) G_GNUC_CONST;
 
-OstreeTlsCertInteraction *  ostree_tls_cert_interaction_new         (GTlsCertificate *cert);
+OstreeTlsCertInteraction *  _ostree_tls_cert_interaction_new         (GTlsCertificate *cert);
 
 G_END_DECLS

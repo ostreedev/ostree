@@ -34,7 +34,7 @@ struct _OstreeTlsCertInteractionClass
 
 #include <string.h>
 
-G_DEFINE_TYPE (OstreeTlsCertInteraction, ostree_tls_cert_interaction, G_TYPE_TLS_INTERACTION);
+G_DEFINE_TYPE (OstreeTlsCertInteraction, _ostree_tls_cert_interaction, G_TYPE_TLS_INTERACTION);
 
 static GTlsInteractionResult
 request_certificate (GTlsInteraction              *interaction,
@@ -49,19 +49,19 @@ request_certificate (GTlsInteraction              *interaction,
 }
 
 static void
-ostree_tls_cert_interaction_init (OstreeTlsCertInteraction *interaction)
+_ostree_tls_cert_interaction_init (OstreeTlsCertInteraction *interaction)
 {
 }
 
 static void
-ostree_tls_cert_interaction_class_init (OstreeTlsCertInteractionClass *klass)
+_ostree_tls_cert_interaction_class_init (OstreeTlsCertInteractionClass *klass)
 {
   GTlsInteractionClass *interaction_class = G_TLS_INTERACTION_CLASS (klass);
   interaction_class->request_certificate = request_certificate;
 }
 
 OstreeTlsCertInteraction *
-ostree_tls_cert_interaction_new (GTlsCertificate *cert)
+_ostree_tls_cert_interaction_new (GTlsCertificate *cert)
 {
   OstreeTlsCertInteraction *self = g_object_new (OSTREE_TYPE_TLS_CERT_INTERACTION, NULL);
   self->cert = g_object_ref (cert);
