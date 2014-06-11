@@ -37,21 +37,36 @@ static GOptionEntry options[] = {
 static gboolean
 log_commit (OstreeRepo     *repo,
             const gchar    *checksum,
+            gboolean        is_recurse,
             OstreeDumpFlags flags,
             GError        **error)
 {
   gs_unref_variant GVariant *variant = NULL;
   gs_free gchar *parent = NULL;
   gboolean ret = FALSE;
+  GError *local_error = NULL;
 
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, &variant, error))
-    goto out;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
+                                 &variant, &local_error))
+    {
+      if (is_recurse && g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_print ("<< History beyond this commit not fetched >>\n");
+          g_clear_error (&local_error);
+          ret = TRUE;
+        }
+      else
+        {
+          g_propagate_error (error, local_error);
+        }
+      goto out;
+    }
 
   ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags);
 
   /* Get the parent of this commit */
   parent = ostree_commit_get_parent (variant);
-  if (parent && !log_commit (repo, parent, flags, error))
+  if (parent && !log_commit (repo, parent, TRUE, flags, error))
     goto out;
 
   ret = TRUE;
@@ -91,7 +106,7 @@ ostree_builtin_log (int           argc,
   if (!ostree_repo_resolve_rev (repo, rev, FALSE, &checksum, error))
     goto out;
 
-  if (!log_commit (repo, checksum, flags, error))
+  if (!log_commit (repo, checksum, FALSE, flags, error))
     goto out;
 
   ret = TRUE;
