@@ -1262,8 +1262,8 @@ ostree_repo_pull (OstreeRepo               *self,
         }
       else
         {
-          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->remote_name, ref, checksum);
-
+          gboolean is_mirror = (pull_data->flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
+          ostree_repo_transaction_set_ref (pull_data->repo, is_mirror ? NULL : pull_data->remote_name, ref, checksum);
         }
     }
 

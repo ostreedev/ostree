@@ -37,6 +37,15 @@ assert_file_has_content baz/cow '^moo$'
 echo "ok pull contents"
 
 cd ${test_tmpdir}
+mkdir mirrorrepo
+ostree --repo=mirrorrepo init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=mirrorrepo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo fsck
+$OSTREE show main >/dev/null
+echo "ok pull mirror"
+
+cd ${test_tmpdir}
 ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck

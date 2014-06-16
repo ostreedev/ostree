@@ -28,9 +28,11 @@
 #include "otutil.h"
 
 static gboolean opt_disable_fsync;
+static gboolean opt_mirror;
 
 static GOptionEntry options[] = {
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+  { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
   { NULL }
 };
 
@@ -59,6 +61,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
+
+  if (opt_mirror)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_MIRROR;
 
   if (strchr (argv[1], ':') == NULL)
     {
