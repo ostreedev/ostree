@@ -38,16 +38,16 @@ typedef struct {
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
-  { "os-init", ot_admin_builtin_os_init },
+  { "cleanup", ot_admin_builtin_cleanup },
+  { "config-diff", ot_admin_builtin_diff },
+  { "deploy", ot_admin_builtin_deploy }, 
   { "init-fs", ot_admin_builtin_init_fs },
   { "instutil", ot_admin_builtin_instutil },
-  { "deploy", ot_admin_builtin_deploy },
-  { "undeploy", ot_admin_builtin_undeploy },
-  { "upgrade", ot_admin_builtin_upgrade },
-  { "cleanup", ot_admin_builtin_cleanup },
+  { "os-init", ot_admin_builtin_os_init },
   { "status", ot_admin_builtin_status },
   { "switch", ot_admin_builtin_switch },
-  { "config-diff", ot_admin_builtin_diff },
+  { "undeploy", ot_admin_builtin_undeploy },
+  { "upgrade", ot_admin_builtin_upgrade },
   { NULL, NULL }
 };
 

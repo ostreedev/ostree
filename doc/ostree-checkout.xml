@@ -1,0 +1,125 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2014 Anne LoVerso <anne.loverso@students.olin.edu>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree checkout</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree checkout</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-checkout</refname>
+        <refpurpose>Check out a commit into a filesystem</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree checkout <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COMMIT</arg> <arg choice="opt">DESTINATION</arg></command>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            Checks out the given commit into the filesystem under directory DESTINATION.  If DESTINATION is not specified, the COMMIT will become the destination checkout target.  If COMMIT destination already exists, command will error unless <option>--union</option> option is selected.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--user-mode</option>,<option> -u</option></term>
+
+                <listitem><para>
+                    Do not change file ownership or initialize extended attributes.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--subpath</option>="PATH"</term>
+
+                <listitem><para>
+                    Checkout sub-directory PATH.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--union</option></term>
+
+                <listitem><para>
+                    Keep existing directories and unchanged files, overwrite existing files.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--allow-noent</option></term>
+
+                <listitem><para>
+                    Do nothing if specified path does not exist.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--from-stdin</option></term>
+
+                <listitem><para>
+                    Process many checkouts from standard input.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--from-file</option>="FILE"</term>
+
+                <listitem><para>
+                    Process many checkouts from input file.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+<!-- check this example for accuracy-->
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree checkout my-branch</command></para>
+        <para><command>$ ls</command></para>
+        file1&nbsp;&nbsp;&nbsp;&nbsp;file2&nbsp;&nbsp;&nbsp;&nbsp;<emphasis type="bold">my-branch</emphasis>
+    </refsect1>
+</refentry>

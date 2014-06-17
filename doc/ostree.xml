@@ -1,287 +1,424 @@
 <?xml version='1.0'?> <!--*-nxml-*-->
 <!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
-        "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
 
 <!--
-  Copyright 2011,2013 Colin Walters <walters@verbum.org>
+Copyright 2011,2013 Colin Walters <walters@verbum.org>
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2 of the License, or (at your option) any later version.
- 
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
- 
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the
-  Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-  Boston, MA 02111-1307, USA.
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
 -->
 
 <refentry id="ostree">
 
-        <refentryinfo>
-                <title>ostree</title>
-                <productname>OSTree</productname>
+    <refentryinfo>
+        <title>ostree</title>
+        <productname>OSTree</productname>
 
-                <authorgroup>
-                        <author>
-                                <contrib>Developer</contrib>
-                                <firstname>Colin</firstname>
-                                <surname>Walters</surname>
-                                <email>walters@verbum.org</email>
-                        </author>
-                </authorgroup>
-        </refentryinfo>
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
 
-        <refmeta>
-                <refentrytitle>ostree</refentrytitle>
-                <manvolnum>1</manvolnum>
-        </refmeta>
+    <refmeta>
+        <refentrytitle>ostree</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
 
-        <refnamediv>
-                <refname>ostree</refname>
-                <refpurpose>Manage multiple bootable versioned filesystem trees</refpurpose>
-        </refnamediv>
+    <refnamediv>
+        <refname>ostree</refname>
+        <refpurpose>Manage multiple bootable versioned filesystem trees</refpurpose>
+    </refnamediv>
 
-        <refsynopsisdiv>
-                <cmdsynopsis>
-                        <command>ostree <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
-                </cmdsynopsis>
-        </refsynopsisdiv>
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+            </cmdsynopsis>
+    </refsynopsisdiv>
 
-        <refsect1>
-                <title>Description</title>
+    <refsect1>
+        <title>Description</title>
 
-                <para>
-		  OSTree is a tool for managing multiple bootable
-		  versioned filesystem trees, or just "tree" for
-		  short.  In the OSTree model, operating systems no
-		  longer live in the physical "/" root directory.
-		  Instead, they parallel install to the new toplevel
-		  <filename>/ostree</filename> directory.  Each
-		  installed system gets its own
-		  <filename>/ostree/deploy/<replaceable>osname</replaceable></filename>
-		  directory.
-		</para>
-		<para>
-		  Unlike <literal>rpm</literal> or
-		  <literal>dpkg</literal>, OSTree is only aware of
-		  complete filesystem trees.  It has no built-in
-		  knowledge of what components went into creating the
-		  filesystem tree.
-		</para>
-		<para>
-		  It is possible to use OSTree in several modes; the
-		  most basic form is to replicate pre-built trees from
-		  a build server.  Usually, these pre-built trees are
-		  derived from packages.  You might also be using
-		  OSTree underneath a higher level tool which computes
-		  filesystem trees locally.
-		</para>
-		<para>
-		  It must be emphasized that OSTree only supports
-		  <emphasis>read-only</emphasis> trees.  To change to
-		  a different tree (upgrade, downgrade, install
-		  software), a new tree is checked out, and a 3-way
-		  merge of configuration is performed.  The currently
-		  running tree is not ever modified; the new tree will
-		  become active on a system reboot.
-		</para>
-        </refsect1>
+        <para>
+            OSTree is a tool for managing multiple bootable
+            versioned filesystem trees, or just "tree" for
+            short.  In the OSTree model, operating systems no
+            longer live in the physical "/" root directory.
+            Instead, they parallel install to the new toplevel
+            <filename>/ostree</filename> directory.  Each
+            installed system gets its own
+            <filename>/ostree/deploy/<replaceable>osname</replaceable></filename>
+            directory.
+        </para>
+        <para>
+            Unlike <literal>rpm</literal> or
+            <literal>dpkg</literal>, OSTree is only aware of
+            complete filesystem trees.  It has no built-in
+            knowledge of what components went into creating the
+            filesystem tree.
+        </para>
+        <para>
+            It is possible to use OSTree in several modes; the
+            most basic form is to replicate pre-built trees from
+            a build server.  Usually, these pre-built trees are
+            derived from packages.  You might also be using
+            OSTree underneath a higher level tool which computes
+            filesystem trees locally.
+        </para>
+        <para>
+            It must be emphasized that OSTree only supports
+            <emphasis>read-only</emphasis> trees.  To change to
+            a different tree (upgrade, downgrade, install
+            software), a new tree is checked out, and a 3-way
+            merge of configuration is performed.  The currently
+            running tree is not ever modified; the new tree will
+            become active on a system reboot.
+        </para>
 
-        <refsect1>
-                <title>Options</title>
+        <para>
+              To see the man page for a command run <command>man ostree <arg choice="req">COMMAND</arg></command> or <command>man ostree-admin <arg choice="req">COMMAND</arg></command> 
+        </para>
+    </refsect1>
 
-                <para>The following options are understood:</para>
+    <refsect1>
+        <title>Options</title>
 
-                <variablelist>
-                        <varlistentry>
-                                <term><option>--repo</option></term>
+        <para>The following options are understood:</para>
 
-                                <listitem><para>For most commands,
-                                when run as non-root, repository is
-                                required.  If
-                                <command>ostree</command> is run as
-                                root, it is assumed operations will be
-                                performed on the
-                                <filename>/sysroot/ostree/repo</filename>
-                                repository.
-                                </para></listitem>
-                        </varlistentry>
+        <variablelist>
+            <varlistentry>
+                <term><option>--repo</option></term>
 
-		</variablelist>
+                <listitem><para>
+                    For most commands,
+                    when run as non-root, repository is
+                    required.  If
+                    <command>ostree</command> is run as
+                    root, it is assumed operations will be
+                    performed on the
+                    <filename>/sysroot/ostree/repo</filename>
+                    repository.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
 
-                <para>System administrators will primarily interact
-                with OSTree via the subcommand <command>ostree
-                admin</command>.</para>
+    <refsect1>
+        <title>Commands</title>
 
-                <variablelist>
-                        <varlistentry>
-                                <term><command>admin os-init NAME</command></term>
+        <para>System administrators will primarily interact
+        with OSTree via the subcommand <command>ostree
+        admin</command>.</para>
 
-                                <listitem><para>Initialize the
-                                deployment location for an operating
-                                system with name
-                                <replaceable>NAME</replaceable>. Each
-                                deployment location is comprised of a
-                                single shared <filename>var</filename>
-                                and a set of
-                                deployments (chroots).</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin init-fs PATH</command></term>
+        <variablelist>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-cleanup</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Delete untagged
+                    deployments and repository objects.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Initialize a root filesystem
-                                in PATH by creating top level directories with
-                                proper permissions.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin deploy</command></term>
+            <varlistentry>
+                 <citerefentry><refentrytitle>ostree-admin-config-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>This is a relatively
-                                low level command - takes a particular
-                                commit or revision, and sets it up for
-                                the next boot.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin undeploy INDEX</command></term>
+                <listitem><para>
+                    &nbsp;See changes to
+                    <filename>/etc</filename> as compared
+                    to the current default (from
+                    <filename>/usr/etc</filename>).
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Remove the previously
-                                <replaceable>INDEX</replaceable>
-                                deployed tree from the bootloader
-                                configuration.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin cleanup</command></term>
+            <varlistentry>
+                 <citerefentry><refentrytitle>ostree-admin-deploy</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Delete untagged
-                                deployments and repository objects.</para>
-                                </listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin upgrade</command></term>
+                <listitem><para>
+                    &nbsp;Takes a particular
+                    commit or revision, and sets it up for
+                    the next boot.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>If you are replicating
-                                from a build server, this command will
-                                download the latest version for the
-                                current ref, and deploy it.  Reboot
-                                the system for the changes to take
-                                effect.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin status</command></term>
+            <varlistentry>
+                 <citerefentry><refentrytitle>ostree-admin-init-fs</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Show and list the deployments.
-                                </para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin switch</command></term>
+                <listitem><para>
+                    &nbsp;Initialize a root filesystem
+                    in a specified path.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Choose a different ref
-                                to track from the same remote as the
-                                current tree.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>admin config-diff</command></term>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-instutil</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>See changes to
-                                <filename>/etc</filename> as compared
-                                to the current default (from
-                                <filename>/usr/etc</filename>).
-                                </para></listitem>
-                        </varlistentry>
-		</variablelist>
+                <listitem><para>
+                    &nbsp;Utility functions intended primarily for operating system installation programs
+                </para></listitem>
+            </varlistentry>
 
-                <para>Both administrators and operating system
-                builders may interact with OSTree via the regular
-                filesystem manipulation commands.  
-                </para>
-		
-		<variablelist>
-                        <varlistentry>
-                                <term><command>init</command></term>
+            <varlistentry>
+                 <citerefentry><refentrytitle>ostree-admin-os-init</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Initialize a new
-                                repository.  Must be given the path to
-                                an existing (empty) directory.  If you
-                                want to serve a repository over plain
-                                HTTP, use
-                                <literal>archive-z2</literal> for
-                                <option>--mode</option></para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>diff</command></term>
+                <listitem><para>
+                    &nbsp;Initialize the
+                    deployment location for an operating
+                    system with  a specified name.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Concisely list
-                                differences between the given refs,
-                                without checking them out into the
-                                physical filesystem.  If only one ref
-                                is provided, the parent commit will be
-                                assumed to be the diff source.
-                                </para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>commit</command></term>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-status</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Given one or more
-                                trees (from the local filesystem, a
-                                tarball, or a specified revision for
-                                example), create a new commit using those contents.
-                                </para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>log</command></term>
+                <listitem><para>
+                    &nbsp;Show and list the deployments.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Show revision log.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>ls</command></term>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-switch</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>List the contents of a given commit.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>fsck</command></term>
+                <listitem><para>
+                    &nbsp;Choose a different ref
+                    to track from the same remote as the
+                    current tree.
+                </para></listitem>
+            </varlistentry>   
 
-                                <listitem><para>Check a repository for consistency.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>remote</command></term>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-undeploy</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Manipulate remote archive configuration.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>rev-parse</command></term>
+                <listitem><para>
+                    &nbsp;Remove the previously
+                    <replaceable>INDEX</replaceable>
+                    deployed tree from the bootloader
+                    configuration.
+                </para></listitem>
+            </varlistentry>
 
-                                <listitem><para>Show the SHA256 corresponding to a given rev.</para></listitem>
-                        </varlistentry>
-                        <varlistentry>
-                                <term><command>show</command></term>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-admin-upgrade</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-                                <listitem><para>Given an OSTree SHA256 checksum, display its contents.</para></listitem>
-                        </varlistentry>
-                </variablelist>
+                <listitem><para>
+                    &nbsp;Download the latest version for the
+                    current ref, and deploy it.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
 
-        </refsect1>
+        <para>Both administrators and operating system
+        builders may interact with OSTree via the regular
+        filesystem manipulation commands.  
+        </para>
+    
+        <variablelist>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-cat</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-        <refsect1>
-                <title>GPG verification</title>
+                <listitem><para>
+                    &nbsp;Concatenate contents of files
+                </para></listitem>
+            </varlistentry>
 
-		<para>OSTree supports signing commits with GPG.  The
-		set of trusted keys is stored as keyring files in
-		<filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any key in
-		any keyring in that directory may be used to sign commits.
-		</para>
-	</refsect1>
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-checkout</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
-	<refsect1>
-	  <title>See Also</title>
-	  <para>
-	    <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry>
-	  </para>
-	</refsect1>
+                <listitem><para>
+                    &nbsp;Check out a commit into a filesystem tree.
+                </para></listitem>
+            </varlistentry>
 
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-checksum</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Gives checksum of any file.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-commit</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Given one or more
+                    trees, create a new commit using those contents.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Change settings.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Concisely list
+                    differences between the given refs.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-fsck</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Check a repository for consistency.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Initialize a new repository.
+                </para></listitem>
+            </varlistentry>
+            
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-log</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Show revision log.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-ls</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;List the contents of a given commit.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Search for unreachable objects.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-pull-local</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Copy data from source-repo.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-pull</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Download data from remote repo.  If you have libsoup.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-refs</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;List refs.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-remote</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Manipulate remote archive configuration.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-reset</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Reset a ref to a previous commit.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-rev-parse</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Show the SHA256 corresponding to a given rev.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-show</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Given an OSTree SHA256 checksum, display its contents.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Manage static delta files.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                
+                <listitem><para>
+                    &nbsp;Simple webserver.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Examples</title>
+        <para>
+            For specific examples, please see the man page regarding the specific ostree command.  For example:
+        </para>
+        <para> 
+            <command>man ostree init</command> or <command>man ostree-admin status</command> 
+        </para> 
+    </refsect1>
+
+    <refsect1>
+        <title>GPG verification</title>
+
+        <para>
+            OSTree supports signing commits with GPG.  The
+            set of trusted keys is stored as keyring files in
+            <filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any key in
+            any keyring in that directory may be used to sign commits.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>See Also</title>
+        <para>
+            <citerefentry><refentrytitle>ostree.repo</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+        </para>
+    </refsect1>
 </refentry>

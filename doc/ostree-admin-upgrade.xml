@@ -1,0 +1,100 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2014 Anne LoVerso <anne.loverso@students.olin.edu>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree admin upgrade</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree admin upgrade</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-admin-upgrade</refname>
+        <refpurpose>Construct new tree from current origin and deploy it, if it changed</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree admin upgrade <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            Downloads the latest version of the current ref from the build server and deploys it, if it changed.  Reboot the machine for the changes to take effect.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--os</option>="OSNAME"</term>
+
+                <listitem><para>
+                    If provided, specifies the operating system root. Default is the current one.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--reboot</option>,<option>-r</option></term>
+
+                <listitem><para>
+                    Reboot after a successful upgrade.
+                </para></listitem>
+            </varlistentry>
+            
+            <varlistentry>
+                <term><option>--allow-downgrade</option></term>
+
+                <listitem><para>
+                    Permit deployment of chronologically older trees.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+<!-- Can we have a real example with output? -->
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree admin upgrade</command></para>
+        No update available.
+    </refsect1>
+</refentry>

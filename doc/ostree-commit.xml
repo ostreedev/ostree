@@ -1,0 +1,209 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2014 Anne LoVerso <anne.loverso@students.olin.edu>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree commit</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree commit</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-commit</refname>
+        <refpurpose>Commit a new revision</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree commit <arg choice="opt" rep="repeat">OPTIONS</arg> --branch=<arg choice="req">BRANCH</arg> </command>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            This allows you to commit changes to a branch.  The specification of the branch is required.  If no commit message is specified with <option>--subject</option> then a text editor will be opened.  The commit will be aborted if the commit subject is left empty.  The command will print the checksum of a successful commit.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>--subject</option>, <option>-s</option>="subject"</term>
+
+                <listitem><para>
+                    One line subject.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--body</option>, <option>-m</option>="body"</term>
+
+                <listitem><para>
+                    Full description.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--branch</option>, <option>-b</option>="branch"</term>
+
+                <listitem><para>
+                    Branch.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--tree</option>="NAME"</term>
+
+                <listitem><para>
+                    Overlay the given argument as a tree.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--add-metadata-string</option>="KEY=VALUE"</term>
+
+                <listitem><para>
+                    Append given key and value (in string format) to metadata.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--add-detached-metadata-string</option>="KEY=VALUE"</term>
+
+                <listitem><para>
+                    Append given key and value (in string format) to detached metadata.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--owner-uid</option>="UID"</term>
+
+                <listitem><para>
+                    Set file ownership user id.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--owner-gid</option>="GID"</term>
+
+                <listitem><para>
+                    Set file ownership group id.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--no-xattrs</option></term>
+                <listitem><para>
+                    Do not import extended attributes.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--link-checkout-speedup</option></term>
+
+                <listitem><para>
+                    Optimize for commits of trees composed of hardlinks into the repository.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--tar-autocreate-parents</option></term>
+
+                <listitem><para>
+                    When loading tar archives, automatically create parent directories as needed.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--skip-if-unchanged</option></term>
+
+                <listitem><para>
+                    If the contents are unchanged from previous commit, do nothing.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--statoverride</option>="PATH"</term>
+
+                <listitem><para>
+                    File containing list of modifications to make permissions.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--table-output</option></term>
+
+                <listitem><para>
+                    Output more information in  a KEY: VALUE format.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--generate-sizes</option></term>
+
+                <listitem><para>
+                    Generate size information along with commit metadata.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-sign</option>="key-id"</term>
+
+                <listitem><para>
+                    GPG Key ID with which to sign the commit (if have GPGME - GNU Privacy Guard Made Easy).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-homedir</option>="homedir"</term>
+
+                <listitem><para>
+                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree commit --branch=my-branch --subject="Initial commit"</command></para>
+        67e382b11d213a402a5313e61cbc69dfd5ab93cb07fbb8b71c2e84f79fa5d7dc
+    </refsect1>
+</refentry>
