@@ -328,3 +328,9 @@ if $OSTREE commit -b test2 -s "Attempt to commit a FIFO" 2>../errmsg; then
 fi
 echo "ok commit of fifo was rejected"
 
+cd ${test_tmpdir}
+rm -rf test2-checkout
+mkdir -p test2-checkout
+cd test2-checkout
+touch should-not-be-fsynced
+$OSTREE commit -b test2 -s "Unfsynced commit" --fsync=false
