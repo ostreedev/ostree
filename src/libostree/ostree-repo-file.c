@@ -495,12 +495,13 @@ ostree_repo_file_get_uri (GFile *file)
   const char *path;
   char *uri_path;
   char *ret;
+  OstreeRepoFile *root = ostree_repo_file_get_root (self);
 
   path = gs_file_get_path_cached (file);
   uri_path = g_filename_to_uri (path, NULL, NULL);
   g_assert (g_str_has_prefix (uri_path, "file://"));
   ret = g_strconcat ("ostree://",
-                     self->tree_contents_checksum, "/", self->tree_metadata_checksum,
+                     root->tree_contents_checksum, "/", root->tree_metadata_checksum,
                      uri_path+strlen("file://"),
                      NULL);
   g_free (uri_path);
