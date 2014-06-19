@@ -27,7 +27,7 @@ setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
 
-echo "1..1"
+echo "1..2"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -69,5 +69,30 @@ assert_file_has_mode ${newetc}/a/long/dir 777
 assert_file_has_mode ${newetc}/a/long/dir/chain 707
 assert_file_has_mode ${newetc}/a/long/dir/forking 700
 assert_file_has_mode ${newetc}/a/long/dir 777
+
+echo "ok"
+
+# Add /etc/initially-empty
+cd "${test_tmpdir}/osdata"
+mkdir -p usr/etc/initially-empty
+ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
+cd ${test_tmpdir}
+
+# Upgrade, check that we have it
+ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+assert_has_dir sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty
+
+# Now add a two files in initially-empty
+cd "${test_tmpdir}/osdata"
+touch usr/etc/initially-empty/{afile,bfile}
+ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
+
+# Upgrade, check that we have the two new files
+cd ${test_tmpdir}
+ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/afile
+assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/bfile
 
 echo "ok"
