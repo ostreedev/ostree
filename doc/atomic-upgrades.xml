@@ -40,9 +40,9 @@
     <para>
       To begin a simple upgrade, OSTree fetches the contents of the
       ref from the remote server.  Suppose we're tracking a ref named
-      <literal>gnome-ostree/buildmaster/x86_64-runtime</literal>.
+      <literal>exampleos/buildmaster/x86_64-runtime</literal>.
       OSTree fetches the URL
-      <literal>http://<replaceable>example.com</replaceable>/repo/refs/gnome-ostree/buildmaster/x86_64-runtime</literal>,
+      <literal>http://<replaceable>example.com</replaceable>/repo/refs/exampleos/buildmaster/x86_64-runtime</literal>,
       which contains a SHA256 checksum.  This determines the tree to
       deploy, and <filename class='directory'>/etc</filename> will be
       merged from currently booted tree.

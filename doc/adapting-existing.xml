@@ -177,9 +177,10 @@ d /run/media 0755 root root -
     </para>
     <para>
       The solution chosen for the <ulink
-      url="https://wiki.gnome.org/GnomeOSTree">gnome-ostree</ulink>
-      operating system is to create <filename>/lib/passwd</filename>,
-      and to include a NSS module <ulink
+      url="https://live.gnome.org/Projects/GnomeContinuous">gnome-continuous</ulink>
+      operating system is to create
+      <filename>/usr/lib/passwd</filename>, and to include a NSS
+      module <ulink
       url="https://github.com/aperezdc/nss-altfiles">nss-altfiles</ulink>
       which instructs glibc to read from it.  Then, the build system places
       all system users there, freeing up <filename>/etc/passwd</filename>
