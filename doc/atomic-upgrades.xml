@@ -8,21 +8,10 @@
   <chapter id="upgrades-intro">
     <title>You can turn off the power anytime you want...</title>
     <para>
-      At the time of this writing, it's common for released versions
-      of mainstream operating systems (the Playstation OS, Microsoft
-      Windows, Debian GNU/Linux, and Red Hat Enterprise Linux) to have
-      non-atomic upgrades; that is, the good ones pop up a screen that
-      says "Please do not turn off the power".  The bad ones don't
-      even tell you that it's unsafe.  The <emphasis>really</emphasis>
-      bad ones actually mutate your running filesystem without taking
-      precautions to prevent corrupting running processes.
-    </para>
-
-    <para>
-      In contrast, OSTree is designed to implement fully atomic and
-      safe upgrades; more generally, atomic transitions between lists
-      of bootable deployments.  If the system crashes or you pull the
-      power, you will have either the old system, or the new one.
+      OSTree is designed to implement fully atomic and safe upgrades;
+      more generally, atomic transitions between lists of bootable
+      deployments.  If the system crashes or you pull the power, you
+      will have either the old system, or the new one.
     </para>
   </chapter>
 
