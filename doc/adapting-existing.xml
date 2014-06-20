@@ -163,17 +163,20 @@ d /run/media 0755 root root -
   </chapter>
 
   <chapter id="lib-passwd">
-    <title>/lib/passwd</title>
+    <title>/usr/lib/passwd</title>
     <para>
-      In order to ship an OS that contains both system users and users
-      dynamically created on client machines, you will need to choose
-      a solution for <filename>/etc/passwd</filename>.  The core
-      problem is that if you add a user to the system for a daemon,
-      the OSTree upgrade process for <filename
-      class='directory'>/etc</filename> will simply notice that
-      because <filename>/etc/passwd</filename> differs from the
-      previous default, it will keep the modified config file, and
-      your new OS user will not be visible.
+      Unlike traditional package systems, OSTree trees contain
+      <emphasis>numeric</emphasis> uid and gids.  Furthermore, it does
+      not have a <literal>%post</literal> type mechanism where
+      <filename>useradd</filename> could be invoked.  In order to ship
+      an OS that contains both system users and users dynamically
+      created on client machines, you will need to choose a solution
+      for <filename>/etc/passwd</filename>.  The core problem is that
+      if you add a user to the system for a daemon, the OSTree upgrade
+      process for <filename class='directory'>/etc</filename> will
+      simply notice that because <filename>/etc/passwd</filename>
+      differs from the previous default, it will keep the modified
+      config file, and your new OS user will not be visible.
     </para>
     <para>
       The solution chosen for the <ulink
@@ -182,9 +185,12 @@ d /run/media 0755 root root -
       <filename>/usr/lib/passwd</filename>, and to include a NSS
       module <ulink
       url="https://github.com/aperezdc/nss-altfiles">nss-altfiles</ulink>
-      which instructs glibc to read from it.  Then, the build system places
-      all system users there, freeing up <filename>/etc/passwd</filename>
-      to be purely a database of local users.
+      which instructs glibc to read from it.  Then, the build system
+      places all system users there, freeing up
+      <filename>/etc/passwd</filename> to be purely a database of
+      local users.  See also a more recent effort from <ulink
+      url="http://0pointer.de/blog/projects/stateless.html">Systemd
+      stateless</ulink>.
     </para>
   </chapter>
 
