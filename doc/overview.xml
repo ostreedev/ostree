@@ -40,11 +40,13 @@
       <emphasis>complete</emphasis> (bootable) filesystem trees.  It
       has no built-in knowledge of how a given filesystem tree was
       generated or the origin of individual files, or dependencies,
-      descriptions of individual components.  This means that, for
-      example, if you are distributing software which is licensed
-      under the GNU General Public License, the burden lies with the
-      tool generating these filesystem trees to ensure sufficent
-      metadata is included for compliance.
+      descriptions of individual components.  Put another way, OSTree
+      only handles delivery and deployment; you will likely still want
+      to include inside each tree metadata about the individual
+      components that went into the tree.  For example, a system
+      administrator may want to know what version of OpenSSL was
+      included in your tree, so you should support the equivalent of
+      <command>rpm -q</command> or <command>dpkg -L</command>.
     </para>
     <para>
       The OSTree core emphasizes replicating read-only OS trees via
