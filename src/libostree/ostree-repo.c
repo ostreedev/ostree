@@ -342,6 +342,132 @@ ostree_repo_write_config (OstreeRepo *self,
   return ret;
 }
 
+/* Bind a subset of an a{sv} to options in a given GKeyfile section */
+static void
+keyfile_set_from_vardict (GKeyFile     *keyfile,
+                          const char   *section,
+                          GVariant     *vardict)
+{
+  GVariantIter viter;
+  const char *key;
+  GVariant *val;
+
+  g_variant_iter_init (&viter, vardict);
+  while (g_variant_iter_loop (&viter, "{&s@v}", &key, &val))
+    {
+      gs_unref_variant GVariant *child = g_variant_get_variant (val);
+      if (g_variant_is_of_type (child, G_VARIANT_TYPE_STRING))
+        g_key_file_set_string (keyfile, section, key, g_variant_get_string (child, NULL));
+      else if (g_variant_is_of_type (child, G_VARIANT_TYPE_BOOLEAN))
+        g_key_file_set_boolean (keyfile, section, key, g_variant_get_boolean (child));
+      else if (g_variant_is_of_type (child, G_VARIANT_TYPE_STRING_ARRAY))
+        {
+          gsize len;
+          const char *const*strv_child = g_variant_get_strv (child, &len);
+          g_key_file_set_string_list (keyfile, section, key, strv_child, len);
+        }
+      else
+        g_critical ("Unhandled type '%s' in " G_GNUC_FUNCTION,
+                    (char*)g_variant_get_type (child));
+    }
+}
+
+GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
+#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
+
+/**
+ * ostree_repo_remote_add:
+ * @self: Repo
+ * @name: Name of remote
+ * @url: URL for remote
+ * @options: (allow-none): GVariant of type a{sv}
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Create a new remote named @name pointing to @url.  If @options is
+ * provided, then it will be mapped to #GKeyFile entries, where the
+ * GVariant dictionary key is an option string, and the value is
+ * mapped as follows:
+ *   * s: g_key_file_set_string()
+ *   * b: g_key_file_set_boolean()
+ *   * as: g_key_file_set_string_list()
+ *
+ */
+gboolean
+ostree_repo_remote_add (OstreeRepo     *self,
+                        const char     *name,
+                        const char     *url,
+                        GVariant       *options,
+                        GCancellable   *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  gboolean is_system;
+  gs_free char *section = NULL;
+  gs_unref_object GFile *etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
+  local_cleanup_keyfile GKeyFile *target_keyfile = NULL;
+  gs_free char *target_name = NULL;
+  gs_unref_object GFile *target_conf = NULL;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (url != NULL, FALSE);
+  g_return_val_if_fail (g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
+
+  if (strchr (name, '/') != NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid character '/' in remote name: %s",
+                   name);
+      goto out;
+    }
+
+  section = g_strdup_printf ("remote \"%s\"", name);
+
+  is_system = ostree_repo_is_system (self);
+  if (is_system)
+    {
+      target_keyfile = g_key_file_new ();
+
+      target_name = g_strconcat (name, ".conf", NULL);
+      target_conf = g_file_get_child (etc_ostree_remotes_d, target_name);
+          
+      if (g_file_query_exists (target_conf, NULL))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Remote configuration already exists: %s",
+                       gs_file_get_path_cached (target_conf));
+          goto out;
+        }
+    }
+  else
+    {
+      target_keyfile = ostree_repo_copy_config (self);
+    }
+
+  g_key_file_set_string (target_keyfile, section, "url", url);
+  if (options)
+    keyfile_set_from_vardict (target_keyfile, section, options);
+
+  if (is_system)
+    {
+      gsize len;
+      gs_free char *data = g_key_file_to_data (target_keyfile, &len, error);
+      if (!g_file_replace_contents (target_conf, data, len,
+                                    NULL, FALSE, 0, NULL,
+                                    cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_repo_write_config (self, target_keyfile, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 static gboolean
 ostree_repo_mode_to_string (OstreeRepoMode   mode,
                             const char     **out_mode,
@@ -503,9 +629,6 @@ enumerate_directory_allow_noent (GFile               *dirpath,
  out:
   return ret;
 }
-
-GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
-#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
 
 static gboolean
 append_one_remote_config (OstreeRepo      *self,

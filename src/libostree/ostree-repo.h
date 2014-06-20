@@ -67,6 +67,13 @@ GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
 
 GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);
 
+gboolean      ostree_repo_remote_add (OstreeRepo     *self,
+                                      const char     *name,
+                                      const char     *url,
+                                      GVariant       *options,
+                                      GCancellable   *cancellable,
+                                      GError        **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,
