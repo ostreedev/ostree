@@ -98,6 +98,8 @@ ot_gfile_get_child_strconcat (GFile *parent,
   while ((arg = va_arg (args, const char *)) != NULL)
     g_string_append (buf, arg);
 
+  va_end (args);
+
   ret = g_file_get_child (parent, buf->str);
   
   g_string_free (buf, TRUE);
