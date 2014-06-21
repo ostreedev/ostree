@@ -178,7 +178,6 @@ ostree_builtin_checkout (int argc, char **argv, OstreeRepo *repo, GCancellable *
   const char *destination;
   gs_free char *resolved_commit = NULL;
   gs_unref_object GFile *checkout_target = NULL;
-  gs_unref_object GFile *checkout_target_tmp = NULL;
 
   context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
   g_option_context_add_main_entries (context, options, NULL);
@@ -218,7 +217,7 @@ ostree_builtin_checkout (int argc, char **argv, OstreeRepo *repo, GCancellable *
       checkout_target = g_file_new_for_path (destination);
 
       if (!process_one_checkout (repo, resolved_commit, opt_subpath,
-                                 checkout_target_tmp ? checkout_target_tmp : checkout_target,
+                                 checkout_target,
                                  cancellable, error))
         goto out;
     }
