@@ -126,13 +126,8 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (console)
     {
       gs_console_begin_status_line (console, "", NULL, NULL);
+      in_status_line = TRUE;
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
-    }
-
-  if (in_status_line)
-    {
-      gs_console_end_status_line (console, NULL, NULL);
-      in_status_line = FALSE;
     }
 
   /* Always allow older...there's not going to be a chronological
@@ -143,6 +138,12 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
                                      progress, &changed,
                                      cancellable, error))
     goto out;
+
+  if (in_status_line)
+    {
+      gs_console_end_status_line (console, NULL, NULL);
+      in_status_line = FALSE;
+    }
 
   if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
     goto out;
