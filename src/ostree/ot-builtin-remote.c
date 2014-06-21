@@ -98,7 +98,7 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   if (!strcmp (op, "add"))
     {
-      const char *url = argv[3];
+      const char *url;
       char **iter;
       gs_free char *target_name = NULL;
       gs_unref_object GFile *target_conf = NULL;
@@ -109,6 +109,8 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
           usage_error (context, "URL must be specified", error);
           goto out;
         }
+
+      url = argv[3];
 
       optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
