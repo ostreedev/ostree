@@ -244,7 +244,7 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
                              GCancellable    *cancellable,
                              GError         **error)
 {
-  gboolean ret;
+  gboolean ret = FALSE;
   gs_unref_hashtable GHashTable *ret_reachable =
     ostree_repo_traverse_new_reachable ();
 

@@ -1888,7 +1888,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gs_unref_object GOutputStream *tmp_signature_output = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_unref_bytes GBytes *signature_bytes = NULL;
-  gpgme_ctx_t context;
+  gpgme_ctx_t context = NULL;
   gpgme_engine_info_t info;
   gpgme_error_t err;
   gpgme_key_t key = NULL;
