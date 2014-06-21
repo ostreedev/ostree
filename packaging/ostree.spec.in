@@ -1,7 +1,7 @@
 Summary: Git for operating system binaries
 Name: ostree
 Version: 2013.7
-Release: 2%{?dist}
+Release: 3%{?dist}
 #VCS: git:git://git.gnome.org/ostree
 Source0: http://ftp.gnome.org/pub/GNOME/sources/ostree/%{version}/ostree-%{version}.tar.xz
 Source1: 91-ostree.preset
@@ -16,6 +16,7 @@ BuildRequires: gtk-doc
 BuildRequires: pkgconfig(gio-unix-2.0)
 BuildRequires: pkgconfig(libsoup-2.4)
 BuildRequires: pkgconfig(libgsystem)
+BuildRequires: pkgconfig(e2p)
 BuildRequires: libattr-devel
 # Extras
 BuildRequires: pkgconfig(libarchive)
