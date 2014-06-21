@@ -711,7 +711,6 @@ scan_commit_object (OtPullData         *pull_data,
   gs_unref_variant GVariant *commit = NULL;
   gs_unref_variant GVariant *tree_contents_csum = NULL;
   gs_unref_variant GVariant *tree_meta_csum = NULL;
-  GVariantIter *iter = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -755,8 +754,6 @@ scan_commit_object (OtPullData         *pull_data,
   
   ret = TRUE;
  out:
-  if (iter)
-    g_variant_iter_free (iter);
   return ret;
 }
 
@@ -1036,7 +1033,6 @@ ostree_repo_pull (OstreeRepo               *self,
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
   gs_free char *remote_mode_str = NULL;
-  GSource *queue_src = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   GKeyFile *config = NULL;
@@ -1310,8 +1306,6 @@ ostree_repo_pull (OstreeRepo               *self,
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
-  if (queue_src)
-    g_source_destroy (queue_src);
   g_clear_pointer (&pull_data->static_delta_metas, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);

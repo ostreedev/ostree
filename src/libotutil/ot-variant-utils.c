@@ -140,14 +140,11 @@ ot_util_variant_map (GFile              *src,
                                          trusted,
                                          (GDestroyNotify) g_mapped_file_unref,
                                          mfile);
-  mfile = NULL;
   g_variant_ref_sink (ret_variant);
   
   ret = TRUE;
   ot_transfer_out_value(out_variant, &ret_variant);
  out:
-  if (mfile)
-    g_mapped_file_unref (mfile);
   return ret;
 }
 
