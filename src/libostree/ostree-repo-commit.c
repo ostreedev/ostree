@@ -365,7 +365,7 @@ write_object (OstreeRepo         *self,
   gboolean temp_file_is_regular;
   gboolean is_symlink = FALSE;
   char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
-  gsize unpacked_size = 0;
+  gssize unpacked_size = 0;
   gboolean indexable = FALSE;
 
   g_return_val_if_fail (expected_checksum || out_csum, FALSE);
