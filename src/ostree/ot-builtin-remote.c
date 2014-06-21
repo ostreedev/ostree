@@ -102,7 +102,6 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       char **iter;
       gs_free char *target_name = NULL;
       gs_unref_object GFile *target_conf = NULL;
-      gs_unref_ptrarray GPtrArray *branches = NULL;
       gs_unref_variant_builder GVariantBuilder *optbuilder = NULL;
 
       if (argc < 4)
@@ -113,7 +112,7 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
       optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
-      if (branches)
+      if (argc > 4)
         {
           gs_unref_ptrarray GPtrArray *branchesp = g_ptr_array_new ();
 
