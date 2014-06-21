@@ -368,10 +368,10 @@ write_object (OstreeRepo         *self,
   gsize unpacked_size = 0;
   gboolean indexable = FALSE;
 
+  g_return_val_if_fail (expected_checksum || out_csum, FALSE);
+
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
-
-  g_assert (expected_checksum || out_csum);
 
   if (expected_checksum)
     {
@@ -522,6 +522,8 @@ write_object (OstreeRepo         *self,
           goto out;
         }
     }
+
+  g_assert (actual_checksum != NULL); /* Pacify static analysis */
           
   if (indexable)
     {
