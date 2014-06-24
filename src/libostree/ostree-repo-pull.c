@@ -1996,6 +1996,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                              shift == 1 ? "B" : "KiB",
                              pull_data->n_fetched_deltaparts,
                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+
       ostree_async_progress_set_status (pull_data->progress, msg);
     }
 

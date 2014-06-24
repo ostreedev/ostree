@@ -31,17 +31,27 @@ rollsum_checksums_for_data (GBytes     *bytes)
 {
   const guint8 *start;
   gsize len;
+  gboolean rollsum_end = FALSE;
   GPtrArray *ret = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   start = g_bytes_get_data (bytes, &len);
-  while (TRUE)
+  while (len > 0)
     {
       int offset, bits;
-      offset = bupsplit_find_ofs (start, MIN(G_MAXINT32, len), &bits); 
-      if (offset == 0)
-        break;
-      if (offset > BLOB_MAX)
-        offset = BLOB_MAX;
+      if (!rollsum_end)
+        {
+          offset = bupsplit_find_ofs (start, MIN(G_MAXINT32, len), &bits); 
+          if (offset == 0)
+            {
+              rollsum_end = TRUE;
+              offset = MIN(BLOB_MAX, len);
+            }
+          else if (offset > BLOB_MAX)
+            offset = BLOB_MAX;
+        }
+      else
+        offset = MIN(BLOB_MAX, len);
+
       {
         gs_free char *blobcsum =
           g_compute_checksum_for_data (G_CHECKSUM_SHA256,
@@ -103,6 +113,7 @@ main (int argc, char **argv)
         {
           guint j;
           gs_unref_ptrarray GPtrArray *rollsums = NULL;
+          guint64 this_rollsum_size = 0;
 
           path = g_file_new_for_path (argv[i]);
           bytes = gs_file_map_readonly (path, cancellable, error);
@@ -126,9 +137,11 @@ main (int argc, char **argv)
                   g_hash_table_add (sums, g_strdup (csum));
                   rollsum_size += ofs;
                 }
+              this_rollsum_size += ofs;
             }
+          g_print ("input: rollsum size: %" G_GUINT64_FORMAT "\n", this_rollsum_size);
         }
-      g_print ("rollsums:%u input:%" G_GUINT64_FORMAT " output: %" G_GUINT64_FORMAT " speedup:%f\n",
+      g_print ("rollsum total:%u input:%" G_GUINT64_FORMAT " output: %" G_GUINT64_FORMAT " speedup:%f\n",
                g_hash_table_size (sums), input_size, rollsum_size,
                (((double)(input_size+1)) / ((double) rollsum_size + 1)));
     }
