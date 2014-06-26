@@ -56,6 +56,10 @@ AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
 	    [], [with_soup=check])
 AS_IF([test x$with_soup != xno ], [
+  AC_ARG_ENABLE(libsoup_client_certs,
+                AS_HELP_STRING([--enable-libsoup-client-certs],
+                               [Require availability of new enough libsoup TLS client cert API (default: auto)]),,
+                [enable_libsoup_client_certs=auto])
   AC_MSG_CHECKING([for $SOUP_DEPENDENCY])
   PKG_CHECK_EXISTS($SOUP_DEPENDENCY, have_soup=yes, have_soup=no)
   AC_MSG_RESULT([$have_soup])
@@ -73,6 +77,9 @@ AS_IF([test x$with_soup != xno ], [
         AC_DEFINE(HAVE_LIBSOUP_CLIENT_CERTS, 1, [Define if we have libsoup client certs])
         have_libsoup_client_certs=yes
         ], [], [#include <libsoup/soup.h>])
+    AS_IF([test x$enable_libsoup_client_certs = xyes && test x$have_libsoup_client_certs != xyes], [
+      AC_MSG_ERROR([libsoup client certs explicitly requested but not found])
+    ]) 
     CFLAGS=$save_CFLAGS
   ], [
     with_soup=no
@@ -219,6 +226,7 @@ echo "
 
     introspection:                                $found_introspection
     libsoup (retrieve remote HTTP repositories):  $with_soup
+    libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
     gpgme (sign commits):                         $with_gpgme
