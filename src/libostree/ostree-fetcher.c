@@ -233,6 +233,16 @@ _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
     }
 }
 
+void
+_ostree_fetcher_set_tls_database (OstreeFetcher *self,
+                                  GTlsDatabase  *db)
+{
+  if (db)
+    g_object_set ((GObject*)self->session, "tls-database", db, NULL);
+  else
+    g_object_set ((GObject*)self->session, "ssl-use-system-ca-file", TRUE, NULL);
+}
+
 static void
 on_request_sent (GObject        *object, GAsyncResult   *result, gpointer        user_data);
 

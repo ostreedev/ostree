@@ -1129,6 +1129,22 @@ ostree_repo_pull (OstreeRepo               *self,
       }
   }
 
+  {
+    gs_free char *tls_ca_path = NULL;
+    gs_unref_object GTlsDatabase *db = NULL;
+
+    if (!ot_keyfile_get_value_with_default (config, remote_key,
+                                            "tls-ca-path",
+                                            NULL, &tls_ca_path, error))
+      goto out;
+
+    db = g_tls_file_database_new (tls_ca_path, error);
+    if (!db)
+      goto out;
+
+    _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
+  }
+
   if (!pull_data->base_uri)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

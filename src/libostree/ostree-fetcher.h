@@ -57,6 +57,9 @@ OstreeFetcher *_ostree_fetcher_new (GFile                     *tmpdir,
 void _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
                                      GTlsCertificate *cert);
 
+void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
+                                       GTlsDatabase *db);
+
 char * _ostree_fetcher_query_state_text (OstreeFetcher              *self);
 
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
