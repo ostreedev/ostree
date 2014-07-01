@@ -1138,11 +1138,14 @@ ostree_repo_pull (OstreeRepo               *self,
                                             NULL, &tls_ca_path, error))
       goto out;
 
-    db = g_tls_file_database_new (tls_ca_path, error);
-    if (!db)
-      goto out;
-
-    _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
+    if (tls_ca_path)
+      {
+        db = g_tls_file_database_new (tls_ca_path, error);
+        if (!db)
+          goto out;
+        
+        _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
+      }
   }
 
   if (!pull_data->base_uri)
