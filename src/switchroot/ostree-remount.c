@@ -37,25 +37,58 @@
 
 #include "ostree-mount-util.h"
 
+static int
+path_is_on_readonly_fs (char *path)
+{
+  struct statvfs stvfsbuf;
+
+  if (statvfs (path, &stvfsbuf) == -1)
+    {
+      perrorv ("statvfs(%s): ", path);
+      exit (1);
+    }
+
+  return (stvfsbuf.f_flag & ST_RDONLY) != 0;
+}
+
+/* Having a writeable /var is necessary for full system functioning.
+ * If /var isn't writeable, we mount tmpfs over it. While this is
+ * somewhat outside of ostree's scope, having all /var twiddling
+ * in one place will make future maintenance easier.
+ */
+static void
+maybe_mount_tmpfs_on_var (void)
+{
+  if (!path_is_on_readonly_fs ("/var"))
+    return;
+
+  if (umount ("/var") < 0 && errno != EINVAL)
+    {
+      perror ("failed to unmount /var prior to mounting tmpfs, mounting over");
+    }
+
+  if (mount ("tmpfs", "/var", "tmpfs", 0, NULL) < 0)
+    {
+      perror ("failed to mount tmpfs on /var");
+      exit (1);
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
   const char *remounts[] = { "/sysroot", "/etc", "/home", "/root", "/tmp", "/var", NULL };
   struct stat stbuf;
   int i;
-  struct statvfs stvfsbuf;
 
-  if (statvfs ("/", &stvfsbuf) == -1)
-    {
-      perror ("statvfs(/): ");
-      exit (1);
-    }
-
-  if (stvfsbuf.f_flag & ST_RDONLY)
+  if (path_is_on_readonly_fs ("/"))
     {
       /* If / isn't writable, don't do any remounts; we don't want
        * to clear the readonly flag in that case.
        */
+
+      maybe_mount_tmpfs_on_var ();
+
       exit (0);
     }
 
@@ -81,7 +114,9 @@ main(int argc, char *argv[])
             }
 	}
     }
-  
+
+  maybe_mount_tmpfs_on_var ();
+
   exit (0);
 }
 
