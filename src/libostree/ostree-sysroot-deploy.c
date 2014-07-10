@@ -1072,6 +1072,9 @@ swap_bootlinks (OstreeSysroot *self,
   ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
   ostree_subbootdir = g_file_resolve_relative_path (ostree_dir, ostree_subbootdir_name);
 
+  if (!gs_shutil_rm_rf (ostree_subbootdir, cancellable, error))
+    goto out;
+
   if (!ot_util_ensure_directory_and_fsync (ostree_subbootdir, cancellable, error))
     goto out;
 
@@ -1526,6 +1529,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
       new_loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
                                                              new_bootversion);
+      if (!gs_shutil_rm_rf (new_loader_entries_dir, cancellable, error))
+        goto out;
       if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
         goto out;
       
