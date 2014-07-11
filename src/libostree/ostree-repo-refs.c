@@ -348,6 +348,75 @@ resolve_refspec (OstreeRepo     *self,
 }
 
 /**
+ * ostree_repo_resolve_partial_checksum:
+ * @self: Repo
+ * @refspec: A refspec
+ * @full_checksum (out) (transfer full): A full checksum corresponding to the truncated ref given
+ * @error: Error
+ *
+ * Look up the existing refspec checksums.  If the given ref is a unique truncated beginning
+ * of a valid checksum it will return that checksum in the parameter @full_checksum
+ */
+static gboolean
+ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
+                                      const char   *refspec,
+                                      char        **full_checksum,
+                                      GError      **error)
+{
+  gboolean ret = FALSE;
+  s_unref_hashtable GHashTable *ref_list = NULL;
+  gs_free char *ret_rev = NULL;
+  guint length;
+  const char *checksum = NULL;
+  OstreeObjectType objtype;
+  GHashTableIter hashiter;
+  gpointer key, value;
+  GVariant *first_commit;
+
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  /* this looks through all objects and adds them to the ref_list if:
+     a) they are a commit object AND
+     b) the obj checksum starts with the partual checksum defined by "refspec" */
+  if (!ostree_repo_list_commit_objects_starting_with (self, refspec, &ref_list, NULL, error))
+    goto out;
+
+  length = g_hash_table_size (ref_list);
+
+  g_hash_table_iter_init (&hashiter, ref_list);
+  if (g_hash_table_iter_next (&hashiter, &key, &value))
+    first_commit = (GVariant*) key;
+  else
+    first_commit = NULL;
+
+  if (first_commit) 
+    ostree_object_name_deserialize (first_commit, &checksum, &objtype);
+
+  /* length more than one - multiple commits match partial refspec: is not unique */
+  if (length > 1)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Refspec %s not unique", refspec);
+      goto out;
+    }
+    
+  /* length is 1 - a single matching commit gives us our revision */
+  else if (length == 1)
+    {
+      ret_rev = g_strdup (checksum);
+    }
+
+  /* Note: if length is 0, then code will return TRUE
+     because there is no error, but it will return full_checksum = NULL
+     to signal to continue parsing */
+
+  ret = TRUE;
+  ot_transfer_out_value (full_checksum, &ret_rev);
+ out:
+  return ret;
+}
+
+/**
  * ostree_repo_resolve_rev:
  * @self: Repo
  * @refspec: A refspec
@@ -374,8 +443,15 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
     {
       ret_rev = g_strdup (refspec);
     }
-  else
+
+  else if (!ostree_repo_resolve_partial_checksum (self, refspec, &ret_rev, error))
+    goto out;
+
+  if (!ret_rev)
     {
+      if (error != NULL && *error != NULL)
+        goto out;
+
       if (g_str_has_suffix (refspec, "^"))
         {
           gs_free char *parent_refspec = NULL;

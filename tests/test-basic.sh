@@ -34,6 +34,15 @@ $OSTREE rev-parse 'test2^'
 $OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
 echo "ok rev-parse"
 
+checksum=$($OSTREE rev-parse test2)
+partial=${checksum:0:6} 
+echo "partial:" $partial
+echo "corresponds to:" $checksum
+$OSTREE rev-parse test2 > checksum
+$OSTREE rev-parse $partial > partial-results
+assert_file_has_content checksum $(cat partial-results)
+echo "ok shortened checksum"
+
 (cd repo && ostree rev-parse test2)
 echo "ok repo-in-cwd"
 
