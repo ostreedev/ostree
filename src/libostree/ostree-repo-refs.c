@@ -381,7 +381,6 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
           gs_free char *parent_refspec = NULL;
           gs_free char *parent_rev = NULL;
           gs_unref_variant GVariant *commit = NULL;
-          gs_unref_variant GVariant *parent_csum_v = NULL;
 
           parent_refspec = g_strdup (refspec);
           parent_refspec[strlen(parent_refspec) - 1] = '\0';
@@ -393,14 +392,12 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
                                          &commit, error))
             goto out;
       
-          g_variant_get_child (commit, 1, "@ay", &parent_csum_v);
-          if (g_variant_n_children (parent_csum_v) == 0)
+          if (!(ret_rev = ostree_commit_get_parent (commit)))
             {
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "Commit %s has no parent", parent_rev);
               goto out;
             }
-          ret_rev = ostree_checksum_from_bytes_v (parent_csum_v);
         }
       else
         {
