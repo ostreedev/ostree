@@ -364,7 +364,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
                                       GError      **error)
 {
   gboolean ret = FALSE;
-  s_unref_hashtable GHashTable *ref_list = NULL;
+  gs_unref_hashtable GHashTable *ref_list = NULL;
   gs_free char *ret_rev = NULL;
   guint length;
   const char *checksum = NULL;
