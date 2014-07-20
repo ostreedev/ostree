@@ -1021,7 +1021,10 @@ list_loose_objects_at (OstreeRepo             *self,
       if (!dot)
         continue;
 
-      if (strcmp (dot, ".file") == 0)
+      if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+           && strcmp (dot, ".filez") == 0) ||
+          (self->mode == OSTREE_REPO_MODE_BARE
+           && strcmp (dot, ".file") == 0))
         objtype = OSTREE_OBJECT_TYPE_FILE;
       else if (strcmp (dot, ".dirtree") == 0)
         objtype = OSTREE_OBJECT_TYPE_DIR_TREE;
