@@ -1598,8 +1598,24 @@ ostree_repo_delete_object (OstreeRepo           *self,
                            GCancellable         *cancellable,
                            GError              **error)
 {
-  gs_unref_object GFile *objpath = _ostree_repo_get_object_path (self, sha256, objtype);
-  return gs_file_unlink (objpath, cancellable, error);
+  gboolean ret = FALSE;
+  gs_unref_object GFile *objpath = NULL;
+
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      gs_unref_object GFile *detached_metadata =
+        _ostree_repo_get_commit_metadata_loose_path (self, sha256);
+      if (!ot_gfile_ensure_unlinked (detached_metadata, cancellable, error))
+        goto out;
+    }
+
+  objpath = _ostree_repo_get_object_path (self, sha256, objtype);
+  if (!gs_file_unlink (objpath, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /**
