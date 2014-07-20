@@ -236,6 +236,19 @@ rm repo3 objlist-before-prune objlist-after-prune -rf
 echo "ok prune"
 
 cd ${test_tmpdir}
+rm repo3 -rf
+${CMD_PREFIX} ostree --repo=repo3 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
+rm repo3/refs/remotes -rf
+mkdir repo3/refs/remotes
+ostree --repo=repo3 prune --refs-only
+find repo3/objects -name '*.filez' > file-objects
+if test -s file-objects; then
+    assert_not_reached "prune didn't delete all objects"
+fi
+echo "ok prune in archive-z2 deleted everything"
+
+cd ${test_tmpdir}
 $OSTREE commit -b test3 -s "Another commit" --tree=ref=test2
 ostree --repo=repo refs > reflist
 assert_file_has_content reflist '^test3$'

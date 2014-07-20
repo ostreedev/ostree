@@ -1083,7 +1083,7 @@ list_loose_objects (OstreeRepo                     *self,
   int dfd = -1;
   static const gchar hexchars[] = "0123456789abcdef";
 
-  for (c = 0; c < 255; c++)
+  for (c = 0; c < 256; c++)
     {
       char buf[3];
       buf[0] = hexchars[c >> 4];
