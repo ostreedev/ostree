@@ -268,6 +268,13 @@ $OSTREE ls test2
 echo "ok ls with no argument"
 
 cd ${test_tmpdir}
+if $OSTREE ls test2 /baz/cow/notadir 2>errmsg; then
+    assert_not_reached
+fi
+assert_file_has_content errmsg "Not a directory"
+echo "ok ls of not a directory"
+
+cd ${test_tmpdir}
 $OSTREE show test2
 echo "ok show with non-checksum"
 

@@ -223,6 +223,13 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   if (!ostree_repo_file_ensure_resolved (self->parent, error))
     goto out;
 
+  if (!self->parent->tree_contents)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY,
+                   "Not a directory");
+      goto out;
+    }
+
   i = ostree_repo_file_tree_find_child (self->parent, self->name, &is_dir, &container);
 
   if (i < 0)
