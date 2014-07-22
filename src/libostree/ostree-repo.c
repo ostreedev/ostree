@@ -990,12 +990,14 @@ list_loose_objects_at (OstreeRepo             *self,
                        GHashTable             *inout_objects,
                        const char             *prefix,
                        int                     dfd,
+                       const char             *commit_starting_with,
                        GCancellable           *cancellable,
                        GError                **error)
 {
   gboolean ret = FALSE;
   DIR *d = NULL;
   struct dirent *dent;
+  GVariant *key, *value;
 
   d = fdopendir (dfd);
   if (!d)
@@ -1019,7 +1021,10 @@ list_loose_objects_at (OstreeRepo             *self,
       if (!dot)
         continue;
 
-      if (strcmp (dot, ".file") == 0)
+      if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+           && strcmp (dot, ".filez") == 0) ||
+          (self->mode == OSTREE_REPO_MODE_BARE
+           && strcmp (dot, ".file") == 0))
         objtype = OSTREE_OBJECT_TYPE_FILE;
       else if (strcmp (dot, ".dirtree") == 0)
         objtype = OSTREE_OBJECT_TYPE_DIR_TREE;
@@ -1030,21 +1035,33 @@ list_loose_objects_at (OstreeRepo             *self,
       else
         continue;
 
-      if ((dot - name) == 62)
+      if ((dot - name) != 62)
+        continue;
+
+      memcpy (buf, prefix, 2);
+      memcpy (buf + 2, name, 62);
+      buf[sizeof(buf)-1] = '\0';
+
+      /* if we passed in a "starting with" argument, then
+         we only want to return .commit objects with a checksum
+         that matches the commit_starting_with argument */
+      if (commit_starting_with)
         {
-          GVariant *key, *value;
+          /* object is not a commit, do not add to array */
+          if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
+              continue;
 
-          memcpy (buf, prefix, 2);
-          memcpy (buf + 2, name, 62);
-          buf[sizeof(buf)-1] = '\0';
-
-          key = ostree_object_name_serialize (buf, objtype);
-          value = g_variant_new ("(b@as)",
-                                 TRUE, g_variant_new_strv (NULL, 0));
-          /* transfer ownership */
-          g_hash_table_replace (inout_objects, key,
-                                g_variant_ref_sink (value));
+          /* commit checksum does not match "starting with", do not add to array */     
+          if (!g_str_has_prefix (buf, commit_starting_with))
+            continue;
         }
+
+        key = ostree_object_name_serialize (buf, objtype);
+        value = g_variant_new ("(b@as)",
+                               TRUE, g_variant_new_strv (NULL, 0));
+        /* transfer ownership */
+        g_hash_table_replace (inout_objects, key,
+                              g_variant_ref_sink (value));
     }
 
   ret = TRUE;
@@ -1057,6 +1074,7 @@ list_loose_objects_at (OstreeRepo             *self,
 static gboolean
 list_loose_objects (OstreeRepo                     *self,
                     GHashTable                     *inout_objects,
+                    const char                     *commit_starting_with,
                     GCancellable                   *cancellable,
                     GError                        **error)
 {
@@ -1065,7 +1083,7 @@ list_loose_objects (OstreeRepo                     *self,
   int dfd = -1;
   static const gchar hexchars[] = "0123456789abcdef";
 
-  for (c = 0; c < 255; c++)
+  for (c = 0; c < 256; c++)
     {
       char buf[3];
       buf[0] = hexchars[c >> 4];
@@ -1084,7 +1102,8 @@ list_loose_objects (OstreeRepo                     *self,
         }
       /* Takes ownership of dfd */
       if (!list_loose_objects_at (self, inout_objects, buf, dfd,
-                                  cancellable, error))
+                                       commit_starting_with,
+                                       cancellable, error))
         goto out;
     }
 
@@ -1582,8 +1601,24 @@ ostree_repo_delete_object (OstreeRepo           *self,
                            GCancellable         *cancellable,
                            GError              **error)
 {
-  gs_unref_object GFile *objpath = _ostree_repo_get_object_path (self, sha256, objtype);
-  return gs_file_unlink (objpath, cancellable, error);
+  gboolean ret = FALSE;
+  gs_unref_object GFile *objpath = NULL;
+
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      gs_unref_object GFile *detached_metadata =
+        _ostree_repo_get_commit_metadata_loose_path (self, sha256);
+      if (!ot_gfile_ensure_unlinked (detached_metadata, cancellable, error))
+        goto out;
+    }
+
+  objpath = _ostree_repo_get_object_path (self, sha256, objtype);
+  if (!gs_file_unlink (objpath, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /**
@@ -1702,11 +1737,11 @@ ostree_repo_list_objects (OstreeRepo                  *self,
 
   if (flags & OSTREE_REPO_LIST_OBJECTS_LOOSE)
     {
-      if (!list_loose_objects (self, ret_objects, cancellable, error))
+      if (!list_loose_objects (self, ret_objects, NULL, cancellable, error))
         goto out;
       if (self->parent_repo)
         {
-          if (!list_loose_objects (self->parent_repo, ret_objects, cancellable, error))
+          if (!list_loose_objects (self->parent_repo, ret_objects, NULL, cancellable, error))
             goto out;
         }
     }
@@ -1718,6 +1753,53 @@ ostree_repo_list_objects (OstreeRepo                  *self,
 
   ret = TRUE;
   ot_transfer_out_value (out_objects, &ret_objects);
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_list_commit_objects_starting_with:
+ * @self: Repo
+ * @start: List commits starting with this checksum
+ * @out_commits: Array of GVariants
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * This function synchronously enumerates all commit objects starting
+ * with @start, returning data in @out_commits.
+ *
+ * Returns: %TRUE on success, %FALSE on error, and @error will be set
+ */
+gboolean
+ostree_repo_list_commit_objects_starting_with (OstreeRepo                  *self,
+                                               const char                  *start,
+                                               GHashTable                 **out_commits,
+                                               GCancellable                *cancellable,
+                                               GError                     **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_hashtable GHashTable *ret_commits = NULL;
+
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (self->inited, FALSE);
+
+  ret_commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
+                                       (GDestroyNotify) g_variant_unref,
+                                       (GDestroyNotify) g_variant_unref);
+
+  if (!list_loose_objects (self, ret_commits, start, cancellable, error))
+        goto out;
+
+
+  if (self->parent_repo)
+    {
+      if (!list_loose_objects (self->parent_repo, ret_commits, start,
+                               cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_commits, &ret_commits);
  out:
   return ret;
 }

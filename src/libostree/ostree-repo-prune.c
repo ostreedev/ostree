@@ -45,36 +45,24 @@ maybe_prune_loose_object (OtPruneData        *data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *key = NULL;
-  gs_unref_object GFile *objf = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
-
-  objf = _ostree_repo_get_object_path (data->repo, checksum, objtype);
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
       if (!(flags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE))
         {
-          gs_unref_object GFileInfo *info = NULL;
+          guint64 storage_size = 0;
 
-          if (!ot_gfile_query_info_allow_noent (objf, OSTREE_GIO_FAST_QUERYINFO,
-                                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                &info, cancellable, error))
+          if (!ostree_repo_query_object_storage_size (data->repo, objtype, checksum,
+                                                      &storage_size, cancellable, error))
             goto out;
 
-          if (info)
-            {
-              if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-                {
-                  gs_unref_object GFile *detached_metadata =
-                    _ostree_repo_get_commit_metadata_loose_path (data->repo, checksum);
-                  if (!ot_gfile_ensure_unlinked (detached_metadata, cancellable, error))
-                    goto out;
-                }
-              if (!gs_file_unlink (objf, cancellable, error))
-                goto out;
-              data->freed_bytes += g_file_info_get_size (info);
-            }
+          if (!ostree_repo_delete_object (data->repo, objtype, checksum,
+                                          cancellable, error))
+            goto out;
+
+          data->freed_bytes += storage_size;
         }
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         data->n_unreachable_meta++;

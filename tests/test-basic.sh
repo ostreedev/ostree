@@ -34,6 +34,15 @@ $OSTREE rev-parse 'test2^'
 $OSTREE rev-parse 'test2^^' 2>/dev/null && (echo 1>&2 "rev-parse test2^^ unexpectedly succeeded!"; exit 1)
 echo "ok rev-parse"
 
+checksum=$($OSTREE rev-parse test2)
+partial=${checksum:0:6} 
+echo "partial:" $partial
+echo "corresponds to:" $checksum
+$OSTREE rev-parse test2 > checksum
+$OSTREE rev-parse $partial > partial-results
+assert_file_has_content checksum $(cat partial-results)
+echo "ok shortened checksum"
+
 (cd repo && ostree rev-parse test2)
 echo "ok repo-in-cwd"
 
@@ -227,6 +236,19 @@ rm repo3 objlist-before-prune objlist-after-prune -rf
 echo "ok prune"
 
 cd ${test_tmpdir}
+rm repo3 -rf
+${CMD_PREFIX} ostree --repo=repo3 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
+rm repo3/refs/remotes -rf
+mkdir repo3/refs/remotes
+ostree --repo=repo3 prune --refs-only
+find repo3/objects -name '*.filez' > file-objects
+if test -s file-objects; then
+    assert_not_reached "prune didn't delete all objects"
+fi
+echo "ok prune in archive-z2 deleted everything"
+
+cd ${test_tmpdir}
 $OSTREE commit -b test3 -s "Another commit" --tree=ref=test2
 ostree --repo=repo refs > reflist
 assert_file_has_content reflist '^test3$'
@@ -244,6 +266,13 @@ echo "ok commit with link speedup"
 cd ${test_tmpdir}
 $OSTREE ls test2
 echo "ok ls with no argument"
+
+cd ${test_tmpdir}
+if $OSTREE ls test2 /baz/cow/notadir 2>errmsg; then
+    assert_not_reached
+fi
+assert_file_has_content errmsg "Not a directory"
+echo "ok ls of not a directory"
 
 cd ${test_tmpdir}
 $OSTREE show test2

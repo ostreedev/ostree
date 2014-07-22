@@ -446,6 +446,12 @@ gboolean ostree_repo_list_objects (OstreeRepo                  *self,
                                    GCancellable                *cancellable,
                                    GError                     **error);
 
+gboolean ostree_repo_list_commit_objects_starting_with ( OstreeRepo                  *self,
+                                                         const char                  *start,
+                                                         GHashTable                 **out_commits,
+                                                         GCancellable                *cancellable,
+                                                         GError                     **error);
+
 gboolean ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                               GPtrArray                  **out_deltas,
                                               GCancellable                *cancellable,
