@@ -91,7 +91,7 @@ import_one_object (OtLocalCloneData *data,
 
           if (detached_meta)
             {
-              if (!ostree_repo_write_commit_detached_metadata (data->src_repo,
+              if (!ostree_repo_write_commit_detached_metadata (data->dest_repo,
                                                                checksum, detached_meta,
                                                                cancellable, error))
                 goto out;
