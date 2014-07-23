@@ -364,6 +364,8 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
                                       GError      **error)
 {
   gboolean ret = FALSE;
+  static const char hexchars[] = "0123456789abcdef";
+  gsize off;
   gs_unref_hashtable GHashTable *ref_list = NULL;
   gs_free char *ret_rev = NULL;
   guint length;
@@ -374,6 +376,12 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   GVariant *first_commit;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  /* If the input is longer than 64 chars or contains non-hex chars,
+     don't bother looking for it as an object */
+  off = strspn (refspec, hexchars);
+  if (off > 64 || refspec[off] != '\0')
+    return TRUE;
 
   /* this looks through all objects and adds them to the ref_list if:
      a) they are a commit object AND
