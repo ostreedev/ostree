@@ -52,12 +52,22 @@ ot_common_pull_progress (OstreeAsyncProgress       *progress,
       guint64 bytes_transferred = ostree_async_progress_get_uint64 (progress, "bytes-transferred");
       guint fetched = ostree_async_progress_get_uint (progress, "fetched");
       guint requested = ostree_async_progress_get_uint (progress, "requested");
+      guint64 bytes_sec = (g_get_monotonic_time () - ostree_async_progress_get_uint64 (progress, "start-time")) / G_USEC_PER_SEC;
       gs_free char *formatted_bytes_transferred =
         g_format_size_full (bytes_transferred, 0);
+      gs_free char *formatted_bytes_sec = NULL;
 
-      g_string_append_printf (buf, "Receiving objects: %u%% (%u/%u) %s",
+      if (!bytes_sec) // Ignore first second
+        formatted_bytes_sec = g_strdup ("-");
+      else
+        {
+          bytes_sec = bytes_transferred / bytes_sec;
+          formatted_bytes_sec = g_format_size (bytes_sec);
+        }
+
+      g_string_append_printf (buf, "Receiving objects: %u%% (%u/%u) %s/s %s",
                               (guint)((((double)fetched) / requested) * 100),
-                              fetched, requested, formatted_bytes_transferred);
+                              fetched, requested, formatted_bytes_sec, formatted_bytes_transferred);
     }
   else if (outstanding_writes)
     {
