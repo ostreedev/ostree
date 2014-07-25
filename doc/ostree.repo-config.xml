@@ -127,6 +127,12 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
+        <term><varname>proxy</varname></term>
+        <listitem><para>A string value, if given should be a URL for a
+        HTTP proxy to use for access to this repository.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><varname>gpg-verify</varname></term>
         <listitem><para>A boolean value, defaults to true.
         Controls whether or not OSTree will require commits to be

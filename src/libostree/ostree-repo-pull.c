@@ -1151,6 +1151,17 @@ ostree_repo_pull (OstreeRepo               *self,
       }
   }
 
+  {
+    gs_free char *http_proxy = NULL;
+
+    if (!ot_keyfile_get_value_with_default (config, remote_key, "proxy",
+                                            NULL, &http_proxy, error))
+      goto out;
+
+    if (http_proxy)
+      _ostree_fetcher_set_proxy (pull_data->fetcher, http_proxy);
+  }
+
   if (!pull_data->base_uri)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

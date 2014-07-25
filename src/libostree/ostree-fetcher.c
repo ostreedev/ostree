@@ -172,16 +172,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
   http_proxy = g_getenv ("http_proxy");
   if (http_proxy)
     {
-      SoupURI *proxy_uri = soup_uri_new (http_proxy);
-      if (!proxy_uri)
-        {
-          g_warning ("Invalid proxy URI '%s'", http_proxy);
-        }
-      else
-        {
-          g_object_set (self->session, SOUP_SESSION_PROXY_URI, proxy_uri, NULL);
-          soup_uri_free (proxy_uri);
-        }
+      _ostree_fetcher_set_proxy (self, http_proxy);
     }
 
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
@@ -222,6 +213,22 @@ _ostree_fetcher_new (GFile                    *tmpdir,
     g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
  
   return self;
+}
+
+void
+_ostree_fetcher_set_proxy (OstreeFetcher *self,
+                           const char    *http_proxy)
+{
+  SoupURI *proxy_uri = soup_uri_new (http_proxy);
+  if (!proxy_uri)
+    {
+      g_warning ("Invalid proxy URI '%s'", http_proxy);
+    }
+  else
+    {
+      g_object_set (self->session, SOUP_SESSION_PROXY_URI, proxy_uri, NULL);
+      soup_uri_free (proxy_uri);
+    }
 }
 
 void
