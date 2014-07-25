@@ -35,6 +35,41 @@ static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
+static gboolean opt_disable_fsync;
+
+#define ARG_EQ(x, y) (g_ascii_strcasecmp(x, y) == 0)
+/* create a function to parse the --fsync option, and current parse it the
+ * same as --disable-fsync. Allows us to add other things later, and not have
+ * a double negative. */
+static gboolean opt__fsync(const gchar *option_name,
+			   const gchar *value,
+			   gpointer data,
+			   GError **error)
+{
+  g_assert(g_str_equal(option_name, "--fsync"));
+
+  if (0) {}
+  else if (ARG_EQ(value, "1"))
+    opt_disable_fsync = 0;
+  else if (ARG_EQ(value, "true"))
+    opt_disable_fsync = 0;
+  else if (ARG_EQ(value, "yes"))
+    opt_disable_fsync = 0;
+  else if (ARG_EQ(value, "0"))
+    opt_disable_fsync = 1;
+  else if (ARG_EQ(value, "false"))
+    opt_disable_fsync = 1;
+  else if (ARG_EQ(value, "none"))
+    opt_disable_fsync = 1;
+  else if (ARG_EQ(value, "no"))
+    opt_disable_fsync = 1;
+  else
+    /* do we want to complain here? */
+    return 0;
+
+
+  return 1;
+}
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
@@ -43,6 +78,8 @@ static GOptionEntry options[] = {
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
+  { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+  { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, opt__fsync, "Specify how to invoke fsync()", NULL },
   { NULL }
 };
 
@@ -194,6 +231,9 @@ ostree_builtin_checkout (int argc, char **argv, OstreeRepo *repo, GCancellable *
                            "COMMIT must be specified");
       goto out;
     }
+
+  if (opt_disable_fsync)
+    ostree_repo_set_disable_fsync (repo, TRUE);
 
   if (opt_from_stdin || opt_from_file)
     {

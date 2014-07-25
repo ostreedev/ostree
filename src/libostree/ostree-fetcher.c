@@ -140,6 +140,7 @@ on_request_started (SoupSession  *session,
                     gpointer      user_data)
 {
   OstreeFetcher *self = user_data;
+
   g_hash_table_insert (self->sending_messages, msg, g_object_ref (msg));
 }
 
@@ -188,6 +189,12 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
+  if (max_conns <= 8)
+    { // We download a lot of small objects in ostree, so this helps a lot.
+      max_conns = 8;
+      g_object_set (self->session, "max-conns-per-host", max_conns, NULL);
+    }
+
   self->max_outstanding = 3 * max_conns;
 
   g_signal_connect (self->session, "request-started",
