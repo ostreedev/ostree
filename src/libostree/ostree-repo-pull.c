@@ -65,6 +65,8 @@ typedef struct {
   guint             n_fetched_metadata;
   guint             n_fetched_content;
 
+  guint64           start_time;
+  
   gboolean      have_previous_bytes;
   guint64       previous_bytes_sec;
   guint64       previous_total_downloaded;
@@ -143,6 +145,7 @@ update_progress (gpointer user_data)
   guint fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
   guint requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
   guint n_scanned_metadata = pull_data->n_scanned_metadata;
+  guint64 start_time = pull_data->start_time;
  
   g_assert (pull_data->progress);
 
@@ -152,6 +155,7 @@ update_progress (gpointer user_data)
   ostree_async_progress_set_uint (pull_data->progress, "requested", requested);
   ostree_async_progress_set_uint (pull_data->progress, "scanned-metadata", n_scanned_metadata);
   ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
+  ostree_async_progress_set_uint64 (pull_data->progress, "start-time", start_time);
 
   if (pull_data->fetching_sync_uri)
     {
@@ -1039,7 +1043,6 @@ ostree_repo_pull (OstreeRepo               *self,
   GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
   guint64 bytes_transferred;
-  guint64 start_time;
   guint64 end_time;
 
   pull_data->async_error = error;
@@ -1057,7 +1060,7 @@ ostree_repo_pull (OstreeRepo               *self,
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
 
-  start_time = g_get_monotonic_time ();
+  pull_data->start_time = g_get_monotonic_time ();
 
   pull_data->remote_name = g_strdup (remote_name);
   config = ostree_repo_get_config (self);
@@ -1310,7 +1313,7 @@ ostree_repo_pull (OstreeRepo               *self,
                              pull_data->n_fetched_metadata, pull_data->n_fetched_content,
                              (guint64)(bytes_transferred / shift),
                              shift == 1 ? "B" : "KiB",
-                             (guint) ((end_time - start_time) / G_USEC_PER_SEC));
+                             (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
       ostree_async_progress_set_status (pull_data->progress, msg);
     }
 

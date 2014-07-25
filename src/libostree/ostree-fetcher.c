@@ -140,6 +140,7 @@ on_request_started (SoupSession  *session,
                     gpointer      user_data)
 {
   OstreeFetcher *self = user_data;
+  
   g_hash_table_insert (self->sending_messages, msg, g_object_ref (msg));
 }
 
