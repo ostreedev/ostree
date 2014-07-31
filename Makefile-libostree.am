@@ -112,6 +112,8 @@ if USE_LIBSOUP
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-fetcher.h \
 	src/libostree/ostree-fetcher.c \
+	src/libostree/ostree-metalink.h \
+	src/libostree/ostree-metalink.c \
 	src/libostree/ostree-repo-pull.c \
 	$(NULL)
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)

@@ -31,6 +31,12 @@
 #include "otutil.h"
 
 GVariant *
+ot_gvariant_new_empty_string_dict (void)
+{
+  return g_variant_builder_end (g_variant_builder_new (G_VARIANT_TYPE ("a{sv}")));
+}
+
+GVariant *
 ot_gvariant_new_bytearray (const guchar   *data,
                            gsize           len)
 {
@@ -281,4 +287,62 @@ ot_variant_new_from_bytes (const GVariantType  *type,
   return g_variant_new_from_data (type, data, size, trusted,
                                   (GDestroyNotify)g_bytes_unref, bytes);
 #endif
+}
+
+/**
+ * ot_variant_bsearch_str:
+ * @array: A GVariant array whose first element must be a string
+ * @str: Search for this string
+ * @out_pos: Output position
+ *
+ *
+ * Binary search in a GVariant array, which must be of the form 'a(s...)',
+ * where '...' may be anything.  The array elements must be sorted.
+ *
+ * Returns: %TRUE if found, %FALSE otherwise
+ */
+gboolean
+ot_variant_bsearch_str (GVariant   *array,
+                        const char *str,
+                        int        *out_pos)
+{
+  gsize imax, imin;
+  gsize imid;
+  gsize n;
+
+  n = g_variant_n_children (array);
+  if (n == 0)
+    return FALSE;
+
+  imax = n - 1;
+  imin = 0;
+  while (imax >= imin)
+    {
+      gs_unref_variant GVariant *child = NULL;
+      const char *cur;
+      int cmp;
+
+      imid = (imin + imax) / 2;
+
+      child = g_variant_get_child_value (array, imid);
+      g_variant_get_child (child, 0, "&s", &cur, NULL);      
+
+      cmp = strcmp (cur, str);
+      if (cmp < 0)
+        imin = imid + 1;
+      else if (cmp > 0)
+        {
+          if (imid == 0)
+            break;
+          imax = imid - 1;
+        }
+      else
+        {
+          *out_pos = imid;
+          return TRUE;
+        }
+    }
+
+  *out_pos = imid;
+  return FALSE;
 }

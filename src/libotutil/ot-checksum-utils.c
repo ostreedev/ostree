@@ -139,6 +139,32 @@ ot_gio_checksum_stream (GInputStream   *in,
   return ot_gio_splice_get_checksum (NULL, in, out_csum, cancellable, error);
 }
 
+char *
+ot_checksum_file (GFile          *file,
+                  GChecksumType   checksum_type,
+                  GCancellable   *cancellable,
+                  GError        **error)
+{
+  GChecksum *checksum = NULL;
+  char *ret = NULL;
+  gs_unref_object GInputStream *in = NULL;
+
+  in = (GInputStream*)g_file_read (file, cancellable, error);
+  if (!in)
+    goto out;
+
+  checksum = g_checksum_new (checksum_type);
+
+  if (!ot_gio_splice_update_checksum (NULL, in, checksum, cancellable, error))
+    goto out;
+
+  ret = g_strdup (g_checksum_get_string (checksum));
+ out:
+  g_clear_pointer (&checksum, (GDestroyNotify) g_checksum_free);
+  return ret;
+
+}
+
 static void
 checksum_stream_thread (GSimpleAsyncResult   *result,
                         GObject              *object,

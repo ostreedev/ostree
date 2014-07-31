@@ -568,5 +568,11 @@ gboolean ostree_repo_verify_commit (OstreeRepo   *self,
                                     GCancellable *cancellable,
                                     GError      **error);
 
+gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
+                                         GVariant       *additional_metadata,
+                                         GCancellable   *cancellable,
+                                         GError        **error);
+
+
 G_END_DECLS
 

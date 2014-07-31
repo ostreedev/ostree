@@ -381,7 +381,7 @@ GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
  * ostree_repo_remote_add:
  * @self: Repo
  * @name: Name of remote
- * @url: URL for remote
+ * @url: URL for remote (if URL begins with metalink=, it will be used as such)
  * @options: (allow-none): GVariant of type a{sv}
  * @cancellable: Cancellable
  * @error: Error
@@ -446,7 +446,11 @@ ostree_repo_remote_add (OstreeRepo     *self,
       target_keyfile = ostree_repo_copy_config (self);
     }
 
-  g_key_file_set_string (target_keyfile, section, "url", url);
+  if (g_str_has_prefix (url, "metalink="))
+    g_key_file_set_string (target_keyfile, section, "metalink", url + strlen ("metalink="));
+  else
+    g_key_file_set_string (target_keyfile, section, "url", url);
+
   if (options)
     keyfile_set_from_vardict (target_keyfile, section, options);
 
@@ -2264,3 +2268,81 @@ out:
     (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
   return ret;
 }
+
+/**
+ * ostree_repo_regenerate_summary:
+ * @self: Repo
+ * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * An OSTree repository can contain a high level "summary" file that
+ * describes the available branches and other metadata.
+ *
+ * It is not regenerated automatically when commits are created; this
+ * API is available to atomically regenerate the summary after
+ * multiple commits.  It should only be invoked by one process at a
+ * time.
+ */
+gboolean
+ostree_repo_regenerate_summary (OstreeRepo     *self,
+                                GVariant       *additional_metadata,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *summary_path = NULL;
+  gs_unref_hashtable GHashTable *refs = NULL;
+  gs_unref_variant_builder GVariantBuilder *refs_builder = NULL;
+  gs_unref_variant GVariant *summary = NULL;
+  GList *ordered_keys = NULL;
+  GList *iter = NULL;
+
+  if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
+    goto out;
+
+  refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
+
+  ordered_keys = g_hash_table_get_keys (refs);
+  ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
+  
+  for (iter = ordered_keys; iter; iter = iter->next)
+    {
+      const char *ref = iter->data;
+      const char *commit = g_hash_table_lookup (refs, ref);
+      gs_unref_variant GVariant *commit_obj = NULL;
+
+      g_assert (commit);
+
+      if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
+        goto out;
+
+      g_variant_builder_add_value (refs_builder, 
+                                   g_variant_new ("(s(t@ay@a{sv}))", ref,
+                                                  g_variant_get_size (commit_obj),
+                                                  ostree_checksum_to_bytes_v (commit),
+                                                  ot_gvariant_new_empty_string_dict ()));
+    }
+
+  {
+    gs_unref_variant_builder GVariantBuilder *summary_builder =
+      g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
+
+    g_variant_builder_add_value (summary_builder, g_variant_builder_end (refs_builder));
+    g_variant_builder_add_value (summary_builder, additional_metadata ? additional_metadata : ot_gvariant_new_empty_string_dict ());
+    summary = g_variant_builder_end (summary_builder);
+    g_variant_ref_sink (summary);
+  }
+
+  summary_path = g_file_get_child (self->repodir, "summary");
+
+  if (!ot_util_variant_save (summary_path, summary, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (ordered_keys)
+    g_list_free (ordered_keys);
+  return ret;
+}
+

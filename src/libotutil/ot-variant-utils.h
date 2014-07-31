@@ -31,6 +31,8 @@ GVariant *ot_gvariant_new_bytearray (const guchar   *data,
 
 GVariant *ot_gvariant_new_ay_bytes (GBytes *bytes);
 
+GVariant *ot_gvariant_new_empty_string_dict (void);
+
 GHashTable *ot_util_variant_asv_to_hash_table (GVariant *variant);
 
 GVariant * ot_util_variant_take_ref (GVariant *variant);
@@ -69,6 +71,11 @@ GVariant *
 ot_variant_new_from_bytes (const GVariantType  *type,
                            GBytes        *bytes,
                            gboolean       trusted);
+
+gboolean
+ot_variant_bsearch_str (GVariant   *array,
+                        const char *str,
+                        int        *out_pos);
 
 G_END_DECLS
 
