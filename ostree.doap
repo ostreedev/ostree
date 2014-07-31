@@ -7,6 +7,7 @@
 
   <name>ostree</name>
   <shortname>ostree</shortname>
+  <category rdf:resource="http://api.gnome.org/doap-extensions#infrastructure" />
 
   <shortdesc xml:lang="en">Git for operating system binaries</shortdesc>
 
