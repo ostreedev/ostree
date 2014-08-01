@@ -143,7 +143,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       g_strchomp (proc_cmdline);
 
       proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
-      _ostree_kernel_args_replace_argv (kargs, proc_cmdline_args);
+      _ostree_kernel_args_append_argv (kargs, proc_cmdline_args);
     }
   else if (merge_deployment)
     {
