@@ -154,3 +154,18 @@ if ostree admin --sysroot=sysroot deploy --os=unknown testos:testos/buildmaster/
     assert_not_reached "Unexpected successful deploy of unknown OS"
 fi
 echo "ok deploy with unknown OS"
+
+ostree admin --sysroot=sysroot deploy --os=testos --karg-append=console=/dev/foo --karg-append=console=/dev/bar testos:testos/buildmaster/x86_64-runtime
+ostree admin --sysroot=sysroot deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+
+echo "ok deploy with multiple kernel args"
+
+origrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+os_repository_new_commit 0 "test upgrade multiple kernel args"
+ostree admin --sysroot=sysroot upgrade --os=testos
+newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+assert_not_streq ${origrev} ${newrev}
+assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+
+echo "ok upgrade with multiple kernel args"

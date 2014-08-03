@@ -150,7 +150,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
       gs_strfreev char **previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
 
-      _ostree_kernel_args_replace_argv (kargs, previous_args);
+      _ostree_kernel_args_append_argv (kargs, previous_args);
     }
 
   if (opt_kernel_argv)
