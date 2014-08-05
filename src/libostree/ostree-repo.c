@@ -100,6 +100,7 @@ ostree_repo_finalize (GObject *object)
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
   g_clear_object (&self->deltas_dir);
+  g_clear_object (&self->state_dir);
   g_clear_object (&self->uncompressed_objects_dir);
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
@@ -178,6 +179,7 @@ ostree_repo_constructed (GObject *object)
   self->uncompressed_objects_dir = g_file_resolve_relative_path (self->repodir, "uncompressed-objects-cache/objects");
   self->deltas_dir = g_file_get_child (self->repodir, "deltas");
   self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
+  self->state_dir = g_file_get_child (self->repodir, "state");
   self->remote_cache_dir = g_file_get_child (self->repodir, "remote-cache");
   self->config_file = g_file_get_child (self->repodir, "config");
 
@@ -584,6 +586,11 @@ ostree_repo_create (OstreeRepo     *self,
   g_clear_object (&grandchild);
   grandchild = g_file_get_child (child, "remotes");
   if (!g_file_make_directory (grandchild, cancellable, error))
+    goto out;
+
+  g_clear_object (&child);
+  child = g_file_get_child (self->repodir, "state");
+  if (!g_file_make_directory (child, cancellable, error))
     goto out;
 
   if (!ostree_repo_open (self, cancellable, error))

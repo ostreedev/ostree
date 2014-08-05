@@ -29,12 +29,14 @@
 
 static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
-
-static GOptionEntry options[] = {
-  { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
-  { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
-  { NULL }
-};
+static char* opt_subpath;
+ 
+ static GOptionEntry options[] = {
+   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+   { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
+   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
+   { NULL }
+ };
 
 gboolean
 ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
@@ -95,8 +97,9 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
     }
 
-  if (!ostree_repo_pull (repo, remote, refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
-                         pullflags, progress, cancellable, error))
+  if (!ostree_repo_pull_one_dir (repo, remote, opt_subpath,
+                                  refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
+                                  pullflags, progress, cancellable, error))
     goto out;
 
   if (progress)

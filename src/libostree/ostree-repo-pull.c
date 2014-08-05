@@ -66,7 +66,10 @@ typedef struct {
   guint             n_fetched_content;
 
   guint64           start_time;
-  
+
+  char         *dir;
+  gboolean      commitpartial_exists;
+
   gboolean      have_previous_bytes;
   guint64       previous_bytes_sec;
   guint64       previous_total_downloaded;
@@ -383,6 +386,8 @@ scan_dirtree_object (OtPullData   *pull_data,
   gs_unref_variant GVariant *tree = NULL;
   gs_unref_variant GVariant *files_variant = NULL;
   gs_unref_variant GVariant *dirs_variant = NULL;
+  char *subdir_target = NULL;
+  const char *dirname = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -398,8 +403,13 @@ scan_dirtree_object (OtPullData   *pull_data,
   /* PARSE OSTREE_SERIALIZED_TREE_VARIANT */
   files_variant = g_variant_get_child_value (tree, 0);
   dirs_variant = g_variant_get_child_value (tree, 1);
-      
-  n = g_variant_n_children (files_variant);
+
+  /* Skip files if we're traversing a request only directory */
+  if (pull_data->dir)
+    n = 0;
+  else
+    n = g_variant_n_children (files_variant);
+
   for (i = 0; i < n; i++)
     {
       const char *filename;
@@ -425,11 +435,34 @@ scan_dirtree_object (OtPullData   *pull_data,
           file_checksum = NULL;  /* Transfer ownership */
         }
     }
-      
+
+
+    if (pull_data->dir)
+      {
+        const char *subpath = NULL;  
+        const char *nextslash = NULL;
+        g_assert (pull_data->dir[0] == '/'); // assert it starts with / like "/usr/share/rpm"
+        subpath = pull_data->dir + 1;  // refers to name minus / like "usr/share/rpm"
+        nextslash = strchr (subpath, '/'); //refers to start of next slash like "/share/rpm"
+
+        if (nextslash)
+          {
+            subdir_target = g_strndup (subpath, nextslash - subpath); // refers to first dir, like "usr"
+            g_free (pull_data->dir);
+            pull_data->dir = g_strdup (nextslash); // sets dir to new deeper level like "/share/rpm"
+          }
+        else // we're as deep as it goes, i.e. subpath = "rpm"
+          {
+            subdir_target = g_strdup (subpath); 
+            g_clear_pointer (&pull_data->dir, g_free);
+            pull_data->dir = NULL;
+          }
+        }
+
   n = g_variant_n_children (dirs_variant);
+
   for (i = 0; i < n; i++)
     {
-      const char *dirname;
       gs_unref_variant GVariant *tree_csum = NULL;
       gs_unref_variant GVariant *meta_csum = NULL;
 
@@ -439,6 +472,9 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (!ot_util_filename_validate (dirname, error))
         goto out;
 
+      if (subdir_target && strcmp (subdir_target, dirname) != 0)
+        continue;
+      
       if (!scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_csum),
                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1,
                                        cancellable, error))
@@ -631,6 +667,15 @@ on_metadata_writed (GObject           *object,
   check_outstanding_requests_handle_error (pull_data, local_error);
 }
 
+/* GFile pointing to the <repodir>/state/<checksum>.commitpartial file */
+static GFile *
+get_commitpartial_path (OstreeRepo  *repo,
+                        const char  *commit)
+{
+  gs_free char *commitpartial_filename = g_strdup_printf ("%s.commitpartial", commit);
+  return g_file_get_child (repo->state_dir, commitpartial_filename);
+}
+
 static void
 meta_fetch_on_complete (GObject           *object,
                         GAsyncResult      *result,
@@ -685,6 +730,20 @@ meta_fetch_on_complete (GObject           *object,
         goto out;
 
       (void) gs_file_unlink (temp_path, NULL, NULL);
+
+      /* Write the commitpartial file now while we're still fetching data */
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, checksum);
+
+          if (!g_file_query_exists (commitpartial_path, NULL))
+            {
+              if (!g_file_replace_contents (commitpartial_path, "", 0, NULL, FALSE, 
+                                            G_FILE_CREATE_REPLACE_DESTINATION, NULL,
+                                            pull_data->cancellable, error))
+                goto out;
+            }
+        }
       
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
@@ -814,7 +873,21 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
   else if (is_stored)
     {
-      if (pull_data->transaction_resuming || is_requested)
+      gboolean do_scan = pull_data->transaction_resuming || is_requested || pull_data->commitpartial_exists;
+
+      /* For commits, check whether we only had a partial fetch */
+      if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          gs_unref_object GFile *commitpartial_file = get_commitpartial_path (pull_data->repo, tmp_checksum);
+
+          if (g_file_query_exists (commitpartial_file, NULL))
+            {
+              do_scan = TRUE;
+              pull_data->commitpartial_exists = TRUE;
+            }
+        }
+
+      if (do_scan)
         {
           switch (objtype)
             {
@@ -1025,6 +1098,24 @@ ostree_repo_pull (OstreeRepo               *self,
                   GCancellable             *cancellable,
                   GError                  **error)
 {
+  return ostree_repo_pull_one_dir (self, remote_name, NULL, refs_to_fetch, flags, progress, cancellable, error);
+}
+
+/**
+ * ostree_repo_pull_one_dir:
+ *
+ * Like ostree_repo_pull(), but supports pulling only a subpath.
+ */
+gboolean
+ostree_repo_pull_one_dir (OstreeRepo               *self,
+                          const char               *remote_name,
+                          const char               *dir_to_pull,
+                          char                    **refs_to_fetch,
+                          OstreeRepoPullFlags       flags,
+                          OstreeAsyncProgress      *progress,
+                          GCancellable             *cancellable,
+                          GError                  **error)
+{
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -1045,6 +1136,9 @@ ostree_repo_pull (OstreeRepo               *self,
   guint64 bytes_transferred;
   guint64 end_time;
 
+  if (dir_to_pull)
+    g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
+
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_ref_thread_default ();
   pull_data->loop = g_main_loop_new (pull_data->main_context, FALSE);
@@ -1059,6 +1153,7 @@ ostree_repo_pull (OstreeRepo               *self,
                                                         (GDestroyNotify)g_free, NULL);
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
+  pull_data->dir = g_strdup (dir_to_pull);
 
   pull_data->start_time = g_get_monotonic_time ();
 
@@ -1209,7 +1304,7 @@ ostree_repo_pull (OstreeRepo               *self,
             {
               if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
                 goto out;
-      
+
               /* Transfer ownership of contents */
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
             }
@@ -1240,6 +1335,12 @@ ostree_repo_pull (OstreeRepo               *self,
           g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), contents);
         }
     }
+
+  /* Create the state directory here - it's new with the commitpartial code,
+   * and may not exist in older repositories.
+   */
+  if (!gs_file_ensure_directory (pull_data->repo->state_dir, FALSE, pull_data->cancellable, error))
+    goto out;
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
 
@@ -1326,6 +1427,27 @@ ostree_repo_pull (OstreeRepo               *self,
                              shift == 1 ? "B" : "KiB",
                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
       ostree_async_progress_set_status (pull_data->progress, msg);
+    }
+
+  /* iterate over commits fetched and delete any commitpartial files */
+  if (!dir_to_pull)
+    {
+      g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        {
+          const char *checksum = value;
+          gs_unref_object GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, checksum);
+          if (!ot_gfile_ensure_unlinked (commitpartial_path, cancellable, error))
+            goto out;
+        }
+        g_hash_table_iter_init (&hash_iter, commits_to_fetch);
+        while (g_hash_table_iter_next (&hash_iter, &key, &value))
+          {
+            const char *commit = value;
+            gs_unref_object GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, commit);
+            if (!ot_gfile_ensure_unlinked (commitpartial_path, cancellable, error))
+              goto out;
+          }
     }
 
   ret = TRUE;

@@ -40,6 +40,7 @@ struct OstreeRepo {
   GFile *local_heads_dir;
   GFile *remote_heads_dir;
   GFile *objects_dir;
+  GFile *state_dir;
   int objects_dir_fd;
   GFile *deltas_dir;
   GFile *uncompressed_objects_dir;

@@ -23,6 +23,7 @@ insttest_PROGRAMS =
 
 insttestdir=$(pkglibexecdir)/installed-tests
 testfiles = test-basic \
+	test-pull-subpath \
 	test-archivez \
 	test-remote-add \
         test-commit-sign \

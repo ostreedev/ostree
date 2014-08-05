@@ -65,6 +65,15 @@ gboolean ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                                        GCancellable           *cancellable,
                                        GError                **error);
 
+gboolean ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
+                                      const char                   *dir_to_pull,
+                                      OstreeRepoPullFlags     flags,
+                                      OstreeSysrootUpgraderPullFlags     upgrader_flags,
+                                      OstreeAsyncProgress    *progress,
+                                      gboolean               *out_changed,
+                                      GCancellable           *cancellable,
+                                      GError                **error);
+
 gboolean ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
                                          GCancellable           *cancellable,
                                          GError                **error);

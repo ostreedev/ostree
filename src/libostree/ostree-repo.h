@@ -538,6 +538,16 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            GCancellable           *cancellable,
                            GError                **error);
 
+gboolean
+ostree_repo_pull_one_dir (OstreeRepo               *self,
+                          const char               *remote_name,
+                          const char               *dir_to_pull,
+                          char                    **refs_to_fetch,
+                          OstreeRepoPullFlags       flags,
+                          OstreeAsyncProgress      *progress,
+                          GCancellable             *cancellable,
+                          GError                  **error);
+
 gboolean ostree_repo_sign_commit (OstreeRepo     *self,
                                   const gchar    *commit_checksum,
                                   const gchar    *key_id,

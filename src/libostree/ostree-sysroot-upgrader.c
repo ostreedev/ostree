@@ -428,6 +428,27 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                               GCancellable           *cancellable,
                               GError                **error)
 {
+  return ostree_sysroot_upgrader_pull_one_dir (self, NULL, flags, upgrader_flags, progress, out_changed, cancellable, error);
+}
+
+/**
+ * ostree_sysroot_upgrader_pull_one_dir:
+ *
+ * Like ostree_sysroot_upgrader_pull(), but allows retrieving just a
+ * subpath of the tree.  This can be used to download metadata files
+ * from inside the tree such as package databases.
+ *
+ */
+gboolean
+ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
+                                      const char             *dir_to_pull,
+                                      OstreeRepoPullFlags     flags,
+                                      OstreeSysrootUpgraderPullFlags     upgrader_flags,
+                                      OstreeAsyncProgress    *progress,
+                                      gboolean               *out_changed,
+                                      GCancellable           *cancellable,
+                                      GError                **error)
+{
   gboolean ret = FALSE;
   gs_unref_object OstreeRepo *repo = NULL;
   char *refs_to_fetch[] = { self->origin_ref, NULL };
@@ -448,7 +469,7 @@ ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
 
   if (self->origin_remote)
     {
-      if (!ostree_repo_pull (repo, self->origin_remote, refs_to_fetch,
+      if (!ostree_repo_pull_one_dir (repo, self->origin_remote, dir_to_pull, refs_to_fetch,
                              flags, progress,
                              cancellable, error))
         goto out;
