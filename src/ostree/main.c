@@ -37,6 +37,7 @@ static OstreeCommand commands[] = {
   { "cat", ostree_builtin_cat, 0 },
   { "checkout", ostree_builtin_checkout, 0 },
   { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
+  { "cherry-pick", ostree_builtin_cherry_pick, 0 },
   { "commit", ostree_builtin_commit, 0 },
   { "config", ostree_builtin_config, 0 },
   { "diff", ostree_builtin_diff, 0 },

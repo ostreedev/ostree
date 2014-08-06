@@ -28,6 +28,7 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-config.c \
 	src/ostree/ot-builtin-checkout.c \
 	src/ostree/ot-builtin-checksum.c \
+	src/ostree/ot-builtin-cherry-pick.c \
 	src/ostree/ot-builtin-commit.c \
 	src/ostree/ot-builtin-diff.c \
 	src/ostree/ot-builtin-fsck.c \
