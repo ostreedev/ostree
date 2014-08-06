@@ -264,6 +264,15 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <citerefentry><refentrytitle>ostree-cherry-pick</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Given one or more
+                    references, create a new commit using those contents.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <citerefentry><refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum></citerefentry>
 
                 <listitem><para>
