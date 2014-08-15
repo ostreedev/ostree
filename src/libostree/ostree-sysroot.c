@@ -755,6 +755,8 @@ ostree_sysroot_get_subbootversion (OstreeSysroot   *self)
 OstreeDeployment *
 ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 {
+  g_return_val_if_fail (self->loaded, NULL);
+
   return self->booted_deployment;
 }
 
@@ -767,8 +769,12 @@ ostree_sysroot_get_booted_deployment (OstreeSysroot       *self)
 GPtrArray *
 ostree_sysroot_get_deployments (OstreeSysroot  *self)
 {
-  GPtrArray *copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+  GPtrArray *copy;
   guint i;
+
+  g_return_val_if_fail (self->loaded, NULL);
+
+  copy = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
   for (i = 0; i < self->deployments->len; i++)
     g_ptr_array_add (copy, g_object_ref (self->deployments->pdata[i]));
   return copy;
