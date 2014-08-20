@@ -26,7 +26,10 @@
 #include "ostree.h"
 #include "otutil.h"
 
+static char *opt_name;
+
 static GOptionEntry options[] = {
+  { "name", 0, 0, G_OPTION_ARG_STRING, &opt_name, "Change name to NAME", "NAME" },
   { NULL }
 };
 
@@ -58,6 +61,15 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable 
       if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
         goto out;
       g_print ("%s\n", resolved_rev);
+    }
+
+  if (opt_name)
+    {
+      gs_unref_object GFile *path_to_customs = ot_gfile_resolve_path_printf (ostree_repo_get_path (repo), "state/custom_names");
+
+      if (!ostree_deployment_set_custom_name (resolved_rev, opt_name, path_to_customs, cancellable, error))
+        goto out;
+      g_print ("Name of %s successfully changed to %s\n", resolved_rev, opt_name);
     }
  
   ret = TRUE;

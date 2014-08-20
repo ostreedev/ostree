@@ -36,19 +36,40 @@ typedef struct {
 } OtPruneData;
 
 static gboolean
-prune_commitpartial_file (OstreeRepo    *repo,
-                          const char    *checksum,
-                          GCancellable  *cancellable,
-                          GError       **error)
+prune_state_dir (OstreeRepo    *repo,
+                 const char    *checksum,
+                 GCancellable  *cancellable,
+                 GError       **error)
 {
   gboolean ret = FALSE;
+  GKeyFile *keyfile = NULL;
+  gs_free char *data = NULL;
+  gsize len;
   gs_unref_object GFile *objpath = ot_gfile_resolve_path_printf (repo->repodir, "state/%s.commitpartial", checksum);
-  
+  gs_unref_object GFile *keyfile_path = ot_gfile_resolve_path_printf (repo->repodir, "state/custom_names");
+ 
   if (!ot_gfile_ensure_unlinked (objpath, cancellable, error))
     goto out;
 
+  if (!ot_keyfile_load_from_file_if_exists (g_file_get_path (keyfile_path), G_KEY_FILE_NONE, &keyfile, error))
+    goto out;
+
+  if (keyfile)
+    {
+      if (g_key_file_has_key (keyfile, "custom_names", checksum, error))
+        { 
+          if (!g_key_file_remove_key (keyfile, "custom_names", checksum, error))
+            goto out;
+          data = g_key_file_to_data (keyfile, &len, error);
+          if (!g_file_replace_contents (keyfile_path, data, len, NULL, FALSE, 
+                                 G_FILE_CREATE_REPLACE_DESTINATION, NULL, cancellable, error))
+            goto out;
+        }
+    }
+
   ret = TRUE;
  out:
+  g_key_file_free (keyfile);
   return ret;
 }
 
@@ -73,7 +94,7 @@ maybe_prune_loose_object (OtPruneData        *data,
 
           if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
             {
-              if (!prune_commitpartial_file (data->repo, checksum, cancellable, error))
+              if (!prune_state_dir (data->repo, checksum, cancellable, error))
                 goto out;
             }
 

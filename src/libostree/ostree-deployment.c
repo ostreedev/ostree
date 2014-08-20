@@ -22,6 +22,8 @@
 
 #include "ostree-deployment.h"
 #include "libgsystem.h"
+#include <stdlib.h>
+#include "otutil.h"
 
 struct _OstreeDeployment
 {
@@ -213,6 +215,39 @@ ostree_deployment_finalize (GObject *object)
   G_OBJECT_CLASS (ostree_deployment_parent_class)->finalize (object);
 }
 
+static gboolean
+get_custom_name_keyfile (GFile        *path_to_customs,
+                         GKeyFile    **out_keyfile,
+                         GCancellable *cancellable,
+                         GError      **error)
+{
+  gboolean ret = FALSE;
+  GKeyFile *ret_keyfile = NULL;
+
+  if (!ot_keyfile_load_from_file_if_exists (g_file_get_path (path_to_customs), G_KEY_FILE_NONE, &ret_keyfile, error))
+    goto out;
+
+  /* keyfile might be null if it doesn't exist in file */
+  if (!ret_keyfile)
+    {
+      if (!g_file_replace_contents (path_to_customs, "", 0, NULL, FALSE, 
+                                 G_FILE_CREATE_REPLACE_DESTINATION, NULL, cancellable, error))
+        goto out;
+
+      ret_keyfile = g_key_file_new();
+
+      if (!g_key_file_load_from_file (ret_keyfile, g_file_get_path (path_to_customs), G_KEY_FILE_NONE, error))
+        goto out;
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_keyfile, &ret_keyfile);
+ out:
+  if (ret_keyfile)
+    g_key_file_free (ret_keyfile);
+  return ret;
+}
+
 void
 ostree_deployment_init (OstreeDeployment *self)
 {
@@ -251,4 +286,145 @@ ostree_deployment_new (int    index,
   self->bootcsum = g_strdup (bootcsum);
   self->bootserial = bootserial;
   return self;
+}
+
+gboolean
+ostree_deployment_get_name (char             *checksum,
+                            GFile            *path_to_customs,
+                            char            **out_name,
+                            GError          **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_ptrarray GPtrArray *colors = g_ptr_array_new ();
+  gs_unref_ptrarray GPtrArray *hats = g_ptr_array_new ();
+  char *color = NULL;
+  char *hat = NULL;
+  gs_free char *name = NULL;
+  gs_free char *dup = g_strdup (&(checksum[15]));
+  GKeyFile *keyfile = NULL;
+  /* converts first 30 bytes of checksum into two decimal numbers to get an array index */
+  unsigned long int color_number = strtol (g_strndup(checksum, 15), NULL, 16);
+  unsigned long int hat_number = strtol (g_strndup (dup, 15), NULL, 16);
+
+  if (!ot_keyfile_load_from_file_if_exists (g_file_get_path (path_to_customs), G_KEY_FILE_NONE, &keyfile, error))
+    goto out;
+
+  ot_ptrarray_add_many (colors, "red", "orange", "yellow", "green", "blue", "purple",
+                  "indigo", "pink", "teal", "magenta", "cyan", "black", 
+                  "brown", "white", "tangerine", "beige", "gray", "maroon", 
+                  "gold", "silver", "amber", "auburn", "azure", "celadon", 
+                  "coral", "puce", "crimson", "vermillion", "scarlet", "peach", 
+                  "salmon", "olive", "mint", "violet", "cerise", "ivory",
+                  "jade", "navy", "orchid", "taupe", "chartreuse", "cerise", 
+                  "copper", "fuchsia", "mauve", "periwinkle", "sepia", "khaki", 
+                  "plum",  NULL);
+
+  ot_ptrarray_add_many (hats, "fedora", "cap", "beanie", "beret", "bowler", 
+                  "boater", "deerstalker", "fez", "helmet", "bonnet", "hood", 
+                  "bandanna", "visor", "stetson", "tricorne", "chullo", "bicorne", 
+                  "busby", "laplander", "sombrero", "chupalla", "turban", "trilby", NULL);
+
+  color = g_ptr_array_index (colors, color_number % colors->len);
+  hat = g_ptr_array_index (hats, hat_number % hats->len);  
+
+  if (!ot_keyfile_get_value_with_default (keyfile, "custom_names", checksum,
+                                          g_strdup_printf ("%s_%s", color, hat),
+                                          &name, error))
+    goto out;
+
+  ret = TRUE;
+  ot_transfer_out_value (out_name, &name);
+ out:
+  if (keyfile)
+    g_key_file_free (keyfile);
+  return ret;
+}
+
+gboolean
+ostree_deployment_set_custom_name (char          *checksum,
+                                   char          *custom_name,    
+                                   GFile         *path_to_customs,
+                                   GCancellable  *cancellable,
+                                   GError       **error)
+{
+  gboolean ret = FALSE;
+  GKeyFile *keyfile = NULL;
+  gs_free char *data = NULL;
+  gsize len, keys_len;
+  guint i;
+  gs_free gchar **keys_array = NULL;
+  gboolean unique_name = TRUE;
+  gs_free char *key = NULL;
+  gs_free char *val = NULL;
+
+  if (!get_custom_name_keyfile (path_to_customs, &keyfile, cancellable, error))
+    goto out;
+
+  /* now assuming we have a legitimate key file  */
+  data = g_key_file_to_data (keyfile, &len, error);
+
+  /* uniqueness check */
+  keys_array = g_key_file_get_keys (keyfile, "custom_names", &keys_len, error);
+  for (i=0; i < keys_len; i++)
+    {
+      key = keys_array[i];
+      val = g_key_file_get_value (keyfile, "custom_names", key, error);
+      if (g_strcmp0 (val, custom_name) == 0)
+        {
+          unique_name = FALSE;
+          break;
+        }
+    }
+
+  if (unique_name)
+    {
+      g_key_file_set_string (keyfile, "custom_names", checksum, custom_name);
+      data = g_key_file_to_data (keyfile, &len, error);
+      
+      if (!g_file_replace_contents (path_to_customs, data, len, NULL, FALSE, 
+                                     G_FILE_CREATE_REPLACE_DESTINATION, NULL, cancellable, error))
+        goto out;
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "%s already assigned as a custom name to %s, please rename the conflict or pick a unique name\n", custom_name, key);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  if (keyfile)
+    g_key_file_free (keyfile);
+  return ret;
+}
+
+gboolean
+ostree_deployment_rm_custom_name (char          *checksum,
+                                  GFile         *path_to_customs,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  GKeyFile *keyfile = NULL;
+  char *data = NULL;
+  gsize len;
+
+  if (!get_custom_name_keyfile (path_to_customs, &keyfile, cancellable, error))
+    goto out;
+
+  if (!g_key_file_remove_key (keyfile, "custom_names", checksum, error))
+    goto out;
+
+  data = g_key_file_to_data (keyfile, &len, error);
+      
+  if (!g_file_replace_contents (path_to_customs, data, len, NULL, FALSE, 
+                                 G_FILE_CREATE_REPLACE_DESTINATION, NULL, cancellable, error))
+    goto out;
+
+
+  ret = TRUE;
+ out:
+  g_key_file_free (keyfile);
+  return ret;
 }

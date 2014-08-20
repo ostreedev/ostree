@@ -71,13 +71,51 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   GError *temp_error = NULL;
   gs_free char *ret_value = NULL;
 
-  ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
-  if (temp_error)
+  if (!keyfile)
+    ret_value = g_strdup (default_value);
+
+  else
     {
-      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+      ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
+      if (temp_error)
         {
-          g_clear_error (&temp_error);
-          ret_value = g_strdup (default_value);
+          if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+            {
+              g_clear_error (&temp_error);
+              ret_value = g_strdup (default_value);
+            }
+          else
+            {
+              g_propagate_error (error, temp_error);
+              goto out;
+            }
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value(out_value, &ret_value);
+ out:
+  return ret;
+}
+
+
+gboolean
+ot_keyfile_load_from_file_if_exists (const char    *path,
+                                     GKeyFileFlags  flags,
+                                     GKeyFile     **out_keyfile, //allow-none
+                                     GError       **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+  GKeyFile *ret_keyfile = g_key_file_new ();
+
+  if (!g_key_file_load_from_file (ret_keyfile, path, flags, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) 
+        {
+          g_clear_error (&temp_error); 
+          g_key_file_free (ret_keyfile);
+          ret_keyfile = NULL;
         }
       else
         {
@@ -87,7 +125,11 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
     }
 
   ret = TRUE;
-  ot_transfer_out_value(out_value, &ret_value);
+  ot_transfer_out_value (out_keyfile, &ret_keyfile);
  out:
+  if (ret_keyfile)
+    g_key_file_free (ret_keyfile);
   return ret;
 }
+
+
