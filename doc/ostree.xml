@@ -313,6 +313,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <citerefentry><refentrytitle>ostree-name</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Toggle names of a deployment
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <citerefentry><refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum></citerefentry>
                 
                 <listitem><para>

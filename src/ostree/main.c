@@ -44,6 +44,7 @@ static OstreeCommand commands[] = {
   { "init", ostree_builtin_init, OSTREE_BUILTIN_FLAG_NO_CHECK },
   { "log", ostree_builtin_log, 0 },
   { "ls", ostree_builtin_ls, 0 },
+  { "name", ostree_builtin_name, 0 },
   { "prune", ostree_builtin_prune, 0 },
   { "pull-local", ostree_builtin_pull_local, 0 },
 #ifdef HAVE_LIBSOUP 

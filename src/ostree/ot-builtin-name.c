@@ -1,6 +1,6 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
- * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2011 Anne LoVers <anne.loverso@students.olin.edu>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,20 +26,25 @@
 #include "ostree.h"
 #include "otutil.h"
 
+static char *opt_rm;
+
 static GOptionEntry options[] = {
+  { "rm", 0, 0, G_OPTION_ARG_NONE, &opt_rm, "Remove a custom name", NULL },
   { NULL }
 };
 
 gboolean
-ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_name (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
   const char *rev = "master";
-  int i;
+  const char *newname = NULL;
   gs_free char *resolved_rev = NULL;
+  gs_free char *name = NULL;
+  gs_unref_object GFile *path_to_customs = NULL;
 
-  context = g_option_context_new ("REV - Output the target of a rev");
+  context = g_option_context_new ("Change the name of a deployment");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))
@@ -50,19 +55,38 @@ ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable 
       ot_util_usage_error (context, "REV must be specified", error);
       goto out;
     }
-  for (i = 1; i < argc; i++)
-    {
-      rev = argv[i];
-      g_free (resolved_rev);
-      resolved_rev = NULL;
-      if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
-        goto out;
-      g_print ("%s\n", resolved_rev);
-    }
- 
+
+    
+    rev = argv[1];
+    if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
+      goto out;
+    path_to_customs = ot_gfile_resolve_path_printf (ostree_repo_get_path (repo), "state/custom_names");
+    
+    if (argc < 3 && !opt_rm)
+      {
+        if (!ostree_deployment_get_name (resolved_rev, path_to_customs, &name, error))
+          goto out;
+        g_print ("%s\n", name);
+      }
+
+    else if (!opt_rm)
+      {
+        newname = argv[2];
+        if (!ostree_deployment_set_custom_name (resolved_rev, g_strdup (newname), path_to_customs, cancellable, error))
+          goto out;
+        g_print ("Name of %s successfully changed to %s\n", resolved_rev, newname);
+      }
+
+    else if (opt_rm)
+      {
+        if (!ostree_deployment_rm_custom_name (resolved_rev, path_to_customs, cancellable, error))
+          goto out;
+      }
+
   ret = TRUE;
  out:
-  if (context)
+  if (context) {
     g_option_context_free (context);
+  }
   return ret;
 }
