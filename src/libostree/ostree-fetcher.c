@@ -505,6 +505,8 @@ on_request_sent (GObject        *object,
  out:
   if (local_error)
     {
+      if (pending->request_body)
+        (void) g_input_stream_close (pending->request_body, NULL, NULL);
       g_simple_async_result_take_error (pending->result, local_error);
       g_simple_async_result_complete (pending->result);
       g_object_unref (pending->result);
