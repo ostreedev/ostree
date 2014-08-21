@@ -441,23 +441,22 @@ scan_dirtree_object (OtPullData   *pull_data,
       {
         const char *subpath = NULL;  
         const char *nextslash = NULL;
+        gs_free char *dir_data = NULL;
+
         g_assert (pull_data->dir[0] == '/'); // assert it starts with / like "/usr/share/rpm"
         subpath = pull_data->dir + 1;  // refers to name minus / like "usr/share/rpm"
         nextslash = strchr (subpath, '/'); //refers to start of next slash like "/share/rpm"
+        dir_data = pull_data->dir; // keep the original pointer around since strchr() points into it
+        pull_data->dir = NULL;
 
         if (nextslash)
           {
             subdir_target = g_strndup (subpath, nextslash - subpath); // refers to first dir, like "usr"
-            g_free (pull_data->dir);
             pull_data->dir = g_strdup (nextslash); // sets dir to new deeper level like "/share/rpm"
           }
         else // we're as deep as it goes, i.e. subpath = "rpm"
-          {
-            subdir_target = g_strdup (subpath); 
-            g_clear_pointer (&pull_data->dir, g_free);
-            pull_data->dir = NULL;
-          }
-        }
+          subdir_target = g_strdup (subpath); 
+      }
 
   n = g_variant_n_children (dirs_variant);
 
