@@ -42,6 +42,7 @@ ostree_builtin_name (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   const char *newname = NULL;
   gs_free char *resolved_rev = NULL;
   gs_free char *name = NULL;
+  gs_free char *custom_name = NULL;
   gs_unref_object GFile *path_to_customs = NULL;
 
   context = g_option_context_new ("Change the name of a deployment");
@@ -55,7 +56,6 @@ ostree_builtin_name (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       ot_util_usage_error (context, "REV must be specified", error);
       goto out;
     }
-
     
     rev = argv[1];
     if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
@@ -72,7 +72,8 @@ ostree_builtin_name (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
     else if (!opt_rm)
       {
         newname = argv[2];
-        if (!ostree_deployment_set_custom_name (resolved_rev, g_strdup (newname), path_to_customs, cancellable, error))
+        custom_name = g_strdup (newname);
+        if (!ostree_deployment_set_custom_name (resolved_rev, custom_name, path_to_customs, cancellable, error))
           goto out;
         g_print ("Name of %s successfully changed to %s\n", resolved_rev, newname);
       }

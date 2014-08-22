@@ -301,10 +301,13 @@ ostree_deployment_get_name (char             *checksum,
   char *hat = NULL;
   gs_free char *name = NULL;
   gs_free char *dup = g_strdup (&(checksum[15]));
+  gs_free char *csum1 = g_strndup(checksum, 15);
+  gs_free char *csum2 = g_strndup (dup, 15);
+  gs_free char *default_name = NULL;
   GKeyFile *keyfile = NULL;
   /* converts first 30 bytes of checksum into two decimal numbers to get an array index */
-  unsigned long int color_number = strtol (g_strndup(checksum, 15), NULL, 16);
-  unsigned long int hat_number = strtol (g_strndup (dup, 15), NULL, 16);
+  unsigned long int color_number = strtol (csum1, NULL, 16);
+  unsigned long int hat_number = strtol (csum2, NULL, 16);
 
   if (!ot_keyfile_load_from_file_if_exists (g_file_get_path (path_to_customs), G_KEY_FILE_NONE, &keyfile, error))
     goto out;
@@ -327,9 +330,10 @@ ostree_deployment_get_name (char             *checksum,
   color = g_ptr_array_index (colors, color_number % colors->len);
   hat = g_ptr_array_index (hats, hat_number % hats->len);  
 
+  default_name = g_strdup_printf ("%s_%s", color, hat);
+
   if (!ot_keyfile_get_value_with_default (keyfile, "custom_names", checksum,
-                                          g_strdup_printf ("%s_%s", color, hat),
-                                          &name, error))
+                                          default_name, &name, error))
     goto out;
 
   ret = TRUE;

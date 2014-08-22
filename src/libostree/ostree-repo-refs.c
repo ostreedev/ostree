@@ -449,6 +449,7 @@ ostree_repo_resolve_name (OstreeRepo   *self,
   GHashTableIter hashiter;
   gpointer key, value;
   gs_free char *deployment_name = NULL;
+  gs_free char *csum = NULL;
   gs_unref_object GFile *path_to_customs = ot_gfile_resolve_path_printf (self->repodir, "state/custom_names");
 
   /* returns all commit objects */
@@ -459,7 +460,8 @@ ostree_repo_resolve_name (OstreeRepo   *self,
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
       ostree_object_name_deserialize ((GVariant*) key, &checksum, &objtype);
-      if (!ostree_deployment_get_name (g_strdup (checksum), path_to_customs, &deployment_name, error))
+      csum = g_strdup (checksum);
+      if (!ostree_deployment_get_name (csum, path_to_customs, &deployment_name, error))
         goto out;
       if (g_strcmp0 (deployment_name, refspec) == 0)
         {
