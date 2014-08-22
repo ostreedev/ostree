@@ -62,7 +62,7 @@ log_commit (OstreeRepo     *repo,
       goto out;
     }
 
-  ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags);
+  ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, repo, flags);
 
   /* Get the parent of this commit */
   parent = ostree_commit_get_parent (variant);

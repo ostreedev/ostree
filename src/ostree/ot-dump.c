@@ -117,8 +117,12 @@ void
 ot_dump_object (OstreeObjectType   objtype,
                 const char        *checksum,
                 GVariant          *variant,
+                OstreeRepo        *repo,
                 OstreeDumpFlags    flags)
 {
+  gs_free char *name = NULL;
+  gs_free char *csum = g_strdup (checksum);
+  gs_unref_object GFile *path_to_customs = NULL;
   g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
 
   if (flags & OSTREE_DUMP_RAW)
@@ -130,6 +134,9 @@ ot_dump_object (OstreeObjectType   objtype,
   switch (objtype)
   {
     case OSTREE_OBJECT_TYPE_COMMIT:
+      path_to_customs = ot_gfile_resolve_path_printf (ostree_repo_get_path (repo), "state/custom_names");
+      if (ostree_deployment_get_name (csum, path_to_customs, &name, NULL))
+        g_print ("name: %s\n", name);
       dump_commit (variant, flags);
       break;
     /* TODO: Others could be implemented here */

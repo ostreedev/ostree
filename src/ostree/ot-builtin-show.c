@@ -162,7 +162,7 @@ print_object (OstreeRepo          *repo,
     goto out;
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
-  ot_dump_object (objtype, checksum, variant, flags);
+  ot_dump_object (objtype, checksum, variant, repo, flags);
 
   ret = TRUE;
 out:
