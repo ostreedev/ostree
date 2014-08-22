@@ -22,6 +22,7 @@
 
 #include "ostree-repo-private.h"
 #include "otutil.h"
+#include "ostree-deployment.h"
 
 static gboolean
 add_ref_to_set (const char       *remote,
@@ -425,6 +426,57 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
 }
 
 /**
+ * ostree_repo_resolve_partial_checksum:
+ * @self: Repo
+ * @refspec: A refspec
+ * @full_checksum (out) (transfer full): A full checksum corresponding to the name given
+ * @error: Error
+ *
+ * Look up the existing deployments.  If the given ref is a deployment name
+ * it will return that deployment's checksum in the parameter @full_checksum
+ */
+static gboolean
+ostree_repo_resolve_name (OstreeRepo   *self,
+                         const char   *refspec,
+                         char        **full_checksum,
+                         GError      **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *ret_rev = NULL;
+  gs_unref_hashtable GHashTable *ref_list = NULL;
+  const char *checksum = NULL;
+  OstreeObjectType objtype;
+  GHashTableIter hashiter;
+  gpointer key, value;
+  gs_free char *deployment_name = NULL;
+  gs_free char *csum = NULL;
+  gs_unref_object GFile *path_to_customs = ot_gfile_resolve_path_printf (self->repodir, "state/custom_names");
+
+  /* returns all commit objects */
+  if (!ostree_repo_list_commit_objects_starting_with (self, "", &ref_list, NULL, error))
+    goto out;
+
+  g_hash_table_iter_init (&hashiter, ref_list);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      ostree_object_name_deserialize ((GVariant*) key, &checksum, &objtype);
+      csum = g_strdup (checksum);
+      if (!ostree_deployment_get_name (csum, path_to_customs, &deployment_name, error))
+        goto out;
+      if (g_strcmp0 (deployment_name, refspec) == 0)
+        {
+          ret_rev = g_strdup (checksum);
+          break;
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (full_checksum, &ret_rev);
+ out:
+  return ret;
+}
+
+/**
  * ostree_repo_resolve_rev:
  * @self: Repo
  * @refspec: A refspec
@@ -453,6 +505,9 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
     }
 
   else if (!ostree_repo_resolve_partial_checksum (self, refspec, &ret_rev, error))
+    goto out;
+
+  else if (!ret_rev && !ostree_repo_resolve_name (self, refspec, &ret_rev, error))
     goto out;
 
   if (!ret_rev)

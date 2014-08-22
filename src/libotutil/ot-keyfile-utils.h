@@ -43,5 +43,11 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
                                    char         **out_value,
                                    GError       **error);
 
+gboolean
+ot_keyfile_load_from_file_if_exists (const char    *path,
+                                     GKeyFileFlags  flags,
+                                     GKeyFile     **out_keyfile, //allow-none
+                                     GError       **error);
+
 G_END_DECLS
 

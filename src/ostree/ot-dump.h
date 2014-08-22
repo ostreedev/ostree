@@ -25,6 +25,7 @@
 #include <gio/gio.h>
 
 #include "ostree-core.h"
+#include "ostree.h"
 
 typedef enum {
   OSTREE_DUMP_NONE = 0,
@@ -36,4 +37,5 @@ void   ot_dump_variant    (GVariant *variant);
 void   ot_dump_object     (OstreeObjectType   objtype,
                            const char        *checksum,
                            GVariant          *variant,
+                           OstreeRepo 		 *repo,
                            OstreeDumpFlags    flags);
