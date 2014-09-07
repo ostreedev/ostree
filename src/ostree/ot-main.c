@@ -88,8 +88,6 @@ ostree_run (int    argc,
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
-  g_type_init ();
-
   g_set_prgname (argv[0]);
 
   g_log_set_handler (NULL, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
