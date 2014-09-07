@@ -385,6 +385,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <citerefentry><refentrytitle>ostree-summary</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Regenerate the repository summary metadata.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry>
                 
                 <listitem><para>
