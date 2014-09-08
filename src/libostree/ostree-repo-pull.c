@@ -1470,11 +1470,11 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *branch = key;
-      char *contents;
+      char *contents = NULL;
 
       if (pull_data->summary)
         {
-          guint64 commit_size;
+          guint64 commit_size = 0;
           guint64 *malloced_size;
 
           if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
