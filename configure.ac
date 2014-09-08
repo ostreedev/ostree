@@ -46,7 +46,7 @@ GIO_DEPENDENCY="gio-unix-2.0 >= 2.36.0 libgsystem >= 2014.2"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
 dnl 5.1.0 is an arbitrary version here
-PKG_CHECK_MODULES(OT_DEP_LZMA, liblzma >= 5.1.1alpha)
+PKG_CHECK_MODULES(OT_DEP_LZMA, liblzma >= 5.0.5)
 
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
