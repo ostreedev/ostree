@@ -72,7 +72,6 @@ ostree_SOURCES += \
 	$(NULL)
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree \
-	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
 	$(NULL)
 ostree_bin_shared_ldadd = libotutil.la libostree-kernel-args.la libostree-1.la
 
