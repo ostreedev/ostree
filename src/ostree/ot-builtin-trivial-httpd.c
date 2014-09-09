@@ -345,9 +345,15 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
 
   app->root = g_file_new_for_path (dirpath);
 
+#if SOUP_CHECK_VERSION(2, 48, 0)
+  server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
+  soup_server_listen (server, NULL, 0);
+#else
   server = soup_server_new (SOUP_SERVER_PORT, 0,
                             SOUP_SERVER_SERVER_HEADER, "ostree-httpd ",
                             NULL);
+#endif
+
   soup_server_add_handler (server, NULL, httpd_callback, app, NULL);
   if (opt_port_file)
     {
