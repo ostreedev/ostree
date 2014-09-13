@@ -156,7 +156,7 @@ copy_one_file_fsync_at (int              src_parent_dfd,
 }
 
 static gboolean
-copy_dir_recurse_fsync (DIR             *src_parent_dir,
+copy_dir_recurse_fsync (int              src_parent_dfd,
                         int              dest_parent_dfd,
                         const char      *name,
                         GCancellable    *cancellable,
@@ -164,7 +164,6 @@ copy_dir_recurse_fsync (DIR             *src_parent_dir,
 {
   gboolean ret = FALSE;
   struct stat src_stbuf;
-  int src_parent_dfd = dirfd (src_parent_dir);
   int src_dfd = -1;
   int dest_dfd = -1;
   DIR *srcd = NULL;
@@ -229,7 +228,7 @@ copy_dir_recurse_fsync (DIR             *src_parent_dir,
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
-          if (!copy_dir_recurse_fsync (srcd, dest_dfd, name,
+          if (!copy_dir_recurse_fsync (src_dfd, dest_dfd, name,
                                        cancellable, error))
             goto out;
         }
@@ -291,98 +290,125 @@ copy_dir_recurse_fsync (DIR             *src_parent_dir,
  * needed by a modified file is deleted in a newer tree.
  */
 static gboolean
-copy_modified_config_file (GFile              *orig_etc,
-                           GFile              *modified_etc,
-                           GFile              *new_etc,
-                           GFile              *src,
+copy_modified_config_file (int                 orig_etc_fd,
+                           int                 modified_etc_fd,
+                           int                 new_etc_fd,
+                           const char         *path,
                            GCancellable       *cancellable,
                            GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *src_parent = g_file_get_parent (src);
-  gs_unref_object GFileInfo *src_info = NULL;
-  gs_unref_object GFileInfo *parent_info = NULL;
-  gs_unref_object GFile *dest = NULL;
-  gs_unref_object GFile *dest_parent = NULL;
-  gs_free char *relative_path = NULL;
-  DIR *src_parent_dir = NULL;
-  int src_parent_dfd = -1;
+  struct stat modified_stbuf;
+  struct stat new_stbuf;
+  const char *parent_slash;
+  gs_free char *parent_path = NULL;
   int dest_parent_dfd = -1;
-  
-  relative_path = g_file_get_relative_path (modified_etc, src);
-  g_assert (relative_path);
-  dest = g_file_resolve_relative_path (new_etc, relative_path);
 
-  src_info = g_file_query_info (src, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                cancellable, error);
-  if (!src_info)
-    goto out;
-
-  dest_parent = g_file_get_parent (dest);
-  if (!ot_gfile_query_info_allow_noent (dest_parent, OSTREE_GIO_FAST_QUERYINFO, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        &parent_info, cancellable, error))
-    goto out;
-  if (!parent_info)
+  if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "New tree removes parent directory '%s', cannot merge",
-                   gs_file_get_path_cached (dest_parent));
+      ot_util_set_error_from_errno (error, errno);
+      g_prefix_error (error, "Failed to read modified config file '%s': ", path);
       goto out;
     }
 
-  if (!gs_shutil_rm_rf (dest, cancellable, error))
-    goto out;
-
-  if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_DIRECTORY)
+  parent_slash = strrchr (path, '/');
+  if (parent_slash != NULL)
     {
-      src_parent_dfd = open (gs_file_get_path_cached (src_parent),
-                             O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
-      if (src_parent_dfd == -1)
+      parent_path = g_strndup (path, parent_slash - path);
+      dest_parent_dfd = openat (new_etc_fd, parent_path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW | O_NOCTTY);
+      if (dest_parent_dfd == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          if (errno == ENOENT)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                           "New tree removes parent directory '%s', cannot merge",
+                           parent_path);
+            }
+          else
+            {
+              g_prefix_error (error, "openat: ");
+              ot_util_set_error_from_errno (error, errno);
+            }
           goto out;
         }
-      src_parent_dir = fdopendir (src_parent_dfd);
-      if (!src_parent_dir)
-        {
-          ot_util_set_error_from_errno (error, errno);
-          goto out;
-        }
-      dest_parent_dfd = open (gs_file_get_path_cached (dest_parent),
-                              O_RDONLY | O_NOCTTY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+    }
+  else
+    {
+      parent_path = NULL;
+      dest_parent_dfd = dup (new_etc_fd);
       if (dest_parent_dfd == -1)
         {
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-      if (!copy_dir_recurse_fsync (src_parent_dir, dest_parent_dfd,
-                                   gs_file_get_basename_cached (src),
+    }
+
+  if (fstatat (new_etc_fd, path, &new_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
+    {
+      if (errno == ENOENT)
+        ;
+      else
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+  else if (S_ISDIR(new_stbuf.st_mode))
+    {
+      if (!S_ISDIR(modified_stbuf.st_mode))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "Modified config file newly defaults to directory '%s', cannot merge",
+                       parent_path);
+          goto out;
+        }
+      else
+        {
+          /* Do nothing here - we assume that we've already
+           * recursively copied the parent directory.
+           */
+          ret = TRUE;
+          goto out;
+        }
+    }
+  else
+    {
+      if (unlinkat (new_etc_fd, path, 0) < 0)
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  if (S_ISDIR (modified_stbuf.st_mode))
+    {
+      if (!copy_dir_recurse_fsync (modified_etc_fd, new_etc_fd, path,
+                                   cancellable, error))
+        goto out;
+    }
+  else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
+    {
+      if (!copy_one_file_fsync_at (modified_etc_fd, new_etc_fd,
+                                   &modified_stbuf, path,
                                    cancellable, error))
         goto out;
     }
   else
     {
-      if (!g_file_copy (src, dest, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
-                        cancellable, NULL, NULL, error))
-        goto out;
-      if (g_file_info_get_file_type (src_info) == G_FILE_TYPE_REGULAR)
-        {
-          if (!gs_file_sync_data (dest, cancellable, error))
-            goto out;
-        }
-      if (!ot_util_fsync_directory (dest_parent, cancellable, error))
-        goto out;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Unsupported non-regular/non-symlink file in /etc '%s'",
+                   path);
+      goto out;
+    }
+
+  if (fsync (dest_parent_dfd) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
     }
 
   ret = TRUE;
  out:
-  if (src_parent_dir)
-    {
-      (void) closedir (src_parent_dir);
-      src_parent_dfd = -1;
-    }
-  if (src_parent_dfd != -1)
-    (void) close (src_parent_dfd);
   if (dest_parent_dfd != -1)
     (void) close (dest_parent_dfd);
   return ret;
@@ -411,6 +437,9 @@ merge_etc_changes (GFile          *orig_etc,
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;
   guint i;
+  int orig_etc_fd = -1;
+  int modified_etc_fd = -1;
+  int new_etc_fd = -1; 
 
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
@@ -438,6 +467,13 @@ merge_etc_changes (GFile          *orig_etc,
                                 removed->len,
                                 added->len);
 
+  if (!gs_file_open_dir_fd (orig_etc, &orig_etc_fd, cancellable, error))
+    goto out;
+  if (!gs_file_open_dir_fd (modified_etc, &modified_etc_fd, cancellable, error))
+    goto out;
+  if (!gs_file_open_dir_fd (new_etc, &new_etc_fd, cancellable, error))
+    goto out;
+
   for (i = 0; i < removed->len; i++)
     {
       GFile *file = removed->pdata[i];
@@ -455,22 +491,34 @@ merge_etc_changes (GFile          *orig_etc,
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diff = modified->pdata[i];
+      gs_free char *path = g_file_get_relative_path (modified_etc, diff->target);
 
-      if (!copy_modified_config_file (orig_etc, modified_etc, new_etc, diff->target,
+      g_assert (path);
+
+      if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
                                       cancellable, error))
         goto out;
     }
   for (i = 0; i < added->len; i++)
     {
       GFile *file = added->pdata[i];
+      gs_free char *path = g_file_get_relative_path (modified_etc, file);
 
-      if (!copy_modified_config_file (orig_etc, modified_etc, new_etc, file,
+      g_assert (path);
+
+      if (!copy_modified_config_file (orig_etc_fd, modified_etc_fd, new_etc_fd, path,
                                       cancellable, error))
         goto out;
     }
 
   ret = TRUE;
  out:
+  if (orig_etc_fd != -1)
+    (void) close (orig_etc_fd);
+  if (modified_etc_fd != -1)
+    (void) close (modified_etc_fd);
+  if (new_etc_fd != -1)
+    (void) close (new_etc_fd);
   return ret;
 }
 

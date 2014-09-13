@@ -95,4 +95,31 @@ rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runt
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/afile
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/bfile
 
+# Replace config file with default directory
+cd "${test_tmpdir}/osdata"
+mkdir usr/etc/somenewdir
+ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add default dir"
+cd ${test_tmpdir}
+rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/somenewdir
+echo "some content blah" > ${newconfpath}
+if ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
+    assert_not_reached "upgrade should have failed"
+fi
+assert_file_has_content err.txt "Modified config file newly defaults to directory"
+rm ${newconfpath}
+
+# Remove parent directory of modified config file
+cd "${test_tmpdir}/osdata"
+rm -rf usr/etc/initially-empty
+ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Remove default dir"
+cd ${test_tmpdir}
+newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
+touch ${newconfpath}
+if ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
+    assert_not_reached "upgrade should have failed"
+fi
+assert_file_has_content err.txt "New tree removes parent directory"
+rm ${newconfpath}
+
 echo "ok"
