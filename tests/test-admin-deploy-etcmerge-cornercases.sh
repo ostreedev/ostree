@@ -37,8 +37,12 @@ echo "rev=${rev}"
 ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
-# Ok, let's create a long directory chain with custom permissions
 etc=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
+
+# modified config file
+echo "a modified config file" > ${etc}/NetworkManager/nm.conf
+
+# Ok, let's create a long directory chain with custom permissions
 mkdir -p ${etc}/a/long/dir/chain
 mkdir -p ${etc}/a/long/dir/forking
 chmod 700 ${etc}/a
@@ -47,14 +51,24 @@ chmod 777 ${etc}/a/long/dir
 chmod 707 ${etc}/a/long/dir/chain
 chmod 700 ${etc}/a/long/dir/forking
 
+# Symlink to nonexistent path, to ensure we aren't walking symlinks
+ln -s no-such-file ${etc}/a/link-to-no-such-file
+
+# Remove a directory
+rm ${etc}/testdirectory -rf
+
 # Now deploy a new commit
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
 ostree admin --sysroot=sysroot upgrade --os=testos
 newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 echo "newrev=${newrev}"
+newroot=sysroot/ostree/deploy/testos/deploy/${newrev}.0
+newetc=${newroot}/etc
 
-newetc=sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc
+assert_file_has_content ${newroot}/usr/etc/NetworkManager/nm.conf "a default daemon file"
+assert_file_has_content ${newetc}/NetworkManager/nm.conf "a modified config file"
+
 assert_file_has_mode() {
   stat -c '%a' $1 > mode.txt
   if ! grep -q -e "$2" mode.txt; then 
@@ -63,12 +77,18 @@ assert_file_has_mode() {
   fi
   rm -f mode.txt
 }
+
 assert_file_has_mode ${newetc}/a 700
 assert_file_has_mode ${newetc}/a/long 770
 assert_file_has_mode ${newetc}/a/long/dir 777
 assert_file_has_mode ${newetc}/a/long/dir/chain 707
 assert_file_has_mode ${newetc}/a/long/dir/forking 700
 assert_file_has_mode ${newetc}/a/long/dir 777
+
+test -L ${newetc}/a/link-to-no-such-file || assert_not_reached "should have symlink"
+
+assert_has_dir ${newroot}/usr/etc/testdirectory
+assert_not_has_dir ${newetc}/testdirectory
 
 echo "ok"
 
@@ -116,10 +136,10 @@ ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-run
 cd ${test_tmpdir}
 newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 touch ${newconfpath}
-if ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
-    assert_not_reached "upgrade should have failed"
-fi
-assert_file_has_content err.txt "New tree removes parent directory"
+ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/usr/etc/initially-empty
+assert_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 rm ${newconfpath}
 
 echo "ok"

@@ -156,6 +156,50 @@ copy_one_file_fsync_at (int              src_parent_dfd,
 }
 
 static gboolean
+dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
+                                  const char    *src_name,
+                                  int            src_dfd,
+                                  int            dest_dfd,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  gboolean ret = FALSE;
+  struct stat src_stbuf;
+  gs_unref_variant GVariant *xattrs = NULL;
+
+  /* Clone all xattrs first, so we get the SELinux security context
+   * right.  This will allow other users access if they have ACLs, but
+   * oh well.
+   */ 
+  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, src_name,
+                                    &xattrs, cancellable, error))
+    goto out;
+  if (!gs_fd_set_all_xattrs (dest_dfd, xattrs,
+                             cancellable, error))
+    goto out;
+
+  if (fstat (src_dfd, &src_stbuf) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+  if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 copy_dir_recurse_fsync (int              src_parent_dfd,
                         int              dest_parent_dfd,
                         const char      *name,
@@ -163,12 +207,10 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
                         GError         **error)
 {
   gboolean ret = FALSE;
-  struct stat src_stbuf;
   int src_dfd = -1;
   int dest_dfd = -1;
   DIR *srcd = NULL;
   struct dirent *dent;
-  gs_unref_variant GVariant *xattrs = NULL;
 
   if (!ot_gopendirat (src_parent_dfd, name, TRUE, &src_dfd, error))
     goto out;
@@ -183,18 +225,10 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   if (!ot_gopendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
     goto out;
 
-  /* Clone all xattrs first, so we get the SELinux security context
-   * right.  This will allow other users access if they have ACLs, but
-   * oh well.
-   */ 
-  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, name,
-                                    &xattrs,
-                                    cancellable, error))
+  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd, dest_dfd,
+                                         cancellable, error))
     goto out;
-  if (!gs_fd_set_all_xattrs (dest_dfd, xattrs,
-                             cancellable, error))
-    goto out;
-
+ 
   srcd = fdopendir (src_dfd);
   if (!srcd)
     {
@@ -233,22 +267,6 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
         }
     }
 
-  if (fstat (src_dfd, &src_stbuf) != 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-  if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
-
   /* And finally, fsync the fd */
   if (fsync (dest_dfd) != 0)
     {
@@ -271,15 +289,88 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   return ret;
 }
 
+static gboolean
+ensure_directory_from_template (int                 orig_etc_fd,
+                                int                 modified_etc_fd,
+                                int                 new_etc_fd,
+                                const char         *path,
+                                int                *out_dfd,
+                                GCancellable       *cancellable,
+                                GError            **error)
+{
+  gboolean ret = FALSE;
+  int src_dfd = -1;
+  int target_dfd = -1;
+
+  g_assert (path != NULL);
+  g_assert (*path != '/' && *path != '\0');
+
+  if (!ot_gopendirat (modified_etc_fd, path, TRUE, &src_dfd, error))
+    goto out;
+
+  /* Create with mode 0700, we'll fchmod/fchown later */
+ again:
+  if (mkdirat (new_etc_fd, path, 0700) != 0)
+    {
+      if (errno == EEXIST)
+        {
+          /* Fall through */
+        }
+      else if (errno == ENOENT)
+        {
+          gs_free char *parent_path = g_path_get_dirname (path);
+
+          if (strcmp (parent_path, ".") != 0)
+            {
+              if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
+                                                   parent_path, NULL, cancellable, error))
+                goto out;
+
+              /* Loop */
+              goto again;
+            }
+          else
+            {
+              /* Fall through...shouldn't happen, but we'll propagate
+               * an error from open. */
+            }
+        }
+      else
+        {
+          ot_util_set_error_from_errno (error, errno);
+          g_prefix_error (error, "mkdirat: ");
+          goto out;
+        }
+    }
+
+  if (!ot_gopendirat (new_etc_fd, path, TRUE, &target_dfd, error))
+    goto out;
+
+  if (!dirfd_copy_attributes_and_xattrs (modified_etc_fd, path, src_dfd, target_dfd,
+                                         cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  if (out_dfd)
+    {
+      g_assert (target_dfd != -1);
+      *out_dfd = target_dfd;
+      target_dfd = -1;
+    }
+ out:
+  if (src_dfd != -1)
+    (void) close (src_dfd);
+  if (target_dfd != -1)
+    (void) close (target_dfd);
+  return ret;
+}
+
 /**
  * copy_modified_config_file:
  *
  * Copy @file from @modified_etc to @new_etc, overwriting any existing
  * file there.  The @file may refer to a regular file, a symbolic
  * link, or a directory.  Directories will be copied recursively.
- *
- * Note this function does not (yet) handle the case where a directory
- * needed by a modified file is deleted in a newer tree.
  */
 static gboolean
 copy_modified_config_file (int                 orig_etc_fd,
@@ -292,8 +383,6 @@ copy_modified_config_file (int                 orig_etc_fd,
   gboolean ret = FALSE;
   struct stat modified_stbuf;
   struct stat new_stbuf;
-  const char *parent_slash;
-  gs_free char *parent_path = NULL;
   int dest_parent_dfd = -1;
 
   if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
@@ -303,30 +392,16 @@ copy_modified_config_file (int                 orig_etc_fd,
       goto out;
     }
 
-  parent_slash = strrchr (path, '/');
-  if (parent_slash != NULL)
+  if (strchr (path, '/') != NULL)
     {
-      parent_path = g_strndup (path, parent_slash - path);
-      dest_parent_dfd = ot_opendirat (new_etc_fd, parent_path, FALSE);
-      if (dest_parent_dfd == -1)
-        {
-          if (errno == ENOENT)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                           "New tree removes parent directory '%s', cannot merge",
-                           parent_path);
-            }
-          else
-            {
-              g_prefix_error (error, "openat: ");
-              ot_util_set_error_from_errno (error, errno);
-            }
-          goto out;
-        }
+      gs_free char *parent = g_path_get_dirname (path);
+
+      if (!ensure_directory_from_template (orig_etc_fd, modified_etc_fd, new_etc_fd,
+                                           parent, &dest_parent_dfd, cancellable, error))
+        goto out;
     }
   else
     {
-      parent_path = NULL;
       dest_parent_dfd = dup (new_etc_fd);
       if (dest_parent_dfd == -1)
         {
@@ -334,6 +409,8 @@ copy_modified_config_file (int                 orig_etc_fd,
           goto out;
         }
     }
+
+  g_assert (dest_parent_dfd != -1);
 
   if (fstatat (new_etc_fd, path, &new_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
@@ -351,7 +428,7 @@ copy_modified_config_file (int                 orig_etc_fd,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                        "Modified config file newly defaults to directory '%s', cannot merge",
-                       parent_path);
+                       path);
           goto out;
         }
       else
