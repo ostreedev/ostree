@@ -40,6 +40,7 @@
 #include <ot-waitable-queue.h>
 #include <ot-keyfile-utils.h>
 #include <ot-gio-utils.h>
+#include <ot-fs-utils.h>
 #include <ot-opt-utils.h>
 #include <ot-unix-utils.h>
 #include <ot-variant-utils.h>

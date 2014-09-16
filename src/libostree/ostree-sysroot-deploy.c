@@ -170,12 +170,8 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   struct dirent *dent;
   gs_unref_variant GVariant *xattrs = NULL;
 
-  src_dfd = openat (src_parent_dfd, name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
-  if (src_dfd == -1)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+  if (!ot_gopendirat (src_parent_dfd, name, TRUE, &src_dfd, error))
+    goto out;
 
   /* Create with mode 0700, we'll fchmod/fchown later */
   if (mkdirat (dest_parent_dfd, name, 0700) != 0)
@@ -184,12 +180,8 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
       goto out;
     }
 
-  dest_dfd = openat (dest_parent_dfd, name, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
-  if (dest_dfd == -1)
-    {
-      ot_util_set_error_from_errno (error, errno);
-      goto out;
-    }
+  if (!ot_gopendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
+    goto out;
 
   /* Clone all xattrs first, so we get the SELinux security context
    * right.  This will allow other users access if they have ACLs, but
@@ -315,7 +307,7 @@ copy_modified_config_file (int                 orig_etc_fd,
   if (parent_slash != NULL)
     {
       parent_path = g_strndup (path, parent_slash - path);
-      dest_parent_dfd = openat (new_etc_fd, parent_path, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW | O_NOCTTY);
+      dest_parent_dfd = ot_opendirat (new_etc_fd, parent_path, FALSE);
       if (dest_parent_dfd == -1)
         {
           if (errno == ENOENT)

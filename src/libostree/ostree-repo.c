@@ -1100,7 +1100,7 @@ list_loose_objects (OstreeRepo                     *self,
       buf[0] = hexchars[c >> 4];
       buf[1] = hexchars[c & 0xF];
       buf[2] = '\0';
-      dfd = openat (self->objects_dir_fd, buf, O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
+      dfd = ot_opendirat (self->objects_dir_fd, buf, FALSE);
       if (dfd == -1)
         {
           if (errno == ENOENT)
