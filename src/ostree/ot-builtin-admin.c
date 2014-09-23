@@ -61,6 +61,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
   gs_unref_object GFile *sysroot_path = NULL;
   gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean want_help = FALSE;
+  gboolean want_current_dir = FALSE;
   int in, out, i;
   gboolean skip;
 
@@ -92,6 +93,10 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
           else if (g_str_equal (argv[in], "--help"))
             {
               want_help = TRUE;
+            }
+          else if (g_str_equal (argv[in], "--print-current-dir"))
+            {
+              want_current_dir = TRUE;
             }
           else if (g_str_equal (argv[in], "--sysroot") && in + 1 < argc)
             {
@@ -145,12 +150,12 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
 
   argc = out;
 
-  if (subcommand_name == NULL)
+  if (subcommand_name == NULL && (want_help || !want_current_dir))
     {
       void (*print_func) (const gchar *format, ...) = want_help ? g_print : g_printerr;
 
       subcommand = admin_subcommands;
-      print_func ("usage: ostree admin --sysroot=PATH COMMAND [options]\n");
+      print_func ("usage: ostree admin [--sysroot=PATH] [--print-current-dir|COMMAND] [options]\n");
       print_func ("Builtin commands:\n");
       while (subcommand->name)
         {
@@ -163,6 +168,35 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
       else
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                              "No command specified");
+      goto out;
+    }
+
+  sysroot_path = g_file_new_for_path (opt_sysroot);
+  sysroot = ostree_sysroot_new (sysroot_path);
+
+  if (want_current_dir)
+    {
+      gs_unref_ptrarray GPtrArray *deployments = NULL;
+      OstreeDeployment *first_deployment;
+      gs_unref_object GFile *deployment_file = NULL;
+      gs_free char *deployment_path = NULL;
+
+      if (!ostree_sysroot_load (sysroot, cancellable, error))
+        goto out;
+
+      deployments = ostree_sysroot_get_deployments (sysroot);
+      if (deployments->len == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unable to find a deployment in sysroot");
+          goto out;
+        }
+      first_deployment = deployments->pdata[0];
+      deployment_file = ostree_sysroot_get_deployment_directory (sysroot, first_deployment);
+      deployment_path = g_file_get_path (deployment_file);
+
+      g_print ("%s\n", deployment_path);
+      ret = TRUE;
       goto out;
     }
 
@@ -183,8 +217,6 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
 
   g_set_prgname (g_strdup_printf ("ostree admin %s", subcommand_name));
 
-  sysroot_path = g_file_new_for_path (opt_sysroot);
-  sysroot = ostree_sysroot_new (sysroot_path);
   if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
     goto out;
  

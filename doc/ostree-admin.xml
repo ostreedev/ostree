@@ -97,6 +97,13 @@ Boston, MA 02111-1307, USA.
                 <term><option>--sysroot</option>="PATH"</term>
                 <listitem><para>Creates a new OSTree sysroot at PATH</para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--print-current-dir</option></term>
+                <listitem><para>
+                  Prints the full path to the deployment directory for the currently active deployment in the specified sysroot to standard out. This is incompatible with specifying a subcommand.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 </refentry>
