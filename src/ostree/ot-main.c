@@ -83,6 +83,7 @@ ostree_run (int    argc,
   const char *repo_arg = NULL;
   gboolean want_help = FALSE;
   gboolean skip;
+  gboolean success = FALSE;
   int in, out, i;
 
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
@@ -191,7 +192,11 @@ ostree_run (int    argc,
 
   if (cmd == NULL)
     {
-      if (!want_help)
+      if (want_help)
+        {
+          success = TRUE;
+        }
+      else
         {
           g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "No command specified");
@@ -252,7 +257,10 @@ ostree_run (int    argc,
   if (!command->fn (argc, argv, repo, cancellable, &error))
     goto out;
 
+  success = TRUE;
  out:
+  g_assert (success || error);
+
   if (error)
     {
       g_propagate_error (res_error, error);

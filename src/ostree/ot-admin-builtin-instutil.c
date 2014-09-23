@@ -127,7 +127,13 @@ ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCance
           g_print ("  %s\n", subcommand->name);
           subcommand++;
         }
-      return subcommand_name == NULL ? 1 : 0;
+
+      if (want_help)
+        ret = TRUE;
+      else
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "No command specified");
+      goto out;
     }
 
   subcommand = admin_instutil_subcommands;
