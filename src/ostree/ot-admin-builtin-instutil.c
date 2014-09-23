@@ -151,6 +151,8 @@ ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCance
       goto out;
     }
 
+  g_set_prgname (g_strdup_printf ("ostree admin instutil %s", subcommand_name));
+
   if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
     goto out;
  

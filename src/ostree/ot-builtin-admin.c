@@ -179,6 +179,8 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
       goto out;
     }
 
+  g_set_prgname (g_strdup_printf ("ostree admin %s", subcommand_name));
+
   sysroot_path = g_file_new_for_path (opt_sysroot);
   sysroot = ostree_sysroot_new (sysroot_path);
   if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
