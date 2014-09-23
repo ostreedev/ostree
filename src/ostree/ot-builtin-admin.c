@@ -145,7 +145,7 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
 
   argc = out;
 
-  if (subcommand_name == NULL || want_help)
+  if (subcommand_name == NULL)
     {
       subcommand = admin_subcommands;
       g_print ("usage: ostree admin --sysroot=PATH COMMAND [options]\n");

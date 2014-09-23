@@ -117,7 +117,7 @@ ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCance
 
   argc = out;
 
-  if (subcommand_name == NULL || want_help)
+  if (subcommand_name == NULL)
     {
       subcommand = admin_instutil_subcommands;
       g_print ("usage: ostree admin instutil COMMAND [options]\n");
