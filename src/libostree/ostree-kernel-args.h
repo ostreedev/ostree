@@ -40,6 +40,10 @@ void _ostree_kernel_args_append (OstreeKernelArgs  *kargs,
 void _ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
                                       char **argv);
 
+gboolean _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
+                                                  GCancellable     *cancellable,
+                                                  GError          **error);
+
 void _ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
                                        const char *options);
 

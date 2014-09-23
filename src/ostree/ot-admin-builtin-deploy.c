@@ -130,20 +130,8 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
    */
   if (opt_kernel_proc_cmdline)
     {
-      gs_unref_object GFile *proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
-      gs_free char *proc_cmdline = NULL;
-      gsize proc_cmdline_len = 0;
-      gs_strfreev char **proc_cmdline_args = NULL;
-
-      if (!g_file_load_contents (proc_cmdline_path, cancellable,
-                                 &proc_cmdline, &proc_cmdline_len,
-                                 NULL, error))
+      if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
         goto out;
-
-      g_strchomp (proc_cmdline);
-
-      proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
-      _ostree_kernel_args_append_argv (kargs, proc_cmdline_args);
     }
   else if (merge_deployment)
     {

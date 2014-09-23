@@ -27,7 +27,18 @@
 
 #include "otutil.h"
 
+#include "../libostree/ostree-kernel-args.h"
+
+static gboolean opt_proc_cmdline;
+static gboolean opt_merge;
+static char **opt_replace;
+static char **opt_append;
+
 static GOptionEntry options[] = {
+  { "import-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_proc_cmdline, "Import current /proc/cmdline", NULL },
+  { "merge", 0, 0, G_OPTION_ARG_NONE, &opt_merge, "Merge with previous command line", NULL },
+  { "replace", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_replace, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "KEY=VALUE" },
+  { "append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "KEY=VALUE" },
   { NULL }
 };
 
@@ -39,7 +50,7 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysro
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment = NULL;
   GOptionContext *context = NULL;
-  gs_unref_ptrarray GPtrArray *new_kargs = NULL;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
   context = g_option_context_new ("ARGS - set new kernel command line arguments");
 
@@ -60,15 +71,45 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysro
     }
   first_deployment = deployments->pdata[0];
 
-  new_kargs = g_ptr_array_new ();
+  kargs = _ostree_kernel_args_new ();
+
+  /* If they want the current kernel's args, they very likely don't
+   * want the ones from the merge.
+   */
+  if (opt_proc_cmdline)
+    {
+      if (!_ostree_kernel_args_append_proc_cmdline (kargs, cancellable, error))
+        goto out;
+    }
+  else if (opt_merge)
+    {
+      OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (first_deployment);
+      gs_strfreev char **previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+
+      _ostree_kernel_args_append_argv (kargs, previous_args);
+    }
+
+  if (opt_replace)
+    {
+      _ostree_kernel_args_replace_argv (kargs, opt_replace);
+    }
+
+  if (opt_append)
+    {
+      _ostree_kernel_args_append_argv (kargs, opt_append);
+    }
+
   for (i = 1; i < argc; i++)
-    g_ptr_array_add (new_kargs, argv[i]);
-  g_ptr_array_add (new_kargs, NULL);
-  
-  if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment,
-                                            (char**)new_kargs->pdata,
-                                            cancellable, error))
-    goto out;
+    _ostree_kernel_args_append (kargs, argv[i]);
+
+  {
+    gs_strfreev char **kargs_strv = _ostree_kernel_args_to_strv (kargs);
+
+    if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment,
+                                              kargs_strv,
+                                              cancellable, error))
+      goto out;
+  }
 
   ret = TRUE;
  out:

@@ -75,10 +75,13 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><command>set-kargs</command></term>
+                <term><command>set-kargs <arg choice="opt">--merge</arg> <arg choice="opt">--import-proc-cmdline</arg> <arg choice="opt">--append=ARG</arg> <arg choice="opt">--replace=ARG</arg> <arg choice="opt">MORE_APPEND_ARGS</arg></command></term>
 
                 <listitem><para>
-                    Replace the kernel arguments of the default deployment.
+                    Replace the kernel arguments of the default deployment. The new arguments are based
+                    on an empty list (the default), the current options (--merge), or the arguments
+                    of the loaded kernel (--import-proc-cmdline), and new options either are added to the
+                    end (--append=ARG) or replace existing arguments of the same name (--replace=ARG).
                 </para></listitem>
             </varlistentry>
         </variablelist>
