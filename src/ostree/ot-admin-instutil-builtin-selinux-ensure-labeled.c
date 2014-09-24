@@ -173,6 +173,10 @@ selinux_relabel_dir (OstreeSePolicy                *sepolicy,
   return ret;
 }
 
+static GOptionEntry options[] = {
+  { NULL }
+};
+
 gboolean
 ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
@@ -183,7 +187,15 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeS
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment;
+  GOptionContext *context = NULL;
   gs_unref_object GFile *deployment_path = NULL;
+
+  context = g_option_context_new ("[SUBPATH PREFIX] - relabel all or part of a deployment");
+
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -227,5 +239,7 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeS
 
   ret = TRUE;
  out:
+  if (context)
+    g_option_context_free (context);
   return ret;
 }

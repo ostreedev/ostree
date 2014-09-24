@@ -27,6 +27,10 @@
 
 #include "otutil.h"
 
+static GOptionEntry options[] = {
+  { NULL }
+};
+
 gboolean
 ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
@@ -34,7 +38,15 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysro
   guint i;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment = NULL;
+  GOptionContext *context = NULL;
   gs_unref_ptrarray GPtrArray *new_kargs = NULL;
+
+  context = g_option_context_new ("ARGS - set new kernel command line arguments");
+
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
@@ -60,5 +72,7 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysro
 
   ret = TRUE;
  out:
+  if (context)
+    g_option_context_free (context);
   return ret;
 }
