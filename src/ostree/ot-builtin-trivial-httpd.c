@@ -371,11 +371,12 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
       addr = g_socket_get_local_address (listener, error);
       if (!addr)
         goto out;
-      g_assert (G_IS_INET_ADDRESS (addr));
+
+      g_assert (G_IS_INET_SOCKET_ADDRESS (addr));
       
-      g_strdup_printf ("%u\n", g_inet_socket_address_get_port ((GInetSocketAddress*)addr));
+      portstr = g_strdup_printf ("%u\n", g_inet_socket_address_get_port ((GInetSocketAddress*)addr));
 #else
-      g_strdup_printf ("%u\n", soup_server_get_port (server));
+      portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));
 #endif
 
       if (g_strcmp0 ("-", opt_port_file) == 0)
