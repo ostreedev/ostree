@@ -119,12 +119,14 @@ ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCance
 
   if (subcommand_name == NULL)
     {
+      void (*print_func) (const gchar *format, ...) = want_help ? g_print : g_printerr;
+
       subcommand = admin_instutil_subcommands;
-      g_print ("usage: ostree admin instutil COMMAND [options]\n");
-      g_print ("Builtin commands:\n");
+      print_func ("usage: ostree admin instutil COMMAND [options]\n");
+      print_func ("Builtin commands:\n");
       while (subcommand->name)
         {
-          g_print ("  %s\n", subcommand->name);
+          print_func ("  %s\n", subcommand->name);
           subcommand++;
         }
 

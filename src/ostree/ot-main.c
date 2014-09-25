@@ -201,7 +201,7 @@ ostree_run (int    argc,
           g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                "No command specified");
         }
-      ostree_usage (argv, commands, TRUE);
+      ostree_usage (argv, commands, !want_help);
       goto out;
     }
 
