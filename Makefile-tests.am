@@ -27,6 +27,7 @@ testfiles = test-basic \
 	test-archivez \
 	test-remote-add \
         test-commit-sign \
+	test-help \
 	test-libarchive \
 	test-pull-archive-z \
 	test-pull-corruption \

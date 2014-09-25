@@ -78,6 +78,12 @@ assert_file_has_content () {
     fi
 }
 
+assert_file_empty() {
+    if test -s "$1"; then
+	echo 1>&2 "File '$1' is not empty"; exit 1
+    fi
+}
+
 setup_test_repository () {
     mode=$1
     shift
