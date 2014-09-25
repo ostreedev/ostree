@@ -347,7 +347,8 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
 
 #if SOUP_CHECK_VERSION(2, 48, 0)
   server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
-  soup_server_listen (server, NULL, 0);
+  if (!soup_server_listen_local (server, 0, 0, error))
+    goto out;
 #else
   server = soup_server_new (SOUP_SERVER_PORT, 0,
                             SOUP_SERVER_SERVER_HEADER, "ostree-httpd ",
@@ -357,7 +358,26 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
   soup_server_add_handler (server, NULL, httpd_callback, app, NULL);
   if (opt_port_file)
     {
-      gs_free char *portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));
+      gs_free char *portstr = NULL;
+#if SOUP_CHECK_VERSION(2, 48, 0)
+      GSList *listeners = soup_server_get_listeners (server);
+      gs_unref_object GSocket *listener = NULL;
+      gs_unref_object GSocketAddress *addr = NULL;
+      
+      g_assert (listeners);
+      listener = g_object_ref (listeners->data);
+      g_slist_free (listeners);
+      listeners = NULL;
+      addr = g_socket_get_local_address (listener, error);
+      if (!addr)
+        goto out;
+      g_assert (G_IS_INET_ADDRESS (addr));
+      
+      g_strdup_printf ("%u\n", g_inet_socket_address_get_port ((GInetSocketAddress*)addr));
+#else
+      g_strdup_printf ("%u\n", soup_server_get_port (server));
+#endif
+
       if (g_strcmp0 ("-", opt_port_file) == 0)
         {
           fputs (portstr, stdout); // not g_print - this must go to stdout, not a handler
@@ -366,7 +386,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
       else if (!g_file_set_contents (opt_port_file, portstr, strlen (portstr), error))
         goto out;
     }
+#if !SOUP_CHECK_VERSION(2, 48, 0)
   soup_server_run_async (server);
+#endif
 
   if (opt_daemonize)
     {
