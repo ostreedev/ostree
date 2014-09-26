@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..9"
+echo "1..10"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -29,6 +29,11 @@ ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=te
 ostree admin --sysroot=sysroot status
 
 echo "ok deploy command"
+
+ostree admin --sysroot=sysroot --print-current-dir > curdir
+assert_file_has_content curdir ^`pwd`/sysroot/ostree/deploy/testos/deploy/${rev}.0$
+
+echo "ok --print-current-dir"
 
 assert_not_has_dir sysroot/boot/loader.0
 assert_has_dir sysroot/boot/loader.1
