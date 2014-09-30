@@ -142,6 +142,7 @@ ostree_sysroot_upgrader_initable_init (GInitable        *initable,
                    ostree_deployment_get_deployserial (self->merge_deployment));
       goto out;
     }
+  g_key_file_ref (self->origin);
 
   if (!parse_refspec (self, cancellable, error))
     goto out;
