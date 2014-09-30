@@ -36,6 +36,7 @@ testfiles = test-basic \
 	test-pull-metalink \
 	test-pull-resume \
 	test-gpg-signed-commit \
+	test-admin-upgrade-unconfigured \
 	test-admin-deploy-syslinux \
 	test-admin-deploy-2 \
 	test-admin-deploy-karg \

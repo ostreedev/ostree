@@ -42,6 +42,7 @@ struct OstreeSysrootUpgrader {
 
   OstreeSysroot *sysroot;
   char *osname;
+  OstreeSysrootUpgraderFlags flags;
 
   OstreeDeployment *merge_deployment;
   GKeyFile *origin;
@@ -55,7 +56,8 @@ enum {
   PROP_0,
 
   PROP_SYSROOT,
-  PROP_OSNAME
+  PROP_OSNAME,
+  PROP_FLAGS
 };
 
 static void ostree_sysroot_upgrader_initable_iface_init (GInitableIface *iface);
@@ -70,6 +72,19 @@ parse_refspec (OstreeSysrootUpgrader  *self,
 {
   gboolean ret = FALSE;
   gs_free char *origin_refspec = NULL;
+  gs_free char *unconfigured_state = NULL;
+
+  if ((self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED) == 0)
+    {
+      /* If explicit action by the OS creator is requried to upgrade, print their text as an error */
+      unconfigured_state = g_key_file_get_string (self->origin, "origin", "unconfigured-state", NULL);
+      if (unconfigured_state)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "origin unconfigured-state: %s", unconfigured_state);
+          goto out;
+        }
+    }
 
   origin_refspec = g_key_file_get_string (self->origin, "origin", "refspec", NULL);
   if (!origin_refspec)
@@ -191,6 +206,9 @@ ostree_sysroot_upgrader_set_property (GObject         *object,
     case PROP_OSNAME:
       self->osname = g_value_dup_string (value);
       break;
+    case PROP_FLAGS:
+      self->flags = g_value_get_flags (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -212,6 +230,9 @@ ostree_sysroot_upgrader_get_property (GObject         *object,
       break;
     case PROP_OSNAME:
       g_value_set_string (value, self->osname);
+      break;
+    case PROP_FLAGS:
+      g_value_set_flags (value, self->flags);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -249,6 +270,13 @@ ostree_sysroot_upgrader_class_init (OstreeSysrootUpgraderClass *klass)
                                    PROP_OSNAME,
                                    g_param_spec_string ("osname", "", "", NULL,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (object_class,
+                                   PROP_FLAGS,
+                                   g_param_spec_flags ("flags", "", "",
+                                                       ostree_sysroot_upgrader_flags_get_type (),
+                                                       0,
+                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -286,6 +314,25 @@ ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot,
 {
   return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error,
                        "sysroot", sysroot, "osname", osname, NULL);
+}
+
+/**
+ * ostree_sysroot_upgrader_new_for_os_with_flags:
+ * @sysroot: An #OstreeSysroot
+ * @osname: (allow-none): Operating system name
+ * @flags: Flags
+ *
+ * Returns: (transfer full): An upgrader
+ */
+OstreeSysrootUpgrader *
+ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot              *sysroot,
+                                               const char                 *osname,
+                                               OstreeSysrootUpgraderFlags  flags,
+                                               GCancellable               *cancellable,
+                                               GError                    **error)
+{
+  return g_initable_new (OSTREE_TYPE_SYSROOT_UPGRADER, cancellable, error,
+                         "sysroot", sysroot, "osname", osname, "flags", flags, NULL);
 }
 
 /**
@@ -543,4 +590,23 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
   ret = TRUE;
  out:
   return ret;
+}
+
+GType
+ostree_sysroot_upgrader_flags_get_type (void)
+{
+  static volatile gsize g_define_type_id__volatile = 0;
+
+  if (g_once_init_enter (&g_define_type_id__volatile))
+    {
+      static const GFlagsValue values[] = {
+        { OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED, "OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED", "ignore-unconfigured" },
+        { 0, NULL, NULL }
+      };
+      GType g_define_type_id =
+        g_flags_register_static (g_intern_static_string ("OstreeSysrootUpgraderFlags"), values);
+      g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
+    }
+
+  return g_define_type_id__volatile;
 }

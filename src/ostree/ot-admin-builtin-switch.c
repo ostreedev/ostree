@@ -82,8 +82,9 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
 
-  upgrader = ostree_sysroot_upgrader_new_for_os (sysroot, opt_osname,
-                                                 cancellable, error);
+  upgrader = ostree_sysroot_upgrader_new_for_os_with_flags (sysroot, opt_osname,
+                                                            OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED,
+                                                            cancellable, error);
   if (!upgrader)
     goto out;
 

@@ -30,7 +30,21 @@ G_BEGIN_DECLS
 #define OSTREE_IS_SYSROOT_UPGRADER(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_SYSROOT_UPGRADER))
 
+/**
+ * OstreeSysrootUpgraderFlags:
+ * @OSTREE_SYSROOT_UPGRADER_FLAGS_NONE: No options
+ * @OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED: Do not error if the origin has an unconfigured-state key
+ *
+ * Flags controlling operation of an #OstreeSysrootUpgrader.
+ */
+typedef enum {
+  OSTREE_SYSROOT_UPGRADER_FLAGS_NONE = (1 << 0),
+  OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED = (1 << 1),
+} OstreeSysrootUpgraderFlags;
+
 GType ostree_sysroot_upgrader_get_type (void);
+
+GType ostree_sysroot_upgrader_flags_get_type (void);
 
 OstreeSysrootUpgrader *ostree_sysroot_upgrader_new (OstreeSysroot *sysroot,
                                                     GCancellable  *cancellable,
@@ -40,6 +54,12 @@ OstreeSysrootUpgrader *ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroo
                                                            const char    *osname,
                                                            GCancellable  *cancellable,
                                                            GError       **error);
+
+OstreeSysrootUpgrader *ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot              *sysroot,
+                                                                      const char                 *osname,
+                                                                      OstreeSysrootUpgraderFlags  flags,
+                                                                      GCancellable               *cancellable,
+                                                                      GError                    **error);
 
 GKeyFile *ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self);
 gboolean ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFile *origin,
