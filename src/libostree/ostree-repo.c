@@ -2045,6 +2045,15 @@ ostree_repo_read_commit (OstreeRepo   *self,
  * refs @refs_to_fetch.  For each ref that is changed, download the
  * commit, all metadata, and all content objects, storing them safely
  * on disk in @self.
+ *
+ * If @flags contains %OSTREE_REPO_PULL_FLAGS_MIRROR, and
+ * the @refs_to_fetch is %NULL, and the remote repository contains a
+ * summary file, then all refs will be fetched.
+ *
+ * Warning: This API will iterate the thread default main context,
+ * which is a bug, but kept for compatibility reasons.  If you want to
+ * avoid this, use g_main_context_push_thread_default() to push a new
+ * one around this call.
  */
 gboolean
 ostree_repo_pull (OstreeRepo               *self,

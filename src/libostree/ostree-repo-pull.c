@@ -1185,6 +1185,7 @@ process_one_static_delta_meta (OtPullData   *pull_data,
 {
 }
 
+/* documented in ostree-repo.c */
 gboolean
 ostree_repo_pull (OstreeRepo               *self,
                   const char               *remote_name,
@@ -1231,6 +1232,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
   GKeyFile *config = NULL;
   GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
+  gboolean is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   guint64 bytes_transferred;
   guint64 end_time;
 
@@ -1288,6 +1290,8 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 
   pull_data->fetcher = _ostree_fetcher_new (pull_data->repo->tmp_dir,
                                            fetcher_flags);
+  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   {
     gs_free char *tls_client_cert_path = NULL;
@@ -1404,6 +1408,8 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
         goto out;
     }
 
+  configured_branches = g_key_file_get_string_list (config, remote_key, "branches", NULL, NULL);
+
   if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
     goto out;
 
@@ -1424,10 +1430,47 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 
   pull_data->static_delta_metas = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
-  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  if (is_mirror && !refs_to_fetch && !configured_branches)
+    {
+      SoupURI *summary_uri = NULL;
+      gs_unref_bytes GBytes *bytes = NULL;
+      gs_free char *ret_contents = NULL;
+      
+      summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);
+      if (!fetch_uri_contents_membuf_sync (pull_data, summary_uri, FALSE, TRUE,
+                                           &bytes, cancellable, error))
+        goto out;
+      soup_uri_free (summary_uri);
+      
+      if (bytes)
+        {
+          gs_unref_variant GVariant *refs = NULL;
+          gsize i, n;
 
-  if (refs_to_fetch != NULL)
+          pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
+          refs = g_variant_get_child_value (pull_data->summary, 0);
+          n = g_variant_n_children (refs);
+          for (i = 0; i < n; i++)
+            {
+              const char *refname;
+              gs_unref_variant GVariant *ref = g_variant_get_child_value (refs, i);
+
+              g_variant_get_child (ref, 0, "&s", &refname);
+
+              if (!ostree_validate_rev (refname, error))
+                goto out;
+              
+              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+            }
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
+          goto out;
+        }
+    } 
+  else if (refs_to_fetch != NULL)
     {
       char **strviter;
       for (strviter = refs_to_fetch; *strviter; strviter++)
@@ -1449,7 +1492,6 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
     {
       char **branches_iter;
 
-      configured_branches = g_key_file_get_string_list (config, remote_key, "branches", NULL, NULL);
       branches_iter = configured_branches;
 
       if (!(branches_iter && *branches_iter))
@@ -1558,7 +1600,6 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
         }
       else
         {
-          gboolean is_mirror = (pull_data->flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
           ostree_repo_transaction_set_ref (pull_data->repo, is_mirror ? NULL : pull_data->remote_name, ref, checksum);
         }
     }
