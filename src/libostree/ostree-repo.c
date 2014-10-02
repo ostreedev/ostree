@@ -1632,6 +1632,181 @@ ostree_repo_delete_object (OstreeRepo           *self,
   return ret;
 }
 
+static gboolean
+copy_detached_metadata (OstreeRepo    *self,
+                        OstreeRepo    *source,
+                        const char   *checksum,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *detached_meta = NULL;
+          
+  if (!ostree_repo_read_commit_detached_metadata (source,
+                                                  checksum, &detached_meta,
+                                                  cancellable, error))
+    goto out;
+
+  if (detached_meta)
+    {
+      if (!ostree_repo_write_commit_detached_metadata (self,
+                                                       checksum, detached_meta,
+                                                       cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+import_one_object_copy (OstreeRepo    *self,
+                        OstreeRepo    *source,
+                        const char   *checksum,
+                        OstreeObjectType objtype,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  guint64 length;
+  gs_unref_object GInputStream *object = NULL;
+
+  if (!ostree_repo_load_object_stream (source, objtype, checksum,
+                                       &object, &length,
+                                       cancellable, error))
+    goto out;
+
+  if (objtype == OSTREE_OBJECT_TYPE_FILE)
+    {
+      if (!ostree_repo_write_content_trusted (self, checksum,
+                                              object, length,
+                                              cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        {
+          if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+            goto out;
+        }
+      if (!ostree_repo_write_metadata_stream_trusted (self, objtype,
+                                                      checksum, object, length,
+                                                      cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+import_one_object_link (OstreeRepo    *self,
+                        OstreeRepo    *source,
+                        const char   *checksum,
+                        OstreeObjectType objtype,
+                        gboolean       *out_was_supported,
+                        GCancellable  *cancellable,
+                        GError        **error)
+{
+  gboolean ret = FALSE;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+
+  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path_buf, cancellable, error))
+    goto out;
+
+  *out_was_supported = TRUE;
+  if (linkat (source->objects_dir_fd, loose_path_buf, self->objects_dir_fd, loose_path_buf, 0) != 0)
+    {
+      if (errno == EEXIST)
+        {
+          ret = TRUE;
+        }
+      else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
+        {
+          /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
+           * optimization of hardlinking instead of copying.
+           */
+          *out_was_supported = FALSE;
+          ret = TRUE;
+        }
+      else
+        ot_util_set_error_from_errno (error, errno);
+      
+      goto out;
+    }
+
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      if (!copy_detached_metadata (self, source, checksum, cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_import_object_from:
+ * @self: Destination repo
+ * @source: Source repo
+ * @objtype: Object type
+ * @checksum: checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Copy object named by @objtype and @checksum into @self from the
+ * source repository @source.  If both repositories are of the same
+ * type and on the same filesystem, this will simply be a fast Unix
+ * hard link operation.
+ *
+ * Otherwise, a copy will be performed.
+ */
+gboolean
+ostree_repo_import_object_from (OstreeRepo           *self,
+                                OstreeRepo           *source,
+                                OstreeObjectType      objtype,
+                                const char           *checksum, 
+                                GCancellable         *cancellable,
+                                GError              **error)
+{
+  gboolean ret = FALSE;
+  gboolean hardlink_was_supported = FALSE;
+      
+  if (self->mode == source->mode)
+    {
+      if (!import_one_object_link (self, source, checksum, objtype,
+                                   &hardlink_was_supported,
+                                   cancellable, error))
+        goto out;
+    }
+
+  if (!hardlink_was_supported)
+    {
+      gboolean has_object;
+
+      if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
+                                   cancellable, error))
+        goto out;
+  
+      if (!has_object)
+        {
+          if (!import_one_object_copy (self, source, checksum, objtype,
+                                       cancellable, error))
+            goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 /**
  * ostree_repo_query_object_storage_size:
  * @self: Repo

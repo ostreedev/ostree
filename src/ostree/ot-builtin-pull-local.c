@@ -55,61 +55,6 @@ termination_condition (OtLocalCloneData  *self)
   return g_atomic_int_get (&self->n_objects_checked) == self->n_objects_to_check;
 }
 
-static gboolean
-import_one_object (OtLocalCloneData *data,
-                   const char   *checksum,
-                   OstreeObjectType objtype,
-                   GCancellable  *cancellable,
-                   GError        **error)
-{
-  gboolean ret = FALSE;
-  guint64 length;
-  gs_unref_object GInputStream *object = NULL;
-  
-  if (!ostree_repo_load_object_stream (data->src_repo, objtype, checksum,
-                                       &object, &length,
-                                       cancellable, error))
-    goto out;
-
-  if (objtype == OSTREE_OBJECT_TYPE_FILE)
-    {
-      if (!ostree_repo_write_content_trusted (data->dest_repo, checksum,
-                                              object, length,
-                                              cancellable, error))
-        goto out;
-    }
-  else
-    {
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        {
-          gs_unref_variant GVariant *detached_meta = NULL;
-          
-          if (!ostree_repo_read_commit_detached_metadata (data->src_repo,
-                                                          checksum, &detached_meta,
-                                                          cancellable, error))
-            goto out;
-
-          if (detached_meta)
-            {
-              if (!ostree_repo_write_commit_detached_metadata (data->dest_repo,
-                                                               checksum, detached_meta,
-                                                               cancellable, error))
-                goto out;
-            }
-        }
-      if (!ostree_repo_write_metadata_stream_trusted (data->dest_repo, objtype,
-                                                      checksum, object, length,
-                                                      cancellable, error))
-        goto out;
-    }
-
-  g_atomic_int_inc (&data->n_objects_copied);
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
 static void
 import_one_object_thread (gpointer   object,
                           gpointer   user_data)
@@ -120,21 +65,16 @@ import_one_object_thread (gpointer   object,
   GError **error = &local_error;
   const char *checksum;
   OstreeObjectType objtype;
-  gboolean has_object;
   GCancellable *cancellable = NULL;
 
   ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-  if (!ostree_repo_has_object (data->dest_repo, objtype, checksum, &has_object,
-                               cancellable, error))
+  if (!ostree_repo_import_object_from (data->dest_repo, data->src_repo,
+                                       objtype, checksum, cancellable, error))
     goto out;
+ 
+  g_atomic_int_inc (&data->n_objects_copied);
 
-  if (!has_object)
-    {
-      if (!import_one_object (data, checksum, objtype, cancellable, error))
-        goto out;
-    }
-  
  out:
   g_atomic_int_add (&data->n_objects_checked, 1);
   if (termination_condition (data))
