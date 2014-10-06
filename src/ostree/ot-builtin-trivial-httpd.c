@@ -347,7 +347,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
 
 #if SOUP_CHECK_VERSION(2, 48, 0)
   server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
-  if (!soup_server_listen_local (server, 0, 0, error))
+  if (!soup_server_listen_all (server, 0, 0, error))
     goto out;
 #else
   server = soup_server_new (SOUP_SERVER_PORT, 0,
