@@ -268,7 +268,7 @@ gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
 gboolean      ostree_repo_import_object_from (OstreeRepo           *self,
                                               OstreeRepo           *source,
                                               OstreeObjectType      objtype,
-                                              const char           *sha256, 
+                                              const char           *checksum,
                                               GCancellable         *cancellable,
                                               GError              **error);
 
