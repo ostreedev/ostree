@@ -205,6 +205,7 @@ do_get (OtTrivialHttpd    *self,
               soup_message_set_response (msg, "text/html",
                                          SOUP_MEMORY_TAKE,
                                          listing->str, listing->len);
+              soup_message_set_status (msg, SOUP_STATUS_OK);
               g_string_free (listing, FALSE);
             }
         }
