@@ -27,7 +27,7 @@ setup_fake_remote_repo1 "archive-z2"
 cd ${test_tmpdir}
 mkdir metalink-data
 cd metalink-data
-ostree trivial-httpd --daemonize -p ${test_tmpdir}/metalink-httpd-port
+ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/metalink-httpd-port
 metalink_port=$(cat ${test_tmpdir}/metalink-httpd-port)
 echo "http://127.0.0.1:${metalink_port}" > ${test_tmpdir}/metalink-httpd-address
 

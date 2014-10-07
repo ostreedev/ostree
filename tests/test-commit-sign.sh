@@ -51,7 +51,7 @@ cd ${test_tmpdir}
 mkdir ${test_tmpdir}/httpd
 cd httpd
 ln -s ${test_tmpdir}/ostree-srv ostree
-ostree trivial-httpd --daemonize -p ${test_tmpdir}/httpd-port
+ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port
 port=$(cat ${test_tmpdir}/httpd-port)
 echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
 cd ${oldpwd} 

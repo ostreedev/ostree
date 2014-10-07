@@ -157,7 +157,7 @@ setup_fake_remote_repo1() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ostree trivial-httpd --daemonize -p ${test_tmpdir}/httpd-port $args
+    ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
@@ -261,7 +261,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    ostree trivial-httpd --daemonize -p ${test_tmpdir}/httpd-port $args
+    ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
