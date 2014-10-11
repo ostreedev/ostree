@@ -43,6 +43,7 @@ struct _OstreeBootloaderInterface
                                                    int            bootversion,
                                                    GCancellable  *cancellable,
                                                    GError       **error);
+  gboolean             (* is_atomic)              (OstreeBootloader  *self);
 };
 
 GType _ostree_bootloader_get_type (void) G_GNUC_CONST;
@@ -55,6 +56,8 @@ gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
                                           int            bootversion,
                                           GCancellable  *cancellable,
                                           GError       **error);
+
+gboolean _ostree_bootloader_is_atomic (OstreeBootloader  *self);
 
 G_END_DECLS
 

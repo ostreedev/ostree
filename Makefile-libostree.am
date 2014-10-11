@@ -35,6 +35,8 @@ libostreeinclude_HEADERS = $(libostree_public_headers)
 
 libostree_1_la_SOURCES = \
 	src/libostree/ostree-async-progress.c \
+	src/libostree/ostree-cmdprivate.h \
+	src/libostree/ostree-cmdprivate.c \
 	src/libostree/ostree-core-private.h \
 	src/libostree/ostree-core.c \
 	src/libostree/ostree-checksum-input-stream.c \
@@ -74,6 +76,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-deployment.c \
 	src/libostree/ostree-bootloader.h \
 	src/libostree/ostree-bootloader.c \
+	src/libostree/ostree-bootloader-grub2.h \
+	src/libostree/ostree-bootloader-grub2.c \
 	src/libostree/ostree-bootloader-syslinux.h \
 	src/libostree/ostree-bootloader-syslinux.c \
 	src/libostree/ostree-bootloader-uboot.h \

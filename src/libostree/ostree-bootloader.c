@@ -61,3 +61,14 @@ _ostree_bootloader_write_config (OstreeBootloader  *self,
   return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion, 
                                                        cancellable, error);
 }
+
+gboolean
+_ostree_bootloader_is_atomic (OstreeBootloader  *self)
+{
+  g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
+
+  if (OSTREE_BOOTLOADER_GET_IFACE (self)->is_atomic)
+    return OSTREE_BOOTLOADER_GET_IFACE (self)->is_atomic (self);
+  else
+    return TRUE;
+}

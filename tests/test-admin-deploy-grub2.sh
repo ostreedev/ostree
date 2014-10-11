@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -15,37 +17,14 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# Common variables
-AM_CPPFLAGS =
-AM_CFLAGS =
-DISTCHECK_CONFIGURE_FLAGS =
-SUBDIRS =
-NULL = 
-BUILT_SOURCES =
-MANPAGES =
-CLEANFILES =
-EXTRA_DIST =
-bin_PROGRAMS =
-sbin_PROGRAMS =
-bin_SCRIPTS =
-lib_LTLIBRARIES =
-libexec_PROGRAMS =
-pkglibexec_SCRIPTS =
-noinst_LTLIBRARIES =
-noinst_PROGRAMS =
-privlibdir = $(pkglibdir)
-privlib_LTLIBRARIES =
-pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA =
-INTROSPECTION_GIRS = 
-girdir = $(datadir)/gir-1.0
-gir_DATA =
-typelibdir = $(libdir)/girepository-1.0
-typelib_DATA =
-gsettings_SCHEMAS =
-# git.mk
-GITIGNOREFILES =
+set -e
 
-# This is a special facility to chain together hooks easily
-INSTALL_DATA_HOOKS =
-install-data-hook: $(INSTALL_DATA_HOOKS)
+. $(dirname $0)/libtest.sh
+
+echo "1..1"
+
+setup_os_repository "archive-z2" "grub2"
+
+echo "ok setup"
+
+. $(dirname $0)/admin-test.sh

@@ -201,6 +201,12 @@ AS_IF([test "x$with_dracut" = "xyes" || test "x$with_mkinitcpio" = "xyes"], [
 ])
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
 
+AC_ARG_WITH(grub2,
+            AS_HELP_STRING([--with-grub2],
+                           [Install grub2 hook (default: yes)]),,
+              [with_grub2=yes])
+AM_CONDITIONAL(BUILDOPT_GRUB2, test x$with_grub2 = xyes)
+
 dnl for tests
 AS_IF([test "x$found_introspection" = xyes], [
   AC_PATH_PROG(GJS, [gjs])

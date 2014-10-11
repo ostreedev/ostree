@@ -39,6 +39,16 @@ systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service
 endif
 
+pkglibexec_SCRIPTS += src/boot/grub2-15_ostree
+
+if BUILDOPT_GRUB2
+install-grub2-config-hook:
+	mkdir -p $(DESTDIR)$(grub2configdir)
+	ln -sf $(pkglibexecdir)/grub2-15_ostree $(DESTDIR)$(grub2configdir)/15_ostree
+grub2configdir = $(sysconfdir)/grub.d
+INSTALL_DATA_HOOKS += install-grub2-config-hook
+endif
+
 EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/dracut/ostree.conf \
 	src/boot/mkinitcpio/ostree \

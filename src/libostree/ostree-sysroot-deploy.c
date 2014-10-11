@@ -1004,6 +1004,8 @@ get_kernel_from_tree (GFile         *deployroot,
                       GError       **error)
 {
   gboolean ret = FALSE;
+  gs_unref_object GFile *ostree_bootdir
+    = g_file_resolve_relative_path (deployroot, "usr/lib/ostree-boot");
   gs_unref_object GFile *bootdir = g_file_get_child (deployroot, "boot");
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFile *ret_kernel = NULL;
@@ -1011,11 +1013,22 @@ get_kernel_from_tree (GFile         *deployroot,
   gs_free char *kernel_checksum = NULL;
   gs_free char *initramfs_checksum = NULL;
 
-  dir_enum = g_file_enumerate_children (bootdir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, error);
-  if (!dir_enum)
-    goto out;
+  if (g_file_query_exists (ostree_bootdir, NULL))
+    {
+      dir_enum = g_file_enumerate_children (ostree_bootdir, OSTREE_GIO_FAST_QUERYINFO,
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            NULL, error);
+      if (!dir_enum)
+        goto out;
+    }
+  else
+    {
+      dir_enum = g_file_enumerate_children (bootdir, OSTREE_GIO_FAST_QUERYINFO,
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            NULL, error);
+      if (!dir_enum)
+        goto out;
+    }
 
   while (TRUE)
     {
@@ -1510,6 +1523,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   guint i;
   gboolean requires_new_bootversion = FALSE;
   gboolean found_booted_deployment = FALSE;
+  gboolean bootloader_is_atomic = FALSE;
 
   g_assert (self->loaded);
 
@@ -1578,6 +1592,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           g_prefix_error (error, "Swapping current bootlinks: ");
           goto out;
         }
+      
+      bootloader_is_atomic = TRUE;
     }
   else
     {
@@ -1615,11 +1631,17 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       g_debug ("Using bootloader: %s", bootloader ?
                g_type_name (G_TYPE_FROM_INSTANCE (bootloader)) : "(none)");
 
-      if (bootloader && !_ostree_bootloader_write_config (bootloader, new_bootversion,
-                                                          cancellable, error))
+      if (bootloader)
+        bootloader_is_atomic = _ostree_bootloader_is_atomic (bootloader);
+
+      if (bootloader)
         {
-          g_prefix_error (error, "Bootloader write config: ");
-          goto out;
+          if (!_ostree_bootloader_write_config (bootloader, new_bootversion,
+                                                cancellable, error))
+            {
+              g_prefix_error (error, "Bootloader write config: ");
+              goto out;
+            }
         }
 
       if (!full_system_sync (cancellable, error))
@@ -1627,7 +1649,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           g_prefix_error (error, "Full sync: ");
           goto out;
         }
-
+      
       if (!swap_bootloader (self, self->bootversion, new_bootversion,
                             cancellable, error))
         {
@@ -1637,7 +1659,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     }
 
   gs_log_structured_print_id_v (OSTREE_DEPLOYMENT_COMPLETE_ID,
-                                "Transaction complete; bootconfig swap: %s deployment count change: %i)",
+                                "%s; bootconfig swap: %s deployment count change: %i",
+                                (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                                 requires_new_bootversion ? "yes" : "no",
                                 new_deployments->len - self->deployments->len);
 

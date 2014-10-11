@@ -18,15 +18,35 @@
  * Boston, MA 02111-1307, USA.
  */
 
-#pragma once
+#include "config.h"
 
-#include <ostree.h>
+#include "ostree-cmdprivate.h"
+#include "ostree-sysroot.h"
+#include "ostree-bootloader-grub2.h"
 
-G_BEGIN_DECLS
+#include "otutil.h"
 
-gboolean ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
+static gboolean 
+impl_ostree_generate_grub2_config (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error)
+{
+  gs_unref_object OstreeBootloaderGrub2 *grub2 = _ostree_bootloader_grub2_new (sysroot);
 
-G_END_DECLS
+  return _ostree_bootloader_grub2_generate_config (grub2, bootversion, target_fd, cancellable, error);
+}
+
+/**
+ * ostree_cmdprivate: (skip)
+ *
+ * Do not call this function; it is used to share private API between
+ * the OSTree commandline and the library.
+ */
+OstreeCmdPrivateVTable *
+ostree_cmd__private__ (void)
+{
+  static OstreeCmdPrivateVTable table = {
+    impl_ostree_generate_grub2_config
+  };
+
+  return &table;
+}
 

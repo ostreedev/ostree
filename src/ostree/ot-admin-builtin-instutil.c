@@ -40,6 +40,7 @@ static OstreeAdminInstUtilCommand admin_instutil_subcommands[] = {
   { "selinux-ensure-labeled", ot_admin_instutil_builtin_selinux_ensure_labeled },
 #endif
   { "set-kargs", ot_admin_instutil_builtin_set_kargs },
+  { "grub2-generate", ot_admin_instutil_builtin_grub2_generate },
   { NULL, NULL }
 };
 

@@ -26,6 +26,7 @@
 #include "ostree-sysroot-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
+#include "ostree-bootloader-grub2.h"
 
 static gboolean
 find_booted_deployment (OstreeSysroot       *self,
@@ -853,10 +854,15 @@ _ostree_sysroot_query_bootloader (OstreeSysroot *self)
 {
   OstreeBootloaderSyslinux *syslinux;
   OstreeBootloaderUboot    *uboot;
+  OstreeBootloaderGrub2    *grub2;
 
   syslinux = _ostree_bootloader_syslinux_new (self);
   if (_ostree_bootloader_query ((OstreeBootloader*)syslinux))
     return (OstreeBootloader*) (syslinux);
+
+  grub2 = _ostree_bootloader_grub2_new (self);
+  if (_ostree_bootloader_query ((OstreeBootloader*)grub2))
+    return (OstreeBootloader*) (grub2);
 
   uboot = _ostree_bootloader_uboot_new (self);
   if (_ostree_bootloader_query ((OstreeBootloader*)uboot))

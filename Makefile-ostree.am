@@ -66,6 +66,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtins.h \
 	src/ostree/ot-admin-instutil-builtin-selinux-ensure-labeled.c \
 	src/ostree/ot-admin-instutil-builtin-set-kargs.c \
+	src/ostree/ot-admin-instutil-builtin-grub2-generate.c \
 	src/ostree/ot-admin-instutil-builtins.h \
 	src/ostree/ot-admin-functions.h \
 	src/ostree/ot-admin-functions.c \
