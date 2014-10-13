@@ -42,6 +42,8 @@ log_commit (OstreeRepo     *repo,
             GError        **error)
 {
   gs_unref_variant GVariant *variant = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_variant GVariant *value = NULL;
   gs_free gchar *parent = NULL;
   gboolean ret = FALSE;
   GError *local_error = NULL;
@@ -62,7 +64,18 @@ log_commit (OstreeRepo     *repo,
       goto out;
     }
 
-  ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant, flags);
+  g_print ("%s %s\n", ostree_object_type_to_string (OSTREE_OBJECT_TYPE_COMMIT),
+           checksum);
+
+  /* If we have a version, dump it ... */
+  metadata = g_variant_get_child_value (variant, 0);
+  if ((value = g_variant_lookup_value (metadata, "version", NULL)))
+    {
+      g_print ("Version: %s\n", g_variant_get_string (value, NULL));
+    }
+
+  ot_dump_object (OSTREE_OBJECT_TYPE_COMMIT, checksum, variant,
+                  flags | OSTREE_DUMP_SKIP_OBJ_TYPE);
 
   /* Get the parent of this commit */
   parent = ostree_commit_get_parent (variant);
