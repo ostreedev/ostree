@@ -29,6 +29,7 @@
 typedef enum {
   OSTREE_DUMP_NONE = 0,
   OSTREE_DUMP_RAW = 1,
+  OSTREE_DUMP_SKIP_OBJ_TYPE = 2,
 } OstreeDumpFlags;
 
 void   ot_dump_variant    (GVariant *variant);

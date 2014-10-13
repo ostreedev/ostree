@@ -119,7 +119,8 @@ ot_dump_object (OstreeObjectType   objtype,
                 GVariant          *variant,
                 OstreeDumpFlags    flags)
 {
-  g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
+  if (!(flags & OSTREE_DUMP_SKIP_OBJ_TYPE))
+    g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
 
   if (flags & OSTREE_DUMP_RAW)
     {
