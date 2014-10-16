@@ -392,7 +392,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
           gboolean is_bare = (current_repo->mode == OSTREE_REPO_MODE_BARE
                               && mode == OSTREE_REPO_CHECKOUT_MODE_NONE);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
-                                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER);
+                                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER
+                                               && current_repo->enable_uncompressed_cache);
 
           /* But only under these conditions */
           if (is_bare || is_archive_z2_with_cache)

@@ -752,13 +752,13 @@ ostree_repo_open (OstreeRepo    *self,
   if (self->inited)
     return TRUE;
 
-  if (!g_file_test (gs_file_get_path_cached (self->objects_dir), G_FILE_TEST_IS_DIR))
+  if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Couldn't find objects directory '%s'",
-                   gs_file_get_path_cached (self->objects_dir));
+      g_prefix_error (error, "Reading objects/ directory: ");
       goto out;
     }
+
+  self->writable = faccessat (AT_FDCWD, gs_file_get_path_cached (self->objects_dir), W_OK, 0) == 0;
 
   self->config = g_key_file_new ();
   if (!g_key_file_load_from_file (self->config, gs_file_get_path_cached (self->config_file), 0, error))
@@ -812,9 +812,14 @@ ostree_repo_open (OstreeRepo    *self,
         }
     }
 
-  if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
-                                            TRUE, &self->enable_uncompressed_cache, error))
-    goto out;
+  if (self->writable)
+    {
+      if (!ot_keyfile_get_boolean_with_default (self->config, "core", "enable-uncompressed-cache",
+                                                TRUE, &self->enable_uncompressed_cache, error))
+        goto out;
+    }
+  else
+    self->enable_uncompressed_cache = FALSE;
 
   {
     gboolean do_fsync;
@@ -837,13 +842,10 @@ ostree_repo_open (OstreeRepo    *self,
       }
   }
 
-  if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
-    goto out;
-
   if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
     goto out;
 
-  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
       if (!gs_file_ensure_directory (self->uncompressed_objects_dir, TRUE, cancellable, error))
         goto out;
