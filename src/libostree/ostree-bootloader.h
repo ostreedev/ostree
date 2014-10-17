@@ -37,7 +37,10 @@ struct _OstreeBootloaderInterface
   GTypeInterface g_iface;
 
   /* virtual functions */
-  gboolean             (* query)                  (OstreeBootloader  *self);
+  gboolean             (* query)                  (OstreeBootloader *bootloader,
+                                                   gboolean         *out_is_active,
+                                                   GCancellable     *cancellable,
+                                                   GError          **error);
   const char *         (* get_name)               (OstreeBootloader  *self);
   gboolean             (* write_config)           (OstreeBootloader  *self,
                                                    int            bootversion,
@@ -48,7 +51,10 @@ struct _OstreeBootloaderInterface
 
 GType _ostree_bootloader_get_type (void) G_GNUC_CONST;
 
-gboolean _ostree_bootloader_query (OstreeBootloader *self);
+gboolean _ostree_bootloader_query (OstreeBootloader *bootloader,
+                                   gboolean         *out_is_active,
+                                   GCancellable     *cancellable,
+                                   GError          **error);
 
 const char *_ostree_bootloader_get_name (OstreeBootloader  *self);
 

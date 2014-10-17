@@ -30,11 +30,14 @@ _ostree_bootloader_default_init (OstreeBootloaderInterface *iface)
 }
 
 gboolean
-_ostree_bootloader_query (OstreeBootloader  *self)
+_ostree_bootloader_query (OstreeBootloader *self,
+                          gboolean         *out_is_active,
+                          GCancellable     *cancellable,
+                          GError          **error)
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
-  return OSTREE_BOOTLOADER_GET_IFACE (self)->query (self);
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->query (self, out_is_active, cancellable, error);
 }
 
 /**

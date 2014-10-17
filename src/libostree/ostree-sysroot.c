@@ -846,29 +846,46 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
 /**
  * ostree_sysroot_query_bootloader:
  * @sysroot: Sysroot
- *
- * Returns: (transfer full): Currently active bootloader in @sysroot
+ * @out_bootloader: (out) (transfer full) (allow-none): Return location for bootloader, may be %NULL
+ * @cancellable: Cancellable
+ * @error: Error
  */
-OstreeBootloader *
-_ostree_sysroot_query_bootloader (OstreeSysroot *self)
+gboolean
+_ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
+                                  OstreeBootloader **out_bootloader,
+                                  GCancellable      *cancellable,
+                                  GError           **error)
 {
-  OstreeBootloaderSyslinux *syslinux;
-  OstreeBootloaderUboot    *uboot;
-  OstreeBootloaderGrub2    *grub2;
+  gboolean ret = FALSE;
+  gboolean is_active;
+  gs_unref_object OstreeBootloader *ret_loader = NULL;
 
-  syslinux = _ostree_bootloader_syslinux_new (self);
-  if (_ostree_bootloader_query ((OstreeBootloader*)syslinux))
-    return (OstreeBootloader*) (syslinux);
+  ret_loader = (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
+  if (!_ostree_bootloader_query (ret_loader, &is_active,
+                                 cancellable, error))
+    goto out;
+  if (!is_active)
+    {
+      g_object_unref (ret_loader);
+      ret_loader = (OstreeBootloader*)_ostree_bootloader_grub2_new (sysroot);
+      if (!_ostree_bootloader_query (ret_loader, &is_active,
+                                     cancellable, error))
+        goto out;
+    }
+  if (!is_active)
+    {
+      g_object_unref (ret_loader);
+      ret_loader = (OstreeBootloader*)_ostree_bootloader_uboot_new (sysroot);
+      if (!_ostree_bootloader_query (ret_loader, &is_active, cancellable, error))
+        goto out;
+    }
+  if (!is_active)
+    g_clear_object (&ret_loader);
 
-  grub2 = _ostree_bootloader_grub2_new (self);
-  if (_ostree_bootloader_query ((OstreeBootloader*)grub2))
-    return (OstreeBootloader*) (grub2);
-
-  uboot = _ostree_bootloader_uboot_new (self);
-  if (_ostree_bootloader_query ((OstreeBootloader*)uboot))
-    return (OstreeBootloader*) (uboot);
-
-  return NULL;
+  ret = TRUE;
+  gs_transfer_out_value (out_bootloader, &ret_loader);
+ out:
+  return ret;
 }
 
 char *

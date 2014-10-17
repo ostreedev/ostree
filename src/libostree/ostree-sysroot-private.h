@@ -75,7 +75,10 @@ _ostree_sysroot_get_devino (GFile         *path,
 
 char *_ostree_sysroot_join_lines (GPtrArray  *lines);
 
-OstreeBootloader *_ostree_sysroot_query_bootloader (OstreeSysroot         *sysroot);
+gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
+                                           OstreeBootloader **out_bootloader,
+                                           GCancellable      *cancellable,
+                                           GError           **error);
 
 G_END_DECLS
 

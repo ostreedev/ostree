@@ -42,11 +42,15 @@ G_DEFINE_TYPE_WITH_CODE (OstreeBootloaderSyslinux, _ostree_bootloader_syslinux, 
                          G_IMPLEMENT_INTERFACE (OSTREE_TYPE_BOOTLOADER, _ostree_bootloader_syslinux_bootloader_iface_init));
 
 static gboolean
-_ostree_bootloader_syslinux_query (OstreeBootloader *bootloader)
+_ostree_bootloader_syslinux_query (OstreeBootloader *bootloader,
+                                   gboolean         *out_is_active,
+                                   GCancellable     *cancellable,
+                                   GError          **error)
 {
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
 
-  return g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
+  *out_is_active = g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
+  return TRUE;
 }
 
 static const char *

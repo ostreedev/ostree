@@ -34,7 +34,7 @@ GType _ostree_bootloader_grub2_get_type (void) G_GNUC_CONST;
 
 OstreeBootloaderGrub2 * _ostree_bootloader_grub2_new (OstreeSysroot *sysroot);
 
-gboolean _ostree_bootloader_grub2_generate_config (OstreeBootloaderGrub2 *self, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
+gboolean _ostree_bootloader_grub2_generate_config (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
 
