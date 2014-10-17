@@ -74,6 +74,11 @@ gboolean      ostree_repo_remote_add (OstreeRepo     *self,
                                       GCancellable   *cancellable,
                                       GError        **error);
 
+gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
+                                         const char     *name,
+                                         GCancellable   *cancellable,
+                                         GError        **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,

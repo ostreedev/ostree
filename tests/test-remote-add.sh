@@ -32,3 +32,13 @@ echo "ok config"
 $OSTREE remote add --no-gpg-verify another http://another.com/repo
 assert_file_has_content $test_tmpdir/repo/config "gpg-verify=false"
 echo "ok remote no gpg-verify"
+
+$OSTREE remote delete another
+echo "ok remote delete"
+
+if $OSTREE remote delete nosuchremote 2>err.txt; then
+    assert_not_reached "Deleting remote unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "error: "
+
+

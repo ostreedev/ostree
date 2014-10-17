@@ -474,6 +474,82 @@ ostree_repo_remote_add (OstreeRepo     *self,
   return ret;
 }
 
+/**
+ * ostree_repo_remote_delete:
+ * @self: Repo
+ * @name: Name of remote
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Delete the remote named @name.  It is an error if the provided
+ * remote does not exist.
+ *
+ */
+gboolean
+ostree_repo_remote_delete (OstreeRepo     *self,
+                           const char     *name,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
+  local_cleanup_keyfile GKeyFile *target_keyfile = NULL;
+  gs_free char *section = NULL;
+  gs_unref_object GFile *target_conf = NULL;
+  gboolean is_system;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (strchr (name, '/') != NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid character '/' in remote name: %s",
+                   name);
+      goto out;
+    }
+
+  section = g_strdup_printf ("remote \"%s\"", name);
+
+  /* Note we prefer deleting from the config if it exists there */
+  if (g_key_file_has_group (self->config, section))
+    is_system = FALSE;
+  else
+    is_system = ostree_repo_is_system (self);
+
+  if (is_system)
+    {
+      gs_free char *target_name = NULL;
+
+      target_name = g_strconcat (name, ".conf", NULL);
+      target_conf = g_file_get_child (etc_ostree_remotes_d, target_name);
+
+      if (!gs_file_unlink (target_conf, cancellable, error))
+        goto out;
+    }
+  else
+    {
+      gsize len;
+      gs_free char *data = NULL;
+
+      target_conf = g_object_ref (self->config_file);
+
+      target_keyfile = ostree_repo_copy_config (self);
+
+      if (!g_key_file_remove_group (target_keyfile, section, error))
+        goto out;
+
+      data = g_key_file_to_data (target_keyfile, &len, NULL);
+      if (!g_file_replace_contents (target_conf, data, len,
+                                    NULL, FALSE, 0, NULL,
+                                    cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 static gboolean
 ostree_repo_mode_to_string (OstreeRepoMode   mode,
                             const char     **out_mode,

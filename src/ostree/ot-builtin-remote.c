@@ -160,6 +160,11 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
       g_print ("%s\n", url);
     }
+  else if (!strcmp (op, "delete"))
+    {
+      if (!ostree_repo_remote_delete (repo, remote_name, cancellable, error))
+        goto out;
+    }
   else
     {
       usage_error (context, "Unknown operation", error);
