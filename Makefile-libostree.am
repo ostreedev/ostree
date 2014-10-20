@@ -123,6 +123,11 @@ libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)
 endif
 
+if USE_SELINUX
+libostree_1_la_CFLAGS += $(OT_DEP_SELINUX_CFLAGS)
+libostree_1_la_LIBADD += $(OT_DEP_SELINUX_LIBS)
+endif
+
 if BUILDOPT_INTROSPECTION
 OSTree-1.0.gir: libostree-1.la Makefile
 OSTree_1_0_gir_EXPORT_PACKAGES = ostree-1
