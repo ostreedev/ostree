@@ -26,11 +26,15 @@ echo "1..1"
 echo "Testing:" 1>&2
 test_recursive() {
     local cmd=$1
+    local root=$2
+
     echo "$cmd" 1>&2
     $cmd --help 1>out 2>err
     # --help message goes to standard output
-    assert_file_has_content out "[Uu]sage"
-    assert_file_has_content out "$cmd"
+    if [ "$root" == "1" ] ; then
+        assert_file_has_content out "[Uu]sage"
+        assert_file_has_content out "$cmd"
+    fi
     assert_file_empty err
     builtins=`sed -n '/^Builtin commands/,/^[^ ]/p' <out | tail -n +2`
     if [ "$builtins" != "" ] ; then
@@ -49,11 +53,11 @@ test_recursive() {
         assert_file_empty out
 
         for subcmd in $builtins ; do
-            test_recursive "$cmd $subcmd"
+            test_recursive "$cmd $subcmd" 0
         done
     fi
 }
 
-test_recursive ostree
+test_recursive ostree 1
 
 echo "ok help option is properly supported"
