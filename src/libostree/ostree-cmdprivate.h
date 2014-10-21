@@ -28,7 +28,7 @@ typedef struct {
   gboolean (* ostree_generate_grub2_config) (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
 } OstreeCmdPrivateVTable;
 
-OstreeCmdPrivateVTable *
+const OstreeCmdPrivateVTable *
 ostree_cmd__private__ (void);
 
 G_END_DECLS

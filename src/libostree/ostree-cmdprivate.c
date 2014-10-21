@@ -40,7 +40,7 @@ impl_ostree_generate_grub2_config (OstreeSysroot *sysroot, int bootversion, int 
  * Do not call this function; it is used to share private API between
  * the OSTree commandline and the library.
  */
-OstreeCmdPrivateVTable *
+const OstreeCmdPrivateVTable *
 ostree_cmd__private__ (void)
 {
   static OstreeCmdPrivateVTable table = {
