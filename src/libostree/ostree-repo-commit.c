@@ -72,6 +72,22 @@ commit_loose_object_trusted (OstreeRepo        *self,
 {
   gboolean ret = FALSE;
 
+  /* We may be writing as root to a non-root-owned repository; if so,
+   * automatically inherit the non-root ownership.
+   */
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
+      && self->target_owner_uid != -1) 
+    {
+      if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
+                                self->target_owner_uid,
+                                self->target_owner_gid,
+                                AT_SYMLINK_NOFOLLOW) == -1))
+        {
+          ot_util_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
   /* Special handling for symlinks in bare repositories */
   if (is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
     {

@@ -819,6 +819,7 @@ ostree_repo_open (OstreeRepo    *self,
 {
   gboolean ret = FALSE;
   gboolean is_archive;
+  struct stat stbuf;
   gs_free char *version = NULL;
   gs_free char *mode = NULL;
   gs_free char *parent_repo_path = NULL;
@@ -835,6 +836,22 @@ ostree_repo_open (OstreeRepo    *self,
     }
 
   self->writable = faccessat (AT_FDCWD, gs_file_get_path_cached (self->objects_dir), W_OK, 0) == 0;
+
+  if (fstat (self->objects_dir_fd, &stbuf) != 0)
+    {
+      ot_util_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (stbuf.st_uid != getuid () || stbuf.st_gid != getgid ())
+    {
+      self->target_owner_uid = stbuf.st_uid;
+      self->target_owner_gid = stbuf.st_gid;
+    }
+  else
+    {
+      self->target_owner_uid = self->target_owner_gid = -1;
+    }
 
   self->config = g_key_file_new ();
   if (!g_key_file_load_from_file (self->config, gs_file_get_path_cached (self->config_file), 0, error))
