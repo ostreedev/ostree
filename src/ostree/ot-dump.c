@@ -26,6 +26,7 @@
 
 #include "ot-dump.h"
 #include "otutil.h"
+#include "ot-admin-functions.h"
 
 void
 ot_dump_variant (GVariant *variant)
@@ -92,6 +93,7 @@ dump_commit (GVariant            *variant,
   const gchar *body;
   guint64 timestamp;
   gs_free gchar *str = NULL;
+  gs_free gchar *version = NULL;
 
   /* See OSTREE_COMMIT_GVARIANT_FORMAT */
   g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,
@@ -101,6 +103,11 @@ dump_commit (GVariant            *variant,
   str = format_timestamp (timestamp);
   if (str)
     g_print ("Date:  %s\n", str);
+
+  if ((version = ot_admin_checksum_version (variant)))
+    {
+      g_print ("Version: %s\n", version);
+    }
 
   g_print ("\n");
   dump_indented_lines (subject);
