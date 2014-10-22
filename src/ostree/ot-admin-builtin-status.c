@@ -33,11 +33,27 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+static char *
+version_of_commit (OstreeRepo *repo, const char *checksum)
+{
+  gs_unref_variant GVariant *variant = NULL;
+  
+  /* Shouldn't fail, but if it does, we ignore it */
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
+                                 &variant, NULL))
+    goto out;
+
+  return ot_admin_checksum_version (variant);
+ out:
+  return NULL;
+}
+
 gboolean
 ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
+  gs_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   guint i;
@@ -50,6 +66,9 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))
+    goto out;
+
+  if (!ostree_sysroot_get_repo (sysroot, &repo, cancellable, error))
     goto out;
 
   deployments = ostree_sysroot_get_deployments (sysroot);
@@ -65,12 +84,16 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
         {
           OstreeDeployment *deployment = deployments->pdata[i];
           GKeyFile *origin;
+          const char *ref = ostree_deployment_get_csum (deployment);
+          gs_free gchar *version = version_of_commit (repo, ref);
 
           g_print ("%c %s %s.%d\n",
                    deployment == booted_deployment ? '*' : ' ',
                    ostree_deployment_get_osname (deployment),
                    ostree_deployment_get_csum (deployment),
                    ostree_deployment_get_deployserial (deployment));
+          if (version)
+            g_print ("    Version: %s\n", version);
           origin = ostree_deployment_get_origin (deployment);
           if (!origin)
             g_print ("    origin: none\n");
