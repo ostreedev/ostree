@@ -72,17 +72,26 @@ let loosePath = repo.get_path().resolve_relative_path('objects/' + objectToCorru
 let iostream = loosePath.open_readwrite(null);
 let info = iostream.query_info('standard::size', null);
 let size = info.get_size();
-let byteOffsetToCorrupt = GLib.random_int_range(0, size);
-iostream.seek(byteOffsetToCorrupt, GLib.SeekType.SET, null);
 let datain = Gio.DataInputStream.new(iostream.get_input_stream());
 let dataout = Gio.DataOutputStream.new(iostream.get_output_stream());
-let inbyte = datain.read_byte(null);
-let outbyte = (inbyte + 1) % 255;
-dataout.put_byte(outbyte, null);
+let bytesToChange = 10;
+let status = "";
+var bytesChanged = {}
+for (i = 0; i < bytesToChange; i++) {
+    let byteOffsetToCorrupt;
+    do {
+        byteOffsetToCorrupt = GLib.random_int_range(0, size);
+    } while (byteOffsetToCorrupt in bytesChanged);
+    iostream.seek(byteOffsetToCorrupt, GLib.SeekType.SET, null);
+    let inbyte = datain.read_byte(null);
+    let outbyte = (inbyte + 1) % 255;
+    dataout.put_byte(outbyte, null);
+    bytesChanged[byteOffsetToCorrupt] = byteOffsetToCorrupt;
+    status += "Changed byte offset " + byteOffsetToCorrupt + " from " + inbyte + " to " + outbyte + "\n";
+}
 dataout.flush(null);
 iostream.close(null);
-let status = "Changed byte offset " + byteOffsetToCorrupt + " from " + inbyte + " to " + outbyte;
-print(status);
 
+print(status);
 let successFile = Gio.File.new_for_path('corrupted-status.txt');
 successFile.replace_contents(status, null, false, 0, null);
