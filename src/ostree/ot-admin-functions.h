@@ -32,5 +32,9 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
                                               const char          *osname,
                                               GCancellable        *cancellable,
                                               GError             **error);
+
+char *
+ot_admin_checksum_version (GVariant *checksum);
+
 G_END_DECLS
 
