@@ -143,13 +143,13 @@ setup_fake_remote_repo1() {
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
-    ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body"
+    ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.0 -b main -s "A remote commit" -m "Some Commit body"
     mkdir baz/deeper
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.1 -b main -s "Add deeper"
     echo hi > baz/deeper/ohyeah
     mkdir baz/another/
     echo x > baz/another/y
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.2 -b main -s "The rest"
     cd ..
     rm -rf gnomerepo-files
     
@@ -227,19 +227,19 @@ EOF
     mkdir -p usr/etc/testdirectory
     echo "a default daemon file" > usr/etc/testdirectory/test
 
-    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build"
     
     # Ensure these commits have distinct second timestamps
     sleep 2
     echo "a new executable" > usr/bin/sh
-    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmaster/x86_64-runtime -s "Build"
 
     cd ${test_tmpdir}
     cp -a osdata osdata-devel
     cd osdata-devel
     mkdir -p usr/include
     echo "a development header" > usr/include/foo.h
-    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-devel -s "Build"
+    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-devel -s "Build"
 
     ostree --repo=${test_tmpdir}/testos-repo fsck -q
 
@@ -293,6 +293,8 @@ os_repository_new_commit ()
 
     echo "content iteration ${content_iteration}" > usr/bin/content-iteration
 
-    ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Build"
+    version=$(date "+%Y%m%d.${content_iteration}")
+
+    ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b testos/buildmaster/x86_64-runtime -s "Build"
     cd ${test_tmpdir}
 }

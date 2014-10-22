@@ -26,7 +26,9 @@ rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runt
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
 ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot status
+ostree admin --sysroot=sysroot status | tee status.txt
+
+assert_file_has_content status.txt 'Version: 1.0.10'
 
 echo "ok deploy command"
 
@@ -45,6 +47,7 @@ assert_file_has_content sysroot/boot/ostree/testos-${bootcsum}/vmlinuz-3.6.0 'a 
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.1/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
 ostree admin --sysroot=sysroot status
+
 
 echo "ok layout"
 
