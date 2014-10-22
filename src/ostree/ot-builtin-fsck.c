@@ -118,6 +118,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
             }
           else
             {
+              *error = temp_error;
               g_prefix_error (error, "Loading file object %s: ", checksum);
               goto out;
             }
