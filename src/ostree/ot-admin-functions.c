@@ -62,13 +62,12 @@ char *
 ot_admin_checksum_version (GVariant *checksum)
 {
   gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_variant GVariant *value = NULL;
+  const char *ret = NULL;
 
   metadata = g_variant_get_child_value (checksum, 0);
-  if ((value = g_variant_lookup_value (metadata, "version", NULL)))
-    {
-      return g_strdup (g_variant_get_string (value, NULL));
-    }
 
-  return NULL;
+  if (!g_variant_lookup (metadata, "version", "&s", &ret))
+    return NULL;
+
+  return g_strdup (ret);
 }
