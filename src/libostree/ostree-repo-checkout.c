@@ -587,6 +587,16 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
+  if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
+    {
+      ret = checkout_one_file_at (self, (GFile *) source,
+                                  source_info,
+                                  destination_dfd, destination,
+                                  g_file_info_get_name (source_info),
+                                  mode, TRUE,
+                                  cancellable, error);
+      goto out;
+    }
   dir_enum = g_file_enumerate_children ((GFile*)source,
                                         OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
