@@ -48,3 +48,26 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
  out:
   return ret;
 }
+
+/**
+ * ot_admin_checksum_version:
+ * @checksum: A GVariant from an ostree checksum.
+ *
+ *
+ * Get the version metadata string from a commit variant object, if it exists.
+ *
+ * Returns: A newly allocated string of the version, or %NULL is none
+ */
+char *
+ot_admin_checksum_version (GVariant *checksum)
+{
+  gs_unref_variant GVariant *metadata = NULL;
+  const char *ret = NULL;
+
+  metadata = g_variant_get_child_value (checksum, 0);
+
+  if (!g_variant_lookup (metadata, "version", "&s", &ret))
+    return NULL;
+
+  return g_strdup (ret);
+}
