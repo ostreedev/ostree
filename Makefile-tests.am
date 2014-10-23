@@ -45,6 +45,7 @@ testfiles = test-basic \
 	test-admin-deploy-uboot \
 	test-admin-instutil-set-kargs \
 	test-admin-upgrade-not-backwards \
+	test-repo-checkout-subpath 	\
 	test-setuid \
 	test-delta \
 	test-xattrs \
