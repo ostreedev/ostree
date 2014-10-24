@@ -1198,11 +1198,7 @@ ostree_repo_pull (OstreeRepo               *self,
   return ostree_repo_pull_one_dir (self, remote_name, NULL, refs_to_fetch, flags, progress, cancellable, error);
 }
 
-/**
- * ostree_repo_pull_one_dir:
- *
- * Like ostree_repo_pull(), but supports pulling only a subpath.
- */
+/* Documented in ostree-repo.c */
 gboolean
 ostree_repo_pull_one_dir (OstreeRepo               *self,
                           const char               *remote_name,
@@ -1212,6 +1208,31 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                           OstreeAsyncProgress      *progress,
                           GCancellable             *cancellable,
                           GError                  **error)
+{
+  GVariantBuilder builder;
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+  if (dir_to_pull)
+    g_variant_builder_add (&builder, "{s@v}", "subdir",
+                           g_variant_new_variant (g_variant_new_string (dir_to_pull)));
+  g_variant_builder_add (&builder, "{s@v}", "flags",
+                         g_variant_new_variant (g_variant_new_int32 (flags)));
+  if (refs_to_fetch)
+    g_variant_builder_add (&builder, "{s@v}", "refs",
+                           g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
+
+  return ostree_repo_pull_with_options (self, remote_name, g_variant_builder_end (&builder),
+                                        progress, cancellable, error);
+}
+
+/* Documented in ostree-repo.c */
+gboolean
+ostree_repo_pull_with_options (OstreeRepo             *self,
+                               const char             *remote_name,
+                               GVariant               *options,
+                               OstreeAsyncProgress    *progress,
+                               GCancellable           *cancellable,
+                               GError                **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
@@ -1232,12 +1253,27 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
   GKeyFile *config = NULL;
   GKeyFile *remote_config = NULL;
   char **configured_branches = NULL;
-  gboolean is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   guint64 bytes_transferred;
   guint64 end_time;
+  OstreeRepoPullFlags flags;
+  const char *dir_to_pull = NULL;
+  char **refs_to_fetch = NULL;
+  gboolean is_mirror;
+
+  if (options)
+    {
+      int flags_i;
+      (void) g_variant_lookup (options, "refs", "^a&s", &refs_to_fetch);
+      (void) g_variant_lookup (options, "flags", "i", &flags_i);
+      /* Reduce risk of issues if enum happens to be 64 bit for some reason */
+      flags = flags_i;
+      (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
+    }
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
+
+  is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
 
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_ref_thread_default ();
@@ -1651,8 +1687,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 
   ret = TRUE;
  out:
-  if (pull_data->main_context)
-    g_main_context_unref (pull_data->main_context);
+  g_main_context_unref (pull_data->main_context);
   if (pull_data->loop)
     g_main_loop_unref (pull_data->loop);
   g_strfreev (configured_branches);
