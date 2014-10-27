@@ -2207,6 +2207,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
  *   * subdir (s): Pull just this subdirectory
  *   * flags (i): An instance of #OstreeRepoPullFlags
  *   * refs: (as): Array of string refs
+ *   * depth: (i): How far in the history to traverse; default is 0, -1 means infinite
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,

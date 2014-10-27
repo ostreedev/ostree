@@ -31,6 +31,7 @@ testfiles = test-basic \
 	test-libarchive \
 	test-pull-archive-z \
 	test-pull-corruption \
+	test-pull-depth \
 	test-pull-mirror-summary \
 	test-pull-large-metadata \
 	test-pull-metalink \

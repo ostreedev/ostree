@@ -55,6 +55,7 @@ typedef struct {
   GVariant         *summary;
   GPtrArray        *static_delta_metas;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
+  GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
   GHashTable       *requested_metadata; /* Maps object name to itself */
   GHashTable       *requested_content; /* Maps object name to itself */
@@ -67,6 +68,7 @@ typedef struct {
   guint             n_fetched_metadata;
   guint             n_fetched_content;
 
+  int               maxdepth;
   guint64           start_time;
 
   char         *dir;
@@ -855,15 +857,31 @@ scan_commit_object (OtPullData         *pull_data,
                     GError            **error)
 {
   gboolean ret = FALSE;
+  gboolean have_parent;
   gs_unref_variant GVariant *commit = NULL;
+  gs_unref_variant GVariant *parent_csum = NULL;
   gs_unref_variant GVariant *tree_contents_csum = NULL;
   gs_unref_variant GVariant *tree_meta_csum = NULL;
+  gpointer depthp;
+  gint depth;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Exceeded maximum recursion");
       goto out;
+    }
+
+  if (g_hash_table_lookup_extended (pull_data->commit_to_depth, checksum,
+                                    NULL, &depthp))
+    {
+      depth = GPOINTER_TO_INT (depthp);
+    }
+  else
+    {
+      depth = pull_data->maxdepth;
+      g_hash_table_insert (pull_data->commit_to_depth, g_strdup (checksum),
+                           GINT_TO_POINTER (depth));
     }
 
 #ifdef HAVE_GPGME
@@ -884,6 +902,46 @@ scan_commit_object (OtPullData         *pull_data,
     goto out;
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
+  g_variant_get_child (commit, 1, "@ay", &parent_csum);
+  have_parent = g_variant_n_children (parent_csum) > 0;
+  if (have_parent && pull_data->maxdepth == -1)
+    {
+      if (!scan_one_metadata_object_c (pull_data,
+                                       ostree_checksum_bytes_peek (parent_csum),
+                                       OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1,
+                                       cancellable, error))
+        goto out;
+    }
+  else if (have_parent && depth > 0)
+    {
+      char parent_checksum[65];
+      gpointer parent_depthp;
+      int parent_depth;
+
+      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (parent_csum), parent_checksum);
+  
+      if (g_hash_table_lookup_extended (pull_data->commit_to_depth, parent_checksum,
+                                        NULL, &parent_depthp))
+        {
+          parent_depth = GPOINTER_TO_INT (parent_depthp);
+        }
+      else
+        {
+          parent_depth = depth - 1;
+        }
+
+      if (parent_depth >= 0)
+        {
+          g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
+                               GINT_TO_POINTER (parent_depth));
+          if (!scan_one_metadata_object_c (pull_data,
+                                           ostree_checksum_bytes_peek (parent_csum),
+                                           OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1,
+                                           cancellable, error))
+            goto out;
+        }
+    }
+
   g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
   g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
 
@@ -968,6 +1026,15 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
             {
               do_scan = TRUE;
               pull_data->commitpartial_exists = TRUE;
+            }
+          else if (pull_data->maxdepth != 0)
+            {
+              /* Not fully accurate, but the cost here of scanning all
+               * input commit objects if we're doing a depth fetch is
+               * pretty low.  We'll do more accurate handling of depth
+               * when parsing the actual commit.
+               */
+              do_scan = TRUE;
             }
         }
 
@@ -1268,7 +1335,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Reduce risk of issues if enum happens to be 64 bit for some reason */
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
+      (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
     }
+
+  g_return_val_if_fail (pull_data->maxdepth < -1, FALSE);
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
@@ -1286,6 +1356,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->expected_commit_sizes = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                             (GDestroyNotify)g_free,
                                                             (GDestroyNotify)g_free);
+  pull_data->commit_to_depth = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                      (GDestroyNotify)g_free,
+                                                      NULL);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1697,6 +1770,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     soup_uri_free (pull_data->base_uri);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_metas, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);

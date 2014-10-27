@@ -30,11 +30,13 @@
 static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
 static char* opt_subpath;
+static int opt_depth = 0;
  
  static GOptionEntry options[] = {
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
+   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { NULL }
  };
 
@@ -97,10 +99,25 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
       progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
     }
 
-  if (!ostree_repo_pull_one_dir (repo, remote, opt_subpath,
-                                  refs_to_fetch ? (char**)refs_to_fetch->pdata : NULL,
-                                  pullflags, progress, cancellable, error))
-    goto out;
+  {
+    GVariantBuilder builder;
+    g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+    if (opt_subpath)
+      g_variant_builder_add (&builder, "{s@v}", "subdir",
+                             g_variant_new_variant (g_variant_new_string (opt_subpath)));
+    g_variant_builder_add (&builder, "{s@v}", "flags",
+                           g_variant_new_variant (g_variant_new_int32 (pullflags)));
+    if (refs_to_fetch)
+      g_variant_builder_add (&builder, "{s@v}", "refs",
+                             g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
+    g_variant_builder_add (&builder, "{s@v}", "depth",
+                           g_variant_new_variant (g_variant_new_int32 (opt_depth)));
+    
+    if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
+                                        progress, cancellable, error))
+      goto out;
+  }
 
   if (progress)
     ostree_async_progress_finish (progress);
