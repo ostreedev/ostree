@@ -320,7 +320,7 @@ rm -f ${grub_cfg}.new
       /* NOTE: NON-ATOMIC REPLACEMENT; WE can't do anything else on FAT;
        * see https://bugzilla.gnome.org/show_bug.cgi?id=724246
        */
-      if (!ot_gfile_ensure_unlinked (new_config_path, cancellable, error))
+      if (!ot_gfile_ensure_unlinked (self->config_path_efi, cancellable, error))
         goto out;
       if (!gs_file_rename (new_config_path, self->config_path_efi,
                            cancellable, error))
