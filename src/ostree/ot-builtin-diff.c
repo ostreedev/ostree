@@ -43,7 +43,7 @@ parse_file_or_commit (OstreeRepo  *repo,
                       GError     **error)
 {
   gboolean ret = FALSE;
-  gs_free GFile *ret_file = NULL;
+  gs_unref_object GFile *ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
       || g_str_has_prefix (arg, "./")
