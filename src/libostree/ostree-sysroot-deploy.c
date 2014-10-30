@@ -1240,9 +1240,11 @@ parse_os_release (const char *contents,
  */
 static gboolean
 install_deployment_kernel (OstreeSysroot   *sysroot,
+                           OstreeRepo      *repo,
                            int             new_bootversion,
                            OstreeDeployment   *deployment,
                            guint           n_deployments,
+                           gboolean        show_osname,
                            GCancellable   *cancellable,
                            GError        **error)
 
@@ -1262,15 +1264,16 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   gs_unref_object GFile *etc_os_release = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
   gs_free char *contents = NULL;
+  gs_free char *deployment_version = NULL;
   gs_unref_hashtable GHashTable *osrelease_values = NULL;
   gs_free char *linux_relpath = NULL;
   gs_free char *linux_key = NULL;
   gs_free char *initramfs_relpath = NULL;
-  gs_free char *title_key = NULL;
   gs_free char *initrd_key = NULL;
   gs_free char *version_key = NULL;
   gs_free char *ostree_kernel_arg = NULL;
   gs_free char *options_key = NULL;
+  GString *title_key;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   const char *val;
   OstreeBootconfigParser *bootconfig;
@@ -1343,10 +1346,44 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
       goto out;
     }
   
-  title_key = g_strdup_printf ("ostree:%s:%d %s", ostree_deployment_get_osname (deployment),
-                               ostree_deployment_get_index (deployment),
-                               val);
-  ostree_bootconfig_parser_set (bootconfig, "title", title_key);
+
+  if (repo)
+    {
+      /* Try extracting a version for this deployment. */
+      const char *csum = ostree_deployment_get_csum (deployment);
+      gs_unref_variant GVariant *variant = NULL;
+      gs_unref_variant GVariant *metadata = NULL;
+
+      /* XXX Copying ot_admin_checksum_version() + bits from
+       *     ot-admin-builtin-status.c.  Maybe this should be
+       *     public API in libostree? */
+      if (ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, csum,
+                                    &variant, NULL))
+        {
+          metadata = g_variant_get_child_value (variant, 0);
+          g_variant_lookup (metadata, "version", "s", &deployment_version);
+        }
+    }
+
+  title_key = g_string_new (val);
+  if (deployment_version && *deployment_version)
+    {
+      g_string_append_c (title_key, ' ');
+      g_string_append (title_key, deployment_version);
+    }
+  g_string_append (title_key, " (ostree");
+  if (show_osname)
+    {
+      g_string_append_c (title_key, ':');
+      g_string_append (title_key, osname);
+    }
+  if (!(deployment_version && *deployment_version))
+    {
+      g_string_append_printf (title_key, ":%d", ostree_deployment_get_index (deployment));
+    }
+  g_string_append_c (title_key, ')');
+  ostree_bootconfig_parser_set (bootconfig, "title", title_key->str);
+  g_string_free (title_key, TRUE);
 
   version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, "version", version_key);
@@ -1600,6 +1637,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       int new_bootversion = self->bootversion ? 0 : 1;
       gs_unref_object OstreeBootloader *bootloader = NULL;
       gs_unref_object GFile *new_loader_entries_dir = NULL;
+      gs_unref_object OstreeRepo *repo = NULL;
+      gboolean show_osname = FALSE;
 
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
         goto out;
@@ -1611,12 +1650,34 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
       if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
         goto out;
       
+      /* Need the repo to try and extract the versions for deployments.
+       * But this is a "nice-to-have" for the bootloader UI, so failure
+       * here is not fatal to the whole operation.  We just gracefully
+       * fall back to the deployment index. */
+      (void) ostree_sysroot_get_repo (self, &repo, cancellable, NULL);
+
+      /* Only show the osname in bootloader titles if there are multiple
+       * osname's among the new deployments.  Check for that here. */
+      for (i = 1; i < new_deployments->len; i++)
+        {
+          const gchar *osname_0, *osname_i;
+
+          osname_0 = ostree_deployment_get_osname (new_deployments->pdata[0]);
+          osname_i = ostree_deployment_get_osname (new_deployments->pdata[i]);
+
+          if (!g_str_equal (osname_0, osname_i))
+            {
+              show_osname = TRUE;
+              break;
+            }
+        }
+
       for (i = 0; i < new_deployments->len; i++)
         {
           OstreeDeployment *deployment = new_deployments->pdata[i];
-          if (!install_deployment_kernel (self, new_bootversion,
+          if (!install_deployment_kernel (self, repo, new_bootversion,
                                           deployment, new_deployments->len,
-                                          cancellable, error))
+                                          show_osname, cancellable, error))
             {
               g_prefix_error (error, "Installing kernel: ");
               goto out;
