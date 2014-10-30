@@ -1322,7 +1322,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **configured_branches = NULL;
   guint64 bytes_transferred;
   guint64 end_time;
-  OstreeRepoPullFlags flags;
+  OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
   char **refs_to_fetch = NULL;
   gboolean is_mirror;
