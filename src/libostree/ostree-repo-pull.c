@@ -1338,7 +1338,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
     }
 
-  g_return_val_if_fail (pull_data->maxdepth < -1, FALSE);
+  g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
