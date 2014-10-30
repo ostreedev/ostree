@@ -57,7 +57,7 @@ function permuteDirectory() {
 
 permuteDirectory 1 files
 ostree --repo=repo commit -b test -s test --tree=dir=files
-ostree static-delta --repo=repo list
+ostree --repo=repo static-delta list
 
 origrev=$(ostree --repo=repo rev-parse test^)
 newrev=$(ostree --repo=repo rev-parse test)

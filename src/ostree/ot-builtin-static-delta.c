@@ -47,12 +47,21 @@ static OstreeCommand static_delta_subcommands[] = {
   { NULL, NULL }
 };
 
+
 static GOptionEntry generate_options[] = {
   { "from", 0, 0, G_OPTION_ARG_STRING, &opt_from_rev, "Create delta from revision REV", "REV" },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the delta with", "key-id"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
   { "max-usize", 'u', 0, G_OPTION_ARG_STRING, &opt_max_usize, "Maximum uncompressed size in megabytes", NULL},
+  { NULL }
+};
+
+static GOptionEntry apply_offline_options[] = {
+  { NULL }
+};
+
+static GOptionEntry list_options[] = {
   { NULL }
 };
 
@@ -68,8 +77,7 @@ static_delta_usage (char    **argv,
   else
     print_func = g_print;
 
-  print_func ("usage: %s --repo=PATH static-delta\n",
-              argv[0]);
+  print_func ("usage: ostree static-delta\n");
   print_func ("Builtin commands:\n");
 
   while (command->name)
@@ -88,8 +96,9 @@ ot_static_delta_builtin_list (int argc, char **argv, GCancellable *cancellable, 
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
 
-  context = g_option_context_new ("LIST - list delta files");
-  if (!ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  context = g_option_context_new ("LIST - list static delta files");
+
+  if (!ostree_option_context_parse (context, list_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (!ostree_repo_list_static_delta_names (repo, &delta_names, cancellable, error))
@@ -125,10 +134,10 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
-  if (argc >= 2 && opt_to_rev == NULL)
-    opt_to_rev = argv[1];
+  if (argc >= 3 && opt_to_rev == NULL)
+    opt_to_rev = argv[2];
 
-  if (argc < 2 && opt_to_rev == NULL)
+  if (argc < 3 && opt_to_rev == NULL)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "TO revision must be specified");
@@ -208,18 +217,18 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
 
-  context = g_option_context_new ("DELTA - Apply delta file");
-  if (!ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+  context = g_option_context_new ("DELTA - Apply static delta file");
+  if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
-  if (argc < 2)
+  if (argc < 3)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "PATH must be specified");
       goto out;
     }
 
-  patharg = argv[1];
+  patharg = argv[2];
   path = g_file_new_for_path (patharg);
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
@@ -242,30 +251,50 @@ gboolean
 ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  OstreeCommand *command;
-  const char *cmdname;
-  GOptionContext *context;
+  OstreeCommand *command = NULL;
+  const char *cmdname = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
+  int i;
+  gboolean want_help = FALSE;
 
-  context = g_option_context_new ("DELTA - Apply delta file");
-  if (!ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
+  for (i = 1; i < argc; i++)
+    {
+      if (argv[i][0] != '-')
+        {
+          cmdname = argv[i];
+          break;
+        }
+      else if (g_str_equal (argv[i], "--help") || g_str_equal (argv[i], "-h"))
+        {
+          want_help = TRUE;
+          break;
+        }
+    }
 
-  if (argc < 2)
+  if (!cmdname && !want_help)
     {
       static_delta_usage (argv, TRUE);
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "No command specified");
       goto out;
     }
-  
-  cmdname = argv[1];
-  command = static_delta_subcommands;
-  while (command->name)
+
+  if (cmdname)
     {
-      if (g_strcmp0 (cmdname, command->name) == 0)
-        break;
-      command++;
+      command = static_delta_subcommands;
+      while (command->name)
+        {
+          if (g_strcmp0 (cmdname, command->name) == 0)
+            break;
+          command++;
+        }
+    }
+
+  if (want_help && command == NULL)
+    {
+      static_delta_usage (argv, FALSE);
+      ret = TRUE;
+      goto out;
     }
 
   if (!command->fn)
@@ -276,12 +305,10 @@ ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, G
       goto out;
     }
 
-  if (!command->fn (argc-1, argv+1, cancellable, error))
+  if (!command->fn (argc, argv, cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
-  if (context)
-    g_option_context_free (context);
   return ret;
 }
