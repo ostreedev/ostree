@@ -755,3 +755,102 @@ _ostree_fetcher_get_n_requests (OstreeFetcher       *self)
 {
   return self->total_requests;
 }
+
+
+typedef struct
+{
+  GInputStream   *result_stream;
+  GMainLoop      *loop;
+  GError         **error;
+  gpointer       user_data;
+}
+FetchUriSyncData;
+
+static gboolean
+run_mainloop_monitor_fetcher (FetchUriSyncData *data)
+{
+  g_main_loop_run (data->loop);
+
+  return TRUE;
+}
+
+static void
+fetch_uri_sync_on_complete (GObject        *object,
+                            GAsyncResult   *result,
+                            gpointer        user_data)
+{
+  FetchUriSyncData *data = user_data;
+
+  data->result_stream = _ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+                                                          result, data->error);
+  g_main_loop_quit (data->loop);
+}
+
+gboolean
+_ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
+                                      SoupURI        *uri,
+                                      gboolean        add_nul,
+                                      gboolean        allow_noent,
+                                      GBytes         **out_contents,
+                                      GMainLoop      *loop,
+                                      gpointer       user_data,
+                                      GCancellable   *cancellable,
+                                      GError         **error)
+{
+  gboolean ret = FALSE;
+  const guint8 nulchar = 0;
+  gs_free char *ret_contents = NULL;
+  gs_unref_object GMemoryOutputStream *buf = NULL;
+  FetchUriSyncData data;
+  g_assert (error != NULL);
+
+  data.result_stream = NULL;
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    return FALSE;
+
+  data.user_data = user_data;
+  data.loop = loop;
+  data.error = error;
+
+  _ostree_fetcher_stream_uri_async (fetcher, uri,
+                                   OSTREE_MAX_METADATA_SIZE,
+                                   cancellable,
+                                   fetch_uri_sync_on_complete, &data);
+
+  run_mainloop_monitor_fetcher (&data);
+  if (!data.result_stream)
+    {
+      if (allow_noent)
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (error);
+              ret = TRUE;
+              *out_contents = NULL;
+            }
+        }
+      goto out;
+    }
+
+  buf = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  if (g_output_stream_splice ((GOutputStream*)buf, data.result_stream,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                              cancellable, error) < 0)
+    goto out;
+
+  if (add_nul)
+    {
+      if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
+        goto out;
+    }
+
+  if (!g_output_stream_close ((GOutputStream*)buf, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  *out_contents = g_memory_output_stream_steal_as_bytes (buf);
+ out:
+  g_clear_object (&(data.result_stream));
+  return ret;
+}
