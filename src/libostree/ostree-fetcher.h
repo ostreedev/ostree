@@ -81,16 +81,25 @@ GFile *_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
                                                        GError       **error);
 
 void _ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
-                                      SoupURI               *uri,
-                                      guint64                max_size,
-                                      GCancellable          *cancellable,
-                                      GAsyncReadyCallback    callback,
-                                      gpointer               user_data);
+                                       SoupURI               *uri,
+                                       guint64                max_size,
+                                       GCancellable          *cancellable,
+                                       GAsyncReadyCallback    callback,
+                                       gpointer               user_data);
 
 GInputStream *_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                                 GAsyncResult          *result,
                                                 GError               **error);
 
+gboolean _ostree_fetcher_contents_membuf_sync (OstreeFetcher *fetcher,
+                                               SoupURI        *uri,
+                                               gboolean       add_nul,
+                                               gboolean       allow_noent,
+                                               GBytes         **out_contents,
+                                               GMainLoop      *loop,
+                                               gpointer       user_data,
+                                               GCancellable   *cancellable,
+                                               GError         **error);
 G_END_DECLS
 
 #endif
