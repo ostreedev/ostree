@@ -50,17 +50,13 @@ OstreeMetalink *_ostree_metalink_new (OstreeFetcher  *fetcher,
 
 SoupURI *_ostree_metalink_get_uri (OstreeMetalink         *self);
 
-void _ostree_metalink_request_async (OstreeMetalink         *self,
-                                     GCancellable          *cancellable,
-                                     GAsyncReadyCallback    callback,
-                                     gpointer               user_data);
-
-gboolean _ostree_metalink_request_finish (OstreeMetalink         *self,
-                                          GAsyncResult           *result,
-                                          SoupURI               **out_target_uri,
-                                          GFile                 **out_data,
-                                          GError                **error);
-
+gboolean _ostree_metalink_request_sync (OstreeMetalink        *self,
+                                        GMainLoop             *loop,
+                                        SoupURI               **out_target_uri,
+                                        GFile                 **out_data,
+                                        SoupURI               **fetching_sync_uri,
+                                        GCancellable          *cancellable,
+                                        GError                **error);
 G_END_DECLS
 
 #endif
