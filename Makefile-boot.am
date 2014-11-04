@@ -39,7 +39,7 @@ systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service
 endif
 
-pkglibexec_SCRIPTS += src/boot/grub2-15_ostree
+dist_pkglibexec_SCRIPTS = src/boot/grub2-15_ostree
 
 if BUILDOPT_GRUB2
 install-grub2-config-hook:
