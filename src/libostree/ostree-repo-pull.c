@@ -303,49 +303,6 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   return ret;
 }
 
-typedef struct
-{
-  OtPullData             *pull_data;
-  SoupURI               **out_target_uri;
-  GFile                 **out_data;
-  gboolean                success;
-} FetchMetalinkSyncData;
-
-static void
-on_metalink_fetched (GObject          *src,
-                     GAsyncResult     *result,
-                     gpointer          user_data)
-{
-  FetchMetalinkSyncData *data = user_data;
-
-  data->success = _ostree_metalink_request_finish ((OstreeMetalink*)src, result,
-                                                   data->out_target_uri, data->out_data,
-                                                   data->pull_data->async_error);
-  g_main_loop_quit (data->pull_data->loop);
-}
-
-static gboolean
-request_metalink_sync (OtPullData             *pull_data,
-                       OstreeMetalink         *metalink,
-                       SoupURI               **out_target_uri,
-                       GFile                 **out_data,
-                       GCancellable           *cancellable,
-                       GError                **error)
-{
-  FetchMetalinkSyncData data = { 0, };
-
-  data.pull_data = pull_data;
-  data.out_target_uri = out_target_uri;
-  data.out_data = out_data;
-
-  pull_data->fetching_sync_uri = _ostree_metalink_get_uri (metalink);
-  _ostree_metalink_request_async (metalink, cancellable, on_metalink_fetched, &data);
-  
-  g_main_loop_run (pull_data->loop);
-
-  return data.success;
-}
-
 static void
 enqueue_one_object_request (OtPullData        *pull_data,
                             const char        *checksum,
@@ -1387,8 +1344,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                        OSTREE_MAX_METADATA_SIZE, metalink_uri);
       soup_uri_free (metalink_uri);
 
-      if (!request_metalink_sync (pull_data, metalink, &target_uri, &metalink_data,
-                                  cancellable, error))
+      if (! _ostree_metalink_request_sync (metalink,
+                                           pull_data->loop,
+                                           &target_uri,
+                                           &metalink_data,
+                                           &pull_data->fetching_sync_uri,
+                                           cancellable,
+                                           error))
         goto out;
 
       {

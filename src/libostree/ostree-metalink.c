@@ -658,33 +658,21 @@ static const GMarkupParser metalink_parser = {
   NULL
 };
 
-void
-_ostree_metalink_request_async (OstreeMetalink         *self,
-                                GCancellable           *cancellable,
-                                GAsyncReadyCallback     callback,
-                                gpointer                user_data)
+typedef struct
 {
-  GTask *task = g_task_new (self, cancellable, callback, user_data);
-  OstreeMetalinkRequest *request = g_new0 (OstreeMetalinkRequest, 1);
+  SoupURI               **out_target_uri;
+  GFile                 **out_data;
+  gboolean              success;
+  GError                **error;
+  GMainLoop             *loop;
+} FetchMetalinkSyncData;
 
-  request->metalink = g_object_ref (self);
-  request->urls = g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
-  request->task = task; /* Unowned */
-
-  request->parser = g_markup_parse_context_new (&metalink_parser, G_MARKUP_PREFIX_ERROR_POSITION, task, NULL);
-  
-  g_task_set_task_data (task, request, ostree_metalink_request_unref);
-  _ostree_fetcher_stream_uri_async (self->fetcher, self->uri,
-                                    self->max_size, cancellable,
-                                    on_retrieved_metalink, task);
-}
-
-gboolean
-_ostree_metalink_request_finish (OstreeMetalink         *self,
-                                 GAsyncResult           *result,
-                                 SoupURI               **out_target_uri,
-                                 GFile                 **out_data,
-                                 GError                **error)
+static gboolean
+ostree_metalink_request_finish (OstreeMetalink         *self,
+                                GAsyncResult           *result,
+                                SoupURI               **out_target_uri,
+                                GFile                 **out_data,
+                                GError                **error)
 {
   OstreeMetalinkRequest *request;
 
@@ -701,6 +689,54 @@ _ostree_metalink_request_finish (OstreeMetalink         *self,
     }
   else
     return FALSE;
+}
+
+static void
+on_metalink_fetched (GObject          *src,
+                     GAsyncResult     *result,
+                     gpointer          user_data)
+{
+  FetchMetalinkSyncData *data = user_data;
+
+  data->success = ostree_metalink_request_finish ((OstreeMetalink*)src,
+                                                  result,
+                                                  data->out_target_uri,
+                                                  data->out_data,
+                                                  data->error);
+  g_main_loop_quit (data->loop);
+}
+
+gboolean
+_ostree_metalink_request_sync (OstreeMetalink        *self,
+                               GMainLoop             *loop,
+                               SoupURI               **out_target_uri,
+                               GFile                 **out_data,
+                               SoupURI               **fetching_sync_uri,
+                               GCancellable          *cancellable,
+                               GError                **error)
+{
+  OstreeMetalinkRequest *request = g_new0 (OstreeMetalinkRequest, 1);
+  FetchMetalinkSyncData data = { 0, };
+  GTask *task = g_task_new (self, cancellable, on_metalink_fetched, &data);
+
+  data.out_target_uri = out_target_uri;
+  data.out_data = out_data;
+  data.loop = loop;
+  data.error = error;
+  *fetching_sync_uri = _ostree_metalink_get_uri (self);
+
+  request->metalink = g_object_ref (self);
+  request->urls = g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+  request->task = task; /* Unowned */
+
+  request->parser = g_markup_parse_context_new (&metalink_parser, G_MARKUP_PREFIX_ERROR_POSITION, task, NULL);
+
+  g_task_set_task_data (task, request, ostree_metalink_request_unref);
+  _ostree_fetcher_stream_uri_async (self->fetcher, self->uri,
+                                    self->max_size, cancellable,
+                                    on_retrieved_metalink, task);
+  g_main_loop_run (loop);
+  return data.success;
 }
 
 SoupURI *
