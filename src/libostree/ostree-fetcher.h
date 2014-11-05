@@ -63,11 +63,7 @@ void _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
 void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
                                        GTlsDatabase *db);
 
-char * _ostree_fetcher_query_state_text (OstreeFetcher              *self);
-
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
-
-guint _ostree_fetcher_get_n_requests (OstreeFetcher       *self);
 
 void _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                     SoupURI               *uri,
