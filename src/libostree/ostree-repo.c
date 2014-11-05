@@ -176,7 +176,6 @@ ostree_repo_constructed (GObject *object)
   self->remote_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/remotes");
 
   self->objects_dir = g_file_get_child (self->repodir, "objects");
-  self->uncompressed_objects_dir = g_file_resolve_relative_path (self->repodir, "uncompressed-objects-cache/objects");
   self->deltas_dir = g_file_get_child (self->repodir, "deltas");
   self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
   self->state_dir = g_file_get_child (self->repodir, "state");
