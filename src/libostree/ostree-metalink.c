@@ -691,16 +691,15 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
 
   g_task_set_task_data (task, request, ostree_metalink_request_unref);
 
-  if (! _ostree_fetcher_contents_membuf_sync (self->fetcher,
-                                              self->uri,
-                                              FALSE,
-                                              FALSE,
-                                              &out_contents,
-                                              loop,
-                                              NULL,
-                                              self->max_size,
-                                              cancellable,
-                                              error))
+  if (! _ostree_fetcher_request_uri_to_membuf (self->fetcher,
+                                               self->uri,
+                                               FALSE,
+                                               FALSE,
+                                               &out_contents,
+                                               loop,
+                                               self->max_size,
+                                               cancellable,
+                                               error))
     goto out;
 
   if (! on_metalink_bytes_read (request, request, &data, out_contents, error))

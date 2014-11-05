@@ -692,17 +692,8 @@ typedef struct
   GInputStream   *result_stream;
   GMainLoop      *loop;
   GError         **error;
-  gpointer       user_data;
 }
 FetchUriSyncData;
-
-static gboolean
-run_mainloop_monitor_fetcher (FetchUriSyncData *data)
-{
-  g_main_loop_run (data->loop);
-
-  return TRUE;
-}
 
 static void
 fetch_uri_sync_on_complete (GObject        *object,
@@ -717,16 +708,15 @@ fetch_uri_sync_on_complete (GObject        *object,
 }
 
 gboolean
-_ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
-                                      SoupURI        *uri,
-                                      gboolean        add_nul,
-                                      gboolean        allow_noent,
-                                      GBytes         **out_contents,
-                                      GMainLoop      *loop,
-                                      gpointer       user_data,
-                                      guint64        max_size,
-                                      GCancellable   *cancellable,
-                                      GError         **error)
+_ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
+                                       SoupURI        *uri,
+                                       gboolean        add_nul,
+                                       gboolean        allow_noent,
+                                       GBytes         **out_contents,
+                                       GMainLoop      *loop,
+                                       guint64        max_size,
+                                       GCancellable   *cancellable,
+                                       GError         **error)
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
@@ -740,7 +730,6 @@ _ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  data.user_data = user_data;
   data.loop = loop;
   data.error = error;
 
@@ -749,7 +738,7 @@ _ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
                                    cancellable,
                                    fetch_uri_sync_on_complete, &data);
 
-  run_mainloop_monitor_fetcher (&data);
+  g_main_loop_run (loop);
   if (!data.result_stream)
     {
       if (allow_noent)
