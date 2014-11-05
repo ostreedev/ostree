@@ -664,69 +664,6 @@ _ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
   return g_object_ref (pending->request_body);
 }
 
-static char *
-format_size_pair (guint64 start,
-                  guint64 max)
-{
-  if (max < 1024)
-    return g_strdup_printf ("%lu/%lu bytes", 
-                            (gulong) start,
-                            (gulong) max);
-  else
-    return g_strdup_printf ("%.1f/%.1f KiB", ((double) start) / 1024,
-                            ((double) max) / 1024);
-}
-
-char *
-_ostree_fetcher_query_state_text (OstreeFetcher              *self)
-{
-  guint n_active;
-
-  n_active = g_hash_table_size (self->sending_messages);
-  if (n_active > 0)
-    {
-      GHashTableIter hash_iter;
-      gpointer key, value;
-      GString *buf;
-
-      buf = g_string_new ("");
-
-      g_string_append_printf (buf, "%u requests", n_active);
-
-      g_hash_table_iter_init (&hash_iter, self->sending_messages);
-      while (g_hash_table_iter_next (&hash_iter, &key, &value))
-        {
-          OstreeFetcherPendingURI *active; 
-
-          active = g_hash_table_lookup (self->message_to_request, key);
-          g_assert (active != NULL);
-
-          if (active->out_tmpfile)
-            {
-              gs_unref_object GFileInfo *file_info = NULL;
-
-              file_info = g_file_query_info (active->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                             NULL, NULL);
-              if (file_info)
-                {
-                  gs_free char *size = format_size_pair (g_file_info_get_size (file_info),
-                                                         active->content_length);
-                  g_string_append_printf (buf, " [%s]", size);
-                }
-            }
-          else
-            {
-              g_string_append_printf (buf, " [Requesting]");
-            }
-        }
-
-      return g_string_free (buf, FALSE);
-    }
-  else
-    return g_strdup_printf ("Idle");
-}
-
 guint64
 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
 {
@@ -749,13 +686,6 @@ _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
   
   return ret;
 }
-
-guint
-_ostree_fetcher_get_n_requests (OstreeFetcher       *self)
-{
-  return self->total_requests;
-}
-
 
 typedef struct
 {
