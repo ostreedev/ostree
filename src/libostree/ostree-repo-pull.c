@@ -258,16 +258,15 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
 {
   gboolean ret;
   pull_data->fetching_sync_uri = uri;
-  ret = _ostree_fetcher_contents_membuf_sync (pull_data->fetcher,
-                                              uri,
-                                              add_nul,
-                                              allow_noent,
-                                              out_contents,
-                                              pull_data->loop,
-                                              pull_data,
-                                              OSTREE_MAX_METADATA_SIZE,
-                                              cancellable,
-                                              error);
+  ret = _ostree_fetcher_request_uri_to_membuf (pull_data->fetcher,
+                                               uri,
+                                               add_nul,
+                                               allow_noent,
+                                               out_contents,
+                                               pull_data->loop,
+                                               OSTREE_MAX_METADATA_SIZE,
+                                               cancellable,
+                                               error);
   pull_data->fetching_sync_uri = NULL;
   return ret;
 }

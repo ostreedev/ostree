@@ -76,16 +76,15 @@ GFile *_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
                                                        GAsyncResult  *result,
                                                        GError       **error);
 
-gboolean _ostree_fetcher_contents_membuf_sync (OstreeFetcher *fetcher,
-                                               SoupURI        *uri,
-                                               gboolean       add_nul,
-                                               gboolean       allow_noent,
-                                               GBytes         **out_contents,
-                                               GMainLoop      *loop,
-                                               gpointer       user_data,
-                                               guint64        max_size,
-                                               GCancellable   *cancellable,
-                                               GError         **error);
+gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
+                                                SoupURI        *uri,
+                                                gboolean       add_nul,
+                                                gboolean       allow_noent,
+                                                GBytes         **out_contents,
+                                                GMainLoop      *loop,
+                                                guint64        max_size,
+                                                GCancellable   *cancellable,
+                                                GError         **error);
 G_END_DECLS
 
 #endif
