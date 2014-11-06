@@ -265,6 +265,7 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
                                               out_contents,
                                               pull_data->loop,
                                               pull_data,
+                                              OSTREE_MAX_METADATA_SIZE,
                                               cancellable,
                                               error);
   pull_data->fetching_sync_uri = NULL;
