@@ -619,8 +619,8 @@ _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
   return g_object_ref (pending->out_tmpfile);
 }
 
-void
-_ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
+static void
+ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  SoupURI               *uri,
                                  guint64                max_size,
                                  GCancellable          *cancellable,
@@ -633,7 +633,7 @@ _ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
 
   pending = ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, cancellable,
                                                  callback, user_data,
-                                                 _ostree_fetcher_stream_uri_async);
+                                                 ostree_fetcher_stream_uri_async);
 
   if (SOUP_IS_REQUEST_HTTP (pending->request))
     {
@@ -646,15 +646,15 @@ _ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                            on_request_sent, pending);
 }
 
-GInputStream *
-_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+static GInputStream *
+ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                   GAsyncResult          *result,
                                   GError               **error)
 {
   GSimpleAsyncResult *simple;
   OstreeFetcherPendingURI *pending;
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, _ostree_fetcher_stream_uri_async), FALSE);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_stream_uri_async), FALSE);
 
   simple = G_SIMPLE_ASYNC_RESULT (result);
   if (g_simple_async_result_propagate_error (simple, error))
@@ -711,7 +711,7 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = _ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
                                                           result, data->error);
   g_main_loop_quit (data->loop);
 }
@@ -744,10 +744,10 @@ _ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
   data.loop = loop;
   data.error = error;
 
-  _ostree_fetcher_stream_uri_async (fetcher, uri,
-                                    max_size,
-                                    cancellable,
-                                    fetch_uri_sync_on_complete, &data);
+  ostree_fetcher_stream_uri_async (fetcher, uri,
+                                   max_size,
+                                   cancellable,
+                                   fetch_uri_sync_on_complete, &data);
 
   run_mainloop_monitor_fetcher (&data);
   if (!data.result_stream)
