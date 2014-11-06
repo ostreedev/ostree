@@ -45,7 +45,6 @@ struct OstreeRepo {
   GFile *deltas_dir;
   GFile *uncompressed_objects_dir;
   int uncompressed_objects_dir_fd;
-  GFile *remote_cache_dir;
   GFile *config_file;
 
   GFile *transaction_lock_path;
