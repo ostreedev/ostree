@@ -94,6 +94,7 @@ gboolean _ostree_fetcher_contents_membuf_sync (OstreeFetcher *fetcher,
                                                GBytes         **out_contents,
                                                GMainLoop      *loop,
                                                gpointer       user_data,
+                                               guint64        max_size,
                                                GCancellable   *cancellable,
                                                GError         **error);
 G_END_DECLS

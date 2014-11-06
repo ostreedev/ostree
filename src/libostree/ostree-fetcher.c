@@ -724,6 +724,7 @@ _ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
                                       GBytes         **out_contents,
                                       GMainLoop      *loop,
                                       gpointer       user_data,
+                                      guint64        max_size,
                                       GCancellable   *cancellable,
                                       GError         **error)
 {
@@ -744,9 +745,9 @@ _ostree_fetcher_contents_membuf_sync (OstreeFetcher  *fetcher,
   data.error = error;
 
   _ostree_fetcher_stream_uri_async (fetcher, uri,
-                                   OSTREE_MAX_METADATA_SIZE,
-                                   cancellable,
-                                   fetch_uri_sync_on_complete, &data);
+                                    max_size,
+                                    cancellable,
+                                    fetch_uri_sync_on_complete, &data);
 
   run_mainloop_monitor_fetcher (&data);
   if (!data.result_stream)
