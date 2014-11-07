@@ -41,6 +41,7 @@ static char **opt_key_ids;
 static char *opt_gpg_homedir;
 #endif
 static gboolean opt_generate_sizes;
+static char *opt_old_parent;
 
 #define ARG_EQ(x, y) (g_ascii_strcasecmp(x, y) == 0)
 
@@ -59,6 +60,7 @@ static GOptionEntry options[] = {
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
 #endif
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
+  { "old-parent", 0, 0, G_OPTION_ARG_STRING, &opt_old_parent, "Use an older parent", NULL },
   { NULL }
 };
 
@@ -88,6 +90,38 @@ commit_filter (OstreeRepo         *self,
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
 }
 
+static gboolean
+check_revision_is_parent (OstreeRepo   *repo,
+                          const char   *descendant,
+                          const char   *ancestor,
+                          GCancellable *cancellable,
+                          GError      **error)
+{
+  gs_free char *parent = NULL;
+  gs_unref_variant GVariant *variant = NULL;
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 descendant, &variant, error))
+    goto out;
+
+  parent = ostree_commit_get_parent (variant);
+  if (!parent)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "The ref does not have this commit as an ancestor: %s", ancestor);
+      goto out;
+    }
+
+  if (!g_str_equal (parent, ancestor) &&
+      !check_revision_is_parent (repo, parent, ancestor, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
 gboolean
 ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
                             GCancellable *cancellable, GError **error)
@@ -96,7 +130,8 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gs_unref_object GFile *arg = NULL;
-  gs_free char *parent = NULL;
+  gs_free char *found_parent = NULL;
+  const char *parent = NULL;
   gs_free char *commit_checksum = NULL;
   gs_unref_object GFile *root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
@@ -106,6 +141,7 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
   OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
+  const char *cherry_rev = NULL;
   gs_free char *cherry_commit = NULL;
   gs_free gchar *subject_dup = NULL;
   gs_free gchar *body_dup = NULL;
@@ -123,6 +159,7 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
         goto out;
     }
 
+  // FIXME: Load metadata/detached_metadata from commit and use that.
 #if 0
   if (opt_metadata_strings)
     {
@@ -162,20 +199,24 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
                                                   mode_adds, NULL);
     }
 
-  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
+  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &found_parent, error))
     goto out;
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     goto out;
 
-  if (argc <= 1)
+  if ((argc <= 1) && opt_old_parent)
+    cherry_rev = opt_branch;
+  else if (argc <= 1)
   {
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                          "A REFSPEC must be specified");
     goto out;
   }
+  else
+    cherry_rev = argv[1];
 
-  if (!ostree_repo_read_commit (repo, argv[1], &arg, &cherry_commit,
+  if (!ostree_repo_read_commit (repo, cherry_rev, &arg, &cherry_commit,
                                 cancellable, error))
     goto out;
 
@@ -234,6 +275,17 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
                    "Unmatched statoverride paths");
       goto out;
     }
+
+  if (found_parent && opt_old_parent)
+    {
+      if (!check_revision_is_parent (repo, found_parent, opt_old_parent, 
+                                     cancellable, error))
+        goto out;
+
+      parent = opt_old_parent;
+    }
+  else
+    parent = found_parent;
 
   if (!ostree_repo_write_mtree (repo, mtree, &root, cancellable, error))
     goto out;
