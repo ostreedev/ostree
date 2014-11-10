@@ -41,7 +41,6 @@ function libtestExec(shellCode) {
 						  GSystem.SubprocessStreamDisposition.INHERIT,
 						  GSystem.SubprocessStreamDisposition.INHERIT,
 						  null);
-    proc.init(null);
     proc.wait_sync_check(null);
 }
 
