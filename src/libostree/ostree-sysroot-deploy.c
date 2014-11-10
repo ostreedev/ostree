@@ -1365,6 +1365,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
     }
 
+  /* XXX The SYSLINUX bootloader backend actually parses the title string
+   *     (specifically, it looks for the substring "(ostree"), so further
+   *     changes to the title format may require updating that backend. */
   title_key = g_string_new (val);
   if (deployment_version && *deployment_version)
     {

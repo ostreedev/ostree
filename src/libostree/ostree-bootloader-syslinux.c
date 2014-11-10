@@ -206,8 +206,14 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
                (g_str_has_prefix (line, "DEFAULT ")))
         {
           saw_default = TRUE;
-          if (g_str_has_prefix (line, "DEFAULT ostree:"))
-            regenerate_default = TRUE;
+          /* XXX Searching for patterns in the title is rather brittle,
+           *     but this hack is at least noted in the code that builds
+           *     the title to hopefully avoid regressions. */
+          if (g_str_has_prefix (line, "DEFAULT ostree:") ||  /* old format */
+              strstr (line, "(ostree") != NULL)              /* new format */
+            {
+              regenerate_default = TRUE;
+            }
           skip = TRUE;
         }
       
