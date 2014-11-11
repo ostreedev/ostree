@@ -1076,6 +1076,54 @@ load_remote_repo_config (OtPullData    *pull_data,
   return ret;
 }
 
+#if 0
+static gboolean
+request_static_delta_meta_sync (OtPullData  *pull_data,
+                                const char  *ref,
+                                const char  *checksum,
+                                GVariant   **out_delta_meta,
+                                GCancellable *cancellable,
+                                GError     **error)
+{
+  gboolean ret = FALSE;
+  gs_free char *from_revision = NULL;
+  SoupURI *target_uri = NULL;
+  gs_unref_variant GVariant *ret_delta_meta = NULL;
+
+  if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE, &from_revision, error))
+    goto out;
+
+  if (from_revision == NULL)
+    {
+      initiate_commit_scan (pull_data, checksum);
+    }
+  else
+    {
+      gs_free char *delta_name = _ostree_get_relative_static_delta_path (from_revision, checksum);
+      gs_unref_bytes GBytes *delta_meta_data = NULL;
+      gs_unref_variant GVariant *delta_meta = NULL;
+
+      target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+
+      if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
+                                           &delta_meta_data,
+                                           pull_data->cancellable, error))
+        goto out;
+
+      if (delta_meta_data)
+        {
+          ret_delta_meta = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_META_FORMAT,
+                                                      delta_meta_data, FALSE);
+        }
+    }
+  
+  ret = TRUE;
+  gs_transfer_out_value (out_delta_meta, &ret_delta_meta);
+ out:
+  return ret;
+}
+#endif
+
 static void
 process_one_static_delta_meta (OtPullData   *pull_data,
                                GVariant     *delta_meta)
