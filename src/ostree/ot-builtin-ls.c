@@ -247,7 +247,7 @@ ostree_builtin_ls (int argc, char **argv, OstreeRepo *repo, GCancellable *cancel
   int i;
   gs_unref_object GFile *root = NULL;
 
-  context = g_option_context_new ("COMMIT PATH [PATH...] - List file paths");
+  context = g_option_context_new ("COMMIT [PATH...] - List file paths");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))

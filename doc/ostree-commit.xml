@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree commit <arg choice="opt" rep="repeat">OPTIONS</arg> --branch=<arg choice="req">BRANCH</arg> </command>
+                <command>ostree commit <arg choice="opt" rep="repeat">OPTIONS</arg> --branch=<arg choice="req">BRANCH</arg> <arg choice="opt">PATH</arg></command>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -65,7 +65,7 @@ Boston, MA 02111-1307, USA.
         <title>Options</title>
         <variablelist>
             <varlistentry>
-                <term><option>--subject</option>, <option>-s</option>="subject"</term>
+                <term><option>--subject</option>, <option>-s</option>="SUBJECT"</term>
 
                 <listitem><para>
                     One line subject.
@@ -73,7 +73,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--body</option>, <option>-m</option>="body"</term>
+                <term><option>--body</option>, <option>-m</option>="BODY"</term>
 
                 <listitem><para>
                     Full description.
@@ -81,7 +81,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--branch</option>, <option>-b</option>="branch"</term>
+                <term><option>--branch</option>, <option>-b</option>="BRANCH"</term>
 
                 <listitem><para>
                     Branch.
@@ -89,7 +89,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--tree</option>="NAME"</term>
+                <term><option>--tree</option>="dir=PATH" or "tar=TARFILE" or "ref=COMMIT"</term>
 
                 <listitem><para>
                     Overlay the given argument as a tree.
@@ -100,7 +100,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--add-metadata-string</option>="KEY=VALUE"</term>
 
                 <listitem><para>
-                    Append given key and value (in string format) to metadata.
+                    Add a key/value pair to metadata.
                 </para></listitem>
             </varlistentry>
 
@@ -108,7 +108,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--add-detached-metadata-string</option>="KEY=VALUE"</term>
 
                 <listitem><para>
-                    Append given key and value (in string format) to detached metadata.
+                    Add a key/value pair to detached metadata.
                 </para></listitem>
             </varlistentry>
 
@@ -184,7 +184,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--gpg-sign</option>="key-id"</term>
+                <term><option>--gpg-sign</option>="KEY-ID"</term>
 
                 <listitem><para>
                     GPG Key ID with which to sign the commit (if have GPGME - GNU Privacy Guard Made Easy).
@@ -192,7 +192,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--gpg-homedir</option>="homedir"</term>
+                <term><option>--gpg-homedir</option>="HOMEDIR"</term>
 
                 <listitem><para>
                     GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).

@@ -69,7 +69,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--os</option>="OSNAME"</term>
 
                 <listitem><para>
-                    If provided, specifies the operating system root. Default is the current one.
+                    Use a different operating system root than the current one.
                 </para></listitem>
             </varlistentry>
 
@@ -98,7 +98,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--karg</option>="KEY=VALUE"</term>
+                <term><option>--karg</option>="NAME=VALUE"</term>
 
                 <listitem><para>
                     Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name.
@@ -106,7 +106,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><option>--karg-append</option>="KEY=VALUE"</term>
+                <term><option>--karg-append</option>="NAME=VALUE"</term>
 
                 <listitem><para>
                     Append kernel argument; useful with e.g. console= that can be used multiple times.

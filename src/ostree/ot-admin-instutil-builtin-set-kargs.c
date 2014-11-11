@@ -37,8 +37,8 @@ static char **opt_append;
 static GOptionEntry options[] = {
   { "import-proc-cmdline", 0, 0, G_OPTION_ARG_NONE, &opt_proc_cmdline, "Import current /proc/cmdline", NULL },
   { "merge", 0, 0, G_OPTION_ARG_NONE, &opt_merge, "Merge with previous command line", NULL },
-  { "replace", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_replace, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "KEY=VALUE" },
-  { "append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "KEY=VALUE" },
+  { "replace", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_replace, "Set kernel argument, like root=/dev/sda1; this overrides any earlier argument with the same name", "NAME=VALUE" },
+  { "append", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_append, "Append kernel argument; useful with e.g. console= that can be used multiple times", "NAME=VALUE" },
   { NULL }
 };
 

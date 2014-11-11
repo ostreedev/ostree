@@ -42,7 +42,7 @@ static GOptionEntry options[] = {
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
-  { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", NULL },
+  { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
   { NULL }
 };
 
@@ -179,7 +179,7 @@ ostree_builtin_checkout (int argc, char **argv, OstreeRepo *repo, GCancellable *
   gs_free char *resolved_commit = NULL;
   gs_unref_object GFile *checkout_target = NULL;
 
-  context = g_option_context_new ("COMMIT DESTINATION - Check out a commit into a filesystem tree");
+  context = g_option_context_new ("COMMIT [DESTINATION] - Check out a commit into a filesystem tree");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))

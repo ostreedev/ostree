@@ -65,7 +65,7 @@ ostree_builtin_cat (int argc, char **argv, OstreeRepo *repo, GCancellable *cance
   gs_unref_object GFile *root = NULL;
   gs_unref_object GFile *f = NULL;
 
-  context = g_option_context_new ("COMMIT PATH [PATH...] - Concatenate contents of files");
+  context = g_option_context_new ("COMMIT PATH... - Concatenate contents of files");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))

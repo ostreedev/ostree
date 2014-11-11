@@ -34,10 +34,10 @@ static char* opt_print_detached_metadata_key;
 static gboolean opt_raw;
 
 static GOptionEntry options[] = {
-  { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "If given, show the \"related\" commits", NULL },
-  { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "If given, argument should be a filename and it will be interpreted as this type", NULL },
-  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key KEY for given commit", "KEY" },
-  { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key KEY for given commit", "KEY" },
+  { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "Show the \"related\" commits", NULL },
+  { "print-variant-type", 0, 0, G_OPTION_ARG_STRING, &opt_print_variant_type, "Memory map OBJECT (in this case a filename) to the GVariant type string", "TYPE" },
+  { "print-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_metadata_key, "Print string value of metadata key", "KEY" },
+  { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key", "KEY" },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
   { NULL }
 };

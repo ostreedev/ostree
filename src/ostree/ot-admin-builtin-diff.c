@@ -32,7 +32,7 @@
 static char *opt_osname;
 
 static GOptionEntry options[] = {
-  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Specify operating system root to use", NULL },
+  { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { NULL }
 };
 

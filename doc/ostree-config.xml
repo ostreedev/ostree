@@ -49,7 +49,10 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree config <arg choice="req">OPERATION</arg> <arg choice="opt">KEY</arg> <arg choice="opt">VALUE</arg></command>
+                <command>ostree config get <arg choice="req">SECTIONNAME.KEYNAME</arg></command>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree config set <arg choice="req">SECTIONNAME.KEYNAME</arg> <arg choice="req">VALUE</arg></command>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -57,14 +60,13 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Changes the configuration settings.  Possible operations inlclude either "set" or "get".  If OPERATION is "set", KEY and VALUE are required.  If OPERATION is "get", only KEY is necessary.  KEY must be of the form "sectionname.keyname".
+            Displays or changes a configuration setting.
         </para>
     </refsect1>
 
-<!-- Need a REAL example here - what is an example of a section name and a key name?-->
     <refsect1>
         <title>Example</title>
-        <para><command>$ ostree config get sectionname.keyname</command></para>
-        keyvalue
+        <para><command>$ ostree config get core.mode</command></para>
+        <para>bare</para>
     </refsect1>
 </refentry>

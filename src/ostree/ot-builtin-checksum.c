@@ -63,7 +63,7 @@ ostree_builtin_checksum (int argc, char **argv, OstreeRepo *repo, GCancellable *
   gs_unref_object GFile *f = NULL;
   AsyncChecksumData data = { 0, };
 
-  context = g_option_context_new ("FILENAME - Checksum a file or directory");
+  context = g_option_context_new ("PATH - Checksum a file or directory");
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!g_option_context_parse (context, &argc, &argv, error))

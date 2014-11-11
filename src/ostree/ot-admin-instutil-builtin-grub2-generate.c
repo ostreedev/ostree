@@ -43,7 +43,7 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeSysroot *
   GOptionContext *context = NULL;
   gs_unref_object GFile *deployment_path = NULL;
 
-  context = g_option_context_new ("BOOTVERSION - generate GRUB2 configuration from given BLS entries");
+  context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");
 
   g_option_context_add_main_entries (context, options, NULL);
 

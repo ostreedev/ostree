@@ -49,7 +49,13 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree remote <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">OPERATION</arg> <arg choice="req">NAME</arg> <arg choice="opt">args</arg></command>
+                <command>ostree remote <arg choice="opt" rep="repeat">OPTIONS</arg> add <arg choice="req">NAME</arg> <arg choice="req">URL</arg> <arg choice="opt" rep="repeat">BRANCH</arg></command>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote delete <arg choice="req">NAME</arg></command>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote show-url <arg choice="req">NAME</arg></command>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -57,7 +63,7 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Changes remote respository configurations.  Possible operations include either "add" or "show-url".  If OPERATION is "add", a URL must be specified in [args].  The NAME refers to the name of the remote.
+            Changes remote respository configurations.  The NAME refers to the name of the remote.
         </para>
     </refsect1>
 
