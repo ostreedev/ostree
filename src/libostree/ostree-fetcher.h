@@ -63,11 +63,7 @@ void _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
 void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
                                        GTlsDatabase *db);
 
-char * _ostree_fetcher_query_state_text (OstreeFetcher              *self);
-
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
-
-guint _ostree_fetcher_get_n_requests (OstreeFetcher       *self);
 
 void _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                     SoupURI               *uri,
@@ -80,17 +76,15 @@ GFile *_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
                                                        GAsyncResult  *result,
                                                        GError       **error);
 
-void _ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
-                                      SoupURI               *uri,
-                                      guint64                max_size,
-                                      GCancellable          *cancellable,
-                                      GAsyncReadyCallback    callback,
-                                      gpointer               user_data);
-
-GInputStream *_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
-                                                GAsyncResult          *result,
-                                                GError               **error);
-
+gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
+                                                SoupURI        *uri,
+                                                gboolean       add_nul,
+                                                gboolean       allow_noent,
+                                                GBytes         **out_contents,
+                                                GMainLoop      *loop,
+                                                guint64        max_size,
+                                                GCancellable   *cancellable,
+                                                GError         **error);
 G_END_DECLS
 
 #endif
