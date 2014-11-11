@@ -277,17 +277,6 @@ ostree_fetcher_process_pending_queue (OstreeFetcher *self)
     }
 }
 
-static void
-ostree_fetcher_queue_pending_uri (OstreeFetcher *self,
-                                  OstreeFetcherPendingURI *pending)
-{
-  g_assert (!pending->is_stream);
-
-  g_queue_push_tail (&self->pending_queue, pending);
-
-  ostree_fetcher_process_pending_queue (self);
-}
-
 static gboolean
 finish_stream (OstreeFetcherPendingURI *pending,
                GCancellable            *cancellable,
@@ -523,23 +512,18 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      gpointer               user_data,
                                      gpointer               source_tag)
 {
-  OstreeFetcherPendingURI *pending;
+  OstreeFetcherPendingURI *pending = g_new0 (OstreeFetcherPendingURI, 1);
+  GFile *out_tmpfile = NULL;
   GError *local_error = NULL;
 
-  pending = g_new0 (OstreeFetcherPendingURI, 1);
   pending->refcount = 1;
+  pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
+
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
   pending->max_size = max_size;
   pending->is_stream = is_stream;
-  if (!is_stream)
-    {
-      gs_free char *uristring = soup_uri_to_string (uri, FALSE);
-      gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
-      pending->out_tmpfile = g_file_get_child (self->tmpdir, hash);
-    }
   pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-  pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
   pending->result = g_simple_async_result_new ((GObject*) self,
                                                callback,
                                                user_data,
@@ -547,12 +531,56 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
   g_simple_async_result_set_op_res_gpointer (pending->result,
                                              pending,
                                              (GDestroyNotify) pending_uri_free);
-  
+
+  if (is_stream)
+    {
+      if (SOUP_IS_REQUEST_HTTP (pending->request))
+        {
+          g_hash_table_insert (self->message_to_request,
+                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
+                               pending);
+        }
+      soup_request_send_async (pending->request, cancellable,
+                               on_request_sent, pending);
+    }
+  else
+    {
+      gs_unref_object GFileInfo *file_info = NULL;
+      gs_free char *uristring = soup_uri_to_string (uri, FALSE);
+      gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
+      out_tmpfile = g_file_get_child (self->tmpdir, hash);
+      if (!ot_gfile_query_info_allow_noent (out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
+                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                            &file_info, cancellable, &local_error))
+        goto fail;
+
+      if (SOUP_IS_REQUEST_HTTP (pending->request))
+        {
+          SoupMessage *msg;
+          msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
+          if (file_info && g_file_info_get_size (file_info) > 0)
+            soup_message_headers_set_range (msg->request_headers, g_file_info_get_size (file_info), -1);
+          g_hash_table_insert (self->message_to_request,
+                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
+                               pending);
+        }
+      pending->out_tmpfile = out_tmpfile;
+
+      g_queue_push_tail (&self->pending_queue, pending);
+      ostree_fetcher_process_pending_queue (self);
+    }
+
   g_assert_no_error (local_error);
-  
+
+  self->total_requests++;
+
   pending->refcount++;
 
   return pending;
+
+ fail:
+  pending_uri_free (pending);
+  return NULL;
 }
 
 void
@@ -563,42 +591,9 @@ _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                GAsyncReadyCallback    callback,
                                                gpointer               user_data)
 {
-  OstreeFetcherPendingURI *pending;
-  gs_unref_object GFileInfo *file_info = NULL;
-  GError *local_error = NULL;
-
-  self->total_requests++;
-
-  pending = ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, cancellable,
-                                                 callback, user_data,
-                                                 _ostree_fetcher_request_uri_with_partial_async);
-
-  if (!ot_gfile_query_info_allow_noent (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        &file_info, cancellable, &local_error))
-    goto out;
-
-  if (SOUP_IS_REQUEST_HTTP (pending->request))
-    {
-      SoupMessage *msg;
-
-      msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
-      if (file_info && g_file_info_get_size (file_info) > 0)
-        soup_message_headers_set_range (msg->request_headers, g_file_info_get_size (file_info), -1);
-      g_hash_table_insert (self->message_to_request,
-                           soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                           pending);
-    }
-
-  ostree_fetcher_queue_pending_uri (self, pending);
-
- out:
-  if (local_error != NULL)
-    {
-      g_simple_async_result_take_error (pending->result, local_error);
-      g_simple_async_result_complete (pending->result);
-      g_object_unref (pending->result);
-    }
+  ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, cancellable,
+                                       callback, user_data,
+                                       _ostree_fetcher_request_uri_with_partial_async);
 }
 
 GFile *
@@ -627,23 +622,9 @@ ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  GAsyncReadyCallback    callback,
                                  gpointer               user_data)
 {
-  OstreeFetcherPendingURI *pending;
-
-  self->total_requests++;
-
-  pending = ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, cancellable,
-                                                 callback, user_data,
-                                                 ostree_fetcher_stream_uri_async);
-
-  if (SOUP_IS_REQUEST_HTTP (pending->request))
-    {
-      g_hash_table_insert (self->message_to_request,
-                           soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                           pending);
-    }
-  
-  soup_request_send_async (pending->request, cancellable,
-                           on_request_sent, pending);
+  ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, cancellable,
+                                       callback, user_data,
+                                       ostree_fetcher_stream_uri_async);
 }
 
 static GInputStream *
