@@ -158,6 +158,13 @@ Boston, MA 02111-1307, USA.
                     GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--old-parent</option></term>
+                <listitem><para>
+                    Use an older parent on the branch (basically reset first, and then cherry-pick).
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
