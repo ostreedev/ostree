@@ -1,0 +1,114 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2014 Anne LoVerso <anne.loverso@students.olin.edu>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree cherry-pick</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree squash</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-squash</refname>
+        <refpurpose>Squash the latest commit down to an older parent on a branch</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree squash <arg choice="opt" rep="repeat">OPTIONS</arg> --branch=<arg choice="req">BRANCH</arg> COMMIT</command>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            This allows you to move a commit to an older parent in the branch.  The specification of the branch is required. The commit will keep all of the data, but have a newer timestamp.  The command will print the checksum of a successful commit.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+        <variablelist>
+            <varlistentry>
+                <term><option>--branch</option>, <option>-b</option>="branch"</term>
+
+                <listitem><para>
+                    Branch.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--table-output</option></term>
+
+                <listitem><para>
+                    Output more information in  a KEY: VALUE format.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--generate-sizes</option></term>
+
+                <listitem><para>
+                    Generate size information along with commit metadata.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-sign</option>="key-id"</term>
+
+                <listitem><para>
+                    GPG Key ID with which to sign the commit (if have GPGME - GNU Privacy Guard Made Easy).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-homedir</option>="homedir"</term>
+
+                <listitem><para>
+                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+        <para><command>$ ostree squash --branch=my-branch 67e382b11d213a402a5313e61cbc69dfd5ab93cb07fbb8b71c2e84f79fa5d7dc</command></para>
+        b7feea527ea6573799f905669ece02b510e83ba49196e5ce89653ea7fb88e8a0
+    </refsect1>
+</refentry>

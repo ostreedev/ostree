@@ -386,6 +386,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <citerefentry><refentrytitle>ostree-squash</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+
+                <listitem><para>
+                    &nbsp;Given a branch remove all commits between the latest commit and a parent commit.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry>
                 
                 <listitem><para>
