@@ -31,6 +31,8 @@ static char *opt_subject;
 static char *opt_body;
 static char *opt_branch;
 static char *opt_statoverride_file;
+static char **opt_metadata_strings;
+static char **opt_detached_metadata_strings;
 static gboolean opt_skip_if_unchanged;
 static gboolean opt_no_xattrs;
 static gint opt_owner_uid = -1;
@@ -49,6 +51,8 @@ static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
+  { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
+  { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Append given key and value (in string format) to detached metadata", "KEY=VALUE" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
@@ -122,6 +126,45 @@ out:
   return ret;
 }
 
+static gboolean
+parse_keyvalue_strings (char             **strings,
+                        GVariant         **out_metadata,
+                        GError           **error)
+{
+  gboolean ret = FALSE;
+  char **iter;
+  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+
+  builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+
+  for (iter = strings; *iter; iter++)
+    {
+      const char *s;
+      const char *eq;
+      gs_free char *key = NULL;
+
+      s = *iter;
+
+      eq = strchr (s, '=');
+      if (!eq)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Missing '=' in KEY=VALUE metadata '%s'", s);
+          goto out;
+        }
+
+      key = g_strndup (s, eq - s);
+      g_variant_builder_add (builder, "{sv}", key,
+                             g_variant_new_string (eq + 1));
+    }
+
+  ret = TRUE;
+  *out_metadata = g_variant_builder_end (builder);
+  g_variant_ref_sink (*out_metadata);
+ out:
+  return ret;
+}
+
 gboolean
 ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
                             GCancellable *cancellable, GError **error)
@@ -159,8 +202,6 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
         goto out;
     }
 
-  // FIXME: Load metadata/detached_metadata from commit and use that.
-#if 0
   if (opt_metadata_strings)
     {
       if (!parse_keyvalue_strings (opt_metadata_strings,
@@ -173,7 +214,6 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
                                    &detached_metadata, error))
         goto out;
     }
-#endif
 
   if (!opt_branch)
     {
@@ -219,6 +259,25 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
   if (!ostree_repo_read_commit (repo, cherry_rev, &arg, &cherry_commit,
                                 cancellable, error))
     goto out;
+
+  if (!opt_metadata_strings)
+    { // Load from cherry-pick commit.
+      gs_unref_variant GVariant *variant = NULL;
+
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     cherry_commit,
+                                     &variant, error))
+        goto out;
+
+      metadata = g_variant_get_child_value (variant, 0);
+    }
+  if (!opt_detached_metadata_strings)
+    { // Load from cherry-pick commit.
+      if (!ostree_repo_read_commit_detached_metadata (repo, cherry_commit,
+                                                      &detached_metadata,
+                                                      NULL, error))
+        goto out;
+    }
 
   if (!opt_subject)
   {
