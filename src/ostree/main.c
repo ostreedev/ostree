@@ -55,6 +55,7 @@ static OstreeCommand commands[] = {
   { "reset", ostree_builtin_reset, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
+  { "squash", ostree_builtin_squash, 0 },
   { "static-delta", ostree_builtin_static_delta, 0 },
   { "summary", ostree_builtin_summary, 0 },
 #ifdef HAVE_LIBSOUP 

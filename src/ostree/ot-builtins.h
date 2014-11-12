@@ -46,6 +46,7 @@ BUILTINPROTO(refs);
 BUILTINPROTO(reset);
 BUILTINPROTO(fsck);
 BUILTINPROTO(show);
+BUILTINPROTO(squash);
 BUILTINPROTO(static_delta);
 BUILTINPROTO(summary);
 BUILTINPROTO(rev_parse);

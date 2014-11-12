@@ -68,6 +68,18 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
+// Squash in ostree land is basically a cherry-pick with a higher parent.
+static GOptionEntry squash_options[] = {
+  { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
+  { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
+#ifdef HAVE_GPGME
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "key-id"},
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
+#endif
+  { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
+  { NULL }
+};
+
 static OstreeRepoCommitFilterResult
 commit_filter (OstreeRepo         *self,
                const char         *path,
@@ -165,11 +177,10 @@ parse_keyvalue_strings (char             **strings,
   return ret;
 }
 
-gboolean
-ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
-                            GCancellable *cancellable, GError **error)
+static gboolean
+ostree_builtin_cherry_pick_int (int argc, char **argv, OstreeRepo *repo,
+                                GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gs_unref_object GFile *arg = NULL;
@@ -188,12 +199,6 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
   gs_free char *cherry_commit = NULL;
   gs_free gchar *subject_dup = NULL;
   gs_free gchar *body_dup = NULL;
-
-  context = g_option_context_new ("[ARG] - Commit a new revision");
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
 
   if (opt_statoverride_file)
     {
@@ -422,9 +427,59 @@ ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
   ret = TRUE;
  out:
   ostree_repo_abort_transaction (repo, cancellable, NULL);
-  if (context)
-    g_option_context_free (context);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
+  return ret;
+}
+
+gboolean
+ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
+                            GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+
+  context = g_option_context_new ("[ARG] - Commit a new revision");
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
+
+  ret = ostree_builtin_cherry_pick_int (argc, argv, repo, cancellable, error);
+
+ out:
+  if (context)
+    g_option_context_free (context);
+  return ret;
+}
+
+gboolean
+ostree_builtin_squash (int argc, char **argv, OstreeRepo *repo,
+                       GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+
+  context = g_option_context_new ("[ARG] - Commit a new revision");
+  g_option_context_add_main_entries (context, squash_options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
+
+  if (argc <= 1)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "A REFSPEC must be specified");
+      goto out;
+    }
+  opt_old_parent = argv[1];
+  argc = 0; // Don't allow extra arguments, as it'll be confusing. Use cherry.
+  ++argv;
+
+  ret = ostree_builtin_cherry_pick_int (0, argv, repo, cancellable, error);
+
+ out:
+  if (context)
+    g_option_context_free (context);
   return ret;
 }
