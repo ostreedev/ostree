@@ -37,6 +37,7 @@ static OstreeCommand commands[] = {
   { "cat", ostree_builtin_cat, 0 },
   { "checkout", ostree_builtin_checkout, 0 },
   { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
+  { "cherry-pick", ostree_builtin_cherry_pick, 0 },
   { "commit", ostree_builtin_commit, 0 },
   { "config", ostree_builtin_config, 0 },
   { "diff", ostree_builtin_diff, 0 },
@@ -54,6 +55,7 @@ static OstreeCommand commands[] = {
   { "reset", ostree_builtin_reset, 0 },
   { "rev-parse", ostree_builtin_rev_parse, 0 },
   { "show", ostree_builtin_show, 0 },
+  { "squash", ostree_builtin_squash, 0 },
   { "static-delta", ostree_builtin_static_delta, 0 },
   { "summary", ostree_builtin_summary, 0 },
 #ifdef HAVE_LIBSOUP 

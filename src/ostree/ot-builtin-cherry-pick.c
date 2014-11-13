@@ -1,6 +1,7 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2014 James Antill <james@fedoraproject.org>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,7 +18,6 @@
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
  * Boston, MA 02111-1307, USA.
  *
- * Author: Colin Walters <walters@verbum.org>
  */
 
 #include "config.h"
@@ -33,11 +33,8 @@ static char *opt_branch;
 static char *opt_statoverride_file;
 static char **opt_metadata_strings;
 static char **opt_detached_metadata_strings;
-static gboolean opt_link_checkout_speedup;
 static gboolean opt_skip_if_unchanged;
-static gboolean opt_tar_autocreate_parents;
 static gboolean opt_no_xattrs;
-static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
 static gboolean opt_table_output;
@@ -46,54 +43,19 @@ static char **opt_key_ids;
 static char *opt_gpg_homedir;
 #endif
 static gboolean opt_generate_sizes;
-static gboolean opt_disable_fsync;
+static char *opt_old_parent;
 
 #define ARG_EQ(x, y) (g_ascii_strcasecmp(x, y) == 0)
-/* create a function to parse the --fsync option, and current parse it the
- * same as --disable-fsync. Allows us to add other things later, and not have
- * a double negative. */
-static gboolean opt__fsync(const gchar *option_name,
-			   const gchar *value,
-			   gpointer data,
-			   GError **error)
-{
-  g_assert(g_str_equal(option_name, "--fsync"));
-
-  if (0) {}
-  else if (ARG_EQ(value, "1"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "true"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "yes"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "0"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "false"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "none"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "no"))
-    opt_disable_fsync = 1;
-  else
-    /* do we want to complain here? */
-    return 0;
-
-
-  return 1;
-}
 
 static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "subject" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "body" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
-  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "NAME" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Append given key and value (in string format) to metadata", "KEY=VALUE" },
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Append given key and value (in string format) to detached metadata", "KEY=VALUE" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
   { "owner-gid", 0, 0, G_OPTION_ARG_INT, &opt_owner_gid, "Set file ownership group id", "GID" },
   { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Do not import extended attributes", NULL },
-  { "link-checkout-speedup", 0, 0, G_OPTION_ARG_NONE, &opt_link_checkout_speedup, "Optimize for commits of trees composed of hardlinks into the repository", NULL },
-  { "tar-autocreate-parents", 0, 0, G_OPTION_ARG_NONE, &opt_tar_autocreate_parents, "When loading tar archives, automatically create parent directories as needed", NULL },
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "path" },
   { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
@@ -102,8 +64,19 @@ static GOptionEntry options[] = {
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
 #endif
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
-  { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
-  { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, opt__fsync, "Specify how to invoke fsync()", NULL },
+  { "old-parent", 0, 0, G_OPTION_ARG_STRING, &opt_old_parent, "Use an older parent", NULL },
+  { NULL }
+};
+
+// Squash in ostree land is basically a cherry-pick with a higher parent.
+static GOptionEntry squash_options[] = {
+  { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
+  { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "branch" },
+#ifdef HAVE_GPGME
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "key-id"},
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
+#endif
+  { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { NULL }
 };
 
@@ -129,8 +102,40 @@ commit_filter (OstreeRepo         *self,
                                         current_mode | mode_add);
       g_hash_table_remove (mode_adds, path);
     }
-  
+
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
+}
+
+static gboolean
+check_revision_is_parent (OstreeRepo   *repo,
+                          const char   *descendant,
+                          const char   *ancestor,
+                          GCancellable *cancellable,
+                          GError      **error)
+{
+  gs_free char *parent = NULL;
+  gs_unref_variant GVariant *variant = NULL;
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                 descendant, &variant, error))
+    goto out;
+
+  parent = ostree_commit_get_parent (variant);
+  if (!parent)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "The ref does not have this commit as an ancestor: %s", ancestor);
+      goto out;
+    }
+
+  if (!g_str_equal (parent, ancestor) &&
+      !check_revision_is_parent (repo, parent, ancestor, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+out:
+  return ret;
 }
 
 static gboolean
@@ -159,7 +164,7 @@ parse_keyvalue_strings (char             **strings,
                        "Missing '=' in KEY=VALUE metadata '%s'", s);
           goto out;
         }
-          
+
       key = g_strndup (s, eq - s);
       g_variant_builder_add (builder, "{sv}", key,
                              g_variant_new_string (eq + 1));
@@ -172,30 +177,28 @@ parse_keyvalue_strings (char             **strings,
   return ret;
 }
 
-gboolean
-ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+static gboolean
+ostree_builtin_cherry_pick_int (int argc, char **argv, OstreeRepo *repo,
+                                GCancellable *cancellable, GError **error)
 {
-  GOptionContext *context;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gs_unref_object GFile *arg = NULL;
-  gs_free char *parent = NULL;
+  gs_free char *found_parent = NULL;
+  const char *parent = NULL;
   gs_free char *commit_checksum = NULL;
   gs_unref_object GFile *root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *detached_metadata = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
-  gs_free char *tree_type = NULL;
   gs_unref_hashtable GHashTable *mode_adds = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;
-
-  context = g_option_context_new ("[ARG] - Commit a new revision");
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
-    goto out;
+  const char *cherry_rev = NULL;
+  gs_free char *cherry_commit = NULL;
+  gs_free gchar *subject_dup = NULL;
+  gs_free gchar *body_dup = NULL;
 
   if (opt_statoverride_file)
     {
@@ -216,7 +219,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                                    &detached_metadata, error))
         goto out;
     }
-      
+
   if (!opt_branch)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -228,7 +231,7 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS;
   if (opt_generate_sizes)
     flags |= OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES;
-  if (opt_disable_fsync)
+  if (FALSE)
     ostree_repo_set_disable_fsync (repo, TRUE);
 
   if (flags != 0
@@ -237,11 +240,70 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       || opt_statoverride_file != NULL
       || opt_no_xattrs)
     {
-      modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds, NULL);
+      modifier = ostree_repo_commit_modifier_new (flags, commit_filter,
+                                                  mode_adds, NULL);
     }
 
-  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
+  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &found_parent, error))
     goto out;
+
+  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
+    goto out;
+
+  if ((argc <= 1) && opt_old_parent)
+    cherry_rev = opt_branch;
+  else if (argc <= 1)
+  {
+    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "A REFSPEC must be specified");
+    goto out;
+  }
+  else
+    cherry_rev = argv[1];
+
+  if (!ostree_repo_read_commit (repo, cherry_rev, &arg, &cherry_commit,
+                                cancellable, error))
+    goto out;
+
+  if (!opt_metadata_strings)
+    { // Load from cherry-pick commit.
+      gs_unref_variant GVariant *variant = NULL;
+
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                     cherry_commit,
+                                     &variant, error))
+        goto out;
+
+      metadata = g_variant_get_child_value (variant, 0);
+    }
+  if (!opt_detached_metadata_strings)
+    { // Load from cherry-pick commit.
+      if (!ostree_repo_read_commit_detached_metadata (repo, cherry_commit,
+                                                      &detached_metadata,
+                                                      NULL, error))
+        goto out;
+    }
+
+  if (!opt_subject)
+  {
+    gs_unref_variant GVariant *variant = NULL;
+    const gchar *subject;
+    const gchar *body;
+    guint64 timestamp;
+
+    if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
+                                   cherry_commit,
+                                   &variant, error))
+      goto out;
+
+    /* See OSTREE_COMMIT_GVARIANT_FORMAT */
+    g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,
+                   &subject, &body, &timestamp, NULL, NULL);
+
+    opt_subject = g_strdup (subject);
+    opt_body    = g_strdup (body);
+    // FIXME: Can't use timestamp as API doesn't allow it.
+  }
 
   if (!opt_subject && !opt_body)
     {
@@ -257,86 +319,10 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
       goto out;
     }
 
-  if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-    goto out;
-
-  if (opt_link_checkout_speedup && !ostree_repo_scan_hardlinks (repo, cancellable, error))
-    goto out;
-
   mtree = ostree_mutable_tree_new ();
-
-  if (argc <= 1 && (opt_trees == NULL || opt_trees[0] == NULL))
-    {
-      char *current_dir = g_get_current_dir ();
-      arg = g_file_new_for_path (current_dir);
-      g_free (current_dir);
-
-      if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
-                                                 cancellable, error))
-        goto out;
-    }
-  else if (opt_trees != NULL)
-    {
-      const char *const*tree_iter;
-      const char *tree;
-      const char *eq;
-
-      for (tree_iter = (const char *const*)opt_trees; *tree_iter; tree_iter++)
-        {
-          tree = *tree_iter;
-
-          eq = strchr (tree, '=');
-          if (!eq)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Missing type in tree specification '%s'", tree);
-              goto out;
-            }
-          g_free (tree_type);
-          tree_type = g_strndup (tree, eq - tree);
-          tree = eq + 1;
-
-          g_clear_object (&arg);
-          if (strcmp (tree_type, "dir") == 0)
-            {
-              arg = g_file_new_for_path (tree);
-              if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
-                                                         cancellable, error))
-                goto out;
-            }
-          else if (strcmp (tree_type, "tar") == 0)
-            {
-              arg = g_file_new_for_path (tree);
-              if (!ostree_repo_write_archive_to_mtree (repo, arg, mtree, modifier,
-                                                       opt_tar_autocreate_parents,
-                                                       cancellable, error))
-                goto out;
-            }
-          else if (strcmp (tree_type, "ref") == 0)
-            {
-              if (!ostree_repo_read_commit (repo, tree, &arg, NULL, cancellable, error))
-                goto out;
-
-              if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
-                                                         cancellable, error))
-                goto out;
-            }
-          else
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Invalid tree type specification '%s'", tree_type);
-              goto out;
-            }
-        }
-    }
-  else
-    {
-      g_assert (argc > 1);
-      arg = g_file_new_for_path (argv[1]);
-      if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
-                                                 cancellable, error))
-        goto out;
-    }
+  if (!ostree_repo_write_directory_to_mtree (repo, arg, mtree, modifier,
+                                             cancellable, error))
+    goto out;
 
   if (mode_adds && g_hash_table_size (mode_adds) > 0)
     {
@@ -353,6 +339,17 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
                    "Unmatched statoverride paths");
       goto out;
     }
+
+  if (found_parent && opt_old_parent)
+    {
+      if (!check_revision_is_parent (repo, found_parent, opt_old_parent, 
+                                     cancellable, error))
+        goto out;
+
+      parent = opt_old_parent;
+    }
+  else
+    parent = found_parent;
 
   if (!ostree_repo_write_mtree (repo, mtree, &root, cancellable, error))
     goto out;
@@ -430,9 +427,59 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   ret = TRUE;
  out:
   ostree_repo_abort_transaction (repo, cancellable, NULL);
-  if (context)
-    g_option_context_free (context);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
+  return ret;
+}
+
+gboolean
+ostree_builtin_cherry_pick (int argc, char **argv, OstreeRepo *repo,
+                            GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+
+  context = g_option_context_new ("[ARG] - Commit a new revision");
+  g_option_context_add_main_entries (context, options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
+
+  ret = ostree_builtin_cherry_pick_int (argc, argv, repo, cancellable, error);
+
+ out:
+  if (context)
+    g_option_context_free (context);
+  return ret;
+}
+
+gboolean
+ostree_builtin_squash (int argc, char **argv, OstreeRepo *repo,
+                       GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+
+  context = g_option_context_new ("[ARG] - Commit a new revision");
+  g_option_context_add_main_entries (context, squash_options, NULL);
+
+  if (!g_option_context_parse (context, &argc, &argv, error))
+    goto out;
+
+  if (argc <= 1)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "A REFSPEC must be specified");
+      goto out;
+    }
+  opt_old_parent = argv[1];
+  argc = 0; // Don't allow extra arguments, as it'll be confusing. Use cherry.
+  ++argv;
+
+  ret = ostree_builtin_cherry_pick_int (0, argv, repo, cancellable, error);
+
+ out:
+  if (context)
+    g_option_context_free (context);
   return ret;
 }

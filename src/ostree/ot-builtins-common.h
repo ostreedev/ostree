@@ -25,3 +25,19 @@
 void
 ot_common_pull_progress (OstreeAsyncProgress       *progress,
                          gpointer                   user_data);
+
+gboolean
+ot_common_parse_statoverride_file (const char    *statoverride_file,
+                                   GHashTable   **out_mode_add,
+                                   GCancellable  *cancellable,
+                                   GError        **error);
+
+#include "ot-editor.h"
+  
+gboolean
+ot_common_commit_editor (OstreeRepo     *repo,
+                         const char     *branch,
+                         char          **subject,
+                         char          **body,
+                         GCancellable   *cancellable,
+                         GError        **error);
