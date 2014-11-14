@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ostree.h"
@@ -49,9 +50,10 @@ version_of_commit (OstreeRepo *repo, const char *checksum)
 }
 
 gboolean
-ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   gs_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
@@ -60,9 +62,7 @@ ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   context = g_option_context_new ("List deployments");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))

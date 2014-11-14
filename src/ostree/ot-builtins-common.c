@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins-common.h"
 #include "otutil.h"
 

@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "otutil.h"
@@ -34,9 +35,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   gs_unref_object GFile *dir = NULL;
   gs_unref_object GFile *child = NULL;
@@ -45,9 +47,8 @@ ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancel
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
 
   context = g_option_context_new ("PATH - Initialize a root filesystem");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)

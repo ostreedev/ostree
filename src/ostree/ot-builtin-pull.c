@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ot-builtins-common.h"
 #include "ostree.h"
@@ -41,9 +42,10 @@ static int opt_depth = 0;
  };
 
 gboolean
-ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   gs_free char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
@@ -52,9 +54,8 @@ ostree_builtin_pull (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   gs_unref_object OstreeAsyncProgress *progress = NULL;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

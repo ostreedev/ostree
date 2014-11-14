@@ -26,18 +26,18 @@
 
 G_BEGIN_DECLS
 
-gboolean ot_admin_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_os_init (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_install (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_instutil (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_init_fs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_undeploy (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_cleanup (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_status (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
-gboolean ot_admin_builtin_upgrade (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_selinux_ensure_labeled (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_install (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_cleanup (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
 

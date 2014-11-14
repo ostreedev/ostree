@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -83,11 +84,11 @@ out:
 gboolean
 ostree_builtin_reset (int           argc,
                       char        **argv,
-                      OstreeRepo   *repo,
                       GCancellable *cancellable,
                       GError      **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *ref;
   const char *target = NULL;
@@ -95,9 +96,8 @@ ostree_builtin_reset (int           argc,
   gs_free gchar *checksum = NULL;
 
   context = g_option_context_new ("[ARG] - Reset a ref to a previous commit");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc <= 2)
@@ -130,6 +130,7 @@ ostree_builtin_reset (int           argc,
  out:
   if (context)
     g_option_context_free (context);
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
+  if (repo)
+    ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

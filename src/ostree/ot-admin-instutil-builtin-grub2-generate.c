@@ -23,6 +23,7 @@
 #include <string.h>
 #include <glib-unix.h>
 
+#include "ot-main.h"
 #include "ot-admin-instutil-builtins.h"
 #include "ostree-cmdprivate.h"
 
@@ -33,7 +34,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint bootversion;
@@ -41,13 +42,12 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, OstreeSysroot *
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   GOptionContext *context = NULL;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gs_unref_object GFile *deployment_path = NULL;
 
   context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (argc >= 2)

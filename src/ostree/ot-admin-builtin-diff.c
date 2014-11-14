@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ostree.h"
@@ -37,9 +38,10 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   gs_unref_object OstreeDeployment *deployment = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
@@ -53,7 +55,7 @@ ot_admin_builtin_diff (int argc, char **argv, OstreeSysroot *sysroot, GCancellab
 
   g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
   
   if (!ostree_sysroot_load (sysroot, cancellable, error))

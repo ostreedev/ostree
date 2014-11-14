@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "ostree-repo-file.h"
@@ -239,18 +240,18 @@ print_one_argument (OstreeRepo   *repo,
 }
 
 gboolean
-ostree_builtin_ls (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_ls (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
   int i;
   gs_unref_object GFile *root = NULL;
 
   context = g_option_context_new ("COMMIT [PATH...] - List file paths");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc <= 1)

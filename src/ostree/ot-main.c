@@ -24,6 +24,7 @@
 
 #include <gio/gio.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "ostree.h"
@@ -31,28 +32,73 @@
 #include "otutil.h"
 #include "libgsystem.h"
 
+static char *opt_repo;
+static char *opt_sysroot = "/";
+static gboolean opt_verbose;
+static gboolean opt_version;
+static gboolean opt_print_current_dir;
+
+static GOptionEntry global_entries[] = {
+  { "verbose", 'v', 0, G_OPTION_ARG_NONE, &opt_verbose, "Print debug information during command processing", NULL },
+  { "version", 0, 0, G_OPTION_ARG_NONE, &opt_version, "Print version information and exit", NULL },
+  { NULL }
+};
+
+static GOptionEntry repo_entry[] = {
+  { "repo", 0, 0, G_OPTION_ARG_STRING, &opt_repo, "Path to OSTree repository (defaults to /sysroot/ostree/repo)", "PATH" },
+  { NULL }
+};
+
+static GOptionEntry global_admin_entries[] = {
+  /* No description since it's hidden from --help output. */
+  { "print-current-dir", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_print_current_dir, NULL, NULL },
+  { "sysroot", 0, 0, G_OPTION_ARG_STRING, &opt_sysroot, "Create a new OSTree sysroot at PATH", "PATH" },
+  { NULL }
+};
+
+static GOptionContext *
+ostree_option_context_new_with_commands (OstreeCommand *commands)
+{
+  GOptionContext *context;
+  GString *summary;
+
+  context = g_option_context_new ("COMMAND");
+
+  summary = g_string_new ("Builtin Commands:");
+
+  while (commands->name != NULL)
+    {
+      g_string_append_printf (summary, "\n  %s", commands->name);
+      commands++;
+    }
+
+  g_option_context_set_summary (context, summary->str);
+
+  g_string_free (summary, TRUE);
+
+  return context;
+}
+
 int
-ostree_usage (char **argv,
-              OstreeCommand *commands,
+ostree_usage (OstreeCommand *commands,
               gboolean is_error)
 {
-  OstreeCommand *command = commands;
-  void (*print_func) (const gchar *format, ...);
+  GOptionContext *context;
+  gs_free char *help;
+
+  context = ostree_option_context_new_with_commands (commands);
+
+  g_option_context_add_main_entries (context, global_entries, NULL);
+
+  help = g_option_context_get_help (context, FALSE, NULL);
 
   if (is_error)
-    print_func = g_printerr;
+    g_printerr ("%s", help);
   else
-    print_func = g_print;
+    g_print ("%s", help);
 
-  print_func ("usage: %s --repo=PATH COMMAND [options]\n",
-              argv[0]);
-  print_func ("Builtin commands:\n");
+  g_option_context_free (context);
 
-  while (command->name)
-    {
-      print_func ("  %s\n", command->name);
-      command++;
-    }
   return (is_error ? 1 : 0);
 }
 
@@ -78,23 +124,15 @@ ostree_run (int    argc,
   OstreeCommand *command;
   GError *error = NULL;
   GCancellable *cancellable = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
-  const char *cmd = NULL;
-  const char *repo_arg = NULL;
-  gboolean want_help = FALSE;
-  gboolean skip;
+  const char *command_name = NULL;
+  gs_free char *prgname = NULL;
   gboolean success = FALSE;
-  int in, out, i;
+  int in, out;
 
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
-  g_set_prgname (argv[0]);
-
   g_log_set_handler (NULL, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
-
-  if (argc < 2)
-    return ostree_usage (argv, commands, TRUE);
 
   /*
    * Parse the global options. We rearrange the options as
@@ -107,154 +145,67 @@ ostree_run (int    argc,
       /* The non-option is the command, take it out of the arguments */
       if (argv[in][0] != '-')
         {
-          skip = (cmd == NULL);
-          if (cmd == NULL)
-              cmd = argv[in];
+          if (command_name == NULL)
+            {
+              command_name = argv[in];
+              out--;
+              continue;
+            }
         }
 
-      /* The global long options */
-      else if (argv[in][1] == '-')
+      else if (g_str_equal (argv[in], "--"))
         {
-          skip = FALSE;
-
-          if (g_str_equal (argv[in], "--"))
-            {
-              break;
-            }
-          else if (g_str_equal (argv[in], "--help"))
-            {
-              want_help = TRUE;
-            }
-          else if (g_str_equal (argv[in], "--repo") && in + 1 < argc)
-            {
-              repo_arg = argv[in + 1];
-              skip = TRUE;
-              in++;
-            }
-          else if (g_str_has_prefix (argv[in], "--repo="))
-            {
-              repo_arg = argv[in] + 7;
-              skip = TRUE;
-            }
-          else if (g_str_equal (argv[in], "--verbose"))
-            {
-              g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
-              skip = TRUE;
-            }
-          else if (cmd == NULL && g_str_equal (argv[in], "--version"))
-            {
-              g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
-              return 0;
-            }
-          else if (cmd == NULL)
-            {
-              g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown or invalid global option: %s", argv[in]);
-              goto out;
-            }
+          break;
         }
 
-      /* The global short options */
-      else
-        {
-          skip = FALSE;
-          for (i = 1; argv[in][i] != '\0'; i++)
-            {
-              switch (argv[in][i])
-              {
-                case 'h':
-                  want_help = TRUE;
-                  break;
-                case 'v':
-                  g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
-                  skip = TRUE;
-                  break;
-                default:
-                  if (cmd == NULL)
-                    {
-                      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Unknown or invalid global option: %s", argv[in]);
-                      goto out;
-                    }
-                  break;
-              }
-            }
-        }
-
-      /* Skipping this argument? */
-      if (skip)
-        out--;
-      else
-        argv[out] = argv[in];
+      argv[out] = argv[in];
     }
 
   argc = out;
 
-  if (cmd == NULL)
-    {
-      if (want_help)
-        {
-          success = TRUE;
-        }
-      else
-        {
-          g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "No command specified");
-        }
-      ostree_usage (argv, commands, !want_help);
-      goto out;
-    }
-
   command = commands;
   while (command->name)
     {
-      if (g_strcmp0 (cmd, command->name) == 0)
+      if (g_strcmp0 (command_name, command->name) == 0)
         break;
       command++;
     }
 
   if (!command->fn)
     {
-      gs_free char *msg = g_strdup_printf ("Unknown command '%s'", cmd);
-      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, msg);
-      goto out;
-    }
+      GOptionContext *context;
+      gs_free char *help;
 
-  g_set_prgname (g_strdup_printf ("ostree %s", cmd));
+      context = ostree_option_context_new_with_commands (commands);
 
-  if (repo_arg == NULL && !want_help &&
-      !(command->flags & OSTREE_BUILTIN_FLAG_NO_REPO))
-    {
-      GError *temp_error = NULL;
-      repo = ostree_repo_new_default ();
-      if (!ostree_repo_open (repo, cancellable, &temp_error))
+      /* This will not return for some options (e.g. --version). */
+      if (ostree_option_context_parse (context, NULL, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, &error))
         {
-          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+          if (command_name == NULL)
             {
               g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Command requires a --repo argument");
-              g_error_free (temp_error);
-              ostree_usage (argv, commands, TRUE);
+                                   "No command specified");
             }
           else
             {
-              g_propagate_error (&error, temp_error);
+              g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Unknown command '%s'", command_name);
             }
-          goto out;
         }
+
+      help = g_option_context_get_help (context, FALSE, NULL);
+      g_printerr ("%s", help);
+
+      g_option_context_free (context);
+
+      goto out;
     }
-  else if (repo_arg)
-    {
-      gs_unref_object GFile *repo_file = g_file_new_for_path (repo_arg);
-      repo = ostree_repo_new (repo_file);
-      if (!(command->flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
-        {
-          if (!ostree_repo_open (repo, cancellable, &error))
-            goto out;
-        }
-    }
+
+  prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
+  g_set_prgname (prgname);
+
   
-  if (!command->fn (argc, argv, repo, cancellable, &error))
+  if (!command->fn (argc, argv, cancellable, &error))
     goto out;
 
   success = TRUE;
@@ -268,3 +219,143 @@ ostree_run (int    argc,
     }
   return 0;
 }
+
+gboolean
+ostree_option_context_parse (GOptionContext *context,
+                             const GOptionEntry *main_entries,
+                             int *argc,
+                             char ***argv,
+                             OstreeBuiltinFlags flags,
+                             OstreeRepo **out_repo,
+                             GCancellable *cancellable,
+                             GError **error)
+{
+  gs_unref_object OstreeRepo *repo = NULL;
+  gboolean success = FALSE;
+
+  /* Entries are listed in --help output in the order added.  We add the
+   * main entries ourselves so that we can add the --repo entry first. */
+
+  if (!(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+    g_option_context_add_main_entries (context, repo_entry, NULL);
+
+  if (main_entries != NULL)
+    g_option_context_add_main_entries (context, main_entries, NULL);
+
+  g_option_context_add_main_entries (context, global_entries, NULL);
+
+  if (!g_option_context_parse (context, argc, argv, error))
+    return FALSE;
+
+  if (opt_version)
+    {
+      g_print ("%s\n  %s\n", PACKAGE_STRING, OSTREE_FEATURES);
+      exit (EXIT_SUCCESS);
+    }
+
+  if (opt_verbose)
+    g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
+
+  if (opt_repo == NULL && !(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
+    {
+      GError *local_error = NULL;
+
+      repo = ostree_repo_new_default ();
+      if (!ostree_repo_open (repo, cancellable, &local_error))
+        {
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              gs_free char *help = NULL;
+
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Command requires a --repo argument");
+              g_error_free (local_error);
+
+              help = g_option_context_get_help (context, FALSE, NULL);
+              g_printerr ("%s", help);
+            }
+          else
+            {
+              g_propagate_error (error, local_error);
+            }
+          goto out;
+        }
+    }
+  else if (opt_repo != NULL)
+    {
+      gs_unref_object GFile *repo_file = g_file_new_for_path (opt_repo);
+
+      repo = ostree_repo_new (repo_file);
+      if (!(flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
+        {
+          if (!ostree_repo_open (repo, cancellable, error))
+            goto out;
+        }
+    }
+
+  gs_transfer_out_value (out_repo, &repo);
+
+  success = TRUE;
+
+out:
+  return success;
+}
+
+gboolean
+ostree_admin_option_context_parse (GOptionContext *context,
+                                   const GOptionEntry *main_entries,
+                                   int *argc,
+                                   char ***argv,
+                                   OstreeSysroot **out_sysroot,
+                                   GCancellable *cancellable,
+                                   GError **error)
+{
+  gs_unref_object GFile *sysroot_path = NULL;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
+  gboolean success = FALSE;
+
+  /* Entries are listed in --help output in the order added.  We add the
+   * main entries ourselves so that we can add the --sysroot entry first. */
+
+  g_option_context_add_main_entries (context, global_admin_entries, NULL);
+
+  if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
+    goto out;
+
+  sysroot_path = g_file_new_for_path (opt_sysroot);
+  sysroot = ostree_sysroot_new (sysroot_path);
+
+  if (opt_print_current_dir)
+    {
+      gs_unref_ptrarray GPtrArray *deployments = NULL;
+      OstreeDeployment *first_deployment;
+      gs_unref_object GFile *deployment_file = NULL;
+      gs_free char *deployment_path = NULL;
+
+      if (!ostree_sysroot_load (sysroot, cancellable, error))
+        goto out;
+
+      deployments = ostree_sysroot_get_deployments (sysroot);
+      if (deployments->len == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unable to find a deployment in sysroot");
+          goto out;
+        }
+      first_deployment = deployments->pdata[0];
+      deployment_file = ostree_sysroot_get_deployment_directory (sysroot, first_deployment);
+      deployment_path = g_file_get_path (deployment_file);
+
+      g_print ("%s\n", deployment_path);
+
+      exit (EXIT_SUCCESS);
+    }
+
+  gs_transfer_out_value (out_sysroot, &sysroot);
+
+  success = TRUE;
+
+out:
+  return success;
+}
+

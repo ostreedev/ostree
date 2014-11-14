@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -115,10 +116,11 @@ object_set_total_size (OstreeRepo    *repo,
 }
 
 gboolean
-ostree_builtin_diff (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   const char *src;
   const char *target;
   gs_free char *src_prev = NULL;
@@ -131,7 +133,7 @@ ostree_builtin_diff (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
   g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

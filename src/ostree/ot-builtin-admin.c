@@ -34,7 +34,7 @@
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error);
+  gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
 } OstreeAdminCommand;
 
 static OstreeAdminCommand admin_subcommands[] = {
@@ -51,19 +51,38 @@ static OstreeAdminCommand admin_subcommands[] = {
   { NULL, NULL }
 };
 
+static GOptionContext *
+ostree_admin_option_context_new_with_commands (void)
+{
+  OstreeAdminCommand *command = admin_subcommands;
+  GOptionContext *context;
+  GString *summary;
+
+  context = g_option_context_new ("--print-current-dir|COMMAND");
+
+  summary = g_string_new ("Builtin \"admin\" Commands:");
+
+  while (command->name != NULL)
+    {
+      g_string_append_printf (summary, "\n  %s", command->name);
+      command++;
+    }
+
+  g_option_context_set_summary (context, summary->str);
+
+  g_string_free (summary, TRUE);
+
+  return context;
+}
+
 gboolean
-ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  const char *opt_sysroot = "/";
   const char *subcommand_name = NULL;
   OstreeAdminCommand *subcommand;
-  gs_unref_object GFile *sysroot_path = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
-  gboolean want_help = FALSE;
-  gboolean want_current_dir = FALSE;
-  int in, out, i;
-  gboolean skip;
+  gs_free char *prgname = NULL;
+  int in, out;
 
   /*
    * Parse the global options. We rearrange the options as
@@ -76,129 +95,23 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
       /* The non-option is the command, take it out of the arguments */
       if (argv[in][0] != '-')
         {
-          skip = (subcommand_name == NULL);
           if (subcommand_name == NULL)
-            subcommand_name = argv[in];
+            {
+              subcommand_name = argv[in];
+              out--;
+              continue;
+            }
         }
 
-      /* The global long options */
-      else if (argv[in][1] == '-')
+      else if (g_str_equal (argv[in], "--"))
         {
-          skip = FALSE;
-
-          if (g_str_equal (argv[in], "--"))
-            {
-              break;
-            }
-          else if (g_str_equal (argv[in], "--help"))
-            {
-              want_help = TRUE;
-            }
-          else if (g_str_equal (argv[in], "--print-current-dir"))
-            {
-              want_current_dir = TRUE;
-            }
-          else if (g_str_equal (argv[in], "--sysroot") && in + 1 < argc)
-            {
-              opt_sysroot = argv[in + 1];
-              skip = TRUE;
-              in++;
-            }
-          else if (g_str_has_prefix (argv[in], "--sysroot="))
-            {
-              opt_sysroot = argv[in] + 10;
-              skip = TRUE;
-            }
-          else if (subcommand_name == NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Unknown or invalid admin option: %s", argv[in]);
-              goto out;
-            }
+          break;
         }
 
-      /* The global short options */
-      else
-        {
-          skip = FALSE;
-          for (i = 1; argv[in][i] != '\0'; i++)
-            {
-              switch (argv[in][i])
-              {
-                case 'h':
-                  want_help = TRUE;
-                  break;
-
-                default:
-                  if (subcommand_name == NULL)
-                    {
-                      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "Unknown or invalid admin option: %s", argv[in]);
-                      goto out;
-                    }
-                  break;
-              }
-            }
-        }
-
-      /* Skipping this argument? */
-      if (skip)
-        out--;
-      else
-        argv[out] = argv[in];
+      argv[out] = argv[in];
     }
 
   argc = out;
-
-  if (subcommand_name == NULL && (want_help || !want_current_dir))
-    {
-      void (*print_func) (const gchar *format, ...) = want_help ? g_print : g_printerr;
-
-      subcommand = admin_subcommands;
-      print_func ("usage: ostree admin [--sysroot=PATH] [--print-current-dir|COMMAND] [options]\n");
-      print_func ("Builtin commands:\n");
-      while (subcommand->name)
-        {
-          print_func ("  %s\n", subcommand->name);
-          subcommand++;
-        }
-
-      if (want_help)
-        ret = TRUE;
-      else
-        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                             "No command specified");
-      goto out;
-    }
-
-  sysroot_path = g_file_new_for_path (opt_sysroot);
-  sysroot = ostree_sysroot_new (sysroot_path);
-
-  if (want_current_dir)
-    {
-      gs_unref_ptrarray GPtrArray *deployments = NULL;
-      OstreeDeployment *first_deployment;
-      gs_unref_object GFile *deployment_file = NULL;
-      gs_free char *deployment_path = NULL;
-
-      if (!ostree_sysroot_load (sysroot, cancellable, error))
-        goto out;
-
-      deployments = ostree_sysroot_get_deployments (sysroot);
-      if (deployments->len == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to find a deployment in sysroot");
-          goto out;
-        }
-      first_deployment = deployments->pdata[0];
-      deployment_file = ostree_sysroot_get_deployment_directory (sysroot, first_deployment);
-      deployment_path = g_file_get_path (deployment_file);
-
-      g_print ("%s\n", deployment_path);
-      ret = TRUE;
-      goto out;
-    }
 
   subcommand = admin_subcommands;
   while (subcommand->name)
@@ -210,14 +123,38 @@ ostree_builtin_admin (int argc, char **argv, OstreeRepo *repo, GCancellable *can
 
   if (!subcommand->name)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Unknown admin command '%s'", subcommand_name);
+      GOptionContext *context;
+      gs_free char *help;
+
+      context = ostree_admin_option_context_new_with_commands ();
+
+      /* This will not return for some options (e.g. --version). */
+      if (ostree_admin_option_context_parse (context, NULL, &argc, &argv, NULL, cancellable, error))
+        {
+          if (subcommand_name == NULL)
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "No \"admin\" subcommand specified");
+            }
+          else
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "Unknown \"admin\" subcommand '%s'", subcommand_name);
+            }
+        }
+
+      help = g_option_context_get_help (context, FALSE, NULL);
+      g_printerr ("%s", help);
+
+      g_option_context_free (context);
+
       goto out;
     }
 
-  g_set_prgname (g_strdup_printf ("ostree admin %s", subcommand_name));
+  prgname = g_strdup_printf ("%s %s", g_get_prgname (), subcommand_name);
+  g_set_prgname (prgname);
 
-  if (!subcommand->fn (argc, argv, sysroot, cancellable, error))
+  if (!subcommand->fn (argc, argv, cancellable, error))
     goto out;
  
   ret = TRUE;

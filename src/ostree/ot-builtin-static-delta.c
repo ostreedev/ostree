@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -36,16 +37,16 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_static_delta (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *delta_names = NULL;
 
   context = g_option_context_new ("Manage static delta files");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (opt_apply)

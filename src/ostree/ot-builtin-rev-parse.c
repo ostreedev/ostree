@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -31,18 +32,18 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_rev_parse (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_rev_parse (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev = "master";
   int i;
   gs_free char *resolved_rev = NULL;
 
   context = g_option_context_new ("REV - Output the target of a rev");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc < 2)

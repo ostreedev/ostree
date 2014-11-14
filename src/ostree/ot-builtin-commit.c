@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ot-editor.h"
 #include "ostree.h"
@@ -309,9 +310,10 @@ parse_keyvalue_strings (char             **strings,
 }
 
 gboolean
-ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gs_unref_object GFile *arg = NULL;
@@ -328,9 +330,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   OstreeRepoTransactionStats stats;
 
   context = g_option_context_new ("[PATH] - Commit a new revision");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (opt_statoverride_file)
@@ -563,7 +564,8 @@ ostree_builtin_commit (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
 
   ret = TRUE;
  out:
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
+  if (repo)
+    ostree_repo_abort_transaction (repo, cancellable, NULL);
   if (context)
     g_option_context_free (context);
   if (modifier)

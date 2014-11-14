@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -55,9 +56,10 @@ cat_one_file (GFile         *f,
 }
 
 gboolean
-ostree_builtin_cat (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_cat (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   int i;
   const char *rev;
@@ -66,9 +68,8 @@ ostree_builtin_cat (int argc, char **argv, OstreeRepo *repo, GCancellable *cance
   gs_unref_object GFile *f = NULL;
 
   context = g_option_context_new ("COMMIT PATH... - Concatenate contents of files");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc <= 2)

@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ostree.h"
@@ -49,11 +50,12 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *refspec;
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   GKeyFile *origin = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
@@ -64,9 +66,7 @@ ot_admin_builtin_deploy (int argc, char **argv, OstreeSysroot *sysroot, GCancell
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)

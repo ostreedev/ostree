@@ -33,31 +33,31 @@
 #include "ot-builtins.h"
 
 static OstreeCommand commands[] = {
-  { "admin", ostree_builtin_admin, OSTREE_BUILTIN_FLAG_NO_REPO },
-  { "cat", ostree_builtin_cat, 0 },
-  { "checkout", ostree_builtin_checkout, 0 },
-  { "checksum", ostree_builtin_checksum, OSTREE_BUILTIN_FLAG_NO_REPO },
-  { "commit", ostree_builtin_commit, 0 },
-  { "config", ostree_builtin_config, 0 },
-  { "diff", ostree_builtin_diff, 0 },
-  { "fsck", ostree_builtin_fsck, 0 },
-  { "init", ostree_builtin_init, OSTREE_BUILTIN_FLAG_NO_CHECK },
-  { "log", ostree_builtin_log, 0 },
-  { "ls", ostree_builtin_ls, 0 },
-  { "prune", ostree_builtin_prune, 0 },
-  { "pull-local", ostree_builtin_pull_local, 0 },
+  { "admin", ostree_builtin_admin },
+  { "cat", ostree_builtin_cat },
+  { "checkout", ostree_builtin_checkout },
+  { "checksum", ostree_builtin_checksum },
+  { "commit", ostree_builtin_commit },
+  { "config", ostree_builtin_config },
+  { "diff", ostree_builtin_diff },
+  { "fsck", ostree_builtin_fsck },
+  { "init", ostree_builtin_init },
+  { "log", ostree_builtin_log },
+  { "ls", ostree_builtin_ls },
+  { "prune", ostree_builtin_prune },
+  { "pull-local", ostree_builtin_pull_local },
 #ifdef HAVE_LIBSOUP 
-  { "pull", ostree_builtin_pull, 0 },
+  { "pull", ostree_builtin_pull },
 #endif
-  { "refs", ostree_builtin_refs, 0 },
-  { "remote", ostree_builtin_remote, 0 },
-  { "reset", ostree_builtin_reset, 0 },
-  { "rev-parse", ostree_builtin_rev_parse, 0 },
-  { "show", ostree_builtin_show, 0 },
-  { "static-delta", ostree_builtin_static_delta, 0 },
-  { "summary", ostree_builtin_summary, 0 },
+  { "refs", ostree_builtin_refs },
+  { "remote", ostree_builtin_remote },
+  { "reset", ostree_builtin_reset },
+  { "rev-parse", ostree_builtin_rev_parse },
+  { "show", ostree_builtin_show },
+  { "static-delta", ostree_builtin_static_delta },
+  { "summary", ostree_builtin_summary },
 #ifdef HAVE_LIBSOUP 
-  { "trivial-httpd", ostree_builtin_trivial_httpd, OSTREE_BUILTIN_FLAG_NO_REPO },
+  { "trivial-httpd", ostree_builtin_trivial_httpd },
 #endif
   { NULL }
 };
@@ -71,9 +71,11 @@ main (int    argc,
 
   setlocale (LC_ALL, "");
 
+  g_set_prgname (argv[0]);
+
   ret = ostree_run (argc, argv, commands, &error);
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    ostree_usage (argv, commands, TRUE);
+    ostree_usage (commands, TRUE);
 
   if (error != NULL)
     {

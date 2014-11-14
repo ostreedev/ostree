@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ot-dump.h"
 #include "ostree.h"
@@ -77,20 +78,19 @@ out:
 gboolean
 ostree_builtin_log (int           argc,
                     char        **argv,
-                    OstreeRepo   *repo,
                     GCancellable *cancellable,
                     GError      **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
   gs_free char *checksum = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
   context = g_option_context_new ("REF - Show log starting at commit or ref");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (opt_raw)

@@ -32,10 +32,22 @@ typedef enum {
 
 typedef struct {
   const char *name;
-  gboolean (*fn) (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error);
-  int flags; /* OstreeBuiltinFlags */
+  gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
 } OstreeCommand;
 
 int ostree_run (int argc, char **argv, OstreeCommand *commands, GError **error);
 
-int ostree_usage (char **argv, OstreeCommand *commands, gboolean is_error);
+int ostree_usage (OstreeCommand *commands, gboolean is_error);
+
+gboolean ostree_option_context_parse (GOptionContext *context,
+                                      const GOptionEntry *main_entries,
+                                      int *argc, char ***argv,
+                                      OstreeBuiltinFlags flags,
+                                      OstreeRepo **out_repo,
+                                      GCancellable *cancellable, GError **error);
+
+gboolean ostree_admin_option_context_parse (GOptionContext *context,
+                                            const GOptionEntry *main_entries,
+                                            int *argc, char ***argv,
+                                            OstreeSysroot **out_sysroot,
+                                            GCancellable *cancellable, GError **error);

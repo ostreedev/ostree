@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -38,10 +39,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_prune (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *formatted_freed_size = NULL;
   OstreeRepoPruneFlags pruneflags = 0;
   gint n_objects_total;
@@ -49,9 +51,8 @@ ostree_builtin_prune (int argc, char **argv, OstreeRepo *repo, GCancellable *can
   guint64 objsize_total;
 
   context = g_option_context_new ("- Search for unreachable objects");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (opt_refs_only)

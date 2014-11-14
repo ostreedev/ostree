@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -56,7 +57,7 @@ on_checksum_received (GObject    *obj,
 }
 
 gboolean
-ostree_builtin_checksum (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
   gboolean ret = FALSE;
@@ -64,9 +65,8 @@ ostree_builtin_checksum (int argc, char **argv, OstreeRepo *repo, GCancellable *
   AsyncChecksumData data = { 0, };
 
   context = g_option_context_new ("PATH - Checksum a file or directory");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
   if (argc > 1)

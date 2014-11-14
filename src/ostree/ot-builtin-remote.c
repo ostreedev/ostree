@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -64,9 +65,10 @@ parse_keyvalue (const char  *keyvalue,
 }
 
 gboolean
-ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *op;
   gs_free char *key = NULL;
@@ -75,9 +77,8 @@ ostree_builtin_remote (int argc, char **argv, OstreeRepo *repo, GCancellable *ca
   const char *remote_name;
 
   context = g_option_context_new ("OPERATION NAME [args] - Control remote repository configuration");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc < 3)

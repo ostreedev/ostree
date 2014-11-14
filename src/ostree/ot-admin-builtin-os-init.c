@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "otutil.h"
@@ -34,18 +35,18 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_os_init (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
   gs_unref_object GFile *deploy_dir = NULL;
   gs_unref_object GFile *dir = NULL;
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))

@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
 #include "ot-builtins-common.h"
@@ -40,10 +41,11 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   const char *new_provided_refspec = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
   gs_free char *origin_refspec = NULL;
@@ -66,9 +68,8 @@ ot_admin_builtin_switch (int argc, char **argv, OstreeSysroot *sysroot, GCancell
   GKeyFile *new_origin = NULL;
 
   context = g_option_context_new ("REF - Construct new tree from current origin and deploy it, if it changed");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)

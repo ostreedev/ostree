@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -105,10 +106,11 @@ idle_print_status (gpointer user_data)
 }
 
 gboolean
-ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   const char *src_repo_path;
   int i;
   GHashTableIter hash_iter;
@@ -124,9 +126,8 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
   OtLocalCloneData *data = &datav;
 
   context = g_option_context_new ("SRC_REPO [REFS...] -  Copy data from SRC_REPO");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   data->dest_repo = g_object_ref (repo);
@@ -270,6 +271,7 @@ ostree_builtin_pull_local (int argc, char **argv, OstreeRepo *repo, GCancellable
     g_object_unref (data->dest_repo);
   if (context)
     g_option_context_free (context);
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
+  if (repo)
+    ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

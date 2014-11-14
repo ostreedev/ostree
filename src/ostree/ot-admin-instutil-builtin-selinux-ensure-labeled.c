@@ -23,6 +23,7 @@
 #include <string.h>
 #include <glib-unix.h>
 
+#include "ot-main.h"
 #include "ot-admin-instutil-builtins.h"
 
 #include "otutil.h"
@@ -178,7 +179,7 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   const char *policy_name;
@@ -188,13 +189,12 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, OstreeS
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment;
   GOptionContext *context = NULL;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   gs_unref_object GFile *deployment_path = NULL;
 
   context = g_option_context_new ("[SUBPATH PREFIX] - relabel all or part of a deployment");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))

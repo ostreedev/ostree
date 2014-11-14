@@ -22,6 +22,7 @@
 
 #include <libsoup/soup.h>
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -322,7 +323,7 @@ on_dir_changed (GFileMonitor  *mon,
 }
 
 gboolean
-ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
@@ -334,9 +335,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, OstreeRepo *repo, GCancella
 
   context = g_option_context_new ("[DIR] - Simple webserver");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
   if (argc > 1)

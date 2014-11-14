@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -34,19 +35,19 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_refs (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   const char *refspec_prefix = NULL;
   gs_unref_hashtable GHashTable *refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
 
   context = g_option_context_new ("[PREFIX] - List refs");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (argc >= 2)
@@ -87,6 +88,7 @@ ostree_builtin_refs (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
  out:
   if (context)
     g_option_context_free (context);
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
+  if (repo)
+    ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }

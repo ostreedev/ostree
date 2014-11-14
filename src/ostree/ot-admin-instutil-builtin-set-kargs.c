@@ -23,6 +23,7 @@
 #include <string.h>
 #include <glib-unix.h>
 
+#include "ot-main.h"
 #include "ot-admin-instutil-builtins.h"
 
 #include "otutil.h"
@@ -43,20 +44,19 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ot_admin_instutil_builtin_set_kargs (int argc, char **argv, OstreeSysroot *sysroot, GCancellable *cancellable, GError **error)
+ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   guint i;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment = NULL;
   GOptionContext *context = NULL;
+  gs_unref_object OstreeSysroot *sysroot = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 
   context = g_option_context_new ("ARGS - set new kernel command line arguments");
 
-  g_option_context_add_main_entries (context, options, NULL);
-
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))

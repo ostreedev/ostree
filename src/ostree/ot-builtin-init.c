@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "libgsystem.h"
@@ -34,16 +35,16 @@ static GOptionEntry options[] = {
 };
 
 gboolean
-ostree_builtin_init (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
+  gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   OstreeRepoMode mode;
 
   context = g_option_context_new ("- Initialize a new empty repository");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_CHECK, &repo, cancellable, error))
     goto out;
 
   if (!ostree_repo_mode_from_string (opt_mode, &mode, error))

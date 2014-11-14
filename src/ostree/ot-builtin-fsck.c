@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
@@ -233,10 +234,11 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 }
 
 gboolean
-ostree_builtin_fsck (int argc, char **argv, OstreeRepo *repo, GCancellable *cancellable, GError **error)
+ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
   GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
   gboolean found_corruption = FALSE;
@@ -244,9 +246,8 @@ ostree_builtin_fsck (int argc, char **argv, OstreeRepo *repo, GCancellable *canc
   gs_unref_hashtable GHashTable *commits = NULL;
 
   context = g_option_context_new ("- Check the repository for consistency");
-  g_option_context_add_main_entries (context, options, NULL);
 
-  if (!g_option_context_parse (context, &argc, &argv, error))
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
   if (!opt_quiet)
