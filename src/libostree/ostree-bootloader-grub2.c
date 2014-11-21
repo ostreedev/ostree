@@ -26,6 +26,7 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 #include "libgsystem.h"
+#include <sys/mount.h>
 
 #include <string.h>
 
@@ -240,6 +241,48 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
   return ret;
 }
 
+static void
+grub2_child_setup (gpointer user_data)
+{
+  const char *root = user_data;
+
+  if (chdir (root) != 0)
+    {
+      perror ("chdir");
+      _exit (1);
+    }
+
+  if (unshare (CLONE_NEWNS) != 0)
+    {
+      perror ("CLONE_NEWNS");
+      _exit (1);
+    }
+
+  if (mount (NULL, "/", "none", MS_REC|MS_PRIVATE, NULL) < 0)
+    {
+      perror ("Failed to make / a private mount");
+      _exit (1);
+    }
+
+  if (mount (".", ".", NULL, MS_BIND | MS_PRIVATE, NULL) < 0)
+    {
+      perror ("mount (MS_BIND)");
+      _exit (1);
+    }
+
+  if (mount (root, "/", NULL, MS_MOVE, NULL) < 0)
+    {
+      perror ("failed to MS_MOVE to /");
+      _exit (1);
+    }
+
+  if (chroot (".") != 0)
+    {
+      perror ("chroot");
+      _exit (1);
+    }
+}
+
 static gboolean
 _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
                                        int                    bootversion,
@@ -256,6 +299,30 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   gs_strfreev char **child_env = g_get_environ ();
   gs_free char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   gs_unref_object GFile *config_path_efi_dir = NULL;
+  gs_free char *grub2_mkconfig_chroot = NULL;
+
+  if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
+      && g_file_has_parent (self->sysroot->path))
+    {
+      gs_unref_ptrarray GPtrArray *deployments = NULL;
+      OstreeDeployment *tool_deployment;
+      gs_unref_object GFile *tool_deployment_root = NULL;
+
+      deployments = ostree_sysroot_get_deployments (self->sysroot);
+
+      g_assert_cmpint (deployments->len, >, 0);
+
+      tool_deployment = deployments->pdata[0];
+
+      /* Sadly we have to execute code to generate the bootloader configuration.
+       * If we're in a booted deployment, we just don't chroot.
+       *
+       * In the case of an installer, use the first deployment root (which
+       * will most likely be the only one.
+       */
+      tool_deployment_root = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
+      grub2_mkconfig_chroot = g_file_get_path (tool_deployment_root);
+    }
 
   if (self->is_efi)
     {
@@ -284,6 +351,14 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
     gs_subprocess_context_set_stderr_disposition (procctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
   else
     gs_subprocess_context_set_stderr_disposition (procctx, GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
+
+  /* We need to chroot() if we're not in /.  This assumes our caller has
+   * set up the bind mounts outside.
+   */
+  if (grub2_mkconfig_chroot != NULL)
+    {
+      gs_subprocess_context_set_child_setup (procctx, grub2_child_setup, grub2_mkconfig_chroot);
+    }
 
   /* In the current Fedora grub2 package, this script doesn't even try
      to be atomic; it just does:
