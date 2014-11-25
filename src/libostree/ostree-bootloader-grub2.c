@@ -302,7 +302,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   gs_free char *grub2_mkconfig_chroot = NULL;
 
   if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
-      && g_file_has_parent (self->sysroot->path))
+      && g_file_has_parent (self->sysroot->path, NULL))
     {
       gs_unref_ptrarray GPtrArray *deployments = NULL;
       OstreeDeployment *tool_deployment;
