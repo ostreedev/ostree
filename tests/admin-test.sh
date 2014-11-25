@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 # Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
 #
@@ -29,7 +28,9 @@ ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=te
 ostree admin --sysroot=sysroot status | tee status.txt
 
 assert_file_has_content status.txt 'Version: 1.0.10'
-assert_file_has_content sysroot/boot/loader/syslinux.cfg 'TestOS 42 1.0.10'
+if test -f sysroot/boot/loader/syslinux.cfg; then
+    assert_file_has_content sysroot/boot/loader/syslinux.cfg 'TestOS 42 1.0.10'
+fi
 
 echo "ok deploy command"
 
