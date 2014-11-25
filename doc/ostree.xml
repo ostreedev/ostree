@@ -118,6 +118,14 @@ Boston, MA 02111-1307, USA.
                     repository.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>-v, --verbose</option></term>
+
+                <listitem><para>
+                    Produce debug level output.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
