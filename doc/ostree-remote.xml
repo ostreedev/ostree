@@ -49,13 +49,13 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree remote <arg choice="opt" rep="repeat">OPTIONS</arg> add <arg choice="req">NAME</arg> <arg choice="req">URL</arg> <arg choice="opt" rep="repeat">BRANCH</arg></command>
+                <command>ostree remote</command> <arg choice="opt" rep="repeat">OPTIONS</arg> add <arg choice="req">NAME</arg> <arg choice="req">URL</arg> <arg choice="opt" rep="repeat">BRANCH</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree remote delete <arg choice="req">NAME</arg></command>
+                <command>ostree remote delete</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree remote show-url <arg choice="req">NAME</arg></command>
+                <command>ostree remote show-url</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -92,6 +92,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree remote show-url local</command></para>
+<programlisting>
         http://192.168.122.1/repo
+</programlisting>
     </refsect1>
 </refentry>

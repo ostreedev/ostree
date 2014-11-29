@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree checkout <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COMMIT</arg> <arg choice="opt">DESTINATION</arg></command>
+                <command>ostree checkout</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">COMMIT</arg> <arg choice="opt">DESTINATION</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -120,6 +120,8 @@ Boston, MA 02111-1307, USA.
         <title>Example</title>
         <para><command>$ ostree checkout my-branch</command></para>
         <para><command>$ ls</command></para>
-        file1&nbsp;&nbsp;&nbsp;&nbsp;file2&nbsp;&nbsp;&nbsp;&nbsp;<emphasis type="bold">my-branch</emphasis>
+<programlisting>
+        file1&nbsp;&nbsp;&nbsp;&nbsp;file2&nbsp;&nbsp;&nbsp;&nbsp;<emphasis>my-branch</emphasis>
+</programlisting>
     </refsect1>
 </refentry>

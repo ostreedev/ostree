@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin upgrade <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                <command>ostree admin upgrade</command> <arg choice="opt" rep="repeat">OPTIONS</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -95,6 +95,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree admin upgrade</command></para>
+<programlisting>
         No update available.
+</programlisting>
     </refsect1>
 </refentry>

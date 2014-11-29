@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree static-delta <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="opt">REV</arg></command>
+                <command>ostree static-delta</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="opt">REV</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -95,6 +95,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree static-delta</command></para>
+<programlisting>
         (No static deltas)
+</programlisting>
     </refsect1>
 </refentry>

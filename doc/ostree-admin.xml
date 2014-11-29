@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin <arg choice="req">SUBCOMMAND</arg></command>
+                <command>ostree admin</command> <arg choice="req">SUBCOMMAND</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -64,18 +64,18 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Subcommands</title>
 
-        <variablelist>
-            <varlistentry><term><command>cleanup</command></term></varlistentry>
-            <varlistentry><term><command>config-diff</command></term></varlistentry>
-            <varlistentry><term><command>deploy</command></term></varlistentry>
-            <varlistentry><term><command>init-fs</command></term></varlistentry>
-            <varlistentry><term><command>instutil</command></term></varlistentry>
-            <varlistentry><term><command>os-init</command></term></varlistentry>
-            <varlistentry><term><command>status</command></term></varlistentry>
-            <varlistentry><term><command>switch</command></term></varlistentry>
-            <varlistentry><term><command>undeploy</command></term></varlistentry>
-            <varlistentry><term><command>upgrade</command></term></varlistentry>            
-        </variablelist>
+        <itemizedlist>
+            <listitem><para><command>cleanup</command></para></listitem>
+            <listitem><para><command>config-diff</command></para></listitem>
+            <listitem><para><command>deploy</command></para></listitem>
+            <listitem><para><command>init-fs</command></para></listitem>
+            <listitem><para><command>instutil</command></para></listitem>
+            <listitem><para><command>os-init</command></para></listitem>
+            <listitem><para><command>status</command></para></listitem>
+            <listitem><para><command>switch</command></para></listitem>
+            <listitem><para><command>undeploy</command></para></listitem>
+            <listitem><para><command>upgrade</command></para></listitem>            
+        </itemizedlist>
 
         <para>
             View manpages for each admin subcommand using, for example:

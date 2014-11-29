@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree show <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">OBJECT</arg></command>
+                <command>ostree show</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">OBJECT</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -77,7 +77,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--print-variant-type</option>="TYPE"</term>
 
                 <listitem><para>
-                    Memory map <arg choice="req">OBJECT</arg> (in this case a filename) to the GVariant type string.
+                    Memory map <replaceable>OBJECT</replaceable> (in this case a filename) to the GVariant type string.
                 </para></listitem>
             </varlistentry>
 
@@ -110,7 +110,9 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree show my-branch</command></para>
+<programlisting>
         commit 67e382b11d213a402a5313e61cbc69dfd5ab93cb07
         Date:  2014-06-12 13:42:54 +0000
+</programlisting>
     </refsect1>
 </refentry>

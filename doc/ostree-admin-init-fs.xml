@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin init-fs <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">PATH</arg> </command>
+                <command>ostree admin init-fs</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">PATH</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -67,7 +67,7 @@ Boston, MA 02111-1307, USA.
         <para><command>$ ostree admin init-fs /example</command></para>
         <para><command>$ ls /example </command></para>
         <para>
-            <emphasis type="bold">boot</emphasis>&nbsp;&nbsp; <emphasis type="bold">dev</emphasis>&nbsp;&nbsp; <emphasis type="bold">home</emphasis>&nbsp;&nbsp; <emphasis type="bold">ostree</emphasis>&nbsp;&nbsp; <emphasis type="bold">proc</emphasis>&nbsp;&nbsp; <emphasis type="bold">root</emphasis>&nbsp;&nbsp; <emphasis type="bold">run</emphasis>&nbsp;&nbsp; <emphasis type="bold">sys</emphasis>&nbsp;&nbsp; <emphasis type="bold">tmp</emphasis>
+            <emphasis>boot</emphasis>&nbsp;&nbsp; <emphasis>dev</emphasis>&nbsp;&nbsp; <emphasis>home</emphasis>&nbsp;&nbsp; <emphasis>ostree</emphasis>&nbsp;&nbsp; <emphasis>proc</emphasis>&nbsp;&nbsp; <emphasis>root</emphasis>&nbsp;&nbsp; <emphasis>run</emphasis>&nbsp;&nbsp; <emphasis>sys</emphasis>&nbsp;&nbsp; <emphasis>tmp</emphasis>
         </para>
     </refsect1>
 </refentry>

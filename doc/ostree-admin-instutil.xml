@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin instutil <arg choice="req">SUBCOMMAND</arg> <arg choice="opt">ARGS</arg></command>
+                <command>ostree admin instutil</command> <arg choice="req">SUBCOMMAND</arg> <arg choice="opt">ARGS</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -67,7 +67,7 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
-                <term><command>selinux-ensure-labeled <arg choice="opt">SUBPATH PREFIX</arg></command></term>
+                <term><cmdsynopsis><command>selinux-ensure-labeled</command> <arg choice="opt">SUBPATH PREFIX</arg></cmdsynopsis></term>
 
                 <listitem><para>
                     Ensure all files and directories are labeled according to SELinux policy of the first deployment.
@@ -75,7 +75,8 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <term><command>set-kargs <arg choice="opt">--merge</arg> <arg choice="opt">--import-proc-cmdline</arg> <arg choice="opt">--append="NAME=VALUE"</arg> <arg choice="opt">--replace="NAME=VALUE"</arg> <arg choice="opt">MORE_APPEND_ARGS</arg></command></term>
+                <term><cmdsynopsis>
+<command>set-kargs</command> <arg choice="opt">--merge</arg> <arg choice="opt">--import-proc-cmdline</arg> <arg choice="opt">--append="NAME=VALUE"</arg> <arg choice="opt">--replace="NAME=VALUE"</arg> <arg choice="opt">MORE_APPEND_ARGS</arg></cmdsynopsis></term>
 
                 <listitem><para>
                     Replace the kernel arguments of the default deployment. The new arguments are based

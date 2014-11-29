@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree checksum <arg choice="req">PATH</arg></command>
+                <command>ostree checksum</command> <arg choice="req">PATH</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -64,6 +64,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree checksum file1</command></para>
+<programlisting>
         67e382b11d213a402a5313e61cbc69dfd5ab93cb07fbb8b71c2e84f79fa5d7dc
+</programlisting>
     </refsect1>
 </refentry>

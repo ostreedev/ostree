@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree admin os-init <arg choice="req">OSNAME</arg></command>
+                <command>ostree admin os-init</command> <arg choice="req">OSNAME</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -64,6 +64,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree admin os-init gnome-ostree</command></para>
+    <programlisting>
         ostree/deploy/gnome-ostree initialized as OSTree root
+    </programlisting>
     </refsect1>
 </refentry>

@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree rev-parse <arg choice="req">REV</arg> <arg choice="req">PATH</arg> </command>
+                <command>ostree rev-parse </command> <arg choice="req">REV</arg> <arg choice="req">PATH</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -66,6 +66,8 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree rev-parse my-branch</command></para>
+<programlisting>
         ce19c41036cc45e49b0cecf6b157523c2105c4de1ce30101def1f759daafcc3e
+</programlisting>
     </refsect1>
 </refentry>

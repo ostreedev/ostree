@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree diff <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">REV</arg> <arg choice="req">TARGETDIR</arg></command>
+                <command>ostree diff</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">REV</arg> <arg choice="req">TARGETDIR</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -84,10 +84,14 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree diff my-branch^ my-branch</command></para>
+<programlisting>
         A   /testdirectory
         M   /helloworld.txt
+</programlisting>
 <para><command>$ ostree diff my-branch my-branch^</command></para>
+<programlisting>
         D   /testdirectory
         M   /helloworld.txt
+</programlisting>
     </refsect1>
 </refentry>

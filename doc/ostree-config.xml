@@ -49,10 +49,10 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree config get <arg choice="req">SECTIONNAME.KEYNAME</arg></command>
+                <command>ostree config get</command> <arg choice="req">SECTIONNAME.KEYNAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
-                <command>ostree config set <arg choice="req">SECTIONNAME.KEYNAME</arg> <arg choice="req">VALUE</arg></command>
+                <command>ostree config set</command> <arg choice="req">SECTIONNAME.KEYNAME</arg> <arg choice="req">VALUE</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 

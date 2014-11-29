@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree fsck <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                <command>ostree fsck</command><arg choice="opt" rep="repeat">OPTIONS</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -85,9 +85,11 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree fsck</command></para>
+<programlisting>
         Enumerating objects...
         Verifying content integrity of of 2 commit objects
         0/2572 objects
         2571/2572 objects
+</programlisting>
     </refsect1>
 </refentry>

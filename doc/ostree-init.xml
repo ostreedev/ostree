@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree init <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                <command>ostree init</command> <arg choice="opt" rep="repeat">OPTIONS</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 

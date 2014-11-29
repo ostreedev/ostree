@@ -49,7 +49,7 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree reset <arg choice="req">REF</arg> <arg choice="req">REF_TO_RESET_TO</arg> </command>
+                <command>ostree reset </command> <arg choice="req">REF</arg> <arg choice="req">REF_TO_RESET_TO</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -64,6 +64,7 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Example</title>
         <para><command>$ ostree log my-branch</command></para>
+<programlisting>
         commit 67e382b11d213a402a5313e61cbc69dfd5ab93cb07
         Date:  2014-06-12 13:42:54 +0000
             This is the second commit
@@ -71,11 +72,14 @@ Boston, MA 02111-1307, USA.
         commit ce19c41036cc45e49b0cecf6b157523c2105c4de1c
         Date:  2014-06-12 11:20:08 +0000
             Initial commit
+</programlisting>
 
 <para><command>$ ostree reset my-branch my-branch^</command></para>
         <para><command>$ ostree log my-branch</command></para>
+<programlisting>
         commit ce19c41036cc45e49b0cecf6b157523c2105c4de1c
         Date:  2014-06-12 11:20:08 +0000
             Initial commit
+</programlisting>
     </refsect1>
 </refentry>

@@ -49,7 +49,8 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree <arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg></command>
+                <command>ostree</command>
+		<arg choice="req">COMMAND</arg> <arg choice="opt" rep="repeat">OPTIONS</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -93,7 +94,7 @@ Boston, MA 02111-1307, USA.
         </para>
 
         <para>
-              To see the man page for a command run <command>man ostree <arg choice="req">COMMAND</arg></command> or <command>man ostree-admin <arg choice="req">COMMAND</arg></command> 
+              To see the man page for a command run <command>man ostree <replaceable>COMMAND</replaceable></command> or <command>man ostree-admin <replaceable>COMMAND</replaceable></command>
         </para>
     </refsect1>
 
@@ -129,7 +130,7 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-cleanup</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-cleanup</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Delete untagged
@@ -138,7 +139,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                 <citerefentry><refentrytitle>ostree-admin-config-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                 <term><citerefentry><refentrytitle>ostree-admin-config-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;See changes to
@@ -149,7 +150,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                 <citerefentry><refentrytitle>ostree-admin-deploy</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                 <term><citerefentry><refentrytitle>ostree-admin-deploy</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Takes a particular
@@ -159,7 +160,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                 <citerefentry><refentrytitle>ostree-admin-init-fs</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                 <term><citerefentry><refentrytitle>ostree-admin-init-fs</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Initialize a root filesystem
@@ -168,7 +169,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-instutil</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-instutil</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Utility functions intended primarily for operating system installation programs
@@ -176,7 +177,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                 <citerefentry><refentrytitle>ostree-admin-os-init</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                 <term><citerefentry><refentrytitle>ostree-admin-os-init</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Initialize the
@@ -186,7 +187,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-status</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-status</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Show and list the deployments.
@@ -194,7 +195,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-switch</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-switch</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Choose a different ref
@@ -204,7 +205,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>   
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-undeploy</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-undeploy</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Remove the previously
@@ -215,7 +216,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-admin-upgrade</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-admin-upgrade</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Download the latest version for the
@@ -231,7 +232,7 @@ Boston, MA 02111-1307, USA.
     
         <variablelist>
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-cat</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-cat</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Concatenate contents of files
@@ -239,7 +240,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-checkout</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-checkout</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Check out a commit into a filesystem tree.
@@ -247,7 +248,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-checksum</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-checksum</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Gives checksum of any file.
@@ -255,7 +256,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-commit</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-commit</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Given one or more
@@ -264,7 +265,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-config</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Change settings.
@@ -272,7 +273,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-diff</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Concisely list
@@ -281,7 +282,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-fsck</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-fsck</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Check a repository for consistency.
@@ -289,7 +290,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-init</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Initialize a new repository.
@@ -297,7 +298,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
             
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-log</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-log</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Show revision log.
@@ -305,7 +306,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-ls</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-ls</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;List the contents of a given commit.
@@ -313,7 +314,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-prune</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Search for unreachable objects.
@@ -321,7 +322,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-pull-local</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-pull-local</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Copy data from source-repo.
@@ -329,7 +330,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-pull</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-pull</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Download data from remote repo.  If you have libsoup.
@@ -337,7 +338,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-refs</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-refs</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;List refs.
@@ -345,7 +346,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-remote</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-remote</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Manipulate remote archive configuration.
@@ -353,7 +354,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-reset</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-reset</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Reset a ref to a previous commit.
@@ -361,7 +362,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-rev-parse</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-rev-parse</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Show the SHA256 corresponding to a given rev.
@@ -369,7 +370,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-show</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-show</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Given an OSTree SHA256 checksum, display its contents.
@@ -377,7 +378,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-static-delta</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Manage static delta files.
@@ -385,7 +386,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-summary</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-summary</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
 
                 <listitem><para>
                     &nbsp;Regenerate the repository summary metadata.
@@ -393,7 +394,7 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
-                <citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+                <term><citerefentry><refentrytitle>ostree-trivial-httpd</refentrytitle><manvolnum>1</manvolnum></citerefentry></term>
                 
                 <listitem><para>
                     &nbsp;Simple webserver.
