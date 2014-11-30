@@ -155,9 +155,14 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
     {
       gs_free char *url = NULL;
 
-      url = g_key_file_get_string (config, key, "url", error);
+      url = g_key_file_get_string (config, key, "url", NULL);
       if (url == NULL)
-        goto out;
+	{
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "url not found in '%s'",
+                   key);
+          goto out;
+        }
 
       g_print ("%s\n", url);
     }
