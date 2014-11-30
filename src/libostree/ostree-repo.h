@@ -237,13 +237,13 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
 
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
-                                        const char    *sha256, 
+                                        const char    *sha256,
                                         GVariant     **out_variant,
                                         GError       **error);
 
 gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   OstreeObjectType objtype,
-                                                  const char    *sha256, 
+                                                  const char    *sha256,
                                                   GVariant     **out_variant,
                                                   GError       **error);
 
@@ -265,7 +265,7 @@ gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
 
 gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      OstreeObjectType      objtype,
-                                                     const char           *sha256, 
+                                                     const char           *sha256,
                                                      guint64              *out_size,
                                                      GCancellable         *cancellable,
                                                      GError              **error);
@@ -279,11 +279,11 @@ gboolean      ostree_repo_import_object_from (OstreeRepo           *self,
 
 gboolean      ostree_repo_delete_object (OstreeRepo           *self,
                                          OstreeObjectType      objtype,
-                                         const char           *sha256, 
+                                         const char           *sha256,
                                          GCancellable         *cancellable,
                                          GError              **error);
 
-/** 
+/**
  * OstreeRepoCommitFilterResult:
  * @OSTREE_REPO_COMMIT_FILTER_ALLOW: Do commit this object
  * @OSTREE_REPO_COMMIT_FILTER_SKIP: Ignore this object

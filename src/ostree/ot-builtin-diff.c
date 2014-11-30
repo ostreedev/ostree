@@ -171,7 +171,7 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       modified = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_diff_item_unref);
       removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-      
+
       if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_NONE, srcf, targetf, modified, removed, added, cancellable, error))
         goto out;
 

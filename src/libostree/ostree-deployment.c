@@ -159,7 +159,7 @@ ostree_deployment_clone (OstreeDeployment *self)
       new_origin = g_key_file_new ();
       success = g_key_file_load_from_data (new_origin, data, len, 0, NULL);
       g_assert (success);
-      
+
       ostree_deployment_set_origin (ret, new_origin);
     }
   return ret;
@@ -186,7 +186,7 @@ ostree_deployment_equal (gconstpointer ap, gconstpointer bp)
 {
   OstreeDeployment *a = (OstreeDeployment*)ap;
   OstreeDeployment *b = (OstreeDeployment*)bp;
-  
+
   if (a == NULL && b == NULL)
     return TRUE;
   else if (a != NULL && b != NULL)
@@ -195,7 +195,7 @@ ostree_deployment_equal (gconstpointer ap, gconstpointer bp)
       g_str_equal (ostree_deployment_get_csum (a),
                    ostree_deployment_get_csum (b)) &&
       ostree_deployment_get_deployserial (a) == ostree_deployment_get_deployserial (b);
-  else 
+  else
     return FALSE;
 }
 
@@ -235,7 +235,7 @@ ostree_deployment_new (int    index,
                    int    bootserial)
 {
   OstreeDeployment *self;
-  
+
   /* index may be -1 */
   g_return_val_if_fail (osname != NULL, NULL);
   g_return_val_if_fail (csum != NULL, NULL);

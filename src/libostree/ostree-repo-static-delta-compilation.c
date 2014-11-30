@@ -78,7 +78,7 @@ objtype_checksum_array_new (GPtrArray *objects)
       const char *checksum;
       guint8 csum[32];
       guint8 objtype_v;
-        
+
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
       objtype_v = (guint8) objtype;
 
@@ -90,7 +90,7 @@ objtype_checksum_array_new (GPtrArray *objects)
   return g_byte_array_free_to_bytes (ret);
 }
 
-static gboolean 
+static gboolean
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
                            const char                       *to,
@@ -179,7 +179,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
           current_part->payload->len + content_size > OSTREE_STATIC_DELTA_PART_MAX_SIZE_BYTES)
         {
           current_part = allocate_part (builder);
-        } 
+        }
 
       g_ptr_array_add (current_part->objects, g_variant_ref (serialized_key));
 
@@ -206,10 +206,10 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
             goto out;
           if (bytes_read == 0)
             break;
-          
+
           current_part->payload->len += bytes_read;
         }
-      
+
       g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_WRITE);
       _ostree_write_varuint64 (current_part->operations, object_payload_start);
       _ostree_write_varuint64 (current_part->operations, content_size);
@@ -289,7 +289,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       payload_b = g_string_free_to_bytes (part_builder->payload);
       part_builder->payload = NULL;
-      
+
       operations_b = g_string_free_to_bytes (part_builder->operations);
       part_builder->operations = NULL;
       /* FIXME - avoid duplicating memory here */

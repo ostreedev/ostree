@@ -91,7 +91,7 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
 
   old_origin = ostree_sysroot_upgrader_get_origin (upgrader);
   origin_refspec = g_key_file_get_string (old_origin, "origin", "refspec", NULL);
-  
+
   if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
     goto out;
 
@@ -107,12 +107,12 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
       if (!ostree_parse_refspec (new_provided_refspec, &new_remote, &new_ref, error))
         goto out;
     }
-  
+
   if (!new_remote)
     new_refspec = g_strconcat (origin_remote, ":", new_ref, NULL);
   else
     new_refspec = g_strconcat (new_remote, ":", new_ref, NULL);
-  
+
   if (strcmp (origin_refspec, new_refspec) == 0)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -158,13 +158,13 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
 
   g_print ("Deleting ref '%s:%s'\n", origin_remote, origin_ref);
   ostree_repo_transaction_set_ref (repo, origin_remote, origin_ref, NULL);
-  
+
   if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
     goto out;
-  
+
   {
     gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
-      
+
     if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
       {
         gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,

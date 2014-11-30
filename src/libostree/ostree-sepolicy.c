@@ -194,7 +194,7 @@ initable_init (GInitable     *initable,
           GError *temp_error = NULL;
           gs_free char *line = g_data_input_stream_read_line_utf8 (datain, &len,
                                                                    cancellable, &temp_error);
-      
+
           if (temp_error)
             {
               g_propagate_error (error, temp_error);
@@ -203,10 +203,10 @@ initable_init (GInitable     *initable,
 
           if (!line)
             break;
-      
+
           if (g_str_has_prefix (line, selinuxtype_prefix))
             {
-              policytype = g_strstrip (g_strdup (line + strlen (selinuxtype_prefix))); 
+              policytype = g_strstrip (g_strdup (line + strlen (selinuxtype_prefix)));
               policy_root = g_file_get_child (etc_selinux_dir, policytype);
             }
           else if (g_str_has_prefix (line, selinux_prefix))
@@ -420,7 +420,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
 
   if (do_relabel)
     {
-      if (!ostree_sepolicy_get_label (self, path, 
+      if (!ostree_sepolicy_get_label (self, path,
                                       g_file_info_get_attribute_uint32 (src_info, "unix::mode"),
                                       &label,
                                       cancellable, error))

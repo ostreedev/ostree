@@ -61,7 +61,7 @@ typedef struct
 
   guint passthrough_depth;
   OstreeMetalinkState passthrough_previous;
-  
+
   guint found_a_file_element : 1;
   guint found_our_file_element : 1;
   guint verification_known : 1;
@@ -406,7 +406,7 @@ _ostree_metalink_new (OstreeFetcher  *fetcher,
   self->requested_file = g_strdup (requested_file);
   self->max_size = max_size;
   self->uri = soup_uri_copy (uri);
- 
+
   return self;
 }
 
@@ -435,7 +435,7 @@ on_fetched_url (GObject              *src,
   result = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)src, res, &local_error);
   if (!result)
     goto out;
-  
+
   finfo = g_file_query_info (result, OSTREE_GIO_FAST_QUERYINFO, 0,
                              g_task_get_cancellable (task), &local_error);
   if (!finfo)
@@ -448,13 +448,13 @@ on_fetched_url (GObject              *src,
                    self->size, g_file_info_get_size (finfo));
       goto out;
     }
-  
+
   if (self->verification_sha512)
     {
       gs_free char *actual = ot_checksum_file (result, G_CHECKSUM_SHA512,
                                                g_task_get_cancellable (task),
                                                &local_error);
-      
+
       if (!actual)
         goto out;
 
@@ -472,7 +472,7 @@ on_fetched_url (GObject              *src,
       gs_free char *actual = ot_checksum_file (result, G_CHECKSUM_SHA256,
                                                g_task_get_cancellable (task),
                                                &local_error);
-      
+
       if (!actual)
         goto out;
 
@@ -515,7 +515,7 @@ try_next_url (OstreeMetalinkRequest          *self)
   else
     {
       SoupURI *next = self->urls->pdata[self->current_url_index];
-      
+
       _ostree_fetcher_request_uri_with_partial_async (self->metalink->fetcher, next,
                                                       self->metalink->max_size,
                                                       g_task_get_cancellable (self->task),
@@ -572,7 +572,7 @@ start_target_request_phase (OstreeMetalinkRequest      *self,
     }
 
   try_next_url (self);
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -588,7 +588,7 @@ ostree_metalink_request_unref (gpointer data)
   g_ptr_array_unref (request->urls);
   g_free (request);
 }
-                               
+
 static const GMarkupParser metalink_parser = {
   metalink_parser_start,
   metalink_parser_end,

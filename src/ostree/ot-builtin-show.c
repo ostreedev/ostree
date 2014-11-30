@@ -80,10 +80,10 @@ do_print_related (OstreeRepo  *repo,
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  resolved_rev, &variant, error))
     goto out;
-      
+
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   related = g_variant_get_child_value (variant, 2);
-  
+
   viter = g_variant_iter_new (related);
 
   while (g_variant_iter_loop (viter, "(&s@ay)", &name, &csum_v))
@@ -132,7 +132,7 @@ do_print_metadata_key (OstreeRepo     *repo,
           goto out;
         }
     }
-  
+
   value = g_variant_lookup_value (metadata, key, NULL);
   if (!value)
     {
@@ -193,7 +193,7 @@ print_if_found (OstreeRepo        *repo,
         goto out;
       *inout_was_found = TRUE;
     }
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -269,7 +269,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
               gs_unref_object GFileInfo *finfo = NULL;
               gs_unref_variant GVariant *xattrs = NULL;
               GFileType filetype;
-              
+
               if (!ostree_repo_load_file (repo, rev, NULL, &finfo, &xattrs,
                                           cancellable, error))
                 goto out;
@@ -308,7 +308,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
             }
         }
     }
- 
+
   ret = TRUE;
  out:
   if (context)

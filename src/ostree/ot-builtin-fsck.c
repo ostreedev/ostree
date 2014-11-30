@@ -96,7 +96,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
                   goto out;
                 }
             }
-      
+
           input = g_memory_input_stream_new_from_data (g_variant_get_data (metadata),
                                                        g_variant_get_size (metadata),
                                                        NULL);
@@ -148,7 +148,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
                                             objtype, &computed_csum,
                                             cancellable, error))
         goto out;
-      
+
       tmp_checksum = ostree_checksum_from_bytes (computed_csum);
       if (strcmp (checksum, tmp_checksum) != 0)
         {
@@ -259,7 +259,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
 
   commits = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                    (GDestroyNotify)g_variant_unref, NULL);
-  
+
   g_hash_table_iter_init (&hash_iter, objects);
 
   while (g_hash_table_iter_next (&hash_iter, &key, &value))

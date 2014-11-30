@@ -46,7 +46,7 @@ static OstreeCommand commands[] = {
   { "ls", ostree_builtin_ls },
   { "prune", ostree_builtin_prune },
   { "pull-local", ostree_builtin_pull_local },
-#ifdef HAVE_LIBSOUP 
+#ifdef HAVE_LIBSOUP
   { "pull", ostree_builtin_pull },
 #endif
   { "refs", ostree_builtin_refs },
@@ -56,7 +56,7 @@ static OstreeCommand commands[] = {
   { "show", ostree_builtin_show },
   { "static-delta", ostree_builtin_static_delta },
   { "summary", ostree_builtin_summary },
-#ifdef HAVE_LIBSOUP 
+#ifdef HAVE_LIBSOUP
   { "trivial-httpd", ostree_builtin_trivial_httpd },
 #endif
   { NULL }

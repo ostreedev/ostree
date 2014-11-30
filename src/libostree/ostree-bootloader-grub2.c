@@ -77,7 +77,7 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
                                            cancellable, error);
       if (!direnum)
         goto out;
-  
+
       while (TRUE)
         {
           GFileInfo *file_info;
@@ -97,8 +97,8 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
           if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
             continue;
 
-          subdir_grub_cfg = g_build_filename (gs_file_get_path_cached (efi_basedir), fname, "grub.cfg", NULL); 
-          
+          subdir_grub_cfg = g_build_filename (gs_file_get_path_cached (efi_basedir), fname, "grub.cfg", NULL);
+
           if (g_file_test (subdir_grub_cfg, G_FILE_TEST_EXISTS))
             {
               self->config_path_efi = g_file_new_for_path (subdir_grub_cfg);
@@ -195,7 +195,7 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
       g_string_append (output, hardcoded_insmods);
       g_string_append (output, grub2_prepare_root_cache);
       g_string_append_c (output, '\n');
-      
+
       if (!kernel)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -382,7 +382,7 @@ rm -f ${grub_cfg}.new
   if (self->is_efi)
     {
       gs_unref_object GFile *config_path_efi_old = g_file_get_child (config_path_efi_dir, "grub.cfg.old");
-      
+
       /* copy current to old */
       if (!ot_gfile_ensure_unlinked (config_path_efi_old, cancellable, error))
         goto out;
@@ -401,14 +401,14 @@ rm -f ${grub_cfg}.new
                            cancellable, error))
         goto out;
     }
-  
+
   ret = TRUE;
  out:
   return ret;
 }
 
 static gboolean
-_ostree_bootloader_grub2_is_atomic (OstreeBootloader      *bootloader) 
+_ostree_bootloader_grub2_is_atomic (OstreeBootloader      *bootloader)
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   return !self->is_efi;

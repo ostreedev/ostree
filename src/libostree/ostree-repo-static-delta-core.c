@@ -60,7 +60,7 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
  *
  * This function synchronously enumerates all static deltas in the
  * repository, returning its result in @out_deltas.
- */ 
+ */
 gboolean
 ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                      GPtrArray                  **out_deltas,
@@ -80,7 +80,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                             NULL, error);
       if (!dir_enum)
         goto out;
-      
+
       while (TRUE)
         {
           GFileInfo *file_info;
@@ -298,7 +298,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                          i);
             goto out;
           }
-        
+
         switch (partdata[0])
           {
           case 0:
@@ -313,11 +313,11 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
             }
             break;
           }
-        
+
         part = ot_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT),
                                           payload, FALSE);
-        
-        
+
+
         if (!_ostree_static_delta_part_execute (self, objects, part, cancellable, error))
           {
             g_prefix_error (error, "executing delta part %i: ", i);

@@ -171,7 +171,7 @@ _ostree_lzma_compressor_convert (GConverter *converter,
 {
   OstreeLzmaCompressor *self = OSTREE_LZMA_COMPRESSOR (converter);
   int res;
-  lzma_action action; 
+  lzma_action action;
 
   if (!self->initialized)
     {

@@ -72,7 +72,7 @@ ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, G
           guint i;
           if (!ostree_repo_list_static_delta_names (repo, &delta_names, cancellable, error))
             goto out;
-      
+
           if (delta_names->len == 0)
             {
               g_print ("(No static deltas)\n");

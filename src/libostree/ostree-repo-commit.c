@@ -76,7 +76,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
    * automatically inherit the non-root ownership.
    */
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
-      && self->target_owner_uid != -1) 
+      && self->target_owner_uid != -1)
     {
       if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
                                 self->target_owner_uid,
@@ -102,7 +102,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-              
+
       if (xattrs != NULL)
         {
           if (!gs_dfd_and_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
@@ -143,7 +143,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
               ot_util_set_error_from_errno (error, errno);
               goto out;
             }
-          
+
           if (xattrs)
             {
               if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
@@ -179,15 +179,15 @@ commit_loose_object_trusted (OstreeRepo        *self,
               goto out;
             }
         }
-          
+
       if (!g_output_stream_close (temp_out, cancellable, error))
         goto out;
     }
-  
+
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
                                             cancellable, error))
     goto out;
-  
+
   if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
                             self->objects_dir_fd, loose_path) == -1))
     {
@@ -268,7 +268,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
 {
   gboolean ret = FALSE;
   gs_unref_variant_builder GVariantBuilder *builder = NULL;
-    
+
   if (original_metadata)
     {
       builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
@@ -287,7 +287,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
       GVariantBuilder index_builder;
       guint i;
       gs_unref_ptrarray GPtrArray *sorted_keys = NULL;
-      
+
       g_hash_table_iter_init (&entries, self->object_sizes);
       g_variant_builder_init (&index_builder,
                               G_VARIANT_TYPE ("a" _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE));
@@ -317,11 +317,11 @@ add_size_index_to_metadata (OstreeRepo        *self,
                                  ot_gvariant_new_bytearray ((guint8*)buffer->str, buffer->len));
           g_string_free (buffer, TRUE);
         }
-      
+
       g_variant_builder_add (builder, "{sv}", "ostree.sizes",
                              g_variant_builder_end (&index_builder));
     }
-    
+
   ret = TRUE;
   *out_metadata = g_variant_builder_end (builder);
   g_variant_ref_sink (*out_metadata);
@@ -490,7 +490,7 @@ write_object (OstreeRepo         *self,
               compressed_out_stream = g_converter_output_stream_new (temp_out, zlib_compressor);
               /* Don't close the base; we'll do that later */
               g_filter_output_stream_set_close_base_stream ((GFilterOutputStream*)compressed_out_stream, FALSE);
-              
+
               unpacked_size = g_output_stream_splice (compressed_out_stream, file_input,
                                                       0, cancellable, error);
               if (unpacked_size < 0)
@@ -540,7 +540,7 @@ write_object (OstreeRepo         *self,
     }
 
   g_assert (actual_checksum != NULL); /* Pacify static analysis */
-          
+
   if (indexable)
     {
       gsize archived_size;
@@ -557,7 +557,7 @@ write_object (OstreeRepo         *self,
                                       &have_obj, loose_objpath,
                                       cancellable, error))
     goto out;
-          
+
   do_commit = !have_obj;
 
   if (do_commit)
@@ -605,7 +605,7 @@ write_object (OstreeRepo         *self,
   else
     self->txn_stats.content_objects_total++;
   g_mutex_unlock (&self->txn_stats_lock);
-      
+
   if (checksum)
     ret_csum = ot_csum_from_gchecksum (checksum);
 
@@ -1582,7 +1582,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
   gs_unref_variant GVariant *ret_metadata = NULL;
   GError *temp_error = NULL;
-  
+
   if (!ot_util_variant_map (metadata_path, G_VARIANT_TYPE ("a{sv}"),
                             TRUE, &ret_metadata, &temp_error))
     {
@@ -1850,7 +1850,7 @@ get_modified_xattrs (OstreeRepo                       *self,
           g_variant_ref_sink (ret_xattrs);
         }
     }
-  
+
   ret = TRUE;
   gs_transfer_out_value (out_xattrs, &ret_xattrs);
  out:
@@ -2092,7 +2092,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
       while (TRUE)
         {
           GFileInfo *child_info;
-          
+
           if (!gs_file_enumerator_iterate (dir_enum, &child_info, NULL,
                                            cancellable, error))
             goto out;

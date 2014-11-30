@@ -52,7 +52,7 @@ main (int argc, char **argv)
       while (TRUE)
 	{
 	  int offset, bits;
-	  offset = bupsplit_find_ofs (start, MIN(G_MAXINT32, len), &bits); 
+	  offset = bupsplit_find_ofs (start, MIN(G_MAXINT32, len), &bits);
 	  if (offset == 0)
 	    break;
 	  if (offset > BLOB_MAX)

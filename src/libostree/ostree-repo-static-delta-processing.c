@@ -45,7 +45,7 @@ typedef struct {
   const guint8   *input_target_csum;
 
   const guint8   *payload_data;
-  guint64         payload_size; 
+  guint64         payload_size;
 } StaticDeltaExecutionState;
 
 typedef gboolean (*DispatchOpFunc) (OstreeRepo                 *repo,
@@ -172,9 +172,9 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 }
 
 static gboolean
-dispatch_fetch (OstreeRepo    *repo,   
+dispatch_fetch (OstreeRepo    *repo,
                 StaticDeltaExecutionState  *state,
-                GCancellable  *cancellable,  
+                GCancellable  *cancellable,
                 GError       **error)
 {
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
@@ -215,11 +215,11 @@ validate_ofs (StaticDeltaExecutionState  *state,
     }
   return TRUE;
 }
-  
+
 static gboolean
 dispatch_write (OstreeRepo                 *repo,
                 StaticDeltaExecutionState  *state,
-                GCancellable               *cancellable,  
+                GCancellable               *cancellable,
                 GError                    **error)
 {
   gboolean ret = FALSE;
@@ -237,7 +237,7 @@ dispatch_write (OstreeRepo                 *repo,
     goto out;
   if (!read_varuint64 (state, &length, error))
     goto out;
-  
+
   if (!validate_ofs (state, offset, length, error))
     goto out;
 
@@ -258,7 +258,7 @@ dispatch_write (OstreeRepo                 *repo,
 static gboolean
 dispatch_gunzip (OstreeRepo                 *repo,
                  StaticDeltaExecutionState  *state,
-                 GCancellable               *cancellable,  
+                 GCancellable               *cancellable,
                  GError                    **error)
 {
   gboolean ret = FALSE;
@@ -301,7 +301,7 @@ dispatch_gunzip (OstreeRepo                 *repo,
 static gboolean
 dispatch_close (OstreeRepo                 *repo,
                 StaticDeltaExecutionState  *state,
-                GCancellable               *cancellable,  
+                GCancellable               *cancellable,
                 GError                    **error)
 {
   gboolean ret = FALSE;
@@ -353,7 +353,7 @@ dispatch_close (OstreeRepo                 *repo,
                                              cancellable, error);
       if (!info)
         goto out;
-      
+
       if (!ostree_repo_write_content (repo, tmp_checksum, in,
                                       g_file_info_get_size (info), NULL,
                                       cancellable, error))
@@ -372,7 +372,7 @@ dispatch_close (OstreeRepo                 *repo,
       if (!open_output_target_csum (repo, state, cancellable, error))
         goto out;
     }
-      
+
   ret = TRUE;
  out:
   if (!ret)

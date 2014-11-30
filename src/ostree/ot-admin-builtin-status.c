@@ -38,7 +38,7 @@ static char *
 version_of_commit (OstreeRepo *repo, const char *checksum)
 {
   gs_unref_variant GVariant *variant = NULL;
-  
+
   /* Shouldn't fail, but if it does, we ignore it */
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
                                  &variant, NULL))

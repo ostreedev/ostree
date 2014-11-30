@@ -50,7 +50,7 @@ struct OstreeSysrootUpgrader {
   char *origin_ref;
 
   char *new_revision;
-}; 
+};
 
 enum {
   PROP_0,
@@ -96,11 +96,11 @@ parse_refspec (OstreeSysrootUpgrader  *self,
   g_clear_pointer (&self->origin_remote, g_free);
   g_clear_pointer (&self->origin_ref, g_free);
   if (!ostree_parse_refspec (origin_refspec,
-                             &self->origin_remote, 
+                             &self->origin_remote,
                              &self->origin_ref,
                              error))
     goto out;
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -137,7 +137,7 @@ ostree_sysroot_upgrader_initable_init (GInitable        *initable,
       goto out;
     }
 
-  self->merge_deployment = ostree_sysroot_get_merge_deployment (self->sysroot, self->osname); 
+  self->merge_deployment = ostree_sysroot_get_merge_deployment (self->sysroot, self->osname);
   if (self->merge_deployment == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -418,7 +418,7 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
                                  &old_commit,
                                  error))
     goto out;
-  
+
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  to_rev, &new_commit,
                                  error))

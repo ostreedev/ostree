@@ -170,7 +170,7 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
   /* Clone all xattrs first, so we get the SELinux security context
    * right.  This will allow other users access if they have ACLs, but
    * oh well.
-   */ 
+   */
   if (!dfd_and_name_get_all_xattrs (src_parent_dfd, src_name,
                                     &xattrs, cancellable, error))
     goto out;
@@ -228,7 +228,7 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd, dest_dfd,
                                          cancellable, error))
     goto out;
- 
+
   srcd = fdopendir (src_dfd);
   if (!srcd)
     {
@@ -508,7 +508,7 @@ merge_etc_changes (GFile          *orig_etc,
   guint i;
   int orig_etc_fd = -1;
   int modified_etc_fd = -1;
-  int new_etc_fd = -1; 
+  int new_etc_fd = -1;
 
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
@@ -531,7 +531,7 @@ merge_etc_changes (GFile          *orig_etc,
     }
 
   gs_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
-                                "Copying /etc changes: %u modified, %u removed, %u added", 
+                                "Copying /etc changes: %u modified, %u removed, %u added",
                                 modified->len,
                                 removed->len,
                                 added->len);
@@ -632,7 +632,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   deploy_parent = g_file_get_parent (deploy_target_path);
   if (!ot_util_ensure_directory_and_fsync (deploy_parent, cancellable, error))
     goto out;
-  
+
   if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, OSTREE_REPO_FILE (root),
                                   file_info, cancellable, error))
     goto out;
@@ -713,7 +713,7 @@ relabel_recursively (OstreeSysroot  *sysroot,
                                        cancellable, error);
   if (!direnum)
     goto out;
-  
+
   while (TRUE)
     {
       GFileInfo *file_info;
@@ -767,7 +767,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
                                  cancellable, error);
   if (!root_info)
     goto out;
-  
+
   g_ptr_array_add (path_parts, (char*)prefix);
   if (!relabel_recursively (sysroot, sepolicy, dir, root_info, path_parts,
                             cancellable, error))
@@ -824,11 +824,11 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
    * point in the distant future to only create (and label) /var
    * when doing a deployment.
    */
-  gs_unref_object GFile *deployment_var_labeled = 
+  gs_unref_object GFile *deployment_var_labeled =
     g_file_get_child (deployment_var_path, ".ostree-selabeled");
-  gs_unref_object GFile *deployment_var_labeled_tmp = 
+  gs_unref_object GFile *deployment_var_labeled_tmp =
     g_file_get_child (deployment_var_path, ".ostree-selabeled.tmp");
-      
+
   if (!g_file_query_exists (deployment_var_labeled, NULL))
     {
       gs_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
@@ -847,7 +847,7 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
                                     G_FILE_CREATE_REPLACE_DESTINATION, NULL,
                                     cancellable, error))
         goto out;
-          
+
       if (!selinux_relabel_file (sysroot, sepolicy,
                                  deployment_var_labeled_tmp, "var",
                                  cancellable, error))
@@ -904,7 +904,7 @@ merge_configuration (OstreeSysroot         *sysroot,
 
   deployment_etc_path = g_file_get_child (deployment_path, "etc");
   deployment_usretc_path = g_file_resolve_relative_path (deployment_path, "usr/etc");
-  
+
   etc_exists = g_file_query_exists (deployment_etc_path, NULL);
   usretc_exists = g_file_query_exists (deployment_usretc_path, NULL);
 
@@ -923,7 +923,7 @@ merge_configuration (OstreeSysroot         *sysroot,
       usretc_exists = TRUE;
       etc_exists = FALSE;
     }
-  
+
   if (usretc_exists)
     {
       /* TODO - set out labels as we copy files */
@@ -949,7 +949,7 @@ merge_configuration (OstreeSysroot         *sysroot,
 
   if (source_etc_path)
     {
-      if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path, 
+      if (!merge_etc_changes (source_etc_pristine_path, source_etc_path, deployment_etc_path,
                               cancellable, error))
         goto out;
     }
@@ -1042,7 +1042,7 @@ get_kernel_from_tree (GFile         *deployroot,
         break;
 
       name = g_file_info_get_name (file_info);
-      
+
       if (ret_kernel == NULL && g_str_has_prefix (name, "vmlinuz-"))
         {
           const char *dash = strrchr (name, '-');
@@ -1063,7 +1063,7 @@ get_kernel_from_tree (GFile         *deployroot,
               ret_initramfs = g_file_get_child (bootdir, name);
             }
         }
-      
+
       if (ret_kernel && ret_initramfs)
         break;
     }
@@ -1176,7 +1176,7 @@ swap_bootlinks (OstreeSysroot *self,
 
       if (!ot_util_ensure_directory_and_fsync (linkname_parent, cancellable, error))
         goto out;
-      
+
       if (!g_file_make_symbolic_link (linkname, bootlink_target, cancellable, error))
         goto out;
     }
@@ -1216,17 +1216,17 @@ parse_os_release (const char *contents,
 
       if (g_str_has_prefix (line, "#"))
         continue;
-      
+
       eq = strchr (line, '=');
       if (!eq)
         continue;
-      
+
       *eq = '\0';
       quotedval = eq + 1;
       val = g_shell_unquote (quotedval, NULL);
       if (!val)
         continue;
-      
+
       g_hash_table_insert (ret, line, val);
     }
 
@@ -1235,7 +1235,7 @@ parse_os_release (const char *contents,
 
 /*
  * install_deployment_kernel:
- * 
+ *
  * Write out an entry in /boot/loader/entries for @deployment.
  */
 static gboolean
@@ -1291,7 +1291,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                                               osname,
                                               bootcsum);
   bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%d.conf",
-                                               new_bootversion, osname, 
+                                               new_bootversion, osname,
                                                ostree_deployment_get_index (deployment));
 
   if (!ot_util_ensure_directory_and_fsync (bootcsumdir, cancellable, error))
@@ -1345,7 +1345,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
                            "No PRETTY_NAME or ID in /etc/os-release");
       goto out;
     }
-  
+
 
   if (repo)
     {
@@ -1412,7 +1412,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   ostree_kernel_arg = NULL;
   options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
-  
+
   if (!ostree_bootconfig_parser_write (ostree_deployment_get_bootconfig (deployment), bootconfpath,
                                cancellable, error))
       goto out;
@@ -1458,7 +1458,7 @@ static GHashTable *
 assign_bootserials (GPtrArray   *deployments)
 {
   guint i;
-  GHashTable *ret = 
+  GHashTable *ret =
     g_hash_table_new_full (g_str_hash, g_str_equal, NULL, NULL);
 
   for (i = 0; i < deployments->len; i++)
@@ -1495,7 +1495,7 @@ deployment_bootconfigs_equal (OstreeDeployment *a,
     __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *b_kargs = NULL;
     gs_free char *a_boot_options_without_ostree = NULL;
     gs_free char *b_boot_options_without_ostree = NULL;
-      
+
     /* We checksum the kernel arguments *except* ostree= */
     a_kargs = _ostree_kernel_args_from_string (a_boot_options);
     _ostree_kernel_args_replace (a_kargs, "ostree");
@@ -1595,10 +1595,10 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
       gs_unref_object GFile *deployment_root = NULL;
-      
+
       if (deployment == self->booted_deployment)
         found_booted_deployment = TRUE;
-      
+
       deployment_root = ostree_sysroot_get_deployment_directory (self, deployment);
       if (!g_file_query_exists (deployment_root, NULL))
         {
@@ -1632,7 +1632,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           g_prefix_error (error, "Swapping current bootlinks: ");
           goto out;
         }
-      
+
       bootloader_is_atomic = TRUE;
     }
   else
@@ -1652,7 +1652,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         goto out;
       if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
         goto out;
-      
+
       /* Need the repo to try and extract the versions for deployments.
        * But this is a "nice-to-have" for the bootloader UI, so failure
        * here is not fatal to the whole operation.  We just gracefully
@@ -1716,7 +1716,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
           g_prefix_error (error, "Full sync: ");
           goto out;
         }
-      
+
       if (!swap_bootloader (self, self->bootversion, new_bootversion,
                             cancellable, error))
         {
@@ -1770,7 +1770,7 @@ allocate_deployserial (OstreeSysroot           *self,
     g_ptr_array_new_with_free_func (g_object_unref);
 
   osdir = ot_gfile_get_child_build_path (self->path, "ostree/deploy", osname, NULL);
-  
+
   if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
                                                     cancellable, error))
     goto out;
@@ -1778,7 +1778,7 @@ allocate_deployserial (OstreeSysroot           *self,
   for (i = 0; i < tmp_current_deployments->len; i++)
     {
       OstreeDeployment *deployment = tmp_current_deployments->pdata[i];
-      
+
       if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
         continue;
       if (strcmp (ostree_deployment_get_csum (deployment), revision) != 0)
@@ -1792,7 +1792,7 @@ allocate_deployserial (OstreeSysroot           *self,
  out:
   return ret;
 }
-                            
+
 /**
  * ostree_sysroot_deploy_tree:
  * @self: Sysroot
@@ -1859,7 +1859,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   if (!get_kernel_from_tree (commit_root, &tree_kernel_path, &tree_initramfs_path,
                              cancellable, error))
     goto out;
-  
+
   if (tree_initramfs_path != NULL)
     {
       if (!checksum_from_kernel_src (tree_initramfs_path, &new_bootcsum, error))

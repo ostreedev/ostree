@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 
 GThreadPool * ot_thread_pool_new_nproc (GFunc     func,
                                         gpointer  user_data);
-                                        
+
 
 G_END_DECLS
 

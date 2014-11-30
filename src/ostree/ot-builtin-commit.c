@@ -126,7 +126,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   if (!g_file_load_contents (path, cancellable, &contents, &len, NULL,
                              error))
     goto out;
-  
+
   ret_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   lines = g_strsplit (contents, "\n", -1);
 
@@ -146,7 +146,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
                            "Malformed statoverride file");
               goto out;
             }
-          
+
           mode_add = (guint32)(gint32)g_ascii_strtod (line + 1, NULL);
           g_hash_table_insert (ret_hash,
                                g_strdup (spc + 1),
@@ -183,7 +183,7 @@ commit_filter (OstreeRepo         *self,
                                         current_mode | mode_add);
       g_hash_table_remove (mode_adds, path);
     }
-  
+
   return OSTREE_REPO_COMMIT_FILTER_ALLOW;
 }
 
@@ -296,7 +296,7 @@ parse_keyvalue_strings (char             **strings,
                        "Missing '=' in KEY=VALUE metadata '%s'", s);
           goto out;
         }
-          
+
       key = g_strndup (s, eq - s);
       g_variant_builder_add (builder, "{sv}", key,
                              g_variant_new_string (eq + 1));
@@ -352,7 +352,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                                    &detached_metadata, error))
         goto out;
     }
-      
+
   if (!opt_branch)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,

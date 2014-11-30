@@ -65,12 +65,12 @@ G_BEGIN_DECLS
  *
  * The metadata would include things like a version number, as well as
  * extended verification data like a GPG signature.
- * 
+ *
  * The second array is an array of delta objects that should be
  * fetched and applied before this one.  This is a fairly generic
  * recursion mechanism that would potentially allow saving significant
  * storage space on the server.
- */ 
+ */
 #define OSTREE_STATIC_DELTA_META_FORMAT "(a{sv}taya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT ")"
 
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,

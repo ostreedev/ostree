@@ -164,9 +164,9 @@ diff_add_dir_recurse (GFile          *d,
   gs_unref_object GFile *child = NULL;
   gs_unref_object GFileInfo *child_info = NULL;
 
-  dir_enum = g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO, 
+  dir_enum = g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
+                                        cancellable,
                                         error);
   if (!dir_enum)
     goto out;
@@ -187,7 +187,7 @@ diff_add_dir_recurse (GFile          *d,
           if (!diff_add_dir_recurse (child, added, cancellable, error))
             goto out;
         }
-      
+
       g_clear_object (&child_info);
     }
   if (temp_error != NULL)
@@ -251,7 +251,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
     {
       OstreeRepoFile *a_repof = (OstreeRepoFile*) a;
       OstreeRepoFile *b_repof = (OstreeRepoFile*) b;
-      
+
       if (strcmp (ostree_repo_file_tree_get_contents_checksum (a_repof),
                   ostree_repo_file_tree_get_contents_checksum (b_repof)) == 0)
         {
@@ -263,7 +263,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
   g_clear_object (&child_a_info);
   g_clear_object (&child_b_info);
 
-  dir_enum = g_file_enumerate_children (a, OSTREE_GIO_FAST_QUERYINFO, 
+  dir_enum = g_file_enumerate_children (a, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         cancellable, error);
   if (!dir_enum)
@@ -309,7 +309,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
             {
               OstreeDiffItem *diff_item = diff_item_new (child_a, child_a_info,
                                                    child_b, child_b_info, NULL, NULL);
-              
+
               g_ptr_array_add (modified, diff_item);
             }
           else
@@ -319,7 +319,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
               if (!diff_files (flags, child_a, child_a_info, child_b, child_b_info, &diff_item,
                                cancellable, error))
                 goto out;
-              
+
               if (diff_item)
                 g_ptr_array_add (modified, diff_item); /* Transfer ownership */
 
@@ -331,7 +331,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
                 }
             }
         }
-      
+
       g_clear_object (&child_a_info);
     }
   if (temp_error != NULL)
@@ -341,7 +341,7 @@ ostree_diff_dirs (OstreeDiffFlags flags,
     }
 
   g_clear_object (&dir_enum);
-  dir_enum = g_file_enumerate_children (b, OSTREE_GIO_FAST_QUERYINFO, 
+  dir_enum = g_file_enumerate_children (b, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                         cancellable, error);
   if (!dir_enum)

@@ -60,7 +60,7 @@ ostree_builtin_rev_parse (int argc, char **argv, GCancellable *cancellable, GErr
         goto out;
       g_print ("%s\n", resolved_rev);
     }
- 
+
   ret = TRUE;
  out:
   if (context)

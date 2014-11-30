@@ -49,7 +49,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
         {
           g_clear_error (&temp_error);
           goto done;
-        } 
+        }
       else
         {
           g_propagate_error (error, temp_error);
@@ -79,7 +79,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
 
       if (!_ostree_sysroot_parse_deploy_path_name (name, &csum, &deployserial, error))
         goto out;
-      
+
       deployment = ostree_deployment_new (-1, osname, csum, deployserial, NULL, -1);
       g_ptr_array_add (inout_deployments, g_object_ref (deployment));
     }
@@ -115,7 +115,7 @@ list_all_deployment_directories (OstreeSysroot       *self,
         {
           g_clear_error (&temp_error);
           goto done;
-        } 
+        }
       else
         {
           g_propagate_error (error, temp_error);
@@ -136,12 +136,12 @@ list_all_deployment_directories (OstreeSysroot       *self,
 
       if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
         continue;
-      
+
       if (!_ostree_sysroot_list_deployment_dirs_for_os (child, ret_deployments,
                                                         cancellable, error))
         goto out;
     }
-  
+
  done:
   ret = TRUE;
   ot_transfer_out_value (out_deployments, &ret_deployments);
@@ -155,7 +155,7 @@ parse_bootdir_name (const char *name,
                     char      **out_csum)
 {
   const char *lastdash;
-  
+
   if (out_osname)
     *out_osname = NULL;
   if (out_csum)
@@ -165,7 +165,7 @@ parse_bootdir_name (const char *name,
 
   if (!lastdash)
     return FALSE;
-      
+
   if (!ostree_validate_checksum_string (lastdash + 1, NULL))
     return FALSE;
 
@@ -202,7 +202,7 @@ list_all_boot_directories (OstreeSysroot       *self,
         {
           g_clear_error (&temp_error);
           goto done;
-        } 
+        }
       else
         {
           g_propagate_error (error, temp_error);
@@ -231,10 +231,10 @@ list_all_boot_directories (OstreeSysroot       *self,
       name = g_file_info_get_name (file_info);
       if (!parse_bootdir_name (name, NULL, NULL))
         continue;
-      
+
       g_ptr_array_add (ret_bootdirs, g_object_ref (child));
     }
-  
+
  done:
   ret = TRUE;
   ot_transfer_out_value (out_bootdirs, &ret_bootdirs);
@@ -321,7 +321,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
   if (!list_all_deployment_directories (self, &all_deployment_dirs,
                                         cancellable, error))
     goto out;
-  
+
   for (i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
@@ -355,7 +355,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
   if (!list_all_boot_directories (self, &all_boot_dirs,
                                   cancellable, error))
     goto out;
-  
+
   for (i = 0; i < all_boot_dirs->len; i++)
     {
       GFile *bootdir = all_boot_dirs->pdata[i];
@@ -478,7 +478,7 @@ generate_deployment_refs_and_prune (OstreeSysroot       *self,
   ostree_repo_abort_transaction (repo, cancellable, NULL);
   return ret;
 }
-  
+
 /**
  * ostree_sysroot_cleanup:
  * @self: Sysroot

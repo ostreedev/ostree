@@ -1,5 +1,5 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- * 
+ *
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
@@ -58,7 +58,7 @@ ostree_chain_input_stream_class_init (OstreeChainInputStreamClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
-  
+
   g_type_class_add_private (klass, sizeof (OstreeChainInputStreamPrivate));
 
   gobject_class->get_property = ostree_chain_input_stream_get_property;
@@ -90,7 +90,7 @@ ostree_chain_input_stream_set_property (GObject         *object,
 					     GParamSpec      *pspec)
 {
   OstreeChainInputStream *self;
-  
+
   self = OSTREE_CHAIN_INPUT_STREAM (object);
 
   switch (prop_id)
@@ -170,7 +170,7 @@ ostree_chain_input_stream_read (GInputStream  *stream,
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return -1;
-  
+
   if (self->priv->index >= self->priv->streams->len)
     return 0;
 

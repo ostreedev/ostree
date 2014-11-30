@@ -179,7 +179,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
   GList *item;
   GMainContext *maincontext = NULL;
   GMainLoop *loop = NULL;
-  
+
   g_return_val_if_fail (out_had_valid_sig != NULL, FALSE);
 
   maincontext = g_main_context_new ();
@@ -194,7 +194,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
                                                 GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
   gs_subprocess_context_set_stderr_disposition (context,
                                                 GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-  
+
   if (!gs_subprocess_context_open_pipe_read (context, &output, &fd, error))
     goto out;
 
@@ -231,7 +231,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
 
   if (v.goodsigs > 0)
     ret_had_valid_sig = TRUE;
-  
+
   ret = TRUE;
   *out_had_valid_sig = ret_had_valid_sig;
  out:
@@ -274,7 +274,7 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
 {
   gboolean ret = FALSE;
   gs_unref_object GFileEnumerator *enumerator = NULL;
-  
+
   enumerator = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO,
                                           G_FILE_QUERY_INFO_NONE,
                                           cancellable, error);

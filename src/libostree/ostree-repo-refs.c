@@ -51,7 +51,7 @@ add_ref_to_set (const char       *remote,
   relpath = g_file_get_relative_path (base, child);
   g_string_append (refname, relpath);
   g_free (relpath);
-          
+
   g_hash_table_insert (refs, g_string_free (refname, FALSE), contents);
 
   ret = TRUE;
@@ -167,17 +167,17 @@ parse_rev_file (OstreeRepo     *self,
 
       ref = g_file_resolve_relative_path (self->local_heads_dir, rev + 5);
       subret = parse_rev_file (self, ref, &ref_sha256, error);
-        
+
       if (!subret)
         {
           g_free (ref_sha256);
           goto out;
         }
-      
+
       g_free (rev);
       rev = ref_sha256;
     }
-  else 
+  else
     {
       if (!ostree_validate_checksum_string (rev, error))
         goto out;
@@ -286,7 +286,7 @@ resolve_refspec (OstreeRepo     *self,
   GError *temp_error = NULL;
   gs_free char *ret_rev = NULL;
   gs_unref_object GFile *child = NULL;
-  
+
   g_return_val_if_fail (ref != NULL, FALSE);
 
   /* We intentionally don't allow a ref that looks like a checksum */
@@ -314,7 +314,7 @@ resolve_refspec (OstreeRepo     *self,
           if (!g_file_query_exists (child, NULL))
             {
               g_clear_object (&child);
-              
+
               if (!find_ref_in_remotes (self, ref, &child, error))
                 goto out;
             }
@@ -397,7 +397,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   else
     first_commit = NULL;
 
-  if (first_commit) 
+  if (first_commit)
     ostree_object_name_deserialize (first_commit, &checksum, &objtype);
 
   /* length more than one - multiple commits match partial refspec: is not unique */
@@ -407,7 +407,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
                    "Refspec %s not unique", refspec);
       goto out;
     }
-    
+
   /* length is 1 - a single matching commit gives us our revision */
   else if (length == 1)
     {
@@ -471,11 +471,11 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
 
           if (!ostree_repo_resolve_rev (self, parent_refspec, allow_noent, &parent_rev, error))
             goto out;
-          
+
           if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, parent_rev,
                                          &commit, error))
             goto out;
-      
+
           if (!(ret_rev = ostree_commit_get_parent (commit)))
             {
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -490,7 +490,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
 
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             goto out;
-          
+
           if (!resolve_refspec (self, remote, ref, allow_noent,
                                 &ret_rev, error))
             goto out;
@@ -651,7 +651,7 @@ ostree_repo_list_refs (OstreeRepo       *self,
   return ret;
 }
 
-gboolean      
+gboolean
 _ostree_repo_write_ref (OstreeRepo    *self,
                         const char    *remote,
                         const char    *ref,
@@ -667,7 +667,7 @@ _ostree_repo_write_ref (OstreeRepo    *self,
   else
     {
       dir = g_file_get_child (self->remote_heads_dir, remote);
-      
+
       if (rev != NULL)
         {
           if (!gs_file_ensure_directory (dir, FALSE, cancellable, error))

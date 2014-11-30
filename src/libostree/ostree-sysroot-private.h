@@ -33,7 +33,7 @@ struct OstreeSysroot {
   int sysroot_fd;
 
   gboolean loaded;
-  
+
   GPtrArray *deployments;
   int bootversion;
   int subbootversion;

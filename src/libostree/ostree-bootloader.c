@@ -61,7 +61,7 @@ _ostree_bootloader_write_config (OstreeBootloader  *self,
 {
   g_return_val_if_fail (OSTREE_IS_BOOTLOADER (self), FALSE);
 
-  return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion, 
+  return OSTREE_BOOTLOADER_GET_IFACE (self)->write_config (self, bootversion,
                                                        cancellable, error);
 }
 

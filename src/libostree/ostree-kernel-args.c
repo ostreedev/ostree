@@ -34,7 +34,7 @@ static char *
 split_keyeq (char *arg)
 {
   char *eq;
-      
+
   eq = strchr (arg, '=');
   if (eq)
     {
@@ -189,7 +189,7 @@ _ostree_kernel_args_parse_append (OstreeKernelArgs *kargs,
 
   if (!options)
     return;
-  
+
   args = g_strsplit (options, " ", -1);
   for (iter = args; *iter; iter++)
     {

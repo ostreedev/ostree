@@ -142,20 +142,20 @@ write_regular_file_content (OstreeRepoCheckoutMode mode,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-              
+
       if (xattrs)
         {
           if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
             goto out;
         }
     }
-          
+
   if (fsync (fd) == -1)
     {
       ot_util_set_error_from_errno (error, errno);
       goto out;
     }
-          
+
   if (!g_output_stream_close (output, cancellable, error))
     goto out;
 
@@ -189,7 +189,7 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-          
+
       if (xattrs)
         {
           if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
@@ -225,7 +225,7 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
     }
   else
     g_assert_not_reached ();
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -256,7 +256,7 @@ checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
                                               &temp_filename,
                                               cancellable, error))
         goto out;
-          
+
       if (xattrs)
         {
           if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
@@ -330,14 +330,14 @@ checkout_file_hardlink (OstreeRepo                          *self,
       ret_was_supported = FALSE;
     }
   else if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
-    { 
+    {
       /* Idiocy, from man rename(2)
        *
        * "If oldpath and newpath are existing hard links referring to
        * the same file, then rename() does nothing, and returns a
        * success status."
        *
-       * So we can't make this atomic.  
+       * So we can't make this atomic.
        */
       (void) unlinkat (destination_dfd, destination_name, 0);
       goto again;
@@ -437,7 +437,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
           g_prefix_error (error, "Unpacking loose object %s: ", checksum);
           goto out;
         }
-      
+
       g_clear_object (&input);
 
       /* Store the 2-byte objdir prefix (e.g. e3) in a set.  The basic
@@ -457,7 +457,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
        */
       g_mutex_lock (&repo->cache_lock);
       {
-        gpointer key = GUINT_TO_POINTER ((g_ascii_xdigit_value (checksum[0]) << 4) + 
+        gpointer key = GUINT_TO_POINTER ((g_ascii_xdigit_value (checksum[0]) << 4) +
                                          g_ascii_xdigit_value (checksum[1]));
         if (repo->updated_uncompressed_dirs == NULL)
           repo->updated_uncompressed_dirs = g_hash_table_new (NULL, NULL);
@@ -487,7 +487,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
           if (!checkout_file_unioning_from_input_at (mode, source_info, xattrs, input,
                                                      destination_dfd, destination_parent,
                                                      destination_name,
-                                                     cancellable, error)) 
+                                                     cancellable, error))
             {
               g_prefix_error (error, "Union checkout of %s to %s: ", checksum, destination_name);
               goto out;
@@ -598,9 +598,9 @@ checkout_tree_at (OstreeRepo                        *self,
       goto out;
     }
   dir_enum = g_file_enumerate_children ((GFile*)source,
-                                        OSTREE_GIO_FAST_QUERYINFO, 
+                                        OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        cancellable, 
+                                        cancellable,
                                         error);
   if (!dir_enum)
     goto out;
@@ -758,13 +758,13 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
       objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
       objdir = g_file_get_child (self->uncompressed_objects_dir, objdir_name);
 
-      enumerator = g_file_enumerate_children (objdir, "standard::name,standard::type,unix::inode,unix::nlink", 
+      enumerator = g_file_enumerate_children (objdir, "standard::name,standard::type,unix::inode,unix::nlink",
                                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                              cancellable, 
+                                              cancellable,
                                               error);
       if (!enumerator)
         goto out;
-  
+
       while (TRUE)
         {
           GFileInfo *file_info;
@@ -775,7 +775,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
             goto out;
           if (file_info == NULL)
             break;
-          
+
           nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
           if (nlinks == 1)
             {

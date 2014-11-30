@@ -91,7 +91,7 @@ process_one_checkout (OstreeRepo           *repo,
                                   opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
                                   target, OSTREE_REPO_FILE (subtree), file_info, cancellable, error))
     goto out;
-                      
+
   ret = TRUE;
  out:
   return ret;
@@ -124,7 +124,7 @@ process_many_checkouts (OstreeRepo         *repo,
       if (!instream)
         goto out;
     }
-    
+
   datastream = g_data_input_stream_new (instream);
 
   while ((revision = g_data_input_stream_read_upto (datastream, "", 1, &len,

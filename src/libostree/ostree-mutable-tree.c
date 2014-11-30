@@ -202,7 +202,7 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
       ostree_mutable_tree_set_contents_checksum (self, NULL);
       g_hash_table_insert (self->subdirs, g_strdup (name), g_object_ref (ret_dir));
     }
-  
+
   ret = TRUE;
   ot_transfer_out_value (out_subdir, &ret_dir);
  out:
@@ -219,7 +219,7 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
   gboolean ret = FALSE;
   gs_unref_object OstreeMutableTree *ret_subdir = NULL;
   gs_free char *ret_file_checksum = NULL;
-  
+
   ret_subdir = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_subdir)
     {
@@ -279,13 +279,13 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
         }
 
       next = g_hash_table_lookup (subdir->subdirs, name);
-      if (!next) 
+      if (!next)
         {
           next = ostree_mutable_tree_new ();
           ostree_mutable_tree_set_metadata_checksum (next, metadata_checksum);
           g_hash_table_insert (subdir->subdirs, g_strdup (name), next);
         }
-      
+
       subdir = next;
     }
 
@@ -339,7 +339,7 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
 /**
  * ostree_mutable_tree_get_subdirs:
  * @self:
- * 
+ *
  * Returns: (transfer none) (element-type utf8 OstreeMutableTree): All children directories
  */
 GHashTable *
@@ -351,7 +351,7 @@ ostree_mutable_tree_get_subdirs (OstreeMutableTree *self)
 /**
  * ostree_mutable_tree_get_files:
  * @self:
- * 
+ *
  * Returns: (transfer none) (element-type utf8 utf8): All children files (the value is a checksum)
  */
 GHashTable *

@@ -107,7 +107,7 @@ relabel_recursively (OstreeSePolicy *sepolicy,
                                        cancellable, error);
   if (!direnum)
     goto out;
-  
+
   while (TRUE)
     {
       GFileInfo *file_info;
@@ -160,7 +160,7 @@ selinux_relabel_dir (OstreeSePolicy                *sepolicy,
                                  cancellable, error);
   if (!root_info)
     goto out;
-  
+
   g_ptr_array_add (path_parts, (char*)prefix);
   if (!relabel_recursively (sepolicy, dir, root_info, path_parts,
                             cancellable, error))
@@ -224,7 +224,7 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
   sepolicy = ostree_sepolicy_new (deployment_path, cancellable, error);
   if (!sepolicy)
     goto out;
-  
+
   policy_name = ostree_sepolicy_get_name (sepolicy);
   if (policy_name)
     {

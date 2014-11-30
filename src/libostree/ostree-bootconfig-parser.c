@@ -41,7 +41,7 @@ G_DEFINE_TYPE (OstreeBootconfigParser, ostree_bootconfig_parser, G_TYPE_OBJECT)
 /**
  * ostree_bootconfig_parser_clone:
  * @self: Bootconfig to clone
- * 
+ *
  * Returns: (transfer full): Copy of @self
  */
 OstreeBootconfigParser *
@@ -84,7 +84,7 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
     {
       const char *line = *iter;
       char *keyname = "";
-      
+
       if (g_ascii_isalpha (*line))
         {
           char **items = NULL;
@@ -104,7 +104,7 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
     }
 
   self->parsed = TRUE;
-  
+
   ret = TRUE;
  out:
   g_strfreev (lines);
@@ -137,7 +137,7 @@ write_key (OstreeBootconfigParser    *self,
   g_string_append (buf, value);
   g_string_append_c (buf, '\n');
 }
-           
+
 gboolean
 ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
                                 GFile            *output,

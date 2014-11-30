@@ -77,7 +77,7 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             goto out;
-          
+
           if (!ostree_repo_set_ref_immediate (repo, remote, ref, NULL,
                                               cancellable, error))
             goto out;

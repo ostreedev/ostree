@@ -58,7 +58,7 @@ gboolean ot_gfile_query_info_allow_noent (GFile                *path,
                                           GFileInfo           **out_info,
                                           GCancellable         *cancellable,
                                           GError              **error);
-  
+
 gboolean ot_gfile_query_symlink_target_allow_noent (GFile          *path,
                                                     GFile         **out_target,
                                                     GCancellable   *cancellable,
