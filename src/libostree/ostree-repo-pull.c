@@ -1214,11 +1214,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->remote_name = g_strdup (remote_name);
   config = ostree_repo_get_config (self);
 
-  remote_key = g_strdup_printf ("remote \"%s\"", pull_data->remote_name);
+  remote_key = g_strdup_printf ("remote_\"%s\"", pull_data->remote_name);
   if (!g_key_file_has_group (config, remote_key))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "No remote '%s' found in " SYSCONFDIR "/ostree/remotes.d",
+                   "No remote_'%s' found in " SYSCONFDIR "/ostree/remotes.d",
                    remote_key);
       goto out;
     }
@@ -1453,7 +1453,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!(branches_iter && *branches_iter))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "No configured branches for remote %s", pull_data->remote_name);
+                       "No configured branches for remote_%s", pull_data->remote_name);
           goto out;
         }
       for (;branches_iter && *branches_iter; branches_iter++)
