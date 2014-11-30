@@ -93,7 +93,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
   op = argv[1];
   remote_name = argv[2];
-  key = g_strdup_printf ("remote \"%s\"", remote_name);
+  key = g_strdup_printf ("remote_\"%s\"", remote_name);
 
   config = ostree_repo_copy_config (repo);
 

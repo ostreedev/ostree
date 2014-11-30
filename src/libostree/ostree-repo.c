@@ -420,7 +420,7 @@ ostree_repo_remote_add (OstreeRepo     *self,
       goto out;
     }
 
-  section = g_strdup_printf ("remote \"%s\"", name);
+  section = g_strdup_printf ("remote_\"%s\"", name);
 
   is_system = ostree_repo_is_system (self);
   if (is_system)
@@ -505,7 +505,7 @@ ostree_repo_remote_delete (OstreeRepo     *self,
       goto out;
     }
 
-  section = g_strdup_printf ("remote \"%s\"", name);
+  section = g_strdup_printf ("remote_\"%s\"", name);
 
   /* Note we prefer deleting from the config if it exists there */
   if (g_key_file_has_group (self->config, section))
