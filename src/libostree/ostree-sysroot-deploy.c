@@ -1050,7 +1050,7 @@ get_kernel_from_tree (GFile         *deployroot,
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               kernel_checksum = g_strdup (dash + 1);
-              ret_kernel = g_file_get_child (bootdir, name);
+              ret_kernel = g_file_enumerator_get_child (dir_enum, file_info);
             }
         }
       else if (ret_initramfs == NULL && g_str_has_prefix (name, "initramfs-"))
@@ -1060,7 +1060,7 @@ get_kernel_from_tree (GFile         *deployroot,
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               initramfs_checksum = g_strdup (dash + 1);
-              ret_initramfs = g_file_get_child (bootdir, name);
+              ret_initramfs = g_file_enumerator_get_child (dir_enum, file_info);
             }
         }
       
