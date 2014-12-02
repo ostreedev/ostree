@@ -74,7 +74,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
                    "Out of range index %d, expected < %d", deploy_index, current_deployments->len);
       goto out;
     }
-  
+
   target_deployment = g_object_ref (current_deployments->pdata[deploy_index]);
   if (target_deployment == ostree_sysroot_get_booted_deployment (sysroot))
     {
@@ -82,7 +82,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
                    "Cannot undeploy currently booted deployment %i", deploy_index);
       goto out;
     }
-  
+
   g_ptr_array_remove_index (current_deployments, deploy_index);
 
   if (!ostree_sysroot_write_deployments (sysroot, current_deployments,
@@ -91,7 +91,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
 
   g_print ("Deleted deployment %s.%d\n", ostree_deployment_get_csum (target_deployment),
            ostree_deployment_get_deployserial (target_deployment));
-  
+
   if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
     {
       g_prefix_error (error, "Performing final cleanup: ");

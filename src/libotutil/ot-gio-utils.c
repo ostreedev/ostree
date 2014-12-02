@@ -57,12 +57,12 @@ ot_gfile_from_build_path (const char *first, ...)
   va_list args;
   const char *arg;
   gs_free char *path = NULL;
-  gs_unref_ptrarray GPtrArray *components = NULL;  
+  gs_unref_ptrarray GPtrArray *components = NULL;
 
   va_start (args, first);
 
   components = g_ptr_array_new ();
-  
+
   arg = first;
   while (arg != NULL)
     {
@@ -82,7 +82,7 @@ ot_gfile_from_build_path (const char *first, ...)
 GFile *
 ot_gfile_get_child_strconcat (GFile *parent,
                               const char *first,
-                              ...) 
+                              ...)
 {
   va_list args;
   GFile *ret;
@@ -92,16 +92,16 @@ ot_gfile_get_child_strconcat (GFile *parent,
   g_return_val_if_fail (first != NULL, NULL);
 
   va_start (args, first);
-  
+
   buf = g_string_new (first);
-  
+
   while ((arg = va_arg (args, const char *)) != NULL)
     g_string_append (buf, arg);
 
   va_end (args);
 
   ret = g_file_get_child (parent, buf->str);
-  
+
   g_string_free (buf, TRUE);
 
   return ret;
@@ -114,12 +114,12 @@ ot_gfile_get_child_build_path (GFile      *parent,
   va_list args;
   const char *arg;
   gs_free char *path = NULL;
-  gs_unref_ptrarray GPtrArray *components = NULL;  
+  gs_unref_ptrarray GPtrArray *components = NULL;
 
   va_start (args, first);
 
   components = g_ptr_array_new ();
-  
+
   arg = first;
   while (arg != NULL)
     {
@@ -237,7 +237,7 @@ ot_gfile_query_symlink_target_allow_noent (GFile          *path,
                                                   cancellable, error))
         goto out;
     }
-  
+
   ret = TRUE;
   ot_transfer_out_value (out_target, &ret_target);
  out:
@@ -276,7 +276,7 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
 
 /**
  * ot_gfile_replace_contents_fsync:
- * 
+ *
  * Like g_file_replace_contents(), except always uses fdatasync().
  */
 gboolean
@@ -376,7 +376,7 @@ ot_gfile_ensure_unlinked (GFile         *path,
           goto out;
         }
     }
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -432,7 +432,7 @@ ot_util_ensure_directory_and_fsync (GFile         *dir,
   int parentfd = -1;
   const char *basename = gs_file_get_basename_cached (dir);
   gs_unref_object GFile *parent = g_file_get_parent (dir);
-  
+
  again:
   parentfd = open (gs_file_get_path_cached (parent),
                    O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC);
@@ -452,7 +452,7 @@ ot_util_ensure_directory_and_fsync (GFile         *dir,
           goto out;
         }
     }
-  
+
   if (mkdirat (parentfd, basename, 0777) == -1)
     {
       if (errno == EEXIST)
@@ -509,7 +509,7 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
 
   if (!ot_gfile_ensure_unlinked (tmppath, cancellable, error))
     goto out;
-  
+
   if (!g_file_make_symbolic_link (tmppath, target, cancellable, error))
     goto out;
 

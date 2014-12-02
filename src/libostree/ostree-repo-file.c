@@ -131,7 +131,7 @@ ostree_repo_file_new_child (OstreeRepoFile *parent,
 {
   OstreeRepoFile *self;
   size_t len;
-  
+
   self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
   self->repo = g_object_ref (parent->repo);
   self->parent = g_object_ref (parent);
@@ -195,7 +195,7 @@ do_resolve (OstreeRepoFile  *self,
   if (!ostree_repo_load_variant (self->repo, OSTREE_OBJECT_TYPE_DIR_META,
                                  self->tree_metadata_checksum, &root_metadata, error))
     goto out;
-  
+
   self->tree_metadata = root_metadata;
   root_metadata = NULL;
   self->tree_contents = root_contents;
@@ -319,7 +319,7 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
 
   if (self->tree_metadata)
     ret_xattrs = g_variant_get_child_value (self->tree_metadata, 3);
-  else 
+  else
     {
       if (!ostree_repo_load_file (self->repo, ostree_repo_file_get_checksum (self),
                                   NULL, NULL, &ret_xattrs, cancellable, error))
@@ -545,7 +545,7 @@ static guint
 ostree_repo_file_hash (GFile *file)
 {
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
-  
+
   if (self->parent)
     return g_file_hash (self->parent) + g_str_hash (self->name);
   else
@@ -574,7 +574,7 @@ ostree_repo_file_equal (GFile *file1,
 }
 
 static const char *
-match_prefix (const char *path, 
+match_prefix (const char *path,
               const char *prefix)
 {
   int prefix_len;
@@ -582,13 +582,13 @@ match_prefix (const char *path,
   prefix_len = strlen (prefix);
   if (strncmp (path, prefix, prefix_len) != 0)
     return NULL;
-  
+
   /* Handle the case where prefix is the root, so that
    * the IS_DIR_SEPRARATOR check below works */
   if (prefix_len > 0 &&
       G_IS_DIR_SEPARATOR (prefix[prefix_len-1]))
     prefix_len--;
-  
+
   return path + prefix_len;
 }
 
@@ -619,7 +619,7 @@ ostree_repo_file_get_relative_path (GFile *parent,
   parent_path = gs_file_get_path_cached (parent);
   descendant_path = gs_file_get_path_cached (descendant);
   remainder = match_prefix (descendant_path, parent_path);
-  
+
   if (remainder != NULL && G_IS_DIR_SEPARATOR (*remainder))
     return g_strdup (remainder + 1);
   return NULL;
@@ -640,7 +640,7 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
       g_assert (*relative_path == '/');
 
       if (strcmp (relative_path, "/") == 0)
-        return g_object_ref (ostree_repo_file_get_root (self)); 
+        return g_object_ref (ostree_repo_file_get_root (self));
 
       if (self->parent)
         return ostree_repo_file_resolve_relative_path ((GFile*)ostree_repo_file_get_root (self),
@@ -660,7 +660,7 @@ ostree_repo_file_resolve_relative_path (GFile      *file,
 
   parent = ostree_repo_file_new_child (self, filename);
   g_free (filename);
-    
+
   if (!rest)
     ret = (GFile*)parent;
   else
@@ -729,7 +729,7 @@ query_child_info_dir (OstreeRepo               *repo,
 
   g_file_info_set_attribute_uint32 (ret_info, "standard::type",
                                     G_FILE_TYPE_DIRECTORY);
-  
+
   if (g_file_attribute_matcher_matches (matcher, "unix::mode"))
     {
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_META,
@@ -738,7 +738,7 @@ query_child_info_dir (OstreeRepo               *repo,
 
       set_info_from_dirmeta (ret_info, metadata);
     }
-  
+
   ret = TRUE;
   ot_transfer_out_value(out_info, &ret_info);
  out:
@@ -769,7 +769,7 @@ bsearch_in_file_variant (GVariant  *variant,
       imid = (imin + imax) / 2;
 
       child = g_variant_get_child_value (variant, imid);
-      g_variant_get_child (child, 0, "&s", &cur, NULL);      
+      g_variant_get_child (child, 0, "&s", &cur, NULL);
 
       cmp = strcmp (cur, name);
       if (cmp < 0)
@@ -940,13 +940,13 @@ ostree_repo_file_query_info (GFile                *file,
     }
   else
     {
-      if (!ostree_repo_file_tree_query_child (self->parent, self->index, 
-                                               attributes, flags, 
+      if (!ostree_repo_file_tree_query_child (self->parent, self->index,
+                                               attributes, flags,
                                                &info, cancellable, error))
         goto out;
       g_assert (info != NULL);
     }
-      
+
   ret = TRUE;
  out:
   if (!ret)
@@ -998,7 +998,7 @@ ostree_repo_file_read (GFile         *file,
   if (!ostree_repo_load_file (self->repo, checksum, &ret_stream,
                               NULL, NULL, cancellable, error))
     goto out;
-  
+
   ret = TRUE;
  out:
   if (!ret)

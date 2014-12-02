@@ -96,7 +96,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   if (opt_origin_path)
     {
       origin = g_key_file_new ();
-      
+
       if (!g_key_file_load_from_file (origin, opt_origin_path, 0, error))
         goto out;
     }

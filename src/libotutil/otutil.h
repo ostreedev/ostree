@@ -47,4 +47,4 @@
 #include <ot-spawn-utils.h>
 #include <ot-checksum-utils.h>
 
-void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED; 
+void ot_ptrarray_add_many (GPtrArray  *a, ...) G_GNUC_NULL_TERMINATED;

@@ -143,7 +143,7 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
 
   if (!subcommand->fn (argc, argv, cancellable, error))
     goto out;
- 
+
   ret = TRUE;
  out:
   return ret;

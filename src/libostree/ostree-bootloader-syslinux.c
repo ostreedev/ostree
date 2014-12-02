@@ -90,7 +90,7 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
         }
 
       g_ptr_array_add (new_lines, g_strdup_printf ("LABEL %s", val));
-      
+
       val = ostree_bootconfig_parser_get (config, "linux");
       if (!val)
         {
@@ -146,7 +146,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
   lines = g_strsplit (config_contents, "\n", -1);
   new_lines = g_ptr_array_new_with_free_func (g_free);
   tmp_lines = g_ptr_array_new_with_free_func (g_free);
-  
+
   /* Note special iteration condition here; we want to also loop one
    * more time at the end where line = NULL to ensure we finish off
    * processing the last LABEL.
@@ -157,7 +157,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
       char *line = *iter;
       gboolean skip = FALSE;
 
-      if (parsing_label && 
+      if (parsing_label &&
           (line == NULL || !g_str_has_prefix (line, "\t")))
         {
           parsing_label = FALSE;
@@ -216,7 +216,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
             }
           skip = TRUE;
         }
-      
+
       if (skip)
         {
           g_free (line);
@@ -255,7 +255,7 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
                                           cancellable, error))
       goto out;
   }
-  
+
   ret = TRUE;
  out:
   g_free (lines); /* Note we freed elements individually */

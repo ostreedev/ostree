@@ -73,7 +73,7 @@ import_one_object_thread (gpointer   object,
   if (!ostree_repo_import_object_from (data->dest_repo, data->src_repo,
                                        objtype, checksum, cancellable, error))
     goto out;
- 
+
   g_atomic_int_inc (&data->n_objects_copied);
 
  out:
@@ -171,7 +171,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
         {
           const char *ref = argv[i];
           char *rev;
-          
+
           if (ostree_validate_checksum_string (ref, NULL))
             {
               g_hash_table_insert (commits_to_clone, (char*)ref, (char*) ref);
@@ -180,7 +180,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
             {
               if (!ostree_repo_resolve_rev (data->src_repo, ref, FALSE, &rev, error))
                 goto out;
-          
+
               /* Transfer ownership of rev */
               g_hash_table_insert (refs_to_clone, g_strdup (ref), rev);
             }
@@ -201,7 +201,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
-          
+
           if (!ostree_repo_traverse_commit_union (data->src_repo, checksum, 0, source_objects,
                                                   cancellable, error))
             goto out;
@@ -255,7 +255,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     {
       const char *name = key;
       const char *checksum = value;
-        
+
       ostree_repo_transaction_set_ref (data->dest_repo, opt_remote, name, checksum);
     }
 

@@ -204,7 +204,7 @@ ostree_run (int    argc,
   prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
   g_set_prgname (prgname);
 
-  
+
   if (!command->fn (argc, argv, cancellable, &error))
     goto out;
 

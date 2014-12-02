@@ -40,7 +40,7 @@ typedef struct {
 static OstreeAdminCommand admin_subcommands[] = {
   { "cleanup", ot_admin_builtin_cleanup },
   { "config-diff", ot_admin_builtin_diff },
-  { "deploy", ot_admin_builtin_deploy }, 
+  { "deploy", ot_admin_builtin_deploy },
   { "init-fs", ot_admin_builtin_init_fs },
   { "instutil", ot_admin_builtin_instutil },
   { "os-init", ot_admin_builtin_os_init },
@@ -156,7 +156,7 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
 
   if (!subcommand->fn (argc, argv, cancellable, error))
     goto out;
- 
+
   ret = TRUE;
  out:
   return ret;

@@ -41,7 +41,7 @@ cat_one_file (GFile         *f,
 {
   gboolean ret = FALSE;
   gs_unref_object GInputStream *in = NULL;
-  
+
   in = (GInputStream*)g_file_read (f, cancellable, error);
   if (!in)
     goto out;
@@ -92,7 +92,7 @@ ostree_builtin_cat (int argc, char **argv, GCancellable *cancellable, GError **e
       if (!cat_one_file (f, stdout_stream, cancellable, error))
         goto out;
     }
- 
+
   ret = TRUE;
  out:
   if (context)

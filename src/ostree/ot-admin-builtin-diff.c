@@ -57,7 +57,7 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
     goto out;
-  
+
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
 
@@ -81,7 +81,7 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
 
   orig_etc_path = g_file_resolve_relative_path (deployment_dir, "usr/etc");
   new_etc_path = g_file_resolve_relative_path (deployment_dir, "etc");
-  
+
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);

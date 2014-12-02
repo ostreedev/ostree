@@ -49,7 +49,7 @@ typedef struct {
   }             phase;
   gint          n_scanned_metadata;
   SoupURI       *fetching_sync_uri;
-  
+
   gboolean          gpg_verify;
 
   GVariant         *summary;
@@ -123,20 +123,20 @@ suburi_new (SoupURI   *base,
   g_ptr_array_add (arg_array, (char*)first);
 
   va_start (args, first);
-  
+
   while ((arg = va_arg (args, const char *)) != NULL)
     g_ptr_array_add (arg_array, (char*)arg);
   g_ptr_array_add (arg_array, NULL);
 
   subpath = g_build_filenamev ((char**)arg_array->pdata);
   g_ptr_array_unref (arg_array);
-  
+
   ret = soup_uri_copy (base);
   soup_uri_set_path (ret, subpath);
   g_free (subpath);
-  
+
   va_end (args);
-  
+
   return ret;
 }
 
@@ -228,7 +228,7 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
       if (current_idle && !pull_data->fetching_sync_uri)
         {
           g_debug ("pull: idle, exiting mainloop");
-          
+
           g_main_loop_quit (pull_data->loop);
         }
       break;
@@ -362,7 +362,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, file_checksum,
                                    &file_is_stored, cancellable, error))
         goto out;
-      
+
       if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
           g_hash_table_insert (pull_data->requested_content, file_checksum, file_checksum);
@@ -374,7 +374,7 @@ scan_dirtree_object (OtPullData   *pull_data,
 
     if (pull_data->dir)
       {
-        const char *subpath = NULL;  
+        const char *subpath = NULL;
         const char *nextslash = NULL;
         gs_free char *dir_data = NULL;
 
@@ -390,7 +390,7 @@ scan_dirtree_object (OtPullData   *pull_data,
             pull_data->dir = g_strdup (nextslash); // sets dir to new deeper level like "/share/rpm"
           }
         else // we're as deep as it goes, i.e. subpath = "rpm"
-          subdir_target = g_strdup (subpath); 
+          subdir_target = g_strdup (subpath);
       }
 
   n = g_variant_n_children (dirs_variant);
@@ -408,12 +408,12 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       if (subdir_target && strcmp (subdir_target, dirname) != 0)
         continue;
-      
+
       if (!scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_csum),
                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1,
                                        cancellable, error))
         goto out;
-      
+
       if (!scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (meta_csum),
                                        OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1,
                                        cancellable, error))
@@ -437,7 +437,7 @@ fetch_ref_contents (OtPullData    *pull_data,
   SoupURI *target_uri = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
-  
+
   if (!fetch_uri_contents_utf8_sync (pull_data, target_uri, &ret_contents, cancellable, error))
     goto out;
 
@@ -470,7 +470,7 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
   gs_unref_variant GVariant *commit_csum_v = NULL;
   gs_unref_bytes GBytes *commit_bytes = NULL;
   int i;
-  
+
   if (!ot_variant_bsearch_str (refs, ref, &i))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -478,7 +478,7 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
                    ref);
       goto out;
     }
-      
+
   refdata = g_variant_get_child_value (refs, i);
   reftargetdata = g_variant_get_child_value (refdata, 1);
   g_variant_get (reftargetdata, "(t@ay@a{sv})", &commit_size, &commit_csum_v, NULL);
@@ -507,7 +507,7 @@ content_fetch_on_write_complete (GObject        *object,
   gs_free guchar *csum = NULL;
   gs_free char *checksum = NULL;
 
-  if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result,
                                          &csum, error))
     goto out;
 
@@ -537,7 +537,7 @@ content_fetch_on_write_complete (GObject        *object,
 static void
 content_fetch_on_complete (GObject        *object,
                            GAsyncResult   *result,
-                           gpointer        user_data) 
+                           gpointer        user_data)
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
@@ -561,7 +561,7 @@ content_fetch_on_complete (GObject        *object,
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
-  
+
   if (!ostree_content_file_parse (TRUE, temp_path, FALSE,
                                   &file_in, &file_info, &xattrs,
                                   cancellable, error))
@@ -581,7 +581,7 @@ content_fetch_on_complete (GObject        *object,
                                           &object_input, &length,
                                           cancellable, error))
     goto out;
-  
+
   pull_data->n_outstanding_content_write_requests++;
   ostree_repo_write_content_async (pull_data->repo, checksum,
                                    object_input, length,
@@ -608,7 +608,7 @@ on_metadata_writed (GObject           *object,
   gs_free guchar *csum = NULL;
   gs_free char *stringified_object = NULL;
 
-  if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result, 
+  if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result,
                                           &csum, error))
     goto out;
 
@@ -712,13 +712,13 @@ meta_fetch_on_complete (GObject           *object,
 
           if (!g_file_query_exists (commitpartial_path, NULL))
             {
-              if (!g_file_replace_contents (commitpartial_path, "", 0, NULL, FALSE, 
+              if (!g_file_replace_contents (commitpartial_path, "", 0, NULL, FALSE,
                                             G_FILE_CREATE_REPLACE_DESTINATION, NULL,
                                             pull_data->cancellable, error))
                 goto out;
             }
         }
-      
+
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
                                         on_metadata_writed, fetch_data);
@@ -807,7 +807,7 @@ scan_commit_object (OtPullData         *pull_data,
       int parent_depth;
 
       ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (parent_csum), parent_checksum);
-  
+
       if (g_hash_table_lookup_extended (pull_data->commit_to_depth, parent_checksum,
                                         NULL, &parent_depthp))
         {
@@ -844,7 +844,7 @@ scan_commit_object (OtPullData         *pull_data,
                                    OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1,
                                    cancellable, error))
     goto out;
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -860,7 +860,7 @@ scan_one_metadata_object (OtPullData         *pull_data,
 {
   guchar buf[32];
   ostree_checksum_inplace_to_bytes (csum, buf);
-  
+
   return scan_one_metadata_object_c (pull_data, buf, objtype,
                                      recursion_depth,
                                      cancellable, error);
@@ -1068,7 +1068,7 @@ load_remote_repo_config (OtPullData    *pull_data,
   SoupURI *target_uri = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, "config", NULL);
-  
+
   if (!fetch_uri_contents_utf8_sync (pull_data, target_uri, &contents,
                                      cancellable, error))
     goto out;
@@ -1293,7 +1293,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         db = g_tls_file_database_new (tls_ca_path, error);
         if (!db)
           goto out;
-        
+
         _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
       }
   }
@@ -1332,14 +1332,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       gs_unref_object GFile *metalink_data = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
       SoupURI *target_uri = NULL;
-      
+
       if (!metalink_uri)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Invalid metalink URL: %s", metalink_url_str);
           goto out;
         }
-      
+
       metalink = _ostree_metalink_new (pull_data->fetcher, "summary",
                                        OSTREE_MAX_METADATA_SIZE, metalink_uri);
       soup_uri_free (metalink_uri);
@@ -1391,13 +1391,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       SoupURI *summary_uri = NULL;
       gs_unref_bytes GBytes *bytes = NULL;
       gs_free char *ret_contents = NULL;
-      
+
       summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);
       if (!fetch_uri_contents_membuf_sync (pull_data, summary_uri, FALSE, TRUE,
                                            &bytes, cancellable, error))
         goto out;
       soup_uri_free (summary_uri);
-      
+
       if (bytes)
         {
           gs_unref_variant GVariant *refs = NULL;
@@ -1415,7 +1415,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
               if (!ostree_validate_rev (refname, error))
                 goto out;
-              
+
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
             }
         }
@@ -1425,7 +1425,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
           goto out;
         }
-    } 
+    }
   else if (refs_to_fetch != NULL)
     {
       char **strviter;
@@ -1459,7 +1459,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       for (;branches_iter && *branches_iter; branches_iter++)
         {
           const char *branch = *branches_iter;
-              
+
           g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
         }
     }
@@ -1487,7 +1487,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
             goto out;
         }
-      
+
       /* Transfer ownership of contents */
       g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
     }
@@ -1547,7 +1547,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_main_loop_run (pull_data->loop);
   if (pull_data->caught_error)
     goto out;
-  
+
   g_assert_cmpint (pull_data->n_outstanding_metadata_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_metadata_write_requests, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
@@ -1560,12 +1560,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       const char *checksum = value;
       gs_free char *remote_ref = NULL;
       gs_free char *original_rev = NULL;
-          
+
       remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
 
       if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
         goto out;
-          
+
       if (original_rev && strcmp (checksum, original_rev) == 0)
         {
         }
@@ -1583,7 +1583,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
   if (bytes_transferred > 0 && pull_data->progress)
     {
-      guint shift; 
+      guint shift;
       gs_free char *msg = NULL;
 
       if (bytes_transferred < 1024)
@@ -1591,7 +1591,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else
         shift = 1024;
 
-      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds", 
+      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
                              pull_data->n_fetched_metadata, pull_data->n_fetched_content,
                              (guint64)(bytes_transferred / shift),
                              shift == 1 ? "B" : "KiB",

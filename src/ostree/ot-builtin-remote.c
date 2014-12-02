@@ -133,14 +133,14 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
           const char *keyvalue = *iter;
           gs_free char *subkey = NULL;
           gs_free char *subvalue = NULL;
-          
+
           if (!parse_keyvalue (keyvalue, &subkey, &subvalue, error))
             goto out;
-          
+
           g_variant_builder_add (optbuilder, "{s@v}",
                                  subkey, g_variant_new_variant (g_variant_new_string (subvalue)));
         }
-                                 
+
       if (opt_no_gpg_verify)
         g_variant_builder_add (optbuilder, "{s@v}",
                                "gpg-verify",
@@ -171,7 +171,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
       usage_error (context, "Unknown operation", error);
       goto out;
     }
- 
+
   ret = TRUE;
  out:
   if (context)

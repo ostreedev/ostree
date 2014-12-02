@@ -52,7 +52,7 @@ on_checksum_received (GObject    *obj,
       checksum = ostree_checksum_from_bytes (csum);
       g_print ("%s\n", checksum);
     }
-  
+
   g_main_loop_quit (data->loop);
 }
 
@@ -81,7 +81,7 @@ ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GErro
   data.loop = g_main_loop_new (NULL, FALSE);
   data.error = error;
   ostree_checksum_file_async (f, OSTREE_OBJECT_TYPE_FILE, G_PRIORITY_DEFAULT, cancellable, on_checksum_received, &data);
-  
+
   g_main_loop_run (data.loop);
 
   ret = TRUE;

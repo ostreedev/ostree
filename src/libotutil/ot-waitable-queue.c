@@ -48,7 +48,7 @@ ot_waitable_queue_new (void)
 
   queue->fd = eventfd (0, EFD_CLOEXEC | EFD_NONBLOCK);
   g_assert (queue->fd >= 0);
-  
+
   return queue;
 }
 
@@ -61,7 +61,7 @@ ot_waitable_queue_push (OtWaitableQueue *queue,
 
   g_mutex_lock (&queue->mutex);
   g_queue_push_head (&queue->queue, data);
-  do 
+  do
     rval = write (queue->fd, &val, sizeof (val));
   while (G_UNLIKELY (rval == -1 && errno == EINTR));
   queue->read_empty = FALSE;

@@ -38,7 +38,7 @@ split_key_string (const char   *k,
                   GError     **error)
 {
   const char *dot = strchr (k, '.');
-  
+
   if (!dot)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -128,7 +128,7 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
                    "Unknown operation %s", op);
       goto out;
     }
-  
+
   ret = TRUE;
  out:
   if (config)

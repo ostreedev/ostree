@@ -301,7 +301,7 @@ write_padding (GOutputStream    *output,
                                          cancellable, error))
         goto out;
     }
-  
+
   ret = TRUE;
  out:
   return ret;
@@ -453,7 +453,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   g_ptr_array_add (streams, g_object_ref (header_in_stream));
   if (input)
     g_ptr_array_add (streams, g_object_ref (input));
-  
+
   ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
 
   ret = TRUE;
@@ -471,7 +471,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
  * @input_length: Length of stream
  * @trusted: If %TRUE, assume the content has been validated
  * @out_input: (out): The raw file content stream
- * @out_file_info: (out): Normal metadata 
+ * @out_file_info: (out): Normal metadata
  * @out_xattrs: (out): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
@@ -552,7 +552,7 @@ ostree_content_stream_parse (gboolean                compressed,
       if (ret_file_info)
         g_file_info_set_size (ret_file_info, input_length - archive_header_size - 8);
     }
-  
+
   if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
       && out_input)
     {
@@ -583,7 +583,7 @@ ostree_content_stream_parse (gboolean                compressed,
  * @content_path: Path to file containing content
  * @trusted: If %TRUE, assume the content has been validated
  * @out_input: (out): The raw file content stream
- * @out_file_info: (out): Normal metadata 
+ * @out_file_info: (out): Normal metadata
  * @out_xattrs: (out): Extended attributes
  * @cancellable: Cancellable
  * @error: Error
@@ -614,7 +614,7 @@ ostree_content_file_parse (gboolean                compressed,
       file_input = (GInputStream*)gs_file_read_noatime (content_path, cancellable, error);
       if (!file_input)
         goto out;
-      
+
       if (!gs_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, cancellable, error))
         goto out;
 
@@ -641,7 +641,7 @@ ostree_content_file_parse (gboolean                compressed,
                                     &ret_file_info, &ret_xattrs,
                                     cancellable, error))
     goto out;
-      
+
   ret = TRUE;
   ot_transfer_out_value (out_input, &ret_input);
   ot_transfer_out_value (out_file_info, &ret_file_info);
@@ -687,7 +687,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
       gs_unref_variant GVariant *dirmeta = ostree_create_directory_metadata (file_info, xattrs);
       g_checksum_update (checksum, g_variant_get_data (dirmeta),
                          g_variant_get_size (dirmeta));
-      
+
     }
   else
     {
@@ -801,7 +801,7 @@ checksum_file_async_data_free (gpointer datap)
   g_free (data->csum);
   g_free (data);
 }
-  
+
 /**
  * ostree_checksum_file_async:
  * @f: File path
@@ -831,7 +831,7 @@ ostree_checksum_file_async (GFile                 *f,
 
   res = g_simple_async_result_new (G_OBJECT (f), callback, user_data, ostree_checksum_file_async);
   g_simple_async_result_set_op_res_gpointer (res, data, (GDestroyNotify)checksum_file_async_data_free);
-  
+
   g_simple_async_result_run_in_thread (res, checksum_file_async_thread, io_priority, cancellable);
   g_object_unref (res);
 }
@@ -1040,7 +1040,7 @@ ostree_hash_object_name (gconstpointer a)
   const char *checksum;
   OstreeObjectType objtype;
   gint objtype_int;
-  
+
   ostree_object_name_deserialize (variant, &checksum, &objtype);
   objtype_int = (gint) objtype;
   return g_str_hash (checksum) + g_int_hash (&objtype_int);
@@ -1471,7 +1471,7 @@ ostree_validate_structureof_objtype (guchar    objtype,
                                      GError   **error)
 {
   OstreeObjectType objtype_v = (OstreeObjectType) objtype;
-  if (objtype_v < OSTREE_OBJECT_TYPE_FILE 
+  if (objtype_v < OSTREE_OBJECT_TYPE_FILE
       || objtype_v > OSTREE_OBJECT_TYPE_COMMIT)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -1557,7 +1557,7 @@ validate_variant (GVariant           *variant,
  * ostree_validate_structureof_commit:
  * @commit: A commit object, %OSTREE_OBJECT_TYPE_COMMIT
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @commit, independent of
  * any other objects it references.
  *
@@ -1601,7 +1601,7 @@ ostree_validate_structureof_commit (GVariant      *commit,
  * ostree_validate_structureof_dirtree:
  * @dirtree: A dirtree object, %OSTREE_OBJECT_TYPE_DIR_TREE
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @dirtree, independent of
  * any other objects it references.
  *
@@ -1679,7 +1679,7 @@ validate_stat_mode_perms (guint32        mode,
  * ostree_validate_structureof_file_mode:
  * @mode: A Unix filesystem mode
  * @error: Error
- * 
+ *
  * Returns: %TRUE if @mode represents a valid file type and permissions
  */
 gboolean
@@ -1707,7 +1707,7 @@ ostree_validate_structureof_file_mode (guint32            mode,
  * ostree_validate_structureof_dirmeta:
  * @dirmeta: A dirmeta object, %OSTREE_OBJECT_TYPE_DIR_META
  * @error: Error
- * 
+ *
  * Use this to validate the basic structure of @dirmeta.
  *
  * Returns: %TRUE if @dirmeta is structurally valid
@@ -1722,7 +1722,7 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
   if (!validate_variant (dirmeta, OSTREE_DIRMETA_GVARIANT_FORMAT, error))
     goto out;
 
-  g_variant_get_child (dirmeta, 2, "u", &mode); 
+  g_variant_get_child (dirmeta, 2, "u", &mode);
   mode = GUINT32_FROM_BE (mode);
 
   if (!S_ISDIR (mode))
@@ -1743,7 +1743,7 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
 /**
  * ostree_commit_get_parent:
  * @commit_variant: Variant of type %OSTREE_OBJECT_TYPE_COMMIT
- * 
+ *
  * Returns: Binary checksum with parent of @commit_variant, or %NULL if none
  */
 gchar *

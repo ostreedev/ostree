@@ -92,7 +92,7 @@ get_directory_listing (const char *path)
   for (i = 0; i < entries->len; i++)
     {
       g_string_append_printf (listing, "<a href=\"%s\">%s</a><br>\r\n",
-                              (char *)entries->pdata[i], 
+                              (char *)entries->pdata[i],
                               (char *)entries->pdata[i]);
       g_free (entries->pdata[i]);
     }
@@ -211,14 +211,14 @@ do_get (OtTrivialHttpd    *self,
             }
         }
     }
-  else 
+  else
     {
       if (!S_ISREG (stbuf.st_mode))
         {
           soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
           goto out;
         }
-      
+
       if (msg->method == SOUP_METHOD_GET)
         {
           GMappedFile *mapping;
@@ -363,7 +363,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
       GSList *listeners = soup_server_get_listeners (server);
       gs_unref_object GSocket *listener = NULL;
       gs_unref_object GSocketAddress *addr = NULL;
-      
+
       g_assert (listeners);
       listener = g_object_ref (listeners->data);
       g_slist_free (listeners);
@@ -373,7 +373,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
         goto out;
 
       g_assert (G_IS_INET_SOCKET_ADDRESS (addr));
-      
+
       portstr = g_strdup_printf ("%u\n", g_inet_socket_address_get_port ((GInetSocketAddress*)addr));
 #else
       portstr = g_strdup_printf ("%u\n", soup_server_get_port (server));
@@ -439,7 +439,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
 
   while (app->running)
     g_main_context_iteration (NULL, TRUE);
- 
+
   ret = TRUE;
  out:
   g_clear_object (&app->root);

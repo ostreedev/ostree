@@ -1,5 +1,5 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
- * 
+ *
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
  *
  * This library is free software; you can redistribute it and/or
@@ -65,7 +65,7 @@ _ostree_libarchive_input_stream_class_init (OstreeLibarchiveInputStreamClass *kl
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GInputStreamClass *stream_class = G_INPUT_STREAM_CLASS (klass);
-  
+
   g_type_class_add_private (klass, sizeof (OstreeLibarchiveInputStreamPrivate));
 
   gobject_class->get_property = ostree_libarchive_input_stream_get_property;
@@ -97,7 +97,7 @@ ostree_libarchive_input_stream_set_property (GObject         *object,
 					     GParamSpec      *pspec)
 {
   OstreeLibarchiveInputStream *self;
-  
+
   self = OSTREE_LIBARCHIVE_INPUT_STREAM (object);
 
   switch (prop_id)

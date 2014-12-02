@@ -80,7 +80,7 @@ ot_common_pull_progress (OstreeAsyncProgress       *progress,
     }
 
   gs_console_begin_status_line (console, buf->str, NULL, NULL);
-  
+
   g_string_free (buf, TRUE);
-  
+
 }

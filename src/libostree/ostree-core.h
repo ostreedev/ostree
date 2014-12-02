@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 
 /**
  * OSTREE_MAX_METADATA_SIZE:
- * 
+ *
  * Maximum permitted size in bytes of metadata objects.  This is an
  * arbitrary number, but really, no one should be putting humongous
  * data in metadata.
@@ -37,7 +37,7 @@ G_BEGIN_DECLS
 
 /**
  * OSTREE_MAX_METADATA_WARN_SIZE:
- * 
+ *
  * Objects committed above this size will be allowed, but a warning
  * will be emitted.
  */
@@ -45,7 +45,7 @@ G_BEGIN_DECLS
 
 /**
  * OSTREE_MAX_RECURSION:
- * 
+ *
  * Maximum depth of metadata.
  */
 #define OSTREE_MAX_RECURSION (256)
@@ -108,7 +108,7 @@ typedef enum {
  * a{sv} - Metadata
  * ay - parent checksum (empty string for initial)
  * a(say) - Related objects
- * s - subject 
+ * s - subject
  * s - body
  * t - Timestamp in seconds since the epoch (UTC)
  * ay - Root tree contents

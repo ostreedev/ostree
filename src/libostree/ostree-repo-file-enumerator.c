@@ -57,7 +57,7 @@ ostree_repo_file_enumerator_dispose (GObject *object)
 
   g_clear_object (&self->dir);
   g_free (self->attributes);
-  
+
   if (G_OBJECT_CLASS (ostree_repo_file_enumerator_parent_class)->dispose)
     G_OBJECT_CLASS (ostree_repo_file_enumerator_parent_class)->dispose (object);
 }
@@ -79,7 +79,7 @@ ostree_repo_file_enumerator_class_init (OstreeRepoFileEnumeratorClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GFileEnumeratorClass *enumerator_class = G_FILE_ENUMERATOR_CLASS (klass);
-  
+
   gobject_class->finalize = ostree_repo_file_enumerator_finalize;
   gobject_class->dispose = ostree_repo_file_enumerator_dispose;
 
@@ -100,7 +100,7 @@ _ostree_repo_file_enumerator_new (OstreeRepoFile       *dir,
 				  GError              **error)
 {
   OstreeRepoFileEnumerator *self;
-  
+
   self = g_object_new (OSTREE_TYPE_REPO_FILE_ENUMERATOR,
 		       "container", dir,
 		       NULL);
@@ -108,7 +108,7 @@ _ostree_repo_file_enumerator_new (OstreeRepoFile       *dir,
   self->dir = g_object_ref (dir);
   self->attributes = g_strdup (attributes);
   self->flags = flags;
-  
+
   return G_FILE_ENUMERATOR (self);
 }
 

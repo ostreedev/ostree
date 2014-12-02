@@ -31,7 +31,7 @@ ot_csum_from_gchecksum (GChecksum  *checksum)
 {
   guchar *ret = g_malloc (32);
   gsize len = 32;
-  
+
   g_checksum_get_digest (checksum, ret, &len);
   g_assert (len == 32);
   return ret;
@@ -61,7 +61,7 @@ ot_gio_write_update_checksum (GOutputStream  *out,
 
   if (checksum)
     g_checksum_update (checksum, data, len);
-  
+
   ret = TRUE;
  out:
   return ret;

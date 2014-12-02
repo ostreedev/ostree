@@ -1,9 +1,9 @@
 /* -*- c-file-style: "gnu" -*-
  * Switch to new root directory and start init.
- * 
+ *
  * Copyright 2011,2012,2013 Colin Walters <walters@verbum.org>
  *
- * Based on code from util-linux/sys-utils/switch_root.c, 
+ * Based on code from util-linux/sys-utils/switch_root.c,
  * Copyright 2002-2009 Red Hat, Inc.  All rights reserved.
  * Authors:
  *	Peter Jones <pjones@redhat.com>
@@ -100,7 +100,7 @@ static void
 touch_run_ostree (void)
 {
   int fd;
-  
+
   fd = open ("/run/ostree-booted", O_CREAT | O_WRONLY | O_NOCTTY, 0640);
   /* We ignore failures here in case /run isn't mounted...not much we
    * can do about that, but we don't want to fail.
@@ -156,7 +156,7 @@ main(int argc, char *argv[])
       exit (1);
     }
   fprintf (stderr, "Resolved OSTree target to: %s\n", deploy_path);
-  
+
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
    * MS_SHARED. Hence remount them MS_PRIVATE here as a
@@ -217,7 +217,7 @@ main(int argc, char *argv[])
       perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
       exit (1);
     }
-  
+
   exit (0);
 }
 

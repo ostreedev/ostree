@@ -95,17 +95,17 @@ import_libarchive_entry_file (OstreeRepo           *self,
   gs_unref_object GInputStream *file_object_input = NULL;
   gs_unref_object GInputStream *archive_stream = NULL;
   guint64 length;
-  
+
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     archive_stream = _ostree_libarchive_input_stream_new (a);
-  
+
   if (!ostree_raw_file_to_content_stream (archive_stream, file_info, NULL,
                                           &file_object_input, &length, cancellable, error))
     goto out;
-  
+
   if (!ostree_repo_write_content (self, NULL, file_object_input, length, out_csum,
                                   cancellable, error))
     goto out;
@@ -140,8 +140,8 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   gs_free guchar *tmp_csum = NULL;
   gs_free char *tmp_checksum = NULL;
 
-  pathname = archive_entry_pathname (entry); 
-      
+  pathname = archive_entry_pathname (entry);
+
   if (!ot_util_path_split_validate (pathname, &split_path, error))
     goto out;
 
@@ -174,7 +174,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   if (hardlink)
     {
       const char *hardlink_basename;
-      
+
       g_assert (parent != NULL);
 
       if (!ot_util_path_split_validate (hardlink, &hardlink_split_path, error))
@@ -185,12 +185,12 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
                        "Invalid hardlink path %s", hardlink);
           goto out;
         }
-      
+
       hardlink_basename = hardlink_split_path->pdata[hardlink_split_path->len - 1];
-      
+
       if (!ostree_mutable_tree_walk (root, hardlink_split_path, 0, &hardlink_source_parent, error))
         goto out;
-      
+
       if (!ostree_mutable_tree_lookup (hardlink_source_parent, hardlink_basename,
                                        &hardlink_source_checksum,
                                        &hardlink_source_subdir,
@@ -199,7 +199,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
               g_prefix_error (error, "While resolving hardlink target: ");
               goto out;
         }
-      
+
       if (hardlink_source_subdir)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -208,7 +208,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
           goto out;
         }
       g_assert (hardlink_source_checksum);
-      
+
       if (!ostree_mutable_tree_replace_file (parent,
                                              basename,
                                              hardlink_source_checksum,
@@ -246,7 +246,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
           tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
           ostree_mutable_tree_set_metadata_checksum (subdir, tmp_checksum);
         }
-      else 
+      else
         {
           if (parent == NULL)
             {
@@ -258,7 +258,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
           if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_csum,
                                              cancellable, error))
             goto out;
-          
+
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
           if (!ostree_mutable_tree_replace_file (parent, basename,
@@ -273,7 +273,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   return ret;
 }
 #endif
-                          
+
 /**
  * ostree_repo_write_archive_to_mtree:
  * @self: An #OstreeRepo
@@ -331,11 +331,11 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
       if (autocreate_parents && !tmp_csum)
         {
           tmp_dir_info = g_file_info_new ();
-          
+
           g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", archive_entry_uid (entry));
           g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
           g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
-          
+
           if (!_ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
             goto out;
         }

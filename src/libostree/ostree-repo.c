@@ -429,7 +429,7 @@ ostree_repo_remote_add (OstreeRepo     *self,
 
       target_name = g_strconcat (name, ".conf", NULL);
       target_conf = g_file_get_child (etc_ostree_remotes_d, target_name);
-          
+
       if (g_file_query_exists (target_conf, NULL))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -732,7 +732,7 @@ append_one_remote_config (OstreeRepo      *self,
       const char *group = *iter;
       char **subiter;
       gs_strfreev char **keys = NULL;
-              
+
       /* Whitelist of allowed groups for now */
       if (!g_str_has_prefix (group, "remote \""))
         continue;
@@ -743,7 +743,7 @@ append_one_remote_config (OstreeRepo      *self,
                        "Multiple specifications found for %s", group);
           goto out;
         }
-              
+
       keys = g_key_file_get_keys (remotedata, group, NULL, NULL);
       g_assert (keys);
       for (subiter = keys; subiter && *subiter; subiter++)
@@ -759,7 +759,7 @@ append_one_remote_config (OstreeRepo      *self,
  out:
   return ret;
 }
-                                 
+
 static gboolean
 append_remotes_d (OstreeRepo          *self,
                   GCancellable        *cancellable,
@@ -910,18 +910,18 @@ ostree_repo_open (OstreeRepo    *self,
 
   {
     gboolean do_fsync;
-    
+
     if (!ot_keyfile_get_boolean_with_default (self->config, "core", "fsync",
                                               TRUE, &do_fsync, error))
       goto out;
-    
+
     if (!do_fsync)
       ostree_repo_set_disable_fsync (self, TRUE);
   }
 
   {
     gs_unref_object GFile *default_repo_path = get_default_repo_path ();
-    
+
     if (g_file_equal (self->repodir, default_repo_path))
       {
         if (!append_remotes_d (self, cancellable, error))
@@ -1151,7 +1151,7 @@ list_loose_objects_at (OstreeRepo             *self,
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
               continue;
 
-          /* commit checksum does not match "starting with", do not add to array */     
+          /* commit checksum does not match "starting with", do not add to array */
           if (!g_str_has_prefix (buf, commit_starting_with))
             continue;
         }
@@ -1363,7 +1363,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
       ssize_t len;
 
       g_file_info_set_file_type (ret_info, G_FILE_TYPE_SYMBOLIC_LINK);
-      
+
       do
         len = readlinkat (self->objects_dir_fd, loose_path_buf, targetbuf, sizeof (targetbuf) - 1);
       while (G_UNLIKELY (len == -1 && errno == EINTR));
@@ -1441,11 +1441,11 @@ ostree_repo_load_file (OstreeRepo         *self,
         {
           tmp_stream = g_unix_input_stream_new (fd, TRUE);
           fd = -1; /* Transfer ownership */
-          
+
           if (!gs_stream_fstat ((GFileDescriptorBased*) tmp_stream, &stbuf,
                                 cancellable, error))
             goto out;
-          
+
           if (!ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
                                             out_input ? &ret_input : NULL,
                                             &ret_file_info, &ret_xattrs,
@@ -1486,11 +1486,11 @@ ostree_repo_load_file (OstreeRepo         *self,
                 goto out;
               ret_input = g_unix_input_stream_new (fd, TRUE);
             }
-          
+
           found = TRUE;
         }
     }
-  
+
   if (!found)
     {
       if (self->parent_repo)
@@ -1623,7 +1623,7 @@ _ostree_repo_find_object (OstreeRepo           *self,
   gboolean has_object;
   char loose_path[_OSTREE_LOOSE_PATH_MAX];
 
-  if (!_ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path, 
+  if (!_ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path,
                                       cancellable, error))
     goto out;
 
@@ -1730,7 +1730,7 @@ copy_detached_metadata (OstreeRepo    *self,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *detached_meta = NULL;
-          
+
   if (!ostree_repo_read_commit_detached_metadata (source,
                                                   checksum, &detached_meta,
                                                   cancellable, error))
@@ -1825,7 +1825,7 @@ import_one_object_link (OstreeRepo    *self,
         }
       else
         ot_util_set_error_from_errno (error, errno);
-      
+
       goto out;
     }
 
@@ -1860,13 +1860,13 @@ gboolean
 ostree_repo_import_object_from (OstreeRepo           *self,
                                 OstreeRepo           *source,
                                 OstreeObjectType      objtype,
-                                const char           *checksum, 
+                                const char           *checksum,
                                 GCancellable         *cancellable,
                                 GError              **error)
 {
   gboolean ret = FALSE;
   gboolean hardlink_was_supported = FALSE;
-      
+
   if (self->mode == source->mode)
     {
       if (!import_one_object_link (self, source, checksum, objtype,
@@ -1882,7 +1882,7 @@ ostree_repo_import_object_from (OstreeRepo           *self,
       if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
                                    cancellable, error))
         goto out;
-  
+
       if (!has_object)
         {
           if (!import_one_object_copy (self, source, checksum, objtype,
@@ -2267,7 +2267,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
   g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
 
   g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
-  
+
   metadata = g_variant_builder_end (builder);
 
   if (!ostree_repo_write_commit_detached_metadata (self,
@@ -2321,11 +2321,11 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gpgme_data_t signature_buffer = NULL;
   int signature_fd = -1;
   GMappedFile *signature_file = NULL;
-  
+
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant, error))
     goto out;
-  
+
   if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
                                &tmp_signature_file, &tmp_signature_output,
                                cancellable, error))
@@ -2333,7 +2333,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
 
   gpgme_check_version (NULL);
   gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
-  
+
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -2350,7 +2350,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    "Unable to set gpg protocol");
       goto out;
     }
-  
+
   if (homedir != NULL)
     {
       if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
@@ -2371,7 +2371,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    homedir ? homedir : "<default>");
       goto out;
     }
-  
+
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
     {
@@ -2379,7 +2379,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    "Error signing commit");
       goto out;
     }
-  
+
   if ((err = gpgme_data_new_from_mem (&commit_buffer, g_variant_get_data (commit_variant),
                                       g_variant_get_size (commit_variant), FALSE)) != GPG_ERR_NO_ERROR)
     {
@@ -2387,7 +2387,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    "Failed to create buffer from commit file");
       goto out;
     }
-  
+
   signature_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)tmp_signature_output);
   if (signature_fd < 0)
     {
@@ -2395,14 +2395,14 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    "Unable to open signature file");
       goto out;
     }
-  
+
   if ((err = gpgme_data_new_from_fd (&signature_buffer, signature_fd)) != GPG_ERR_NO_ERROR)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Failed to create buffer for signature file");
       goto out;
     }
-  
+
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
     {
@@ -2410,15 +2410,15 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                    "Failure signing commit file");
       goto out;
     }
-  
+
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
     goto out;
-  
+
   signature_file = gs_file_map_noatime (tmp_signature_file, cancellable, error);
   if (!signature_file)
     goto out;
   signature_bytes = g_mapped_file_get_bytes (signature_file);
-  
+
   if (!ostree_repo_append_gpg_signature (self, commit_checksum, signature_bytes,
                                          cancellable, error))
     goto out;
@@ -2516,7 +2516,7 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
       if (had_valid_signataure)
         break;
     }
-  
+
   if (!had_valid_signataure)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -2587,13 +2587,13 @@ ostree_repo_verify_commit (OstreeRepo   *self,
       g_prefix_error (error, "Failed to read detached metadata: ");
       goto out;
     }
-  
+
   if (!_ostree_repo_gpg_verify_file_with_metadata (self,
                                                    commit_tmp_path, metadata,
                                                    keyringdir, extra_keyring,
                                                    cancellable, error))
     goto out;
-  
+
   ret = TRUE;
 out:
   if (commit_tmp_path)
@@ -2637,7 +2637,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 
   ordered_keys = g_hash_table_get_keys (refs);
   ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
-  
+
   for (iter = ordered_keys; iter; iter = iter->next)
     {
       const char *ref = iter->data;
@@ -2649,7 +2649,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
         goto out;
 
-      g_variant_builder_add_value (refs_builder, 
+      g_variant_builder_add_value (refs_builder,
                                    g_variant_new ("(s(t@ay@a{sv}))", ref,
                                                   g_variant_get_size (commit_obj),
                                                   ostree_checksum_to_bytes_v (commit),

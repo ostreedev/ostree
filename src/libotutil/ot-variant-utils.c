@@ -67,14 +67,14 @@ ot_util_variant_asv_to_hash_table (GVariant *variant)
   GVariantIter *viter;
   char *key;
   GVariant *value;
-  
+
   ret = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_variant_unref);
   viter = g_variant_iter_new (variant);
   while (g_variant_iter_next (viter, "{s@v}", &key, &value))
     g_hash_table_replace (ret, key, g_variant_ref_sink (value));
-  
+
   g_variant_iter_free (viter);
-  
+
   return ret;
 }
 
@@ -87,7 +87,7 @@ ot_util_variant_save (GFile *dest,
   gboolean ret = FALSE;
   gs_unref_object GOutputStream *out = NULL;
   gsize bytes_written;
-  
+
   out = (GOutputStream*)g_file_replace (dest, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION,
                                         cancellable, error);
   if (!out)
@@ -147,7 +147,7 @@ ot_util_variant_map (GFile              *src,
                                          (GDestroyNotify) g_mapped_file_unref,
                                          mfile);
   g_variant_ref_sink (ret_variant);
-  
+
   ret = TRUE;
   ot_transfer_out_value(out_variant, &ret_variant);
  out:
@@ -184,7 +184,7 @@ ot_util_variant_map_fd (GFileDescriptorBased  *stream,
     goto out;
 
   len = stbuf.st_size - start;
-  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, 
+  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE,
               g_file_descriptor_based_get_fd (stream), start);
   if (!map)
     {
@@ -259,9 +259,9 @@ ot_util_variant_builder_from_variant (GVariant            *variant,
 {
   GVariantBuilder *builder = NULL;
   gint i, n;
-  
+
   builder = g_variant_builder_new (type);
-  
+
   n = g_variant_n_children (variant);
   for (i = 0; i < n; i++)
     {
@@ -269,7 +269,7 @@ ot_util_variant_builder_from_variant (GVariant            *variant,
       g_variant_builder_add_value (builder, child);
       g_variant_unref (child);
     }
-    
+
   return builder;
 }
 
@@ -325,7 +325,7 @@ ot_variant_bsearch_str (GVariant   *array,
       imid = (imin + imax) / 2;
 
       child = g_variant_get_child_value (array, imid);
-      g_variant_get_child (child, 0, "&s", &cur, NULL);      
+      g_variant_get_child (child, 0, "&s", &cur, NULL);
 
       cmp = strcmp (cur, str);
       if (cmp < 0)

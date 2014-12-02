@@ -93,7 +93,7 @@ struct OstreeFetcher
 
   GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
   GHashTable *output_stream_set; /* set<GOutputStream> */
-  
+
   guint64 total_downloaded;
   guint total_requests;
 
@@ -140,7 +140,7 @@ on_request_started (SoupSession  *session,
                     gpointer      user_data)
 {
   OstreeFetcher *self = user_data;
-  
+
   g_hash_table_insert (self->sending_messages, msg, g_object_ref (msg));
 }
 
@@ -181,7 +181,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
   if (max_conns <= 8)
-    { 
+    {
       // We download a lot of small objects in ostree, so this helps a
       // lot.  Also matches what most modern browsers do.
       max_conns = 8;
@@ -194,7 +194,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
                     G_CALLBACK (on_request_started), self);
   g_signal_connect (self->session, "request-unqueued",
                     G_CALLBACK (on_request_unqueued), self);
-  
+
   self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
                                                   (GDestroyNotify)g_object_unref);
   self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
@@ -211,7 +211,7 @@ _ostree_fetcher_new (GFile                    *tmpdir,
   self->tmpdir = g_object_ref (tmpdir);
   if ((flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
     g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
- 
+
   return self;
 }
 
@@ -334,7 +334,7 @@ on_stream_read (GObject        *object,
 static void
 on_out_splice_complete (GObject        *object,
                         GAsyncResult   *result,
-                        gpointer        user_data) 
+                        gpointer        user_data)
 {
   OstreeFetcherPendingURI *pending = user_data;
   gssize bytes_written;
@@ -361,7 +361,7 @@ on_out_splice_complete (GObject        *object,
 static void
 on_stream_read (GObject        *object,
                 GAsyncResult   *result,
-                gpointer        user_data) 
+                gpointer        user_data)
 {
   OstreeFetcherPendingURI *pending = user_data;
   gs_unref_bytes GBytes *bytes = NULL;
@@ -396,7 +396,7 @@ on_stream_read (GObject        *object,
               goto out;
             }
         }
-      
+
       pending->current_size += bytes_read;
 
       /* We do this instead of _write_bytes_async() as that's not
@@ -426,7 +426,7 @@ on_stream_read (GObject        *object,
 static void
 on_request_sent (GObject        *object,
                  GAsyncResult   *result,
-                 gpointer        user_data) 
+                 gpointer        user_data)
 {
   OstreeFetcherPendingURI *pending = user_data;
   GError *local_error = NULL;
@@ -438,7 +438,7 @@ on_request_sent (GObject        *object,
 
   if (!pending->request_body)
     goto out;
-  
+
   if (SOUP_IS_REQUEST_HTTP (object))
     {
       msg = soup_request_http_get_message ((SoupRequestHTTP*) object);
@@ -471,7 +471,7 @@ on_request_sent (GObject        *object,
     }
 
   pending->state = OSTREE_FETCHER_STATE_DOWNLOADING;
-  
+
   pending->content_length = soup_request_get_content_length (pending->request);
 
   if (!pending->is_stream)
@@ -483,14 +483,14 @@ on_request_sent (GObject        *object,
       g_hash_table_add (pending->self->output_stream_set, g_object_ref (pending->out_stream));
       g_input_stream_read_bytes_async (pending->request_body, 8192, G_PRIORITY_DEFAULT,
                                        pending->cancellable, on_stream_read, pending);
-      
+
     }
   else
     {
       g_simple_async_result_complete (pending->result);
       g_object_unref (pending->result);
     }
-  
+
  out:
   if (local_error)
     {
@@ -657,14 +657,14 @@ _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
     {
       GFileOutputStream *stream = key;
       struct stat stbuf;
-      
+
       if (G_IS_FILE_DESCRIPTOR_BASED (stream))
         {
           if (gs_stream_fstat ((GFileDescriptorBased*)stream, &stbuf, NULL, NULL))
             ret += stbuf.st_size;
         }
     }
-  
+
   return ret;
 }
 

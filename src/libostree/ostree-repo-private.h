@@ -126,7 +126,7 @@ _ostree_repo_update_refs (OstreeRepo        *self,
                           GCancellable      *cancellable,
                           GError           **error);
 
-gboolean      
+gboolean
 _ostree_repo_write_ref (OstreeRepo    *self,
                         const char    *remote,
                         const char    *ref,

@@ -75,7 +75,7 @@ traverse_dirtree_internal (OstreeRepo      *repo,
 
   key = ostree_object_name_serialize (dirtree_checksum, OSTREE_OBJECT_TYPE_DIR_TREE);
   if (!g_hash_table_lookup (inout_reachable, key))
-    { 
+    {
       g_hash_table_insert (inout_reachable, key, key);
       key = NULL;
 
@@ -85,7 +85,7 @@ traverse_dirtree_internal (OstreeRepo      *repo,
       for (i = 0; i < n; i++)
         {
           const char *filename;
-      
+
           g_clear_pointer (&csum_v, (GDestroyNotify) g_variant_unref);
           g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum_v);
           g_free (tmp_checksum);
@@ -100,12 +100,12 @@ traverse_dirtree_internal (OstreeRepo      *repo,
       for (i = 0; i < n; i++)
         {
           const char *dirname;
-      
+
           g_clear_pointer (&content_csum_v, (GDestroyNotify) g_variant_unref);
           g_clear_pointer (&metadata_csum_v, (GDestroyNotify) g_variant_unref);
           g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                                &dirname, &content_csum_v, &metadata_csum_v);
-      
+
           g_free (tmp_checksum);
           tmp_checksum = ostree_checksum_from_bytes_v (content_csum_v);
           if (!traverse_dirtree_internal (repo, tmp_checksum, recursion_depth + 1,
@@ -170,7 +170,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
        */
       if (!commit)
         break;
-  
+
       g_hash_table_add (inout_reachable, key);
       key = NULL;
 

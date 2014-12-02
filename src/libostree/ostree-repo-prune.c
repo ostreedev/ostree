@@ -43,7 +43,7 @@ prune_commitpartial_file (OstreeRepo    *repo,
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *objpath = ot_gfile_resolve_path_printf (repo->repodir, "state/%s.commitpartial", checksum);
-  
+
   if (!ot_gfile_ensure_unlinked (objpath, cancellable, error))
     goto out;
 
@@ -125,7 +125,7 @@ maybe_prune_loose_object (OtPruneData        *data,
  * of traversing all commits, only refs will be used.  Particularly
  * when combined with @depth, this is a convenient way to delete
  * history from the repository.
- * 
+ *
  * Use the %OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE to just determine
  * statistics on objects that would be deleted, without actually
  * deleting them.
@@ -156,13 +156,13 @@ ostree_repo_prune (OstreeRepo        *self,
       if (!ostree_repo_list_refs (self, NULL, &all_refs,
                                   cancellable, error))
         goto out;
-      
+
       g_hash_table_iter_init (&hash_iter, all_refs);
-      
+
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
-          
+
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
                                             cancellable, error))
             goto out;
@@ -186,7 +186,7 @@ ostree_repo_prune (OstreeRepo        *self,
 
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
             continue;
-          
+
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
                                                   cancellable, error))
             goto out;
@@ -201,7 +201,7 @@ ostree_repo_prune (OstreeRepo        *self,
       const char *checksum;
       OstreeObjectType objtype;
       gboolean is_loose;
-      
+
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
       g_variant_get_child (objdata, 0, "b", &is_loose);
 
