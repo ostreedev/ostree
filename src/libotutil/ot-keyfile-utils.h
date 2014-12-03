@@ -43,5 +43,10 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
                                    char         **out_value,
                                    GError       **error);
 
+gboolean
+ot_keyfile_copy_group (GKeyFile   *source_keyfile,
+                       GKeyFile   *target_keyfile,
+                       const char *group_name);
+
 G_END_DECLS
 

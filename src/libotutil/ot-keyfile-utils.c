@@ -91,3 +91,35 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
  out:
   return ret;
 }
+
+gboolean
+ot_keyfile_copy_group (GKeyFile   *source_keyfile,
+                       GKeyFile   *target_keyfile,
+                       const char *group_name)
+{
+  gs_strfreev char **keys = NULL;
+  gsize length, ii;
+  gboolean ret = FALSE;
+
+  g_return_if_fail (source_keyfile != NULL);
+  g_return_if_fail (target_keyfile != NULL);
+  g_return_if_fail (group_name != NULL);
+
+  keys = g_key_file_get_keys (source_keyfile, group_name, &length, NULL);
+
+  if (keys == NULL)
+    goto out;
+
+  for (ii = 0; ii < length; ii++)
+    {
+      gs_free char *value = NULL;
+
+      value = g_key_file_get_value (source_keyfile, group_name, keys[ii], NULL);
+      g_key_file_set_value (target_keyfile, group_name, keys[ii], value);
+    }
+
+  ret = TRUE;
+
+ out:
+  return ret;
+}
