@@ -68,6 +68,8 @@ struct OstreeRepo {
   gid_t target_owner_gid;
 
   GKeyFile *config;
+  GHashTable *remotes;
+  GMutex remotes_lock;
   OstreeRepoMode mode;
   gboolean enable_uncompressed_cache;
   gboolean generate_sizes;

@@ -83,6 +83,152 @@ enum {
 
 G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 
+GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
+#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
+
+typedef struct {
+  volatile int ref_count;
+  char *name;
+  char *group;   /* group name in options */
+  GFile *file;   /* NULL if remote defined in repo/config */
+  GKeyFile *options;
+} OstreeRemote;
+
+static OstreeRemote *
+ost_remote_new (void)
+{
+  OstreeRemote *remote;
+
+  remote = g_slice_new0 (OstreeRemote);
+  remote->ref_count = 1;
+  remote->options = g_key_file_new ();
+
+  return remote;
+}
+
+static OstreeRemote *
+ost_remote_new_from_keyfile (GKeyFile    *keyfile,
+                             const gchar *group)
+{
+  GMatchInfo *match = NULL;
+  OstreeRemote *remote;
+
+  static gsize regex_initialized;
+  static GRegex *regex;
+
+  if (g_once_init_enter (&regex_initialized))
+    {
+      regex = g_regex_new ("^remote \"(.+)\"$", 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  /* Sanity check */
+  g_return_val_if_fail (g_key_file_has_group (keyfile, group), NULL);
+
+  /* If group name doesn't fit the pattern, fail. */
+  if (!g_regex_match (regex, group, 0, &match))
+    return NULL;
+
+  remote = ost_remote_new ();
+  remote->name = g_match_info_fetch (match, 1);
+  remote->group = g_strdup (group);
+
+  ot_keyfile_copy_group (keyfile, remote->options, group);
+
+  g_match_info_unref (match);
+
+  return remote;
+}
+
+static OstreeRemote *
+ost_remote_ref (OstreeRemote *remote)
+{
+  g_return_val_if_fail (remote != NULL, NULL);
+  g_return_val_if_fail (remote->ref_count > 0, NULL);
+
+  g_atomic_int_inc (&remote->ref_count);
+
+  return remote;
+}
+
+static void
+ost_remote_unref (OstreeRemote *remote)
+{
+  g_return_if_fail (remote != NULL);
+  g_return_if_fail (remote->ref_count > 0);
+
+  if (g_atomic_int_dec_and_test (&remote->ref_count))
+    {
+      g_clear_pointer (&remote->name, g_free);
+      g_clear_pointer (&remote->group, g_free);
+      g_clear_object (&remote->file);
+      g_clear_pointer (&remote->options, g_key_file_free);
+      g_slice_free (OstreeRemote, remote);
+    }
+}
+
+GS_DEFINE_CLEANUP_FUNCTION0(OstreeRemote*, local_remote_unref, ost_remote_unref)
+#define local_cleanup_remote __attribute__ ((cleanup(local_remote_unref)))
+
+static OstreeRemote *
+ost_repo_get_remote (OstreeRepo  *self,
+                     const char  *name,
+                     GError     **error)
+{
+  OstreeRemote *remote = NULL;
+
+  g_return_val_if_fail (name != NULL, NULL);
+
+  g_mutex_lock (&self->remotes_lock);
+
+  remote = g_hash_table_lookup (self->remotes, name);
+
+  if (remote != NULL)
+    ost_remote_ref (remote);
+  else
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                 "Remote \"%s\" not found", name);
+
+  g_mutex_unlock (&self->remotes_lock);
+
+  return remote;
+}
+
+static void
+ost_repo_add_remote (OstreeRepo   *self,
+                     OstreeRemote *remote)
+{
+  g_return_if_fail (self != NULL);
+  g_return_if_fail (remote != NULL);
+  g_return_if_fail (remote->name != NULL);
+
+  g_mutex_lock (&self->remotes_lock);
+
+  g_hash_table_replace (self->remotes, remote->name, ost_remote_ref (remote));
+
+  g_mutex_unlock (&self->remotes_lock);
+}
+
+static gboolean
+ost_repo_remove_remote (OstreeRepo   *self,
+                        OstreeRemote *remote)
+{
+  gboolean removed;
+
+  g_return_val_if_fail (self != NULL, FALSE);
+  g_return_val_if_fail (remote != NULL, FALSE);
+  g_return_val_if_fail (remote->name != NULL, FALSE);
+
+  g_mutex_lock (&self->remotes_lock);
+
+  removed = g_hash_table_remove (self->remotes, remote->name);
+
+  g_mutex_unlock (&self->remotes_lock);
+
+  return removed;
+}
+
 static void
 ostree_repo_finalize (GObject *object)
 {
@@ -120,6 +266,9 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
+
+  g_clear_pointer (&self->remotes, g_hash_table_destroy);
+  g_mutex_clear (&self->remotes_lock);
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
@@ -207,6 +356,12 @@ ostree_repo_init (OstreeRepo *self)
 {
   g_mutex_init (&self->cache_lock);
   g_mutex_init (&self->txn_stats_lock);
+
+  self->remotes = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                         (GDestroyNotify) NULL,
+                                         (GDestroyNotify) ost_remote_unref);
+  g_mutex_init (&self->remotes_lock);
+
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
 }
@@ -371,9 +526,6 @@ keyfile_set_from_vardict (GKeyFile     *keyfile,
     }
 }
 
-GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
-#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
-
 /**
  * ostree_repo_remote_add:
  * @self: Repo
@@ -400,13 +552,9 @@ ostree_repo_remote_add (OstreeRepo     *self,
                         GCancellable   *cancellable,
                         GError        **error)
 {
-  gboolean ret = FALSE;
-  gboolean is_system;
-  gs_free char *section = NULL;
   gs_unref_object GFile *etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
-  local_cleanup_keyfile GKeyFile *target_keyfile = NULL;
-  gs_free char *target_name = NULL;
-  gs_unref_object GFile *target_conf = NULL;
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (name != NULL, FALSE);
   g_return_val_if_fail (url != NULL, FALSE);
@@ -420,53 +568,70 @@ ostree_repo_remote_add (OstreeRepo     *self,
       goto out;
     }
 
-  section = g_strdup_printf ("remote \"%s\"", name);
+  remote = ost_repo_get_remote (self, name, NULL);
 
-  is_system = ostree_repo_is_system (self);
-  if (is_system)
+  if (remote != NULL)
     {
-      target_keyfile = g_key_file_new ();
+      GFile *file;
 
-      target_name = g_strconcat (name, ".conf", NULL);
-      target_conf = g_file_get_child (etc_ostree_remotes_d, target_name);
-          
-      if (g_file_query_exists (target_conf, NULL))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Remote configuration already exists: %s",
-                       gs_file_get_path_cached (target_conf));
-          goto out;
-        }
+      if (remote->file != NULL)
+        file = remote->file;
+      else
+        file = self->config_file;
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Remote configuration for \"%s\" already exists: %s",
+                   name, gs_file_get_path_cached (file));
+
+      goto out;
     }
-  else
+
+  remote = ost_remote_new ();
+  remote->name = g_strdup (name);
+  remote->group = g_strdup_printf ("remote \"%s\"", name);
+
+  if (ostree_repo_is_system (self))
     {
-      target_keyfile = ostree_repo_copy_config (self);
+      gs_free char *basename = g_strconcat (name, ".conf", NULL);
+      remote->file = g_file_get_child (etc_ostree_remotes_d, basename);
     }
 
   if (g_str_has_prefix (url, "metalink="))
-    g_key_file_set_string (target_keyfile, section, "metalink", url + strlen ("metalink="));
+    g_key_file_set_string (remote->options, remote->group, "metalink", url + strlen ("metalink="));
   else
-    g_key_file_set_string (target_keyfile, section, "url", url);
+    g_key_file_set_string (remote->options, remote->group, "url", url);
 
   if (options)
-    keyfile_set_from_vardict (target_keyfile, section, options);
+    keyfile_set_from_vardict (remote->options, remote->group, options);
 
-  if (is_system)
+  if (remote->file != NULL)
     {
-      gsize len;
-      gs_free char *data = g_key_file_to_data (target_keyfile, &len, error);
-      if (!g_file_replace_contents (target_conf, data, len,
+      gs_free char *data = NULL;
+      gsize length;
+
+      data = g_key_file_to_data (remote->options, &length, NULL);
+
+      if (!g_file_replace_contents (remote->file,
+                                    data, length,
                                     NULL, FALSE, 0, NULL,
                                     cancellable, error))
         goto out;
     }
   else
     {
-      if (!ostree_repo_write_config (self, target_keyfile, error))
+      local_cleanup_keyfile GKeyFile *config = NULL;
+
+      config = ostree_repo_copy_config (self);
+      ot_keyfile_copy_group (remote->options, config, remote->group);
+
+      if (!ostree_repo_write_config (self, config, error))
         goto out;
     }
 
+  ost_repo_add_remote (self, remote);
+
   ret = TRUE;
+
  out:
   return ret;
 }
@@ -488,12 +653,8 @@ ostree_repo_remote_delete (OstreeRepo     *self,
                            GCancellable   *cancellable,
                            GError        **error)
 {
+  local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
-  gs_unref_object GFile *etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
-  local_cleanup_keyfile GKeyFile *target_keyfile = NULL;
-  gs_free char *section = NULL;
-  gs_unref_object GFile *target_conf = NULL;
-  gboolean is_system;
 
   g_return_val_if_fail (name != NULL, FALSE);
 
@@ -505,44 +666,35 @@ ostree_repo_remote_delete (OstreeRepo     *self,
       goto out;
     }
 
-  section = g_strdup_printf ("remote \"%s\"", name);
+  remote = ost_repo_get_remote (self, name, error);
 
-  /* Note we prefer deleting from the config if it exists there */
-  if (g_key_file_has_group (self->config, section))
-    is_system = FALSE;
-  else
-    is_system = ostree_repo_is_system (self);
+  if (remote == NULL)
+    goto out;
 
-  if (is_system)
+  if (remote->file != NULL)
     {
-      gs_free char *target_name = NULL;
-
-      target_name = g_strconcat (name, ".conf", NULL);
-      target_conf = g_file_get_child (etc_ostree_remotes_d, target_name);
-
-      if (!gs_file_unlink (target_conf, cancellable, error))
+      if (!gs_file_unlink (remote->file, cancellable, error))
         goto out;
     }
   else
     {
-      gsize len;
-      gs_free char *data = NULL;
+      local_cleanup_keyfile GKeyFile *config = NULL;
 
-      target_conf = g_object_ref (self->config_file);
+      config = ostree_repo_copy_config (self);
 
-      target_keyfile = ostree_repo_copy_config (self);
-
-      if (!g_key_file_remove_group (target_keyfile, section, error))
-        goto out;
-
-      data = g_key_file_to_data (target_keyfile, &len, NULL);
-      if (!g_file_replace_contents (target_conf, data, len,
-                                    NULL, FALSE, 0, NULL,
-                                    cancellable, error))
-        goto out;
+      /* XXX Not sure it's worth failing if the group to remove
+       *     isn't found.  It's the end result we want, after all. */
+      if (g_key_file_remove_group (config, remote->group, NULL))
+        {
+          if (!ostree_repo_write_config (self, config, error))
+            goto out;
+        }
     }
+
+  ost_repo_remove_remote (self, remote);
 
   ret = TRUE;
+
  out:
   return ret;
 }
@@ -712,6 +864,63 @@ enumerate_directory_allow_noent (GFile               *dirpath,
 }
 
 static gboolean
+add_remotes_from_keyfile (OstreeRepo *self,
+                          GKeyFile   *keyfile,
+                          GFile      *file,
+                          GError    **error)
+{
+  GQueue queue = G_QUEUE_INIT;
+  gs_strfreev char **groups = NULL;
+  gsize length, ii;
+  gboolean ret = FALSE;
+
+  g_mutex_lock (&self->remotes_lock);
+
+  groups = g_key_file_get_groups (keyfile, &length);
+
+  for (ii = 0; ii < length; ii++)
+    {
+      OstreeRemote *remote;
+
+      remote = ost_remote_new_from_keyfile (keyfile, groups[ii]);
+
+      if (remote != NULL)
+        {
+          /* Make sure all the remotes in the key file are
+           * acceptable before adding any to the OstreeRepo. */
+          g_queue_push_tail (&queue, remote);
+
+          if (g_hash_table_contains (self->remotes, remote->name))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Multiple specifications found for remote \"%s\"",
+                           remote->name);
+              goto out;
+            }
+
+          if (file != NULL)
+            remote->file = g_object_ref (file);
+        }
+    }
+
+  while (!g_queue_is_empty (&queue))
+    {
+      OstreeRemote *remote = g_queue_pop_head (&queue);
+      g_hash_table_replace (self->remotes, remote->name, remote);
+    }
+
+  ret = TRUE;
+
+ out:
+  while (!g_queue_is_empty (&queue))
+    ost_remote_unref (g_queue_pop_head (&queue));
+
+  g_mutex_unlock (&self->remotes_lock);
+
+  return ret;
+}
+
+static gboolean
 append_one_remote_config (OstreeRepo      *self,
                           GFile           *path,
                           GCancellable    *cancellable,
@@ -719,43 +928,13 @@ append_one_remote_config (OstreeRepo      *self,
 {
   gboolean ret = FALSE;
   local_cleanup_keyfile GKeyFile *remotedata = g_key_file_new ();
-  gs_strfreev char **groups = NULL;
-  char **iter;
 
   if (!g_key_file_load_from_file (remotedata, gs_file_get_path_cached (path),
                                   0, error))
     goto out;
 
-  groups = g_key_file_get_groups (remotedata, NULL);
-  for (iter = groups; iter && *iter; iter++)
-    {
-      const char *group = *iter;
-      char **subiter;
-      gs_strfreev char **keys = NULL;
-              
-      /* Whitelist of allowed groups for now */
-      if (!g_str_has_prefix (group, "remote \""))
-        continue;
+  ret = add_remotes_from_keyfile (self, remotedata, path, error);
 
-      if (g_key_file_has_group (self->config, group))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Multiple specifications found for %s", group);
-          goto out;
-        }
-              
-      keys = g_key_file_get_keys (remotedata, group, NULL, NULL);
-      g_assert (keys);
-      for (subiter = keys; subiter && *subiter; subiter++)
-        {
-          const char *key = *subiter;
-          gs_free char *value = g_key_file_get_value (remotedata, group, key, NULL);
-          g_assert (value);
-          g_key_file_set_value (self->config, group, key, value);
-        }
-    }
-
-  ret = TRUE;
  out:
   return ret;
 }
@@ -853,6 +1032,8 @@ ostree_repo_open (OstreeRepo    *self,
       g_prefix_error (error, "Couldn't parse config file: ");
       goto out;
     }
+  if (!add_remotes_from_keyfile (self, self->config, NULL, error))
+    goto out;
 
   version = g_key_file_get_value (self->config, "core", "repo_version", error);
   if (!version)
