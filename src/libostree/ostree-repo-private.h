@@ -153,5 +153,28 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     GFileInfo                *file_info,
                                     GFileInfo               **out_modified_info);
 
+gboolean
+_ostree_repo_get_remote_option (OstreeRepo  *self,
+                                const char  *remote_name,
+                                const char  *option_name,
+                                const char  *default_value,
+                                char       **out_value,
+                                GError     **error);
+
+gboolean
+_ostree_repo_get_remote_list_option (OstreeRepo   *self,
+                                     const char   *remote_name,
+                                     const char   *option_name,
+                                     char       ***out_value,
+                                     GError      **error);
+
+gboolean
+_ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
+                                        const char  *remote_name,
+                                        const char  *option_name,
+                                        gboolean     default_value,
+                                        gboolean    *out_value,
+                                        GError     **error);
+
 G_END_DECLS
 
