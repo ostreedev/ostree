@@ -229,6 +229,94 @@ ost_repo_remove_remote (OstreeRepo   *self,
   return removed;
 }
 
+gboolean
+_ostree_repo_get_remote_option (OstreeRepo  *self,
+                                const char  *remote_name,
+                                const char  *option_name,
+                                const char  *default_value,
+                                char       **out_value,
+                                GError     **error)
+{
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  gboolean ret = FALSE;
+
+  remote = ost_repo_get_remote (self, remote_name, error);
+
+  if (remote != NULL)
+    {
+      ret = ot_keyfile_get_value_with_default (remote->options,
+                                               remote->group,
+                                               option_name,
+                                               default_value,
+                                               out_value,
+                                               error);
+    }
+
+  return ret;
+}
+
+gboolean
+_ostree_repo_get_remote_list_option (OstreeRepo   *self,
+                                     const char   *remote_name,
+                                     const char   *option_name,
+                                     char       ***out_value,
+                                     GError      **error)
+{
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  gboolean ret = FALSE;
+
+  remote = ost_repo_get_remote (self, remote_name, error);
+
+  if (remote != NULL)
+    {
+      gs_strfreev char **value = NULL;
+      GError *local_error = NULL;
+
+      value = g_key_file_get_string_list (remote->options,
+                                          remote->group,
+                                          option_name,
+                                          NULL, &local_error);
+
+      /* Default value if key not found is always NULL. */
+      if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+        g_clear_error (&local_error);
+
+      if (local_error == NULL)
+        {
+          ot_transfer_out_value (out_value, &value);
+          ret = TRUE;
+        }
+    }
+
+  return ret;
+}
+
+gboolean
+_ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
+                                        const char  *remote_name,
+                                        const char  *option_name,
+                                        gboolean     default_value,
+                                        gboolean    *out_value,
+                                        GError     **error)
+{
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  gboolean ret = FALSE;
+
+  remote = ost_repo_get_remote (self, remote_name, error);
+
+  if (remote != NULL)
+    {
+      ret = ot_keyfile_get_boolean_with_default (remote->options,
+                                                 remote->group,
+                                                 option_name,
+                                                 default_value,
+                                                 out_value,
+                                                 error);
+    }
+
+  return ret;
+}
+
 static void
 ostree_repo_finalize (GObject *object)
 {
