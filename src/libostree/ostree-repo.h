@@ -79,6 +79,11 @@ gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+gboolean      ostree_repo_remote_get_url (OstreeRepo   *self,
+                                          const char   *name,
+                                          char        **out_url,
+                                          GError      **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,

@@ -699,6 +699,47 @@ ostree_repo_remote_delete (OstreeRepo     *self,
   return ret;
 }
 
+/**
+ * ostree_repo_remote_get_url:
+ * @self: Repo
+ * @name: Name of remote
+ * @out_url: (out) (allow-none): Remote's URL
+ * @error: Error
+ *
+ * Return the URL of the remote named @name through @out_url.  It is an
+ * error if the provided remote does not exist.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_get_url (OstreeRepo  *self,
+                            const char  *name,
+                            char       **out_url,
+                            GError     **error)
+{
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  gs_free char *url = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  remote = ost_repo_get_remote (self, name, error);
+
+  if (remote == NULL)
+    goto out;
+
+  url = g_key_file_get_string (remote->options, remote->group, "url", error);
+
+  if (url != NULL)
+    {
+      gs_transfer_out_value (out_url, &url);
+      ret = TRUE;
+    }
+
+ out:
+  return ret;
+}
+
 static gboolean
 ostree_repo_mode_to_string (OstreeRepoMode   mode,
                             const char     **out_mode,

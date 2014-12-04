@@ -71,9 +71,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
   gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *op;
-  gs_free char *key = NULL;
   guint i;
-  GKeyFile *config = NULL;
   const char *remote_name;
 
   context = g_option_context_new ("OPERATION NAME [args] - Control remote repository configuration");
@@ -93,9 +91,6 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 
   op = argv[1];
   remote_name = argv[2];
-  key = g_strdup_printf ("remote \"%s\"", remote_name);
-
-  config = ostree_repo_copy_config (repo);
 
   if (!strcmp (op, "add"))
     {
@@ -155,8 +150,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
     {
       gs_free char *url = NULL;
 
-      url = g_key_file_get_string (config, key, "url", error);
-      if (url == NULL)
+      if (!ostree_repo_remote_get_url (repo, remote_name, &url, error))
         goto out;
 
       g_print ("%s\n", url);
@@ -176,7 +170,5 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
  out:
   if (context)
     g_option_context_free (context);
-  if (config)
-    g_key_file_free (config);
   return ret;
 }
