@@ -94,6 +94,22 @@ typedef enum {
 #define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_DIRMETA_GVARIANT_STRING)
 
 /**
+ * OSTREE_FILEMETA_GVARIANT_FORMAT:
+ *
+ * This is not a regular object type, but used as an xattr on a .file object
+ * in bare-user repositories. This allows us to store metadata information that we
+ * can't store in the real filesystem but we can still use a regular .file object
+ * that we can hardlink to in the case of a user-mode checkout.
+ *
+ * u - uid
+ * u - gid
+ * u - mode
+ * a(ayay) - xattrs
+ */
+#define OSTREE_FILEMETA_GVARIANT_STRING "(uuua(ayay))"
+#define OSTREE_FILEMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_FILEMETA_GVARIANT_STRING)
+
+/**
  * OSTREE_TREE_GVARIANT_FORMAT:
  *
  * a(say) - array of (filename, checksum) for files
@@ -130,13 +146,15 @@ typedef enum {
  * OstreeRepoMode:
  * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
  * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
+ * @OSTREE_REPO_MODE_BARE_USER: Files are stored as themselves, except ownership; can be written by user
  *
  * See the documentation of #OstreeRepo for more information about the
  * possible modes.
  */
 typedef enum {
   OSTREE_REPO_MODE_BARE,
-  OSTREE_REPO_MODE_ARCHIVE_Z2
+  OSTREE_REPO_MODE_ARCHIVE_Z2,
+  OSTREE_REPO_MODE_BARE_USER
 } OstreeRepoMode;
 
 const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);

@@ -33,6 +33,7 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-mutable-tree.h"
 #include "ostree-varint.h"
+#include <attr/xattr.h>
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
@@ -57,13 +58,60 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
   return TRUE;
 }
 
+static GVariant *
+create_file_metadata (GFileInfo *file_info,
+                      GVariant     *xattrs)
+{
+  GVariant *ret_metadata = NULL;
+  gs_unref_variant GVariant *tmp_xattrs = NULL;
+
+  if (xattrs == NULL)
+    tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
+
+  ret_metadata = g_variant_new ("(uuu@a(ayay))",
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (file_info, "unix::uid")),
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (file_info, "unix::gid")),
+                                GUINT32_TO_BE (g_file_info_get_attribute_uint32 (file_info, "unix::mode")),
+                                xattrs ? xattrs : tmp_xattrs);
+  g_variant_ref_sink (ret_metadata);
+
+  return ret_metadata;
+}
+
+static gboolean
+write_file_metadata_to_xattr (int fd,
+                              GFileInfo    *file_info,
+                              GVariant     *xattrs,
+                              GError       **error)
+{
+  gs_unref_variant GVariant *filemeta = NULL;
+  int res;
+
+  filemeta = create_file_metadata (file_info, xattrs);
+
+  do
+    res = fsetxattr (fd, "user.ostreemeta",
+                     (char*)g_variant_get_data (filemeta),
+                     g_variant_get_size (filemeta),
+                     0);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (G_UNLIKELY (res == -1))
+    {
+      ot_util_set_error_from_errno (error, errno);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
 static gboolean
 commit_loose_object_trusted (OstreeRepo        *self,
                              OstreeObjectType   objtype,
                              const char        *loose_path,
                              GFile             *temp_file,
                              const char        *temp_filename,
-                             gboolean           is_symlink,
+                             gboolean           object_is_symlink,
                              GFileInfo         *file_info,
                              GVariant          *xattrs,
                              GOutputStream     *temp_out,
@@ -89,10 +137,13 @@ commit_loose_object_trusted (OstreeRepo        *self,
     }
 
   /* Special handling for symlinks in bare repositories */
-  if (is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
+  if (object_is_symlink && self->mode == OSTREE_REPO_MODE_BARE)
     {
       /* Now that we know the checksum is valid, apply uid/gid, mode bits,
        * and extended attributes.
+       *
+       * Note, this does not apply for bare-user repos, as they store symlinks
+       * as regular files.
        */
       if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
                                 g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
@@ -102,7 +153,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-              
+
       if (xattrs != NULL)
         {
           if (!gs_dfd_and_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
@@ -143,13 +194,41 @@ commit_loose_object_trusted (OstreeRepo        *self,
               ot_util_set_error_from_errno (error, errno);
               goto out;
             }
-          
+
           if (xattrs)
             {
               if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
                 goto out;
             }
+        }
 
+      if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE_USER)
+        {
+          g_assert (file_info != NULL);
+
+          if (!write_file_metadata_to_xattr (fd, file_info, xattrs, error))
+            goto out;
+
+          if (!object_is_symlink)
+            {
+              /* We need to apply at least some mode bits, because the repo file was created
+                 with mode 644, and we need e.g. exec bits to be right when we do a user-mode
+                 checkout. To make this work we apply all user bits and the read bits for
+                 group/other */
+              do
+                res = fchmod (fd, g_file_info_get_attribute_uint32 (file_info, "unix::mode") | 0744);
+              while (G_UNLIKELY (res == -1 && errno == EINTR));
+              if (G_UNLIKELY (res == -1))
+                {
+                  ot_util_set_error_from_errno (error, errno);
+                  goto out;
+                }
+            }
+        }
+
+      if (objtype == OSTREE_OBJECT_TYPE_FILE && (self->mode == OSTREE_REPO_MODE_BARE ||
+                                                 self->mode == OSTREE_REPO_MODE_BARE_USER))
+        {
           /* To satisfy tools such as guile which compare mtimes
            * to determine whether or not source files need to be compiled,
            * set the modification time to 0.
@@ -379,7 +458,8 @@ write_object (OstreeRepo         *self,
   gboolean have_obj;
   GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
-  gboolean is_symlink = FALSE;
+  gboolean temp_file_is_symlink;
+  gboolean object_is_symlink = FALSE;
   char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
@@ -420,9 +500,27 @@ write_object (OstreeRepo         *self,
         goto out;
 
       temp_file_is_regular = g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR;
-      is_symlink = g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK;
+      temp_file_is_symlink = object_is_symlink =
+        g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK;
 
-      if (!(temp_file_is_regular || is_symlink))
+      if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_is_symlink)
+        {
+          const char *target_str = g_file_info_get_symlink_target (file_info);
+          gs_unref_bytes GBytes *target = g_bytes_new (target_str, strlen (target_str) + 1);
+
+          /* For bare-user we can't store symlinks as symlinks, as symlinks don't
+             support user xattrs to store the ownership. So, instead store them
+             as regular files */
+          temp_file_is_regular = TRUE;
+          temp_file_is_symlink = FALSE;
+          if (file_input != NULL)
+            g_object_unref (file_input);
+
+          /* Include the terminating zero so we can e.g. mmap this file */
+          file_input = g_memory_input_stream_new_from_bytes (target);
+        }
+
+      if (!(temp_file_is_regular || temp_file_is_symlink))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Unsupported file type %u", g_file_info_get_file_type (file_info));
@@ -436,7 +534,7 @@ write_object (OstreeRepo         *self,
        * binary with trailing garbage, creating a window on the local
        * system where a malicious setuid binary exists.
        */
-      if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_regular)
+      if ((repo_mode == OSTREE_REPO_MODE_BARE || repo_mode == OSTREE_REPO_MODE_BARE_USER) && temp_file_is_regular)
         {
           guint64 size = g_file_info_get_size (file_info);
 
@@ -453,7 +551,7 @@ write_object (OstreeRepo         *self,
                                       cancellable, error) < 0)
             goto out;
         }
-      else if (repo_mode == OSTREE_REPO_MODE_BARE && is_symlink)
+      else if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_symlink)
         {
           if (!_ostree_make_temporary_symlink_at (self->tmp_dir_fd,
                                                   g_file_info_get_symlink_target (file_info),
@@ -564,7 +662,7 @@ write_object (OstreeRepo         *self,
     {
       if (!commit_loose_object_trusted (self, objtype, loose_objpath,
                                         temp_file, temp_filename,
-                                        is_symlink, file_info,
+                                        object_is_symlink, file_info,
                                         xattrs, temp_out,
                                         cancellable, error))
         goto out;
@@ -703,6 +801,7 @@ scan_loose_devino (OstreeRepo                     *self,
             {
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
             case OSTREE_REPO_MODE_BARE:
+            case OSTREE_REPO_MODE_BARE_USER:
               skip = !g_str_has_suffix (name, ".file");
               break;
             default:

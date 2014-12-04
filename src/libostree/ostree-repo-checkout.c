@@ -324,7 +324,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
 {
   gboolean ret = FALSE;
   gboolean ret_was_supported = FALSE;
-  int srcfd = self->mode == OSTREE_REPO_MODE_BARE ?
+  int srcfd = (self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER) ?
     self->objects_dir_fd : self->uncompressed_objects_dir_fd;
 
  again:
@@ -401,8 +401,10 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       while (current_repo)
         {
-          gboolean is_bare = (current_repo->mode == OSTREE_REPO_MODE_BARE
-                              && mode == OSTREE_REPO_CHECKOUT_MODE_NONE);
+          gboolean is_bare = ((current_repo->mode == OSTREE_REPO_MODE_BARE
+                               && mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
+                              (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
+                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER));
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
                                                && mode == OSTREE_REPO_CHECKOUT_MODE_USER
                                                && current_repo->enable_uncompressed_cache);

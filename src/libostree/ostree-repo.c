@@ -48,9 +48,11 @@
  * The #OstreeRepo is like git, a content-addressed object store.
  * Unlike git, it records uid, gid, and extended attributes.
  *
- * There are two possible "modes" for an #OstreeRepo;
+ * There are three possible "modes" for an #OstreeRepo;
  * %OSTREE_REPO_MODE_BARE is very simple - content files are
  * represented exactly as they are, and checkouts are just hardlinks.
+ * %OSTREE_REPO_MODE_BARE_USER is similar, except the uid/gids are not
+ * set on the files, and checkouts as hardlinks hardlinks work only for user checkouts.
  * A %OSTREE_REPO_MODE_ARCHIVE_Z2 repository in contrast stores
  * content files zlib-compressed.  It is suitable for non-root-owned
  * repositories that can be served via a static HTTP server.
@@ -560,6 +562,9 @@ ostree_repo_mode_to_string (OstreeRepoMode   mode,
     case OSTREE_REPO_MODE_BARE:
       ret_mode = "bare";
       break;
+    case OSTREE_REPO_MODE_BARE_USER:
+      ret_mode = "bare-user";
+      break;
     case OSTREE_REPO_MODE_ARCHIVE_Z2:
       ret_mode ="archive-z2";
       break;
@@ -585,6 +590,8 @@ ostree_repo_mode_from_string (const char      *mode,
 
   if (strcmp (mode, "bare") == 0)
     ret_mode = OSTREE_REPO_MODE_BARE;
+  else if (strcmp (mode, "bare-user") == 0)
+    ret_mode = OSTREE_REPO_MODE_BARE_USER;
   else if (strcmp (mode, "archive-z2") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
   else
@@ -1123,7 +1130,7 @@ list_loose_objects_at (OstreeRepo             *self,
 
       if ((self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
            && strcmp (dot, ".filez") == 0) ||
-          (self->mode == OSTREE_REPO_MODE_BARE
+          ((self->mode == OSTREE_REPO_MODE_BARE || self->mode == OSTREE_REPO_MODE_BARE_USER)
            && strcmp (dot, ".file") == 0))
         objtype = OSTREE_OBJECT_TYPE_FILE;
       else if (strcmp (dot, ".dirtree") == 0)
@@ -1393,6 +1400,26 @@ query_info_for_bare_content_object (OstreeRepo      *self,
   return ret;
 }
 
+static GVariant  *
+set_info_from_filemeta (GFileInfo  *info,
+                        GVariant   *metadata)
+{
+  guint32 uid, gid, mode;
+  GVariant *xattrs;
+
+  g_variant_get (metadata, "(uuu@a(ayay))",
+                 &uid, &gid, &mode, &xattrs);
+  uid = GUINT32_FROM_BE (uid);
+  gid = GUINT32_FROM_BE (gid);
+  mode = GUINT32_FROM_BE (mode);
+
+  g_file_info_set_attribute_uint32 (info, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (info, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (info, "unix::mode", mode);
+
+  return xattrs;
+}
+
 /**
  * ostree_repo_load_file:
  * @self: Repo
@@ -1468,14 +1495,57 @@ ostree_repo_load_file (OstreeRepo         *self,
 
       if (ret_file_info)
         {
-          if (out_xattrs)
+          if (repo_mode == OSTREE_REPO_MODE_BARE_USER)
             {
-              gs_unref_object GFile *full_path =
+              gs_unref_variant GVariant *metadata = NULL;
+              gs_unref_bytes GBytes *bytes = NULL;
+
+              bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
+                                      "user.ostreemeta", error);
+              if (bytes == NULL)
+                goto out;
+
+              metadata = g_variant_new_from_bytes (OSTREE_FILEMETA_GVARIANT_FORMAT,
+                                                   bytes, FALSE);
+              g_variant_ref_sink (metadata);
+
+              ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
+
+              if (S_ISLNK (g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode")))
+                {
+                  int fd = -1;
+                  gs_unref_object GInputStream *target_input = NULL;
+                  char targetbuf[PATH_MAX+1];
+                  gsize target_size;
+
+                  g_file_info_set_file_type (ret_file_info, G_FILE_TYPE_SYMBOLIC_LINK);
+                  g_file_info_set_size (ret_file_info, 0);
+
+                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                                               cancellable, error))
+                    goto out;
+
+                  target_input = g_unix_input_stream_new (fd, TRUE);
+
+                  if (!g_input_stream_read_all (target_input, targetbuf, sizeof (targetbuf),
+                                                &target_size, cancellable, error))
+                    goto out;
+
+                  g_file_info_set_symlink_target (ret_file_info, targetbuf);
+                }
+            }
+
+          if (repo_mode == OSTREE_REPO_MODE_BARE)
+            {
+              if (out_xattrs)
+                {
+                  gs_unref_object GFile *full_path =
                     _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
 
-              if (!gs_file_get_all_xattrs (full_path, &ret_xattrs,
-                                           cancellable, error))
-                goto out;
+                  if (!gs_file_get_all_xattrs (full_path, &ret_xattrs,
+                                               cancellable, error))
+                    goto out;
+                }
             }
 
           if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
