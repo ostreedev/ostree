@@ -189,12 +189,24 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
           ot_util_set_error_from_errno (error, errno);
           goto out;
         }
-          
-      if (xattrs)
+
+      if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
-          if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
-                                               xattrs, cancellable, error))
-            goto out;
+          if (G_UNLIKELY (fchownat (destination_dfd, destination_name,
+                                    g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
+                                    g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
+                                    AT_SYMLINK_NOFOLLOW) == -1))
+            {
+              ot_util_set_error_from_errno (error, errno);
+              goto out;
+            }
+
+          if (xattrs)
+            {
+              if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
+                                                   xattrs, cancellable, error))
+                goto out;
+            }
         }
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
