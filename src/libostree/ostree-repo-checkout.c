@@ -271,7 +271,7 @@ checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
           
       if (xattrs)
         {
-          if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, destination_name,
+          if (!gs_dfd_and_name_set_all_xattrs (destination_dfd, temp_filename,
                                                xattrs, cancellable, error))
             goto out;
         }
