@@ -66,6 +66,7 @@ insttest_DATA = tests/archive-test.sh \
 	tests/libtest.sh \
 	tests/admin-test.sh \
 	tests/basic-test.sh \
+	tests/test-basic-user.sh \
 	tests/corrupt-repo-ref.js \
 	$(NULL)
 
