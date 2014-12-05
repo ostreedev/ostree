@@ -73,6 +73,10 @@ struct OstreeRepo {
   gboolean generate_sizes;
 
   OstreeRepo *parent_repo;
+
+  /* For instances created by ostree_repo_new_default()
+   * or ostree_sysroot_get_repo() */
+  OstreeSysroot *sysroot;
 };
 
 gboolean

@@ -33,6 +33,7 @@
 #include "ostree-repo-file.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
+#include "ostree-sysroot.h"
 
 #ifdef HAVE_GPGME
 #include <locale.h>
@@ -120,6 +121,8 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
+
+  g_clear_object (&self->sysroot);
 
   G_OBJECT_CLASS (ostree_repo_parent_class)->finalize (object);
 }
@@ -242,17 +245,26 @@ get_default_repo_path (void)
 OstreeRepo*
 ostree_repo_new_default (void)
 {
+  OstreeRepo *repo;
+
   if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
       && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
     {
       gs_unref_object GFile *cwd = g_file_new_for_path (".");
-      return ostree_repo_new (cwd);
+      repo = ostree_repo_new (cwd);
     }
   else
     {
       gs_unref_object GFile *default_repo_path = get_default_repo_path ();
-      return ostree_repo_new (default_repo_path);
+
+      repo = ostree_repo_new (default_repo_path);
+
+      /* Stash a sysroot reference so the "BOOT" alias works.
+       * ostree_repo_open() will attempt to load the sysroot. */
+      repo->sysroot = ostree_sysroot_new_default ();
     }
+
+  return repo;
 }
 
 /**
@@ -939,6 +951,12 @@ ostree_repo_open (OstreeRepo    *self,
       if (!gs_file_open_dir_fd (self->uncompressed_objects_dir,
                                 &self->uncompressed_objects_dir_fd,
                                 cancellable, error))
+        goto out;
+    }
+
+  if (self->sysroot)
+    {
+      if (!ostree_sysroot_load (self->sysroot, cancellable, error))
         goto out;
     }
 
