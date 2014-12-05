@@ -23,6 +23,10 @@
 #include "ostree-repo-private.h"
 #include "otutil.h"
 
+/* For "BOOT" alias resolution */
+#include "ostree-sysroot.h"
+#include "ostree-deployment.h"
+
 static gboolean
 add_ref_to_set (const char       *remote,
                 GFile            *base,
@@ -446,6 +450,27 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   gs_free char *ret_rev = NULL;
 
   g_return_val_if_fail (refspec != NULL, FALSE);
+
+  if (g_str_equal (refspec, "BOOT"))
+    {
+      if (self->sysroot != NULL)
+        {
+          OstreeDeployment *booted_deployment;
+
+          booted_deployment = ostree_sysroot_get_booted_deployment (self->sysroot);
+
+          if (booted_deployment != NULL)
+            {
+              const char *csum = ostree_deployment_get_csum (booted_deployment);
+
+              return ostree_repo_resolve_rev (self, csum, allow_noent, out_rev, error);
+            }
+        }
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Refspec '%s' only works in a booted deployment", refspec);
+      goto out;
+    }
 
   if (ostree_validate_checksum_string (refspec, NULL))
     {

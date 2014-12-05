@@ -24,6 +24,7 @@
 #include "libgsystem.h"
 
 #include "ostree-sysroot-private.h"
+#include "ostree-repo-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 #include "ostree-bootloader-grub2.h"
@@ -836,6 +837,9 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
   ret_repo = ostree_repo_new (repo_path);
   if (!ostree_repo_open (ret_repo, cancellable, error))
     goto out;
+
+  /* Stash a sysroot reference so the "BOOT" alias works. */
+  ret_repo->sysroot = g_object_ref (self);
     
   ret = TRUE;
   ot_transfer_out_value (out_repo, &ret_repo);
