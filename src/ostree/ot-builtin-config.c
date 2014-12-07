@@ -116,11 +116,16 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
         goto out;
 
       readonly_config = ostree_repo_get_config (repo);
-      value = g_key_file_get_string (readonly_config, section, key, error);
-      if (value == NULL)
-        goto out;
-
-      g_print ("%s\n", value);
+      value = g_key_file_get_string (readonly_config, section, key, NULL);
+      if (!value)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "%s not found in '%s'",
+                   key, section);
+          goto out;
+        }
+      else
+        g_print ("%s\n", value);
     }
   else
     {
