@@ -28,6 +28,8 @@
 #include "otutil.h"
 
 #include <sys/socket.h>
+#include <sys/prctl.h>
+#include <signal.h>
 
 static char *opt_port_file = NULL;
 static gboolean opt_daemonize;
@@ -390,7 +392,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
 #if !SOUP_CHECK_VERSION(2, 48, 0)
   soup_server_run_async (server);
 #endif
-
+  
   if (opt_daemonize)
     {
       pid_t pid = fork();
@@ -410,6 +412,21 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
       /* Daemonising: close stdout/stderr so $() et al work on us */
       fclose (stdout);
       fclose (stdin);
+    }
+  else
+    {
+      /* Since we're used for testing purposes, let's just do this by
+       * default.  This ensures we exit when our parent does.
+       */
+      if (prctl (PR_SET_PDEATHSIG, SIGTERM) != 0)
+        {
+          int errsv = errno;
+          if (errsv != ENOSYS)
+            {
+              ot_util_set_error_from_errno (error, errsv);
+              goto out;
+            }
+        }
     }
 
   app->running = TRUE;
