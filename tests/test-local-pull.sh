@@ -44,13 +44,13 @@ echo "ok pull-local bare-user to z2"
 # Verify the name + size + mode + type + symlink target + owner/group are the same
 # for all checkouts
 ${CMD_PREFIX} ostree checkout --repo repo test2 checkout1
-find checkout1 -printf '%P %s %#m %u/%g %y %l\n' > checkout1.files
+find checkout1 -printf '%P %s %#m %u/%g %y %l\n' | sort > checkout1.files
 
 ${CMD_PREFIX} ostree checkout --repo repo2 test2 checkout2
-find checkout2 -printf '%P %s %#m %u/%g %y %l\n' > checkout2.files
+find checkout2 -printf '%P %s %#m %u/%g %y %l\n' | sort > checkout2.files
 
 ${CMD_PREFIX} ostree checkout --repo repo3 test2 checkout3
-find checkout3 -printf '%P %s %#m %u/%g %y %l\n' > checkout3.files
+find checkout3 -printf '%P %s %#m %u/%g %y %l\n' | sort > checkout3.files
 
 cmp checkout1.files checkout2.files
 cmp checkout1.files checkout3.files
