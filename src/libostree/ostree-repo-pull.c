@@ -1517,7 +1517,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gpointer key, value;
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
-  guint i;
   gs_free char *remote_key = NULL;
   gs_free char *path = NULL;
   gs_free char *baseurl = NULL;
