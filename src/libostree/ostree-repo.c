@@ -1236,15 +1236,11 @@ ostree_repo_open (OstreeRepo    *self,
       ostree_repo_set_disable_fsync (self, TRUE);
   }
 
-  {
-    gs_unref_object GFile *default_repo_path = get_default_repo_path ();
-    
-    if (g_file_equal (self->repodir, default_repo_path))
-      {
-        if (!append_remotes_d (self, cancellable, error))
-          goto out;
-      }
-  }
+  if (ostree_repo_is_system (self))
+    {
+      if (!append_remotes_d (self, cancellable, error))
+        goto out;
+    }
 
   if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
     goto out;
