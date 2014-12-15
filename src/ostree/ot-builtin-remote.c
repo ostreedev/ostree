@@ -55,10 +55,12 @@ parse_keyvalue (const char  *keyvalue,
 
 static char **opt_set;
 static gboolean opt_no_gpg_verify;
+static gboolean opt_if_not_exists;
 
 static GOptionEntry add_option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
+  { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { NULL }
 };
 
@@ -124,17 +126,25 @@ ostree_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GEr
                            "gpg-verify",
                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
 
-  ret = ostree_repo_remote_add (repo, remote_name, remote_url,
-                                g_variant_builder_end (optbuilder),
-                                cancellable, error);
+  if (!ostree_repo_remote_change (repo, NULL,
+                                  opt_if_not_exists ? OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS : 
+                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
+                                  remote_name, remote_url,
+                                  g_variant_builder_end (optbuilder),
+                                  cancellable, error))
+    goto out;
 
+  ret = TRUE;
  out:
   g_option_context_free (context);
 
   return ret;
 }
 
+gboolean opt_if_exists = FALSE;
+
 static GOptionEntry delete_option_entries[] = {
+  { "if-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_exists, "Do nothing if the provided remote does not exist", NULL },
   { NULL }
 };
 
@@ -160,8 +170,14 @@ ostree_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, 
 
   remote_name = argv[1];
 
-  ret = ostree_repo_remote_delete (repo, remote_name, cancellable, error);
+  if (!ostree_repo_remote_change (repo, NULL,
+                                  opt_if_exists ? OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS : 
+                                  OSTREE_REPO_REMOTE_CHANGE_DELETE,
+                                  remote_name, NULL, NULL,
+                                  cancellable, error))
+    goto out;
 
+  ret = TRUE;
  out:
   g_option_context_free (context);
 

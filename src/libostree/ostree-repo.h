@@ -79,6 +79,22 @@ gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+typedef enum {
+  OSTREE_REPO_REMOTE_CHANGE_ADD,
+  OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
+  OSTREE_REPO_REMOTE_CHANGE_DELETE,
+  OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS
+} OstreeRepoRemoteChange;
+
+gboolean      ostree_repo_remote_change (OstreeRepo     *self,
+                                         GFile          *sysroot,
+                                         OstreeRepoRemoteChange changeop,
+                                         const char     *name,
+                                         const char     *url,
+                                         GVariant       *options,
+                                         GCancellable   *cancellable,
+                                         GError        **error);
+
 gboolean      ostree_repo_remote_get_url (OstreeRepo   *self,
                                           const char   *name,
                                           char        **out_url,

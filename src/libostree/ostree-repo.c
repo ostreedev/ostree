@@ -616,33 +616,16 @@ keyfile_set_from_vardict (GKeyFile     *keyfile,
     }
 }
 
-/**
- * ostree_repo_remote_add:
- * @self: Repo
- * @name: Name of remote
- * @url: URL for remote (if URL begins with metalink=, it will be used as such)
- * @options: (allow-none): GVariant of type a{sv}
- * @cancellable: Cancellable
- * @error: Error
- *
- * Create a new remote named @name pointing to @url.  If @options is
- * provided, then it will be mapped to #GKeyFile entries, where the
- * GVariant dictionary key is an option string, and the value is
- * mapped as follows:
- *   * s: g_key_file_set_string()
- *   * b: g_key_file_set_boolean()
- *   * as: g_key_file_set_string_list()
- *
- */
-gboolean
-ostree_repo_remote_add (OstreeRepo     *self,
-                        const char     *name,
-                        const char     *url,
-                        GVariant       *options,
-                        GCancellable   *cancellable,
-                        GError        **error)
+static gboolean
+impl_repo_remote_add (OstreeRepo     *self,
+                      GFile          *sysroot,
+                      gboolean        if_not_exists,
+                      const char     *name,
+                      const char     *url,
+                      GVariant       *options,
+                      GCancellable   *cancellable,
+                      GError        **error)
 {
-  gs_unref_object GFile *etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
 
@@ -659,8 +642,12 @@ ostree_repo_remote_add (OstreeRepo     *self,
     }
 
   remote = ost_repo_get_remote (self, name, NULL);
-
-  if (remote != NULL)
+  if (remote != NULL && if_not_exists)
+    {
+      ret = TRUE;
+      goto out;
+    }
+  else if (remote != NULL)
     {
       GFile *file;
 
@@ -680,9 +667,17 @@ ostree_repo_remote_add (OstreeRepo     *self,
   remote->name = g_strdup (name);
   remote->group = g_strdup_printf ("remote \"%s\"", name);
 
-  if (ostree_repo_is_system (self))
+  if (sysroot != NULL || ostree_repo_is_system (self))
     {
+      const char *sysconf_remotes = SYSCONFDIR "/ostree/remotes.d";
       gs_free char *basename = g_strconcat (name, ".conf", NULL);
+      gs_unref_object GFile *etc_ostree_remotes_d = NULL;
+
+      if (sysroot == NULL)
+        etc_ostree_remotes_d = g_file_new_for_path (sysconf_remotes);
+      else
+        etc_ostree_remotes_d = g_file_resolve_relative_path (sysroot, sysconf_remotes + 1);
+
       remote->file = g_file_get_child (etc_ostree_remotes_d, basename);
     }
 
@@ -727,21 +722,42 @@ ostree_repo_remote_add (OstreeRepo     *self,
 }
 
 /**
- * ostree_repo_remote_delete:
+ * ostree_repo_remote_add:
  * @self: Repo
  * @name: Name of remote
+ * @url: URL for remote (if URL begins with metalink=, it will be used as such)
+ * @options: (allow-none): GVariant of type a{sv}
  * @cancellable: Cancellable
  * @error: Error
  *
- * Delete the remote named @name.  It is an error if the provided
- * remote does not exist.
+ * Create a new remote named @name pointing to @url.  If @options is
+ * provided, then it will be mapped to #GKeyFile entries, where the
+ * GVariant dictionary key is an option string, and the value is
+ * mapped as follows:
+ *   * s: g_key_file_set_string()
+ *   * b: g_key_file_set_boolean()
+ *   * as: g_key_file_set_string_list()
  *
  */
 gboolean
-ostree_repo_remote_delete (OstreeRepo     *self,
-                           const char     *name,
-                           GCancellable   *cancellable,
-                           GError        **error)
+ostree_repo_remote_add (OstreeRepo     *self,
+                        const char     *name,
+                        const char     *url,
+                        GVariant       *options,
+                        GCancellable   *cancellable,
+                        GError        **error)
+{
+  return impl_repo_remote_add (self, NULL, FALSE, name, url, options,
+                               cancellable, error);
+}
+
+static gboolean
+impl_repo_remote_delete (OstreeRepo     *self,
+                         GFile          *sysroot,
+                         gboolean        if_exists,
+                         const char     *name,
+                         GCancellable   *cancellable,
+                         GError        **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
@@ -756,7 +772,17 @@ ostree_repo_remote_delete (OstreeRepo     *self,
       goto out;
     }
 
-  remote = ost_repo_get_remote (self, name, error);
+  if (if_exists)
+    {
+      remote = ost_repo_get_remote (self, name, NULL);
+      if (!remote)
+        {
+          ret = TRUE;
+          goto out;
+        }
+    }
+  else
+    remote = ost_repo_get_remote (self, name, error);
 
   if (remote == NULL)
     goto out;
@@ -787,6 +813,71 @@ ostree_repo_remote_delete (OstreeRepo     *self,
 
  out:
   return ret;
+}
+
+/**
+ * ostree_repo_remote_delete:
+ * @self: Repo
+ * @name: Name of remote
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Delete the remote named @name.  It is an error if the provided
+ * remote does not exist.
+ *
+ */
+gboolean
+ostree_repo_remote_delete (OstreeRepo     *self,
+                           const char     *name,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+  return impl_repo_remote_delete (self, NULL, FALSE, name, cancellable, error);
+}
+
+/**
+ * ostree_repo_remote_change:
+ * @self: Repo
+ * @sysroot: (allow-none): System root
+ * @changeop: Operation to perform
+ * @name: Name of remote
+ * @url: URL for remote (if URL begins with metalink=, it will be used as such)
+ * @options: (allow-none): GVariant of type a{sv}
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * A combined function handling the equivalent of
+ * ostree_repo_remote_add(), ostree_repo_remote_delete(), with more
+ * options.
+ *
+ *
+ */
+gboolean
+ostree_repo_remote_change (OstreeRepo     *self,
+                           GFile          *sysroot,
+                           OstreeRepoRemoteChange changeop,
+                           const char     *name,
+                           const char     *url,
+                           GVariant       *options,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+  switch (changeop)
+    {
+    case OSTREE_REPO_REMOTE_CHANGE_ADD:
+      return impl_repo_remote_add (self, sysroot, FALSE, name, url, options,
+                                   cancellable, error);
+    case OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS:
+      return impl_repo_remote_add (self, sysroot, TRUE, name, url, options,
+                                   cancellable, error);
+    case OSTREE_REPO_REMOTE_CHANGE_DELETE:
+      return impl_repo_remote_delete (self, sysroot, FALSE, name,
+                                      cancellable, error);
+    case OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS:
+      return impl_repo_remote_delete (self, sysroot, TRUE, name,
+                                      cancellable, error);
+    }
+  g_assert_not_reached ();
 }
 
 /**
