@@ -95,6 +95,9 @@ gboolean      ostree_repo_remote_change (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+char **       ostree_repo_remote_list    (OstreeRepo *self,
+                                          guint      *out_n_remotes);
+
 gboolean      ostree_repo_remote_get_url (OstreeRepo   *self,
                                           const char   *name,
                                           char        **out_url,

@@ -61,6 +61,7 @@ ostree_repo_get_mode
 ostree_repo_mode_from_string
 ostree_repo_get_config
 ostree_repo_copy_config
+ostree_repo_remote_list
 ostree_repo_get_parent
 ostree_repo_write_config
 OstreeRepoTransactionStats

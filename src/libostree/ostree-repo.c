@@ -881,6 +881,54 @@ ostree_repo_remote_change (OstreeRepo     *self,
 }
 
 /**
+ * ostree_repo_remote_list:
+ * @self: Repo
+ * @out_n_remotes: (out) (allow-none): Number of remotes available
+ *
+ * List available remote names in an #OstreeRepo.  Remote names are sorted
+ * alphabetically.  If no remotes are available the function returns %NULL.
+ *
+ * Returns: (array length=out_n_remotes) (transfer full): a %NULL-terminated
+ *          array of remote names
+ **/
+char **
+ostree_repo_remote_list (OstreeRepo *self,
+                         guint      *out_n_remotes)
+{
+  char **remotes = NULL;
+  guint n_remotes;
+
+  g_mutex_lock (&self->remotes_lock);
+
+  n_remotes = g_hash_table_size (self->remotes);
+
+  if (n_remotes > 0)
+    {
+      GList *list, *link;
+      guint ii = 0;
+
+      remotes = g_new (char *, n_remotes + 1);
+
+      list = g_hash_table_get_keys (self->remotes);
+      list = g_list_sort (list, (GCompareFunc) strcmp);
+
+      for (link = list; link != NULL; link = link->next)
+        remotes[ii++] = g_strdup (link->data);
+
+      g_list_free (list);
+
+      remotes[ii] = NULL;
+    }
+
+  g_mutex_unlock (&self->remotes_lock);
+
+  if (out_n_remotes)
+    *out_n_remotes = n_remotes;
+
+  return remotes;
+}
+
+/**
  * ostree_repo_remote_get_url:
  * @self: Repo
  * @name: Name of remote
