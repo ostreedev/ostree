@@ -2109,11 +2109,6 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
   g_debug ("Examining: %s", gs_file_get_path_cached (dir));
 
-  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-    {
-      self->generate_sizes = TRUE;
-    }
-
   /* If the directory is already in the repository, we can try to
    * reuse checksums to skip checksumming. */
   if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
@@ -2232,6 +2227,11 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
 {
   gboolean ret = FALSE;
   GPtrArray *path = NULL;
+
+  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+    {
+      self->generate_sizes = TRUE;
+    }
 
   path = g_ptr_array_new ();
   if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
