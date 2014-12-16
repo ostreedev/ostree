@@ -24,6 +24,7 @@
 
 #include <glib-unix.h>
 #include <gio/gfiledescriptorbased.h>
+#include <gio/gunixinputstream.h>
 #include "otutil.h"
 #include "libgsystem.h"
 
@@ -1901,6 +1902,8 @@ get_modified_xattrs (OstreeRepo                       *self,
                      const char                       *relpath,
                      GFileInfo                        *file_info,
                      GFile                            *path,
+                     int                               dfd,
+                     const char                       *dfd_subpath,
                      GVariant                        **out_xattrs,
                      GCancellable                     *cancellable,
                      GError                          **error)
@@ -1915,8 +1918,25 @@ get_modified_xattrs (OstreeRepo                       *self,
     }
   else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
     {
-      if (!gs_file_get_all_xattrs (path, &ret_xattrs, cancellable, error))
-        goto out;
+      if (path)
+        {
+          if (!gs_file_get_all_xattrs (path, &ret_xattrs, cancellable, error))
+            goto out;
+        }
+      else if (dfd_subpath == NULL)
+        {
+          g_assert (dfd != -1);
+          if (!gs_fd_get_all_xattrs (dfd, &ret_xattrs,
+                                     cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_assert (dfd != -1);
+          if (!gs_dfd_and_name_get_all_xattrs (dfd, dfd_subpath, &ret_xattrs,
+                                               cancellable, error))
+            goto out;
+        }
     }
 
   if (modifier && modifier->sepolicy)
@@ -1964,11 +1984,20 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GPtrArray                   *path,
                                    GCancellable                *cancellable,
                                    GError                     **error);
+static gboolean
+write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
+                                  GSDirFdIterator             *src_dfd_iter,
+                                  OstreeMutableTree           *mtree,
+                                  OstreeRepoCommitModifier    *modifier,
+                                  GPtrArray                   *path,
+                                  GCancellable                *cancellable,
+                                  GError                     **error);
 
 static gboolean
 write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                            OstreeRepoFile              *repo_dir,
                                            GFileEnumerator             *dir_enum,
+                                           GSDirFdIterator             *dfd_iter,
                                            GFileInfo                   *child_info,
                                            OstreeMutableTree           *mtree,
                                            OstreeRepoCommitModifier    *modifier,
@@ -1985,6 +2014,8 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   GFileType file_type;
   OstreeRepoCommitFilterResult filter_result;
 
+  g_assert (dir_enum != NULL || dfd_iter != NULL);
+
   name = g_file_info_get_name (child_info);
   g_ptr_array_add (path, (char*)name);
 
@@ -2000,8 +2031,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       goto out;
     }
 
-  child = g_file_enumerator_get_child (dir_enum, child_info);
-
   file_type = g_file_info_get_file_type (child_info);
   switch (file_type)
     {
@@ -2016,18 +2045,37 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       goto out;
     }
 
+  if (dir_enum != NULL)
+    child = g_file_enumerator_get_child (dir_enum, child_info);
+
   if (file_type == G_FILE_TYPE_DIRECTORY)
     {
       if (!ostree_mutable_tree_ensure_dir (mtree, name, &child_mtree, error))
         goto out;
 
-      if (!write_directory_to_mtree_internal (self, child, child_mtree,
-                                              modifier, path,
-                                              cancellable, error))
-        goto out;
+      if (dir_enum != NULL)
+        {
+          if (!write_directory_to_mtree_internal (self, child, child_mtree,
+                                                  modifier, path,
+                                                  cancellable, error))
+            goto out;
+        }
+      else
+        {
+          gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
+
+          if (!gs_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
+            goto out;
+
+          if (!write_dfd_iter_to_mtree_internal (self, &child_dfd_iter, child_mtree,
+                                                 modifier, path,
+                                                 cancellable, error))
+            goto out;
+        }
     }
   else if (repo_dir)
     {
+      g_assert (dir_enum != NULL);
       g_debug ("Adding: %s", gs_file_get_path_cached (child));
       if (!ostree_mutable_tree_replace_file (mtree, name,
                                              ostree_repo_file_get_checksum ((OstreeRepoFile*) child),
@@ -2044,7 +2092,6 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       gs_free guchar *child_file_csum = NULL;
       gs_free char *tmp_checksum = NULL;
 
-      g_debug ("Adding: %s", gs_file_get_path_cached (child));
       loose_checksum = devino_cache_lookup (self, child_info);
 
       if (loose_checksum)
@@ -2057,13 +2104,26 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         {
           if (g_file_info_get_file_type (modified_info) == G_FILE_TYPE_REGULAR)
             {
-              file_input = (GInputStream*)g_file_read (child, cancellable, error);
-              if (!file_input)
-                goto out;
+              if (child != NULL)
+                {
+                  file_input = (GInputStream*)g_file_read (child, cancellable, error);
+                  if (!file_input)
+                    goto out;
+                }
+              else
+                {
+                  int filefd = openat (dfd_iter->fd, name, O_RDONLY | O_CLOEXEC, 0);
+                  if (filefd == -1)
+                    {
+                      gs_set_error_from_errno (error, errno);
+                      goto out;
+                    }
+                  file_input = (GInputStream*)g_unix_input_stream_new (filefd, TRUE);
+                }
             }
 
           if (!get_modified_xattrs (self, modifier,
-                                    child_relpath, child_info, child,
+                                    child_relpath, child_info, child, dfd_iter->fd, name,
                                     &xattrs,
                                     cancellable, error))
             goto out;
@@ -2107,11 +2167,12 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
   gs_unref_object GFileEnumerator *dir_enum = NULL;
   gs_unref_object GFileInfo *child_info = NULL;
 
-  g_debug ("Examining: %s", gs_file_get_path_cached (dir));
+  if (dir)
+    g_debug ("Examining: %s", gs_file_get_path_cached (dir));
 
   /* If the directory is already in the repository, we can try to
    * reuse checksums to skip checksumming. */
-  if (OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
+  if (dir && OSTREE_IS_REPO_FILE (dir) && modifier == NULL)
     repo_dir = (OstreeRepoFile *) dir;
 
   if (repo_dir)
@@ -2154,8 +2215,8 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
       if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
         {
-          g_debug ("Adding: %s", gs_file_get_path_cached (dir));
-          if (!get_modified_xattrs (self, modifier, relpath, child_info, dir,
+          if (!get_modified_xattrs (self, modifier, relpath, child_info,
+                                    dir, -1, NULL,
                                     &xattrs,
                                     cancellable, error))
             goto out;
@@ -2193,11 +2254,127 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
           if (child_info == NULL)
             break;
 
-          if (!write_directory_content_to_mtree_internal (self, repo_dir, dir_enum, child_info,
+          if (!write_directory_content_to_mtree_internal (self, repo_dir, dir_enum, NULL,
+                                                          child_info,
                                                           mtree, modifier, path,
                                                           cancellable, error))
             goto out;
         }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
+                                  GSDirFdIterator             *src_dfd_iter,
+                                  OstreeMutableTree           *mtree,
+                                  OstreeRepoCommitModifier    *modifier,
+                                  GPtrArray                   *path,
+                                  GCancellable                *cancellable,
+                                  GError                     **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFileInfo *child_info = NULL;
+  gs_unref_object GFileInfo *modified_info = NULL;
+  gs_unref_variant GVariant *xattrs = NULL;
+  gs_free guchar *child_file_csum = NULL;
+  gs_free char *tmp_checksum = NULL;
+  gs_free char *relpath = NULL;
+  OstreeRepoCommitFilterResult filter_result;
+  struct stat dir_stbuf;
+
+  if (fstat (src_dfd_iter->fd, &dir_stbuf) != 0)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  child_info = _ostree_header_gfile_info_new (dir_stbuf.st_mode, dir_stbuf.st_uid, dir_stbuf.st_gid);
+
+  if (modifier != NULL)
+    {
+      relpath = ptrarray_path_join (path);
+      
+      filter_result = apply_commit_filter (self, modifier, relpath, child_info, &modified_info);
+    }
+  else
+    {
+      filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
+      modified_info = g_object_ref (child_info);
+    }
+
+  if (filter_result == OSTREE_REPO_COMMIT_FILTER_ALLOW)
+    {
+      if (!get_modified_xattrs (self, modifier, relpath, modified_info,
+                                NULL, src_dfd_iter->fd, NULL,
+                                &xattrs,
+                                cancellable, error))
+        goto out;
+
+      if (!_ostree_repo_write_directory_meta (self, modified_info, xattrs, &child_file_csum,
+                                              cancellable, error))
+        goto out;
+
+      g_free (tmp_checksum);
+      tmp_checksum = ostree_checksum_from_bytes (child_file_csum);
+      ostree_mutable_tree_set_metadata_checksum (mtree, tmp_checksum);
+    }
+
+  if (filter_result != OSTREE_REPO_COMMIT_FILTER_ALLOW)
+    {
+      ret = TRUE;
+      goto out;
+    }
+
+  while (TRUE)
+    {
+      struct dirent *dent;
+      struct stat stbuf;
+      gs_unref_object GFileInfo *child_info = NULL;
+
+      if (!gs_dirfd_iterator_next_dent (src_dfd_iter, &dent, cancellable, error))
+        goto out;
+
+      if (dent == NULL)
+        break;
+
+      if (fstatat (src_dfd_iter->fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      child_info = _ostree_header_gfile_info_new (stbuf.st_mode, stbuf.st_uid, stbuf.st_gid);
+      g_file_info_set_name (child_info, dent->d_name);
+
+      if (S_ISREG (stbuf.st_mode))
+        {
+          g_file_info_set_size (child_info, stbuf.st_size);
+        }
+      else if (S_ISLNK (stbuf.st_mode))
+        {
+          if (!ot_readlinkat_gfile_info (src_dfd_iter->fd, dent->d_name,
+                                         child_info, cancellable, error))
+            goto out;
+        }
+      else if (S_ISDIR (stbuf.st_mode))
+        ;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Not a regular file or symlink: %s",
+                       dent->d_name);
+          goto out;
+        }
+
+      if (!write_directory_content_to_mtree_internal (self, NULL, NULL, src_dfd_iter,
+                                                      child_info,
+                                                      mtree, modifier, path,
+                                                      cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
@@ -2234,9 +2411,24 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
     }
 
   path = g_ptr_array_new ();
-  if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
-                                          cancellable, error))
-    goto out;
+  if (g_file_is_native (dir))
+    {
+      gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
+
+      if (!gs_dirfd_iterator_init_at (AT_FDCWD, gs_file_get_path_cached (dir), FALSE,
+                                      &dfd_iter, error))
+        goto out;
+
+      if (!write_dfd_iter_to_mtree_internal (self, &dfd_iter, mtree, modifier, path,
+                                             cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
+                                              cancellable, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:

@@ -115,3 +115,31 @@ ot_lsetxattrat (int            dfd,
 
   return TRUE;
 }
+
+gboolean
+ot_readlinkat_gfile_info (int             dfd,
+                          const char     *path,
+                          GFileInfo      *target_info,
+                          GCancellable   *cancellable,
+                          GError        **error)
+{
+  gboolean ret = FALSE;
+  char targetbuf[PATH_MAX+1];
+  ssize_t len;
+
+  do
+    len = readlinkat (dfd, path, targetbuf, sizeof (targetbuf) - 1);
+  while (G_UNLIKELY (len == -1 && errno == EINTR));
+  if (len == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+  targetbuf[len] = '\0';
+  g_file_info_set_symlink_target (target_info, targetbuf);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+

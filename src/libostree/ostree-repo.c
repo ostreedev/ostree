@@ -1810,19 +1810,9 @@ query_info_for_bare_content_object (OstreeRepo      *self,
     }
   else if (S_ISLNK (stbuf.st_mode))
     {
-      char targetbuf[PATH_MAX+1];
-      ssize_t len;
-
-      do
-        len = readlinkat (self->objects_dir_fd, loose_path_buf, targetbuf, sizeof (targetbuf) - 1);
-      while (G_UNLIKELY (len == -1 && errno == EINTR));
-      if (len == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      targetbuf[len] = '\0';
-      g_file_info_set_symlink_target (ret_info, targetbuf);
+      if (!ot_readlinkat_gfile_info (self->objects_dir_fd, loose_path_buf,
+                                     ret_info, cancellable, error))
+        goto out;
     }
   else
     {

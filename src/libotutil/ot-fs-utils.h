@@ -44,5 +44,11 @@ gboolean ot_lsetxattrat (int            dfd,
                          int            flags,
                          GError       **error);
 
+gboolean ot_readlinkat_gfile_info (int             dfd,
+                                   const char     *path,
+                                   GFileInfo      *target_info,
+                                   GCancellable   *cancellable,
+                                   GError        **error);
+
 G_END_DECLS
 
