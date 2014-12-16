@@ -49,13 +49,16 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree remote</command> <arg choice="opt" rep="repeat">OPTIONS</arg> add <arg choice="req">NAME</arg> <arg choice="req">URL</arg> <arg choice="opt" rep="repeat">BRANCH</arg>
+                <command>ostree remote add</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg> <arg choice="req">URL</arg> <arg choice="opt" rep="repeat">BRANCH</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree remote delete</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
             <cmdsynopsis>
                 <command>ostree remote show-url</command> <arg choice="req">NAME</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote list</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -68,7 +71,7 @@ Boston, MA 02111-1307, USA.
     </refsect1>
 
     <refsect1>
-        <title>Options</title>
+        <title>'Add' Options</title>
 
         <variablelist>
             <varlistentry>
@@ -84,6 +87,20 @@ Boston, MA 02111-1307, USA.
 
                 <listitem><para>
                     Disable GPG verification.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>'List' Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>-u, --show-urls</option></term>
+
+                <listitem><para>
+                    Show remote URLs in list
                 </para></listitem>
             </varlistentry>
         </variablelist>

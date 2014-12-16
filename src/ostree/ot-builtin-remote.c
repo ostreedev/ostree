@@ -221,6 +221,61 @@ ostree_remote_builtin_show_url (int argc, char **argv, GCancellable *cancellable
   return ret;
 }
 
+static gboolean opt_show_urls;
+
+static GOptionEntry list_option_entries[] = {
+  { "show-urls", 'u', 0, G_OPTION_ARG_NONE, &opt_show_urls, "Show remote URLs in list", NULL },
+  { NULL }
+};
+
+static gboolean
+ostree_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
+{
+  GOptionContext *context;
+  gs_unref_object OstreeRepo *repo = NULL;
+  gs_strfreev char **remotes = NULL;
+  guint ii, n_remotes = 0;
+  gboolean ret = FALSE;
+
+  context = g_option_context_new ("- List remote repository names");
+
+  if (!ostree_option_context_parse (context, list_option_entries, &argc, &argv,
+                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+    goto out;
+
+  remotes = ostree_repo_remote_list (repo, &n_remotes);
+
+  if (opt_show_urls)
+    {
+      int max_length = 0;
+
+      for (ii = 0; ii < n_remotes; ii++)
+        max_length = MAX (max_length, strlen (remotes[ii]));
+
+      for (ii = 0; ii < n_remotes; ii++)
+        {
+          gs_free char *remote_url = NULL;
+
+          if (!ostree_repo_remote_get_url (repo, remotes[ii], &remote_url, error))
+            goto out;
+
+          g_print ("%-*s  %s\n", max_length, remotes[ii], remote_url);
+        }
+    }
+  else
+    {
+      for (ii = 0; ii < n_remotes; ii++)
+        g_print ("%s\n", remotes[ii]);
+    }
+
+  ret = TRUE;
+
+ out:
+  g_option_context_free (context);
+
+  return ret;
+}
+
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
@@ -230,6 +285,7 @@ static OstreeRemoteCommand remote_subcommands[] = {
   { "add", ostree_remote_builtin_add },
   { "delete", ostree_remote_builtin_delete },
   { "show-url", ostree_remote_builtin_show_url },
+  { "list", ostree_remote_builtin_list },
   { NULL, NULL }
 };
 

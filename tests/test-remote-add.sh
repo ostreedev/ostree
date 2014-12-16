@@ -45,6 +45,24 @@ $OSTREE remote add --if-not-exists --no-gpg-verify another-noexist http://anothe
 $OSTREE remote show-url another-noexist >/dev/null
 echo "ok"
 
+$OSTREE remote list > list.txt
+assert_file_has_content list.txt "origin"
+assert_file_has_content list.txt "another"
+assert_file_has_content list.txt "another-noexist"
+assert_not_file_has_content list.txt "http://example.com/ostree/gnome"
+assert_not_file_has_content list.txt "http://another.com/repo"
+assert_not_file_has_content list.txt "http://another-noexist.example.com/anotherrepo"
+echo "ok remote list"
+
+$OSTREE remote list --show-urls > list.txt
+assert_file_has_content list.txt "origin"
+assert_file_has_content list.txt "another"
+assert_file_has_content list.txt "another-noexist"
+assert_file_has_content list.txt "http://example.com/ostree/gnome"
+assert_file_has_content list.txt "http://another.com/repo"
+assert_file_has_content list.txt "http://another-noexist.example.com/anotherrepo"
+echo "ok remote list with urls"
+
 $OSTREE remote delete another
 echo "ok remote delete"
 
@@ -68,3 +86,10 @@ if $OSTREE remote show-url origin 2>/dev/null; then
     assert_not_reached "Deleting remote unexpectedly failed"
 fi
 echo "ok"
+
+$OSTREE remote list > list.txt
+assert_not_file_has_content list.txt "origin"
+# Can't grep for 'another' because of 'another-noexist'
+assert_file_has_content list.txt "another-noexist"
+echo "ok remote list remaining"
+
