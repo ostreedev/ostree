@@ -81,6 +81,8 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GCancellable   *cancellable,
                                    GError        **error);
 
+GFileInfo * _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid);
+
 /* XX + / + checksum-2 + . + extension, but let's just use 256 for a
  * bit of overkill.
  */

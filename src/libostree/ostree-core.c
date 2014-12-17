@@ -1264,6 +1264,31 @@ _ostree_loose_path (char              *buf,
   _ostree_loose_path_with_suffix (buf, checksum, objtype, mode, "");
 }
 
+/**
+ * _ostree_header_gfile_info_new:
+ * @mode: File mode
+ * @uid: File uid
+ * @gid: File gid
+ *
+ * OSTree only stores a subset of file attributes; for example,
+ * timestamps are intentionally not stored.  This function creates a
+ * #GFileInfo based on the attributes of a `struct stat` that match
+ * those file attributes.
+ *
+ * Returns: (transfer full): A new #GFileInfo mapping a subset of @stbuf.
+ */
+GFileInfo *
+_ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid)
+{
+  GFileInfo *ret = g_file_info_new ();
+  g_file_info_set_attribute_uint32 (ret, "standard::type", ot_gfile_type_for_mode (mode));
+  g_file_info_set_attribute_boolean (ret, "standard::is-symlink", S_ISLNK (mode));
+  g_file_info_set_attribute_uint32 (ret, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (ret, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (ret, "unix::mode", mode);
+  return ret;
+}
+
 /*
  * _ostree_loose_path_with_suffix:
  * @buf: Output buffer, must be _OSTREE_LOOSE_PATH_MAX in size
@@ -1367,12 +1392,7 @@ file_header_parse (GVariant         *metadata,
   mode = GUINT32_FROM_BE (mode);
   rdev = GUINT32_FROM_BE (rdev);
 
-  ret_file_info = g_file_info_new ();
-  g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
-  g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", S_ISLNK (mode));
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", gid);
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::mode", mode);
+  ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
 
   if (S_ISREG (mode))
     {
@@ -1423,19 +1443,13 @@ zlib_file_header_parse (GVariant         *metadata,
                  &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
 
-  size = GUINT64_FROM_BE (size);
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
   rdev = GUINT32_FROM_BE (rdev);
+  ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
 
-  ret_file_info = g_file_info_new ();
-  g_file_info_set_size (ret_file_info, size);
-  g_file_info_set_attribute_uint32 (ret_file_info, "standard::type", ot_gfile_type_for_mode (mode));
-  g_file_info_set_attribute_boolean (ret_file_info, "standard::is-symlink", S_ISLNK (mode));
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::uid", uid);
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::gid", gid);
-  g_file_info_set_attribute_uint32 (ret_file_info, "unix::mode", mode);
+  g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
   if (S_ISREG (mode))
     {
