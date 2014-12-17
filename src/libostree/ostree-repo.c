@@ -1802,11 +1802,10 @@ query_info_for_bare_content_object (OstreeRepo      *self,
       goto out;
     }
 
-  ret_info = g_file_info_new ();
+  ret_info = _ostree_header_gfile_info_new (stbuf.st_mode, stbuf.st_uid, stbuf.st_gid);
 
   if (S_ISREG (stbuf.st_mode))
     {
-      g_file_info_set_file_type (ret_info, G_FILE_TYPE_REGULAR);
       g_file_info_set_size (ret_info, stbuf.st_size);
     }
   else if (S_ISLNK (stbuf.st_mode))
@@ -1814,8 +1813,6 @@ query_info_for_bare_content_object (OstreeRepo      *self,
       char targetbuf[PATH_MAX+1];
       ssize_t len;
 
-      g_file_info_set_file_type (ret_info, G_FILE_TYPE_SYMBOLIC_LINK);
-      
       do
         len = readlinkat (self->objects_dir_fd, loose_path_buf, targetbuf, sizeof (targetbuf) - 1);
       while (G_UNLIKELY (len == -1 && errno == EINTR));
@@ -1833,11 +1830,6 @@ query_info_for_bare_content_object (OstreeRepo      *self,
                    "Not a regular file or symlink: %s", loose_path_buf);
       goto out;
     }
-
-  g_file_info_set_attribute_boolean (ret_info, "standard::is-symlink", S_ISLNK (stbuf.st_mode));
-  g_file_info_set_attribute_uint32 (ret_info, "unix::uid", stbuf.st_uid);
-  g_file_info_set_attribute_uint32 (ret_info, "unix::gid", stbuf.st_gid);
-  g_file_info_set_attribute_uint32 (ret_info, "unix::mode", stbuf.st_mode);
 
   ret = TRUE;
   gs_transfer_out_value (out_info, &ret_info);
