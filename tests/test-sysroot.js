@@ -64,12 +64,9 @@ assertEquals(deployments.length, 0);
 //// Add the remote, and do a pull
 
 let [,sysrootRepo] = sysroot.get_repo(null);
-let sysrootRepoConfig = sysrootRepo.get_config();
-let testosRefSection = 'remote "testos"';
-sysrootRepoConfig.set_string(testosRefSection, 'url', 'file://' + upstreamRepo.get_path().get_path());
-sysrootRepoConfig.set_boolean(testosRefSection, 'gpg-verify', false);
-sysrootRepoConfig.set_string_list(testosRefSection, 'branches', [runtimeRef]);
-
+sysrootRepo.remote_add('testos', 'file://' + upstreamRepo.get_path().get_path(),
+		       GLib.Variant.new('a{sv}', {'gpg-verify': GLib.Variant.new('b', false),
+						  'branches': GLib.Variant.new('as', [runtimeRef])}), null);
 sysrootRepo.pull('testos', null, 0, null, null);
 
 //// TEST: We can deploy one tree
