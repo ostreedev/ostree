@@ -338,7 +338,11 @@ echo "ok remote show-url"
 
 cd ${test_tmpdir}
 rm -rf test2-checkout
-$OSTREE checkout test2 test2-checkout
+if grep bare-user repo/config; then
+    $OSTREE checkout -U test2 test2-checkout
+else
+    $OSTREE checkout test2 test2-checkout
+fi
 stat '--format=%Y' test2-checkout/baz/cow > cow-mtime
 assert_file_has_content cow-mtime 0
 echo "ok content mtime"
