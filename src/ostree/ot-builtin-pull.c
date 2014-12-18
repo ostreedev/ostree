@@ -24,7 +24,6 @@
 
 #include "ot-main.h"
 #include "ot-builtins.h"
-#include "ot-builtins-common.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -97,7 +96,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   if (console)
     {
       gs_console_begin_status_line (console, "", NULL, NULL);
-      progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
     }
 
   {

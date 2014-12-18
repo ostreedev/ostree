@@ -25,7 +25,6 @@
 #include "ot-main.h"
 #include "ot-admin-builtins.h"
 #include "ot-admin-functions.h"
-#include "ot-builtins-common.h"
 #include "ostree.h"
 #include "otutil.h"
 #include "libgsystem.h"
@@ -84,7 +83,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
     {
       gs_console_begin_status_line (console, "", NULL, NULL);
       in_status_line = TRUE;
-      progress = ostree_async_progress_new_and_connect (ot_common_pull_progress, console);
+      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
     }
 
   if (opt_allow_downgrade)
