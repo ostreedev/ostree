@@ -591,6 +591,9 @@ gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         GCancellable           *cancellable,
                                         GError                **error);
 
+void ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,
+                                                        gpointer             user_data);
+
 gboolean ostree_repo_sign_commit (OstreeRepo     *self,
                                   const gchar    *commit_checksum,
                                   const gchar    *key_id,

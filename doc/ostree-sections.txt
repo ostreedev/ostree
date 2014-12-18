@@ -279,6 +279,7 @@ OstreeRepoPullFlags
 ostree_repo_pull
 ostree_repo_pull_one_dir
 ostree_repo_pull_with_options
+ostree_repo_pull_default_console_progress_changed
 ostree_repo_sign_commit
 ostree_repo_append_gpg_signature
 ostree_repo_verify_commit
