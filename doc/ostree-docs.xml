@@ -23,6 +23,15 @@
 		<xi:include href="xml/libostree-repo.xml"/>
 		<xi:include href="xml/libostree-mutable-tree.xml"/>
 		<xi:include href="xml/libostree-sysroot.xml"/>
+		<xi:include href="xml/libostree-async-progress.xml"/>
+		<xi:include href="xml/libostree-sepolicy.xml"/>
+		<xi:include href="xml/libostree-sysroot-upgrader.xml"/>
+		<xi:include href="xml/libostree-bootconfig-parser.xml"/>
+		<xi:include href="xml/libostree-chain-input-stream.xml"/>
+		<xi:include href="xml/libostree-checksum-input-stream.xml"/>
+		<xi:include href="xml/libostree-deployment.xml"/>
+		<xi:include href="xml/libostree-diff.xml"/>
+		<xi:include href="xml/libostree-repo-file.xml"/>
 
 		<index id="api-index-full">
 			<title>API Index</title>

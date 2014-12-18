@@ -119,7 +119,7 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
  * in the repository after this transaction has completed.
  * @content_objects_written: The number of content objects that
  * were written to the repository in this transaction.
- * @content_bytes_total: The amount of data added to the repository,
+ * @content_bytes_written: The amount of data added to the repository,
  * in bytes, counting only content objects.
  *
  * A list of statistics for each transaction that may be
