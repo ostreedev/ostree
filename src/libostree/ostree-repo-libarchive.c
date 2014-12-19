@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-mutable-tree.h"
 
@@ -48,19 +49,15 @@ file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
                                            struct archive_entry *entry,
                                            OstreeRepoCommitModifier *modifier)
 {
-  gs_unref_object GFileInfo *info = g_file_info_new ();
+  gs_unref_object GFileInfo *info = NULL;
   GFileInfo *modified_info = NULL;
   const struct stat *st;
   guint32 file_type;
 
   st = archive_entry_stat (entry);
 
+  info = _ostree_header_gfile_info_new (st->st_mode, st->st_uid, st->st_gid);
   file_type = ot_gfile_type_for_mode (st->st_mode);
-  g_file_info_set_attribute_boolean (info, "standard::is-symlink", S_ISLNK (st->st_mode));
-  g_file_info_set_attribute_uint32 (info, "standard::type", file_type);
-  g_file_info_set_attribute_uint32 (info, "unix::uid", st->st_uid);
-  g_file_info_set_attribute_uint32 (info, "unix::gid", st->st_gid);
-  g_file_info_set_attribute_uint32 (info, "unix::mode", st->st_mode);
 
   if (file_type == G_FILE_TYPE_REGULAR)
     {
@@ -69,10 +66,6 @@ file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
   else if (file_type == G_FILE_TYPE_SYMBOLIC_LINK)
     {
       g_file_info_set_attribute_byte_string (info, "standard::symlink-target", archive_entry_symlink (entry));
-    }
-  else if (file_type == G_FILE_TYPE_SPECIAL)
-    {
-      g_file_info_set_attribute_uint32 (info, "unix::rdev", st->st_rdev);
     }
 
   _ostree_repo_commit_modifier_apply (repo, modifier,
