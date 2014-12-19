@@ -38,7 +38,7 @@ G_BEGIN_DECLS
  * u - uid
  * u - gid
  * u - mode
- * u - rdev
+ * u - rdev (must be 0)
  * s - symlink target 
  * a(ayay) - xattrs
  *
@@ -55,7 +55,7 @@ G_BEGIN_DECLS
  * u - uid
  * u - gid
  * u - mode
- * u - rdev
+ * u - rdev (must be 0)
  * s - symlink target 
  * a(ayay) - xattrs
  * ---

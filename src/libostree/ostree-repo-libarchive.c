@@ -67,10 +67,6 @@ file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
     {
       g_file_info_set_attribute_byte_string (info, "standard::symlink-target", archive_entry_symlink (entry));
     }
-  else if (file_type == G_FILE_TYPE_SPECIAL)
-    {
-      g_file_info_set_attribute_uint32 (info, "unix::rdev", st->st_rdev);
-    }
 
   _ostree_repo_commit_modifier_apply (repo, modifier,
                                       archive_entry_pathname (entry),
