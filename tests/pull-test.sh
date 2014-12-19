@@ -19,21 +19,31 @@
 
 set -e
 
-cd ${test_tmpdir}
-mkdir repo
-${CMD_PREFIX} ostree --repo=repo init
-${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+function repo_init() {
+    cd ${test_tmpdir}
+    rm repo -rf
+    mkdir repo
+    ${CMD_PREFIX} ostree --repo=repo init
+    ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+}
+
+function verify_initial_contents() {
+    rm checkout-origin-main -rf
+    $OSTREE checkout origin/main checkout-origin-main
+    cd checkout-origin-main
+    assert_file_has_content firstfile '^first$'
+    assert_file_has_content baz/cow '^moo$'
+}
+
 # Try both syntaxes
+repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo pull origin:main
 ${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull"
 
 cd ${test_tmpdir}
-$OSTREE checkout origin/main checkout-origin-main
-cd checkout-origin-main
-assert_file_has_content firstfile '^first$'
-assert_file_has_content baz/cow '^moo$'
+verify_initial_contents
 echo "ok pull contents"
 
 cd ${test_tmpdir}
@@ -52,3 +62,63 @@ ${CMD_PREFIX} ostree --repo=repo fsck
 $OSTREE show --print-detached-metadata-key=SIGNATURE main > main-meta
 assert_file_has_content main-meta "HANCOCK"
 echo "ok pull detached metadata"
+
+cd ${test_tmpdir}
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+# Generate a delta from old to current, even though we aren't going to
+# use it.
+ostree --repo=ostree-srv/gnomerepo static-delta generate main
+
+rm main-files -rf
+ostree --repo=ostree-srv/gnomerepo checkout main main-files
+cd main-files
+echo "an added file for static deltas" > added-file
+echo "modified file for static deltas" > baz/cow
+rm baz/saucer
+ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s 'static delta test'
+cd ..
+rm main-files -rf
+# Generate delta that we'll use
+ostree --repo=ostree-srv/gnomerepo static-delta generate main
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+
+rm checkout-origin-main -rf
+$OSTREE checkout origin:main checkout-origin-main
+cd checkout-origin-main
+assert_file_has_content firstfile '^first$'
+assert_file_has_content baz/cow "modified file for static deltas"
+assert_not_has_file baz/saucer
+
+echo "ok static delta"
+
+cd ${test_tmpdir}
+rm main-files -rf
+ostree --repo=ostree-srv/gnomerepo checkout main main-files
+cd main-files
+# Make a file larger than 16M for testing
+dd if=/dev/zero of=test-bigfile count=1 seek=42678
+echo "further modified file for static deltas" > baz/cow
+ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s '2nd static delta test'
+cd ..
+rm main-files -rf
+ostree --repo=ostree-srv/gnomerepo static-delta generate main
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+
+rm checkout-origin-main -rf
+$OSTREE checkout origin:main checkout-origin-main
+cd checkout-origin-main
+assert_has_file test-bigfile
+stat --format=%s test-bigfile > bigfile-size
+assert_file_has_content bigfile-size 21851648
+assert_file_has_content baz/cow "further modified file for static deltas"
+assert_not_has_file baz/saucer
+
+echo "ok static delta 2"

@@ -99,7 +99,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
           name = gs_file_get_basename_cached (child);
 
           {
-            gs_unref_object GFile *meta_path = g_file_get_child (child, "meta");
+            gs_unref_object GFile *meta_path = g_file_get_child (child, "superblock");
 
             if (g_file_query_exists (meta_path, NULL))
               {
@@ -115,12 +115,12 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
   return ret;
 }
 
-static gboolean
-have_all_objects (OstreeRepo             *repo,
-                  GVariant               *checksum_array,
-                  gboolean               *out_have_all,
-                  GCancellable           *cancellable,
-                  GError                **error)
+gboolean
+_ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
+                                                 GVariant               *checksum_array,
+                                                 gboolean               *out_have_all,
+                                                 GCancellable           *cancellable,
+                                                 GError                **error)
 {
   gboolean ret = FALSE;
   guint8 *checksums_data;
@@ -160,31 +160,6 @@ have_all_objects (OstreeRepo             *repo,
   return ret;
 }
 
-static gboolean
-zlib_uncompress_data (GBytes       *data,
-                      GBytes      **out_uncompressed,
-                      GCancellable *cancellable,
-                      GError      **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GMemoryInputStream *memin = (GMemoryInputStream*)g_memory_input_stream_new_from_bytes (data);
-  gs_unref_object GMemoryOutputStream *memout = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  gs_unref_object GConverter *zlib_decomp =
-    (GConverter*) g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
-  gs_unref_object GInputStream *convin = g_converter_input_stream_new ((GInputStream*)memin, zlib_decomp);
-
-  if (0 > g_output_stream_splice ((GOutputStream*)memout, convin,
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
-  *out_uncompressed = g_memory_output_stream_steal_as_bytes (memout);
- out:
-  return ret;
-}
-
 /**
  * ostree_repo_static_delta_execute_offline:
  * @self: Repo
@@ -196,7 +171,7 @@ zlib_uncompress_data (GBytes       *data,
  * Given a directory representing an already-downloaded static delta
  * on disk, apply it, generating a new commit.  The directory must be
  * named with the form "FROM-TO", where both are checksums, and it
- * must contain a file named "meta", along with at least one part.
+ * must contain a file named "superblock", along with at least one part.
  */
 gboolean
 ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
@@ -207,15 +182,52 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 {
   gboolean ret = FALSE;
   guint i, n;
-  gs_unref_object GFile *meta_file = g_file_get_child (dir, "meta");
+  gs_unref_object GFile *meta_file = g_file_get_child (dir, "superblock");
   gs_unref_variant GVariant *meta = NULL;
   gs_unref_variant GVariant *headers = NULL;
+  gs_unref_variant GVariant *fallback = NULL;
 
-  if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_META_FORMAT),
+  if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
                             FALSE, &meta, error))
     goto out;
 
-  headers = g_variant_get_child_value (meta, 3);
+  /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
+
+  /* Write the to-commit object */
+  {
+    gs_unref_variant GVariant *to_csum_v = NULL;
+    gs_free char *to_checksum = NULL;
+    gs_unref_variant GVariant *to_commit = NULL;
+    gboolean have_to_commit;
+
+    to_csum_v = g_variant_get_child_value (meta, 3);
+    if (!ostree_validate_structureof_csum_v (to_csum_v, error))
+      goto out;
+    to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
+
+    if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
+                                 &have_to_commit, cancellable, error))
+      goto out;
+    
+    if (!have_to_commit)
+      {
+        to_commit = g_variant_get_child_value (meta, 4);
+        if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                         to_checksum, to_commit, NULL,
+                                         cancellable, error))
+          goto out;
+      }
+  }
+
+  fallback = g_variant_get_child_value (meta, 7);
+  if (g_variant_n_children (fallback) > 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Cannot execute delta offline: contains nonempty http fallback entries");
+      goto out;
+    }
+
+  headers = g_variant_get_child_value (meta, 6);
   n = g_variant_n_children (headers);
   for (i = 0; i < n; i++)
     {
@@ -227,14 +239,14 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       gs_unref_variant GVariant *csum_v = NULL;
       gs_unref_variant GVariant *objects = NULL;
       gs_unref_object GFile *part_path = NULL;
-      gs_unref_variant GVariant *part = NULL;
       gs_unref_object GInputStream *raw_in = NULL;
       gs_unref_object GInputStream *in = NULL;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(@aytt@ay)", &csum_v, &size, &usize, &objects);
 
-      if (!have_all_objects (self, objects, &have_all, cancellable, error))
+      if (!_ostree_repo_static_delta_part_have_all_objects (self, objects, &have_all,
+                                                            cancellable, error))
         goto out;
 
       /* If we already have these objects, don't bother executing the
@@ -255,70 +267,25 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
       if (!skip_validation)
         {
-          gs_unref_object GInputStream *tmp_in = NULL;
-          gs_free guchar *actual_checksum = NULL;
-
-          tmp_in = (GInputStream*)g_file_read (part_path, cancellable, error);
-          if (!tmp_in)
+          gs_free char *expected_checksum = ostree_checksum_from_bytes (csum);
+          if (!_ostree_static_delta_part_validate (self, part_path, i,
+                                                   expected_checksum,
+                                                   cancellable, error))
             goto out;
-
-          if (!ot_gio_checksum_stream (tmp_in, &actual_checksum,
-                                       cancellable, error))
-            goto out;
-
-          if (ostree_cmp_checksum_bytes (csum, actual_checksum) != 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Checksum mismatch in static delta %s part %u",
-                           gs_file_get_path_cached (dir), i);
-              goto out;
-            }
         }
 
       {
         GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
         gs_unref_bytes GBytes *bytes = NULL;
-        gs_unref_bytes GBytes *payload = NULL;
-        gsize partlen;
-        const guint8*partdata;
 
         if (!mfile)
           goto out;
 
         bytes = g_mapped_file_get_bytes (mfile);
         g_mapped_file_unref (mfile);
-
-        partdata = g_bytes_get_data (bytes, &partlen);
-
-        if (partlen < 1)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Corrupted 0 length byte part %s/%i",
-                         gs_file_get_basename_cached (dir),
-                         i);
-            goto out;
-          }
         
-        switch (partdata[0])
-          {
-          case 0:
-            payload = g_bytes_new_from_bytes (bytes, 1, partlen - 1);
-            break;
-          case 'g':
-            {
-              gs_unref_bytes GBytes *subbytes = g_bytes_new_from_bytes (bytes, 1, partlen - 1);
-              if (!zlib_uncompress_data (subbytes, &payload,
-                                         cancellable, error))
-                goto out;
-            }
-            break;
-          }
-        
-        part = ot_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT),
-                                          payload, FALSE);
-        
-        
-        if (!_ostree_static_delta_part_execute (self, objects, part, cancellable, error))
+        if (!_ostree_static_delta_part_execute (self, objects, bytes,
+                                                cancellable, error))
           {
             g_prefix_error (error, "executing delta part %i: ", i);
             goto out;

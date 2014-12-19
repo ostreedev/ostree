@@ -99,6 +99,10 @@ _ostree_get_relative_static_delta_path (const char        *from,
                                         const char        *to);
 
 char *
+_ostree_get_relative_static_delta_detachedmeta_path (const char        *from,
+                                                     const char        *to);
+
+char *
 _ostree_get_relative_static_delta_part_path (const char        *from,
                                              const char        *to,
                                              guint              i);
@@ -115,6 +119,10 @@ _ostree_loose_path_with_suffix (char              *buf,
                                 OstreeObjectType   objtype,
                                 OstreeRepoMode     repo_mode,
                                 const char        *suffix);
+
+GVariant *
+_ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
+                                          GBytes     *signature_bytes);
 
 G_END_DECLS
 

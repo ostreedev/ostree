@@ -176,5 +176,14 @@ _ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
                                         gboolean    *out_value,
                                         GError     **error);
 
+gboolean
+_ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
+                                            GFile               *path,
+                                            GVariant            *metadata,
+                                            GFile               *keyringdir,
+                                            GFile               *extra_keyring,
+                                            GCancellable        *cancellable,
+                                            GError             **error);
+
 G_END_DECLS
 
