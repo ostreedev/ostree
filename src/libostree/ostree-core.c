@@ -207,7 +207,6 @@ file_header_new (GFileInfo         *file_info,
   guint32 uid;
   guint32 gid;
   guint32 mode;
-  guint32 rdev;
   const char *symlink_target;
   GVariant *ret;
   gs_unref_variant GVariant *tmp_xattrs = NULL;
@@ -215,7 +214,6 @@ file_header_new (GFileInfo         *file_info,
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
@@ -226,7 +224,7 @@ file_header_new (GFileInfo         *file_info,
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
 
   ret = g_variant_new ("(uuuus@a(ayay))", GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), GUINT32_TO_BE (rdev),
+                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
                        symlink_target, xattrs ? xattrs : tmp_xattrs);
   g_variant_ref_sink (ret);
   return ret;
@@ -247,7 +245,6 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
   guint32 uid;
   guint32 gid;
   guint32 mode;
-  guint32 rdev;
   const char *symlink_target;
   GVariant *ret;
   gs_unref_variant GVariant *tmp_xattrs = NULL;
@@ -256,7 +253,6 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");
   mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
-  rdev = g_file_info_get_attribute_uint32 (file_info, "unix::rdev");
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     symlink_target = g_file_info_get_symlink_target (file_info);
@@ -268,7 +264,7 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
 
   ret = g_variant_new ("(tuuuus@a(ayay))",
                        GUINT64_TO_BE (size), GUINT32_TO_BE (uid),
-                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), GUINT32_TO_BE (rdev),
+                       GUINT32_TO_BE (gid), GUINT32_TO_BE (mode), 0,
                        symlink_target, xattrs ? xattrs : tmp_xattrs);
   g_variant_ref_sink (ret);
   return ret;
@@ -1386,11 +1382,16 @@ file_header_parse (GVariant         *metadata,
   g_variant_get (metadata, "(uuuu&s@a(ayay))",
                  &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
+  if (rdev != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
+      goto out;
+    }
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  rdev = GUINT32_FROM_BE (rdev);
 
   ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
 
@@ -1442,12 +1443,17 @@ zlib_file_header_parse (GVariant         *metadata,
   g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
                  &uid, &gid, &mode, &rdev,
                  &symlink_target, &ret_xattrs);
+  if (rdev != 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Corrupted archive file; invalid rdev %u", GUINT32_FROM_BE (rdev));
+      goto out;
+    }
 
   uid = GUINT32_FROM_BE (uid);
   gid = GUINT32_FROM_BE (gid);
   mode = GUINT32_FROM_BE (mode);
-  rdev = GUINT32_FROM_BE (rdev);
-  ret_file_info = _ostree_header_gfile_info_new (mode, uid, gid);
+  ret_file_info = ot_default_struct_stat_to_gfile_info (&stbuf);
 
   g_file_info_set_size (ret_file_info, GUINT64_FROM_BE (size));
 
