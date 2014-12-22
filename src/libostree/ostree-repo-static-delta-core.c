@@ -84,8 +84,9 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
       while (TRUE)
         {
           GFileInfo *file_info;
-          GFile *child;
-          const char *name;
+          GFile *child, *child2;
+          const char *name, *name2;
+          gs_unref_object GFileEnumerator *dir_enum2 = NULL;
 
           if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
                                            NULL, error))
@@ -96,16 +97,37 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
           if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
             continue;
 
+          dir_enum2 = g_file_enumerate_children (child, OSTREE_GIO_FAST_QUERYINFO,
+                                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                 NULL, error);
+          if (!dir_enum2)
+            goto out;
+
           name = gs_file_get_basename_cached (child);
 
-          {
-            gs_unref_object GFile *meta_path = g_file_get_child (child, "superblock");
+          while (TRUE)
+            {
+              if (!gs_file_enumerator_iterate (dir_enum2, &file_info, &child2,
+                                               NULL, error))
+                goto out;
 
-            if (g_file_query_exists (meta_path, NULL))
+              if (file_info == NULL)
+                break;
+
+              if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+                continue;
+
+              name2 = gs_file_get_basename_cached (child2);
+
               {
-                g_ptr_array_add (ret_deltas, g_strdup (name));
+                gs_unref_object GFile *meta_path = g_file_get_child (child2, "superblock");
+                if (g_file_query_exists (meta_path, NULL))
+                  {
+                    char *ret = g_strdup_printf ("%s%s", name, name2);
+                    g_ptr_array_add (ret_deltas, ret);
+                  }
               }
-          }
+            }
         }
     }
 
