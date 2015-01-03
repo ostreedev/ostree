@@ -33,25 +33,6 @@
 #define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
 #define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
 
-/* FIXME when we depend on new enough libgsystem, move to
- * gs_dfd_and_name_get_all_xattrs().
- */
-static gboolean
-dfd_and_name_get_all_xattrs (int            dfd,
-                             const char    *name,
-                             GVariant     **out_xattrs,
-                             GCancellable  *cancellable,
-                             GError       **error)
-{
-  /* A workaround for the lack of lgetxattrat(), thanks to Florian Weimer:
-   * https://mail.gnome.org/archives/ostree-list/2014-February/msg00017.html
-   */
-  gs_free char *path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, name);
-  gs_unref_object GFile *fpath = g_file_new_for_path (path);
-  return gs_file_get_all_xattrs (fpath, out_xattrs,
-                                 cancellable, error);
-}
-
 static gboolean
 copy_one_file_fsync_at (int              src_parent_dfd,
                         int              dest_parent_dfd,
@@ -63,9 +44,9 @@ copy_one_file_fsync_at (int              src_parent_dfd,
   gboolean ret = FALSE;
   gs_unref_variant GVariant *src_xattrs = NULL;
 
-  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, name,
-                                    &src_xattrs,
-                                    cancellable, error))
+  if (!gs_dfd_and_name_get_all_xattrs (src_parent_dfd, name,
+                                       &src_xattrs,
+                                       cancellable, error))
     goto out;
 
   if (S_ISREG (stbuf->st_mode))
@@ -184,8 +165,8 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
    * right.  This will allow other users access if they have ACLs, but
    * oh well.
    */ 
-  if (!dfd_and_name_get_all_xattrs (src_parent_dfd, src_name,
-                                    &xattrs, cancellable, error))
+  if (!gs_dfd_and_name_get_all_xattrs (src_parent_dfd, src_name,
+                                       &xattrs, cancellable, error))
     goto out;
   if (!gs_fd_set_all_xattrs (dest_dfd, xattrs,
                              cancellable, error))
