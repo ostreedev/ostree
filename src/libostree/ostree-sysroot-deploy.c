@@ -93,6 +93,13 @@ copy_one_file_fsync_at (int              src_parent_dfd,
         }
       out = g_unix_output_stream_new (dest_fd, TRUE);
 
+      if (src_xattrs != NULL)
+        {
+          if (!gs_fd_set_all_xattrs (dest_fd, src_xattrs,
+                                     cancellable, error))
+            goto out;
+        }
+
       if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
         goto out;
 
@@ -133,6 +140,12 @@ copy_one_file_fsync_at (int              src_parent_dfd,
         {
           gs_set_error_from_errno (error, errno);
           goto out;
+        }
+      if (src_xattrs != NULL)
+        {
+          if (!gs_dfd_and_name_set_all_xattrs (dest_parent_dfd, name, src_xattrs,
+                                               cancellable, error))
+            goto out;
         }
       if (fchownat (dest_parent_dfd, name,
                     stbuf->st_uid, stbuf->st_gid,
