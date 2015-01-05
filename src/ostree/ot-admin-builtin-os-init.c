@@ -71,7 +71,7 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
     goto out;
   if (chmod (gs_file_get_path_cached (dir), 01777) < 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -86,7 +86,7 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
     {
       if (symlink ("../run", gs_file_get_path_cached (dir)) < 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -96,7 +96,7 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
     {
       if (symlink ("../run/lock", gs_file_get_path_cached (dir)) < 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }

@@ -79,7 +79,7 @@ copy_one_file_fsync_at (int              src_parent_dfd,
       src_fd = openat (src_parent_dfd, name, O_RDONLY | O_NOFOLLOW | O_NOCTTY | O_NOATIME | O_CLOEXEC);
       if (src_fd == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       in = g_unix_input_stream_new (src_fd, TRUE);
@@ -88,7 +88,7 @@ copy_one_file_fsync_at (int              src_parent_dfd,
                         stbuf->st_mode);
       if (dest_fd == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       out = g_unix_output_stream_new (dest_fd, TRUE);
@@ -98,18 +98,18 @@ copy_one_file_fsync_at (int              src_parent_dfd,
 
       if (fchown (dest_fd, stbuf->st_uid, stbuf->st_gid) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       if (fchmod (dest_fd, stbuf->st_mode) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
 
       if (fdatasync (dest_fd) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
 
@@ -125,20 +125,20 @@ copy_one_file_fsync_at (int              src_parent_dfd,
       while (G_UNLIKELY (len == -1 && errno == EINTR));
       if (len == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       targetbuf[len] = '\0';
       if (symlinkat (targetbuf, dest_parent_dfd, name) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       if (fchownat (dest_parent_dfd, name,
                     stbuf->st_uid, stbuf->st_gid,
                     AT_SYMLINK_NOFOLLOW) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -180,17 +180,17 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
 
   if (fstat (src_dfd, &src_stbuf) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
   if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
   if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -218,7 +218,7 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   /* Create with mode 0700, we'll fchmod/fchown later */
   if (mkdirat (dest_parent_dfd, name, 0700) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -232,7 +232,7 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   srcd = fdopendir (src_dfd);
   if (!srcd)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -248,7 +248,7 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
       if (fstatat (src_dfd, name, &child_stbuf,
                    AT_SYMLINK_NOFOLLOW) != 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
 
@@ -270,7 +270,7 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
   /* And finally, fsync the fd */
   if (fsync (dest_dfd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -337,7 +337,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
         }
       else
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           g_prefix_error (error, "mkdirat: ");
           goto out;
         }
@@ -387,7 +387,7 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       g_prefix_error (error, "Failed to read modified config file '%s': ", path);
       goto out;
     }
@@ -405,7 +405,7 @@ copy_modified_config_file (int                 orig_etc_fd,
       dest_parent_dfd = dup (new_etc_fd);
       if (dest_parent_dfd == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -418,7 +418,7 @@ copy_modified_config_file (int                 orig_etc_fd,
         ;
       else
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -444,7 +444,7 @@ copy_modified_config_file (int                 orig_etc_fd,
     {
       if (unlinkat (new_etc_fd, path, 0) < 0)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
     }
@@ -472,7 +472,7 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (fsync (dest_parent_dfd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 

@@ -315,7 +315,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
       int r = posix_fallocate (fd, 0, g_bytes_get_size (contents));
       if (r != 0)
         {
-          ot_util_set_error_from_errno (error, r);
+          gs_set_error_from_errno (error, r);
           goto out;
         }
     }
@@ -326,7 +326,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
 
   if (fdatasync (fd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -335,7 +335,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
 
   if (renameat (parent_dfd, tmpname, parent_dfd, target_basename) == -1)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -403,7 +403,7 @@ ot_util_fsync_directory (GFile         *dir,
 
   if (fsync (dfd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -519,7 +519,7 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
   /* Ensure the link has hit disk */
   if (fsync (parent_dfd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -529,7 +529,7 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
   /* And sync again for good measure */
   if (fsync (parent_dfd) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 

@@ -347,7 +347,7 @@ ostree_sepolicy_get_label (OstreeSePolicy    *self,
           int errsv = errno;
           if (errsv != ENOENT)
             {
-              ot_util_set_error_from_errno (error, errsv);
+              gs_set_error_from_errno (error, errsv);
               goto out;
             }
         }
@@ -440,7 +440,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
           int res = lsetfilecon (gs_file_get_path_cached (target), label);
           if (res != 0)
             {
-              ot_util_set_error_from_errno (error, errno);
+              gs_set_error_from_errno (error, errno);
               goto out;
             }
         }

@@ -44,7 +44,5 @@ gboolean ot_util_filename_validate (const char *name, GError **error);
 
 gboolean ot_util_path_split_validate (const char *path, GPtrArray **out_components, GError **error);
 
-void ot_util_set_error_from_errno (GError **error, gint saved_errno);
-
 G_END_DECLS
 

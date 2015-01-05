@@ -1287,7 +1287,7 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -1554,7 +1554,7 @@ list_loose_objects_at (OstreeRepo             *self,
   d = fdopendir (dfd);
   if (!d)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -1648,7 +1648,7 @@ list_loose_objects (OstreeRepo                     *self,
             continue;
           else
             {
-              ot_util_set_error_from_errno (error, errno);
+              gs_set_error_from_errno (error, errno);
               goto out;
             }
         }
@@ -1798,7 +1798,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
           ret = TRUE;
           goto out;
         }
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -1818,7 +1818,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
       while (G_UNLIKELY (len == -1 && errno == EINTR));
       if (len == -1)
         {
-          ot_util_set_error_from_errno (error, errno);
+          gs_set_error_from_errno (error, errno);
           goto out;
         }
       targetbuf[len] = '\0';
@@ -2108,7 +2108,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1 && errno != ENOENT)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -2331,7 +2331,7 @@ import_one_object_link (OstreeRepo    *self,
           ret = TRUE;
         }
       else
-        ot_util_set_error_from_errno (error, errno);
+        gs_set_error_from_errno (error, errno);
       
       goto out;
     }

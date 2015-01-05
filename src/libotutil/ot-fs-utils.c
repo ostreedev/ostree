@@ -43,7 +43,7 @@ ot_gopendirat (int             dfd,
   int ret = ot_opendirat (dfd, path, follow);
   if (ret == -1)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       return FALSE;
     }
   *out_fd = ret;
@@ -69,7 +69,7 @@ ot_lgetxattrat (int            dfd,
   while (G_UNLIKELY (bytes_read < 0 && errno == EINTR));
   if (G_UNLIKELY (bytes_read < 0))
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -79,7 +79,7 @@ ot_lgetxattrat (int            dfd,
   while (G_UNLIKELY (real_size < 0 && errno == EINTR));
   if (G_UNLIKELY (real_size < 0))
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       g_free (buf);
       goto out;
     }
@@ -109,7 +109,7 @@ ot_lsetxattrat (int            dfd,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       return FALSE;
     }
 

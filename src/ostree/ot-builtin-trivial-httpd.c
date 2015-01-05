@@ -423,7 +423,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
           int errsv = errno;
           if (errsv != ENOSYS)
             {
-              ot_util_set_error_from_errno (error, errsv);
+              gs_set_error_from_errno (error, errsv);
               goto out;
             }
         }

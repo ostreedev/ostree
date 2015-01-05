@@ -124,17 +124,6 @@ ot_util_path_split_validate (const char *path,
 }
 
 void
-ot_util_set_error_from_errno (GError **error,
-                              gint     saved_errno)
-{
-  g_set_error_literal (error,
-                       G_IO_ERROR,
-                       g_io_error_from_errno (saved_errno),
-                       g_strerror (saved_errno));
-  errno = saved_errno;
-}
-
-void
 ot_util_fatal_literal (const char *msg)
 {
   g_printerr ("%s\n", msg);

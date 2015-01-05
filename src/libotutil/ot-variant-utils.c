@@ -188,7 +188,7 @@ ot_util_variant_map_fd (GFileDescriptorBased  *stream,
               g_file_descriptor_based_get_fd (stream), start);
   if (!map)
     {
-      ot_util_set_error_from_errno (error, errno);
+      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
