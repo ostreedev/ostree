@@ -1972,26 +1972,37 @@ ostree_repo_load_file (OstreeRepo         *self,
                 }
             }
 
-          if (repo_mode == OSTREE_REPO_MODE_BARE)
-            {
-              if (out_xattrs)
-                {
-                  gs_unref_object GFile *full_path =
-                    _ostree_repo_get_object_path (self, checksum, OSTREE_OBJECT_TYPE_FILE);
+          g_assert (repo_mode == OSTREE_REPO_MODE_BARE);
 
-                  if (!gs_file_get_all_xattrs (full_path, &ret_xattrs,
-                                               cancellable, error))
-                    goto out;
-                }
-            }
-
-          if (out_input && g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR)
+          if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
+              && (out_input || out_xattrs))
             {
-              int fd = -1;
+              gs_fd_close int fd = -1;
+
               if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
                                            cancellable, error))
                 goto out;
-              ret_input = g_unix_input_stream_new (fd, TRUE);
+
+              if (out_xattrs)
+                {
+                  if (!gs_fd_get_all_xattrs (fd, &ret_xattrs,
+                                             cancellable, error))
+                    goto out;
+                }
+
+              if (out_input)
+                {
+                  ret_input = g_unix_input_stream_new (fd, TRUE);
+                  fd = -1; /* Transfer ownership */
+                }
+            }
+          else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
+                   && out_xattrs)
+            {
+              if (!gs_dfd_and_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
+                                                   &ret_xattrs,
+                                                   cancellable, error))
+                goto out;
             }
           
           found = TRUE;
