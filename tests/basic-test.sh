@@ -45,6 +45,8 @@ $OSTREE refs > reflist
 assert_file_has_content reflist '^test2$'
 rm reflist
 
+$OSTREE refs --delete 2>/dev/null && (echo 1>&2 "refs --delete (without prefix) unexpectedly succeeded!"; exit 1)
+
 echo "ok refs"
 
 cd checkout-test2

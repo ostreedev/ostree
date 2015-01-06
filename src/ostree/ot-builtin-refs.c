@@ -30,7 +30,7 @@
 static gboolean opt_delete;
 
 static GOptionEntry options[] = {
-  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", "PREFIX" },
+  { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
   { NULL }
 };
 
@@ -52,6 +52,14 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (argc >= 2)
     refspec_prefix = argv[1];
+
+  /* Require a prefix when deleting to help avoid accidents. */
+  if (opt_delete && refspec_prefix == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "PREFIX is required when deleting refs");
+      goto out;
+    }
 
   if (!ostree_repo_list_refs (repo, refspec_prefix, &refs,
                               cancellable, error))
