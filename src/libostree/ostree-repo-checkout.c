@@ -64,13 +64,16 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 
   fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)temp_out);
 
-  do
-    res = fsync (fd);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (G_UNLIKELY (res == -1))
+  if (!self->disable_fsync)
     {
-      gs_set_error_from_errno (error, errno);
-      goto out;
+      do
+        res = fsync (fd);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
     }
 
   if (!g_output_stream_close (temp_out, cancellable, error))
@@ -100,7 +103,8 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 }
 
 static gboolean
-write_regular_file_content (OstreeRepoCheckoutMode mode,
+write_regular_file_content (OstreeRepo            *self,
+                            OstreeRepoCheckoutMode mode,
                             GOutputStream         *output,
                             GFileInfo             *file_info,
                             GVariant              *xattrs,
@@ -150,10 +154,13 @@ write_regular_file_content (OstreeRepoCheckoutMode mode,
         }
     }
           
-  if (fsync (fd) == -1)
+  if (!self->disable_fsync)
     {
-      gs_set_error_from_errno (error, errno);
+      if (fsync (fd) == -1)
+        {
+          gs_set_error_from_errno (error, errno);
       goto out;
+        }
     }
           
   if (!g_output_stream_close (output, cancellable, error))
@@ -165,7 +172,8 @@ write_regular_file_content (OstreeRepoCheckoutMode mode,
 }
 
 static gboolean
-checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
+checkout_file_from_input_at (OstreeRepo     *self,
+                             OstreeRepoCheckoutMode mode,
                              GFileInfo      *file_info,
                              GVariant       *xattrs,
                              GInputStream   *input,
@@ -231,7 +239,7 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
       temp_out = g_unix_output_stream_new (fd, TRUE);
       fd = -1; /* Transfer ownership */
 
-      if (!write_regular_file_content (mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (self, mode, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -248,7 +256,8 @@ checkout_file_from_input_at (OstreeRepoCheckoutMode mode,
  * it into place.  This implements union-like behavior.
  */
 static gboolean
-checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
+checkout_file_unioning_from_input_at (OstreeRepo     *repo,
+                                      OstreeRepoCheckoutMode mode,
                                       GFileInfo      *file_info,
                                       GVariant       *xattrs,
                                       GInputStream   *input,
@@ -291,7 +300,7 @@ checkout_file_unioning_from_input_at (OstreeRepoCheckoutMode mode,
                                       cancellable, error))
         goto out;
 
-      if (!write_regular_file_content (mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (repo, mode, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -498,7 +507,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
         {
-          if (!checkout_file_unioning_from_input_at (mode, source_info, xattrs, input,
+          if (!checkout_file_unioning_from_input_at (repo, mode, source_info, xattrs, input,
                                                      destination_dfd, destination_parent,
                                                      destination_name,
                                                      cancellable, error)) 
@@ -509,7 +518,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
         }
       else
         {
-          if (!checkout_file_from_input_at (mode, source_info, xattrs, input,
+          if (!checkout_file_from_input_at (repo, mode, source_info, xattrs, input,
                                             destination_dfd, destination_parent,
                                             destination_name,
                                             cancellable, error))

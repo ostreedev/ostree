@@ -47,6 +47,8 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-dump.c \
 	src/ostree/ot-editor.c \
 	src/ostree/ot-editor.h \
+	src/ostree/ot-tool-util.c \
+	src/ostree/ot-tool-util.h \
 	$(NULL)
 
 # Admin subcommand

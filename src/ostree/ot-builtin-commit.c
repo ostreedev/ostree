@@ -27,6 +27,7 @@
 #include "ot-editor.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ot-tool-util.h"
 
 static char *opt_subject;
 static char *opt_body;
@@ -49,38 +50,20 @@ static char *opt_gpg_homedir;
 static gboolean opt_generate_sizes;
 static gboolean opt_disable_fsync;
 
-#define ARG_EQ(x, y) (g_ascii_strcasecmp(x, y) == 0)
-/* create a function to parse the --fsync option, and current parse it the
- * same as --disable-fsync. Allows us to add other things later, and not have
- * a double negative. */
-static gboolean opt__fsync(const gchar *option_name,
-			   const gchar *value,
-			   gpointer data,
-			   GError **error)
+static gboolean
+parse_fsync_cb (const char  *option_name,
+                const char  *value,
+                gpointer     data,
+                GError     **error)
 {
-  g_assert(g_str_equal(option_name, "--fsync"));
+  gboolean val;
 
-  if (0) {}
-  else if (ARG_EQ(value, "1"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "true"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "yes"))
-    opt_disable_fsync = 0;
-  else if (ARG_EQ(value, "0"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "false"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "none"))
-    opt_disable_fsync = 1;
-  else if (ARG_EQ(value, "no"))
-    opt_disable_fsync = 1;
-  else
-    /* do we want to complain here? */
-    return 0;
+  if (!ot_parse_boolean (option_name, value, &val, error))
+    return FALSE;
+    
+  opt_disable_fsync = !val;
 
-
-  return 1;
+  return TRUE;
 }
 
 static GOptionEntry options[] = {
@@ -104,7 +87,7 @@ static GOptionEntry options[] = {
 #endif
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
-  { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, opt__fsync, "Specify how to invoke fsync()", NULL },
+  { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { NULL }
 };
 

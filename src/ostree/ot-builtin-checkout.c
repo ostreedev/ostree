@@ -29,6 +29,7 @@
 #include "ot-builtins.h"
 #include "ostree.h"
 #include "otutil.h"
+#include "ot-tool-util.h"
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
@@ -36,6 +37,23 @@ static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
+static gboolean opt_disable_fsync;
+
+static gboolean
+parse_fsync_cb (const char  *option_name,
+                const char  *value,
+                gpointer     data,
+                GError     **error)
+{
+  gboolean val;
+
+  if (!ot_parse_boolean (option_name, value, &val, error))
+    return FALSE;
+    
+  opt_disable_fsync = !val;
+
+  return TRUE;
+}
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
@@ -44,6 +62,7 @@ static GOptionEntry options[] = {
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
+  { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
   { NULL }
 };
 
@@ -185,6 +204,9 @@ ostree_builtin_checkout (int argc, char **argv, GCancellable *cancellable, GErro
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
+
+  if (opt_disable_fsync)
+    ostree_repo_set_disable_fsync (repo, TRUE);
 
   if (argc < 2)
     {
