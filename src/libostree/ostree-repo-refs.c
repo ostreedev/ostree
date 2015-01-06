@@ -259,7 +259,7 @@ resolve_refspec_fallback (OstreeRepo     *self,
     }
   else if (!allow_noent)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "Refspec '%s%s%s' not found",
                    remote ? remote : "",
                    remote ? ":" : "",
