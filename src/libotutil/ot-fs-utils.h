@@ -50,5 +50,12 @@ gboolean ot_readlinkat_gfile_info (int             dfd,
                                    GCancellable   *cancellable,
                                    GError        **error);
 
+gboolean ot_openat_read_stream (int             dfd,
+                                const char     *path,
+                                gboolean        follow,
+                                GInputStream  **out_istream,
+                                GCancellable   *cancellable,
+                                GError        **error);
+
 G_END_DECLS
 

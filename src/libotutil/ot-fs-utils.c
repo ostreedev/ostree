@@ -23,6 +23,7 @@
 #include "ot-fs-utils.h"
 #include "libgsystem.h"
 #include <attr/xattr.h>
+#include <gio/gunixinputstream.h>
 
 int
 ot_opendirat (int dfd, const char *path, gboolean follow)
@@ -143,3 +144,47 @@ ot_readlinkat_gfile_info (int             dfd,
   return ret;
 }
 
+
+/**
+ * ot_openat_read_stream:
+ * @dfd: Directory file descriptor
+ * @path: Subpath
+ * @follow: Whether or not to follow symbolic links
+ * @out_istream: (out): Return location for input stream
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Open a file for reading starting from @dfd for @path.
+ * The @follow parameter determines whether or not to follow
+ * if the last element of @path is a symbolic link.  Intermediate
+ * symlink path components are always followed.
+ */
+gboolean
+ot_openat_read_stream (int             dfd,
+                       const char     *path,
+                       gboolean        follow,
+                       GInputStream  **out_istream,
+                       GCancellable   *cancellable,
+                       GError        **error)
+{
+  gboolean ret = FALSE;
+  int fd = -1;
+  int flags = O_RDONLY | O_NOCTTY | O_CLOEXEC;
+
+  if (!follow)
+    flags |= O_NOFOLLOW;
+
+  do
+    fd = openat (dfd, path, flags, 0);
+  while (G_UNLIKELY (fd == -1 && errno == EINTR));
+  if (fd == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  *out_istream = g_unix_input_stream_new (fd, TRUE);
+  ret = TRUE;
+ out:
+  return ret;
+}

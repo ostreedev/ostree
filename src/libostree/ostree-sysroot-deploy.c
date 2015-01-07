@@ -52,18 +52,13 @@ copy_one_file_fsync_at (int              src_parent_dfd,
   if (S_ISREG (stbuf->st_mode))
     {
       /* Note the objects take ownership of the fds */
-      int src_fd = -1;
       int dest_fd = -1;
       gs_unref_object GInputStream *in = NULL;
       gs_unref_object GOutputStream *out = NULL;
 
-      src_fd = openat (src_parent_dfd, name, O_RDONLY | O_NOFOLLOW | O_NOCTTY | O_NOATIME | O_CLOEXEC);
-      if (src_fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      in = g_unix_input_stream_new (src_fd, TRUE);
+      if (!ot_openat_read_stream (src_parent_dfd, name, FALSE,
+                                  &in, cancellable, error))
+        goto out;
 
       dest_fd = openat (dest_parent_dfd, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
                         stbuf->st_mode);

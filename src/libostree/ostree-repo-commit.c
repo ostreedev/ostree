@@ -2112,13 +2112,9 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                 }
               else
                 {
-                  int filefd = openat (dfd_iter->fd, name, O_RDONLY | O_CLOEXEC, 0);
-                  if (filefd == -1)
-                    {
-                      gs_set_error_from_errno (error, errno);
-                      goto out;
-                    }
-                  file_input = (GInputStream*)g_unix_input_stream_new (filefd, TRUE);
+                  if (!ot_openat_read_stream (dfd_iter->fd, name, FALSE,
+                                              &file_input, cancellable, error))
+                    goto out;
                 }
             }
 
