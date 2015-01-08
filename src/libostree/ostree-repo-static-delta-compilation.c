@@ -548,7 +548,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
                   i, part_builder->objects->len,
-                  g_variant_get_size (delta_part),
+                  (guint64)g_variant_get_size (delta_part),
                   part_builder->uncompressed_size);
     }
 
