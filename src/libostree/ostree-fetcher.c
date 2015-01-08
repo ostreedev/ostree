@@ -42,6 +42,7 @@ typedef struct {
   guint refcount;
   OstreeFetcher *self;
   SoupURI *uri;
+  int priority;
 
   OstreeFetcherState state;
 
@@ -59,6 +60,18 @@ typedef struct {
   GCancellable *cancellable;
   GSimpleAsyncResult *result;
 } OstreeFetcherPendingURI;
+
+static int
+pending_uri_compare (gconstpointer a,
+                     gconstpointer b,
+                     gpointer unused)
+{
+  const OstreeFetcherPendingURI *pending_a = a;
+  const OstreeFetcherPendingURI *pending_b = b;
+
+  return (pending_a->priority == pending_b->priority) ? 0 :
+         (pending_a->priority < pending_b->priority) ? -1 : 1;
+}
 
 static void
 pending_uri_free (OstreeFetcherPendingURI *pending)
@@ -507,6 +520,7 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      SoupURI               *uri,
                                      gboolean               is_stream,
                                      guint64                max_size,
+                                     int                    priority,
                                      GCancellable          *cancellable,
                                      GAsyncReadyCallback    callback,
                                      gpointer               user_data,
@@ -521,6 +535,7 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
+  pending->priority = priority;
   pending->max_size = max_size;
   pending->is_stream = is_stream;
   pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
@@ -566,7 +581,7 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
         }
       pending->out_tmpfile = out_tmpfile;
 
-      g_queue_push_tail (&self->pending_queue, pending);
+      g_queue_insert_sorted (&self->pending_queue, pending, pending_uri_compare, NULL);
       ostree_fetcher_process_pending_queue (self);
     }
 
@@ -587,11 +602,12 @@ void
 _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                SoupURI               *uri,
                                                guint64                max_size,
+                                               int                    priority,
                                                GCancellable          *cancellable,
                                                GAsyncReadyCallback    callback,
                                                gpointer               user_data)
 {
-  ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, cancellable,
+  ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, priority, cancellable,
                                        callback, user_data,
                                        _ostree_fetcher_request_uri_with_partial_async);
 }
@@ -618,11 +634,12 @@ static void
 ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  SoupURI               *uri,
                                  guint64                max_size,
+                                 int                    priority,
                                  GCancellable          *cancellable,
                                  GAsyncReadyCallback    callback,
                                  gpointer               user_data)
 {
-  ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, cancellable,
+  ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, priority, cancellable,
                                        callback, user_data,
                                        ostree_fetcher_stream_uri_async);
 }
@@ -716,6 +733,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
 
   ostree_fetcher_stream_uri_async (fetcher, uri,
                                    max_size,
+                                   OSTREE_FETCHER_DEFAULT_PRIORITY,
                                    cancellable,
                                    fetch_uri_sync_on_complete, &data);
 

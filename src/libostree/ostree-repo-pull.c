@@ -1123,6 +1123,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
 
   _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
                                                   expected_max_size,
+                                                  OSTREE_FETCHER_DEFAULT_PRIORITY,
                                                   pull_data->cancellable,
                                                   is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
   soup_uri_free (obj_uri);
@@ -1451,6 +1452,7 @@ process_one_static_delta (OtPullData   *pull_data,
 
       target_uri = suburi_new (pull_data->base_uri, deltapart_path, NULL);
       _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
+                                                      OSTREE_FETCHER_DEFAULT_PRIORITY,
                                                       pull_data->cancellable,
                                                       static_deltapart_fetch_on_complete,
                                                       fetch_data);

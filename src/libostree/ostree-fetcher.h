@@ -36,6 +36,9 @@ G_BEGIN_DECLS
 #define OSTREE_IS_FETCHER_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), OSTREE_TYPE_FETCHER))
 #define OSTREE_FETCHER_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), OSTREE_TYPE_FETCHER, OstreeFetcherClass))
 
+/* Lower values have higher priority */
+#define OSTREE_FETCHER_DEFAULT_PRIORITY 0
+
 typedef struct OstreeFetcherClass   OstreeFetcherClass;
 typedef struct OstreeFetcher   OstreeFetcher;
 
@@ -68,6 +71,7 @@ guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 void _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                                     SoupURI               *uri,
                                                     guint64                max_size,
+                                                    int                    priority,
                                                     GCancellable          *cancellable,
                                                     GAsyncReadyCallback    callback,
                                                     gpointer               user_data);

@@ -518,6 +518,7 @@ try_next_url (OstreeMetalinkRequest          *self)
       
       _ostree_fetcher_request_uri_with_partial_async (self->metalink->fetcher, next,
                                                       self->metalink->max_size,
+                                                      OSTREE_FETCHER_DEFAULT_PRIORITY,
                                                       g_task_get_cancellable (self->task),
                                                       on_fetched_url, self->task);
     }
