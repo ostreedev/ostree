@@ -2748,6 +2748,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   GString *buf;
   gs_free char *status = NULL;
   guint outstanding_fetches;
+  guint outstanding_metadata_fetches;
   guint outstanding_writes;
   guint n_scanned_metadata;
 
@@ -2758,6 +2759,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
 
   status = ostree_async_progress_get_status (progress);
   outstanding_fetches = ostree_async_progress_get_uint (progress, "outstanding-fetches");
+  outstanding_metadata_fetches = ostree_async_progress_get_uint (progress, "outstanding-metadata-fetches");
   outstanding_writes = ostree_async_progress_get_uint (progress, "outstanding-writes");
   n_scanned_metadata = ostree_async_progress_get_uint (progress, "scanned-metadata");
   if (status)
@@ -2768,6 +2770,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
     {
       guint64 bytes_transferred = ostree_async_progress_get_uint64 (progress, "bytes-transferred");
       guint fetched = ostree_async_progress_get_uint (progress, "fetched");
+      guint metadata_fetched = ostree_async_progress_get_uint (progress, "metadata-fetched");
       guint requested = ostree_async_progress_get_uint (progress, "requested");
       guint64 bytes_sec = (g_get_monotonic_time () - ostree_async_progress_get_uint64 (progress, "start-time")) / G_USEC_PER_SEC;
       gs_free char *formatted_bytes_transferred =
@@ -2782,9 +2785,17 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
           formatted_bytes_sec = g_format_size (bytes_sec);
         }
 
-      g_string_append_printf (buf, "Receiving objects: %u%% (%u/%u) %s/s %s",
-                              (guint)((((double)fetched) / requested) * 100),
-                              fetched, requested, formatted_bytes_sec, formatted_bytes_transferred);
+      if (outstanding_metadata_fetches)
+        {
+          g_string_append_printf (buf, "Receiving metadata objects: %u/(estimating) %s/s %s",
+                                  metadata_fetched, formatted_bytes_sec, formatted_bytes_transferred);
+        }
+      else
+        {
+          g_string_append_printf (buf, "Receiving objects: %u%% (%u/%u) %s/s %s",
+                                  (guint)((((double)fetched) / requested) * 100),
+                                  fetched, requested, formatted_bytes_sec, formatted_bytes_transferred);
+        }
     }
   else if (outstanding_writes)
     {

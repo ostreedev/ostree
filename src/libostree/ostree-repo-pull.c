@@ -189,6 +189,10 @@ update_progress (gpointer user_data)
   ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
   ostree_async_progress_set_uint64 (pull_data->progress, "start-time", start_time);
 
+  /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
+  ostree_async_progress_set_uint (pull_data->progress, "outstanding-metadata-fetches", pull_data->n_outstanding_metadata_fetches);
+  ostree_async_progress_set_uint (pull_data->progress, "metadata-fetched", pull_data->n_fetched_metadata);
+
   if (pull_data->fetching_sync_uri)
     {
       gs_free char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
