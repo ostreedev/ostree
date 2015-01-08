@@ -1857,7 +1857,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       if (pull_data->summary)
         {
-          guint64 commit_size = 0;
+          gsize commit_size = 0;
           guint64 *malloced_size;
 
           if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
