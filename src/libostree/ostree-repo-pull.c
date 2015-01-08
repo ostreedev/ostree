@@ -29,6 +29,9 @@
 #include "ostree-metalink.h"
 #include "otutil.h"
 
+#define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
+#define OSTREE_REPO_PULL_METADATA_PRIORITY (OSTREE_REPO_PULL_CONTENT_PRIORITY - 100)
+
 typedef struct {
   OstreeRepo   *repo;
   OstreeRepoPullFlags flags;
@@ -1123,7 +1126,8 @@ enqueue_one_object_request (OtPullData        *pull_data,
 
   _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
                                                   expected_max_size,
-                                                  OSTREE_FETCHER_DEFAULT_PRIORITY,
+                                                  is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
+                                                          : OSTREE_REPO_PULL_CONTENT_PRIORITY,
                                                   pull_data->cancellable,
                                                   is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
   soup_uri_free (obj_uri);
