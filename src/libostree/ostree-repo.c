@@ -1918,10 +1918,14 @@ ostree_repo_load_file (OstreeRepo         *self,
 
       if (ret_file_info)
         {
+          found = TRUE;
+
           if (repo_mode == OSTREE_REPO_MODE_BARE_USER)
             {
+              guint32 mode;
               gs_unref_variant GVariant *metadata = NULL;
               gs_unref_bytes GBytes *bytes = NULL;
+              gs_fd_close int fd = -1;
 
               bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
                                       "user.ostreemeta", error);
@@ -1934,9 +1938,28 @@ ostree_repo_load_file (OstreeRepo         *self,
 
               ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
 
-              if (S_ISLNK (g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode")))
+              mode = g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode");
+
+              /* Optimize this so that we only open the file if we
+               * need to; symlinks contain their content, and we only
+               * open regular files if the caller has requested an
+               * input stream.
+               */
+              if (S_ISLNK (mode) || out_input)
+                { 
+                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                                               cancellable, error))
+                    goto out;
+                }
+
+              if (S_ISREG (mode) && out_input)
                 {
-                  int fd = -1;
+                  g_assert (fd != -1);
+                  ret_input = g_unix_input_stream_new (fd, TRUE);
+                  fd = -1; /* Transfer ownership */
+                }
+              else if (S_ISLNK (mode))
+                {
                   gs_unref_object GInputStream *target_input = NULL;
                   char targetbuf[PATH_MAX+1];
                   gsize target_size;
@@ -1944,11 +1967,8 @@ ostree_repo_load_file (OstreeRepo         *self,
                   g_file_info_set_file_type (ret_file_info, G_FILE_TYPE_SYMBOLIC_LINK);
                   g_file_info_set_size (ret_file_info, 0);
 
-                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                                               cancellable, error))
-                    goto out;
-
                   target_input = g_unix_input_stream_new (fd, TRUE);
+                  fd = -1; /* Transfer ownership */
 
                   if (!g_input_stream_read_all (target_input, targetbuf, sizeof (targetbuf),
                                                 &target_size, cancellable, error))
@@ -1957,41 +1977,41 @@ ostree_repo_load_file (OstreeRepo         *self,
                   g_file_info_set_symlink_target (ret_file_info, targetbuf);
                 }
             }
-
-          g_assert (repo_mode == OSTREE_REPO_MODE_BARE);
-
-          if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
-              && (out_input || out_xattrs))
+          else
             {
-              gs_fd_close int fd = -1;
+              g_assert (repo_mode == OSTREE_REPO_MODE_BARE);
 
-              if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                                           cancellable, error))
-                goto out;
-
-              if (out_xattrs)
+              if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
+                  && (out_input || out_xattrs))
                 {
-                  if (!gs_fd_get_all_xattrs (fd, &ret_xattrs,
-                                             cancellable, error))
+                  gs_fd_close int fd = -1;
+
+                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                                               cancellable, error))
+                    goto out;
+
+                  if (out_xattrs)
+                    {
+                      if (!gs_fd_get_all_xattrs (fd, &ret_xattrs,
+                                                 cancellable, error))
+                        goto out;
+                    }
+
+                  if (out_input)
+                    {
+                      ret_input = g_unix_input_stream_new (fd, TRUE);
+                      fd = -1; /* Transfer ownership */
+                    }
+                }
+              else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
+                       && out_xattrs)
+                {
+                  if (!gs_dfd_and_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
+                                                       &ret_xattrs,
+                                                       cancellable, error))
                     goto out;
                 }
-
-              if (out_input)
-                {
-                  ret_input = g_unix_input_stream_new (fd, TRUE);
-                  fd = -1; /* Transfer ownership */
-                }
             }
-          else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
-                   && out_xattrs)
-            {
-              if (!gs_dfd_and_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
-                                                   &ret_xattrs,
-                                                   cancellable, error))
-                goto out;
-            }
-          
-          found = TRUE;
         }
     }
   
