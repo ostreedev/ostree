@@ -1875,17 +1875,17 @@ ostree_repo_load_file (OstreeRepo         *self,
   gs_unref_object GInputStream *ret_input = NULL;
   gs_unref_object GFileInfo *ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
   repo_mode = ostree_repo_get_mode (self);
 
+  _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, repo_mode);
+
   if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
-      char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
       int fd = -1;
       struct stat stbuf;
       gs_unref_object GInputStream *tmp_stream = NULL;
-
-      _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
 
       if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
                                cancellable, error))
@@ -1911,10 +1911,6 @@ ostree_repo_load_file (OstreeRepo         *self,
     }
   else
     {
-      char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-
-      _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
-
       if (!query_info_for_bare_content_object (self, loose_path_buf,
                                                &ret_file_info,
                                                cancellable, error))
