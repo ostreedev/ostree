@@ -80,12 +80,12 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                             NULL, error);
       if (!dir_enum)
         goto out;
-      
+
       while (TRUE)
         {
+          gs_unref_object GFileEnumerator *dir_enum2 = NULL;
           GFileInfo *file_info;
           GFile *child;
-          const char *name;
 
           if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
                                            NULL, error))
@@ -96,16 +96,41 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
           if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
             continue;
 
-          name = gs_file_get_basename_cached (child);
 
-          {
-            gs_unref_object GFile *meta_path = g_file_get_child (child, "superblock");
+          dir_enum2 = g_file_enumerate_children (child, OSTREE_GIO_FAST_QUERYINFO,
+                                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                 NULL, error);
+          if (!dir_enum2)
+            goto out;
 
-            if (g_file_query_exists (meta_path, NULL))
+          while (TRUE)
+            {
+              GFileInfo *file_info2;
+              GFile *child2;
+              const char *name1;
+              const char *name2;
+
+              if (!gs_file_enumerator_iterate (dir_enum2, &file_info2, &child2,
+                                               NULL, error))
+                goto out;
+              if (file_info2 == NULL)
+                break;
+
+              if (g_file_info_get_file_type (file_info2) != G_FILE_TYPE_DIRECTORY)
+                continue;
+
+              name1 = gs_file_get_basename_cached (child);
+              name2 = gs_file_get_basename_cached (child2);
+
               {
-                g_ptr_array_add (ret_deltas, g_strdup (name));
+                gs_unref_object GFile *meta_path = g_file_get_child (child2, "superblock");
+
+                if (g_file_query_exists (meta_path, NULL))
+                  {
+                    g_ptr_array_add (ret_deltas, g_strconcat (name1, name2, NULL));
+                  }
               }
-          }
+            }
         }
     }
 
