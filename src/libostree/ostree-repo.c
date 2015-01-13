@@ -3069,7 +3069,7 @@ out:
 /**
  * ostree_repo_sign_delta:
  * @self: Self
- * @from_commit: SHA256 of starting commit to sign
+ * @from_commit: SHA256 of starting commit to sign, or %NULL
  * @to_commit: SHA256 of target commit to sign
  * @key_id: Use this GPG key id
  * @homedir: (allow-none): GPG home directory, or %NULL

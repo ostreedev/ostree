@@ -31,6 +31,7 @@ static char *opt_to_rev;
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
 static char *opt_max_usize;
+static gboolean opt_empty;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
 
@@ -50,6 +51,7 @@ static OstreeCommand static_delta_subcommands[] = {
 
 static GOptionEntry generate_options[] = {
   { "from", 0, 0, G_OPTION_ARG_STRING, &opt_from_rev, "Create delta from revision REV", "REV" },
+  { "empty", 0, 0, G_OPTION_ARG_NONE, &opt_empty, "Create delta from scratch", NULL },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the delta with", "key-id"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
@@ -153,7 +155,11 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
 
       g_assert (opt_to_rev);
 
-      if (opt_from_rev == NULL)
+      if (opt_empty)
+        {
+          from_source = NULL;
+        }
+      else if (opt_from_rev == NULL)
         {
           from_parent_str = g_strconcat (opt_to_rev, "^", NULL);
           from_source = from_parent_str;
@@ -163,8 +169,11 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
           from_source = opt_from_rev;
         }
 
-      if (!ostree_repo_resolve_rev (repo, from_source, FALSE, &from_resolved, error))
-        goto out;
+      if (from_source)
+        {
+          if (!ostree_repo_resolve_rev (repo, from_source, FALSE, &from_resolved, error))
+            goto out;
+        }
       if (!ostree_repo_resolve_rev (repo, opt_to_rev, FALSE, &to_resolved, error))
         goto out;
 
@@ -174,7 +183,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
                                "max-usize", g_variant_new_uint32 (g_ascii_strtoull (opt_max_usize, NULL, 10)));
 
       g_print ("Generating static delta:\n");
-      g_print ("  From: %s\n", from_resolved);
+      g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
       g_print ("  To:   %s\n", to_resolved);
       if (!ostree_repo_static_delta_generate (repo, OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
                                               from_resolved, to_resolved, NULL,

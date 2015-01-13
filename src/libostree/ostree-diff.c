@@ -204,7 +204,7 @@ diff_add_dir_recurse (GFile          *d,
 /**
  * ostree_diff_dirs:
  * @flags: Flags
- * @a: First directory path
+ * @a: First directory path, or %NULL
  * @b: First directory path
  * @modified: (element-type OstreeDiffItem): Modified files
  * @removed: (element-type Gio.File): Removed files
@@ -230,6 +230,15 @@ ostree_diff_dirs (OstreeDiffFlags flags,
   gs_unref_object GFile *child_b = NULL;
   gs_unref_object GFileInfo *child_a_info = NULL;
   gs_unref_object GFileInfo *child_b_info = NULL;
+
+  if (a == NULL)
+    {
+      if (!diff_add_dir_recurse (b, added, cancellable, error))
+        goto out;
+
+      ret = TRUE;
+      goto out;
+    }
 
   child_a_info = g_file_query_info (a, OSTREE_GIO_FAST_QUERYINFO,
                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,

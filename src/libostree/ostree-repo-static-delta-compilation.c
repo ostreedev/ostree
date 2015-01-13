@@ -203,9 +203,12 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   gs_unref_hashtable GHashTable *modified_content_objects = NULL;
   gs_unref_hashtable GHashTable *content_object_to_size = NULL;
 
-  if (!ostree_repo_read_commit (repo, from, &root_from, NULL,
-                                cancellable, error))
-    goto out;
+  if (from != NULL)
+    {
+      if (!ostree_repo_read_commit (repo, from, &root_from, NULL,
+                                    cancellable, error))
+        goto out;
+    }
   if (!ostree_repo_read_commit (repo, to, &root_to, NULL,
                                 cancellable, error))
     goto out;
@@ -231,9 +234,12 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       g_hash_table_add (modified_content_objects, objname);
     }
 
-  if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects,
-                                    cancellable, error))
-    goto out;
+  if (from)
+    {
+      if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects,
+                                        cancellable, error))
+        goto out;
+    }
 
   if (!ostree_repo_traverse_commit (repo, to, 0, &to_reachable_objects,
                                     cancellable, error))
@@ -249,7 +255,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       const char *checksum;
       OstreeObjectType objtype;
 
-      if (g_hash_table_contains (from_reachable_objects, serialized_key))
+      if (from_reachable_objects && g_hash_table_contains (from_reachable_objects, serialized_key))
         continue;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
@@ -412,17 +418,17 @@ get_fallback_headers (OstreeRepo               *self,
  * ostree_repo_static_delta_generate:
  * @self: Repo
  * @opt: High level optimization choice
- * @from: ASCII SHA256 checksum of origin
+ * @from: ASCII SHA256 checksum of origin, or %NULL
  * @to: ASCII SHA256 checksum of target
  * @metadata: (allow-none): Optional metadata
  * @params: (allow-none): Parameters, see below
  * @cancellable: Cancellable
  * @error: Error
  *
- * Generate a lookaside "static delta" from @from which can generate
- * the objects in @to.  This delta is an optimization over fetching
- * individual objects, and can be conveniently stored and applied
- * offline.
+ * Generate a lookaside "static delta" from @from (%NULL means
+ * from-empty) which can generate the objects in @to.  This delta is
+ * an optimization over fetching individual objects, and can be
+ * conveniently stored and applied offline.
  *
  * The @params argument should be an a{sv}.  The following attributes
  * are known:
@@ -590,9 +596,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   {
     GDateTime *now = g_date_time_new_now_utc ();
     /* floating */ GVariant *from_csum_v =
-      ostree_checksum_to_bytes_v (from);
+      from ? ostree_checksum_to_bytes_v (from) : ot_gvariant_new_bytearray ((guchar *)"", 0);
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
+
     delta_descriptor = g_variant_new ("(@(a(ss)a(say))t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
                                       "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
                                       "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",

@@ -1348,11 +1348,22 @@ get_delta_path (const char *from,
                 const char *target)
 {
   char prefix[3];
-  prefix[0] = from[0];
-  prefix[1] = from[1];
-  prefix[2] = '\0';
-  from += 2;
-  return g_strconcat ("deltas/", prefix, "/", from, "-", to, "/", target, NULL);
+  if (from == NULL)
+    {
+      prefix[0] = to[0];
+      prefix[1] = to[1];
+      prefix[2] = '\0';
+      to += 2;
+      return g_strconcat ("deltas/", prefix, "/", to, "/", target, NULL);
+    }
+  else
+    {
+      prefix[0] = from[0];
+      prefix[1] = from[1];
+      prefix[2] = '\0';
+      from += 2;
+      return g_strconcat ("deltas/", prefix, "/", from, "-", to, "/", target, NULL);
+    }
 }
 
 char *

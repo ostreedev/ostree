@@ -1446,7 +1446,7 @@ process_one_static_delta (OtPullData   *pull_data,
       if (have_all)
         {
           g_debug ("Have all objects from static delta %s-%s part %u",
-                   from_revision, to_revision,
+                   from_revision ? from_revision : "empty", to_revision,
                    i);
           continue;
         }
@@ -1912,7 +1912,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                     &from_revision, error))
         goto out;
 
-      if (from_revision && g_strcmp0 (from_revision, to_revision) != 0)
+      if (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0)
         {
           if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
                                                      &delta_superblock, cancellable, error))
@@ -1921,14 +1921,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           
       if (!delta_superblock)
         {
-          g_debug ("no delta superblock for %s-%s", from_revision, to_revision);
+          g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
           if (!scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT,
                                          0, pull_data->cancellable, error))
             goto out;
         }
       else
         {
-          g_debug ("processing delta superblock for %s-%s", from_revision, to_revision);
+          g_debug ("processing delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
           if (!process_one_static_delta (pull_data, from_revision, to_revision,
                                          delta_superblock,
                                          cancellable, error))
