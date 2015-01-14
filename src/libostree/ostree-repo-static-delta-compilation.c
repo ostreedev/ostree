@@ -231,11 +231,11 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       g_hash_table_add (modified_content_objects, objname);
     }
 
-  if (!ostree_repo_traverse_commit (repo, from, -1, &from_reachable_objects,
+  if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects,
                                     cancellable, error))
     goto out;
 
-  if (!ostree_repo_traverse_commit (repo, to, -1, &to_reachable_objects,
+  if (!ostree_repo_traverse_commit (repo, to, 0, &to_reachable_objects,
                                     cancellable, error))
     goto out;
 
