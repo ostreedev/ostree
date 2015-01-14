@@ -157,6 +157,12 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
 
       if (opt_empty)
         {
+          if (opt_from_rev)
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "Cannot specify both --empty and --from=REV");
+              goto out;
+            }
           from_source = NULL;
         }
       else if (opt_from_rev == NULL)
