@@ -62,6 +62,7 @@ ostree --repo=repo static-delta list
 origrev=$(ostree --repo=repo rev-parse test^)
 newrev=$(ostree --repo=repo rev-parse test)
 ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev}
+ostree --repo=repo static-delta list | grep ${origrev} | grep ${newrev} || exit 1
 
 origstart=$(echo ${origrev} | dd bs=1 count=2 2>/dev/null)
 origend=$(echo ${origrev} | dd bs=1 skip=2 2>/dev/null)
