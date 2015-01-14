@@ -281,7 +281,6 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
           goto out;
         }
       op = &op_dispatch_table[opcode-1];
-      g_printerr ("dispatch %u\n", opcode-1);
       state->oplen--;
       state->opdata++;
       if (!op->func (repo, state, cancellable, error))
@@ -505,8 +504,6 @@ on_content_written (GObject          *src,
   if (!ostree_repo_write_content_finish ((OstreeRepo*)src, result, NULL, error))
     goto out;
 
-  g_print ("Wrote content object '%s'\n", writedata->checksum);
-
  out:
   state->outstanding_content_writes--;
   if (state->outstanding_content_writes == 0)
@@ -647,9 +644,6 @@ dispatch_close (OstreeRepo                 *repo,
       if (!ostree_repo_write_metadata (repo, state->output_objtype, tmp_checksum,
                                        metadata, NULL, cancellable, error))
         goto out;
-
-      g_print ("Wrote metadata object '%s'\n",
-               tmp_checksum);
     }
   else
     {
