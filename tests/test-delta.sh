@@ -68,6 +68,10 @@ ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev}
 
 ostree --repo=repo static-delta list | grep ${origrev}-${newrev} || exit 1
 
+if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --empty 2>>err.txt; then
+    assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
+fi
+
 origstart=$(echo ${origrev} | dd bs=1 count=2 2>/dev/null)
 origend=$(echo ${origrev} | dd bs=1 skip=2 2>/dev/null)
 assert_has_dir repo/deltas/${origstart}/${origend}-${newrev}
