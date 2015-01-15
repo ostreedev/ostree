@@ -52,7 +52,7 @@ typedef struct {
 
   OstreeObjectType output_objtype;
   const guint8   *output_target;
-  GFile          *output_tmp_path;
+  char           *output_tmp_path;
   GOutputStream  *output_tmp_stream;
   const guint8   *input_target_csum;
 
@@ -148,9 +148,9 @@ open_output_target (StaticDeltaExecutionState   *state,
 
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
-      if (!gs_file_open_in_tmpdir (state->repo->tmp_dir, 0644,
-                                   &state->output_tmp_path, &state->output_tmp_stream,
-                                   cancellable, error))
+      if (!gs_file_open_in_tmpdir_at (state->repo->tmp_dir_fd, 0644,
+                                      &state->output_tmp_path, &state->output_tmp_stream,
+                                      cancellable, error))
         goto out;
     }
   else
@@ -298,7 +298,7 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
   ret = TRUE;
  out:
   g_clear_pointer (&state->content_writing_context, g_main_context_unref);
-  g_clear_object (&state->output_tmp_path);
+  g_clear_pointer (&state->output_tmp_path, g_free);
   g_clear_object (&state->output_tmp_stream);
   return ret;
 }
@@ -633,12 +633,20 @@ dispatch_close (OstreeRepo                 *repo,
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
       gs_unref_variant GVariant *metadata = NULL;
+      gs_fd_close int fd = -1;
       
       g_assert (state->output_tmp_path);
 
-      if (!ot_util_variant_map (state->output_tmp_path,
-                                ostree_metadata_variant_type (state->output_objtype),
-                                TRUE, &metadata, error))
+      fd = openat (state->repo->tmp_dir_fd, state->output_tmp_path, O_RDONLY | O_CLOEXEC);
+      if (fd == -1)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      if (!ot_util_variant_map_fd (fd, 0,
+                                   ostree_metadata_variant_type (state->output_objtype),
+                                   TRUE, &metadata, error))
         goto out;
 
       if (!ostree_repo_write_metadata (repo, state->output_objtype, tmp_checksum,
@@ -653,7 +661,7 @@ dispatch_close (OstreeRepo                 *repo,
     }
 
   state->output_target = NULL;
-  g_clear_object (&state->output_tmp_path);
+  g_clear_pointer (&state->output_tmp_path, g_free);
 
   state->object_start = TRUE;
   state->checksum_index++;
