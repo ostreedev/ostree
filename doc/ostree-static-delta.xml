@@ -49,7 +49,13 @@ Boston, MA 02111-1307, USA.
 
     <refsynopsisdiv>
             <cmdsynopsis>
-                <command>ostree static-delta</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="opt">REV</arg>
+                <command>ostree static-delta list</command>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree static-delta generate</command> <arg choice="req">--to=REV</arg> <arg choice="opt" rep="repeat">OPTIONS</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree static-delta apply-offline</command> <arg choice="req">PATH</arg>
             </cmdsynopsis>
     </refsynopsisdiv>
 
@@ -57,12 +63,12 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            If no options are selected, this command will list the static deltas in this repo.  The options allow creating and applying delta fles.
+            List and manipulate static delta files.
         </para>
     </refsect1>
 
     <refsect1>
-        <title>Options</title>
+        <title>'Generate' Options</title>
 
         <variablelist>
             <varlistentry>
@@ -77,17 +83,42 @@ Boston, MA 02111-1307, USA.
                 <term><option>--to</option>="REV"</term>
 
                 <listitem><para>
-                    Create delta to revision REV.
+                    Create delta to revision REV.  (This option is required.)
                 </para></listitem>
             </varlistentry>
 
             <varlistentry>
-                <term><option>--apply</option>="PATH"</term>
+                <term><option>--empty</option></term>
 
                 <listitem><para>
-                    Apply delta from PATH.
+                    Create delta from scratch.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-sign</option>=KEYID</term>
+
+                <listitem><para>
+                    GPG Key ID to sign the delta with.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-homedir</option>=HOMEDIR</term>
+
+                <listitem><para>
+                    GPG Homedir to use when looking for keyrings.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--max-usize</option>=SIZE</term>
+
+                <listitem><para>
+                    Maximum uncompressed size in megabytes.
+                </para></listitem>
+            </varlistentry>
+
         </variablelist>
     </refsect1>
 
