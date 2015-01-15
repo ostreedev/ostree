@@ -54,8 +54,10 @@ typedef enum {
 
 GType   _ostree_fetcher_get_type (void) G_GNUC_CONST;
 
-OstreeFetcher *_ostree_fetcher_new (GFile                     *tmpdir,
-                                   OstreeFetcherConfigFlags   flags);
+OstreeFetcher *_ostree_fetcher_new (int                     tmpdir_dfd,
+                                    OstreeFetcherConfigFlags   flags);
+
+int  _ostree_fetcher_get_dfd (OstreeFetcher *fetcher);
 
 void _ostree_fetcher_set_proxy (OstreeFetcher *fetcher,
                                 const char    *proxy);
@@ -76,7 +78,7 @@ void _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self
                                                     GAsyncReadyCallback    callback,
                                                     gpointer               user_data);
 
-GFile *_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
+char *_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher *self,
                                                        GAsyncResult  *result,
                                                        GError       **error);
 

@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "ostree-metalink.h"
+#include <gio/gfiledescriptorbased.h>
 
 #include "otutil.h"
 #include "libgsystem.h"
@@ -72,7 +73,7 @@ typedef struct
   char *verification_sha256;
   char *verification_sha512;
 
-  GFile *result;
+  char *result;
 
   char *last_metalink_error;
   guint current_url_index;
@@ -429,34 +430,46 @@ on_fetched_url (GObject              *src,
   GTask *task = user_data;
   OstreeMetalinkRequest *self = g_task_get_task_data (task);
   GError *local_error = NULL;
-  gs_unref_object GFile *result = NULL;
-  gs_unref_object GFileInfo *finfo = NULL;
+  struct stat stbuf;
+  int parent_dfd = _ostree_fetcher_get_dfd (self->metalink->fetcher);
+  gs_unref_object GInputStream *instream = NULL;
+  gs_free char *result = NULL;
+  GChecksum *checksum = NULL;
 
   result = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)src, res, &local_error);
   if (!result)
     goto out;
-  
-  finfo = g_file_query_info (result, OSTREE_GIO_FAST_QUERYINFO, 0,
-                             g_task_get_cancellable (task), &local_error);
-  if (!finfo)
-    goto out;
 
-  if (g_file_info_get_size (finfo) != self->size)
+  if (!ot_openat_read_stream (parent_dfd, result, FALSE,
+                              &instream, NULL, &local_error))
+    goto out;
+  
+  if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)instream), &stbuf) != 0)
+    {
+      gs_set_error_from_errno (&local_error, errno);
+      goto out;
+    }
+
+  if (stbuf.st_size != self->size)
     {
       g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Expected size is %" G_GUINT64_FORMAT " bytes but content is %" G_GUINT64_FORMAT " bytes",
-                   self->size, g_file_info_get_size (finfo));
+                   self->size, stbuf.st_size);
       goto out;
     }
   
   if (self->verification_sha512)
     {
-      gs_free char *actual = ot_checksum_file (result, G_CHECKSUM_SHA512,
-                                               g_task_get_cancellable (task),
-                                               &local_error);
-      
-      if (!actual)
+      const char *actual;
+
+      checksum = g_checksum_new (G_CHECKSUM_SHA512);
+
+      if (!ot_gio_splice_update_checksum (NULL, instream, checksum,
+                                          g_task_get_cancellable (task),
+                                          &local_error))
         goto out;
+      
+      actual = g_checksum_get_string (checksum);
 
       if (strcmp (self->verification_sha512, actual) != 0)
         {
@@ -466,15 +479,18 @@ on_fetched_url (GObject              *src,
           goto out;
         }
     }
-
-  if (self->verification_sha256)
+  else if (self->verification_sha256)
     {
-      gs_free char *actual = ot_checksum_file (result, G_CHECKSUM_SHA256,
-                                               g_task_get_cancellable (task),
-                                               &local_error);
-      
-      if (!actual)
+      const char *actual;
+
+      checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+      if (!ot_gio_splice_update_checksum (NULL, instream, checksum,
+                                          g_task_get_cancellable (task),
+                                          &local_error))
         goto out;
+
+      actual = g_checksum_get_string (checksum);
 
       if (strcmp (self->verification_sha256, actual) != 0)
         {
@@ -486,6 +502,8 @@ on_fetched_url (GObject              *src,
     }
 
  out:
+  if (checksum)
+    g_checksum_free (checksum);
   if (local_error)
     {
       g_free (self->last_metalink_error);
@@ -498,7 +516,8 @@ on_fetched_url (GObject              *src,
     }
   else
     {
-      self->result = g_object_ref (result);
+      self->result = result;
+      result = NULL; /* Transfer ownership */
       g_task_return_boolean (self->task, TRUE);
     }
 }
@@ -584,7 +603,7 @@ ostree_metalink_request_unref (gpointer data)
 {
   OstreeMetalinkRequest  *request = data;
   g_object_unref (request->metalink);
-  g_clear_object (&request->result);
+  g_free (request->result);
   g_free (request->last_metalink_error);
   g_ptr_array_unref (request->urls);
   g_free (request);
@@ -601,7 +620,7 @@ static const GMarkupParser metalink_parser = {
 typedef struct
 {
   SoupURI               **out_target_uri;
-  GFile                 **out_data;
+  char                  **out_data;
   gboolean              success;
   GError                **error;
   GMainLoop             *loop;
@@ -611,7 +630,7 @@ static gboolean
 ostree_metalink_request_finish (OstreeMetalink         *self,
                                 GAsyncResult           *result,
                                 SoupURI               **out_target_uri,
-                                GFile                 **out_data,
+                                char                  **out_data,
                                 GError                **error)
 {
   OstreeMetalinkRequest *request;
@@ -624,7 +643,7 @@ ostree_metalink_request_finish (OstreeMetalink         *self,
     {
       g_assert_cmpint (request->current_url_index, <, request->urls->len);
       *out_target_uri = request->urls->pdata[request->current_url_index];
-      *out_data = g_object_ref (request->result);
+      *out_data = g_strdup (request->result);
       return TRUE;
     }
   else
@@ -668,7 +687,7 @@ gboolean
 _ostree_metalink_request_sync (OstreeMetalink        *self,
                                GMainLoop             *loop,
                                SoupURI               **out_target_uri,
-                               GFile                 **out_data,
+                               char                  **out_data,
                                SoupURI               **fetching_sync_uri,
                                GCancellable          *cancellable,
                                GError                **error)

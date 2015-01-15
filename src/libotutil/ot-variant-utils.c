@@ -167,7 +167,7 @@ variant_map_data_destroy (gpointer data)
 }
 
 gboolean
-ot_util_variant_map_fd (GFileDescriptorBased  *stream,
+ot_util_variant_map_fd (int                    fd,
                         goffset                start,
                         const GVariantType    *type,
                         gboolean               trusted,
@@ -180,12 +180,14 @@ ot_util_variant_map_fd (GFileDescriptorBased  *stream,
   VariantMapData *mdata = NULL;
   gsize len;
 
-  if (!gs_stream_fstat (stream, &stbuf, NULL, error))
-    goto out;
+  if (fstat (fd, &stbuf) != 0)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
 
   len = stbuf.st_size - start;
-  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, 
-              g_file_descriptor_based_get_fd (stream), start);
+  map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, fd, start);
   if (!map)
     {
       gs_set_error_from_errno (error, errno);

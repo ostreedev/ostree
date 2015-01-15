@@ -29,11 +29,14 @@
 #include "ostree-metalink.h"
 #include "otutil.h"
 
+#include <gio/gunixinputstream.h>
+
 #define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
 #define OSTREE_REPO_PULL_METADATA_PRIORITY (OSTREE_REPO_PULL_CONTENT_PRIORITY - 100)
 
 typedef struct {
   OstreeRepo   *repo;
+  int           tmpdir_dfd;
   OstreeRepoPullFlags flags;
   char         *remote_name;
   OstreeRepoMode remote_mode;
@@ -569,7 +572,7 @@ content_fetch_on_complete (GObject        *object,
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GInputStream *file_in = NULL;
   gs_unref_object GInputStream *object_input = NULL;
-  gs_unref_object GFile *temp_path = NULL;
+  gs_free char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
 
@@ -582,12 +585,12 @@ content_fetch_on_complete (GObject        *object,
 
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
   
-  if (!ostree_content_file_parse (TRUE, temp_path, FALSE,
-                                  &file_in, &file_info, &xattrs,
-                                  cancellable, error))
+  if (!ostree_content_file_parse_at (TRUE, pull_data->tmpdir_dfd, temp_path, FALSE,
+                                     &file_in, &file_info, &xattrs,
+                                     cancellable, error))
     {
       /* If it appears corrupted, delete it */
-      (void) gs_file_unlink (temp_path, NULL, NULL);
+      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
       goto out;
     }
 
@@ -595,7 +598,7 @@ content_fetch_on_complete (GObject        *object,
    * a reference to the fd.  If we fail to write later, then
    * the temp space will be cleaned up.
    */
-  (void) gs_file_unlink (temp_path, NULL, NULL);
+  (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
 
   if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
                                           &object_input, &length,
@@ -677,11 +680,12 @@ meta_fetch_on_complete (GObject           *object,
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_object GFile *temp_path = NULL;
+  gs_free char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
   GError *local_error = NULL;
   GError **error = &local_error;
+  gs_fd_close int fd = -1;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_debug ("fetch of %s%s complete", ostree_object_to_string (checksum, objtype),
@@ -702,14 +706,21 @@ meta_fetch_on_complete (GObject           *object,
       goto out;
     }
 
+  fd = openat (pull_data->tmpdir_dfd, temp_path, O_RDONLY | O_CLOEXEC);
+  if (fd == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
   if (fetch_data->is_detached_meta)
     {
-      if (!ot_util_variant_map (temp_path, G_VARIANT_TYPE ("a{sv}"),
-                                FALSE, &metadata, error))
+      if (!ot_util_variant_map_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
+                                   FALSE, &metadata, error))
         goto out;
 
       /* Now delete it, see comment in corresponding content fetch path */
-      (void) gs_file_unlink (temp_path, NULL, NULL);
+      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
 
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
                                                        pull_data->cancellable, error))
@@ -719,11 +730,11 @@ meta_fetch_on_complete (GObject           *object,
     }
   else
     {
-      if (!ot_util_variant_map (temp_path, ostree_metadata_variant_type (objtype),
-                                FALSE, &metadata, error))
+      if (!ot_util_variant_map_fd (fd, 0, ostree_metadata_variant_type (objtype),
+                                   FALSE, &metadata, error))
         goto out;
 
-      (void) gs_file_unlink (temp_path, NULL, NULL);
+      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
 
       /* Write the commitpartial file now while we're still fetching data */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -797,12 +808,13 @@ static_deltapart_fetch_on_complete (GObject           *object,
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_object GFile *temp_path = NULL;
+  gs_free char *temp_path = NULL;
   gs_unref_object GInputStream *in = NULL;
   gs_free char *actual_checksum = NULL;
   gs_free guint8 *csum = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
+  gs_fd_close int fd = -1;
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
@@ -810,10 +822,14 @@ static_deltapart_fetch_on_complete (GObject           *object,
   if (!temp_path)
     goto out;
 
-  in = (GInputStream*)g_file_read (temp_path, pull_data->cancellable, error);
-  if (!in)
-    goto out;
-  
+  fd = openat (pull_data->tmpdir_dfd, temp_path, O_RDONLY | O_CLOEXEC);
+  if (fd == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+  in = g_unix_input_stream_new (fd, FALSE);
+
   /* TODO - consider making async */
   if (!ot_gio_checksum_stream (in, &csum, pull_data->cancellable, error))
     goto out;
@@ -832,10 +848,14 @@ static_deltapart_fetch_on_complete (GObject           *object,
   (void) g_input_stream_close (in, NULL, NULL);
 
   {
-    gs_unref_bytes GBytes *delta_data
-      = gs_file_map_readonly (temp_path, pull_data->cancellable, error);
-    if (!delta_data)
+    GMappedFile *mfile = NULL;
+    gs_unref_bytes GBytes *delta_data = NULL;
+
+    mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+    if (!mfile)
       goto out;
+    delta_data = g_mapped_file_get_bytes (mfile);
+    g_mapped_file_unref (mfile);
 
     _ostree_static_delta_part_execute_async (pull_data->repo,
                                              fetch_data->objects,
@@ -1610,8 +1630,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (tls_permissive)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
-  pull_data->fetcher = _ostree_fetcher_new (pull_data->repo->tmp_dir,
-                                           fetcher_flags);
+  pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
+  pull_data->fetcher = _ostree_fetcher_new (pull_data->tmpdir_dfd, fetcher_flags);
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
@@ -1711,9 +1731,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      gs_unref_object GFile *metalink_data = NULL;
+      gs_free char *metalink_data = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
       SoupURI *target_uri = NULL;
+      gs_fd_close int fd = -1;
       
       if (!metalink_uri)
         {
@@ -1741,8 +1762,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_set_path (pull_data->base_uri, repo_base);
       }
 
-      if (!ot_util_variant_map (metalink_data, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
-                                &pull_data->summary, error))
+      fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
+      if (fd == -1)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      if (!ot_util_variant_map_fd (fd, 0, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
+                                   &pull_data->summary, error))
         goto out;
     }
 

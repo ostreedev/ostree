@@ -53,7 +53,7 @@ SoupURI *_ostree_metalink_get_uri (OstreeMetalink         *self);
 gboolean _ostree_metalink_request_sync (OstreeMetalink        *self,
                                         GMainLoop             *loop,
                                         SoupURI               **out_target_uri,
-                                        GFile                 **out_data,
+                                        char                  **out_data,
                                         SoupURI               **fetching_sync_uri,
                                         GCancellable          *cancellable,
                                         GError                **error);

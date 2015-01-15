@@ -23,6 +23,7 @@
 #include "config.h"
 
 #include <gio/gfiledescriptorbased.h>
+#include <gio/gunixoutputstream.h>
 
 #include "ostree-fetcher.h"
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
@@ -50,7 +51,7 @@ typedef struct {
 
   gboolean is_stream;
   GInputStream *request_body;
-  GFile *out_tmpfile;
+  char *out_tmpfile;
   GOutputStream *out_stream;
 
   guint64 max_size;
@@ -83,7 +84,6 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
 
   soup_uri_free (pending->uri);
   g_clear_object (&pending->self);
-  g_clear_object (&pending->out_tmpfile);
   g_clear_object (&pending->request);
   g_clear_object (&pending->request_body);
   g_clear_object (&pending->out_stream);
@@ -95,7 +95,7 @@ struct OstreeFetcher
 {
   GObject parent_instance;
 
-  GFile *tmpdir;
+  int tmpdir_dfd;
 
   GTlsCertificate *client_cert;
 
@@ -126,7 +126,6 @@ _ostree_fetcher_finalize (GObject *object)
   self = OSTREE_FETCHER (object);
 
   g_clear_object (&self->session);
-  g_clear_object (&self->tmpdir);
   g_clear_object (&self->client_cert);
 
   g_hash_table_destroy (self->sending_messages);
@@ -216,16 +215,22 @@ _ostree_fetcher_init (OstreeFetcher *self)
 }
 
 OstreeFetcher *
-_ostree_fetcher_new (GFile                    *tmpdir,
+_ostree_fetcher_new (int                      tmpdir_dfd,
                     OstreeFetcherConfigFlags  flags)
 {
   OstreeFetcher *self = (OstreeFetcher*)g_object_new (OSTREE_TYPE_FETCHER, NULL);
 
-  self->tmpdir = g_object_ref (tmpdir);
+  self->tmpdir_dfd = tmpdir_dfd;
   if ((flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
     g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
  
   return self;
+}
+
+int
+_ostree_fetcher_get_dfd (OstreeFetcher *fetcher)
+{
+  return fetcher->tmpdir_dfd;
 }
 
 void
@@ -296,8 +301,7 @@ finish_stream (OstreeFetcherPendingURI *pending,
                GError                 **error)
 {
   gboolean ret = FALSE;
-  goffset filesize;
-  gs_unref_object GFileInfo *file_info = NULL;
+  struct stat stbuf;
 
   /* Close it here since we do an async fstat(), where we don't want
    * to hit a bad fd.
@@ -310,11 +314,11 @@ finish_stream (OstreeFetcherPendingURI *pending,
     }
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
-  file_info = g_file_query_info (pending->out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 pending->cancellable, error);
-  if (!file_info)
-    goto out;
+  if (fstatat (pending->self->tmpdir_dfd, pending->out_tmpfile, &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
 
   /* Now that we've finished downloading, continue with other queued
    * requests.
@@ -322,15 +326,14 @@ finish_stream (OstreeFetcherPendingURI *pending,
   pending->self->outstanding--;
   ostree_fetcher_process_pending_queue (pending->self);
 
-  filesize = g_file_info_get_size (file_info);
-  if (filesize < pending->content_length)
+  if (stbuf.st_size < pending->content_length)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Download incomplete");
       goto out;
     }
   else
     {
-      pending->self->total_downloaded += g_file_info_get_size (file_info);
+      pending->self->total_downloaded += stbuf.st_size;
     }
 
   ret = TRUE;
@@ -489,10 +492,13 @@ on_request_sent (GObject        *object,
 
   if (!pending->is_stream)
     {
-      pending->out_stream = G_OUTPUT_STREAM (g_file_append_to (pending->out_tmpfile, G_FILE_CREATE_NONE,
-                                                               pending->cancellable, &local_error));
-      if (!pending->out_stream)
-        goto out;
+      int fd = openat (pending->self->tmpdir_dfd, pending->out_tmpfile, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0600);
+      if (fd == -1)
+        {
+          gs_set_error_from_errno (&local_error, errno);
+          goto out;
+        }
+      pending->out_stream = g_unix_output_stream_new (fd, TRUE);
       g_hash_table_add (pending->self->output_stream_set, g_object_ref (pending->out_stream));
       g_input_stream_read_bytes_async (pending->request_body, 8192, G_PRIORITY_DEFAULT,
                                        pending->cancellable, on_stream_read, pending);
@@ -527,7 +533,6 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      gpointer               source_tag)
 {
   OstreeFetcherPendingURI *pending = g_new0 (OstreeFetcherPendingURI, 1);
-  GFile *out_tmpfile = NULL;
   GError *local_error = NULL;
 
   pending->refcount = 1;
@@ -560,26 +565,38 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
     }
   else
     {
-      gs_unref_object GFileInfo *file_info = NULL;
       gs_free char *uristring = soup_uri_to_string (uri, FALSE);
-      gs_free char *hash = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
-      out_tmpfile = g_file_get_child (self->tmpdir, hash);
-      if (!ot_gfile_query_info_allow_noent (out_tmpfile, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            &file_info, cancellable, &local_error))
-        goto fail;
+      gs_free char *tmpfile = NULL;
+      struct stat stbuf;
+      gboolean exists;
+
+      tmpfile = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
+
+      if (fstatat (self->tmpdir_dfd, tmpfile, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
+        exists = TRUE;
+      else
+        {
+          if (errno == ENOENT)
+            exists = FALSE;
+          else
+            {
+              gs_set_error_from_errno (&local_error, errno);
+              goto fail;
+            }
+        }
 
       if (SOUP_IS_REQUEST_HTTP (pending->request))
         {
           SoupMessage *msg;
           msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
-          if (file_info && g_file_info_get_size (file_info) > 0)
-            soup_message_headers_set_range (msg->request_headers, g_file_info_get_size (file_info), -1);
+          if (exists && stbuf.st_size > 0)
+            soup_message_headers_set_range (msg->request_headers, stbuf.st_size, -1);
           g_hash_table_insert (self->message_to_request,
                                soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
                                pending);
         }
-      pending->out_tmpfile = out_tmpfile;
+      pending->out_tmpfile = tmpfile;
+      tmpfile = NULL; /* Transfer ownership */
 
       g_queue_insert_sorted (&self->pending_queue, pending, pending_uri_compare, NULL);
       ostree_fetcher_process_pending_queue (self);
@@ -612,7 +629,7 @@ _ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
                                        _ostree_fetcher_request_uri_with_partial_async);
 }
 
-GFile *
+char *
 _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
                                                 GAsyncResult          *result,
                                                 GError               **error)
@@ -627,7 +644,7 @@ _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
     return NULL;
   pending = g_simple_async_result_get_op_res_gpointer (simple);
 
-  return g_object_ref (pending->out_tmpfile);
+  return g_strdup (pending->out_tmpfile);
 }
 
 static void

@@ -48,7 +48,7 @@ gboolean ot_util_variant_map (GFile *src,
                               GVariant **out_variant,
                               GError  **error);
 
-gboolean ot_util_variant_map_fd (GFileDescriptorBased *stream,
+gboolean ot_util_variant_map_fd (int                  fd,
                                  goffset              offset,
                                  const GVariantType  *type,
                                  gboolean             trusted,
