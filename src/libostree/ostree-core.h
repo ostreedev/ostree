@@ -229,6 +229,16 @@ gboolean ostree_content_file_parse (gboolean                compressed,
                                     GCancellable           *cancellable,
                                     GError                **error);
 
+gboolean ostree_content_file_parse_at (gboolean                compressed,
+                                       int                     parent_dfd,
+                                       const char             *path,
+                                       gboolean                trusted,
+                                       GInputStream          **out_input,
+                                       GFileInfo             **out_file_info,
+                                       GVariant              **out_xattrs,
+                                       GCancellable           *cancellable,
+                                       GError                **error);
+
 gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GFileInfo          *file_info,
                                             GVariant           *xattrs,

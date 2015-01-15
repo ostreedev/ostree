@@ -574,6 +574,60 @@ ostree_content_stream_parse (gboolean                compressed,
 }
 
 /**
+ * ostree_content_file_parse_at:
+ * @compressed: Whether or not the stream is zlib-compressed
+ * @parent_dfd: Directory file descriptor
+ * @path: Subpath
+ * @trusted: If %TRUE, assume the content has been validated
+ * @out_input: (out): The raw file content stream
+ * @out_file_info: (out): Normal metadata 
+ * @out_xattrs: (out): Extended attributes
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * A thin wrapper for ostree_content_stream_parse(); this function
+ * converts an object content stream back into components.
+ */
+gboolean
+ostree_content_file_parse_at (gboolean                compressed,
+                              int                     parent_dfd,
+                              const char             *path,
+                              gboolean                trusted,
+                              GInputStream          **out_input,
+                              GFileInfo             **out_file_info,
+                              GVariant              **out_xattrs,
+                              GCancellable           *cancellable,
+                              GError                **error)
+{
+  gboolean ret = FALSE;
+  struct stat stbuf;
+  gs_unref_object GInputStream *file_input = NULL;
+  gs_unref_object GInputStream *ret_input = NULL;
+  gs_unref_object GFileInfo *ret_file_info = NULL;
+  gs_unref_variant GVariant *ret_xattrs = NULL;
+
+  if (!ot_openat_read_stream (parent_dfd, path, TRUE, &file_input,
+                              cancellable, error))
+    goto out;
+      
+  if (!gs_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, cancellable, error))
+    goto out;
+  
+  if (!ostree_content_stream_parse (compressed, file_input, stbuf.st_size, trusted,
+                                    out_input ? &ret_input : NULL,
+                                    &ret_file_info, &ret_xattrs,
+                                    cancellable, error))
+    goto out;
+      
+  ret = TRUE;
+  ot_transfer_out_value (out_input, &ret_input);
+  ot_transfer_out_value (out_file_info, &ret_file_info);
+  ot_transfer_out_value (out_xattrs, &ret_xattrs);
+ out:
+  return ret;
+}
+
+/**
  * ostree_content_file_parse:
  * @compressed: Whether or not the stream is zlib-compressed
  * @content_path: Path to file containing content
@@ -597,53 +651,11 @@ ostree_content_file_parse (gboolean                compressed,
                            GCancellable           *cancellable,
                            GError                **error)
 {
-  gboolean ret = FALSE;
-  guint64 length;
-  struct stat stbuf;
-  gs_unref_object GInputStream *file_input = NULL;
-  gs_unref_object GInputStream *ret_input = NULL;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
-
-  if (out_input)
-    {
-      file_input = (GInputStream*)gs_file_read_noatime (content_path, cancellable, error);
-      if (!file_input)
-        goto out;
-      
-      if (!gs_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, cancellable, error))
-        goto out;
-
-      length = stbuf.st_size;
-    }
-  else
-    {
-      GMappedFile *mmaped;
-      GBytes *bytes;
-
-      mmaped = gs_file_map_noatime (content_path, cancellable, error);
-      if (!mmaped)
-        goto out;
-      bytes = g_mapped_file_get_bytes (mmaped);
-      g_mapped_file_unref (mmaped);
-      mmaped = NULL;
-      file_input = g_memory_input_stream_new_from_bytes (bytes);
-      length = g_bytes_get_size (bytes);
-      g_bytes_unref (bytes);
-    }
-
-  if (!ostree_content_stream_parse (compressed, file_input, length, trusted,
-                                    out_input ? &ret_input : NULL,
-                                    &ret_file_info, &ret_xattrs,
-                                    cancellable, error))
-    goto out;
-      
-  ret = TRUE;
-  ot_transfer_out_value (out_input, &ret_input);
-  ot_transfer_out_value (out_file_info, &ret_file_info);
-  ot_transfer_out_value (out_xattrs, &ret_xattrs);
- out:
-  return ret;
+  return ostree_content_file_parse_at (compressed, AT_FDCWD,
+                                       gs_file_get_path_cached (content_path),
+                                       trusted,
+                                       out_input, out_file_info, out_xattrs,
+                                       cancellable, error);
 }
 
 /**
