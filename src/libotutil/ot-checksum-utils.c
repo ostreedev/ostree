@@ -92,7 +92,7 @@ ot_gio_splice_update_checksum (GOutputStream  *out,
         }
       while (bytes_read > 0);
     }
-  else
+  else if (out != NULL)
     {
       if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
         goto out;
