@@ -857,6 +857,12 @@ static_deltapart_fetch_on_complete (GObject           *object,
     delta_data = g_mapped_file_get_bytes (mfile);
     g_mapped_file_unref (mfile);
 
+    /* Unlink now while we're holding an open fd, so that on success
+     * or error, the file will be gone.  This is particularly
+     * important if say we hit e.g. ENOSPC.
+     */
+    (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0); 
+
     _ostree_static_delta_part_execute_async (pull_data->repo,
                                              fetch_data->objects,
                                              delta_data,
