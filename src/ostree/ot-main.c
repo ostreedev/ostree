@@ -358,3 +358,17 @@ ostree_admin_option_context_parse (GOptionContext *context,
 out:
   return success;
 }
+
+gboolean
+ostree_ensure_repo_writable (OstreeRepo *repo,
+                             GError **error)
+{
+  gboolean ret;
+
+  ret = ostree_repo_is_writable (repo, error);
+
+  g_prefix_error (error, "Cannot write to repository: ");
+
+  return ret;
+}
+
