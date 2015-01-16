@@ -51,3 +51,5 @@ gboolean ostree_admin_option_context_parse (GOptionContext *context,
                                             int *argc, char ***argv,
                                             OstreeSysroot **out_sysroot,
                                             GCancellable *cancellable, GError **error);
+
+gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
