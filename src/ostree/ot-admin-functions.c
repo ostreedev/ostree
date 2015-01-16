@@ -71,3 +71,30 @@ ot_admin_checksum_version (GVariant *checksum)
 
   return g_strdup (ret);
 }
+
+OstreeDeployment *
+ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
+                                 int             index,
+                                 GError        **error)
+
+{
+  gs_unref_ptrarray GPtrArray *current_deployments =
+    ostree_sysroot_get_deployments (sysroot);
+
+  if (index < 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "Invalid index %d", index);
+      return NULL;
+    }
+  if (index >= current_deployments->len)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "Out of range deployment index %d, expected < %d", index,
+                   current_deployments->len);
+      return NULL;
+    }
+  
+  return g_object_ref (current_deployments->pdata[index]);
+}
+
