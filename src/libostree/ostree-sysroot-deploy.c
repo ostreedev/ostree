@@ -949,14 +949,28 @@ merge_configuration (OstreeSysroot         *sysroot,
   return ret;
 }
 
-static gboolean
-write_origin_file (OstreeSysroot         *sysroot,
-                   OstreeDeployment      *deployment,
-                   GCancellable      *cancellable,
-                   GError           **error)
+/**
+ * ostree_sysroot_write_origin_file:
+ * @sysroot: System root
+ * @deployment: Deployment
+ * @new_origin: (allow-none): Origin content
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Immediately replace the origin file of the referenced @deployment
+ * with the contents of @new_origin.  If @new_origin is %NULL,
+ * this function will write the current origin of @deployment.
+ */
+gboolean
+ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
+                                  OstreeDeployment      *deployment,
+                                  GKeyFile              *new_origin,
+                                  GCancellable          *cancellable,
+                                  GError               **error)
 {
   gboolean ret = FALSE;
-  GKeyFile *origin = ostree_deployment_get_origin (deployment);
+  GKeyFile *origin =
+    new_origin ? new_origin : ostree_deployment_get_origin (deployment);
 
   if (origin)
     {
@@ -1879,7 +1893,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       goto out;
     }
 
-  if (!write_origin_file (self, new_deployment, cancellable, error))
+  if (!ostree_sysroot_write_origin_file (self, new_deployment, NULL,
+                                         cancellable, error))
     {
       g_prefix_error (error, "Writing out origin file: ");
       goto out;
