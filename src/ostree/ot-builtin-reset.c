@@ -100,6 +100,9 @@ ostree_builtin_reset (int           argc,
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (argc <= 2)
     {
       ot_util_usage_error (context, "A ref and commit argument is required", error);
