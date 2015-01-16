@@ -68,6 +68,7 @@ ot_editor_prompt (OstreeRepo *repo,
   GOutputStream *output;
   const char *editor;
   char *ret = NULL;
+  gs_free gchar *args = NULL;
 
   editor = get_editor ();
   if (editor == NULL)
@@ -86,7 +87,11 @@ ot_editor_prompt (OstreeRepo *repo,
       !g_io_stream_close (G_IO_STREAM (io), cancellable, error))
     goto out;
 
-  ctx = gs_subprocess_context_newv (editor, gs_file_get_path_cached (file), NULL);
+  {
+    gs_free gchar *quoted_file = g_shell_quote (gs_file_get_path_cached (file));
+    args = g_strconcat (editor, " ", quoted_file, NULL);
+  }
+  ctx = gs_subprocess_context_newv ("/bin/sh", "-c", args, NULL);
   gs_subprocess_context_set_stdin_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
   gs_subprocess_context_set_stdout_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
   gs_subprocess_context_set_stderr_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
