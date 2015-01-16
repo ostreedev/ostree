@@ -62,20 +62,10 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
   deploy_index_str = argv[1];
   deploy_index = atoi (deploy_index_str);
 
-  if (deploy_index < 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Invalid index %d", deploy_index);
-      goto out;
-    }
-  if (deploy_index >= current_deployments->len)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Out of range index %d, expected < %d", deploy_index, current_deployments->len);
-      goto out;
-    }
-  
-  target_deployment = g_object_ref (current_deployments->pdata[deploy_index]);
+  target_deployment = ot_admin_get_indexed_deployment (sysroot, deploy_index, error);
+  if (!target_deployment)
+    goto out;
+
   if (target_deployment == ostree_sysroot_get_booted_deployment (sysroot))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,

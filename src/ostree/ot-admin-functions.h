@@ -36,5 +36,11 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
 char *
 ot_admin_checksum_version (GVariant *checksum);
 
+OstreeDeployment *
+ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
+                                 int             index,
+                                 GError        **error);
+
+
 G_END_DECLS
 
