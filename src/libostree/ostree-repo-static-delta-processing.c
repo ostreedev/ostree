@@ -265,6 +265,11 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
       guint8 opcode;
       OstreeStaticDeltaOperation *op;
 
+      /* Limit the number of outstanding writes to 1 to prevent too many open files
+         at the same time.  */
+      while (state->outstanding_content_writes > 1)
+        g_main_context_iteration (state->content_writing_context, TRUE);
+
       if (state->object_start)
         {
           if (!open_output_target (state, cancellable, error))
