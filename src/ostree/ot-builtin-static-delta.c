@@ -138,6 +138,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (argc >= 3 && opt_to_rev == NULL)
     opt_to_rev = argv[2];
 
@@ -239,6 +242,9 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
 
   context = g_option_context_new ("DELTA - Apply static delta file");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+    goto out;
+
+  if (!ostree_ensure_repo_writable (repo, error))
     goto out;
 
   if (argc < 3)

@@ -55,6 +55,9 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!opt_no_prune && !ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (opt_refs_only)
     pruneflags |= OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
   if (opt_no_prune)

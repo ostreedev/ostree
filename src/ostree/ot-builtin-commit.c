@@ -317,6 +317,9 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (opt_statoverride_file)
     {
       if (!parse_statoverride_file (&mode_adds, cancellable, error))

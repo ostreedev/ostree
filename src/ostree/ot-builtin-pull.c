@@ -57,6 +57,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (argc < 2)
     {
       ot_util_usage_error (context, "REMOTE must be specified", error);

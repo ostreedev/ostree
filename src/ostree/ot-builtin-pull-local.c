@@ -58,6 +58,9 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
+  if (!ostree_ensure_repo_writable (repo, error))
+    goto out;
+
   if (argc < 2)
     {
       gchar *help = g_option_context_get_help (context, TRUE, NULL);
