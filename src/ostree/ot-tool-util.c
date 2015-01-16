@@ -51,3 +51,21 @@ ot_parse_boolean (const char  *option_name,
 
   return TRUE;
 }
+
+gboolean
+ot_parse_keyvalue (const char  *keyvalue,
+                   char       **out_key,
+                   char       **out_value,
+                   GError     **error)
+{
+  const char *eq = strchr (keyvalue, '=');
+  if (!eq)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Missing '=' in KEY=VALUE for --set");
+      return FALSE;
+    }
+  *out_key = g_strndup (keyvalue, eq - keyvalue);
+  *out_value = g_strdup (eq + 1);
+  return TRUE;
+}

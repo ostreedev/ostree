@@ -25,6 +25,7 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "ot-tool-util.h"
 #include "otutil.h"
 
 static void
@@ -33,24 +34,6 @@ usage_error (GOptionContext *context, const char *message, GError **error)
   gs_free gchar *help = g_option_context_get_help (context, TRUE, NULL);
   g_printerr ("%s", help);
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, message);
-}
-
-static gboolean
-parse_keyvalue (const char  *keyvalue,
-                char       **out_key,
-                char       **out_value,
-                GError     **error)
-{
-  const char *eq = strchr (keyvalue, '=');
-  if (!eq)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Missing '=' in KEY=VALUE for --set");
-      return FALSE;
-    }
-  *out_key = g_strndup (keyvalue, eq - keyvalue);
-  *out_value = g_strdup (eq + 1);
-  return TRUE;
 }
 
 static char **opt_set;
@@ -114,7 +97,7 @@ ostree_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GEr
       gs_free char *subkey = NULL;
       gs_free char *subvalue = NULL;
 
-      if (!parse_keyvalue (keyvalue, &subkey, &subvalue, error))
+      if (!ot_parse_keyvalue (keyvalue, &subkey, &subvalue, error))
         goto out;
 
       g_variant_builder_add (optbuilder, "{s@v}",
