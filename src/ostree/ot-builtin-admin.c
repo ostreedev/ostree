@@ -44,6 +44,7 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "init-fs", ot_admin_builtin_init_fs },
   { "instutil", ot_admin_builtin_instutil },
   { "os-init", ot_admin_builtin_os_init },
+  { "set-origin", ot_admin_builtin_set_origin },
   { "status", ot_admin_builtin_status },
   { "switch", ot_admin_builtin_switch },
   { "undeploy", ot_admin_builtin_undeploy },

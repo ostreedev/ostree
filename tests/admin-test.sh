@@ -148,6 +148,16 @@ ostree admin --sysroot=sysroot status
 
 echo "ok upgrade"
 
+originfile=$(ostree admin --sysroot=sysroot --print-current-dir).origin
+cp ${originfile} saved-origin
+ostree admin --sysroot=sysroot set-origin --index=0 bacon --set=gpg-verify=false http://tasty.com
+assert_file_has_content "${originfile}" "bacon:testos/buildmaster/x86_64-runtime"
+ostree --repo=sysroot/ostree/repo remote list -u > remotes.txt
+assert_file_has_content remotes.txt 'bacon.*http://tasty.com'
+cp saved-origin ${originfile}
+
+echo "ok set-origin"
+
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ostree admin --sysroot=sysroot undeploy 1

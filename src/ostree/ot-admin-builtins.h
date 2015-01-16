@@ -35,6 +35,7 @@ gboolean ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancell
 gboolean ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_admin_builtin_cleanup (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GError **error);

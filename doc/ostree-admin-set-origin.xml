@@ -1,0 +1,96 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2015 Colin Walters <walters@verbum.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree admin set-origin</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree admin set-origin</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-admin-set-origin</refname>
+        <refpurpose>Change the "origin" (location for upgrades)</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree admin set-origin </command> <arg choice="req">REMOTENAME</arg> <arg choice="req">URL</arg> <arg choice="opt">BRANCH</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+            Add a new remote named
+            <replaceable>REMOTENAME</replaceable> (if it does not
+            already exist).  Then change the origin file for the
+            current deployment.  This is the ref that will be
+            "tracked" and upgraded with <command>ostree admin
+            upgrade</command>.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--set</option>=KEY=VALUE</term>
+
+                <listitem><para>
+		  Set an option for the remote.
+                </para></listitem>
+		
+	    </varlistentry>
+	    <varlistentry>
+                <term><option>--index</option>=INDEX</term>
+
+                <listitem><para> Change the origin of the deployment
+                numbered <replaceable>INDEX</replaceable> (starting
+                from 0).  </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>Example</title>
+
+        <para><command>$ ostree admin set-origin exampleos http://os.example.com/repo exampleos/10.0/master/router</command></para>
+    </refsect1>    
+</refentry>
