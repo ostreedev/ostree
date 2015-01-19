@@ -55,6 +55,9 @@ void          ostree_repo_set_disable_fsync (OstreeRepo    *self,
 
 gboolean      ostree_repo_is_system (OstreeRepo   *repo);
 
+gboolean      ostree_repo_is_writable (OstreeRepo  *self,
+                                       GError     **error);
+
 gboolean      ostree_repo_create (OstreeRepo     *self,
                                   OstreeRepoMode  mode,
                                   GCancellable   *cancellable,

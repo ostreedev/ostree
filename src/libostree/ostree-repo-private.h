@@ -65,6 +65,7 @@ struct OstreeRepo {
 
   gboolean inited;
   gboolean writable;
+  GError *writable_error;
   gboolean in_transaction;
   gboolean disable_fsync;
   GHashTable *loose_object_devino_hash;
