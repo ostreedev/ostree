@@ -383,6 +383,7 @@ ostree_repo_finalize (GObject *object)
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
   g_clear_pointer (&self->cached_meta_indexes, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&self->cached_content_indexes, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_error (&self->writable_error);
   g_clear_pointer (&self->object_sizes, (GDestroyNotify) g_hash_table_unref);
   g_mutex_clear (&self->cache_lock);
   g_mutex_clear (&self->txn_stats_lock);
@@ -551,6 +552,28 @@ ostree_repo_is_system (OstreeRepo   *repo)
 {
   gs_unref_object GFile *default_repo_path = get_default_repo_path ();
   return g_file_equal (repo->repodir, default_repo_path);
+}
+
+/**
+ * ostree_repo_is_writable:
+ * @self: Repo
+ * @error: a #GError
+ *
+ * Returns whether the repository is writable by the current user.
+ * If the repository is not writable, the @error indicates why.
+ *
+ * Returns: %TRUE if this repository is writable
+ */
+gboolean
+ostree_repo_is_writable (OstreeRepo *self,
+                         GError **error)
+{
+  g_return_val_if_fail (self->inited, FALSE);
+
+  if (error != NULL && self->writable_error != NULL)
+    *error = g_error_copy (self->writable_error);
+
+  return self->writable;
 }
 
 /**
@@ -1341,6 +1364,11 @@ ostree_repo_open (OstreeRepo    *self,
     }
 
   self->writable = faccessat (self->objects_dir_fd, ".", W_OK, 0) == 0;
+  if (!self->writable)
+    {
+      /* This is returned through ostree_repo_is_writable(). */
+      gs_set_error_from_errno (&self->writable_error, errno);
+    }
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     {
