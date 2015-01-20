@@ -44,7 +44,8 @@ typedef struct {
   GPtrArray *parts;
   GPtrArray *fallback_objects;
   guint64 loose_compressed_size;
-  guint64 max_usize_bytes;
+  guint64 min_fallback_size_bytes;
+  guint64 max_chunk_size_bytes;
 } OstreeStaticDeltaBuilder;
 
 static void
@@ -121,7 +122,7 @@ process_one_object (OstreeRepo                       *repo,
   
   /* Check to see if this delta is maximum size */
   if (current_part->objects->len > 0 &&
-      current_part->payload->len + content_size > builder->max_usize_bytes)
+      current_part->payload->len + content_size > builder->max_chunk_size_bytes)
     {
       *current_part_val = current_part = allocate_part (builder);
     } 
@@ -296,7 +297,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                            NULL, &uncompressed_size,
                                            cancellable, error))
         goto out;
-      if (uncompressed_size > builder->max_usize_bytes)
+      if (uncompressed_size > builder->min_fallback_size_bytes)
         fallback = TRUE;
   
       if (fallback)
@@ -432,7 +433,8 @@ get_fallback_headers (OstreeRepo               *self,
  *
  * The @params argument should be an a{sv}.  The following attributes
  * are known:
- *   - max-usize: u: Maximum size in megabytes of a delta part
+ *   - min-fallback-size: u: Minimume uncompressed size in megabytes to use fallback
+ *   - max-chunk-size: u: Maximum size in megabytes of a delta part
  *   - compression: y: Compression type: 0=none, x=lzma, g=gzip
  */
 gboolean
@@ -448,7 +450,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   gboolean ret = FALSE;
   OstreeStaticDeltaBuilder builder = { 0, };
   guint i;
-  guint max_usize;
+  guint min_fallback_size;
+  guint max_chunk_size;
   GVariant *metadata_source;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
@@ -465,9 +468,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
-  if (!g_variant_lookup (params, "max-usize", "u", &max_usize))
-    max_usize = 32;
-  builder.max_usize_bytes = ((guint64)max_usize) * 1000 * 1000;
+  if (!g_variant_lookup (params, "min-fallback-size", "u", &min_fallback_size))
+    min_fallback_size = 4;
+  builder.min_fallback_size_bytes = ((guint64)min_fallback_size) * 1000 * 1000;
+
+  if (!g_variant_lookup (params, "max-chunk-size", "u", &max_chunk_size))
+    max_chunk_size = 32;
+  builder.max_chunk_size_bytes = ((guint64)max_chunk_size) * 1000 * 1000;
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))

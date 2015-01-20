@@ -30,7 +30,8 @@ static char *opt_from_rev;
 static char *opt_to_rev;
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
-static char *opt_max_usize;
+static char *opt_min_fallback_size;
+static char *opt_max_chunk_size;
 static gboolean opt_empty;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
@@ -55,7 +56,8 @@ static GOptionEntry generate_options[] = {
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the delta with", "key-id"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
-  { "max-usize", 'u', 0, G_OPTION_ARG_STRING, &opt_max_usize, "Maximum uncompressed size in megabytes", NULL},
+  { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
+  { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
   { NULL }
 };
 
@@ -184,9 +186,12 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
         goto out;
 
       parambuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-      if (opt_max_usize)
+      if (opt_min_fallback_size)
         g_variant_builder_add (parambuilder, "{sv}",
-                               "max-usize", g_variant_new_uint32 (g_ascii_strtoull (opt_max_usize, NULL, 10)));
+                               "min-fallback-size", g_variant_new_uint32 (g_ascii_strtoull (opt_min_fallback_size, NULL, 10)));
+      if (opt_max_chunk_size)
+        g_variant_builder_add (parambuilder, "{sv}",
+                               "max-chunk-size", g_variant_new_uint32 (g_ascii_strtoull (opt_max_chunk_size, NULL, 10)));
 
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
