@@ -654,6 +654,9 @@ dispatch_close (OstreeRepo                 *repo,
                                    TRUE, &metadata, error))
         goto out;
 
+      /* Now get rid of the temporary */
+      (void) unlinkat (state->repo->tmp_dir_fd, state->output_tmp_path, 0);
+
       if (!ostree_repo_write_metadata (repo, state->output_objtype, tmp_checksum,
                                        metadata, NULL, cancellable, error))
         goto out;
