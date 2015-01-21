@@ -577,8 +577,8 @@ dispatch_close (OstreeRepo                 *repo,
       /* Now get rid of the temporary */
       (void) unlinkat (state->repo->tmp_dir_fd, state->output_tmp_path, 0);
 
-      if (!ostree_repo_write_metadata (repo, state->output_objtype, tmp_checksum,
-                                       metadata, NULL, cancellable, error))
+      if (!ostree_repo_write_metadata_trusted (repo, state->output_objtype, tmp_checksum,
+                                               metadata, cancellable, error))
         goto out;
     }
   else
@@ -602,9 +602,9 @@ dispatch_close (OstreeRepo                 *repo,
       /* Now get rid of the temporary */
       (void) unlinkat (state->repo->tmp_dir_fd, state->output_tmp_path, 0);
 
-      if (!ostree_repo_write_content (repo, tmp_checksum,
-                                      instream, stbuf.st_size,
-                                      NULL, cancellable, error))
+      if (!ostree_repo_write_content_trusted (repo, tmp_checksum,
+                                              instream, stbuf.st_size,
+                                              cancellable, error))
         goto out;
     }
 
