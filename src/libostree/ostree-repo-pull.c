@@ -2025,22 +2025,28 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (bytes_transferred > 0 && pull_data->progress)
     {
       guint shift; 
-      gs_free char *msg = NULL;
+      GString *buf = g_string_new ("");
 
       if (bytes_transferred < 1024)
         shift = 1;
       else
         shift = 1024;
 
-      msg = g_strdup_printf ("%u metadata, %u content objects fetched; %" G_GUINT64_FORMAT " %s; %u delta parts fetched, "
-                             "transferred in %u seconds",
-                             pull_data->n_fetched_metadata, pull_data->n_fetched_content,
-                             (guint64)(bytes_transferred / shift),
-                             shift == 1 ? "B" : "KiB",
-                             pull_data->n_fetched_deltaparts,
-                             (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+      if (pull_data->n_fetched_deltaparts > 0)
+        g_string_append_printf (buf, "%u delta parts, %u loose fetched",
+                                pull_data->n_fetched_deltaparts,
+                                pull_data->n_fetched_metadata + pull_data->n_fetched_content);
+      else
+        g_string_append_printf (buf, "%u metadata, %u content objects fetched",
+                                pull_data->n_fetched_metadata, pull_data->n_fetched_content);
 
-      ostree_async_progress_set_status (pull_data->progress, msg);
+      g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
+                              (guint64)(bytes_transferred / shift),
+                              shift == 1 ? "B" : "KiB",
+                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+
+      ostree_async_progress_set_status (pull_data->progress, buf->str);
+      g_string_free (buf, TRUE);
     }
 
   /* iterate over commits fetched and delete any commitpartial files */
