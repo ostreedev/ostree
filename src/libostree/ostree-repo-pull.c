@@ -59,7 +59,7 @@ typedef struct {
   gboolean          gpg_verify;
 
   GVariant         *summary;
-  GPtrArray        *static_delta_metas;
+  GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
@@ -71,6 +71,8 @@ typedef struct {
   guint             n_outstanding_content_write_requests;
   guint             n_outstanding_deltapart_fetches;
   guint             n_outstanding_deltapart_write_requests;
+  guint             n_total_deltaparts;
+  guint64           total_deltapart_size;
   gint              n_requested_metadata;
   gint              n_requested_content;
   guint             n_fetched_deltaparts;
@@ -191,6 +193,16 @@ update_progress (gpointer user_data)
   ostree_async_progress_set_uint (pull_data->progress, "scanned-metadata", n_scanned_metadata);
   ostree_async_progress_set_uint64 (pull_data->progress, "bytes-transferred", bytes_transferred);
   ostree_async_progress_set_uint64 (pull_data->progress, "start-time", start_time);
+
+  /* Deltas */
+  ostree_async_progress_set_uint (pull_data->progress, "fetched-delta-parts",
+                                  pull_data->n_fetched_deltaparts);
+  ostree_async_progress_set_uint (pull_data->progress, "total-delta-parts",
+                                  pull_data->n_total_deltaparts);
+  ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-size",
+                                    pull_data->total_deltapart_size);
+  ostree_async_progress_set_uint (pull_data->progress, "total-delta-superblocks",
+                                  pull_data->static_delta_superblocks->len);
 
   /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
   ostree_async_progress_set_uint (pull_data->progress, "outstanding-metadata-fetches", pull_data->n_outstanding_metadata_fetches);
@@ -1345,6 +1357,8 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
   objtype = (OstreeObjectType)objtype_y;
   checksum = ostree_checksum_from_bytes_v (csum_v);
 
+  pull_data->total_deltapart_size += compressed_size;
+
   if (!ostree_repo_has_object (pull_data->repo, objtype, checksum,
                                &is_stored,
                                cancellable, error))
@@ -1444,6 +1458,8 @@ process_one_static_delta (OtPullData   *pull_data,
   }
 
   n = g_variant_n_children (headers);
+  pull_data->n_total_deltaparts += n;
+  
   for (i = 0; i < n; i++)
     {
       const guchar *csum;
@@ -1463,6 +1479,8 @@ process_one_static_delta (OtPullData   *pull_data,
       if (!csum)
         goto out;
 
+      pull_data->total_deltapart_size += size;
+
       if (!_ostree_repo_static_delta_part_have_all_objects (pull_data->repo,
                                                             objects,
                                                             &have_all,
@@ -1474,6 +1492,7 @@ process_one_static_delta (OtPullData   *pull_data,
           g_debug ("Have all objects from static delta %s-%s part %u",
                    from_revision ? from_revision : "empty", to_revision,
                    i);
+          pull_data->n_fetched_deltaparts++;
           continue;
         }
 
@@ -1803,7 +1822,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       goto out;
     }
 
-  pull_data->static_delta_metas = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   if (is_mirror && !refs_to_fetch && !configured_branches)
     {
@@ -1963,6 +1982,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else
         {
           g_debug ("processing delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
+          g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
           if (!process_one_static_delta (pull_data, from_revision, to_revision,
                                          delta_superblock,
                                          cancellable, error))
@@ -2083,7 +2103,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
-  g_clear_pointer (&pull_data->static_delta_metas, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
