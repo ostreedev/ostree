@@ -32,7 +32,7 @@
  * This hash table is a set of #GVariant which can be accessed via
  * ostree_object_name_deserialize().
  *
- * Returns: (transfer full) (element-type GVariant GVariant): A new hash table
+ * Returns: (transfer container) (element-type GVariant GVariant): A new hash table
  */
 GHashTable *
 ostree_repo_traverse_new_reachable (void)
@@ -229,7 +229,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
  * @repo: Repo
  * @commit_checksum: ASCII SHA256 checksum
  * @maxdepth: Traverse this many parent commits, -1 for unlimited
- * @out_reachable: (out) (element-type GVariant GVariant): Set of reachable objects
+ * @out_reachable: (out) (transfer container) (element-type GVariant GVariant): Set of reachable objects
  * @cancellable: Cancellable
  * @error: Error
  *
