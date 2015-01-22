@@ -45,6 +45,8 @@ struct OstreeSePolicy {
 
   GFile *path;
 
+  gboolean runtime_enabled;
+
 #ifdef HAVE_SELINUX
   GFile *selinux_policy_root;
   struct selabel_handle *selinux_hnd;
@@ -221,6 +223,8 @@ initable_init (GInitable     *initable,
 
   if (enabled)
     {
+      self->runtime_enabled = is_selinux_enabled () == 1;
+
       g_setenv ("LIBSELINUX_DISABLE_PCRE_PRECOMPILED", "1", FALSE);
       if (selinux_set_policy_root (gs_file_get_path_cached (policy_root)) != 0)
         {
@@ -452,5 +456,62 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
   return ret;
 #else
   return TRUE;
+#endif
+}
+
+/**
+ * ostree_sepolicy_setfscreatecon:
+ * @self: Policy
+ * @path: Use this path to determine a label
+ * @mode: Used along with @path
+ * @error: Error
+ *
+ */
+gboolean
+ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
+                                const char       *path,
+                                guint32           mode,
+                                GError          **error)
+{
+#ifdef HAVE_SELINUX
+  gboolean ret = FALSE;
+  gs_free char *label = NULL;
+
+  /* setfscreatecon() will bomb out if the host has SELinux disabled,
+   * but we're enabled for the target system.  This is kind of a
+   * broken scenario...for now, we'll silently ignore the label
+   * request.  To correctly handle the case of disabled host but
+   * enabled target will require nontrivial work.
+   */
+  if (!self->runtime_enabled)
+    return TRUE;
+
+  if (!ostree_sepolicy_get_label (self, path, mode, &label, NULL, error))
+    goto out;
+
+  if (setfscreatecon_raw (label) != 0)
+    {
+      gs_set_error_from_errno (error, errno);
+      return FALSE;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+#else
+  return TRUE;
+#endif
+}
+
+/**
+ * ostree_sepolicy_fscreatecon_cleanup:
+ *
+ * Cleanup function for ostree_sepolicy_setfscreatecon().
+ */
+void
+ostree_sepolicy_fscreatecon_cleanup (void **unused)
+{
+#ifdef HAVE_SELINUX
+  setfscreatecon (NULL);
 #endif
 }

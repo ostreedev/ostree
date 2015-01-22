@@ -34,6 +34,8 @@ struct OstreeSysroot {
 
   gboolean loaded;
   
+  OstreeSePolicy *sepolicy;
+  
   GPtrArray *deployments;
   int bootversion;
   int subbootversion;
