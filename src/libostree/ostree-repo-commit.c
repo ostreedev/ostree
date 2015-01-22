@@ -478,6 +478,8 @@ write_object (OstreeRepo         *self,
         goto out;
       if (have_obj)
         {
+          if (out_csum)
+            *out_csum = ostree_checksum_to_bytes (expected_checksum);
           ret = TRUE;
           goto out;
         }
