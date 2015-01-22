@@ -326,6 +326,7 @@ ostree_repo_finalize (GObject *object)
 
   g_clear_object (&self->parent_repo);
 
+  g_free (self->boot_id);
   g_clear_object (&self->repodir);
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
@@ -1277,6 +1278,16 @@ ostree_repo_open (OstreeRepo    *self,
   if (self->inited)
     return TRUE;
 
+  /* We use a per-boot identifier to keep track of which file contents
+   * possibly haven't been sync'd to disk.
+   */
+  if (!g_file_get_contents ("/proc/sys/kernel/random/boot_id",
+                           &self->boot_id,
+                           NULL,
+                           error))
+    goto out;
+  g_strdelimit (self->boot_id, "\n", '\0');
+
   if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
     {
       g_prefix_error (error, "Reading objects/ directory: ");
@@ -1715,6 +1726,13 @@ load_metadata_internal (OstreeRepo       *self,
                            cancellable, error))
     goto out;
 
+  if (self->in_transaction && fd < 0)
+    {
+      _ostree_repo_get_tmpobject_path (self, loose_path_buf, sha256, objtype);
+      if (!openat_allow_noent (self->tmp_dir_fd, loose_path_buf, &fd, cancellable, error))
+        goto out;
+    }
+
   if (fd != -1)
     {
       if (out_variant)
@@ -2111,27 +2129,55 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                OstreeObjectType      objtype,
                                gboolean             *out_is_stored,
                                char                 *loose_path_buf,
+                               GFile               **out_stored_path,
                                GCancellable         *cancellable,
                                GError             **error)
 {
   gboolean ret = FALSE;
   struct stat stbuf;
-  int res;
+  int res = -1;
+  gboolean tmp_file = FALSE;
 
-  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
-
-  do
-    res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
-  while (G_UNLIKELY (res == -1 && errno == EINTR));
-  if (res == -1 && errno != ENOENT)
+  if (self->in_transaction)
     {
-      gs_set_error_from_errno (error, errno);
-      goto out;
+      _ostree_repo_get_tmpobject_path (self, loose_path_buf, checksum, objtype);
+      do
+        res = fstatat (self->tmp_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (res == -1 && errno != ENOENT)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
+  if (res == 0)
+    tmp_file = TRUE;
+  else
+    {
+      _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+      do
+        res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (res == -1 && errno != ENOENT)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
     }
 
   ret = TRUE;
   *out_is_stored = (res != -1);
- out:
+
+  if (out_stored_path)
+    {
+      if (res != -1)
+        *out_stored_path = g_file_resolve_relative_path (tmp_file ? self->tmp_dir : self->objects_dir, loose_path_buf);
+      else
+        *out_stored_path = NULL;
+    }
+out:
   return ret;
 }
 
@@ -2143,21 +2189,10 @@ _ostree_repo_find_object (OstreeRepo           *self,
                           GCancellable         *cancellable,
                           GError             **error)
 {
-  gboolean ret = FALSE;
   gboolean has_object;
   char loose_path[_OSTREE_LOOSE_PATH_MAX];
-
-  if (!_ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path, 
-                                      cancellable, error))
-    goto out;
-
-  ret = TRUE;
-  if (has_object)
-    *out_stored_path = g_file_resolve_relative_path (self->objects_dir, loose_path);
-  else
-    *out_stored_path = NULL;
-out:
-  return ret;
+  return _ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path,
+                                        out_stored_path, cancellable, error);
 }
 
 /**
