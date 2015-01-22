@@ -218,6 +218,15 @@ AS_IF([test "x$found_introspection" = xyes], [
 ], [have_gjs=no])
 AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
 
+AC_ARG_ENABLE(static_deltas,
+              AS_HELP_STRING([--disable-static-deltas],
+                             [Disable static delta code (default: no)]),,
+              [enable_static_deltas=yes])
+AS_IF([test x$enable_static_deltas = xyes], [
+    AC_DEFINE(BUILDOPT_STATIC_DELTAS, 1, [Define if static deltas are enabled])
+])
+AM_CONDITIONAL(BUILDOPT_STATIC_DELTAS, test x$enable_static_deltas = xyes)
+
 AC_CONFIG_FILES([
 Makefile
 doc/Makefile
