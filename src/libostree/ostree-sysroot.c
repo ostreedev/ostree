@@ -63,6 +63,7 @@ ostree_sysroot_finalize (GObject *object)
   OstreeSysroot *self = OSTREE_SYSROOT (object);
 
   g_clear_object (&self->path);
+  g_clear_object (&self->sepolicy);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->finalize (object);
 }

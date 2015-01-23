@@ -1893,13 +1893,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       goto out;
     }
 
-  if (!ostree_sysroot_write_origin_file (self, new_deployment, NULL,
-                                         cancellable, error))
-    {
-      g_prefix_error (error, "Writing out origin file: ");
-      goto out;
-    }
-
   /* Create an empty boot configuration; we will merge things into
    * it as we go.
    */
@@ -1915,6 +1908,9 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       goto out;
     }
 
+  g_clear_object (&self->sepolicy);
+  self->sepolicy = g_object_ref (sepolicy);
+
   deployment_etc = g_file_get_child (new_deployment_path, "etc");
 
   if (!selinux_relabel_var_if_needed (self, sepolicy, deployment_var,
@@ -1924,6 +1920,29 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   if (!_ostree_linuxfs_alter_immutable_flag (new_deployment_path, TRUE,
                                              cancellable, error))
     goto out;
+
+  { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
+
+    /* Explicitly override the label for the origin file to ensure
+     * it's system_conf_t.
+     */
+    if (self->sepolicy != NULL
+        && ostree_sepolicy_get_name (self->sepolicy) != NULL)
+      {
+        if (!ostree_sepolicy_setfscreatecon (self->sepolicy,
+                                             "/etc/ostree/remotes.d/dummy.conf",
+                                             0644,
+                                             error))
+          goto out;
+      }
+
+    if (!ostree_sysroot_write_origin_file (self, new_deployment, NULL,
+                                           cancellable, error))
+      {
+        g_prefix_error (error, "Writing out origin file: ");
+        goto out;
+      }
+  }
 
   /* After this, install_deployment_kernel() will set the other boot
    * options and write it out to disk.
