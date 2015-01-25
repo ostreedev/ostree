@@ -629,9 +629,9 @@ content_fetch_on_complete (GObject        *object,
 }
 
 static void
-on_metadata_writed (GObject           *object,
-                    GAsyncResult      *result,
-                    gpointer           user_data)
+on_metadata_written (GObject           *object,
+                     GAsyncResult      *result,
+                     gpointer           user_data)
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
@@ -764,7 +764,7 @@ meta_fetch_on_complete (GObject           *object,
       
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
-                                        on_metadata_writed, fetch_data);
+                                        on_metadata_written, fetch_data);
       pull_data->n_outstanding_metadata_write_requests++;
     }
 
@@ -1452,7 +1452,7 @@ process_one_static_delta (OtPullData   *pull_data,
         ostree_repo_write_metadata_async (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
                                           to_commit,
                                           pull_data->cancellable,
-                                          on_metadata_writed, fetch_data);
+                                          on_metadata_written, fetch_data);
         pull_data->n_outstanding_metadata_write_requests++;
       }
   }
