@@ -72,21 +72,6 @@ if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to
     assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
 fi
 
-origstart=$(echo ${origrev} | dd bs=1 count=2 2>/dev/null)
-origend=$(echo ${origrev} | dd bs=1 skip=2 2>/dev/null)
-assert_has_dir repo/deltas/${origstart}/${origend}-${newrev}
-assert_has_dir repo/deltas/${origstart}/${origend}
-
 mkdir repo2
 ostree --repo=repo2 init --mode=archive-z2
 ostree --repo=repo2 pull-local repo ${origrev}
-
-ostree --repo=repo2 static-delta apply-offline repo/deltas/${origstart}/${origend}-${newrev}
-ostree --repo=repo2 fsck
-ostree --repo=repo2 show ${newrev}
-
-mkdir repo3
-ostree --repo=repo3 init --mode=archive-z2
-ostree --repo=repo3 static-delta apply-offline repo/deltas/${origstart}/${origend}
-ostree --repo=repo3 fsck
-ostree --repo=repo3 show ${origrev}

@@ -1104,6 +1104,35 @@ ostree_object_name_deserialize (GVariant         *variant,
 }
 
 /**
+ * ostree_checksum_b64_inplace_to_bytes: (skip)
+ * @csum: (array fixed-size=32): An binary checksum of length 32
+ * @buf: Output location, must be at least 45 bytes in length
+ *
+ * Overwrite the contents of @buf with stringified version of @csum.
+ */
+void
+ostree_checksum_b64_inplace_to_bytes (const char *checksum,
+                                      guchar     *buf)
+{
+  int state = 0;
+  guint save = 0;
+  char tmpbuf[44];
+  int i;
+
+  for (i = 0; i < 43; i++)
+    {
+      char c = checksum[i];
+      if (c == '_')
+        tmpbuf[i] = '/';
+      else
+        tmpbuf[i] = c;
+    }
+  tmpbuf[43] = '=';
+
+  g_base64_decode_step (tmpbuf, sizeof (tmpbuf), (guchar *) buf, &state, &save);
+}
+
+/**
  * ostree_checksum_inplace_to_bytes:
  * @checksum: a SHA256 string
  * @buf: Output buffer with at least 32 bytes of space
@@ -1184,6 +1213,48 @@ ostree_checksum_inplace_from_bytes (const guchar *csum,
       buf[j+1] = hexchars[byte & 0xF];
     }
   buf[j] = '\0';
+}
+
+/**
+ * ostree_checksum_b64_inplace_from_bytes: (skip)
+ * @csum: (array fixed-size=32): An binary checksum of length 32
+ * @buf: Output location, must be at least 44 bytes in length
+ *
+ * Overwrite the contents of @buf with modified base64 encoding of @csum.
+ * The "modified" term refers to the fact that instead of '/', the '_'
+ * character is used.
+ */
+void
+ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
+                                        char         *buf)
+{
+  char tmpbuf[44];
+  int save = 0;
+  int state = 0;
+  gsize outlen;
+  int i;
+
+  /* At some point, we can optimize this, but for now it's
+   * a lot easier to reuse GLib's base64 encoder and postprocess it
+   * to replace the '/' with '_'.
+   */
+  outlen = g_base64_encode_step (csum, 32, FALSE, tmpbuf, &state, &save);
+  outlen += g_base64_encode_close (FALSE, tmpbuf+outlen, &state, &save);
+  g_assert (outlen == 44);
+
+  for (i = 0; i < sizeof (tmpbuf); i++)
+    {
+      char c = tmpbuf[i];
+      if (c == '=')
+        {
+          g_assert (i == 43);
+          buf[i] = '\0';
+        }
+      else if (c == '/')
+        buf[i] = '_';
+      else
+        buf[i] = c;
+    }
 }
 
 /**
@@ -1360,21 +1431,35 @@ get_delta_path (const char *from,
                 const char *target)
 {
   char prefix[3];
+  guint8 csum_to[32];
+  char to_b64[44];
+  guint8 csum_to_copy[32];
+  
+  ostree_checksum_inplace_to_bytes (to, csum_to);
+  ostree_checksum_b64_inplace_from_bytes (csum_to, to_b64);
+  ostree_checksum_b64_inplace_to_bytes (to_b64, csum_to_copy);
+
+  g_assert (memcmp (csum_to, csum_to_copy, 32) == 0);
+
   if (from == NULL)
     {
-      prefix[0] = to[0];
-      prefix[1] = to[1];
+      prefix[0] = to_b64[0];
+      prefix[1] = to_b64[1];
       prefix[2] = '\0';
-      to += 2;
-      return g_strconcat ("deltas/", prefix, "/", to, "/", target, NULL);
+      return g_strconcat ("deltas/", prefix, "/", ((char*)to_b64)+2, "/", target, NULL);
     }
   else
     {
-      prefix[0] = from[0];
-      prefix[1] = from[1];
+      guint8 csum_from[32];
+      char from_b64[44];
+
+      ostree_checksum_inplace_to_bytes (from, csum_from);
+      ostree_checksum_b64_inplace_from_bytes (csum_from, from_b64);
+
+      prefix[0] = from_b64[0];
+      prefix[1] = from_b64[1];
       prefix[2] = '\0';
-      from += 2;
-      return g_strconcat ("deltas/", prefix, "/", from, "-", to, "/", target, NULL);
+      return g_strconcat ("deltas/", prefix, "/", ((char*)from_b64)+2, "-", to_b64, "/", target, NULL);
     }
 }
 

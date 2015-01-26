@@ -548,7 +548,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       checksum_bytes = g_bytes_new (part_checksum, 32);
       objtype_checksum_array = objtype_checksum_array_new (part_builder->objects);
-      delta_part_header = g_variant_new ("(@aytt@ay)",
+      delta_part_header = g_variant_new ("(u@aytt@ay)",
+                                         OSTREE_DELTAPART_VERSION,
                                          ot_gvariant_new_ay_bytes (checksum_bytes),
                                          g_variant_get_size (delta_part),
                                          part_builder->uncompressed_size,
@@ -586,13 +587,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     metadata_source = metadata;
   else
     {
-      GVariantBuilder tmpbuilder;
-      g_variant_builder_init (&tmpbuilder, G_VARIANT_TYPE ("(a(ss)a(say))"));
-      g_variant_builder_add (&tmpbuilder, "a(ss)", NULL);
-      g_variant_builder_add (&tmpbuilder, "a(say)", NULL);
-      tmp_metadata = g_variant_builder_end (&tmpbuilder);
-      g_variant_ref_sink (tmp_metadata);
-      metadata_source = tmp_metadata;
+      metadata_source = ot_gvariant_new_empty_string_dict ();
     }
 
   if (!get_fallback_headers (self, &builder, &fallback_headers,
@@ -607,7 +602,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
 
-    delta_descriptor = g_variant_new ("(@(a(ss)a(say))t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
+    delta_descriptor = g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
                                       "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
                                       "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
                                       metadata_source,

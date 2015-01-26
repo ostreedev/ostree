@@ -42,6 +42,7 @@ G_BEGIN_DECLS
 /**
  * OSTREE_STATIC_DELTA_META_ENTRY_FORMAT:
  *
+ *   u: version
  *   ay checksum
  *   guint64 size:   Total size of delta (sum of parts)
  *   guint64 usize:   Uncompressed size of resulting objects on disk
@@ -51,7 +52,7 @@ G_BEGIN_DECLS
  * represents an OSTree object which will be created by the deltapart.
  */
 
-#define OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "(ayttay)"
+#define OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "(uayttay)"
 
 
 /**
@@ -131,9 +132,7 @@ gboolean _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
 typedef enum {
   OSTREE_STATIC_DELTA_OP_WRITE = 1,
   OSTREE_STATIC_DELTA_OP_GUNZIP = 2,
-  OSTREE_STATIC_DELTA_OP_CLOSE = 3,
-  OSTREE_STATIC_DELTA_OP_READOBJECT = 4,
-  OSTREE_STATIC_DELTA_OP_READPAYLOAD = 5
+  OSTREE_STATIC_DELTA_OP_CLOSE = 3
 } OstreeStaticDeltaOpCode;
 
 gboolean

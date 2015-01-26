@@ -127,7 +127,24 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
 
                 if (g_file_query_exists (meta_path, NULL))
                   {
-                    g_ptr_array_add (ret_deltas, g_strconcat (name1, name2, NULL));
+                    gs_free char *buf = g_strconcat (name1, name2, NULL);
+                    GString *out = g_string_new ("");
+                    char checksum[65];
+                    guchar csum[32];
+                    const char *dash = strchr (buf, '-');
+                    
+                    ostree_checksum_b64_inplace_to_bytes (buf, csum);
+                    ostree_checksum_inplace_from_bytes (csum, checksum);
+                    g_string_append (out, checksum);
+                    if (dash)
+                      {
+                        g_string_append_c (out, '-');
+                        ostree_checksum_b64_inplace_to_bytes (dash+1, csum);
+                        ostree_checksum_inplace_from_bytes (csum, checksum);
+                        g_string_append (out, checksum);
+                      }
+
+                    g_ptr_array_add (ret_deltas, g_string_free (out, FALSE));
                   }
               }
             }

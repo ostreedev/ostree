@@ -164,12 +164,16 @@ gboolean ostree_validate_checksum_string (const char *sha256,
 
 guchar *ostree_checksum_to_bytes (const char *checksum);
 GVariant *ostree_checksum_to_bytes_v (const char *checksum);
+void ostree_checksum_b64_inplace_to_bytes (const char *checksum,
+                                           guint8     *buf);
 
 char * ostree_checksum_from_bytes (const guchar *csum);
 char * ostree_checksum_from_bytes_v (GVariant *csum_v);
 
 void ostree_checksum_inplace_from_bytes (const guchar *csum,
                                          char         *buf);
+void ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
+                                             char         *buf);
 
 void ostree_checksum_inplace_to_bytes (const char *checksum,
                                        guchar     *buf);

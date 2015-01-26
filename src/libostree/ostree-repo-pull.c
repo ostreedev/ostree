@@ -1513,9 +1513,17 @@ process_one_static_delta (OtPullData   *pull_data,
       gs_unref_variant GVariant *csum_v = NULL;
       gs_unref_variant GVariant *objects = NULL;
       guint64 size, usize;
+      guint32 version;
 
       header = g_variant_get_child_value (headers, i);
-      g_variant_get (header, "(@aytt@ay)", &csum_v, &size, &usize, &objects);
+      g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
+
+      if (version > OSTREE_DELTAPART_VERSION)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Delta part has too new version %u", version);
+          goto out;
+        }
 
       csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
