@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 /**
  * OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT:
  *
- *   y  compression type (0: none, 'z': zlib)
+ *   y  compression type (0: none, 'x': lzma)
  *   ---
  *   ay data source
  *   ay operations
