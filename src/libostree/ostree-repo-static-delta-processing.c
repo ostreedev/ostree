@@ -334,7 +334,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
       goto out;
     }
         
-  payload = ot_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT),
+  payload = ot_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
                                        payload_data, FALSE);
   if (!_ostree_static_delta_part_execute_raw (repo, header, payload,
                                               cancellable, error))
