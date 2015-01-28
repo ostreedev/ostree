@@ -1105,7 +1105,7 @@ ostree_object_name_deserialize (GVariant         *variant,
 
 /**
  * ostree_checksum_b64_inplace_to_bytes: (skip)
- * @csum: (array fixed-size=32): An binary checksum of length 32
+ * @checksum: (array fixed-size=32): An binary checksum of length 32
  * @buf: Output location, must be at least 45 bytes in length
  *
  * Overwrite the contents of @buf with stringified version of @csum.
@@ -1434,7 +1434,7 @@ get_delta_path (const char *from,
   guint8 csum_to[32];
   char to_b64[44];
   guint8 csum_to_copy[32];
-  
+
   ostree_checksum_inplace_to_bytes (to, csum_to);
   ostree_checksum_b64_inplace_from_bytes (csum_to, to_b64);
   ostree_checksum_b64_inplace_to_bytes (to_b64, csum_to_copy);

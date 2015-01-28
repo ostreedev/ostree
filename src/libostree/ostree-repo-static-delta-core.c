@@ -132,7 +132,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                     char checksum[65];
                     guchar csum[32];
                     const char *dash = strchr (buf, '-');
-                    
+
                     ostree_checksum_b64_inplace_to_bytes (buf, csum);
                     ostree_checksum_inplace_from_bytes (csum, checksum);
                     g_string_append (out, checksum);
