@@ -318,16 +318,6 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
       /* No compression */
       payload_data = g_bytes_ref (part_payload_bytes);
       break;
-    case 'g':
-      {
-        gs_unref_object GConverter *decomp =
-          (GConverter*) g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
-
-        if (!decompress_all (decomp, part_payload_bytes, &payload_data,
-                             cancellable, error))
-          goto out;
-      }
-      break;
     case 'x':
       {
         gs_unref_object GConverter *decomp =
