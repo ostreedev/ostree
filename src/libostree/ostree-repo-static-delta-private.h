@@ -30,14 +30,14 @@ G_BEGIN_DECLS
 #define OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN 33
 
 /**
- * OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT:
+ * OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0:
  *
  *   y  compression type (0: none, 'x': lzma)
  *   ---
  *   ay data source
  *   ay operations
  */
-#define OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT "(ayay)"
+#define OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0 "(ayay)"
 
 /**
  * OSTREE_STATIC_DELTA_META_ENTRY_FORMAT:
