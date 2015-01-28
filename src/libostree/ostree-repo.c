@@ -1717,7 +1717,9 @@ load_metadata_internal (OstreeRepo       *self,
 
   if (self->in_transaction && fd < 0)
     {
-      _ostree_repo_get_tmpobject_path (loose_path_buf, sha256, objtype);
+      if (! _ostree_repo_get_tmpobject_path (loose_path_buf, sha256, objtype,
+                                             cancellable, error))
+        goto out;
       if (!openat_allow_noent (self->tmp_dir_fd, loose_path_buf, &fd, cancellable, error))
         goto out;
     }
@@ -2129,7 +2131,9 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
 
   if (self->in_transaction)
     {
-      _ostree_repo_get_tmpobject_path (loose_path_buf, checksum, objtype);
+      if (! _ostree_repo_get_tmpobject_path (loose_path_buf, checksum, objtype,
+                                             cancellable, error))
+        goto out;
       do
         res = fstatat (self->tmp_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
       while (G_UNLIKELY (res == -1 && errno == EINTR));
