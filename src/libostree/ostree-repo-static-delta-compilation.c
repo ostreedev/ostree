@@ -38,6 +38,10 @@ typedef struct {
   GPtrArray *objects;
   GString *payload;
   GString *operations;
+  GHashTable *mode_set; /* GVariant(uuu) -> offset */
+  GPtrArray *modes;
+  GHashTable *xattr_set; /* GVariant(ayay) -> offset */
+  GPtrArray *xattrs;
 } OstreeStaticDeltaPartBuilder;
 
 typedef struct {
@@ -57,7 +61,86 @@ ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_build
     g_string_free (part_builder->payload, TRUE);
   if (part_builder->operations)
     g_string_free (part_builder->operations, TRUE);
+  g_hash_table_unref (part_builder->mode_set);
+  g_ptr_array_unref (part_builder->modes);
+  g_hash_table_unref (part_builder->xattr_set);
+  g_ptr_array_unref (part_builder->xattrs);
   g_free (part_builder);
+}
+
+static guint
+mode_chunk_hash (const void *vp)
+{
+  GVariant *v = (GVariant*)vp;
+  guint uid, gid, mode;
+  g_variant_get (v, "(uuu)", &uid, &gid, &mode);
+  return uid + gid + mode;
+}
+
+static gboolean
+mode_chunk_equals (const void *one, const void *two)
+{
+  GVariant *v1 = (GVariant*)one;
+  GVariant *v2 = (GVariant*)two;
+  guint uid1, gid1, mode1;
+  guint uid2, gid2, mode2;
+
+  g_variant_get (v1, "(uuu)", &uid1, &gid1, &mode1);
+  g_variant_get (v2, "(uuu)", &uid2, &gid2, &mode2);
+
+  return uid1 == uid2 && gid1 == gid2 && mode1 == mode2;
+}
+
+static guint
+bufhash (const void *b, gsize len)
+{
+  const signed char *p, *e;
+  guint32 h = 5381;
+
+  for (p = (signed char *)b, e = (signed char *)b + len; p != e; p++)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
+static guint
+xattr_chunk_hash (const void *vp)
+{
+  GVariant *v = (GVariant*)vp;
+  gsize n = g_variant_n_children (v);
+  guint i;
+  guint32 h = 5381;
+
+  for (i = 0; i < n; i++)
+    {
+      const guint8* name;
+      const guint8* value_data;
+      GVariant *value = NULL;
+      gsize value_len;
+
+      g_variant_get_child (v, i, "(^&ay@ay)",
+                           &name, &value);
+      value_data = g_variant_get_fixed_array (value, &value_len, 1);
+      
+      h += g_str_hash (name);
+      h += bufhash (value_data, value_len);
+    }
+      
+  return h;
+}
+
+static gboolean
+xattr_chunk_equals (const void *one, const void *two)
+{
+  GVariant *v1 = (GVariant*)one;
+  GVariant *v2 = (GVariant*)two;
+  gsize l1 = g_variant_get_size (v1);
+  gsize l2 = g_variant_get_size (v2);
+
+  if (l1 != l2)
+    return FALSE;
+
+  return memcmp (g_variant_get_data (v1), g_variant_get_data (v2), l1) == 0;
 }
 
 static OstreeStaticDeltaPartBuilder *
@@ -68,8 +151,55 @@ allocate_part (OstreeStaticDeltaBuilder *builder)
   part->payload = g_string_new (NULL);
   part->operations = g_string_new (NULL);
   part->uncompressed_size = 0;
+  part->mode_set = g_hash_table_new_full (mode_chunk_hash, mode_chunk_equals,
+                                          (GDestroyNotify)g_variant_unref, NULL);
+  part->modes = g_ptr_array_new ();
+  part->xattr_set = g_hash_table_new_full (xattr_chunk_hash, xattr_chunk_equals,
+                                           (GDestroyNotify)g_variant_unref, NULL);
+  part->xattrs = g_ptr_array_new ();
   g_ptr_array_add (builder->parts, part);
   return part;
+}
+
+static gsize
+allocate_part_buffer_space (OstreeStaticDeltaPartBuilder  *current_part,
+                            guint                          len)
+{
+  gsize empty_space;
+  gsize old_len;
+
+  old_len = current_part->payload->len;
+  empty_space = current_part->payload->allocated_len - current_part->payload->len;
+
+  if (empty_space < len)
+    {
+      gsize origlen;
+      origlen = current_part->payload->len;
+      g_string_set_size (current_part->payload, current_part->payload->allocated_len + (len - empty_space));
+      current_part->payload->len = origlen;
+    }
+
+  return old_len;
+}
+
+static gsize
+write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
+                            GHashTable                   *hash,
+                            GPtrArray                    *ordered,
+                            GVariant                     *key)
+{
+  gpointer target_offsetp;
+  gsize offset;
+
+  if (g_hash_table_lookup_extended (hash, key, NULL, &target_offsetp))
+    return GPOINTER_TO_UINT (target_offsetp);
+
+  offset = ordered->len;
+  target_offsetp = GUINT_TO_POINTER (offset);
+  g_hash_table_insert (hash, g_variant_ref (key), target_offsetp);
+  g_ptr_array_add (ordered, key);
+
+  return offset;
 }
 
 static GBytes *
@@ -98,6 +228,37 @@ objtype_checksum_array_new (GPtrArray *objects)
 }
 
 static gboolean
+splice_stream_to_payload (OstreeStaticDeltaPartBuilder  *current_part,
+                          GInputStream                  *istream,
+                          GCancellable                  *cancellable,
+                          GError                       **error)
+{
+  gboolean ret = FALSE;
+  const guint readlen = 4096;
+  gsize bytes_read;
+
+  while (TRUE)
+    {
+      allocate_part_buffer_space (current_part, readlen);
+
+      if (!g_input_stream_read_all (istream,
+                                    current_part->payload->str + current_part->payload->len,
+                                    readlen,
+                                    &bytes_read,
+                                    cancellable, error))
+        goto out;
+      if (bytes_read == 0)
+        break;
+          
+      current_part->payload->len += bytes_read;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 process_one_object (OstreeRepo                       *repo,
                     OstreeStaticDeltaBuilder         *builder,
                     OstreeStaticDeltaPartBuilder    **current_part_val,
@@ -108,17 +269,27 @@ process_one_object (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  gsize object_payload_start;
   gs_unref_object GInputStream *content_stream = NULL;
-  gsize bytes_read;
-  const guint readlen = 4096;
+  gs_unref_object GFileInfo *content_finfo = NULL;
+  gs_unref_variant GVariant *content_xattrs = NULL;
   guint64 compressed_size;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
-  if (!ostree_repo_load_object_stream (repo, objtype, checksum,
-                                       &content_stream, &content_size,
-                                       cancellable, error))
-    goto out;
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
+    {
+      if (!ostree_repo_load_object_stream (repo, objtype, checksum,
+                                           &content_stream, &content_size,
+                                           cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!ostree_repo_load_file (repo, checksum, &content_stream,
+                                  &content_finfo, &content_xattrs,
+                                  cancellable, error))
+        goto out;
+      content_size = g_file_info_get_size (content_finfo);
+    }
   
   /* Check to see if this delta is maximum size */
   if (current_part->objects->len > 0 &&
@@ -137,42 +308,71 @@ process_one_object (OstreeRepo                       *repo,
 
   g_ptr_array_add (current_part->objects, ostree_object_name_serialize (checksum, objtype));
 
-  object_payload_start = current_part->payload->len;
-
-  while (TRUE)
+  if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
-      gsize empty_space;
+      gsize object_payload_start;
 
-      empty_space = current_part->payload->allocated_len - current_part->payload->len;
-      if (empty_space < readlen)
+      object_payload_start = current_part->payload->len;
+
+      if (!splice_stream_to_payload (current_part, content_stream,
+                                     cancellable, error))
+        goto out;
+
+      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
+      _ostree_write_varuint64 (current_part->operations, content_size);
+      _ostree_write_varuint64 (current_part->operations, object_payload_start);
+    }
+  else
+    {
+      gsize mode_offset, xattr_offset, content_offset;
+      guint32 uid =
+        g_file_info_get_attribute_uint32 (content_finfo, "unix::uid");
+      guint32 gid =
+        g_file_info_get_attribute_uint32 (content_finfo, "unix::gid");
+      guint32 mode =
+        g_file_info_get_attribute_uint32 (content_finfo, "unix::mode");
+      gs_unref_variant GVariant *modev
+        = g_variant_ref_sink (g_variant_new ("(uuu)", 
+                                             GUINT32_TO_BE (uid),
+                                             GUINT32_TO_BE (gid),
+                                             GUINT32_TO_BE (mode)));
+
+      mode_offset = write_unique_variant_chunk (current_part,
+                                                current_part->mode_set,
+                                                current_part->modes,
+                                                modev);
+      xattr_offset = write_unique_variant_chunk (current_part,
+                                                 current_part->xattr_set,
+                                                 current_part->xattrs,
+                                                 content_xattrs);
+
+      if (S_ISLNK (mode))
         {
-          gsize origlen;
-          origlen = current_part->payload->len;
-          g_string_set_size (current_part->payload, current_part->payload->allocated_len + (readlen - empty_space));
-          current_part->payload->len = origlen;
+          const char *target;
+
+          g_assert (content_stream == NULL);
+
+          target = g_file_info_get_symlink_target (content_finfo);
+          content_stream = 
+            g_memory_input_stream_new_from_data (target, strlen (target), NULL);
+          content_size = strlen (target);
+        }
+      else
+        {
+          g_assert (S_ISREG (mode));
         }
 
-      if (!g_input_stream_read_all (content_stream,
-                                    current_part->payload->str + current_part->payload->len,
-                                    readlen,
-                                    &bytes_read,
-                                    cancellable, error))
+      content_offset = current_part->payload->len;
+      if (!splice_stream_to_payload (current_part, content_stream,
+                                     cancellable, error))
         goto out;
-      if (bytes_read == 0)
-        break;
-          
-      current_part->payload->len += bytes_read;
+
+      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE);
+      _ostree_write_varuint64 (current_part->operations, mode_offset);
+      _ostree_write_varuint64 (current_part->operations, xattr_offset);
+      _ostree_write_varuint64 (current_part->operations, content_size);
+      _ostree_write_varuint64 (current_part->operations, content_offset);
     }
-      
-  /* A little lame here to duplicate the content size - but if in the
-   * future we do rsync-style rolling checksums, then we'll have
-   * multiple write calls.
-   */
-  _ostree_write_varuint64 (current_part->operations, content_size);
-  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_WRITE);
-  _ostree_write_varuint64 (current_part->operations, object_payload_start);
-  _ostree_write_varuint64 (current_part->operations, content_size);
-  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
 
   ret = TRUE;
  out:
@@ -506,15 +706,26 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       gs_unref_variant GVariant *delta_part_content = NULL;
       gs_unref_variant GVariant *delta_part = NULL;
       gs_unref_variant GVariant *delta_part_header = NULL;
+      GVariantBuilder *mode_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(uuu)"));
+      GVariantBuilder *xattr_builder = g_variant_builder_new (G_VARIANT_TYPE ("aa(ayay)"));
       guint8 compression_type_char;
 
+      { guint j;
+        for (j = 0; j < part_builder->modes->len; j++)
+          g_variant_builder_add_value (mode_builder, part_builder->modes->pdata[j]);
+        
+        for (j = 0; j < part_builder->xattrs->len; j++)
+          g_variant_builder_add_value (xattr_builder, part_builder->xattrs->pdata[j]);
+      }
+        
       payload_b = g_string_free_to_bytes (part_builder->payload);
       part_builder->payload = NULL;
       
       operations_b = g_string_free_to_bytes (part_builder->operations);
       part_builder->operations = NULL;
       /* FIXME - avoid duplicating memory here */
-      delta_part_content = g_variant_new ("(@ay@ay)",
+      delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
+                                          mode_builder, xattr_builder,
                                           ot_gvariant_new_ay_bytes (payload_b),
                                           ot_gvariant_new_ay_bytes (operations_b));
       g_variant_ref_sink (delta_part_content);
