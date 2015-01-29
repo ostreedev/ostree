@@ -51,6 +51,7 @@ typedef struct {
   guint64 loose_compressed_size;
   guint64 min_fallback_size_bytes;
   guint64 max_chunk_size_bytes;
+  guint64 rollsum_size;
 } OstreeStaticDeltaBuilder;
 
 static void
@@ -468,6 +469,7 @@ typedef struct {
   OrderedRollsums *from_rollsums;
   OrderedRollsums *to_rollsums;
   guint match_ratio;
+  guint64 match_size;
 } ContentRollsum;
 
 static void
@@ -498,6 +500,7 @@ try_content_rollsum (OstreeRepo                       *repo,
   guint total = 0;
   guint matches = 0;
   guint match_ratio = 0;
+  guint64 match_size = 0;
   gpointer hkey, hvalue;
   GHashTableIter hiter;
 
@@ -531,8 +534,14 @@ try_content_rollsum (OstreeRepo                       *repo,
   g_hash_table_iter_init (&hiter, to_rollsum->values);
   while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
     {
+      GVariant *chunk = hvalue;
       if (g_hash_table_contains (from_rollsum->values, hkey))
-        matches++;
+        {
+          guint64 offset;
+          g_variant_get (chunk, "(utt)", NULL, NULL, &offset);
+          matches++;
+          match_size += offset;
+        }
       total++;
     }
 
@@ -549,6 +558,7 @@ try_content_rollsum (OstreeRepo                       *repo,
 
   ret_rollsum = g_new0 (ContentRollsum, 1);
   ret_rollsum->match_ratio = match_ratio;
+  ret_rollsum->match_size = match_size;
   ret_rollsum->from_checksum = g_strdup (from);
   ret_rollsum->from_rollsums = from_rollsum; from_rollsum = NULL;
   ret_rollsum->to_rollsums = to_rollsum; to_rollsum = NULL;
@@ -684,6 +694,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         continue;
 
       g_hash_table_insert (rollsum_optimized_content_objects, g_strdup (to_checksum), rollsum);
+      builder->rollsum_size += rollsum->match_size;
     }
 
   g_printerr ("rollsum for %u/%u modified\n",
@@ -1039,10 +1050,11 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     g_date_time_unref (now);
   }
 
-  g_printerr ("delta uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT " loose=%" G_GUINT64_FORMAT "\n",
+  g_printerr ("uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT " loose=%" G_GUINT64_FORMAT "\n",
               total_uncompressed_size,
               total_compressed_size,
               builder.loose_compressed_size);
+  g_printerr ("rollsum=%" G_GUINT64_FORMAT "\n", builder.rollsum_size);
 
   if (!ot_util_variant_save (descriptor_path, delta_descriptor, cancellable, error))
     goto out;
