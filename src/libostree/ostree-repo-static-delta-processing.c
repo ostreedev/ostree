@@ -27,6 +27,7 @@
 #include <gio/gunixoutputstream.h>
 #include <gio/gfiledescriptorbased.h>
 
+#include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-lzma-decompressor.h"
@@ -44,6 +45,9 @@ typedef struct {
 
   const guint8   *opdata;
   guint           oplen;
+
+  GVariant       *mode_dict;
+  GVariant       *xattr_dict;
   
   gboolean        object_start;
   gboolean        caught_error;
@@ -51,8 +55,6 @@ typedef struct {
 
   OstreeObjectType output_objtype;
   const guint8   *output_target;
-  char           *output_tmp_path;
-  GOutputStream  *output_tmp_stream;
   const guint8   *input_target_csum;
 
   const guint8   *payload_data;
@@ -80,17 +82,8 @@ typedef struct  {
                                    GCancellable               *cancellable, \
                                    GError                    **error);
 
-OPPROTO(write)
-OPPROTO(gunzip)
-OPPROTO(close)
+OPPROTO(open_splice_and_close)
 #undef OPPROTO
-
-static OstreeStaticDeltaOperation op_dispatch_table[] = {
-  { "write", dispatch_write },
-  { "gunzip", dispatch_gunzip },
-  { "close", dispatch_close },
-  { NULL }
-};
 
 static gboolean
 read_varuint64 (StaticDeltaExecutionState  *state,
@@ -117,13 +110,9 @@ open_output_target (StaticDeltaExecutionState   *state,
   gboolean ret = FALSE;
   guint8 *objcsum;
   char checksum[65];
-  guint64 object_size;
-  gs_unref_object GInputStream *content_in_stream = NULL;
 
   g_assert (state->checksums != NULL);
   g_assert (state->output_target == NULL);
-  g_assert (state->output_tmp_path == NULL);
-  g_assert (state->output_tmp_stream == NULL);
   g_assert (state->checksum_index < state->n_checksums);
 
   objcsum = (guint8*)state->checksums + (state->checksum_index * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
@@ -135,15 +124,6 @@ open_output_target (StaticDeltaExecutionState   *state,
   state->output_target = objcsum + 1;
 
   ostree_checksum_inplace_from_bytes (state->output_target, checksum);
-
-  /* Object size is the first element of the opstream */
-  if (!read_varuint64 (state, &object_size, error))
-    goto out;
-
-  if (!gs_file_open_in_tmpdir_at (state->repo->tmp_dir_fd, 0644,
-                                  &state->output_tmp_path, &state->output_tmp_stream,
-                                  cancellable, error))
-    goto out;
 
   ret = TRUE;
  out:
@@ -195,6 +175,8 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
   gboolean ret = FALSE;
   guint8 *checksums_data;
   gs_unref_variant GVariant *checksums = NULL;
+  gs_unref_variant GVariant *mode_dict = NULL;
+  gs_unref_variant GVariant *xattr_dict = NULL;
   gs_unref_variant GVariant *payload = NULL;
   gs_unref_variant GVariant *ops = NULL;
   StaticDeltaExecutionState statedata = { 0, };
@@ -213,39 +195,39 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
   state->checksums = checksums_data;
   g_assert (state->n_checksums > 0);
 
-  g_variant_get (part, "(@ay@ay)", &payload, &ops);
+  g_variant_get (part, "(@a(uuu)@aa(ayay)@ay@ay)",
+                 &mode_dict,
+                 &xattr_dict,
+                 &payload, &ops);
+
+  state->mode_dict = mode_dict;
+  state->xattr_dict = xattr_dict;
 
   state->payload_data = g_variant_get_data (payload);
   state->payload_size = g_variant_get_size (payload);
 
   state->oplen = g_variant_n_children (ops);
   state->opdata = g_variant_get_data (ops);
-  state->object_start = TRUE;
+
   while (state->oplen > 0)
     {
       guint8 opcode;
-      OstreeStaticDeltaOperation *op;
-
-      if (state->object_start)
-        {
-          if (!open_output_target (state, cancellable, error))
-            goto out;
-          state->object_start = FALSE;
-        }
 
       opcode = state->opdata[0];
-
-      if (G_UNLIKELY (opcode == 0 || opcode >= G_N_ELEMENTS (op_dispatch_table)))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                       "Out of range opcode %u at offset %u", opcode, n_executed);
-          goto out;
-        }
-      op = &op_dispatch_table[opcode-1];
       state->oplen--;
       state->opdata++;
-      if (!op->func (repo, state, cancellable, error))
-        goto out;
+
+      switch (opcode)
+        {
+        case OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE:
+          if (!dispatch_open_splice_and_close (repo, state, cancellable, error))
+            goto out;
+          break;
+        default:
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "Unknown opcode %u at offset %u", opcode, n_executed);
+          goto out;
+        }
 
       n_executed++;
     }
@@ -255,8 +237,6 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
 
   ret = TRUE;
  out:
-  g_clear_pointer (&state->output_tmp_path, g_free);
-  g_clear_object (&state->output_tmp_stream);
   return ret;
 }
 
@@ -439,174 +419,117 @@ validate_ofs (StaticDeltaExecutionState  *state,
 }
 
 static gboolean
-dispatch_write (OstreeRepo                 *repo,
-                StaticDeltaExecutionState  *state,
-                GCancellable               *cancellable,  
-                GError                    **error)
+dispatch_open_splice_and_close (OstreeRepo                 *repo,
+                                StaticDeltaExecutionState  *state,
+                                GCancellable               *cancellable,  
+                                GError                    **error)
 {
   gboolean ret = FALSE;
-  guint64 offset;
-  guint64 length;
-  gsize bytes_written;
+  char checksum[65];
 
-  if (G_UNLIKELY(state->oplen < 2))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                   "Expected at least 2 bytes for write op");
-      goto out;
-    }
-  if (!read_varuint64 (state, &offset, error))
-    goto out;
-  if (!read_varuint64 (state, &length, error))
-    goto out;
-  
-  if (!validate_ofs (state, offset, length, error))
+  if (!open_output_target (state, cancellable, error))
     goto out;
 
-  if (!g_output_stream_write_all (state->output_tmp_stream,
-                                  state->payload_data + offset,
-                                  length,
-                                  &bytes_written,
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode write: ");
-  return ret;
-}
-
-static gboolean
-dispatch_gunzip (OstreeRepo                 *repo,
-                 StaticDeltaExecutionState  *state,
-                 GCancellable               *cancellable,  
-                 GError                    **error)
-{
-  gboolean ret = FALSE;
-  guint64 offset;
-  guint64 length;
-  gs_unref_object GConverter *zlib_decomp = NULL;
-  gs_unref_object GInputStream *payload_in = NULL;
-  gs_unref_object GInputStream *zlib_in = NULL;
-
-  if (G_UNLIKELY(state->oplen < 2))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                   "Expected at least 2 bytes for gunzip op");
-      goto out;
-    }
-  if (!read_varuint64 (state, &offset, error))
-    goto out;
-  if (!read_varuint64 (state, &length, error))
-    goto out;
-
-  if (!validate_ofs (state, offset, length, error))
-    goto out;
-
-  payload_in = g_memory_input_stream_new_from_data (state->payload_data + offset, length, NULL);
-  zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
-  zlib_in = g_converter_input_stream_new (payload_in, zlib_decomp);
-
-  if (0 > g_output_stream_splice (state->output_tmp_stream, zlib_in,
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  if (!ret)
-    g_prefix_error (error, "opcode gunzip: ");
-  return ret;
-}
-
-static gboolean
-dispatch_close (OstreeRepo                 *repo,
-                StaticDeltaExecutionState  *state,
-                GCancellable               *cancellable,  
-                GError                    **error)
-{
-  gboolean ret = FALSE;
-  char tmp_checksum[65];
-
-  if (state->checksum_index == state->n_checksums)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                   "Too many close operations");
-      goto out;
-    }
-
-  g_assert (state->output_tmp_stream);
-
-  if (!g_output_stream_close (state->output_tmp_stream, cancellable, error))
-    goto out;
-
-  g_clear_object (&state->output_tmp_stream);
-
-  ostree_checksum_inplace_from_bytes (state->output_target, tmp_checksum);
+  ostree_checksum_inplace_from_bytes (state->output_target, checksum);
 
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
       gs_unref_variant GVariant *metadata = NULL;
-      gs_fd_close int fd = -1;
-      
-      g_assert (state->output_tmp_path);
+      guint64 offset;
+      guint64 length;
 
-      fd = openat (state->repo->tmp_dir_fd, state->output_tmp_path, O_RDONLY | O_CLOEXEC);
-      if (fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      if (!ot_util_variant_map_fd (fd, 0,
-                                   ostree_metadata_variant_type (state->output_objtype),
-                                   TRUE, &metadata, error))
+      if (!read_varuint64 (state, &length, error))
         goto out;
-
-      /* Now get rid of the temporary */
-      (void) unlinkat (state->repo->tmp_dir_fd, state->output_tmp_path, 0);
-
-      if (!ostree_repo_write_metadata_trusted (repo, state->output_objtype, tmp_checksum,
-                                               metadata, cancellable, error))
+      if (!read_varuint64 (state, &offset, error))
+        goto out;
+      if (!validate_ofs (state, offset, length, error))
+        goto out;
+      
+      metadata = g_variant_new_from_data (ostree_metadata_variant_type (state->output_objtype),
+                                          state->payload_data + offset, length, TRUE, NULL, NULL);
+      
+      if (!ostree_repo_write_metadata_trusted (state->repo, state->output_objtype,
+                                               checksum,
+                                               metadata,
+                                               cancellable,
+                                               error))
         goto out;
     }
   else
     {
-      gs_unref_object GInputStream *instream = NULL;
-      int fd;
-      struct stat stbuf;
+      guint64 mode_offset;
+      guint64 xattr_offset;
+      guint64 content_size;
+      guint64 content_offset;
+      guint64 objlen;
+      gs_unref_object GInputStream *object_input = NULL;
+      gs_unref_object GInputStream *memin = NULL;
+      gs_unref_object GFileInfo *finfo = NULL;
+      gs_unref_variant GVariant *xattrs_buf = NULL;
+      GVariant *modev;
+      GVariant *xattrs;
+      guint32 uid, gid, mode;
 
-      if (!ot_openat_read_stream (state->repo->tmp_dir_fd,
-                                  state->output_tmp_path, FALSE,
-                                  &instream, cancellable, error))
+      if (!read_varuint64 (state, &mode_offset, error))
+        goto out;
+      if (!read_varuint64 (state, &xattr_offset, error))
+        goto out;
+      if (!read_varuint64 (state, &content_size, error))
+        goto out;
+      if (!read_varuint64 (state, &content_offset, error))
         goto out;
 
-      fd = g_file_descriptor_based_get_fd (G_FILE_DESCRIPTOR_BASED (instream));
-      if (fstat (fd, &stbuf) == -1)
+      if (!validate_ofs (state, content_offset, content_size, error))
+        goto out;
+
+      modev = g_variant_get_child_value (state->mode_dict, mode_offset);
+      g_variant_get (modev, "(uuu)", &uid, &gid, &mode);
+      uid = GUINT32_FROM_BE (uid);
+      gid = GUINT32_FROM_BE (gid);
+      mode = GUINT32_FROM_BE (mode);
+
+      xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
+
+      finfo = _ostree_header_gfile_info_new (mode, uid, gid);
+
+      if (S_ISLNK (mode))
         {
-          gs_set_error_from_errno (error, errno);
-          goto out;
+          gs_free char *nulterminated_target =
+            g_strndup ((char*)state->payload_data + content_offset, content_size);
+          g_file_info_set_symlink_target (finfo, nulterminated_target);
+        }
+      else
+        {
+          g_assert (S_ISREG (mode));
+          g_file_info_set_size (finfo, content_size);
+          memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, content_size, NULL);
         }
 
-      /* Now get rid of the temporary */
-      (void) unlinkat (state->repo->tmp_dir_fd, state->output_tmp_path, 0);
-
-      if (!ostree_repo_write_content_trusted (repo, tmp_checksum,
-                                              instream, stbuf.st_size,
+      /* FIXME - Lots of allocation and serialization/deserialization
+       * going on here.  We need an
+       * ostree_repo_write_content_trusted_raw() that takes raw
+       * parameters.
+       */
+      if (!ostree_raw_file_to_content_stream (memin, finfo, xattrs,
+                                              &object_input, &objlen,
                                               cancellable, error))
+        goto out;
+
+      if (!ostree_repo_write_content_trusted (state->repo,
+                                              checksum,
+                                              object_input,
+                                              objlen,
+                                              cancellable,
+                                              error))
         goto out;
     }
 
-  state->output_target = NULL;
-  g_clear_pointer (&state->output_tmp_path, g_free);
-
-  state->object_start = TRUE;
   state->checksum_index++;
-      
+  state->output_target = NULL;
+
   ret = TRUE;
  out:
   if (!ret)
-    g_prefix_error (error, "opcode close: ");
+    g_prefix_error (error, "opcode open-splice-and-close: ");
   return ret;
 }

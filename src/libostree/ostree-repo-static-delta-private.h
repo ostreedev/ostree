@@ -34,10 +34,12 @@ G_BEGIN_DECLS
  *
  *   y  compression type (0: none, 'x': lzma)
  *   ---
- *   ay data source
+ *   a(uuu) modes
+ *   aa(ayay) xattrs
+ *   ay raw data source
  *   ay operations
  */
-#define OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0 "(ayay)"
+#define OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0 "(a(uuu)aa(ayay)ayay)"
 
 /**
  * OSTREE_STATIC_DELTA_META_ENTRY_FORMAT:
@@ -130,9 +132,10 @@ gboolean _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
                                                    GError         **error); 
 
 typedef enum {
-  OSTREE_STATIC_DELTA_OP_WRITE = 1,
-  OSTREE_STATIC_DELTA_OP_GUNZIP = 2,
-  OSTREE_STATIC_DELTA_OP_CLOSE = 3
+  OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE = 'S',
+  OSTREE_STATIC_DELTA_OP_OPEN = 'o',
+  OSTREE_STATIC_DELTA_OP_WRITE = 'w',
+  OSTREE_STATIC_DELTA_OP_CLOSE = 'c'
 } OstreeStaticDeltaOpCode;
 
 gboolean
