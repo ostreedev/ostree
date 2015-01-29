@@ -38,10 +38,10 @@ typedef struct {
   GPtrArray *objects;
   GString *payload;
   GString *operations;
-  guint mode_offset;
-  GHashTable *mode_chunks; /* GVariant(uuu) -> guint offset */
-  guint xattr_offset;
-  GHashTable *xattr_chunks; /* GVariant(ayay) -> guint offset */
+  GHashTable *mode_set; /* GVariant(uuu) -> offset */
+  GPtrArray *modes;
+  GHashTable *xattr_set; /* GVariant(ayay) -> offset */
+  GPtrArray *xattrs;
 } OstreeStaticDeltaPartBuilder;
 
 typedef struct {
@@ -61,8 +61,10 @@ ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_build
     g_string_free (part_builder->payload, TRUE);
   if (part_builder->operations)
     g_string_free (part_builder->operations, TRUE);
-  g_hash_table_unref (part_builder->mode_chunks);
-  g_hash_table_unref (part_builder->xattr_chunks);
+  g_hash_table_unref (part_builder->mode_set);
+  g_ptr_array_unref (part_builder->modes);
+  g_hash_table_unref (part_builder->xattr_set);
+  g_ptr_array_unref (part_builder->xattrs);
   g_free (part_builder);
 }
 
@@ -149,10 +151,12 @@ allocate_part (OstreeStaticDeltaBuilder *builder)
   part->payload = g_string_new (NULL);
   part->operations = g_string_new (NULL);
   part->uncompressed_size = 0;
-  part->mode_chunks = g_hash_table_new_full (mode_chunk_hash, mode_chunk_equals,
-                                             (GDestroyNotify)g_variant_unref, NULL);
-  part->xattr_chunks = g_hash_table_new_full (xattr_chunk_hash, xattr_chunk_equals,
-                                              (GDestroyNotify)g_variant_unref, NULL);
+  part->mode_set = g_hash_table_new_full (mode_chunk_hash, mode_chunk_equals,
+                                          (GDestroyNotify)g_variant_unref, NULL);
+  part->modes = g_ptr_array_new ();
+  part->xattr_set = g_hash_table_new_full (xattr_chunk_hash, xattr_chunk_equals,
+                                           (GDestroyNotify)g_variant_unref, NULL);
+  part->xattrs = g_ptr_array_new ();
   g_ptr_array_add (builder->parts, part);
   return part;
 }
@@ -181,7 +185,7 @@ allocate_part_buffer_space (OstreeStaticDeltaPartBuilder  *current_part,
 static gsize
 write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
                             GHashTable                   *hash,
-                            guint                        *current_offsetp,
+                            GPtrArray                    *ordered,
                             GVariant                     *key)
 {
   gpointer target_offsetp;
@@ -190,10 +194,10 @@ write_unique_variant_chunk (OstreeStaticDeltaPartBuilder *current_part,
   if (g_hash_table_lookup_extended (hash, key, NULL, &target_offsetp))
     return GPOINTER_TO_UINT (target_offsetp);
 
-  offset = *current_offsetp;
+  offset = ordered->len;
   target_offsetp = GUINT_TO_POINTER (offset);
-  (*current_offsetp)++;
   g_hash_table_insert (hash, g_variant_ref (key), target_offsetp);
+  g_ptr_array_add (ordered, key);
 
   return offset;
 }
@@ -334,12 +338,12 @@ process_one_object (OstreeRepo                       *repo,
                                              GUINT32_TO_BE (mode)));
 
       mode_offset = write_unique_variant_chunk (current_part,
-                                                current_part->mode_chunks,
-                                                &current_part->mode_offset,
+                                                current_part->mode_set,
+                                                current_part->modes,
                                                 modev);
       xattr_offset = write_unique_variant_chunk (current_part,
-                                                 current_part->xattr_chunks,
-                                                 &current_part->xattr_offset,
+                                                 current_part->xattr_set,
+                                                 current_part->xattrs,
                                                  content_xattrs);
 
       if (S_ISLNK (mode))
@@ -705,17 +709,15 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       GVariantBuilder *mode_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(uuu)"));
       GVariantBuilder *xattr_builder = g_variant_builder_new (G_VARIANT_TYPE ("aa(ayay)"));
       guint8 compression_type_char;
-      gpointer hkey, hvalue;
-      GHashTableIter hiter;
 
-      g_hash_table_iter_init (&hiter, part_builder->mode_chunks);
-      while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
-        g_variant_builder_add_value (mode_builder, hkey);
-
-      g_hash_table_iter_init (&hiter, part_builder->xattr_chunks);
-      while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
-        g_variant_builder_add_value (xattr_builder, hkey);
-
+      { guint j;
+        for (j = 0; j < part_builder->modes->len; j++)
+          g_variant_builder_add_value (mode_builder, part_builder->modes->pdata[j]);
+        
+        for (j = 0; j < part_builder->xattrs->len; j++)
+          g_variant_builder_add_value (xattr_builder, part_builder->xattrs->pdata[j]);
+      }
+        
       payload_b = g_string_free_to_bytes (part_builder->payload);
       part_builder->payload = NULL;
       
