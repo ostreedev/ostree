@@ -83,6 +83,10 @@ typedef struct  {
                                    GError                    **error);
 
 OPPROTO(open_splice_and_close)
+OPPROTO(open)
+OPPROTO(write)
+OPPROTO(set_read_source)
+OPPROTO(close)
 #undef OPPROTO
 
 static gboolean
@@ -221,6 +225,22 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
         {
         case OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE:
           if (!dispatch_open_splice_and_close (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_OPEN:
+          if (!dispatch_open (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_WRITE:
+          if (!dispatch_write (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE:
+          if (!dispatch_set_read_source (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_CLOSE:
+          if (!dispatch_close (repo, state, cancellable, error))
             goto out;
           break;
         default:
@@ -529,6 +549,75 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
   ret = TRUE;
  out:
+  if (!ret)
+    g_prefix_error (error, "opcode open-splice-and-close: ");
+  return ret;
+}
+
+static gboolean
+dispatch_open (OstreeRepo                 *repo,
+               StaticDeltaExecutionState  *state,
+               GCancellable               *cancellable,  
+               GError                    **error)
+{
+  gboolean ret = FALSE;
+
+  if (!open_output_target (state, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (!ret)
+    g_prefix_error (error, "opcode open: ");
+  return ret;
+}
+
+static gboolean
+dispatch_write (OstreeRepo                 *repo,
+               StaticDeltaExecutionState  *state,
+               GCancellable               *cancellable,  
+               GError                    **error)
+{
+  gboolean ret = FALSE;
+
+  g_assert_not_reached ();
+  
+  ret = TRUE;
+  /* out: */
+  if (!ret)
+    g_prefix_error (error, "opcode open-splice-and-close: ");
+  return ret;
+}
+
+static gboolean
+dispatch_set_read_source (OstreeRepo                 *repo,
+                          StaticDeltaExecutionState  *state,
+                          GCancellable               *cancellable,  
+                          GError                    **error)
+{
+  gboolean ret = FALSE;
+
+  g_assert_not_reached ();
+  
+  ret = TRUE;
+  /* out: */
+  if (!ret)
+    g_prefix_error (error, "opcode open-splice-and-close: ");
+  return ret;
+}
+
+static gboolean
+dispatch_close (OstreeRepo                 *repo,
+                StaticDeltaExecutionState  *state,
+                GCancellable               *cancellable,  
+                GError                    **error)
+{
+  gboolean ret = FALSE;
+
+  g_assert_not_reached ();
+  
+  ret = TRUE;
+  /* out: */
   if (!ret)
     g_prefix_error (error, "opcode open-splice-and-close: ");
   return ret;
