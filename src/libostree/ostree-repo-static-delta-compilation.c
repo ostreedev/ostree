@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include <string.h>
+#include <zlib.h>
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
@@ -379,6 +380,185 @@ process_one_object (OstreeRepo                       *repo,
   return ret;
 }
 
+typedef struct {
+  GPtrArray *keys;
+  GHashTable *values;
+} OrderedRollsums;
+
+static void
+ordered_rollsums_free (OrderedRollsums  *ohash)
+{
+  g_ptr_array_unref (ohash->keys);
+  g_hash_table_unref (ohash->values);
+  g_free (ohash);
+}
+
+static gboolean
+rollsum_chunks_crc32 (GInputStream     *istream,
+                      OrderedRollsums **out_rollsums,
+                      GCancellable     *cancellable,
+                      GError          **error)
+{
+  gboolean ret = FALSE;
+  gsize start = 0;
+  gboolean rollsum_end = FALSE;
+  OrderedRollsums *ret_rollsums = g_new0 (OrderedRollsums, 1);
+  gs_unref_object GBufferedInputStream *bufinput =
+    (GBufferedInputStream*) g_buffered_input_stream_new_sized (istream, ROLLSUM_BLOB_MAX);
+
+  ret_rollsums->keys = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+  ret_rollsums->values = g_hash_table_new (NULL, NULL);
+
+  while (TRUE)
+    {
+      gssize bytes_read;
+      const guint8 *buf;
+      gsize bufsize;
+      int offset, bits;
+
+      bytes_read = g_buffered_input_stream_fill (bufinput, -1, cancellable, error);
+      if (bytes_read == -1)
+        goto out;
+      if (bytes_read == 0)
+        break;
+
+      buf = g_buffered_input_stream_peek_buffer (bufinput, &bufsize);
+
+      if (!rollsum_end)
+        {
+          offset = bupsplit_find_ofs (buf, MIN(G_MAXINT32, bufsize), &bits); 
+          if (offset == 0)
+            {
+              rollsum_end = TRUE;
+              offset = MIN(ROLLSUM_BLOB_MAX, bufsize);
+            }
+          else if (offset > ROLLSUM_BLOB_MAX)
+            offset = ROLLSUM_BLOB_MAX;
+        }
+      else
+        offset = MIN(ROLLSUM_BLOB_MAX, bufsize);
+
+      if (!g_input_stream_skip ((GInputStream*)bufinput, bufsize, cancellable, error))
+        goto out;
+
+      /* Use zlib's crc32 */
+      { guint32 crc = crc32 (0L, NULL, 0);
+        GVariant *val;
+
+        crc = crc32 (crc, buf, offset);
+
+        val = g_variant_ref_sink (g_variant_new ("(utt)", crc, (guint64) start, (guint64)offset));
+        g_ptr_array_add (ret_rollsums->keys, val);
+        g_hash_table_insert (ret_rollsums->values, GUINT_TO_POINTER (crc), val);
+      }
+
+      start += offset;
+    }
+
+  ret = TRUE;
+  gs_transfer_out_value (out_rollsums, &ret_rollsums);
+ out:
+  if (ret_rollsums)
+    ordered_rollsums_free (ret_rollsums);
+  return ret;
+}
+
+typedef struct {
+  char *from_checksum;
+  OrderedRollsums *from_rollsums;
+  OrderedRollsums *to_rollsums;
+  guint match_ratio;
+} ContentRollsum;
+
+static void
+content_rollsums_free (ContentRollsum  *rollsum)
+{
+  g_free (rollsum->from_checksum);
+  ordered_rollsums_free (rollsum->from_rollsums);
+  ordered_rollsums_free (rollsum->to_rollsums);
+  g_free (rollsum);
+}
+
+static gboolean
+try_content_rollsum (OstreeRepo                       *repo,
+                     const char                       *from,
+                     const char                       *to,
+                     ContentRollsum                  **out_rollsum,
+                     GCancellable                     *cancellable,
+                     GError                          **error)
+{
+  gboolean ret = FALSE;
+  OrderedRollsums *from_rollsum = NULL;
+  OrderedRollsums *to_rollsum = NULL;
+  gs_unref_object GInputStream *from_istream = NULL;
+  gs_unref_object GFileInfo *from_finfo = NULL;
+  gs_unref_object GInputStream *to_istream = NULL;
+  gs_unref_object GFileInfo *to_finfo = NULL;
+  ContentRollsum *ret_rollsum = NULL;
+  guint total = 0;
+  guint matches = 0;
+  guint match_ratio = 0;
+  gpointer hkey, hvalue;
+  GHashTableIter hiter;
+
+  *out_rollsum = NULL;
+
+  if (!ostree_repo_load_file (repo, from, &from_istream, &from_finfo, NULL,
+                              cancellable, error))
+    goto out;
+  if (!ostree_repo_load_file (repo, to, &to_istream, &to_finfo, NULL,
+                              cancellable, error))
+    goto out;
+
+  /* Only try to rollsum regular files obviously */ 
+  if (!(g_file_info_get_file_type (from_finfo) == G_FILE_TYPE_REGULAR
+        && g_file_info_get_file_type (to_finfo) == G_FILE_TYPE_REGULAR))
+    {
+      ret = TRUE;
+      goto out;
+    }
+
+  g_assert (from_istream && to_istream);
+
+  if (!rollsum_chunks_crc32 (from_istream, &from_rollsum, cancellable, error))
+    goto out;
+  if (!rollsum_chunks_crc32 (to_istream, &to_rollsum, cancellable, error))
+    goto out;
+
+  g_clear_object (&from_istream);
+  g_clear_object (&to_istream);
+
+  g_hash_table_iter_init (&hiter, to_rollsum->values);
+  while (g_hash_table_iter_next (&hiter, &hkey, &hvalue))
+    {
+      if (g_hash_table_contains (from_rollsum->values, hkey))
+        matches++;
+      total++;
+    }
+
+  match_ratio = (matches*100)/total;
+
+  /* Only proceed if the file contains (arbitrary) more than 25% of
+   * the previous chunks.
+   */
+  if (match_ratio < 25)
+    {
+      ret = TRUE;
+      goto out;
+    }
+
+  ret_rollsum = g_new0 (ContentRollsum, 1);
+  ret_rollsum->match_ratio = match_ratio;
+  ret_rollsum->from_checksum = g_strdup (from);
+  ret_rollsum->from_rollsums = from_rollsum; from_rollsum = NULL;
+  ret_rollsum->to_rollsums = to_rollsum; to_rollsum = NULL;
+  
+  ret = TRUE;
+  gs_transfer_out_value (out_rollsum, &ret_rollsum);
+ out:
+  return ret;
+}
+
 static gboolean 
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
@@ -402,6 +582,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   gs_unref_hashtable GHashTable *new_reachable_metadata = NULL;
   gs_unref_hashtable GHashTable *new_reachable_content = NULL;
   gs_unref_hashtable GHashTable *modified_content_objects = NULL;
+  gs_unref_hashtable GHashTable *rollsum_optimized_content_objects = NULL;
   gs_unref_hashtable GHashTable *content_object_to_size = NULL;
 
   if (from != NULL)
@@ -424,15 +605,21 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                          cancellable, error))
     goto out;
 
-  modified_content_objects = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
-                                                    NULL,
-                                                    (GDestroyNotify) g_variant_unref);
+  modified_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                    g_free, g_free);
   for (i = 0; i < modified->len; i++)
     {
       OstreeDiffItem *diffitem = modified->pdata[i];
-      GVariant *objname = ostree_object_name_serialize (diffitem->target_checksum,
-                                                        OSTREE_OBJECT_TYPE_FILE);
-      g_hash_table_add (modified_content_objects, objname);
+      /* Theoretically, a target file could replace multiple source
+       * files.  That could happen if say a project changed from having
+       * multiple binaries to one binary.
+       *
+       * In that case, we have last one wins behavior.  For ELF rollsum
+       * tends to be useless unless there's a large static data blob.
+       */
+      g_hash_table_replace (modified_content_objects,
+                            g_strdup (diffitem->target_checksum),
+                            g_strdup (diffitem->src_checksum));
     }
 
   if (from)
@@ -477,6 +664,31 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   /* We already ship the to commit in the superblock, don't ship it twice */
   g_hash_table_remove (new_reachable_metadata,
                        ostree_object_name_serialize (to, OSTREE_OBJECT_TYPE_COMMIT));
+
+  rollsum_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                             g_free,
+                                                             (GDestroyNotify) content_rollsums_free);
+
+  g_hash_table_iter_init (&hashiter, modified_content_objects);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      const char *to_checksum = key;
+      const char *from_checksum = value;
+      ContentRollsum *rollsum;
+
+      if (!try_content_rollsum (repo, from_checksum, to_checksum,
+                                &rollsum, cancellable, error))
+        goto out;
+
+      if (!rollsum)
+        continue;
+
+      g_hash_table_insert (rollsum_optimized_content_objects, g_strdup (to_checksum), rollsum);
+    }
+
+  g_printerr ("rollsum for %u/%u modified\n",
+              g_hash_table_size (rollsum_optimized_content_objects),
+              g_hash_table_size (modified_content_objects));
 
   /* Scan for large objects, so we can fall back to plain HTTP-based
    * fetch.  In the future this should come after an rsync-style
