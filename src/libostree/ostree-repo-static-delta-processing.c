@@ -58,6 +58,8 @@ typedef struct {
   guint64          content_size;
   GOutputStream   *content_out;
   char             checksum[65];
+  char             *read_source_object;
+  int               read_source_fd;
   gboolean        have_obj;
   guint32         uid;
   guint32         gid;
@@ -654,12 +656,52 @@ dispatch_write (OstreeRepo                 *repo,
 
   if (!state->have_obj)
     {
-      if (!g_output_stream_write_all (state->content_out,
-                                      state->payload_data + content_offset,
-                                      content_size,
-                                      &bytes_written,
-                                      cancellable, error))
-        goto out;
+      if (state->read_source_fd != -1)
+        {
+          if (lseek (state->read_source_fd, content_offset, SEEK_SET) == -1)
+            {
+              gs_set_error_from_errno (error, errno);
+              goto out;
+            }
+          while (content_size > 0)
+            {
+              char buf[4096];
+              gssize bytes_read;
+
+              do
+                bytes_read = read (state->read_source_fd, buf, MIN(sizeof(buf), content_size));
+              while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
+              if (bytes_read == -1)
+                {
+                  gs_set_error_from_errno (error, errno);
+                  goto out;
+                }
+              if (G_UNLIKELY (bytes_read == 0))
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Unexpected EOF reading object %s", state->read_source_object);
+                  goto out;
+                }
+              
+              if (!g_output_stream_write_all (state->content_out,
+                                              buf,
+                                              bytes_read,
+                                              &bytes_written,
+                                              cancellable, error))
+                goto out;
+              
+              content_size -= bytes_read;
+            }
+        }
+      else
+        {
+          if (!g_output_stream_write_all (state->content_out,
+                                          state->payload_data + content_offset,
+                                          content_size,
+                                          &bytes_written,
+                                          cancellable, error))
+            goto out;
+        }
     }
   
   ret = TRUE;
@@ -676,13 +718,30 @@ dispatch_set_read_source (OstreeRepo                 *repo,
                           GError                    **error)
 {
   gboolean ret = FALSE;
+  guint64 source_offset;
 
-  g_assert_not_reached ();
+  if (state->read_source_fd)
+    {
+      (void) close (state->read_source_fd);
+      state->read_source_fd = -1;
+    }
+
+  if (!read_varuint64 (state, &source_offset, error))
+    goto out;
+  if (!validate_ofs (state, source_offset, 32, error))
+    goto out;
+
+  g_free (state->read_source_object);
+  state->read_source_object = ostree_checksum_from_bytes (state->payload_data + source_offset);
+  
+  if (!_ostree_repo_read_bare_fd (repo, state->read_source_object, &state->read_source_fd,
+                                  cancellable, error))
+    goto out;
   
   ret = TRUE;
-  /* out: */
+ out:
   if (!ret)
-    g_prefix_error (error, "opcode open-splice-and-close: ");
+    g_prefix_error (error, "opcode set-read-source: ");
   return ret;
 }
 
@@ -705,8 +764,15 @@ dispatch_close (OstreeRepo                 *repo,
                                                      cancellable, error))
         goto out;
     }
+
+  if (state->read_source_fd)
+    {
+      (void) close (state->read_source_fd);
+      state->read_source_fd = -1;
+    }
       
   g_clear_pointer (&state->xattrs, g_variant_unref);
+  g_clear_pointer (&state->read_source_object, g_free);
   g_clear_object (&state->content_out);
   
   state->checksum_index++;
