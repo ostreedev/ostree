@@ -23,7 +23,6 @@ local-checks-to-skip = \
     sc_prohibit_empty_lines_at_EOF \
     sc_prohibit_path_max_allocation \
     sc_prohibit_test_double_equal \
-    sc_space_tab \
     sc_trailing_blank \
 
 #SHELL=bash -x
