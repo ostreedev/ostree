@@ -51,6 +51,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-lzma-decompressor.h \
 	src/libostree/bupsplit.h \
 	src/libostree/bupsplit.c \
+	src/libostree/ostree-rollsum.h \
+	src/libostree/ostree-rollsum.c \
 	src/libostree/ostree-varint.h \
 	src/libostree/ostree-varint.c \
 	src/libostree/ostree-linuxfsutil.h \

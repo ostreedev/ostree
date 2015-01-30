@@ -98,6 +98,7 @@ OPPROTO(open_splice_and_close)
 OPPROTO(open)
 OPPROTO(write)
 OPPROTO(set_read_source)
+OPPROTO(unset_read_source)
 OPPROTO(close)
 #undef OPPROTO
 
@@ -248,6 +249,10 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
           break;
         case OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE:
           if (!dispatch_set_read_source (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE:
+          if (!dispatch_unset_read_source (repo, state, cancellable, error))
             goto out;
           break;
         case OSTREE_STATIC_DELTA_OP_CLOSE:
@@ -491,7 +496,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
   if (!open_output_target (state, cancellable, error))
     goto out;
-  
+
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
       gs_unref_variant GVariant *metadata = NULL;
@@ -519,7 +524,6 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
     {
       guint64 content_offset;
       guint64 objlen;
-      guint64 content_size;
       gsize bytes_written;
       gs_unref_object GInputStream *object_input = NULL;
       gs_unref_object GInputStream *memin = NULL;
@@ -527,11 +531,11 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       if (!do_content_open_generic (repo, state, cancellable, error))
         goto out;
 
-      if (!read_varuint64 (state, &content_size, error))
+      if (!read_varuint64 (state, &state->content_size, error))
         goto out;
       if (!read_varuint64 (state, &content_offset, error))
         goto out;
-      if (!validate_ofs (state, content_offset, content_size, error))
+      if (!validate_ofs (state, content_offset, state->content_size, error))
         goto out;
       
       /* Fast path for regular files to bare repositories */
@@ -551,7 +555,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
             {
               if (!g_output_stream_write_all (state->content_out,
                                               state->payload_data + content_offset,
-                                              content_size,
+                                              state->content_size,
                                               &bytes_written,
                                               cancellable, error))
                 goto out;
@@ -567,14 +571,14 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
           if (S_ISLNK (state->mode))
             {
               gs_free char *nulterminated_target =
-                g_strndup ((char*)state->payload_data + content_offset, content_size);
+                g_strndup ((char*)state->payload_data + content_offset, state->content_size);
               g_file_info_set_symlink_target (finfo, nulterminated_target);
             }
           else
             {
               g_assert (S_ISREG (state->mode));
-              g_file_info_set_size (finfo, content_size);
-              memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, content_size, NULL);
+              g_file_info_set_size (finfo, state->content_size);
+              memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, state->content_size, NULL);
             }
 
           if (!ostree_raw_file_to_content_stream (memin, finfo, state->xattrs,
@@ -621,6 +625,9 @@ dispatch_open (OstreeRepo                 *repo,
   if (!do_content_open_generic (repo, state, cancellable, error))
     goto out;
 
+  if (!read_varuint64 (state, &state->content_size, error))
+    goto out;
+
   if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
                                                state->content_size,
                                                &state->barecommitstate,
@@ -650,8 +657,6 @@ dispatch_write (OstreeRepo                 *repo,
   if (!read_varuint64 (state, &content_size, error))
     goto out;
   if (!read_varuint64 (state, &content_offset, error))
-    goto out;
-  if (!validate_ofs (state, content_offset, content_size, error))
     goto out;
 
   if (!state->have_obj)
@@ -695,6 +700,9 @@ dispatch_write (OstreeRepo                 *repo,
         }
       else
         {
+          if (!validate_ofs (state, content_offset, content_size, error))
+            goto out;
+
           if (!g_output_stream_write_all (state->content_out,
                                           state->payload_data + content_offset,
                                           content_size,
@@ -746,6 +754,29 @@ dispatch_set_read_source (OstreeRepo                 *repo,
 }
 
 static gboolean
+dispatch_unset_read_source (OstreeRepo                 *repo,
+                            StaticDeltaExecutionState  *state,
+                            GCancellable               *cancellable,  
+                            GError                    **error)
+{
+  gboolean ret = FALSE;
+
+  if (state->read_source_fd)
+    {
+      (void) close (state->read_source_fd);
+      state->read_source_fd = -1;
+    }
+
+  g_clear_pointer (&state->read_source_object, g_free);
+  
+  ret = TRUE;
+  /* out: */
+  if (!ret)
+    g_prefix_error (error, "opcode unset-read-source: ");
+  return ret;
+}
+
+static gboolean
 dispatch_close (OstreeRepo                 *repo,
                 StaticDeltaExecutionState  *state,
                 GCancellable               *cancellable,  
@@ -765,14 +796,10 @@ dispatch_close (OstreeRepo                 *repo,
         goto out;
     }
 
-  if (state->read_source_fd)
-    {
-      (void) close (state->read_source_fd);
-      state->read_source_fd = -1;
-    }
+  if (!dispatch_unset_read_source (repo, state, cancellable, error))
+    goto out;
       
   g_clear_pointer (&state->xattrs, g_variant_unref);
-  g_clear_pointer (&state->read_source_object, g_free);
   g_clear_object (&state->content_out);
   
   state->checksum_index++;
