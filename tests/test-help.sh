@@ -31,7 +31,7 @@ test_recursive() {
     echo "$cmd" 1>&2
     $cmd --help 1>out 2>err
     # --help message goes to standard output
-    if [ "$root" == "1" ] ; then
+    if [ "$root" = "1" ] ; then
         assert_file_has_content out "[Uu]sage"
         assert_file_has_content out "$cmd"
     fi
