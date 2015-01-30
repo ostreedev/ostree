@@ -82,6 +82,12 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
                                      GCancellable   *cancellable,
                                      GError        **error);
+gboolean
+_ostree_repo_get_tmpobject_path (char *output,
+                                 const char *checksum,
+                                 OstreeObjectType objtype,
+                                 GCancellable     *cancellable,
+                                 GError          **error);
 
 gboolean
 _ostree_repo_find_object (OstreeRepo           *self,
@@ -101,6 +107,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                OstreeObjectType      objtype,
                                gboolean             *out_is_stored,
                                char                 *loose_path_buf,
+                               GFile               **out_stored_path,
                                GCancellable         *cancellable,
                                GError             **error);
 

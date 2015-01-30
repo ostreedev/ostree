@@ -35,6 +35,7 @@
 #include "ostree-mutable-tree.h"
 #include "ostree-varint.h"
 #include <attr/xattr.h>
+#include <glib/gprintf.h>
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
@@ -56,6 +57,44 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
           return FALSE;
         }
     }
+  return TRUE;
+}
+
+static const gchar *
+ostree_repo_get_tmpobject_bootid (GError          **error)
+{
+  static gchar *contents;
+  static gsize bootid_initialized;
+  if (g_once_init_enter (&bootid_initialized))
+    {
+      if (g_file_get_contents ("/proc/sys/kernel/random/boot_id",
+                               &contents,
+                               NULL,
+                               error))
+          g_strdelimit (contents, "\n", '\0');
+
+      g_once_init_leave (&bootid_initialized, 1);
+    }
+
+  return contents;
+}
+
+gboolean
+_ostree_repo_get_tmpobject_path (char *output,
+                                 const char *checksum,
+                                 OstreeObjectType objtype,
+                                 GCancellable     *cancellable,
+                                 GError          **error)
+{
+  const char *boot_id;
+  if ((boot_id = ostree_repo_get_tmpobject_bootid (error)) == NULL)
+      return FALSE;
+
+  g_sprintf (output,
+             "%s/tmpobject-%s.%s",
+             boot_id,
+             checksum,
+             ostree_object_type_to_string (objtype));
   return TRUE;
 }
 
@@ -108,6 +147,7 @@ write_file_metadata_to_xattr (int fd,
 
 static gboolean
 commit_loose_object_trusted (OstreeRepo        *self,
+                             const char        *checksum,
                              OstreeObjectType   objtype,
                              const char        *loose_path,
                              GFile             *temp_file,
@@ -251,7 +291,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
       /* Ensure that in case of a power cut, these files have the data we
        * want.   See http://lwn.net/Articles/322823/
        */
-      if (!self->disable_fsync)
+      if (!self->in_transaction && !self->disable_fsync)
         {
           if (fsync (fd) == -1)
             {
@@ -267,20 +307,41 @@ commit_loose_object_trusted (OstreeRepo        *self,
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
                                             cancellable, error))
     goto out;
-  
-  if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
-                            self->objects_dir_fd, loose_path) == -1))
-    {
-      if (errno != EEXIST)
-        {
-          gs_set_error_from_errno (error, errno);
-          g_prefix_error (error, "Storing file '%s': ", temp_filename);
-          goto out;
-        }
-      else
-        (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
-    }
 
+  {
+    gs_free gchar *tmp_dest = NULL;
+    int dir;
+    const char *dest;
+
+    if (self->in_transaction)
+      {
+        char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
+        if (! _ostree_repo_get_tmpobject_path (tmpbuf, checksum, objtype,
+                                               cancellable, error))
+          goto out;
+        tmp_dest = g_strdup (tmpbuf);
+        dir = self->tmp_dir_fd;
+        dest = tmp_dest;
+      }
+    else
+      {
+        dir = self->objects_dir_fd;
+        dest = loose_path;
+      }
+
+    if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
+                              dir, dest) == -1))
+      {
+        if (errno != EEXIST)
+          {
+            gs_set_error_from_errno (error, errno);
+            g_prefix_error (error, "Storing file '%s': ", temp_filename);
+            goto out;
+          }
+        else
+          (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
+      }
+  }
   ret = TRUE;
  out:
   return ret;
@@ -474,7 +535,7 @@ write_object (OstreeRepo         *self,
     {
       if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype,
                                           &have_obj, loose_objpath,
-                                          cancellable, error))
+                                          NULL, cancellable, error))
         goto out;
       if (have_obj)
         {
@@ -655,7 +716,7 @@ write_object (OstreeRepo         *self,
     }
 
   if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype,
-                                      &have_obj, loose_objpath,
+                                      &have_obj, loose_objpath, NULL,
                                       cancellable, error))
     goto out;
           
@@ -663,7 +724,8 @@ write_object (OstreeRepo         *self,
 
   if (do_commit)
     {
-      if (!commit_loose_object_trusted (self, objtype, loose_objpath,
+      if (!commit_loose_object_trusted (self, actual_checksum,
+                                        objtype, loose_objpath,
                                         temp_file, temp_filename,
                                         object_is_symlink, file_info,
                                         xattrs, temp_out,
@@ -911,6 +973,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   gboolean ret = FALSE;
   gboolean ret_transaction_resume = FALSE;
   gs_free char *transaction_str = NULL;
+  const char *boot_id;
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
@@ -930,6 +993,20 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
       if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
         goto out;
     }
+
+  if ((boot_id = ostree_repo_get_tmpobject_bootid (error)) == NULL)
+    goto out;
+
+  if (mkdirat (self->tmp_dir_fd, boot_id, 0777) == -1)
+    {
+      int errsv = errno;
+      if (G_UNLIKELY (errsv != EEXIST))
+        {
+          gs_set_error_from_errno (error, errsv);
+          goto out;
+        }
+    }
+
   transaction_str = g_strdup_printf ("pid=%llu", (unsigned long long) getpid ());
   if (!g_file_make_symbolic_link (self->transaction_lock_path, transaction_str,
                                   cancellable, error))
@@ -939,6 +1016,80 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   if (out_transaction_resume)
     *out_transaction_resume = ret_transaction_resume;
  out:
+  return ret;
+}
+
+static gboolean
+rename_pending_loose_objects (OstreeRepo        *self,
+                              GCancellable      *cancellable,
+                              GError           **error)
+{
+  gboolean ret = FALSE;
+  const char *boot_id;
+  gs_unref_object GFile *tmpobjectsdir = NULL;
+  int dir_fd = -1;
+  gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
+
+  if ((boot_id = ostree_repo_get_tmpobject_bootid (error)) == NULL)
+    goto out;
+
+  tmpobjectsdir = g_file_get_child (self->tmp_dir, boot_id);
+  if (! tmpobjectsdir)
+    goto out;
+
+  if (! gs_file_open_dir_fd (tmpobjectsdir, &dir_fd, cancellable, error))
+    goto out;
+
+  if (!gs_dirfd_iterator_init_at (self->tmp_dir_fd, boot_id, FALSE, &child_dfd_iter, error))
+    goto out;
+
+  while (TRUE)
+    {
+      struct dirent *out_dent;
+
+      if (!gs_dirfd_iterator_next_dent (&child_dfd_iter, &out_dent, cancellable, error))
+        goto out;
+
+      if (out_dent == NULL)
+        break;
+
+      if (strncmp (out_dent->d_name, "tmpobject-", 10) == 0)
+        {
+          char loose_path[_OSTREE_LOOSE_PATH_MAX];
+          gs_free gchar *checksum = NULL;
+          OstreeObjectType type;
+          ostree_object_from_string (out_dent->d_name + 10,
+                                     &checksum,
+                                     &type);
+
+          _ostree_loose_path (loose_path, checksum, type, self->mode);
+
+          if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
+                                                    cancellable, error))
+            goto out;
+
+          if (G_UNLIKELY (renameat (dir_fd, out_dent->d_name,
+                                    self->objects_dir_fd, loose_path) < 0))
+            {
+              (void) unlinkat (self->tmp_dir_fd, out_dent->d_name, 0);
+              if (errno != EEXIST)
+                {
+                  gs_set_error_from_errno (error, errno);
+                  g_prefix_error (error, "Storing file '%s': ", loose_path);
+                  goto out;
+                }
+            }
+          continue;
+        }
+    }
+
+  if (!gs_shutil_rm_rf_at (self->tmp_dir_fd, boot_id, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (dir_fd >= 0)
+    close (dir_fd);
   return ret;
 }
 
@@ -1108,6 +1259,15 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
+
+  if (syncfs (self->tmp_dir_fd) < 0)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  if (! rename_pending_loose_objects (self, cancellable, error))
+    goto out;
 
   if (!cleanup_tmpdir (self, cancellable, error))
     goto out;
