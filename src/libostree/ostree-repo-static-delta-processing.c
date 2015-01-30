@@ -54,6 +54,16 @@ typedef struct {
   GError        **async_error;
 
   OstreeObjectType output_objtype;
+  OstreeRepoTrustedContentBareCommit barecommitstate;
+  guint64          content_size;
+  GOutputStream   *content_out;
+  char             checksum[65];
+  gboolean        have_obj;
+  guint32         uid;
+  guint32         gid;
+  guint32         mode;
+  GVariant       *xattrs;
+  
   const guint8   *output_target;
   const guint8   *input_target_csum;
 
@@ -113,7 +123,6 @@ open_output_target (StaticDeltaExecutionState   *state,
 {
   gboolean ret = FALSE;
   guint8 *objcsum;
-  char checksum[65];
 
   g_assert (state->checksums != NULL);
   g_assert (state->output_target == NULL);
@@ -127,7 +136,7 @@ open_output_target (StaticDeltaExecutionState   *state,
   state->output_objtype = (OstreeObjectType) *objcsum;
   state->output_target = objcsum + 1;
 
-  ostree_checksum_inplace_from_bytes (state->output_target, checksum);
+  ostree_checksum_inplace_from_bytes (state->output_target, state->checksum);
 
   ret = TRUE;
  out:
@@ -439,19 +448,48 @@ validate_ofs (StaticDeltaExecutionState  *state,
 }
 
 static gboolean
+do_content_open_generic (OstreeRepo                 *repo,
+                         StaticDeltaExecutionState  *state,
+                         GCancellable               *cancellable,  
+                         GError                    **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_variant GVariant *modev;
+  guint64 mode_offset;
+  guint64 xattr_offset;
+  guint32 uid, gid, mode;
+
+  if (!read_varuint64 (state, &mode_offset, error))
+    goto out;
+  if (!read_varuint64 (state, &xattr_offset, error))
+    goto out;
+
+  state->barecommitstate.fd = -1;
+
+  modev = g_variant_get_child_value (state->mode_dict, mode_offset);
+  g_variant_get (modev, "(uuu)", &uid, &gid, &mode);
+  state->uid = GUINT32_FROM_BE (uid);
+  state->gid = GUINT32_FROM_BE (gid);
+  state->mode = GUINT32_FROM_BE (mode);
+
+  state->xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 dispatch_open_splice_and_close (OstreeRepo                 *repo,
                                 StaticDeltaExecutionState  *state,
                                 GCancellable               *cancellable,  
                                 GError                    **error)
 {
   gboolean ret = FALSE;
-  char checksum[65];
 
   if (!open_output_target (state, cancellable, error))
     goto out;
-
-  ostree_checksum_inplace_from_bytes (state->output_target, checksum);
-
+  
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
       gs_unref_variant GVariant *metadata = NULL;
@@ -469,7 +507,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
                                           state->payload_data + offset, length, TRUE, NULL, NULL);
       
       if (!ostree_repo_write_metadata_trusted (state->repo, state->output_objtype,
-                                               checksum,
+                                               state->checksum,
                                                metadata,
                                                cancellable,
                                                error))
@@ -477,81 +515,54 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
     }
   else
     {
-      guint64 mode_offset;
-      guint64 xattr_offset;
-      guint64 content_size;
       guint64 content_offset;
       guint64 objlen;
+      guint64 content_size;
+      gsize bytes_written;
       gs_unref_object GInputStream *object_input = NULL;
       gs_unref_object GInputStream *memin = NULL;
-      gs_unref_variant GVariant *xattrs_buf = NULL;
-      GVariant *modev;
-      GVariant *xattrs;
-      guint32 uid, gid, mode;
+      
+      if (!do_content_open_generic (repo, state, cancellable, error))
+        goto out;
 
-      if (!read_varuint64 (state, &mode_offset, error))
-        goto out;
-      if (!read_varuint64 (state, &xattr_offset, error))
-        goto out;
       if (!read_varuint64 (state, &content_size, error))
         goto out;
       if (!read_varuint64 (state, &content_offset, error))
         goto out;
-
       if (!validate_ofs (state, content_offset, content_size, error))
         goto out;
-
-      modev = g_variant_get_child_value (state->mode_dict, mode_offset);
-      g_variant_get (modev, "(uuu)", &uid, &gid, &mode);
-      uid = GUINT32_FROM_BE (uid);
-      gid = GUINT32_FROM_BE (gid);
-      mode = GUINT32_FROM_BE (mode);
-
-      xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
-
+      
       /* Fast path for regular files to bare repositories */
-      if (S_ISREG (mode) && 
+      if (S_ISREG (state->mode) && 
           (repo->mode == OSTREE_REPO_MODE_BARE ||
            repo->mode == OSTREE_REPO_MODE_BARE_USER))
         {
-          OstreeRepoTrustedContentBareCommit barecommitstate = { -1 };
-          gs_unref_object GOutputStream *outstream = NULL;
-          gsize bytes_written;
-          gboolean have_obj;
-
-          if (!_ostree_repo_open_trusted_content_bare (repo, checksum,
-                                                       content_size,
-                                                       &barecommitstate,
-                                                       &outstream,
-                                                       &have_obj,
+          if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
+                                                       state->content_size,
+                                                       &state->barecommitstate,
+                                                       &state->content_out,
+                                                       &state->have_obj,
                                                        cancellable, error))
             goto out;
-          
-          if (!have_obj)
+
+          if (!state->have_obj)
             {
-              if (!g_output_stream_write_all (outstream, state->payload_data + content_offset,
+              if (!g_output_stream_write_all (state->content_out,
+                                              state->payload_data + content_offset,
                                               content_size,
                                               &bytes_written,
                                               cancellable, error))
                 goto out;
-
-              if (!g_output_stream_flush (outstream, cancellable, error))
-                goto out;
             }
-
-          if (!_ostree_repo_commit_trusted_content_bare (repo, checksum, &barecommitstate,
-                                                         uid, gid, mode, xattrs,
-                                                         cancellable, error))
-            goto out;
         }
       else
         {
           /* Slower path, for symlinks and unpacking deltas into archive-z2 */
           gs_unref_object GFileInfo *finfo = NULL;
       
-          finfo = _ostree_header_gfile_info_new (mode, uid, gid);
+          finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
 
-          if (S_ISLNK (mode))
+          if (S_ISLNK (state->mode))
             {
               gs_free char *nulterminated_target =
                 g_strndup ((char*)state->payload_data + content_offset, content_size);
@@ -559,18 +570,18 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
             }
           else
             {
-              g_assert (S_ISREG (mode));
+              g_assert (S_ISREG (state->mode));
               g_file_info_set_size (finfo, content_size);
               memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, content_size, NULL);
             }
 
-          if (!ostree_raw_file_to_content_stream (memin, finfo, xattrs,
+          if (!ostree_raw_file_to_content_stream (memin, finfo, state->xattrs,
                                                   &object_input, &objlen,
                                                   cancellable, error))
             goto out;
           
           if (!ostree_repo_write_content_trusted (state->repo,
-                                                  checksum,
+                                                  state->checksum,
                                                   object_input,
                                                   objlen,
                                                   cancellable,
@@ -579,8 +590,8 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
         }
     }
 
-  state->checksum_index++;
-  state->output_target = NULL;
+  if (!dispatch_close (repo, state, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -597,7 +608,23 @@ dispatch_open (OstreeRepo                 *repo,
 {
   gboolean ret = FALSE;
 
+  g_assert (state->output_target == NULL);
+  /* FIXME - lift this restriction */
+  g_assert (repo->mode == OSTREE_REPO_MODE_BARE ||
+            repo->mode == OSTREE_REPO_MODE_BARE_USER);
+  
   if (!open_output_target (state, cancellable, error))
+    goto out;
+
+  if (!do_content_open_generic (repo, state, cancellable, error))
+    goto out;
+
+  if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
+                                               state->content_size,
+                                               &state->barecommitstate,
+                                               &state->content_out,
+                                               &state->have_obj,
+                                               cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -614,11 +641,29 @@ dispatch_write (OstreeRepo                 *repo,
                GError                    **error)
 {
   gboolean ret = FALSE;
+  guint64 content_size;
+  guint64 content_offset;
+  gsize bytes_written;
+      
+  if (!read_varuint64 (state, &content_size, error))
+    goto out;
+  if (!read_varuint64 (state, &content_offset, error))
+    goto out;
+  if (!validate_ofs (state, content_offset, content_size, error))
+    goto out;
 
-  g_assert_not_reached ();
+  if (!state->have_obj)
+    {
+      if (!g_output_stream_write_all (state->content_out,
+                                      state->payload_data + content_offset,
+                                      content_size,
+                                      &bytes_written,
+                                      cancellable, error))
+        goto out;
+    }
   
   ret = TRUE;
-  /* out: */
+ out:
   if (!ret)
     g_prefix_error (error, "opcode open-splice-and-close: ");
   return ret;
@@ -648,11 +693,27 @@ dispatch_close (OstreeRepo                 *repo,
                 GError                    **error)
 {
   gboolean ret = FALSE;
-
-  g_assert_not_reached ();
   
+  if (state->content_out)
+    {
+      if (!g_output_stream_flush (state->content_out, cancellable, error))
+        goto out;
+
+      if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->barecommitstate,
+                                                     state->uid, state->gid, state->mode,
+                                                     state->xattrs,
+                                                     cancellable, error))
+        goto out;
+    }
+      
+  g_clear_pointer (&state->xattrs, g_variant_unref);
+  g_clear_object (&state->content_out);
+  
+  state->checksum_index++;
+  state->output_target = NULL;
+
   ret = TRUE;
-  /* out: */
+ out:
   if (!ret)
     g_prefix_error (error, "opcode open-splice-and-close: ");
   return ret;
