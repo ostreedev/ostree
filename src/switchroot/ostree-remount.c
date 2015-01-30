@@ -45,7 +45,7 @@ path_is_on_readonly_fs (char *path)
   if (statvfs (path, &stvfsbuf) == -1)
     {
       perrorv ("statvfs(%s): ", path);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   return (stvfsbuf.f_flag & ST_RDONLY) != 0;
@@ -70,7 +70,7 @@ maybe_mount_tmpfs_on_var (void)
   if (mount ("tmpfs", "/var", "tmpfs", 0, NULL) < 0)
     {
       perror ("failed to mount tmpfs on /var");
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 }
 
@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 
       maybe_mount_tmpfs_on_var ();
 
-      exit (0);
+      exit (EXIT_SUCCESS);
     }
 
   for (i = 0; remounts[i] != NULL; i++)
@@ -110,13 +110,13 @@ main(int argc, char *argv[])
           if (errno != EINVAL)
             {
               perrorv ("failed to remount %s", target);
-              exit (1);
+              exit (EXIT_FAILURE);
             }
 	}
     }
 
   maybe_mount_tmpfs_on_var ();
 
-  exit (0);
+  exit (EXIT_SUCCESS);
 }
 

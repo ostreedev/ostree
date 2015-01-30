@@ -123,7 +123,7 @@ main(int argc, char *argv[])
   if (argc < 2)
     {
       fprintf (stderr, "usage: ostree-prepare-root SYSROOT\n");
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   root_mountpoint = argv[1];
@@ -132,7 +132,7 @@ main(int argc, char *argv[])
   if (!ostree_target)
     {
       fprintf (stderr, "No OSTree target; expected ostree=/ostree/boot.N/...\n");
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
@@ -140,18 +140,18 @@ main(int argc, char *argv[])
   if (lstat (destpath, &stbuf) < 0)
     {
       perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   if (!S_ISLNK (stbuf.st_mode))
     {
       fprintf (stderr, "OSTree target is not a symbolic link: %s\n", destpath);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   deploy_path = realpath (destpath, NULL);
   if (deploy_path == NULL)
     {
       perrorv ("realpath(%s) failed: ", destpath);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   fprintf (stderr, "Resolved OSTree target to: %s\n", deploy_path);
   
@@ -164,21 +164,21 @@ main(int argc, char *argv[])
   if (mount (NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
     {
       perrorv ("Failed to make \"/\" private mount: %m");
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("failed to initial bind mount %s", deploy_path);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   snprintf (destpath, sizeof(destpath), "%s/sysroot", deploy_path);
   if (mount (root_mountpoint, destpath, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("Failed to bind mount %s to '%s'", root_mountpoint, destpath);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
@@ -186,7 +186,7 @@ main(int argc, char *argv[])
   if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
     {
       perrorv ("failed to bind mount %s to %s", srcpath, destpath);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
@@ -195,12 +195,12 @@ main(int argc, char *argv[])
       if (mount (destpath, destpath, NULL, MS_BIND, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
-	  exit (1);
+	  exit (EXIT_FAILURE);
 	}
       if (mount (destpath, destpath, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
-	  exit (1);
+	  exit (EXIT_FAILURE);
 	}
     }
 
@@ -213,9 +213,9 @@ main(int argc, char *argv[])
   if (mount (deploy_path, root_mountpoint, NULL, MS_MOVE, NULL) < 0)
     {
       perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   
-  exit (0);
+  exit (EXIT_SUCCESS);
 }
 

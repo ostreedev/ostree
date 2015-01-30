@@ -126,7 +126,7 @@ void
 ot_util_fatal_literal (const char *msg)
 {
   g_printerr ("%s\n", msg);
-  exit (1);
+  exit (EXIT_FAILURE);
 }
 
 void

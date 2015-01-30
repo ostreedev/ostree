@@ -83,7 +83,7 @@ import_one_object_thread (gpointer   object,
   if (local_error != NULL)
     {
       g_printerr ("%s\n", local_error->message);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 }
 
