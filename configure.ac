@@ -68,13 +68,13 @@ AS_IF([test x$with_soup != xno ], [
   ])
   AS_IF([test x$have_soup = xyes], [
     PKG_CHECK_MODULES(OT_DEP_SOUP, $SOUP_DEPENDENCY)
-    AC_DEFINE(HAVE_LIBSOUP, 1, [Define if we have libsoup.pc])
+    AC_DEFINE([HAVE_LIBSOUP], 1, [Define if we have libsoup.pc])
     with_soup=yes
     save_CFLAGS=$CFLAGS
     CFLAGS=$OT_DEP_SOUP_CFLAGS
     have_libsoup_client_certs=no
     AC_CHECK_DECL([SOUP_SESSION_TLS_INTERACTION], [
-        AC_DEFINE(HAVE_LIBSOUP_CLIENT_CERTS, 1, [Define if we have libsoup client certs])
+        AC_DEFINE([HAVE_LIBSOUP_CLIENT_CERTS], 1, [Define if we have libsoup client certs])
         have_libsoup_client_certs=yes
         ], [], [#include <libsoup/soup.h>])
     AS_IF([test x$enable_libsoup_client_certs = xyes && test x$have_libsoup_client_certs != xyes], [
@@ -112,7 +112,7 @@ AS_IF([ test x$with_gpgme != xno ], [
        AC_MSG_ERROR([gpgme is enabled but could not be found])
    ])
    AS_IF([ test x$have_gpgme = xyes], [
-       AC_DEFINE(HAVE_GPGME, 1, [Define if we have gpgme])
+       AC_DEFINE([HAVE_GPGME], 1, [Define if we have gpgme])
        with_gpgme=yes
        AC_PATH_PROG(GPGVPATH, [gpgv2 gpgv])
        AC_SUBST(GPGVPATH)
@@ -138,7 +138,7 @@ AS_IF([ test x$with_libarchive != xno ], [
        AC_MSG_ERROR([libarchive is enabled but could not be found])
     ])
     AS_IF([ test x$have_libarchive = xyes], [
-        AC_DEFINE(HAVE_LIBARCHIVE, 1, [Define if we have libarchive.pc])
+        AC_DEFINE([HAVE_LIBARCHIVE], 1, [Define if we have libarchive.pc])
 	PKG_CHECK_MODULES(OT_DEP_LIBARCHIVE, $LIBARCHIVE_DEPENDENCY)
         save_LIBS=$LIBS
         LIBS=$OT_DEP_LIBARCHIVE_LIBS
@@ -167,7 +167,7 @@ AS_IF([ test x$with_selinux != xno ], [
        AC_MSG_ERROR([SELinux is enabled but could not be found])
     ])
     AS_IF([ test x$have_selinux = xyes], [
-        AC_DEFINE(HAVE_SELINUX, 1, [Define if we have libselinux.pc])
+        AC_DEFINE([HAVE_SELINUX], 1, [Define if we have libselinux.pc])
 	PKG_CHECK_MODULES(OT_DEP_SELINUX, $SELINUX_DEPENDENCY)
 	with_selinux=yes
     ], [
@@ -223,7 +223,7 @@ AC_ARG_ENABLE(static_deltas,
                              [Enable static delta code (default: yes)]),,
               [enable_static_deltas=yes])
 AS_IF([test x$enable_static_deltas = xyes], [
-    AC_DEFINE(BUILDOPT_STATIC_DELTAS, 1, [Define if static deltas are enabled])
+    AC_DEFINE([BUILDOPT_STATIC_DELTAS], 1, [Define if static deltas are enabled])
 ])
 AM_CONDITIONAL(BUILDOPT_STATIC_DELTAS, test x$enable_static_deltas = xyes)
 
