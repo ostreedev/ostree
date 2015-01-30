@@ -150,7 +150,7 @@ libostree_1_la_LIBADD += $(GPGME_LIBS)
 
 gpgreadme_DATA = src/libostree/README-gpg
 gpgreadmedir = $(pkgdatadir)/trusted.gpg.d
-EXTRA_DIST += src/libostree/README-gpg
+EXTRA_DIST += src/libostree/README-gpg src/libostree/bupsplit.h
 endif
 
 install-mkdir-remotes-d-hook:

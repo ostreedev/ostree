@@ -125,11 +125,11 @@ version.xml:
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make
 
-man1_MANS =
+man1_MANS = ostree.1 ostree-admin-cleanup.1 ostree-admin-config-diff.1 ostree-admin-deploy.1 ostree-admin-init-fs.1 ostree-admin-instutil.1 ostree-admin-os-init.1 ostree-admin-status.1 ostree-admin-set-origin.1 ostree-admin-switch.1 ostree-admin-undeploy.1 ostree-admin-upgrade.1 ostree-admin.1 ostree-cat.1 ostree-checkout.1 ostree-checksum.1 ostree-commit.1 ostree-config.1 ostree-diff.1 ostree-fsck.1 ostree-init.1 ostree-log.1 ostree-ls.1 ostree-prune.1 ostree-pull-local.1 ostree-pull.1 ostree-refs.1 ostree-remote.1 ostree-reset.1 ostree-rev-parse.1 ostree-show.1 ostree-summary.1 ostree-static-delta.1 ostree-trivial-httpd.1
+
+man5_MANS = ostree.repo.5 ostree.repo-config.5
 
 if ENABLE_GTK_DOC
-man1_MANS += ostree.1 ostree.repo.5 ostree.repo-config.5 ostree-admin-cleanup.1 ostree-admin-config-diff.1 ostree-admin-deploy.1 ostree-admin-init-fs.1 ostree-admin-instutil.1 ostree-admin-os-init.1 ostree-admin-status.1 ostree-admin-set-origin.1 ostree-admin-switch.1 ostree-admin-undeploy.1 ostree-admin-upgrade.1 ostree-admin.1 ostree-cat.1 ostree-checkout.1 ostree-checksum.1 ostree-commit.1 ostree-config.1 ostree-diff.1 ostree-fsck.1 ostree-init.1 ostree-log.1 ostree-ls.1 ostree-prune.1 ostree-pull-local.1 ostree-pull.1 ostree-refs.1 ostree-remote.1 ostree-reset.1 ostree-rev-parse.1 ostree-show.1 ostree-summary.1 ostree-static-delta.1 ostree-trivial-httpd.1
-
 
 XSLTPROC_FLAGS = \
         --nonet \
@@ -147,17 +147,21 @@ XSLTPROC_MAN = \
 .xml.5:
 	$(AM_V_GEN) $(XSLTPROC_MAN) $<
 
+CLEANFILES += \
+	$(man1_MANS) \
+	$(man5_MANS) \
+	$(NULL)
+
 endif # ENABLE_GTK_DOC
 
 MAN_IN_FILES = \
 	$(man1_MANS:.1=.xml) \
-	$(NULL)
-
-CLEANFILES += \
-	$(man1_MANS) \
+	$(man5_MANS:.5=.xml) \
 	$(NULL)
 
 EXTRA_DIST += \
 	$(MAN_IN_FILES) \
 	version.xml \
+	ostree.xml \
+	ostree-sections.txt \
 	$(NULL)
