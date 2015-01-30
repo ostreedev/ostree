@@ -194,4 +194,30 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
                                             GCancellable        *cancellable,
                                             GError             **error);
 
+typedef struct {
+  int fd;
+  char *temp_filename;
+} OstreeRepoTrustedContentBareCommit;
+
+gboolean
+_ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
+                                        const char          *checksum,
+                                        guint64              content_len,
+                                        OstreeRepoTrustedContentBareCommit *out_state,
+                                        GOutputStream      **out_stream,
+                                        gboolean            *out_have_object,
+                                        GCancellable        *cancellable,
+                                        GError             **error);
+
+gboolean
+_ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
+                                          const char          *checksum,
+                                          OstreeRepoTrustedContentBareCommit *state,
+                                          guint32              uid,
+                                          guint32              gid,
+                                          guint32              mode,
+                                          GVariant            *xattrs,
+                                          GCancellable        *cancellable,
+                                          GError             **error);
+
 G_END_DECLS
