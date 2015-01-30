@@ -20,138 +20,51 @@
 
 #include "config.h"
 
+#include "ostree-rollsum.h"
+#include <unistd.h>
+#include <stdlib.h>
+
 #include "libgsystem.h"
-
-#include "bupsplit.h"
-
-#define BLOB_MAX (8192*4)
-
-static GPtrArray *
-rollsum_checksums_for_data (GBytes     *bytes)
-{
-  const guint8 *start;
-  gsize len;
-  gboolean rollsum_end = FALSE;
-  GPtrArray *ret = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
-
-  start = g_bytes_get_data (bytes, &len);
-  while (len > 0)
-    {
-      int offset, bits;
-      if (!rollsum_end)
-        {
-          offset = bupsplit_find_ofs (start, MIN(G_MAXINT32, len), &bits); 
-          if (offset == 0)
-            {
-              rollsum_end = TRUE;
-              offset = MIN(BLOB_MAX, len);
-            }
-          else if (offset > BLOB_MAX)
-            offset = BLOB_MAX;
-        }
-      else
-        offset = MIN(BLOB_MAX, len);
-
-      {
-        gs_free char *blobcsum =
-          g_compute_checksum_for_data (G_CHECKSUM_SHA256,
-                                       start, offset);
-        g_ptr_array_add (ret, g_variant_ref_sink (g_variant_new ("(st)",
-                                                                 blobcsum, (guint64)offset)));
-      }
-      start += offset;
-      len -= offset;
-    }
-  return ret;
-}
-
-static void
-print_rollsums (GPtrArray  *rollsums)
-{
-  guint i;
-  for (i = 0; i < rollsums->len; i++)
-    {
-      GVariant *sum = rollsums->pdata[i];
-      const char *csum;
-      guint64 val;
-      g_variant_get (sum, "(&st)", &csum, &val);
-      g_print ("chunk %s %" G_GUINT64_FORMAT "\n", csum, val);
-    }
-}
 
 int
 main (int argc, char **argv)
 {
-  GCancellable *cancellable = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
-  gs_unref_object GFile *path = NULL;
-  GBytes *bytes = NULL;
+  GBytes *from_bytes = NULL;
+  GBytes *to_bytes = NULL;
+  const char *from_path;
+  const char *to_path;
+  OstreeRollsumMatches *matches;
+  GMappedFile *mfile;
 
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
-  if (argc == 2)
-    {
-      gs_unref_ptrarray GPtrArray *rollsums = NULL;
+  if (argc < 3)
+    exit (1);
 
-      path = g_file_new_for_path (argv[1]);
-      bytes = gs_file_map_readonly (path, cancellable, error);
-      if (!bytes)
-	goto out;
+  from_path = argv[1];
+  to_path = argv[2];
 
-      rollsums = rollsum_checksums_for_data (bytes);
-      print_rollsums (rollsums);
-    }
-  else if (argc > 2)
-    {
-      guint i;
-      gs_unref_hashtable GHashTable *sums = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-      guint64 input_size = 0;
-      guint64 rollsum_size = 0;
+  mfile = g_mapped_file_new (from_path, FALSE, error);
+  if (!mfile)
+    goto out;
+  from_bytes = g_mapped_file_get_bytes (mfile);
+  g_mapped_file_unref (mfile);
+  mfile = g_mapped_file_new (to_path, FALSE, error);
+  if (!mfile)
+    goto out;
+  to_bytes = g_mapped_file_get_bytes (mfile);
+  g_mapped_file_unref (mfile);
 
-      for (i = 1; i < argc; i++)
-        {
-          guint j;
-          gs_unref_ptrarray GPtrArray *rollsums = NULL;
-          guint64 this_rollsum_size = 0;
+  matches = _ostree_compute_rollsum_matches (from_bytes, to_bytes);
 
-          path = g_file_new_for_path (argv[i]);
-          bytes = gs_file_map_readonly (path, cancellable, error);
-          if (!bytes)
-            goto out;
-
-          input_size += g_bytes_get_size (bytes);
-          
-          g_print ("input: %s size: %" G_GUINT64_FORMAT "\n", argv[i], g_bytes_get_size (bytes));
-
-          rollsums = rollsum_checksums_for_data (bytes);
-          print_rollsums (rollsums);
-          for (j = 0; j < rollsums->len; j++)
-            {
-              GVariant *sum = rollsums->pdata[j];
-              const char *csum;
-              guint64 ofs;
-              g_variant_get (sum, "(&st)", &csum, &ofs);
-              if (!g_hash_table_contains (sums, csum))
-                {
-                  g_hash_table_add (sums, g_strdup (csum));
-                  rollsum_size += ofs;
-                }
-              this_rollsum_size += ofs;
-            }
-          g_print ("input: rollsum size: %" G_GUINT64_FORMAT "\n", this_rollsum_size);
-        }
-      g_print ("rollsum total:%u input:%" G_GUINT64_FORMAT " output: %" G_GUINT64_FORMAT " speedup:%f\n",
-               g_hash_table_size (sums), input_size, rollsum_size,
-               (((double)(input_size+1)) / ((double) rollsum_size + 1)));
-    }
-  else
-    {
-      bupsplit_selftest ();
-    }
+  g_printerr ("rollsum crcs=%u bufs=%u total=%u matchsize=%llu\n",
+              matches->crcmatches,
+              matches->bufmatches,
+              matches->total, (unsigned long long)matches->match_size);
 
  out:
-  g_clear_pointer (&bytes, g_bytes_unref);
   if (local_error)
     {
       g_printerr ("%s\n", local_error->message);

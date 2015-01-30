@@ -87,12 +87,6 @@ INSTALL_DATA_HOOKS += install-gpg-data-hook
 	 echo 'Output=TAP' >> $@.tmp; \
 	 mv $@.tmp $@)
 
-%.test: tests/%.js Makefile
-	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
-	 echo 'Exec=env TESTDATADIR=$(pkglibexecdir)/installed-tests $(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
-	 echo 'Type=session' >> $@.tmp; \
-	 mv $@.tmp $@)
-
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
 	tests/test-sizes.js \
@@ -109,7 +103,7 @@ check_PROGRAMS = tests/test-rollsum tests/test-varint tests/test-ot-unix-utils
 tests_test_ot_unix_utils_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 tests_test_ot_unix_utils_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
-tests_test_rollsum_SOURCES = src/libostree/bupsplit.c tests/test-rollsum.c
+tests_test_rollsum_SOURCES = src/libostree/bupsplit.c src/libostree/ostree-rollsum.c tests/test-rollsum.c
 tests_test_rollsum_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 tests_test_rollsum_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
