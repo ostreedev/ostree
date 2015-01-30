@@ -20,7 +20,6 @@ local-checks-to-skip = \
     \
     sc_program_name \
     sc_bindtextdomain	 \
-    sc_prohibit_dirent_without_use \
     sc_prohibit_empty_lines_at_EOF \
     sc_prohibit_magic_number_exit \
     sc_prohibit_path_max_allocation \

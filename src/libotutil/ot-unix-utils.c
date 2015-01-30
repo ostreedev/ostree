@@ -34,7 +34,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <dirent.h>
 
 gboolean
 ot_util_filename_validate (const char *name,

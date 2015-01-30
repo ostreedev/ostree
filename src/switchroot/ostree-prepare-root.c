@@ -41,7 +41,6 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
-#include <dirent.h>
 
 #include "ostree-mount-util.h"
 
