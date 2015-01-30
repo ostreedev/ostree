@@ -34,7 +34,6 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <fcntl.h>
-#include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
