@@ -102,7 +102,7 @@ ot_editor_prompt (OstreeRepo *repo,
 
   if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
     {
-      g_prefix_error (error, "There was a problem with the editor '%s'.", editor);
+      g_prefix_error (error, "There was a problem with the editor '%s'", editor);
       goto out;
     }
 

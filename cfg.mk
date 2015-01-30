@@ -20,7 +20,6 @@ local-checks-to-skip = \
     \
     sc_program_name \
     sc_bindtextdomain	 \
-    sc_error_message_period \
     sc_m4_quote_check \
     sc_prohibit_assert_without_use \
     sc_prohibit_dirent_without_use \
