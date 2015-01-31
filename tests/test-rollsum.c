@@ -41,7 +41,7 @@ main (int argc, char **argv)
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
   if (argc < 3)
-    exit (1);
+    exit (EXIT_FAILURE);
 
   from_path = argv[1];
   to_path = argv[2];
