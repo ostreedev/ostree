@@ -82,6 +82,8 @@ typedef struct {
   int               maxdepth;
   guint64           start_time;
 
+  gboolean          is_mirror;
+
   char         *dir;
   gboolean      commitpartial_exists;
 
@@ -596,32 +598,54 @@ content_fetch_on_complete (GObject        *object,
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
   g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
-  
-  if (!ostree_content_file_parse_at (TRUE, pull_data->tmpdir_dfd, temp_path, FALSE,
-                                     &file_in, &file_info, &xattrs,
-                                     cancellable, error))
+
+  if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
-      /* If it appears corrupted, delete it */
-      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
-      goto out;
+      gboolean have_object;
+      if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, checksum,
+                                   &have_object,
+                                   cancellable, error))
+        goto out;
+
+      if (!have_object)
+        {
+          if (!_ostree_repo_commit_loose_final (pull_data->repo, checksum, OSTREE_OBJECT_TYPE_FILE,
+                                                pull_data->tmpdir_dfd, temp_path,
+                                                cancellable, error))
+            goto out;
+        }
+      pull_data->n_fetched_content++;
     }
+  else
+    {
+      /* Non-mirroring path */
+      
+      if (!ostree_content_file_parse_at (TRUE, pull_data->tmpdir_dfd, temp_path, FALSE,
+                                         &file_in, &file_info, &xattrs,
+                                         cancellable, error))
+        {
+          /* If it appears corrupted, delete it */
+          (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
+          goto out;
+        }
 
-  /* Also, delete it now that we've opened it, we'll hold
-   * a reference to the fd.  If we fail to write later, then
-   * the temp space will be cleaned up.
-   */
-  (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
-
-  if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
-                                          &object_input, &length,
-                                          cancellable, error))
-    goto out;
+      /* Also, delete it now that we've opened it, we'll hold
+       * a reference to the fd.  If we fail to write later, then
+       * the temp space will be cleaned up.
+       */
+      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
+      
+      if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
+                                              &object_input, &length,
+                                              cancellable, error))
+        goto out;
   
-  pull_data->n_outstanding_content_write_requests++;
-  ostree_repo_write_content_async (pull_data->repo, checksum,
-                                   object_input, length,
-                                   cancellable,
-                                   content_fetch_on_write_complete, fetch_data);
+      pull_data->n_outstanding_content_write_requests++;
+      ostree_repo_write_content_async (pull_data->repo, checksum,
+                                       object_input, length,
+                                       cancellable,
+                                       content_fetch_on_write_complete, fetch_data);
+    }
 
  out:
   pull_data->n_outstanding_content_fetches--;
@@ -1589,7 +1613,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
   char **refs_to_fetch = NULL;
-  gboolean is_mirror;
   GSource *update_timeout = NULL;
   GSource *idle_src;
 
@@ -1609,7 +1632,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
 
-  is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
+  pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
 
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_ref_thread_default ();
@@ -1824,7 +1847,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
-  if (is_mirror && !refs_to_fetch && !configured_branches)
+  if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
       SoupURI *summary_uri = NULL;
       gs_unref_bytes GBytes *bytes = NULL;
@@ -2034,7 +2057,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
       else
         {
-          ostree_repo_transaction_set_ref (pull_data->repo, is_mirror ? NULL : pull_data->remote_name, ref, checksum);
+          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->is_mirror ? NULL : pull_data->remote_name, ref, checksum);
         }
     }
 

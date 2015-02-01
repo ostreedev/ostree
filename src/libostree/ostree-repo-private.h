@@ -194,6 +194,15 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
                                             GCancellable        *cancellable,
                                             GError             **error);
 
+gboolean
+_ostree_repo_commit_loose_final (OstreeRepo        *self,
+                                 const char        *checksum,
+                                 OstreeObjectType   objtype,
+                                 int                temp_dfd,
+                                 const char        *temp_filename,
+                                 GCancellable      *cancellable,
+                                 GError           **error);
+
 typedef struct {
   int fd;
   char *temp_filename;

@@ -38,7 +38,7 @@ ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
 mkdir repo
-ostree --repo=repo init
+ostree --repo=repo init --mode=archive-z2
 ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ostree --repo=repo pull --mirror origin
 ostree --repo=repo checkout -U main main-copy
