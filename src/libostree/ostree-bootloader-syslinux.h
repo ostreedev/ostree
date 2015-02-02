@@ -35,4 +35,3 @@ GType _ostree_bootloader_syslinux_get_type (void) G_GNUC_CONST;
 OstreeBootloaderSyslinux * _ostree_bootloader_syslinux_new (OstreeSysroot *sysroot);
 
 G_END_DECLS
-

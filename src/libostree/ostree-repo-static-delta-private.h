@@ -149,4 +149,3 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  GCancellable           *cancellable,
                                                  GError                **error);
 G_END_DECLS
-

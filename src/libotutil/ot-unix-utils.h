@@ -45,4 +45,3 @@ gboolean ot_util_filename_validate (const char *name, GError **error);
 gboolean ot_util_path_split_validate (const char *path, GPtrArray **out_components, GError **error);
 
 G_END_DECLS
-

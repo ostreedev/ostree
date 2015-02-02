@@ -49,4 +49,3 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
                        const char *group_name);
 
 G_END_DECLS
-

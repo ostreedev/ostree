@@ -43,4 +43,3 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
 
 
 G_END_DECLS
-

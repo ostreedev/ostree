@@ -117,4 +117,3 @@ cd ${test_tmpdir}
 echo bacon > metalink-data/metalink.xml
 test_metalink_pull_error "Document must begin with an element"
 echo "ok metalink err malformed"
-

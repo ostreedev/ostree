@@ -125,4 +125,3 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes);
 
 G_END_DECLS
-

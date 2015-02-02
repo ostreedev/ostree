@@ -1854,4 +1854,3 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
   
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }
-

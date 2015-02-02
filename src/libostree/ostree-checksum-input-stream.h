@@ -63,4 +63,3 @@ OstreeChecksumInputStream * ostree_checksum_input_stream_new          (GInputStr
                                                                        GChecksum      *checksum);
 
 G_END_DECLS
-

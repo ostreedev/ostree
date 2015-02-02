@@ -68,4 +68,3 @@ _ostree_lzma_return (lzma_ret   res,
       return G_CONVERTER_ERROR;
     }
 }
-

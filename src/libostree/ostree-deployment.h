@@ -60,4 +60,3 @@ OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 
 
 G_END_DECLS
-

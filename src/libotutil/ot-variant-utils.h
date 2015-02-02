@@ -78,4 +78,3 @@ ot_variant_bsearch_str (GVariant   *array,
                         int        *out_pos);
 
 G_END_DECLS
-

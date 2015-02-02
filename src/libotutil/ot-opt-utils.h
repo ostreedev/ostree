@@ -29,4 +29,3 @@ G_BEGIN_DECLS
 void ot_util_usage_error (GOptionContext *context, const char *message, GError **error);
 
 G_END_DECLS
-

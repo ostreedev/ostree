@@ -184,4 +184,3 @@ ostree_libarchive_input_stream_close (GInputStream  *stream,
 {
   return TRUE;
 }
-

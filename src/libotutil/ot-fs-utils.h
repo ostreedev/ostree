@@ -58,4 +58,3 @@ gboolean ot_openat_read_stream (int             dfd,
                                 GError        **error);
 
 G_END_DECLS
-

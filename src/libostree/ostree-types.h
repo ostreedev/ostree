@@ -34,4 +34,3 @@ typedef struct OstreeMutableTree OstreeMutableTree;
 typedef struct OstreeRepoFile OstreeRepoFile;
 
 G_END_DECLS
-

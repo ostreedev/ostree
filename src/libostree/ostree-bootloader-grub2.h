@@ -37,4 +37,3 @@ OstreeBootloaderGrub2 * _ostree_bootloader_grub2_new (OstreeSysroot *sysroot);
 gboolean _ostree_bootloader_grub2_generate_config (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
-

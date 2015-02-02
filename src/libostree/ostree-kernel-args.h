@@ -55,4 +55,3 @@ char ** _ostree_kernel_args_to_strv (OstreeKernelArgs *kargs);
 char * _ostree_kernel_args_to_string (OstreeKernelArgs *kargs);
 
 G_END_DECLS
-

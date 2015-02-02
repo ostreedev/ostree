@@ -183,4 +183,3 @@ _ostree_write_varuint64 (GString *buf, guint64 n)
   for (i = 0; i < size; i++)
     g_string_append_c (buf, target[i]);
 }
-

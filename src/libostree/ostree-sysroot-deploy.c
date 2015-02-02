@@ -2015,4 +2015,3 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
  out:
   return ret;
 }
-

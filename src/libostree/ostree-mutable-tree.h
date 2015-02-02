@@ -92,4 +92,3 @@ GHashTable * ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);
 GHashTable * ostree_mutable_tree_get_files (OstreeMutableTree *self);
 
 G_END_DECLS
-

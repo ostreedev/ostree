@@ -156,4 +156,3 @@ $ ostree --repo=/path/to/repo gendelta --from=gnome-ostree/3.10/x86_64-runtime -
 
 This is an obvious one - generate a delta from the last stable release
 to the current development head.
-

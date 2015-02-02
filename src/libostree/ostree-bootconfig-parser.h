@@ -55,4 +55,3 @@ const char *ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
 
 
 G_END_DECLS
-

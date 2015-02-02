@@ -37,4 +37,3 @@ _ostree_linuxfs_alter_immutable_flag (GFile         *path,
                                       GError       **error);
 
 G_END_DECLS
-

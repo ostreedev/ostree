@@ -378,4 +378,3 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
  out:
   return ret;
 }
-

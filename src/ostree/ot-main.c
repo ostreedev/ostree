@@ -358,4 +358,3 @@ ostree_admin_option_context_parse (GOptionContext *context,
 out:
   return success;
 }
-

@@ -388,4 +388,3 @@ OSTREE_TYPE_SYSROOT_UPGRADER
 ostree_sysroot_upgrader_get_type
 ostree_sysroot_upgrader_flags_get_type
 </SECTION>
-

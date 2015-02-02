@@ -41,4 +41,3 @@ gboolean ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellab
 gboolean ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
-

@@ -47,4 +47,3 @@ ostree_cmd__private__ (void)
 
   return &table;
 }
-

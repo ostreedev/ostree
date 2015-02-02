@@ -67,4 +67,3 @@ void ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
 void ostree_async_progress_finish (OstreeAsyncProgress *self);
 
 G_END_DECLS
-

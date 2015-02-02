@@ -42,4 +42,3 @@ void ot_waitable_queue_ref (OtWaitableQueue *queue);
 void ot_waitable_queue_unref (OtWaitableQueue *queue);
 
 G_END_DECLS
-

@@ -81,4 +81,3 @@ gboolean ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                              GError         **error);
 
 G_END_DECLS
-

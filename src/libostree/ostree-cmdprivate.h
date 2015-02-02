@@ -32,4 +32,3 @@ const OstreeCmdPrivateVTable *
 ostree_cmd__private__ (void);
 
 G_END_DECLS
-

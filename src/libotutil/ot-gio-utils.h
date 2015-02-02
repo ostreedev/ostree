@@ -92,4 +92,3 @@ gboolean ot_util_fsync_directory (GFile         *dir,
                                   GError       **error);
 
 G_END_DECLS
-

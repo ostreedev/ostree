@@ -134,4 +134,3 @@ _ostree_linuxfs_alter_immutable_flag (GFile         *path,
     (void) close (fd);
   return ret;
 }
-

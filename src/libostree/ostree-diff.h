@@ -68,4 +68,3 @@ void ostree_diff_print (GFile          *a,
                         GPtrArray      *added);
 
 G_END_DECLS
-

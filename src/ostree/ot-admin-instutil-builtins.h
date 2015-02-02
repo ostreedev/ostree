@@ -29,4 +29,3 @@ gboolean ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellabl
 gboolean ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
-

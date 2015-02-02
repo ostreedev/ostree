@@ -322,4 +322,3 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
  out:
   return ret;
 }
-

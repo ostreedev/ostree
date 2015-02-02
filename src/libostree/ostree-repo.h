@@ -630,4 +630,3 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
 
 
 G_END_DECLS
-

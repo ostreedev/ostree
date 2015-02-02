@@ -114,4 +114,3 @@ gboolean ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
                                                  GError            **error);
 
 G_END_DECLS
-

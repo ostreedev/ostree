@@ -194,4 +194,3 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
                                             GError             **error);
 
 G_END_DECLS
-

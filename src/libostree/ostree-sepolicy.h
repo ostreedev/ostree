@@ -72,4 +72,3 @@ void ostree_sepolicy_fscreatecon_cleanup (void **unused);
 #define ostree_cleanup_sepolicy_fscreatecon __attribute__ ((cleanup(ostree_sepolicy_fscreatecon_cleanup)))
 
 G_END_DECLS
-

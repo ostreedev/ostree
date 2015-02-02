@@ -37,4 +37,3 @@ ot_parse_keyvalue (const char  *keyvalue,
                    GError     **error);
 
 G_END_DECLS
-

@@ -52,4 +52,3 @@ GFileEnumerator * _ostree_repo_file_enumerator_new      (OstreeRepoFile       *d
 							 GError              **error);
 
 G_END_DECLS
-

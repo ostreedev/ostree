@@ -73,4 +73,3 @@ test*.test
 *.tar.xz
 *.src.rpm
 packaging/*.spec
-

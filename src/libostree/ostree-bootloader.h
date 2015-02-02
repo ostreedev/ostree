@@ -66,4 +66,3 @@ gboolean _ostree_bootloader_write_config (OstreeBootloader  *self,
 gboolean _ostree_bootloader_is_atomic (OstreeBootloader  *self);
 
 G_END_DECLS
-

@@ -31,4 +31,3 @@ GThreadPool * ot_thread_pool_new_nproc (GFunc     func,
                                         
 
 G_END_DECLS
-

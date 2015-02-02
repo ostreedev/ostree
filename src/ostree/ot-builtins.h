@@ -55,4 +55,3 @@ BUILTINPROTO(trivial_httpd);
 #undef BUILTINPROTO
 
 G_END_DECLS
-

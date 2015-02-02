@@ -92,4 +92,3 @@ assert_not_file_has_content list.txt "origin"
 # Can't grep for 'another' because of 'another-noexist'
 assert_file_has_content list.txt "another-noexist"
 echo "ok remote list remaining"
-

@@ -1129,4 +1129,3 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
  out:
   return ret;
 }
-

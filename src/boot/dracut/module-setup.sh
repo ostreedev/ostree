@@ -38,4 +38,3 @@ install() {
     ln_r "${systemdsystemunitdir}/ostree-prepare-root.service" \
         "${systemdsystemconfdir}/initrd-switch-root.target.wants/ostree-prepare-root.service"
 }
-

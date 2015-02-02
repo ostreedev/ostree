@@ -83,4 +83,3 @@ gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                            GError           **error);
 
 G_END_DECLS
-

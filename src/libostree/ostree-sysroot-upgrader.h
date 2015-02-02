@@ -99,4 +99,3 @@ gboolean ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
                                          GError                **error);
 
 G_END_DECLS
-

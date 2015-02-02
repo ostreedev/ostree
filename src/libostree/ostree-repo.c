@@ -3429,4 +3429,3 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     g_list_free (ordered_keys);
   return ret;
 }
-

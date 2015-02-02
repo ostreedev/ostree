@@ -20,7 +20,6 @@ local-checks-to-skip = \
     \
     sc_program_name \
     sc_bindtextdomain	 \
-    sc_prohibit_empty_lines_at_EOF \
     sc_prohibit_path_max_allocation \
     sc_trailing_blank \
 
@@ -28,4 +27,4 @@ local-checks-to-skip = \
 show-vc-list-except:
 	@$(VC_LIST_EXCEPT)
 
-VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|maint.mk$$
+VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|maint.mk|*.gpg$$

@@ -207,4 +207,3 @@ ot_gio_checksum_stream_finish (GInputStream   *in,
   g_warn_if_fail (g_simple_async_result_get_source_tag (simple) == ot_gio_checksum_stream_async);
   return g_memdup (g_simple_async_result_get_op_res_gpointer (simple), 32);
 }
-

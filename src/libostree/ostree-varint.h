@@ -32,4 +32,3 @@ gboolean _ostree_read_varuint64 (const guint8   *buf,
 void _ostree_write_varuint64 (GString *buf, guint64 n);
 
 G_END_DECLS
-
