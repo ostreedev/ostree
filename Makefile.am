@@ -84,7 +84,8 @@ release-tarball-embedded:
 check-local:
 	@echo "  *** NOTE ***"
 	@echo "  *** NOTE ***"
-	@echo "    ostree only supports https://live.gnome.org/GnomeGoals/InstalledTests"
+	@echo "    \"make check\" only runs a subset of OSTree's tests."
+	@echo "    The other tests use: use https://live.gnome.org/GnomeGoals/InstalledTests"
 	@echo "    To run them, ostree must be configured with --enable-installed-tests and installed"
 	@echo "  *** NOTE ***"
 	@echo "  *** NOTE ***"

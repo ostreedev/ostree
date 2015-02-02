@@ -20,6 +20,7 @@
 
 if BUILDOPT_INSTALL_TESTS
 insttest_PROGRAMS = 
+TESTS =
 
 insttestdir=$(pkglibexecdir)/installed-tests
 testfiles = test-basic \
@@ -101,12 +102,14 @@ INSTALL_DATA_HOOKS += install-gpg-data-hook
 	 mv $@.tmp $@)
 
 insttest_PROGRAMS += test-varint
+TESTS += test-rollsum
 test_varint_SOURCES = src/libostree/ostree-varint.c tests/test-varint.c
 test_varint_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 test_varint_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 testmeta_DATA += test-varint.test
 
 insttest_PROGRAMS += test-rollsum
+TESTS += test-rollsum
 test_rollsum_SOURCES = src/libostree/bupsplit.c tests/test-rollsum.c
 test_rollsum_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 test_rollsum_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
@@ -118,5 +121,6 @@ insttest_SCRIPTS += tests/test-core.js \
 	$(NULL)
 testmeta_DATA += test-core.test test-sizes.test test-sysroot.test
 endif
+
 
 endif
