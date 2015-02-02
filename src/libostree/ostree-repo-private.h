@@ -37,6 +37,7 @@ struct OstreeRepo {
   char *boot_id;
 
   GFile *repodir;
+  int    repo_dir_fd;
   GFile *tmp_dir;
   int    tmp_dir_fd;
   GFile *local_heads_dir;

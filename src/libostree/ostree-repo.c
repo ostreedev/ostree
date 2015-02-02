@@ -328,6 +328,8 @@ ostree_repo_finalize (GObject *object)
 
   g_free (self->boot_id);
   g_clear_object (&self->repodir);
+  if (self->repo_dir_fd != -1)
+    (void) close (self->repo_dir_fd);
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
@@ -453,6 +455,7 @@ ostree_repo_init (OstreeRepo *self)
                                          (GDestroyNotify) ost_remote_unref);
   g_mutex_init (&self->remotes_lock);
 
+  self->repo_dir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
 }
@@ -1288,13 +1291,20 @@ ostree_repo_open (OstreeRepo    *self,
     goto out;
   g_strdelimit (self->boot_id, "\n", '\0');
 
-  if (!gs_file_open_dir_fd (self->objects_dir, &self->objects_dir_fd, cancellable, error))
+  if (!gs_file_open_dir_fd (self->repodir, &self->repo_dir_fd, cancellable, error))
     {
-      g_prefix_error (error, "Reading objects/ directory: ");
+      g_prefix_error (error, "%s: ", gs_file_get_path_cached (self->repodir));
       goto out;
     }
 
-  self->writable = faccessat (AT_FDCWD, gs_file_get_path_cached (self->objects_dir), W_OK, 0) == 0;
+  if (!gs_file_open_dir_fd_at (self->repo_dir_fd, "objects",
+                               &self->objects_dir_fd, cancellable, error))
+    {
+      g_prefix_error (error, "Opening objects/ directory: ");
+      goto out;
+    }
+
+  self->writable = faccessat (self->objects_dir_fd, ".", W_OK, 0) == 0;
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     {
