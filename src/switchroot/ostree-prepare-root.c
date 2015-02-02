@@ -117,6 +117,7 @@ main(int argc, char *argv[])
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
   char destpath[PATH_MAX];
+  char newroot[PATH_MAX];
   struct stat stbuf;
   int i;
 
@@ -132,6 +133,13 @@ main(int argc, char *argv[])
   if (!ostree_target)
     {
       fprintf (stderr, "No OSTree target; expected ostree=/ostree/boot.N/...\n");
+      exit (EXIT_FAILURE);
+    }
+
+  snprintf (newroot, sizeof(newroot), "%s.tmp", root_mountpoint);
+  if (mkdir (newroot, 0755) < 0)
+    {
+      perrorv ("Couldn't create temporary sysroot '%s': ", newroot);
       exit (EXIT_FAILURE);
     }
 
@@ -168,13 +176,13 @@ main(int argc, char *argv[])
     }
 
   /* Make deploy_path a bind mount, so we can move it later */
-  if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
+  if (mount (deploy_path, newroot, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("failed to initial bind mount %s", deploy_path);
       exit (EXIT_FAILURE);
     }
 
-  snprintf (destpath, sizeof(destpath), "%s/sysroot", deploy_path);
+  snprintf (destpath, sizeof(destpath), "%s/sysroot", newroot);
   if (mount (root_mountpoint, destpath, NULL, MS_BIND, NULL) < 0)
     {
       perrorv ("Failed to bind mount %s to '%s'", root_mountpoint, destpath);
@@ -182,7 +190,7 @@ main(int argc, char *argv[])
     }
 
   snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
-  snprintf (destpath, sizeof(destpath), "%s/var", deploy_path);
+  snprintf (destpath, sizeof(destpath), "%s/var", newroot);
   if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
     {
       perrorv ("failed to bind mount %s to %s", srcpath, destpath);
@@ -191,7 +199,7 @@ main(int argc, char *argv[])
 
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
     {
-      snprintf (destpath, sizeof(destpath), "%s%s", deploy_path, readonly_bind_mounts[i]);
+      snprintf (destpath, sizeof(destpath), "%s%s", newroot, readonly_bind_mounts[i]);
       if (mount (destpath, destpath, NULL, MS_BIND, NULL) < 0)
 	{
 	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
@@ -206,11 +214,22 @@ main(int argc, char *argv[])
 
   touch_run_ostree ();
 
+  /* In preparation for the hack below, unmount the original /sysroot.
+   * Otherwise, we would be placing our newroot mount on top of an
+   * existing mount, and after we do a switch_root, we would no longer
+   * be able to ever unmount the original mount.
+   */
+  if (umount (root_mountpoint) < 0)
+    {
+      perrorv ("failed to umount original mount at %s", root_mountpoint);
+      exit (EXIT_FAILURE);
+    }
+
   /* This is a bit hacky - move our deployment to /sysroot, since
    * systemd's initrd-switch-root target hardcodes looking for it
    * there.
    */
-  if (mount (deploy_path, root_mountpoint, NULL, MS_MOVE, NULL) < 0)
+  if (mount (newroot, root_mountpoint, NULL, MS_MOVE, NULL) < 0)
     {
       perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
       exit (EXIT_FAILURE);
