@@ -1122,7 +1122,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                   part_builder->uncompressed_size);
     }
 
-  descriptor_relpath = _ostree_get_relative_static_delta_path (from, to);
+  descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
   descriptor_path = g_file_resolve_relative_path (self->repodir, descriptor_relpath);
   descriptor_dir = g_file_get_parent (descriptor_path);
 

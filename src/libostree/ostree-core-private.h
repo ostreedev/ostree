@@ -96,7 +96,12 @@ _ostree_get_relative_object_path (const char        *checksum,
 
 char *
 _ostree_get_relative_static_delta_path (const char        *from,
-                                        const char        *to);
+                                        const char        *to,
+                                        const char        *target);
+
+char *
+_ostree_get_relative_static_delta_superblock_path (const char        *from,
+                                                   const char        *to);
 
 char *
 _ostree_get_relative_static_delta_detachedmeta_path (const char        *from,

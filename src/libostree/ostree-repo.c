@@ -3206,7 +3206,7 @@ ostree_repo_sign_delta (OstreeRepo     *self,
     _ostree_get_relative_static_delta_detachedmeta_path (from_commit, to_commit);
   detached_metadata_path = g_file_resolve_relative_path (self->repodir, detached_metadata_relpath);
 
-  delta_path = _ostree_get_relative_static_delta_path (from_commit, to_commit);
+  delta_path = _ostree_get_relative_static_delta_superblock_path (from_commit, to_commit);
   delta_file = g_file_resolve_relative_path (self->repodir, delta_path);
   delta_data = gs_file_map_readonly (delta_file, cancellable, error);
   if (!delta_data)
