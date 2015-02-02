@@ -1340,7 +1340,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *ret_delta_superblock = NULL;
-  gs_free char *delta_name = _ostree_get_relative_static_delta_path (from_revision, to_revision);
+  gs_free char *delta_name =
+    _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
   gs_unref_bytes GBytes *delta_superblock_data = NULL;
   gs_unref_bytes GBytes *delta_meta_data = NULL;
   gs_unref_variant GVariant *delta_superblock = NULL;

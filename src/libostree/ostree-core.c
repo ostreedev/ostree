@@ -1425,15 +1425,15 @@ _ostree_get_relative_object_path (const char         *checksum,
   return g_string_free (path, FALSE);
 }
 
-static char *
-get_delta_path (const char *from,
-                const char *to,
-                const char *target)
+char *
+_ostree_get_relative_static_delta_path (const char *from,
+                                        const char *to,
+                                        const char *target)
 {
-  char prefix[3];
   guint8 csum_to[32];
   char to_b64[44];
   guint8 csum_to_copy[32];
+  GString *ret = g_string_new ("deltas/");
 
   ostree_checksum_inplace_to_bytes (to, csum_to);
   ostree_checksum_b64_inplace_from_bytes (csum_to, to_b64);
@@ -1441,14 +1441,7 @@ get_delta_path (const char *from,
 
   g_assert (memcmp (csum_to, csum_to_copy, 32) == 0);
 
-  if (from == NULL)
-    {
-      prefix[0] = to_b64[0];
-      prefix[1] = to_b64[1];
-      prefix[2] = '\0';
-      return g_strconcat ("deltas/", prefix, "/", ((char*)to_b64)+2, "/", target, NULL);
-    }
-  else
+  if (from != NULL)
     {
       guint8 csum_from[32];
       char from_b64[44];
@@ -1456,25 +1449,40 @@ get_delta_path (const char *from,
       ostree_checksum_inplace_to_bytes (from, csum_from);
       ostree_checksum_b64_inplace_from_bytes (csum_from, from_b64);
 
-      prefix[0] = from_b64[0];
-      prefix[1] = from_b64[1];
-      prefix[2] = '\0';
-      return g_strconcat ("deltas/", prefix, "/", ((char*)from_b64)+2, "-", to_b64, "/", target, NULL);
+      g_string_append_c (ret, from_b64[0]);
+      g_string_append_c (ret, from_b64[1]);
+      g_string_append_c (ret, '/');
+      g_string_append (ret, from_b64 + 2);
+      g_string_append_c (ret, '-');
     }
+
+  g_string_append_c (ret, to_b64[0]);
+  g_string_append_c (ret, to_b64[1]);
+  if (from == NULL)
+    g_string_append_c (ret, '/');
+  g_string_append (ret, to_b64 + 2);
+
+  if (target != NULL)
+    {
+      g_string_append_c (ret, '/');
+      g_string_append (ret, target);
+    }
+  
+  return g_string_free (ret, FALSE);
 }
 
 char *
-_ostree_get_relative_static_delta_path (const char        *from,
-                                        const char        *to)
+_ostree_get_relative_static_delta_superblock_path (const char        *from,
+                                                   const char        *to)
 {
-  return get_delta_path (from, to, "superblock");
+  return _ostree_get_relative_static_delta_path (from, to, "superblock");
 }
 
 char *
 _ostree_get_relative_static_delta_detachedmeta_path (const char        *from,
                                                      const char        *to)
 {
-  return get_delta_path (from, to, "meta");
+  return _ostree_get_relative_static_delta_path (from, to, "meta");
 }
 
 char *
@@ -1483,7 +1491,7 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
                                              guint              i)
 {
   gs_free char *partstr = g_strdup_printf ("%u", i);
-  return get_delta_path (from, to, partstr);
+  return _ostree_get_relative_static_delta_path (from, to, partstr);
 }
 
 /*

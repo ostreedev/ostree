@@ -59,6 +59,8 @@ origrev=$(ostree --repo=repo rev-parse test)
 
 ostree --repo=repo static-delta generate --empty --to=${origrev}
 ostree --repo=repo static-delta list | grep ${origrev} || exit 1
+ostree --repo=repo prune
+ostree --repo=repo static-delta list | grep ${origrev} || exit 1
 
 permuteDirectory 1 files
 ostree --repo=repo commit -b test -s test --tree=dir=files
