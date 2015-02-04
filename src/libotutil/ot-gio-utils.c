@@ -275,32 +275,26 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
 }
 
 /**
- * ot_gfile_replace_contents_fsync:
+ * ot_file_replace_contents_at:
  * 
- * Like g_file_replace_contents(), except always uses fdatasync().
+ * Like g_file_replace_contents(), except using a fd-relative
+ * directory, and optionally enforces use of fdatasync().
  */
 gboolean
-ot_gfile_replace_contents_fsync (GFile          *path,
-                                 GBytes         *contents,
-                                 GCancellable   *cancellable,
-                                 GError        **error)
+ot_file_replace_contents_at (int             dfd,
+                             const char     *path,
+                             GBytes         *contents,
+                             gboolean        datasync,
+                             GCancellable   *cancellable,
+                             GError        **error)
 {
   gboolean ret = FALSE;
-  int parent_dfd;
   int fd;
-  const char *target_basename = gs_file_get_basename_cached (path);
-  gs_unref_object GFile *parent = NULL;
   gs_free char *tmpname = NULL;
   gs_unref_object GOutputStream *stream = NULL;
   gs_unref_object GInputStream *instream = NULL;
 
-  parent = g_file_get_parent (path);
-
-  if (!gs_file_open_dir_fd (parent, &parent_dfd,
-                            cancellable, error))
-    goto out;
-
-  if (!gs_file_open_in_tmpdir_at (parent_dfd, 0644,
+  if (!gs_file_open_in_tmpdir_at (dfd, 0644,
                                   &tmpname, &stream,
                                   cancellable, error))
     goto out;
@@ -324,7 +318,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
                               cancellable, error) < 0)
     goto out;
 
-  if (fdatasync (fd) != 0)
+  if (datasync && fdatasync (fd) != 0)
     {
       gs_set_error_from_errno (error, errno);
       goto out;
@@ -333,7 +327,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
   if (!g_output_stream_close (stream, cancellable, error))
     goto out;
 
-  if (renameat (parent_dfd, tmpname, parent_dfd, target_basename) == -1)
+  if (renameat (dfd, tmpname, dfd, path) == -1)
     {
       gs_set_error_from_errno (error, errno);
       goto out;
@@ -344,7 +338,39 @@ ot_gfile_replace_contents_fsync (GFile          *path,
   ret = TRUE;
  out:
   if (tmpname)
-    (void) unlinkat (parent_dfd, tmpname, 0);
+    (void) unlinkat (dfd, tmpname, 0);
+  return ret;
+}
+
+/**
+ * ot_gfile_replace_contents_fsync:
+ * 
+ * Like g_file_replace_contents(), except always uses fdatasync().
+ */
+gboolean
+ot_gfile_replace_contents_fsync (GFile          *path,
+                                 GBytes         *contents,
+                                 GCancellable   *cancellable,
+                                 GError        **error)
+{
+  gboolean ret = FALSE;
+  int parent_dfd;
+  const char *target_basename = gs_file_get_basename_cached (path);
+  gs_unref_object GFile *parent = NULL;
+
+  parent = g_file_get_parent (path);
+
+  if (!gs_file_open_dir_fd (parent, &parent_dfd,
+                            cancellable, error))
+    goto out;
+
+  if (!ot_file_replace_contents_at (parent_dfd, target_basename,
+                                    contents, TRUE,
+                                    cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
   if (parent_dfd != -1)
     (void) close (parent_dfd);
   return ret;
