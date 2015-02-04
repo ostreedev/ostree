@@ -91,6 +91,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/*.so.1*
 %{_libdir}/girepository-1.0/OSTree-1.0.typelib
 %{_mandir}/man1/*.gz
+%{_mandir}/man5/*.gz
 %{_prefix}/lib/systemd/system-preset/91-ostree.preset
 %dir %{_sysconfdir}/ostree/remotes.d
 
