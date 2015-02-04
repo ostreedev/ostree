@@ -136,6 +136,9 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
+  /* Create a temporary target for our mounts in the initramfs; this will
+   * be moved to the new system root below.
+   */
   snprintf (newroot, sizeof(newroot), "%s.tmp", root_mountpoint);
   if (mkdir (newroot, 0755) < 0)
     {
@@ -182,6 +185,7 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
+  /* Link to the physical root below the deployment root */
   snprintf (destpath, sizeof(destpath), "%s/sysroot", newroot);
   if (mount (root_mountpoint, destpath, NULL, MS_BIND, NULL) < 0)
     {
@@ -189,6 +193,7 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
+  /* Link to the deployment's /var */
   snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
   snprintf (destpath, sizeof(destpath), "%s/var", newroot);
   if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
@@ -197,6 +202,7 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
+  /* Set up any read-only bind mounts (notably /usr) */
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
     {
       snprintf (destpath, sizeof(destpath), "%s%s", newroot, readonly_bind_mounts[i]);
@@ -214,10 +220,10 @@ main(int argc, char *argv[])
 
   touch_run_ostree ();
 
-  /* In preparation for the hack below, unmount the original /sysroot.
-   * Otherwise, we would be placing our newroot mount on top of an
-   * existing mount, and after we do a switch_root, we would no longer
-   * be able to ever unmount the original mount.
+  /* Unmount the previous /sysroot now.  Otherwise, we would be
+   * placing our newroot mount on top of an existing mount, and after
+   * we do a switch_root, we would no longer be able to ever unmount
+   * the original mount.
    */
   if (umount (root_mountpoint) < 0)
     {
@@ -225,9 +231,9 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
-  /* This is a bit hacky - move our deployment to /sysroot, since
-   * systemd's initrd-switch-root target hardcodes looking for it
-   * there.
+  /* Now that we've set up all the bind mounts in /sysroot.tmp which
+   * points to the deployment, move it /sysroot.  From there,
+   * systemd's initrd-switch-root.target will take over.
    */
   if (mount (newroot, root_mountpoint, NULL, MS_MOVE, NULL) < 0)
     {
