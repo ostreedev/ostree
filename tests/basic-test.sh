@@ -368,3 +368,14 @@ mkdir -p test2-checkout
 cd test2-checkout
 touch should-not-be-fsynced
 $OSTREE commit -b test2 -s "Unfsynced commit" --fsync=false
+
+cd ${test_tmpdir}
+rm -f expected-fail error-message
+$OSTREE init --mode=archive-z2 --repo=repo-noperm
+chmod -w repo-noperm
+$OSTREE --repo=repo-noperm pull-local repo 2> error-message || touch expected-fail
+assert_has_file expected-fail
+assert_file_has_content error-message "Permission denied"
+chmod +w repo-noperm
+echo "ok unwritable repo was caught"
+
