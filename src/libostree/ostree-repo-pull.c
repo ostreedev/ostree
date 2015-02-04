@@ -58,6 +58,7 @@ typedef struct {
   
   gboolean          gpg_verify;
 
+  GBytes           *summary_data;
   GVariant         *summary;
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
@@ -1864,6 +1865,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           gs_unref_variant GVariant *refs = NULL;
           gsize i, n;
 
+          pull_data->summary_data = g_bytes_ref (bytes);
           pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
           refs = g_variant_get_child_value (pull_data->summary, 0);
           n = g_variant_n_children (refs);
@@ -1886,6 +1888,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
           goto out;
         }
+
     } 
   else if (refs_to_fetch != NULL)
     {
@@ -2061,6 +2064,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
+  if (pull_data->is_mirror && pull_data->summary_data)
+    {
+      if (!ot_file_replace_contents_at (pull_data->repo->repo_dir_fd, "summary",
+                                        pull_data->summary_data, !pull_data->repo->disable_fsync,
+                                        cancellable, error))
+        goto out;
+    }
+
   if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
     goto out;
 
@@ -2127,6 +2138,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
+  g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
