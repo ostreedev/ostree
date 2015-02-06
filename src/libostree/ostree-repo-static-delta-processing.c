@@ -484,7 +484,6 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       guint64 objlen;
       gs_unref_object GInputStream *object_input = NULL;
       gs_unref_object GInputStream *memin = NULL;
-      gs_unref_object GFileInfo *finfo = NULL;
       gs_unref_variant GVariant *xattrs_buf = NULL;
       GVariant *modev;
       GVariant *xattrs;
@@ -510,38 +509,74 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
       xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
 
-      finfo = _ostree_header_gfile_info_new (mode, uid, gid);
-
-      if (S_ISLNK (mode))
+      /* Fast path for regular files to bare repositories */
+      if (S_ISREG (mode) && 
+          (repo->mode == OSTREE_REPO_MODE_BARE ||
+           repo->mode == OSTREE_REPO_MODE_BARE_USER))
         {
-          gs_free char *nulterminated_target =
-            g_strndup ((char*)state->payload_data + content_offset, content_size);
-          g_file_info_set_symlink_target (finfo, nulterminated_target);
+          OstreeRepoTrustedContentBareCommit barecommitstate = { -1 };
+          gs_unref_object GOutputStream *outstream = NULL;
+          gsize bytes_written;
+          gboolean have_obj;
+
+          if (!_ostree_repo_open_trusted_content_bare (repo, checksum,
+                                                       content_size,
+                                                       &barecommitstate,
+                                                       &outstream,
+                                                       &have_obj,
+                                                       cancellable, error))
+            goto out;
+          
+          if (!have_obj)
+            {
+              if (!g_output_stream_write_all (outstream, state->payload_data + content_offset,
+                                              content_size,
+                                              &bytes_written,
+                                              cancellable, error))
+                goto out;
+
+              if (!g_output_stream_flush (outstream, cancellable, error))
+                goto out;
+            }
+
+          if (!_ostree_repo_commit_trusted_content_bare (repo, checksum, &barecommitstate,
+                                                         uid, gid, mode, xattrs,
+                                                         cancellable, error))
+            goto out;
         }
       else
         {
-          g_assert (S_ISREG (mode));
-          g_file_info_set_size (finfo, content_size);
-          memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, content_size, NULL);
+          /* Slower path, for symlinks and unpacking deltas into archive-z2 */
+          gs_unref_object GFileInfo *finfo = NULL;
+      
+          finfo = _ostree_header_gfile_info_new (mode, uid, gid);
+
+          if (S_ISLNK (mode))
+            {
+              gs_free char *nulterminated_target =
+                g_strndup ((char*)state->payload_data + content_offset, content_size);
+              g_file_info_set_symlink_target (finfo, nulterminated_target);
+            }
+          else
+            {
+              g_assert (S_ISREG (mode));
+              g_file_info_set_size (finfo, content_size);
+              memin = g_memory_input_stream_new_from_data (state->payload_data + content_offset, content_size, NULL);
+            }
+
+          if (!ostree_raw_file_to_content_stream (memin, finfo, xattrs,
+                                                  &object_input, &objlen,
+                                                  cancellable, error))
+            goto out;
+          
+          if (!ostree_repo_write_content_trusted (state->repo,
+                                                  checksum,
+                                                  object_input,
+                                                  objlen,
+                                                  cancellable,
+                                                  error))
+            goto out;
         }
-
-      /* FIXME - Lots of allocation and serialization/deserialization
-       * going on here.  We need an
-       * ostree_repo_write_content_trusted_raw() that takes raw
-       * parameters.
-       */
-      if (!ostree_raw_file_to_content_stream (memin, finfo, xattrs,
-                                              &object_input, &objlen,
-                                              cancellable, error))
-        goto out;
-
-      if (!ostree_repo_write_content_trusted (state->repo,
-                                              checksum,
-                                              object_input,
-                                              objlen,
-                                              cancellable,
-                                              error))
-        goto out;
     }
 
   state->checksum_index++;
