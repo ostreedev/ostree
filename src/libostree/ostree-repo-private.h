@@ -229,4 +229,11 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           GCancellable        *cancellable,
                                           GError             **error);
 
+gboolean
+_ostree_repo_read_bare_fd (OstreeRepo           *self,
+                           const char           *checksum,
+                           int                  *out_fd,
+                           GCancellable        *cancellable,
+                           GError             **error);
+                           
 G_END_DECLS
