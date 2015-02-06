@@ -42,6 +42,7 @@ typedef struct {
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
   SoupURI      *base_uri;
+  OstreeRepo   *remote_repo_local;
 
   GMainContext    *main_context;
   GMainLoop    *loop;
@@ -400,15 +401,21 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (!ostree_repo_has_object (pull_data->repo, OSTREE_OBJECT_TYPE_FILE, file_checksum,
                                    &file_is_stored, cancellable, error))
         goto out;
-      
-      if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
+
+      if (!file_is_stored && pull_data->remote_repo_local)
+        {
+          if (!ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
+                                               OSTREE_OBJECT_TYPE_FILE, file_checksum,
+                                               cancellable, error))
+            goto out;
+        }
+      else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
           g_hash_table_insert (pull_data->requested_content, file_checksum, file_checksum);
           enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, FALSE);
           file_checksum = NULL;  /* Transfer ownership */
         }
     }
-
 
     if (pull_data->dir)
       {
@@ -1071,6 +1078,16 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
   if (!ostree_repo_has_object (pull_data->repo, objtype, tmp_checksum, &is_stored,
                                cancellable, error))
     goto out;
+
+  if (pull_data->remote_repo_local)
+    {
+      if (!ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
+                                           objtype, tmp_checksum,
+                                           cancellable, error))
+        goto out;
+      is_stored = TRUE;
+      is_requested = TRUE;
+    }
 
   if (!is_stored && !is_requested)
     {
@@ -1828,22 +1845,32 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                             &configured_branches, error))
     goto out;
 
-  if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
-    goto out;
-
-  if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
-                                          &remote_mode_str, error))
-    goto out;
-
-  if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
-    goto out;
-
-  if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE_Z2)
+  if (strcmp (soup_uri_get_scheme (pull_data->base_uri), "file") == 0)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Can't pull from archives with mode \"%s\"",
-                   remote_mode_str);
-      goto out;
+      gs_unref_object GFile *remote_repo_path = g_file_new_for_path (soup_uri_get_path (pull_data->base_uri));
+      pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
+      if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
+        goto out;
+    }
+  else
+    {
+      if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
+        goto out;
+
+      if (!ot_keyfile_get_value_with_default (remote_config, "core", "mode", "bare",
+                                              &remote_mode_str, error))
+        goto out;
+
+      if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
+        goto out;
+    
+      if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE_Z2)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Can't pull from archives with mode \"%s\"",
+                       remote_mode_str);
+          goto out;
+        }
     }
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -2135,6 +2162,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_main_loop_unref (pull_data->loop);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
+  g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);

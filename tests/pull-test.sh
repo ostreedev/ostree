@@ -56,6 +56,15 @@ $OSTREE show main >/dev/null
 echo "ok pull mirror"
 
 cd ${test_tmpdir}
+mkdir mirrorrepo-local
+ostree --repo=mirrorrepo-local init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=mirrorrepo-local remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
+${CMD_PREFIX} ostree --repo=mirrorrepo-local pull --mirror origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo-local fsck
+$OSTREE show main >/dev/null
+echo "ok pull local mirror"
+
+cd ${test_tmpdir}
 ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
