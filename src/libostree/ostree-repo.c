@@ -232,6 +232,12 @@ ost_repo_remove_remote (OstreeRepo   *self,
 }
 
 gboolean
+_ostree_repo_remote_name_is_file (const char *remote_name)
+{
+  return g_str_has_prefix (remote_name, "file://");
+}
+
+gboolean
 _ostree_repo_get_remote_option (OstreeRepo  *self,
                                 const char  *remote_name,
                                 const char  *option_name,
@@ -241,6 +247,12 @@ _ostree_repo_get_remote_option (OstreeRepo  *self,
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
+
+  if (_ostree_repo_remote_name_is_file (remote_name))
+    {
+      *out_value = g_strdup (default_value);
+      return TRUE;
+    }
 
   remote = ost_repo_get_remote (self, remote_name, error);
 
@@ -266,6 +278,12 @@ _ostree_repo_get_remote_list_option (OstreeRepo   *self,
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
+
+  if (_ostree_repo_remote_name_is_file (remote_name))
+    {
+      *out_value = NULL;
+      return TRUE;
+    }
 
   remote = ost_repo_get_remote (self, remote_name, error);
 
@@ -304,6 +322,12 @@ _ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
 
+  if (_ostree_repo_remote_name_is_file (remote_name))
+    {
+      *out_value = default_value;
+      return TRUE;
+    }
+  
   remote = ost_repo_get_remote (self, remote_name, error);
 
   if (remote != NULL)

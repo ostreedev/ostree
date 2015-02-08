@@ -1603,7 +1603,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 /* Documented in ostree-repo.c */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
-                               const char             *remote_name,
+                               const char             *remote_name_or_baseurl,
                                GVariant               *options,
                                OstreeAsyncProgress    *progress,
                                GCancellable           *cancellable,
@@ -1642,6 +1642,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Reduce risk of issues if enum happens to be 64 bit for some reason */
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
+      (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
     }
 
@@ -1676,21 +1677,32 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->start_time = g_get_monotonic_time ();
 
-  pull_data->remote_name = g_strdup (remote_name);
+  if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
+    {
+      baseurl = g_strdup (remote_name_or_baseurl);
+      /* For compatibility with pull-local, don't gpg verify local
+       * pulls.
+       */
+      pull_data->gpg_verify = FALSE;
+    }
+  else
+    {
+      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
 #ifdef HAVE_GPGME
-  if (!_ostree_repo_get_remote_boolean_option (self,
-                                               pull_data->remote_name, "gpg-verify",
-                                               TRUE, &pull_data->gpg_verify, error))
-    goto out;
+      if (!_ostree_repo_get_remote_boolean_option (self,
+                                                   remote_name_or_baseurl, "gpg-verify",
+                                                   TRUE, &pull_data->gpg_verify, error))
+        goto out;
 #else
-  pull_data->gpg_verify = FALSE;
+      pull_data->gpg_verify = FALSE;
 #endif
+    }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
   if (!_ostree_repo_get_remote_boolean_option (self,
-                                               pull_data->remote_name, "tls-permissive",
+                                               remote_name_or_baseurl, "tls-permissive",
                                                FALSE, &tls_permissive, error))
     goto out;
   if (tls_permissive)
@@ -1706,11 +1718,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     gs_free char *tls_client_key_path = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
-                                         pull_data->remote_name, "tls-client-cert-path",
+                                         remote_name_or_baseurl, "tls-client-cert-path",
                                          NULL, &tls_client_cert_path, error))
       goto out;
     if (!_ostree_repo_get_remote_option (self,
-                                         pull_data->remote_name, "tls-client-key-path",
+                                         remote_name_or_baseurl, "tls-client-key-path",
                                          NULL, &tls_client_key_path, error))
       goto out;
 
@@ -1718,7 +1730,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       {
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                      "remote \"%s\" must specify both \"tls-client-cert-path\" and \"tls-client-key-path\"",
-                     pull_data->remote_name);
+                     remote_name_or_baseurl);
         goto out;
       }
     else if (tls_client_cert_path)
@@ -1742,7 +1754,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     gs_unref_object GTlsDatabase *db = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
-                                         pull_data->remote_name, "tls-ca-path",
+                                         remote_name_or_baseurl, "tls-ca-path",
                                          NULL, &tls_ca_path, error))
       goto out;
 
@@ -1760,7 +1772,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     gs_free char *http_proxy = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
-                                         pull_data->remote_name, "proxy",
+                                         remote_name_or_baseurl, "proxy",
                                          NULL, &http_proxy, error))
       goto out;
 
@@ -1769,20 +1781,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   }
 
   if (!_ostree_repo_get_remote_option (self,
-                                       pull_data->remote_name, "metalink",
+                                       remote_name_or_baseurl, "metalink",
                                        NULL, &metalink_url_str, error))
     goto out;
 
   if (!metalink_url_str)
     {
-      if (!repo_get_remote_option_inherit (self, pull_data->remote_name, "url", &baseurl, error))
-        goto out;
+      if (baseurl == NULL)
+        {
+          if (!repo_get_remote_option_inherit (self, remote_name_or_baseurl, "url", &baseurl, error))
+            goto out;
+        }
 
       if (baseurl == NULL)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                        "No \"url\" option in remote \"%s\"",
-                       pull_data->remote_name);
+                       remote_name_or_baseurl);
           goto out;
         }
 
@@ -1841,7 +1856,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   if (!_ostree_repo_get_remote_list_option (self,
-                                            pull_data->remote_name, "branches",
+                                            remote_name_or_baseurl, "branches",
                                             &configured_branches, error))
     goto out;
 
@@ -1944,7 +1959,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!(branches_iter && *branches_iter))
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "No configured branches for remote %s", pull_data->remote_name);
+                       "No configured branches for remote %s", remote_name_or_baseurl);
           goto out;
         }
       for (;branches_iter && *branches_iter; branches_iter++)
@@ -2077,7 +2092,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       gs_free char *remote_ref = NULL;
       gs_free char *original_rev = NULL;
           
-      remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
+      if (pull_data->remote_name)
+        remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);
+      else
+        remote_ref = g_strdup (ref);
 
       if (!ostree_repo_resolve_rev (pull_data->repo, remote_ref, TRUE, &original_rev, error))
         goto out;
@@ -2087,7 +2105,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
       else
         {
-          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->is_mirror ? NULL : pull_data->remote_name, ref, checksum);
+          ostree_repo_transaction_set_ref (pull_data->repo, pull_data->is_mirror ? NULL : pull_data->remote_name,
+                                          ref, checksum);
         }
     }
 

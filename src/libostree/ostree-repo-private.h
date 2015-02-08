@@ -163,6 +163,9 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     GFileInfo               **out_modified_info);
 
 gboolean
+_ostree_repo_remote_name_is_file (const char *remote_name);
+
+gboolean
 _ostree_repo_get_remote_option (OstreeRepo  *self,
                                 const char  *remote_name,
                                 const char  *option_name,
