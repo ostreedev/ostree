@@ -32,6 +32,8 @@
 #include "otutil.h"
 #include "ostree-varint.h"
 
+#define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
+
 typedef struct {
   guint64 uncompressed_size;
   GPtrArray *objects;
@@ -479,7 +481,7 @@ try_content_rollsum (OstreeRepo                       *repo,
   gs_unref_bytes GBytes *tmp_to = NULL;
   gs_unref_object GFileInfo *from_finfo = NULL;
   gs_unref_object GFileInfo *to_finfo = NULL;
-  OstreeRollsumMatches *matches;
+  OstreeRollsumMatches *matches = NULL;
   ContentRollsum *ret_rollsum = NULL;
 
   *out_rollsum = NULL;
@@ -669,7 +671,6 @@ process_one_rollsum (OstreeRepo                       *repo,
   return ret;
 }
 
-
 static gboolean 
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
@@ -681,18 +682,18 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   gboolean ret = FALSE;
   GHashTableIter hashiter;
   gpointer key, value;
-  guint i;
   OstreeStaticDeltaPartBuilder *current_part = NULL;
   gs_unref_object GFile *root_from = NULL;
+  gs_unref_variant GVariant *from_commit = NULL;
   gs_unref_object GFile *root_to = NULL;
-  gs_unref_ptrarray GPtrArray *modified = NULL;
-  gs_unref_ptrarray GPtrArray *removed = NULL;
-  gs_unref_ptrarray GPtrArray *added = NULL;
+  gs_unref_variant GVariant *to_commit = NULL;
   gs_unref_hashtable GHashTable *to_reachable_objects = NULL;
   gs_unref_hashtable GHashTable *from_reachable_objects = NULL;
+  gs_unref_hashtable GHashTable *from_regfile_content = NULL;
   gs_unref_hashtable GHashTable *new_reachable_metadata = NULL;
-  gs_unref_hashtable GHashTable *new_reachable_content = NULL;
-  gs_unref_hashtable GHashTable *modified_content_objects = NULL;
+  gs_unref_hashtable GHashTable *new_reachable_regfile_content = NULL;
+  gs_unref_hashtable GHashTable *new_reachable_symlink_content = NULL;
+  gs_unref_hashtable GHashTable *modified_regfile_content = NULL;
   gs_unref_hashtable GHashTable *rollsum_optimized_content_objects = NULL;
   gs_unref_hashtable GHashTable *content_object_to_size = NULL;
 
@@ -701,51 +702,30 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (!ostree_repo_read_commit (repo, from, &root_from, NULL,
                                     cancellable, error))
         goto out;
-    }
-  if (!ostree_repo_read_commit (repo, to, &root_to, NULL,
-                                cancellable, error))
-    goto out;
 
-  /* Gather a filesystem level diff; when we do heuristics to ship
-   * just parts of changed files, we can make use of this data.
-   */
-  modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
-  removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  added = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
-  if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_NONE, root_from, root_to, modified, removed, added,
-                         cancellable, error))
-    goto out;
+      if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, from,
+                                     &from_commit, error))
+        goto out;
 
-  modified_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                    g_free, g_free);
-  for (i = 0; i < modified->len; i++)
-    {
-      OstreeDiffItem *diffitem = modified->pdata[i];
-      /* Theoretically, a target file could replace multiple source
-       * files.  That could happen if say a project changed from having
-       * multiple binaries to one binary.
-       *
-       * In that case, we have last one wins behavior.  For ELF rollsum
-       * tends to be useless unless there's a large static data blob.
-       */
-      g_hash_table_replace (modified_content_objects,
-                            g_strdup (diffitem->target_checksum),
-                            g_strdup (diffitem->src_checksum));
-    }
-
-  if (from)
-    {
       if (!ostree_repo_traverse_commit (repo, from, 0, &from_reachable_objects,
                                         cancellable, error))
         goto out;
     }
+
+  if (!ostree_repo_read_commit (repo, to, &root_to, NULL,
+                                cancellable, error))
+    goto out;
+  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, to,
+                                 &to_commit, error))
+    goto out;
 
   if (!ostree_repo_traverse_commit (repo, to, 0, &to_reachable_objects,
                                     cancellable, error))
     goto out;
 
   new_reachable_metadata = ostree_repo_traverse_new_reachable ();
-  new_reachable_content = ostree_repo_traverse_new_reachable ();
+  new_reachable_regfile_content = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+  new_reachable_symlink_content = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 
   g_hash_table_iter_init (&hashiter, to_reachable_objects);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
@@ -763,14 +743,41 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         g_hash_table_add (new_reachable_metadata, serialized_key);
       else
-        g_hash_table_add (new_reachable_content, serialized_key);
+        {
+          gs_unref_object GFileInfo *finfo = NULL;
+          GFileType ftype;
+
+          if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL,
+                                      cancellable, error))
+            goto out;
+
+          ftype = g_file_info_get_file_type (finfo);
+          if (ftype == G_FILE_TYPE_REGULAR)
+            g_hash_table_add (new_reachable_regfile_content, g_strdup (checksum));
+          else if (ftype == G_FILE_TYPE_SYMBOLIC_LINK)
+            g_hash_table_add (new_reachable_symlink_content, g_strdup (checksum));
+          else
+            g_assert_not_reached ();
+        }
     }
-  
-  g_printerr ("modified: %u removed: %u added: %u\n",
-              modified->len, removed->len, added->len);
-  g_printerr ("new reachable: metadata=%u content=%u\n",
+
+  if (from_commit)
+    {
+      if (!_ostree_delta_compute_similar_objects (repo, from_commit, to_commit,
+                                                  new_reachable_regfile_content,
+                                                  CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT,
+                                                  &modified_regfile_content,
+                                                  cancellable, error))
+        goto out;
+    }
+  else
+    modified_regfile_content = g_hash_table_new (g_str_hash, g_str_equal);
+
+  g_printerr ("modified: %u\n", g_hash_table_size (modified_regfile_content));
+  g_printerr ("new reachable: metadata=%u content regular=%u symlink=%u\n",
               g_hash_table_size (new_reachable_metadata),
-              g_hash_table_size (new_reachable_content));
+              g_hash_table_size (new_reachable_regfile_content),
+              g_hash_table_size (new_reachable_symlink_content));
 
   /* We already ship the to commit in the superblock, don't ship it twice */
   g_hash_table_remove (new_reachable_metadata,
@@ -780,7 +787,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                                              g_free,
                                                              (GDestroyNotify) content_rollsums_free);
 
-  g_hash_table_iter_init (&hashiter, modified_content_objects);
+  g_hash_table_iter_init (&hashiter, modified_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
       const char *to_checksum = key;
@@ -800,7 +807,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
 
   g_printerr ("rollsum for %u/%u modified\n",
               g_hash_table_size (rollsum_optimized_content_objects),
-              g_hash_table_size (modified_content_objects));
+              g_hash_table_size (modified_regfile_content));
 
   current_part = allocate_part (builder);
 
@@ -837,22 +844,18 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   /* Scan for large objects, so we can fall back to plain HTTP-based
    * fetch.
    */
-  g_hash_table_iter_init (&hashiter, new_reachable_content);
+  g_hash_table_iter_init (&hashiter, new_reachable_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
-      GVariant *serialized_key = key;
-      const char *checksum;
-      OstreeObjectType objtype;
+      const char *checksum = key;
       guint64 uncompressed_size;
       gboolean fallback = FALSE;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
       /* Skip content objects we rollsum'd */
       if (g_hash_table_contains (rollsum_optimized_content_objects, checksum))
         continue;
 
-      if (!ostree_repo_load_object_stream (repo, objtype, checksum,
+      if (!ostree_repo_load_object_stream (repo, OSTREE_OBJECT_TYPE_FILE, checksum,
                                            NULL, &uncompressed_size,
                                            cancellable, error))
         goto out;
@@ -862,30 +865,37 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (fallback)
         {
           gs_free char *size = g_format_size (uncompressed_size);
-          g_printerr ("fallback for %s (%s)\n",
-                      ostree_object_to_string (checksum, objtype), size);
+          g_printerr ("fallback for %s (%s)\n", checksum, size);
           g_ptr_array_add (builder->fallback_objects, 
-                           g_variant_ref (serialized_key));
+                           ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
           g_hash_table_iter_remove (&hashiter);
         }
     }
 
-  /* Now non-rollsummed content */
-  g_hash_table_iter_init (&hashiter, new_reachable_content);
+  /* Now non-rollsummed regular file content */
+  g_hash_table_iter_init (&hashiter, new_reachable_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
-      GVariant *serialized_key = key;
-      const char *checksum;
-      OstreeObjectType objtype;
-
-      ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
+      const char *checksum = key;
 
       /* Skip content objects we rollsum'd */
       if (g_hash_table_contains (rollsum_optimized_content_objects, checksum))
         continue;
 
       if (!process_one_object (repo, builder, &current_part,
-                               checksum, objtype,
+                               checksum, OSTREE_OBJECT_TYPE_FILE,
+                               cancellable, error))
+        goto out;
+    }
+
+  /* Now symlinks */
+  g_hash_table_iter_init (&hashiter, new_reachable_symlink_content);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      const char *checksum = key;
+
+      if (!process_one_object (repo, builder, &current_part,
+                               checksum, OSTREE_OBJECT_TYPE_FILE,
                                cancellable, error))
         goto out;
     }
