@@ -91,6 +91,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-static-delta-core.c \
 	src/libostree/ostree-repo-static-delta-processing.c \
 	src/libostree/ostree-repo-static-delta-compilation.c \
+	src/libostree/ostree-repo-static-delta-compilation-analysis.c \
 	src/libostree/ostree-repo-static-delta-private.h \
 	$(NULL)
 if USE_LIBARCHIVE

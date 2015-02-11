@@ -152,4 +152,23 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
                                                  gboolean               *out_have_all,
                                                  GCancellable           *cancellable,
                                                  GError                **error);
+
+typedef struct {
+  char *checksum;
+  guint64 size;
+  GPtrArray *basenames;
+} OstreeDeltaContentSizeNames;
+
+void _ostree_delta_content_sizenames_free (gpointer v);
+
+gboolean
+_ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
+                                       GVariant                   *from_commit,
+                                       GVariant                   *to_commit,
+                                       GHashTable                 *new_reachable_regfile_content,
+                                       guint                       similarity_percent_threshold,
+                                       GHashTable                **out_modified_regfile_content,
+                                       GCancellable               *cancellable,
+                                       GError                    **error);
+
 G_END_DECLS
