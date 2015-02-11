@@ -157,6 +157,15 @@ _ostree_repo_file_new_root (OstreeRepo  *repo,
                             const char  *contents_checksum,
                             const char  *metadata_checksum);
 
+gboolean
+_ostree_repo_traverse_dirtree_internal (OstreeRepo      *repo,
+                                        const char      *dirtree_checksum,
+                                        int              recursion_depth,
+                                        GHashTable      *inout_reachable,
+                                        GHashTable      *inout_content_names,
+                                        GCancellable    *cancellable,
+                                        GError         **error);
+
 OstreeRepoCommitFilterResult
 _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     OstreeRepoCommitModifier *modifier,

@@ -536,6 +536,59 @@ gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
                                             GCancellable       *cancellable,
                                             GError            **error);
 
+struct _OstreeRepoCommitTraverseIter {
+  gboolean initialized;
+  gpointer dummy[10];
+  char dummy_checksum_data[65*2];
+};
+
+typedef struct _OstreeRepoCommitTraverseIter OstreeRepoCommitTraverseIter;
+
+typedef enum {
+  OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE = (1 << 0)
+} OstreeRepoCommitTraverseFlags;
+
+gboolean
+ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter    *iter,
+                                              OstreeRepo                      *repo,
+                                              GVariant                        *commit,
+                                              OstreeRepoCommitTraverseFlags    flags,
+                                              GError                         **error);
+
+gboolean
+ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter    *iter,
+                                               OstreeRepo                      *repo,
+                                               GVariant                        *dirtree,
+                                               OstreeRepoCommitTraverseFlags    flags,
+                                               GError                         **error);
+
+typedef enum {
+  OSTREE_REPO_COMMIT_ITER_RESULT_ERROR,
+  OSTREE_REPO_COMMIT_ITER_RESULT_END,
+  OSTREE_REPO_COMMIT_ITER_RESULT_FILE,
+  OSTREE_REPO_COMMIT_ITER_RESULT_DIR
+} OstreeRepoCommitIterResult;
+
+OstreeRepoCommitIterResult ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
+                                                                  GCancellable       *cancellable,
+                                                                  GError            **error);
+
+void ostree_repo_commit_traverse_iter_get_file (OstreeRepoCommitTraverseIter *iter,
+                                                char                        **out_name,
+                                                char                        **out_checksum);
+
+void ostree_repo_commit_traverse_iter_get_dir (OstreeRepoCommitTraverseIter *iter,
+                                               char                        **out_name,
+                                               char                        **out_content_checksum,
+                                               char                        **out_meta_checksum);
+
+void
+ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter);
+
+void ostree_repo_commit_traverse_iter_cleanup (void *p);
+
+#define ostree_cleanup_repo_commit_traverse_iter __attribute__ ((cleanup(ostree_repo_commit_traverse_iter_cleanup)))
+
 /**
  * OstreeRepoPruneFlags:
  * @OSTREE_REPO_PRUNE_FLAGS_NONE: No special options for pruning
