@@ -93,6 +93,12 @@ gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                      GCancellable      *cancellable,
                                      GError           **error);
 
+gboolean ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
+                                                OstreeDeployment  *deployment,
+                                                gboolean           mutable,
+                                                GCancellable      *cancellable,
+                                                GError           **error);
+
 OstreeDeployment *ostree_sysroot_get_merge_deployment (OstreeSysroot     *self,
                                                        const char        *osname);
 
