@@ -52,6 +52,12 @@ libglnx_libs := $(OT_DEP_GIO_UNIX_LIBS)
 include libglnx/Makefile-libglnx.am.inc
 noinst_LTLIBRARIES += libglnx.la
 
+libbsdiff_srcpath := $(srcdir)/bsdiff
+libbsdiff_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(bsdiff_srcpath)"
+libbsdiff_libs := $(OT_DEP_GIO_UNIX_LIBS)
+include bsdiff/Makefile-bsdiff.am.inc
+noinst_LTLIBRARIES += libbsdiff.la
+
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
