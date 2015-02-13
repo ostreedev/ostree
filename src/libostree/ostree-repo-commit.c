@@ -966,15 +966,16 @@ scan_loose_devino (OstreeRepo                     *self,
 
 static const char *
 devino_cache_lookup (OstreeRepo           *self,
-                     GFileInfo            *finfo)
+                     guint32               device,
+                     guint32               inode)
 {
   OstreeDevIno dev_ino;
 
   if (!self->loose_object_devino_hash)
     return NULL;
 
-  dev_ino.dev = g_file_info_get_attribute_uint32 (finfo, "unix::device");
-  dev_ino.ino = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
+  dev_ino.dev = device;
+  dev_ino.ino = inode;
   return g_hash_table_lookup (self->loose_object_devino_hash, &dev_ino);
 }
 
@@ -2302,7 +2303,9 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       gs_free guchar *child_file_csum = NULL;
       gs_free char *tmp_checksum = NULL;
 
-      loose_checksum = devino_cache_lookup (self, child_info);
+      loose_checksum = devino_cache_lookup (self,
+                                            g_file_info_get_attribute_uint32 (child_info, "unix::device"),
+                                            g_file_info_get_attribute_uint64 (child_info, "unix::inode"));
 
       if (loose_checksum)
         {
@@ -2540,6 +2543,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
       struct dirent *dent;
       struct stat stbuf;
       gs_unref_object GFileInfo *child_info = NULL;
+      const char *loose_checksum;
 
       if (!gs_dirfd_iterator_next_dent (src_dfd_iter, &dent, cancellable, error))
         goto out;
@@ -2551,6 +2555,16 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
         {
           gs_set_error_from_errno (error, errno);
           goto out;
+        }
+
+      loose_checksum = devino_cache_lookup (self, stbuf.st_dev, stbuf.st_ino);
+      if (loose_checksum)
+        {
+          if (!ostree_mutable_tree_replace_file (mtree, dent->d_name, loose_checksum,
+                                                 error))
+            goto out;
+
+          continue;
         }
 
       child_info = _ostree_header_gfile_info_new (stbuf.st_mode, stbuf.st_uid, stbuf.st_gid);
