@@ -28,6 +28,7 @@
 #include "ostree-linuxfsutil.h"
 #include "otutil.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 
 #define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"
 #define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
@@ -1253,6 +1254,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 
 {
   gboolean ret = FALSE;
+  struct stat stbuf;
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   gs_unref_object GFile *bootdir = NULL;
@@ -1264,8 +1266,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   gs_unref_object GFile *dest_initramfs_path = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
-  gs_unref_object GFile *etc_os_release = NULL;
   gs_unref_object GFile *deployment_dir = NULL;
+  glnx_fd_close int deployment_dfd = -1;
   gs_free char *contents = NULL;
   gs_free char *deployment_version = NULL;
   gs_unref_hashtable GHashTable *osrelease_values = NULL;
@@ -1280,10 +1282,13 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   const char *val;
   OstreeBootconfigParser *bootconfig;
-  gsize len;
 
   bootconfig = ostree_deployment_get_bootconfig (deployment);
   deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
+
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (deployment_dir), FALSE,
+                       &deployment_dfd, error))
+    goto out;
 
   if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
                              cancellable, error))
@@ -1327,13 +1332,33 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
     }
 
-  etc_os_release = g_file_resolve_relative_path (deployment_dir, "etc/os-release");
-
-  if (!g_file_load_contents (etc_os_release, cancellable,
-                             &contents, &len, NULL, error))
+  if (fstatat (deployment_dfd, "usr/lib/os-release", &stbuf, 0) != 0)
     {
-      g_prefix_error (error, "Reading /etc/os-release: ");
-      goto out;
+      if (errno != ENOENT)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+      else
+        {
+          contents = glnx_file_get_contents_utf8_at (deployment_dfd, "etc/os-release", NULL,
+                                                     cancellable, error);
+          if (!contents)
+            {
+              g_prefix_error (error, "Reading /etc/os-release: ");
+              goto out;
+            }
+        }
+    }
+  else
+    {
+      contents = glnx_file_get_contents_utf8_at (deployment_dfd, "usr/lib/os-release", NULL,
+                                                 cancellable, error);
+      if (!contents)
+        {
+          g_prefix_error (error, "Reading /usr/lib/os-release: ");
+          goto out;
+        }
     }
 
   osrelease_values = parse_os_release (contents, "\n");
