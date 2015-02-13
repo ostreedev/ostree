@@ -70,9 +70,13 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 
   src_repo_arg = argv[1];
 
-  { gs_free char *cwd = g_get_current_dir ();
-    src_repo_uri = g_strconcat ("file://", cwd, "/", src_repo_arg, NULL);
-  }
+  if (src_repo_arg[0] == '/')
+    src_repo_uri = g_strconcat ("file://", src_repo_arg, NULL);
+  else
+    { 
+      gs_free char *cwd = g_get_current_dir ();
+      src_repo_uri = g_strconcat ("file://", cwd, "/", src_repo_arg, NULL);
+    }
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
