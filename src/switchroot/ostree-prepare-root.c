@@ -185,14 +185,6 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
-  /* Link to the physical root below the deployment root */
-  snprintf (destpath, sizeof(destpath), "%s/sysroot", newroot);
-  if (mount (root_mountpoint, destpath, NULL, MS_BIND, NULL) < 0)
-    {
-      perrorv ("Failed to bind mount %s to '%s'", root_mountpoint, destpath);
-      exit (EXIT_FAILURE);
-    }
-
   /* Link to the deployment's /var */
   snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
   snprintf (destpath, sizeof(destpath), "%s/var", newroot);
@@ -220,14 +212,11 @@ main(int argc, char *argv[])
 
   touch_run_ostree ();
 
-  /* Unmount the previous /sysroot now.  Otherwise, we would be
-   * placing our newroot mount on top of an existing mount, and after
-   * we do a switch_root, we would no longer be able to ever unmount
-   * the original mount.
-   */
-  if (umount (root_mountpoint) < 0)
+  /* Move physical root to $deployment/sysroot */
+  snprintf (destpath, sizeof(destpath), "%s/sysroot", newroot);
+  if (mount (root_mountpoint, destpath, NULL, MS_MOVE, NULL) < 0)
     {
-      perrorv ("failed to umount original mount at %s", root_mountpoint);
+      perrorv ("Failed to MS_MOVE %s to '%s'", root_mountpoint, destpath);
       exit (EXIT_FAILURE);
     }
 
