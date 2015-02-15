@@ -60,19 +60,6 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
   return TRUE;
 }
 
-void
-_ostree_repo_get_tmpobject_path (OstreeRepo       *repo,
-                                 char             *output,
-                                 const char       *checksum,
-                                 OstreeObjectType  objtype)
-{
-  g_sprintf (output,
-             "%s/tmpobject-%s.%s",
-             repo->boot_id,
-             checksum,
-             ostree_object_type_to_string (objtype));
-}
-
 static GVariant *
 create_file_metadata (guint32       uid,
                       guint32       gid,
@@ -133,32 +120,22 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                  GError           **error)
 {
   gboolean ret = FALSE;
-  gs_free gchar *tmp_dest = NULL;
   int dest_dfd;
   char tmpbuf[_OSTREE_LOOSE_PATH_MAX];
-  const char *dest;
+
+  _ostree_loose_path (tmpbuf, checksum, objtype, self->mode);
 
   if (self->in_transaction)
-    {
-      _ostree_repo_get_tmpobject_path (self, tmpbuf, checksum, objtype);
-      tmp_dest = g_strdup (tmpbuf);
-      dest_dfd = self->tmp_dir_fd;
-      dest = tmp_dest;
-    }
+    dest_dfd = self->commit_stagedir_fd;
   else
-    {
-      _ostree_loose_path (tmpbuf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
-      
-      if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, tmpbuf,
-                                                cancellable, error))
-        goto out;
+    dest_dfd = self->objects_dir_fd;
 
-      dest_dfd = self->objects_dir_fd;
-      dest = tmpbuf;
-    }
+  if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, tmpbuf,
+                                            cancellable, error))
+    goto out;
 
   if (G_UNLIKELY (renameat (temp_dfd, temp_filename,
-                            dest_dfd, dest) == -1))
+                            dest_dfd, tmpbuf) == -1))
     {
       if (errno != EEXIST)
         {
@@ -1061,7 +1038,8 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
         goto out;
     }
 
-  if (mkdirat (self->tmp_dir_fd, self->boot_id, 0777) == -1)
+  self->commit_stagedir_name = g_strconcat ("tmpobjects-", self->boot_id, NULL);
+  if (mkdirat (self->tmp_dir_fd, self->commit_stagedir_name, 0777) == -1)
     {
       int errsv = errno;
       if (G_UNLIKELY (errsv != EEXIST))
@@ -1071,6 +1049,10 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
         }
     }
 
+  if (!gs_opendirat (self->tmp_dir_fd, self->commit_stagedir_name, FALSE,
+                     &self->commit_stagedir_fd, error))
+    goto out;
+  
   transaction_str = g_strdup_printf ("pid=%llu", (unsigned long long) getpid ());
   if (!g_file_make_symbolic_link (self->transaction_lock_path, transaction_str,
                                   cancellable, error))
@@ -1089,52 +1071,77 @@ rename_pending_loose_objects (OstreeRepo        *self,
                               GError           **error)
 {
   gboolean ret = FALSE;
-  gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
+  gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
 
-  if (!gs_dirfd_iterator_init_at (self->tmp_dir_fd, self->boot_id, FALSE, &child_dfd_iter, error))
+  if (!gs_dirfd_iterator_init_at (self->commit_stagedir_fd, ".", FALSE, &dfd_iter, error))
     goto out;
 
+  /* Iterate over the outer checksum dir */
   while (TRUE)
     {
-      struct dirent *out_dent;
+      struct dirent *dent;
+      gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
+      struct stat stbuf;
+      int res;
 
-      if (!gs_dirfd_iterator_next_dent (&child_dfd_iter, &out_dent, cancellable, error))
+      if (!gs_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         goto out;
 
-      if (out_dent == NULL)
+      if (dent == NULL)
         break;
 
-      if (strncmp (out_dent->d_name, "tmpobject-", 10) == 0)
+      do
+        res = fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (res == -1)
         {
-          char loose_path[_OSTREE_LOOSE_PATH_MAX];
-          gs_free gchar *checksum = NULL;
-          OstreeObjectType type;
-          ostree_object_from_string (out_dent->d_name + 10,
-                                     &checksum,
-                                     &type);
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
 
-          _ostree_loose_path (loose_path, checksum, type, self->mode);
+      if (!S_ISDIR (stbuf.st_mode))
+        continue;
 
-          if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_path,
+      if (strlen (dent->d_name) != 2)
+        continue;
+
+      if (!gs_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                      &child_dfd_iter, error))
+        goto out;
+
+      /* Iterate over inner checksum dir */
+      while (TRUE)
+        {
+          struct dirent *child_dent;
+          char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
+
+          if (!gs_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
+            goto out;
+          
+          if (child_dent == NULL)
+            break;
+
+          loose_objpath[0] = dent->d_name[0];
+          loose_objpath[1] = dent->d_name[1];
+          loose_objpath[2] = '/';
+
+          strncpy (loose_objpath + 3, child_dent->d_name, sizeof (loose_objpath)-3);
+
+          if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_objpath,
                                                     cancellable, error))
             goto out;
 
-          if (G_UNLIKELY (renameat (child_dfd_iter.fd, out_dent->d_name,
-                                    self->objects_dir_fd, loose_path) < 0))
+          if (G_UNLIKELY (renameat (child_dfd_iter.fd, loose_objpath + 3,
+                                    self->objects_dir_fd, loose_objpath) < 0))
             {
-              (void) unlinkat (self->tmp_dir_fd, out_dent->d_name, 0);
-              if (errno != EEXIST)
-                {
-                  gs_set_error_from_errno (error, errno);
-                  g_prefix_error (error, "Storing file '%s': ", loose_path);
-                  goto out;
-                }
+              gs_set_error_from_errno (error, errno);
+              goto out;
             }
-          continue;
         }
     }
 
-  if (!gs_shutil_rm_rf_at (self->tmp_dir_fd, self->boot_id, cancellable, error))
+  if (!gs_shutil_rm_rf_at (self->tmp_dir_fd, self->commit_stagedir_name,
+                           cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -1315,7 +1322,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       goto out;
     }
 
-  if (! rename_pending_loose_objects (self, cancellable, error))
+  if (!rename_pending_loose_objects (self, cancellable, error))
     goto out;
 
   if (!cleanup_tmpdir (self, cancellable, error))
@@ -1328,6 +1335,14 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     if (!_ostree_repo_update_refs (self, self->txn_refs, cancellable, error))
       goto out;
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
+
+  if (self->commit_stagedir_fd != -1)
+    {
+      (void) close (self->commit_stagedir_fd);
+      self->commit_stagedir_fd = -1;
+    }
+
+  g_clear_pointer (&self->commit_stagedir_name, g_free);
 
   self->in_transaction = FALSE;
 
@@ -1359,6 +1374,13 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
+  
+  if (self->commit_stagedir_fd != -1)
+    {
+      (void) close (self->commit_stagedir_fd);
+      self->commit_stagedir_fd = -1;
+    }
+  g_clear_pointer (&self->commit_stagedir_name, g_free);
 
   self->in_transaction = FALSE;
 

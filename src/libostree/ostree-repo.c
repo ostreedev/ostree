@@ -354,6 +354,9 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->repodir);
   if (self->repo_dir_fd != -1)
     (void) close (self->repo_dir_fd);
+  if (self->commit_stagedir_fd != -1)
+    (void) close (self->commit_stagedir_fd);
+  g_free (self->commit_stagedir_name);
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
@@ -480,6 +483,7 @@ ostree_repo_init (OstreeRepo *self)
   g_mutex_init (&self->remotes_lock);
 
   self->repo_dir_fd = -1;
+  self->commit_stagedir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
 }
@@ -1760,10 +1764,10 @@ load_metadata_internal (OstreeRepo       *self,
                            cancellable, error))
     goto out;
 
-  if (self->in_transaction && fd < 0)
+  if (fd < 0 && self->commit_stagedir_fd != -1)
     {
-      _ostree_repo_get_tmpobject_path (self, loose_path_buf, sha256, objtype);
-      if (!openat_allow_noent (self->tmp_dir_fd, loose_path_buf, &fd, cancellable, error))
+      if (!openat_allow_noent (self->commit_stagedir_fd, loose_path_buf, &fd,
+                               cancellable, error))
         goto out;
     }
 
@@ -2190,11 +2194,12 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
   int res = -1;
   gboolean tmp_file = FALSE;
 
-  if (self->in_transaction)
+  _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
+
+  if (self->commit_stagedir_fd != -1)
     {
-      _ostree_repo_get_tmpobject_path (self, loose_path_buf, checksum, objtype);
       do
-        res = fstatat (self->tmp_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
+        res = fstatat (self->commit_stagedir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1 && errno != ENOENT)
         {
@@ -2207,8 +2212,6 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
     tmp_file = TRUE;
   else
     {
-      _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
-
       do
         res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
       while (G_UNLIKELY (res == -1 && errno == EINTR));

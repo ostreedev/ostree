@@ -35,6 +35,8 @@ struct OstreeRepo {
   GObject parent;
 
   char *boot_id;
+  int commit_stagedir_fd;
+  char *commit_stagedir_name;
 
   GFile *repodir;
   int    repo_dir_fd;
@@ -85,11 +87,6 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
                                      GCancellable   *cancellable,
                                      GError        **error);
-void
-_ostree_repo_get_tmpobject_path (OstreeRepo       *repo,
-                                 char             *output,
-                                 const char       *checksum,
-                                 OstreeObjectType  objtype);
 
 gboolean
 _ostree_repo_find_object (OstreeRepo           *self,
