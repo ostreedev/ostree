@@ -87,6 +87,12 @@ INSTALL_DATA_HOOKS += install-gpg-data-hook
 	 echo 'Output=TAP' >> $@.tmp; \
 	 mv $@.tmp $@)
 
+%.test: tests/%.js Makefile
+	$(AM_V_GEN) (echo '[Test]' > $@.tmp; \
+	 echo 'Exec=env TESTDATADIR=$(pkglibexecdir)/installed-tests $(pkglibexecdir)/installed-tests/$(notdir $<)' >> $@.tmp; \
+	 echo 'Type=session' >> $@.tmp; \
+	 mv $@.tmp $@)
+
 if BUILDOPT_GJS
 insttest_SCRIPTS += tests/test-core.js \
 	tests/test-sizes.js \
