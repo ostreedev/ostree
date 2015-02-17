@@ -31,6 +31,7 @@
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
@@ -209,7 +210,7 @@ file_header_new (GFileInfo         *file_info,
   guint32 mode;
   const char *symlink_target;
   GVariant *ret;
-  gs_unref_variant GVariant *tmp_xattrs = NULL;
+  g_autoptr(GVariant) tmp_xattrs = NULL;
 
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
   gid = g_file_info_get_attribute_uint32 (file_info, "unix::gid");

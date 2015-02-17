@@ -133,7 +133,7 @@ ot_util_variant_map (GFile              *src,
                      GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *ret_variant = NULL;
+  g_autoptr(GVariant) ret_variant = NULL;
   GMappedFile *mfile = NULL;
 
   mfile = gs_file_map_noatime (src, NULL, error);

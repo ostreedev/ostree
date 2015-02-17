@@ -61,7 +61,7 @@ ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,
 char *
 ot_admin_checksum_version (GVariant *checksum)
 {
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   const char *ret = NULL;
 
   metadata = g_variant_get_child_value (checksum, 0);

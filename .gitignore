@@ -1,6 +1,7 @@
 # Standard C/Automake goo
 .deps
 .libs
+.dirstamp
 *.typelib
 *.la
 *.lo
