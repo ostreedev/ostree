@@ -691,6 +691,22 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
+  /* Set directory mtime to 0, so that it is constant for all checkouts.
+   * Must be done after setting permissions and creating all children.
+   */
+  if (!did_exist)
+    {
+      const struct timespec times[2] = { { 0, UTIME_OMIT }, { 0, } };
+      do
+        res = futimens (destination_dfd, times);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
   /* Finally, fsync to ensure all entries are on disk.  Ultimately
    * this should be configurable for the case where we're constructing
    * buildroots.
