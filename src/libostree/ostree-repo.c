@@ -511,7 +511,8 @@ get_default_repo_path (void)
  *
  * If the current working directory appears to be an OSTree
  * repository, create a new #OstreeRepo object for accessing it.
- * Otherwise, use the default system repository located at
+ * Otherwise use the path in the OSTREE_REPO environment variable
+ * (if defined) or else the default system repository located at
  * /ostree/repo.
  *
  * Returns: (transfer full): An accessor object for an OSTree repository located at /ostree/repo
@@ -527,8 +528,15 @@ ostree_repo_new_default (void)
     }
   else
     {
-      gs_unref_object GFile *default_repo_path = get_default_repo_path ();
-      return ostree_repo_new (default_repo_path);
+      const char *envvar = g_getenv ("OSTREE_REPO");
+      gs_unref_object GFile *repo_path = NULL;
+
+      if (envvar == NULL || *envvar == '\0')
+        repo_path = get_default_repo_path ();
+      else
+        repo_path = g_file_new_for_path (envvar);
+
+      return ostree_repo_new (repo_path);
     }
 }
 
