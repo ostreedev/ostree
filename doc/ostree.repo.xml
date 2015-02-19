@@ -70,8 +70,10 @@
 		<para>
 		  There is a system repository located at
 		  <filename>/ostree/repo</filename>.  If no repository
-		  is specified, the <command>ostree</command> as well
-		  as many API calls will use it by default.
+		  is specified -- either by a command-line option or the
+		  <envar>OSTREE_REPO</envar> environment variable --
+		  the <command>ostree</command> as well as many API
+		  calls will use it by default.
 		</para>
         </refsect1>
 
