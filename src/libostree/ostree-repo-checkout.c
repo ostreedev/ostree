@@ -178,7 +178,6 @@ checkout_file_from_input_at (OstreeRepo     *self,
                              GVariant       *xattrs,
                              GInputStream   *input,
                              int             destination_dfd,
-                             GFile          *destination_parent,
                              const char     *destination_name,
                              GCancellable   *cancellable,
                              GError        **error)
@@ -262,7 +261,6 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                       GVariant       *xattrs,
                                       GInputStream   *input,
                                       int             destination_dfd,
-                                      GFile          *destination_parent,
                                       const char     *destination_name,
                                       GCancellable   *cancellable,
                                       GError        **error)
@@ -382,7 +380,6 @@ checkout_one_file_at (OstreeRepo                        *repo,
                       GFile                             *source,
                       GFileInfo                         *source_info,
                       int                                destination_dfd,
-                      GFile                             *destination_parent,
                       const char                        *destination_name,
                       OstreeRepoCheckoutMode             mode,
                       OstreeRepoCheckoutOverwriteMode    overwrite_mode,
@@ -508,7 +505,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
         {
           if (!checkout_file_unioning_from_input_at (repo, mode, source_info, xattrs, input,
-                                                     destination_dfd, destination_parent,
+                                                     destination_dfd,
                                                      destination_name,
                                                      cancellable, error)) 
             {
@@ -519,7 +516,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       else
         {
           if (!checkout_file_from_input_at (repo, mode, source_info, xattrs, input,
-                                            destination_dfd, destination_parent,
+                                            destination_dfd,
                                             destination_name,
                                             cancellable, error))
             {
@@ -561,7 +558,6 @@ checkout_tree_at (OstreeRepo                        *self,
                   OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                   int                                destination_parent_fd,
                   const char                        *destination_name,
-                  GFile                             *destination,
                   OstreeRepoFile                    *source,
                   GFileInfo                         *source_info,
                   GCancellable                      *cancellable,
@@ -614,7 +610,7 @@ checkout_tree_at (OstreeRepo                        *self,
     {
       ret = checkout_one_file_at (self, (GFile *) source,
                                   source_info,
-                                  destination_dfd, destination,
+                                  destination_dfd,
                                   g_file_info_get_name (source_info),
                                   mode, TRUE,
                                   cancellable, error);
@@ -644,9 +640,8 @@ checkout_tree_at (OstreeRepo                        *self,
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          gs_unref_object GFile *child_destination = g_file_get_child (destination, name);
           if (!checkout_tree_at (self, mode, overwrite_mode,
-                                 destination_dfd, name, child_destination,
+                                 destination_dfd, name,
                                  (OstreeRepoFile*)src_child, file_info,
                                  cancellable, error))
             goto out;
@@ -654,7 +649,7 @@ checkout_tree_at (OstreeRepo                        *self,
       else
         {
           if (!checkout_one_file_at (self, src_child, file_info,
-                                     destination_dfd, destination, name,
+                                     destination_dfd, name,
                                      mode, overwrite_mode,
                                      cancellable, error))
             goto out;
@@ -756,7 +751,6 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
   return checkout_tree_at (self, mode, overwrite_mode,
                            AT_FDCWD,
                            gs_file_get_path_cached (destination),
-                           destination,
                            source, source_info,
                            cancellable, error);
 }
