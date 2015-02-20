@@ -2316,19 +2316,39 @@ ostree_repo_delete_object (OstreeRepo           *self,
                            GError              **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *objpath = NULL;
+  int res;
+  char loose_path[_OSTREE_LOOSE_PATH_MAX];
+
+  _ostree_loose_path (loose_path, sha256, objtype, self->mode);
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      gs_unref_object GFile *detached_metadata =
-        _ostree_repo_get_commit_metadata_loose_path (self, sha256);
-      if (!ot_gfile_ensure_unlinked (detached_metadata, cancellable, error))
-        goto out;
+      char meta_loose[_OSTREE_LOOSE_PATH_MAX];
+
+      _ostree_loose_path_with_suffix (meta_loose, sha256,
+                                      OSTREE_OBJECT_TYPE_COMMIT, self->mode, "meta");
+
+      do
+        res = unlinkat (self->objects_dir_fd, meta_loose, 0);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (res == -1)
+        {
+          if (G_UNLIKELY (errno != ENOENT))
+            {
+              gs_set_error_from_errno (error, errno);
+              goto out;
+            }
+        }
     }
 
-  objpath = _ostree_repo_get_object_path (self, sha256, objtype);
-  if (!gs_file_unlink (objpath, cancellable, error))
-    goto out;
+  do
+    res = unlinkat (self->objects_dir_fd, loose_path, 0);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (G_UNLIKELY (res == -1))
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
 
   ret = TRUE;
  out:
@@ -2531,14 +2551,22 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                        GError              **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *objpath = _ostree_repo_get_object_path (self, sha256, objtype);
-  gs_unref_object GFileInfo *finfo = g_file_query_info (objpath, OSTREE_GIO_FAST_QUERYINFO,
-                                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                        cancellable, error);
-  if (!finfo)
-    goto out;
+  char loose_path[_OSTREE_LOOSE_PATH_MAX];
+  int res;
+  struct stat stbuf;
 
-  *out_size = g_file_info_get_size (finfo);
+  _ostree_loose_path (loose_path, sha256, objtype, self->mode);
+
+  do 
+    res = fstatat (self->objects_dir_fd, loose_path, &stbuf, AT_SYMLINK_NOFOLLOW);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (G_UNLIKELY (res == -1))
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  *out_size = stbuf.st_size;
   ret = TRUE;
  out:
   return ret;
