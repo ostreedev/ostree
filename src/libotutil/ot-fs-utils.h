@@ -31,19 +31,6 @@ gboolean ot_gopendirat (int             dfd,
                         int            *out_fd,
                         GError        **error);
 
-GBytes * ot_lgetxattrat (int            dfd,
-                         const char    *path,
-                         const char    *attribute,
-                         GError       **error);
-
-gboolean ot_lsetxattrat (int            dfd,
-                         const char    *path,
-                         const char    *attribute,
-                         const void    *value,
-                         gsize          value_size,
-                         int            flags,
-                         GError       **error);
-
 gboolean ot_readlinkat_gfile_info (int             dfd,
                                    const char     *path,
                                    GFileInfo      *target_info,
