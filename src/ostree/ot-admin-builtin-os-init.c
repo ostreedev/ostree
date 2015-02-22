@@ -46,7 +46,9 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
 
-  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_ensure_initialized (sysroot, cancellable, error))

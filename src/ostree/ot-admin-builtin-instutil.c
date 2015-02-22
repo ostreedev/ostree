@@ -116,7 +116,9 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
       context = ostree_admin_instutil_option_context_new_with_commands ();
 
       /* This will not return for some options (e.g. --version). */
-      if (ostree_admin_option_context_parse (context, NULL, &argc, &argv, NULL, cancellable, error))
+      if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
+                                             OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                             NULL, cancellable, error))
         {
           if (subcommand_name == NULL)
             {
