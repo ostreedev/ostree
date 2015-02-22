@@ -306,6 +306,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
                                    const GOptionEntry *main_entries,
                                    int *argc,
                                    char ***argv,
+                                   OstreeAdminBuiltinFlags flags,
                                    OstreeSysroot **out_sysroot,
                                    GCancellable *cancellable,
                                    GError **error)

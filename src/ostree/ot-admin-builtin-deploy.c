@@ -66,7 +66,9 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   context = g_option_context_new ("REFSPEC - Checkout revision REFSPEC as the new default deployment");
 
-  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          &sysroot, cancellable, error))
     goto out;
 
   if (argc < 2)

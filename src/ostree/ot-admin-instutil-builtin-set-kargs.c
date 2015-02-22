@@ -56,7 +56,9 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
 
   context = g_option_context_new ("ARGS - set new kernel command line arguments");
 
-  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          &sysroot, cancellable, error))
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))

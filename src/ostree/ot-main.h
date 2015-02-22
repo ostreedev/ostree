@@ -30,6 +30,10 @@ typedef enum {
   OSTREE_BUILTIN_FLAG_NO_CHECK = 1 << 1
 } OstreeBuiltinFlags;
 
+typedef enum {
+  OSTREE_ADMIN_BUILTIN_FLAG_NONE = 0,
+} OstreeAdminBuiltinFlags;
+
 typedef struct {
   const char *name;
   gboolean (*fn) (int argc, char **argv, GCancellable *cancellable, GError **error);
@@ -49,6 +53,7 @@ gboolean ostree_option_context_parse (GOptionContext *context,
 gboolean ostree_admin_option_context_parse (GOptionContext *context,
                                             const GOptionEntry *main_entries,
                                             int *argc, char ***argv,
+                                            OstreeAdminBuiltinFlags flags,
                                             OstreeSysroot **out_sysroot,
                                             GCancellable *cancellable, GError **error);
 

@@ -47,7 +47,9 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
 
   context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");
 
-  if (!ostree_admin_option_context_parse (context, options, &argc, &argv, &sysroot, cancellable, error))
+  if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          &sysroot, cancellable, error))
     goto out;
 
   if (argc >= 2)
