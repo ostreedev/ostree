@@ -32,6 +32,7 @@ typedef enum {
 
 typedef enum {
   OSTREE_ADMIN_BUILTIN_FLAG_NONE = 0,
+  OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER = 1 << 0
 } OstreeAdminBuiltinFlags;
 
 typedef struct {
