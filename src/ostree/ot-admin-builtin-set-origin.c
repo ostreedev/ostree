@@ -56,7 +56,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   context = g_option_context_new ("REMOTENAME URL [BRANCH]");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
     goto out;
 

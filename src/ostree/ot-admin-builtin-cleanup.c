@@ -44,7 +44,7 @@ ot_admin_builtin_cleanup (int argc, char **argv, GCancellable *cancellable, GErr
   context = g_option_context_new ("Delete untagged deployments and repository objects");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
     goto out;
 

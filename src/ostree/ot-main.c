@@ -323,6 +323,16 @@ ostree_admin_option_context_parse (GOptionContext *context,
   if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
+  if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
+    {
+      if (getuid () != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
+                       "You must be root to perform this command");
+          goto out;
+        }
+    }
+
   sysroot_path = g_file_new_for_path (opt_sysroot);
   sysroot = ostree_sysroot_new (sysroot_path);
 

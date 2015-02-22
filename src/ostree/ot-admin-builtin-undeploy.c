@@ -47,7 +47,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
   context = g_option_context_new ("INDEX - Delete deployment INDEX");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
     goto out;
 

@@ -56,7 +56,7 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
   g_option_context_add_main_entries (context, options, NULL);
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
                                           &sysroot, cancellable, error))
     goto out;
   
