@@ -2009,8 +2009,11 @@ ostree_repo_load_file (OstreeRepo         *self,
               gs_unref_bytes GBytes *bytes = NULL;
               gs_fd_close int fd = -1;
 
-              bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
-                                      "user.ostreemeta", error);
+              if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
+                                           cancellable, error))
+                goto out;
+
+              bytes = glnx_fgetxattr_bytes (fd, "user.ostreemeta", error);
               if (bytes == NULL)
                 goto out;
 
@@ -2021,18 +2024,6 @@ ostree_repo_load_file (OstreeRepo         *self,
               ret_xattrs = set_info_from_filemeta (ret_file_info, metadata);
 
               mode = g_file_info_get_attribute_uint32 (ret_file_info, "unix::mode");
-
-              /* Optimize this so that we only open the file if we
-               * need to; symlinks contain their content, and we only
-               * open regular files if the caller has requested an
-               * input stream.
-               */
-              if (S_ISLNK (mode) || out_input)
-                { 
-                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                                               cancellable, error))
-                    goto out;
-                }
 
               if (S_ISREG (mode) && out_input)
                 {

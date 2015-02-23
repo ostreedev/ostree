@@ -46,6 +46,12 @@ GIRS =
 TYPELIBS = $(GIRS:.gir=.typelib)
 endif
 
+libglnx_srcpath := $(srcdir)/libglnx
+libglnx_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(libglnx_srcpath)"
+libglnx_libs := $(OT_DEP_GIO_UNIX_LIBS)
+include libglnx/Makefile-libglnx.am.inc
+noinst_LTLIBRARIES += libglnx.la
+
 include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am

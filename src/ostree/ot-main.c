@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libglnx.h>
+
 #include "ostree.h"
 #include "ot-main.h"
 #include "otutil.h"
@@ -230,7 +232,7 @@ ostree_option_context_parse (GOptionContext *context,
                              GCancellable *cancellable,
                              GError **error)
 {
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean success = FALSE;
 
   /* Entries are listed in --help output in the order added.  We add the
