@@ -49,6 +49,9 @@ PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 dnl 5.1.0 is an arbitrary version here
 PKG_CHECK_MODULES(OT_DEP_LZMA, liblzma >= 5.0.5)
 
+dnl Needed for rollsum
+PKG_CHECK_MODULES(OT_DEP_ZLIB, zlib)
+
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
 
