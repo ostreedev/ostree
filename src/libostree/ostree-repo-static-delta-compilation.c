@@ -21,7 +21,9 @@
 #include "config.h"
 
 #include <string.h>
+#include <stdlib.h>
 #include <gio/gunixoutputstream.h>
+#include <gio/gmemoryoutputstream.h>
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
@@ -31,6 +33,7 @@
 #include "ostree-rollsum.h"
 #include "otutil.h"
 #include "ostree-varint.h"
+#include "bsdiff/bsdiff.h"
 
 #define CONTENT_SIZE_SIMILARITY_THRESHOLD_PERCENT (30)
 
@@ -399,7 +402,14 @@ process_one_object (OstreeRepo                       *repo,
 
 typedef struct {
   char *from_checksum;
+  GBytes *tmp_from;
+  GBytes *tmp_to;
+} ContentBsdiff;
+
+typedef struct {
+  char *from_checksum;
   OstreeRollsumMatches *matches;
+  GBytes *tmp_from;
   GBytes *tmp_to;
 } ContentRollsum;
 
@@ -408,8 +418,18 @@ content_rollsums_free (ContentRollsum  *rollsum)
 {
   g_free (rollsum->from_checksum);
   _ostree_rollsum_matches_free (rollsum->matches);
+  g_bytes_unref (rollsum->tmp_from);
   g_bytes_unref (rollsum->tmp_to);
   g_free (rollsum);
+}
+
+static void
+content_bsdiffs_free (ContentBsdiff  *bsdiff)
+{
+  g_free (bsdiff->from_checksum);
+  g_bytes_unref (bsdiff->tmp_from);
+  g_bytes_unref (bsdiff->tmp_to);
+  g_free (bsdiff);
 }
 
 /* Load a content object, uncompressing it to an unlinked tmpfile
@@ -462,6 +482,47 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
 
   ret = TRUE;
   gs_transfer_out_value (out_content, &ret_content);
+ out:
+  return ret;
+}
+
+static gboolean
+try_content_bsdiff (OstreeRepo                       *repo,
+                    const char                       *from,
+                    const char                       *to,
+                    ContentBsdiff                    **out_bsdiff,
+                    GCancellable                     *cancellable,
+                    GError                          **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_hashtable GHashTable *from_bsdiff = NULL;
+  gs_unref_hashtable GHashTable *to_bsdiff = NULL;
+  gs_unref_bytes GBytes *tmp_from = NULL;
+  gs_unref_bytes GBytes *tmp_to = NULL;
+  gs_unref_object GFileInfo *from_finfo = NULL;
+  gs_unref_object GFileInfo *to_finfo = NULL;
+  ContentBsdiff *ret_bsdiff = NULL;
+
+  *out_bsdiff = NULL;
+
+  if (!get_unpacked_unlinked_content (repo, from, &tmp_from, &from_finfo,
+                                      cancellable, error))
+    goto out;
+  if (!get_unpacked_unlinked_content (repo, to, &tmp_to, &to_finfo,
+                                      cancellable, error))
+    goto out;
+
+  /* TODO: make this option configurable.  */
+  if (g_bytes_get_size (tmp_to) + g_bytes_get_size (tmp_from) > (200 * (1 << 20)))
+    goto out;
+
+  ret_bsdiff = g_new0 (ContentBsdiff, 1);
+  ret_bsdiff->from_checksum = g_strdup (from);
+  ret_bsdiff->tmp_from = tmp_from; tmp_from = NULL;
+  ret_bsdiff->tmp_to = tmp_to; tmp_to = NULL;
+
+  ret = TRUE;
+  gs_transfer_out_value (out_bsdiff, &ret_bsdiff);
  out:
   return ret;
 }
@@ -525,6 +586,7 @@ try_content_rollsum (OstreeRepo                       *repo,
   ret_rollsum = g_new0 (ContentRollsum, 1);
   ret_rollsum->from_checksum = g_strdup (from);
   ret_rollsum->matches = matches; matches = NULL;
+  ret_rollsum->tmp_from = tmp_from; tmp_from = NULL;
   ret_rollsum->tmp_to = tmp_to; tmp_to = NULL;
   
   ret = TRUE;
@@ -533,6 +595,27 @@ try_content_rollsum (OstreeRepo                       *repo,
   if (matches)
     _ostree_rollsum_matches_free (matches);
   return ret;
+}
+
+struct bzdiff_opaque_s
+{
+  GOutputStream *out;
+  GCancellable *cancellable;
+  GError **error;
+};
+
+static int
+bzdiff_write (struct bsdiff_stream* stream, const void* buffer, int size)
+{
+  struct bzdiff_opaque_s *op = stream->opaque;
+  if (!g_output_stream_write (op->out,
+                              buffer,
+                              size,
+                              op->cancellable,
+                              op->error))
+    return -1;
+
+  return 0;
 }
 
 static void
@@ -572,7 +655,7 @@ process_one_rollsum (OstreeRepo                       *repo,
       current_part->payload->len > builder->max_chunk_size_bytes)
     {
       *current_part_val = current_part = allocate_part (builder);
-    } 
+    }
 
   tmp_to_buf = g_bytes_get_data (rollsum->tmp_to, &tmp_to_len);
 
@@ -615,7 +698,7 @@ process_one_rollsum (OstreeRepo                       *repo,
           GVariant *match = matchlist->pdata[i];
           guint32 crc;
           guint64 prefix;
-          
+
           g_variant_get (match, "(uttt)", &crc, &offset, &to_start, &from_start);
 
           prefix = to_start - writing_offset;
@@ -627,7 +710,7 @@ process_one_rollsum (OstreeRepo                       *repo,
                   g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
                   reading_payload = TRUE;
                 }
-              
+
               g_assert_cmpint (writing_offset + prefix, <=, tmp_to_len);
               append_payload_chunk_and_write (current_part, tmp_to_buf + writing_offset, prefix);
               writing_offset += prefix;
@@ -651,7 +734,7 @@ process_one_rollsum (OstreeRepo                       *repo,
           g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
           reading_payload = TRUE;
         }
-      
+
       { guint64 remainder = tmp_to_len - writing_offset;
         if (remainder > 0)
           append_payload_chunk_and_write (current_part, tmp_to_buf + writing_offset, remainder);
@@ -665,6 +748,100 @@ process_one_rollsum (OstreeRepo                       *repo,
 
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
   }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+process_one_bsdiff (OstreeRepo                       *repo,
+                    OstreeStaticDeltaBuilder         *builder,
+                    OstreeStaticDeltaPartBuilder    **current_part_val,
+                    const char                       *to_checksum,
+                    ContentBsdiff                   *bsdiff_content,
+                    GCancellable                     *cancellable,
+                    GError                          **error)
+{
+  gboolean ret = FALSE;
+  guint64 content_size;
+  gs_unref_object GInputStream *content_stream = NULL;
+  gs_unref_object GFileInfo *content_finfo = NULL;
+  gs_unref_variant GVariant *content_xattrs = NULL;
+  OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
+  const guint8 *tmp_to_buf;
+  gsize tmp_to_len;
+  const guint8 *tmp_from_buf;
+  gsize tmp_from_len;
+
+  /* Check to see if this delta has gone over maximum size */
+  if (current_part->objects->len > 0 &&
+      current_part->payload->len > builder->max_chunk_size_bytes)
+    {
+      *current_part_val = current_part = allocate_part (builder);
+    }
+
+  tmp_to_buf = g_bytes_get_data (bsdiff_content->tmp_to, &tmp_to_len);
+  tmp_from_buf = g_bytes_get_data (bsdiff_content->tmp_from, &tmp_from_len);
+
+  if (!ostree_repo_load_file (repo, to_checksum, &content_stream,
+                              &content_finfo, &content_xattrs,
+                              cancellable, error))
+    goto out;
+  content_size = g_file_info_get_size (content_finfo);
+  g_assert_cmpint (tmp_to_len, ==, content_size);
+
+  current_part->uncompressed_size += content_size;
+
+  g_ptr_array_add (current_part->objects, ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
+
+  { gsize mode_offset, xattr_offset;
+    guchar source_csum[32];
+
+    write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
+                               &mode_offset, &xattr_offset);
+
+    /* Write the origin checksum */
+    ostree_checksum_inplace_to_bytes (bsdiff_content->from_checksum, source_csum);
+
+    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE);
+    _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
+    g_string_append_len (current_part->payload, (char*)source_csum, sizeof (source_csum));
+
+    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_OPEN);
+    _ostree_write_varuint64 (current_part->operations, mode_offset);
+    _ostree_write_varuint64 (current_part->operations, xattr_offset);
+    _ostree_write_varuint64 (current_part->operations, content_size);
+
+    {
+      struct bsdiff_stream stream;
+      struct bzdiff_opaque_s op;
+      const gchar *payload;
+      gssize payload_size;
+      gs_unref_object GOutputStream *out = g_memory_output_stream_new_resizable ();
+      stream.malloc = malloc;
+      stream.free = free;
+      stream.write = bzdiff_write;
+      op.out = out;
+      op.cancellable = cancellable;
+      op.error = error;
+      stream.opaque = &op;
+      if (bsdiff (tmp_from_buf, tmp_from_len, tmp_to_buf, tmp_to_len, &stream) < 0)
+        goto out;
+
+      payload = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (out));
+      payload_size = g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out));
+
+      g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_BSPATCH);
+      _ostree_write_varuint64 (current_part->operations, current_part->payload->len);
+      _ostree_write_varuint64 (current_part->operations, payload_size);
+
+      g_string_append_len (current_part->payload, payload, payload_size);
+    }
+    g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
+  }
+
+  g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
 
   ret = TRUE;
  out:
@@ -695,6 +872,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   gs_unref_hashtable GHashTable *new_reachable_symlink_content = NULL;
   gs_unref_hashtable GHashTable *modified_regfile_content = NULL;
   gs_unref_hashtable GHashTable *rollsum_optimized_content_objects = NULL;
+  gs_unref_hashtable GHashTable *bsdiff_optimized_content_objects = NULL;
   gs_unref_hashtable GHashTable *content_object_to_size = NULL;
 
   if (from != NULL)
@@ -787,22 +965,35 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                                              g_free,
                                                              (GDestroyNotify) content_rollsums_free);
 
+  bsdiff_optimized_content_objects = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                            g_free,
+                                                            (GDestroyNotify) content_bsdiffs_free);
+
   g_hash_table_iter_init (&hashiter, modified_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
       const char *to_checksum = key;
       const char *from_checksum = value;
       ContentRollsum *rollsum;
+      ContentBsdiff *bsdiff;
 
       if (!try_content_rollsum (repo, from_checksum, to_checksum,
                                 &rollsum, cancellable, error))
         goto out;
 
-      if (!rollsum)
-        continue;
+      if (rollsum)
+        {
+          g_hash_table_insert (rollsum_optimized_content_objects, g_strdup (to_checksum), rollsum);
+          builder->rollsum_size += rollsum->matches->match_size;
+          continue;
+        }
 
-      g_hash_table_insert (rollsum_optimized_content_objects, g_strdup (to_checksum), rollsum);
-      builder->rollsum_size += rollsum->matches->match_size;
+      if (!try_content_bsdiff (repo, from_checksum, to_checksum,
+                               &bsdiff, cancellable, error))
+        goto out;
+
+      if (bsdiff)
+        g_hash_table_insert (bsdiff_optimized_content_objects, g_strdup (to_checksum), bsdiff);
     }
 
   g_printerr ("rollsum for %u/%u modified\n",
@@ -836,7 +1027,21 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       ContentRollsum *rollsum = value;
 
       if (!process_one_rollsum (repo, builder, &current_part,
-                               checksum, rollsum,
+                                checksum, rollsum,
+                                cancellable, error))
+        goto out;
+    }
+
+  /* Now do bsdiff'ed objects */
+
+  g_hash_table_iter_init (&hashiter, bsdiff_optimized_content_objects);
+  while (g_hash_table_iter_next (&hashiter, &key, &value))
+    {
+      const char *checksum = key;
+      ContentBsdiff *bsdiff = value;
+
+      if (!process_one_bsdiff (repo, builder, &current_part,
+                               checksum, bsdiff,
                                cancellable, error))
         goto out;
     }
@@ -851,8 +1056,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       guint64 uncompressed_size;
       gboolean fallback = FALSE;
 
-      /* Skip content objects we rollsum'd */
-      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum))
+      /* Skip content objects we rollsum'd or bsdiff'ed */
+      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum) ||
+          g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
         continue;
 
       if (!ostree_repo_load_object_stream (repo, OSTREE_OBJECT_TYPE_FILE, checksum,
@@ -872,14 +1078,15 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         }
     }
 
-  /* Now non-rollsummed regular file content */
+  /* Now non-rollsummed or bsdiff'ed regular file content */
   g_hash_table_iter_init (&hashiter, new_reachable_regfile_content);
   while (g_hash_table_iter_next (&hashiter, &key, &value))
     {
       const char *checksum = key;
 
       /* Skip content objects we rollsum'd */
-      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum))
+      if (g_hash_table_contains (rollsum_optimized_content_objects, checksum) ||
+          g_hash_table_contains (bsdiff_optimized_content_objects, checksum))
         continue;
 
       if (!process_one_object (repo, builder, &current_part,
