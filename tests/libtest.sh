@@ -23,8 +23,13 @@ test_tmpdir=$(pwd)
 export G_DEBUG=fatal-warnings
 
 export TEST_GPG_KEYID="472CDAFA"
-export TEST_GPG_KEYHOME=${SRCDIR}/gpghome
-export OSTREE_GPG_HOME=${TEST_GPG_KEYHOME}/trusted
+
+# GPG when creating signatures demands a writable
+# homedir in order to create lockfiles.  Work around
+# this by copying locally.
+cp -a ${SRCDIR}/gpghome ${test_tmpdir}
+export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
+export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
 if test -n "${OT_TESTS_DEBUG}"; then
     set -x
