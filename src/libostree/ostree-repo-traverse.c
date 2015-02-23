@@ -90,7 +90,7 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
  * ostree_repo_commit_traverse_iter_init_dirtree:
  * @iter: An iter
  * @repo: A repo
- * @commit: Variant of type %OSTREE_OBJECT_TYPE_DIR_TREE
+ * @dirtree: Variant of type %OSTREE_OBJECT_TYPE_DIR_TREE
  * @flags: Flags
  * @error: Error
  *
