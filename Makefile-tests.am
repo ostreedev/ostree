@@ -104,7 +104,7 @@ endif
 endif
 
 # "make check" do not depend from --enable-installed-tests
-check_PROGRAMS = tests/test-rollsum tests/test-varint tests/test-ot-unix-utils
+check_PROGRAMS = tests/test-rollsum tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff
 
 tests_test_ot_unix_utils_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 tests_test_ot_unix_utils_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
@@ -117,4 +117,8 @@ tests_test_varint_SOURCES = src/libostree/ostree-varint.c tests/test-varint.c
 tests_test_varint_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 tests_test_varint_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
-TESTS = tests/test-varint tests/test-ot-unix-utils
+tests_test_bsdiff_SOURCES = tests/test-bsdiff.c bsdiff/bsdiff.c bsdiff/bspatch.c
+tests_test_bsdiff_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+tests_test_bsdiff_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
+
+TESTS = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff
