@@ -461,7 +461,7 @@ do_content_open_generic (OstreeRepo                 *repo,
                          GError                    **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *modev;
+  gs_unref_variant GVariant *modev = NULL;
   guint64 mode_offset;
   guint64 xattr_offset;
   guint32 uid, gid, mode;
