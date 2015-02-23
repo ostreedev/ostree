@@ -140,7 +140,7 @@ compare_sizenames (const void  *a,
   return sn_a->size - sn_b->size;
 }
 
-/**
+/*
  * Generate a sorted array of [(checksum: str, size: uint64, names: array[string]), ...]
  * for regular file content.
  */
