@@ -41,4 +41,3 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
 void _ostree_rollsum_matches_free (OstreeRollsumMatches *rollsum);
 
 G_END_DECLS
-

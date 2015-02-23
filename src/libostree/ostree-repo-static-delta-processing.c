@@ -33,6 +33,7 @@
 #include "ostree-lzma-decompressor.h"
 #include "otutil.h"
 #include "ostree-varint.h"
+#include "bsdiff/bspatch.h"
 
 /* This should really always be true, but hey, let's just assert it */
 G_STATIC_ASSERT (sizeof (guint) >= sizeof (guint32));
@@ -100,6 +101,7 @@ OPPROTO(write)
 OPPROTO(set_read_source)
 OPPROTO(unset_read_source)
 OPPROTO(close)
+OPPROTO(bspatch)
 #undef OPPROTO
 
 static gboolean
@@ -257,6 +259,10 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
           break;
         case OSTREE_STATIC_DELTA_OP_CLOSE:
           if (!dispatch_close (repo, state, cancellable, error))
+            goto out;
+          break;
+        case OSTREE_STATIC_DELTA_OP_BSPATCH:
+          if (!dispatch_bspatch (repo, state, cancellable, error))
             goto out;
           break;
         default:
@@ -480,6 +486,82 @@ do_content_open_generic (OstreeRepo                 *repo,
   state->mode = GUINT32_FROM_BE (mode);
 
   state->xattrs = g_variant_get_child_value (state->xattr_dict, xattr_offset);
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+struct bzpatch_opaque_s
+{
+  StaticDeltaExecutionState  *state;
+  guint64 offset, length;
+};
+
+static int
+bspatch_read (const struct bspatch_stream* stream, void* buffer, int length)
+{
+  struct bzpatch_opaque_s *opaque = stream->opaque;
+
+  g_assert (length <= opaque->length);
+  g_assert (opaque->offset + length <= opaque->state->payload_size);
+
+  memcpy (buffer, opaque->state->payload_data + opaque->offset, length);
+  opaque->offset += length;
+  opaque->length -= length;
+  return 0;
+}
+
+static gboolean
+dispatch_bspatch (OstreeRepo                 *repo,
+                  StaticDeltaExecutionState  *state,
+                  GCancellable               *cancellable,
+                  GError                    **error)
+{
+  gboolean ret = FALSE;
+  guint64 offset, length;
+  gs_unref_object GInputStream *in_stream = NULL;
+  gs_unref_object GOutputStream *out_mem_stream = NULL;
+  gs_free guchar *buf = NULL;
+  struct bspatch_stream stream;
+  struct bzpatch_opaque_s opaque;
+  gsize bytes_written;
+
+  if (!read_varuint64 (state, &offset, error))
+    goto out;
+  if (!read_varuint64 (state, &length, error))
+    goto out;
+
+  buf = g_malloc0 (state->content_size);
+
+  in_stream = g_unix_input_stream_new (state->read_source_fd, FALSE);
+
+  out_mem_stream = g_memory_output_stream_new_resizable ();
+
+  if (!g_output_stream_splice (out_mem_stream, in_stream, G_OUTPUT_STREAM_SPLICE_NONE,
+                               cancellable, error) < 0)
+    goto out;
+
+  opaque.state = state;
+  opaque.offset = offset;
+  opaque.length = length;
+  stream.read = bspatch_read;
+  stream.opaque = &opaque;
+  if (bspatch (g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (out_mem_stream)),
+               g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out_mem_stream)),
+               buf,
+               state->content_size,
+               &stream) < 0)
+    goto out;
+
+  if (!g_output_stream_write_all (state->content_out,
+                                  buf,
+                                  state->content_size,
+                                  &bytes_written,
+                                  cancellable, error))
+    goto out;
+
+  g_assert (bytes_written == state->content_size);
 
   ret = TRUE;
  out:
