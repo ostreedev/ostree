@@ -1925,6 +1925,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
         }
       else
         {
+          g_prefix_error (error, "Unable to read existing detached metadata: ");
           g_propagate_error (error, temp_error);
           goto out;
         }
@@ -1971,7 +1972,10 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                 g_variant_get_size (normalized),
                                 NULL, FALSE, 0, NULL,
                                 cancellable, error))
-    goto out;
+    {
+      g_prefix_error (error, "Unable to write detached metadata: ");
+      goto out;
+    }
 
   ret = TRUE;
  out:

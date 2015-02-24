@@ -2995,11 +2995,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                                   &metadata,
                                                   cancellable,
                                                   error))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to read existing detached metadata");
-      goto out;
-    }
+    goto out;
 
   new_metadata = _ostree_detached_metadata_append_gpg_sig (metadata, signature_bytes);
 
@@ -3008,11 +3004,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                                    new_metadata,
                                                    cancellable,
                                                    error))
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to read existing detached metadata");
-      goto out;
-    }
+    goto out;
 
   ret = TRUE;
  out:
