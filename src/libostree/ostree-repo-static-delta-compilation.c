@@ -568,10 +568,10 @@ try_content_rollsum (OstreeRepo                       *repo,
 
   { guint match_ratio = (matches->bufmatches*100)/matches->total;
 
-    /* Only proceed if the file contains (arbitrary) more than 25% of
+    /* Only proceed if the file contains (arbitrary) more than 50% of
      * the previous chunks.
      */
-    if (match_ratio < 25)
+    if (match_ratio < 50)
       {
         ret = TRUE;
         goto out;
