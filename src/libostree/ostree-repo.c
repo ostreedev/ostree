@@ -3397,12 +3397,47 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
+  return ostree_repo_verify_commit_with_status (self, commit_checksum, keyringdir, extra_keyring, NULL, NULL, NULL, cancellable, error);
+}
+
+/**
+ * ostree_repo_verify_commit_with_status:
+ * @self: Repository
+ * @commit_checksum: ASCII SHA256 checksum
+ * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
+ * @out_signature_exists: (out): Whether or not any signature exists
+ * @out_any_signature_is_good: (out): %TRUE if and only if there is at least one good signature
+ * @out_status: (out): A string describing the signature state; this is set for both good and bad signatures
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Check for a valid GPG signature on commit named by the ASCII
+ * checksum @commit_checksum.  Unlike ostree_repo_verify_commit(),
+ * this function does not return an error for invalid or empty
+ * signature state.  To properly use this function, you must check the
+ * value of @out_any_signature_is_good on return.
+ */
+gboolean
+ostree_repo_verify_commit_with_status (OstreeRepo   *self,
+                                       const gchar  *commit_checksum,
+                                       GFile        *keyringdir,
+                                       GFile        *extra_keyring,
+                                       gboolean     *out_signature_exists,
+                                       gboolean     *out_any_signature_is_good,
+                                       char        **out_status,
+                                       GCancellable *cancellable,
+                                       GError      **error)
+{
   gboolean ret = FALSE;
+  gboolean signature_exists = FALSE;
+  gboolean any_sig_is_good = FALSE;
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_unref_object GFile *commit_tmp_path = NULL;
   gs_unref_object GFile *keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_free gchar *commit_filename = NULL;
+  gs_free gchar *ret_status = NULL;
 
   /* Create a temporary file for the commit */
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
@@ -3438,6 +3473,9 @@ ostree_repo_verify_commit (OstreeRepo   *self,
     goto out;
   
   ret = TRUE;
+  *out_signature_exists = signature_exists;
+  *out_any_signature_is_good = any_sig_is_good;
+  gs_transfer_out_value (out_status, &ret_status);
 out:
   if (commit_tmp_path)
     (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
