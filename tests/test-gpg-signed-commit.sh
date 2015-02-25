@@ -39,3 +39,11 @@ cd ${test_tmpdir}
 ${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
 $OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
 assert_file_has_content test2-gpgsigs 'byte '
+
+# Commit and sign separately
+cd ${test_tmpdir}
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --tree=dir=files
+$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 2> /dev/null && (echo 1>&2 "unsigned commit unexpectedly had detached metadata"; exit 1)
+$OSTREE gpg-sign test2 ${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME}
+$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
+assert_file_has_content test2-gpgsigs 'byte '

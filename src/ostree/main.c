@@ -41,6 +41,9 @@ static OstreeCommand commands[] = {
   { "config", ostree_builtin_config },
   { "diff", ostree_builtin_diff },
   { "fsck", ostree_builtin_fsck },
+#ifdef HAVE_GPGME
+  { "gpg-sign", ostree_builtin_gpg_sign },
+#endif
   { "init", ostree_builtin_init },
   { "log", ostree_builtin_log },
   { "ls", ostree_builtin_ls },
