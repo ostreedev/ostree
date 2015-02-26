@@ -3406,9 +3406,9 @@ ostree_repo_verify_commit (OstreeRepo   *self,
  * @commit_checksum: ASCII SHA256 checksum
  * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
  * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
- * @out_signature_exists: (out): Whether or not any signature exists
- * @out_any_signature_is_good: (out): %TRUE if and only if there is at least one good signature
- * @out_status: (out): A string describing the signature state; this is set for both good and bad signatures
+ * @out_signature_exists: (out) (allow-none): Whether or not any signature exists
+ * @out_any_signature_is_good: (out) (allow-none): %TRUE if and only if there is at least one good signature
+ * @out_status: (out) (allow-none): A string describing the signature state; this is set for both good and bad signatures
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3473,8 +3473,10 @@ ostree_repo_verify_commit_with_status (OstreeRepo   *self,
     goto out;
   
   ret = TRUE;
-  *out_signature_exists = signature_exists;
-  *out_any_signature_is_good = any_sig_is_good;
+  if (out_signature_exists != NULL)
+    *out_signature_exists = signature_exists;
+  if (out_any_signature_is_good != NULL)
+    *out_any_signature_is_good = any_sig_is_good;
   gs_transfer_out_value (out_status, &ret_status);
 out:
   if (commit_tmp_path)
