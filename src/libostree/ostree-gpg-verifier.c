@@ -36,7 +36,6 @@ struct OstreeGpgVerifier {
   GObject parent;
 
   GList *keyrings;
-  gchar *homedir;
 };
 
 static void _ostree_gpg_verifier_initable_iface_init (GInitableIface *iface);
@@ -50,7 +49,6 @@ ostree_gpg_verifier_finalize (GObject *object)
   OstreeGpgVerifier *self = OSTREE_GPG_VERIFIER (object);
 
   g_list_free_full (self->keyrings, g_object_unref);
-  g_free (self->homedir);
 
   G_OBJECT_CLASS (_ostree_gpg_verifier_parent_class)->finalize (object);
 }
@@ -244,14 +242,6 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
     g_main_loop_unref (loop);
 
   return ret;
-}
-
-void
-_ostree_gpg_verifier_set_homedir (OstreeGpgVerifier    *self,
-                                  const gchar          *path)
-{
-  g_free (self->homedir);
-  self->homedir = g_strdup (path);
 }
 
 gboolean

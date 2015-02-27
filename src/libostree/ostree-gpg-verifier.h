@@ -48,9 +48,6 @@ gboolean      _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
                                                     GCancellable      *cancellable,
                                                     GError           **error);
 
-void _ostree_gpg_verifier_set_homedir (OstreeGpgVerifier *self,
-                                       const gchar *path);
-
 gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                                     GFile               *path,
                                                     GCancellable        *cancellable,
