@@ -275,14 +275,6 @@ ot_util_variant_builder_from_variant (GVariant            *variant,
   return builder;
 }
 
-GVariant *
-ot_variant_new_from_bytes (const GVariantType  *type,
-                           GBytes        *bytes,
-                           gboolean       trusted)
-{
-  return g_variant_new_from_bytes (type, bytes, trusted);
-}
-
 /**
  * ot_variant_bsearch_str:
  * @array: A GVariant array whose first element must be a string

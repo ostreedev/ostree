@@ -67,11 +67,6 @@ GInputStream *ot_variant_read (GVariant             *variant);
 GVariantBuilder *ot_util_variant_builder_from_variant (GVariant            *variant,
                                                        const GVariantType  *type);
 
-GVariant *
-ot_variant_new_from_bytes (const GVariantType  *type,
-                           GBytes        *bytes,
-                           gboolean       trusted);
-
 gboolean
 ot_variant_bsearch_str (GVariant   *array,
                         const char *str,

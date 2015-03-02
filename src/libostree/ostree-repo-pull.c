@@ -1316,9 +1316,9 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
                                   cancellable, error))
     goto out;
 
-  metadata = ot_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
-                                        detached_meta_data,
-                                        FALSE);
+  metadata = g_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
+                                       detached_meta_data,
+                                       FALSE);
 
   if (!_ostree_repo_gpg_verify_file_with_metadata (pull_data->repo, temp_input_path,
                                                    metadata, NULL, NULL,
@@ -1366,8 +1366,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
             goto out;
         }
 
-      ret_delta_superblock = ot_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
-                                                        delta_superblock_data, FALSE);
+      ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                                       delta_superblock_data, FALSE);
     }
   
   ret = TRUE;
