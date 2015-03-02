@@ -1926,25 +1926,24 @@ GVariant *
 _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes)
 {
-  GVariantBuilder *builder = NULL;
-  gs_unref_variant GVariant *signaturedata = NULL;
+  GVariantDict metadata_dict;
+  gs_unref_variant GVariant *signature_data = NULL;
   gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
 
-  if (existing_metadata)
-    {
-      builder = ot_util_variant_builder_from_variant (existing_metadata, G_VARIANT_TYPE ("a{sv}"));
-      signaturedata = g_variant_lookup_value (existing_metadata, _OSTREE_METADATA_GPGSIGS_NAME, _OSTREE_METADATA_GPGSIGS_TYPE);
-      if (signaturedata)
-        signature_builder = ot_util_variant_builder_from_variant (signaturedata, _OSTREE_METADATA_GPGSIGS_TYPE);
-    }
-  if (!builder)
-    builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-  if (!signature_builder)
-    signature_builder = g_variant_builder_new (_OSTREE_METADATA_GPGSIGS_TYPE);
+  g_variant_dict_init (&metadata_dict, existing_metadata);
+
+  signature_data = g_variant_dict_lookup_value (&metadata_dict,
+                                                _OSTREE_METADATA_GPGSIGS_NAME,
+                                                _OSTREE_METADATA_GPGSIGS_TYPE);
+
+  /* signature_data may be NULL */
+  signature_builder = ot_util_variant_builder_from_variant (signature_data, _OSTREE_METADATA_GPGSIGS_TYPE);
 
   g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
 
-  g_variant_builder_add (builder, "{sv}", _OSTREE_METADATA_GPGSIGS_NAME, g_variant_builder_end (signature_builder));
-  
-  return g_variant_ref_sink (g_variant_builder_end (builder));
+  g_variant_dict_insert_value (&metadata_dict,
+                               _OSTREE_METADATA_GPGSIGS_NAME,
+                               g_variant_builder_end (signature_builder));
+
+  return g_variant_dict_end (&metadata_dict);
 }
