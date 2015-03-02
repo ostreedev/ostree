@@ -280,15 +280,7 @@ ot_variant_new_from_bytes (const GVariantType  *type,
                            GBytes        *bytes,
                            gboolean       trusted)
 {
-#if GLIB_VERSION_MIN_REQUIRED >= GLIB_VERSION_2_36
   return g_variant_new_from_bytes (type, bytes, trusted);
-#else
-  gsize size;
-  gconstpointer data = g_bytes_get_data (bytes, &size);
-  g_bytes_ref (bytes);
-  return g_variant_new_from_data (type, data, size, trusted,
-                                  (GDestroyNotify)g_bytes_unref, bytes);
-#endif
 }
 
 /**

@@ -43,7 +43,7 @@ AC_CHECK_HEADER([attr/xattr.h],,[AC_MSG_ERROR([You must have attr/xattr.h from l
 
 PKG_PROG_PKG_CONFIG
 
-GIO_DEPENDENCY="gio-unix-2.0 >= 2.36.0 libgsystem >= 2015.1"
+GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
 dnl 5.1.0 is an arbitrary version here
