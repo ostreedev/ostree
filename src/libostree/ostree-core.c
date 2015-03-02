@@ -1933,18 +1933,18 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
   if (existing_metadata)
     {
       builder = ot_util_variant_builder_from_variant (existing_metadata, G_VARIANT_TYPE ("a{sv}"));
-      signaturedata = g_variant_lookup_value (existing_metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
+      signaturedata = g_variant_lookup_value (existing_metadata, _OSTREE_METADATA_GPGSIGS_NAME, _OSTREE_METADATA_GPGSIGS_TYPE);
       if (signaturedata)
-        signature_builder = ot_util_variant_builder_from_variant (signaturedata, G_VARIANT_TYPE ("aay"));
+        signature_builder = ot_util_variant_builder_from_variant (signaturedata, _OSTREE_METADATA_GPGSIGS_TYPE);
     }
   if (!builder)
     builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
   if (!signature_builder)
-    signature_builder = g_variant_builder_new (G_VARIANT_TYPE ("aay"));
+    signature_builder = g_variant_builder_new (_OSTREE_METADATA_GPGSIGS_TYPE);
 
   g_variant_builder_add (signature_builder, "@ay", ot_gvariant_new_ay_bytes (signature_bytes));
 
-  g_variant_builder_add (builder, "{sv}", "ostree.gpgsigs", g_variant_builder_end (signature_builder));
+  g_variant_builder_add (builder, "{sv}", _OSTREE_METADATA_GPGSIGS_NAME, g_variant_builder_end (signature_builder));
   
   return g_variant_ref_sink (g_variant_builder_end (builder));
 }

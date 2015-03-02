@@ -125,6 +125,9 @@ _ostree_loose_path_with_suffix (char              *buf,
                                 OstreeRepoMode     repo_mode,
                                 const char        *suffix);
 
+#define _OSTREE_METADATA_GPGSIGS_NAME "ostree.gpgsigs"
+#define _OSTREE_METADATA_GPGSIGS_TYPE G_VARIANT_TYPE ("aay")
+
 GVariant *
 _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes);

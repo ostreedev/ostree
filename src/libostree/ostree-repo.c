@@ -3312,7 +3312,9 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
     }
 
   if (metadata)
-    signaturedata = g_variant_lookup_value (metadata, "ostree.gpgsigs", G_VARIANT_TYPE ("aay"));
+    signaturedata = g_variant_lookup_value (metadata,
+                                            _OSTREE_METADATA_GPGSIGS_NAME,
+                                            _OSTREE_METADATA_GPGSIGS_TYPE);
   if (!signaturedata)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
