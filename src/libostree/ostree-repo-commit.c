@@ -369,14 +369,8 @@ add_size_index_to_metadata (OstreeRepo        *self,
   gboolean ret = FALSE;
   gs_unref_variant_builder GVariantBuilder *builder = NULL;
     
-  if (original_metadata)
-    {
-      builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
-    }
-  else
-    {
-      builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-    }
+  /* original_metadata may be NULL */
+  builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
 
   if (self->object_sizes &&
       g_hash_table_size (self->object_sizes) > 0)
@@ -2189,11 +2183,9 @@ get_modified_xattrs (OstreeRepo                       *self,
         {
           GVariantBuilder *builder;
 
-          if (ret_xattrs)
-            builder = ot_util_variant_builder_from_variant (ret_xattrs,
-                                                            G_VARIANT_TYPE ("a(ayay)"));
-          else
-            builder = g_variant_builder_new (G_VARIANT_TYPE ("a(ayay)"));
+          /* ret_xattrs may be NULL */
+          builder = ot_util_variant_builder_from_variant (ret_xattrs,
+                                                          G_VARIANT_TYPE ("a(ayay)"));
 
           g_variant_builder_add_value (builder,
                                        g_variant_new ("(@ay@ay)",
