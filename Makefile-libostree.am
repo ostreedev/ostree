@@ -89,8 +89,6 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-bootloader-syslinux.c \
 	src/libostree/ostree-bootloader-uboot.h \
 	src/libostree/ostree-bootloader-uboot.c \
-	src/libostree/ostree-gpg-verifier.c \
-	src/libostree/ostree-gpg-verifier.h \
 	src/libostree/ostree-repo-static-delta-core.c \
 	src/libostree/ostree-repo-static-delta-processing.c \
 	src/libostree/ostree-repo-static-delta-compilation.c \
@@ -106,6 +104,12 @@ if HAVE_LIBSOUP_CLIENT_CERTS
 libostree_1_la_SOURCES += \
 	src/libostree/ostree-tls-cert-interaction.c \
 	src/libostree/ostree-tls-cert-interaction.h \
+	$(NULL)
+endif
+if USE_GPGME
+libostree_1_la_SOURCES += \
+	src/libostree/ostree-gpg-verifier.c \
+	src/libostree/ostree-gpg-verifier.h \
 	$(NULL)
 endif
 

@@ -26,7 +26,9 @@
 #include "ostree-gpg-verifier.h"
 #include "otutil.h"
 
-#define GPGVGOODPREFIX "[GNUPG:] GOODSIG "
+#include <stdlib.h>
+#include <glib/gstdio.h>
+#include <gpgme.h>
 
 typedef struct {
   GObjectClass parent_class;
@@ -59,6 +61,9 @@ _ostree_gpg_verifier_class_init (OstreeGpgVerifierClass *klass)
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   object_class->finalize = ostree_gpg_verifier_finalize;
+
+  /* Initialize GPGME */
+  gpgme_check_version (NULL);
 }
 
 static void
@@ -75,7 +80,6 @@ ostree_gpg_verifier_initable_init (GInitable        *initable,
   OstreeGpgVerifier *self = (OstreeGpgVerifier*)initable;
   const char *default_keyring_path = g_getenv ("OSTREE_GPG_HOME");
   gs_unref_object GFile *default_keyring_dir = NULL;
-  gs_unref_object GFile *default_pubring = NULL;
 
   if (!default_keyring_path)
     default_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
@@ -100,146 +104,277 @@ _ostree_gpg_verifier_initable_iface_init (GInitableIface *iface)
   iface->init = ostree_gpg_verifier_initable_init;
 }
 
-typedef struct {
-  OstreeGpgVerifier *self;
-  GCancellable *cancellable;
-  gboolean gpgv_done;
-  gboolean status_done;
-
-  gint goodsigs;
-  gint exitcode;
-  GError *error;
-  GMainLoop *loop;
-} VerifyRun;
-
-static void
-_gpgv_parse_line (VerifyRun *v, const gchar *line)
+static gboolean
+concatenate_keyrings (OstreeGpgVerifier *self,
+                      GFile *destination,
+                      GCancellable *cancellable,
+                      GError **error)
 {
-  if (g_str_has_prefix (line, GPGVGOODPREFIX))
-    v->goodsigs++;
-}
+  gs_unref_object GOutputStream *target_stream = NULL;
+  GList *link;
+  gboolean ret = FALSE;
 
-static void
-on_process_done (GObject *s, GAsyncResult *res, gpointer user_data)
-{
-  VerifyRun *v = user_data;
-  gs_subprocess_wait_finish (GS_SUBPROCESS (s), res,
-                             &v->exitcode, &v->error);
+  target_stream = (GOutputStream *) g_file_replace (destination,
+                                                    NULL,   /* no etag */
+                                                    FALSE,  /* no backup */
+                                                    G_FILE_CREATE_NONE,
+                                                    cancellable, error);
+  if (target_stream == NULL)
+    goto out;
 
-  v->gpgv_done = TRUE;
-
-  g_main_loop_quit (v->loop);
-}
-
-static void
-on_read_line (GObject *s, GAsyncResult *res, gpointer user_data)
-{
-  VerifyRun *v = user_data;
-  gchar *line;
-
-  /* Ignore errors when reading from the data input */
-  line = g_data_input_stream_read_line_finish (G_DATA_INPUT_STREAM (s),
-                                               res, NULL, NULL);
-
-  if (line == NULL)
+  for (link = self->keyrings; link != NULL; link = link->next)
     {
-      v->status_done = TRUE;
-      g_main_loop_quit (v->loop);
+      gs_unref_object GInputStream *source_stream = NULL;
+      GFile *keyring_file = link->data;
+      gssize bytes_written;
+      GError *local_error = NULL;
+
+      source_stream = (GInputStream *) g_file_read (keyring_file, cancellable, &local_error);
+
+      /* Disregard non-existent keyrings. */
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          continue;
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+
+      bytes_written = g_output_stream_splice (target_stream,
+                                              source_stream,
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                              cancellable, error);
+      if (bytes_written == -1)
+        goto out;
     }
-  else
-    {
-      _gpgv_parse_line (v, line);
-      g_free (line);
-      g_data_input_stream_read_line_async (G_DATA_INPUT_STREAM (s),
-                                           G_PRIORITY_DEFAULT, v->cancellable,
-                                           on_read_line, v);
-    }
+
+  if (!g_output_stream_close (target_stream, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
+static void
+gpg_error_to_gio_error (gpgme_error_t gpg_error,
+                        GError **error)
+{
+  GIOErrorEnum errcode;
+
+  /* XXX This list is incomplete.  Add cases as needed. */
+
+  switch (gpg_error)
+    {
+      /* special case - shouldn't be here */
+      case GPG_ERR_NO_ERROR:
+        g_return_if_reached ();
+
+      /* special case - abort on out-of-memory */
+      case GPG_ERR_ENOMEM:
+        g_error ("%s: %s",
+                 gpgme_strsource (gpg_error),
+                 gpgme_strerror (gpg_error));
+
+      case GPG_ERR_INV_VALUE:
+        errcode = G_IO_ERROR_INVALID_ARGUMENT;
+        break;
+
+      default:
+        errcode = G_IO_ERROR_FAILED;
+        break;
+    }
+
+  g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
+               gpgme_strsource (gpg_error),
+               gpgme_strerror (gpg_error));
+}
+
+static gboolean
+override_gpgme_home_dir (gpgme_ctx_t gpg_ctx,
+                         const char *home_dir,
+                         GError **error)
+{
+  gpgme_engine_info_t gpg_engine_info;
+  gboolean ret = FALSE;
+
+  /* Override the OpenPGP engine's configuration directory without
+   * affecting other parameters.  This requires finding the current
+   * parameters since the engine API takes all parameters at once. */
+
+  for (gpg_engine_info = gpgme_ctx_get_engine_info (gpg_ctx);
+       gpg_engine_info != NULL;
+       gpg_engine_info = gpg_engine_info->next)
+    {
+      if (gpg_engine_info->protocol == GPGME_PROTOCOL_OpenPGP)
+        {
+          gpgme_error_t gpg_error;
+
+          gpg_error = gpgme_ctx_set_engine_info (gpg_ctx,
+                                                 gpg_engine_info->protocol,
+                                                 gpg_engine_info->file_name,
+                                                 home_dir);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            {
+              gpg_error_to_gio_error (gpg_error, error);
+              goto out;
+            }
+
+          break;
+        }
+    }
+
+  if (gpg_engine_info == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "GPGME: No OpenPGP engine available");
+      goto out;
+    }
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
 
 gboolean
-_ostree_gpg_verifier_check_signature (OstreeGpgVerifier   *self,
-                                      GFile               *file,
-                                      GFile               *signature,
-                                      gboolean            *out_had_valid_sig,
-                                      GCancellable        *cancellable,
-                                      GError             **error)
+_ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
+                                      GFile              *file,
+                                      GFile              *signature,
+                                      gboolean           *out_had_valid_sig,
+                                      GCancellable       *cancellable,
+                                      GError            **error)
 {
+  gpgme_ctx_t gpg_ctx = NULL;
+  gpgme_error_t gpg_error = NULL;
+  gpgme_data_t data_buffer = NULL;
+  gpgme_data_t signature_buffer = NULL;
+  gpgme_verify_result_t verify_result;
+  gpgme_signature_t signature_iter;
+  gs_unref_object GFile *pubring_file = NULL;
+  gs_free char *pubring_path = NULL;
+  gs_free char *temp_dir = NULL;
+  gboolean had_valid_sig = FALSE;
   gboolean ret = FALSE;
-  gboolean ret_had_valid_sig = FALSE;
-  gs_unref_object GSSubprocessContext *context = NULL;
-  gs_unref_object GSSubprocess *proc = NULL;
-  gs_unref_object GDataInputStream *data = NULL;
-  gs_free gchar *status_fd_str = NULL;
-  GInputStream *output;
-  gint fd;
-  VerifyRun v = { 0, };
-  GList *item;
-  GMainContext *maincontext = NULL;
-  GMainLoop *loop = NULL;
-  
-  g_return_val_if_fail (out_had_valid_sig != NULL, FALSE);
 
-  maincontext = g_main_context_new ();
-  loop = g_main_loop_new (maincontext, FALSE);
+  /* GPGME has no API for using multiple keyrings (aka, gpg --keyring),
+   * so we concatenate all the keyring files into one pubring.gpg in a
+   * temporary directory, then tell GPGME to use that directory as the
+   * home directory. */
 
-  g_main_context_push_thread_default (maincontext);
-
-  context = gs_subprocess_context_newv (GPGVPATH, NULL);
-  gs_subprocess_context_set_stdin_disposition (context,
-                                               GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-  gs_subprocess_context_set_stdout_disposition (context,
-                                                GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-  gs_subprocess_context_set_stderr_disposition (context,
-                                                GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-  
-  if (!gs_subprocess_context_open_pipe_read (context, &output, &fd, error))
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
     goto out;
 
-  status_fd_str = g_strdup_printf ("%d", fd);
-  gs_subprocess_context_argv_append (context, "--status-fd");
-  gs_subprocess_context_argv_append (context, status_fd_str);
+  temp_dir = g_build_filename (g_get_tmp_dir (), "ostree-gpg-XXXXXX", NULL);
 
-  for (item = self->keyrings ; item != NULL; item = g_list_next (item))
+  if (mkdtemp (temp_dir) == NULL)
     {
-      GFile *keyring = item->data;
-      gs_subprocess_context_argv_append (context, "--keyring");
-      gs_subprocess_context_argv_append (context, gs_file_get_path_cached (keyring));
+      gs_set_error_from_errno (error, errno);
+      goto out;
     }
 
-  gs_subprocess_context_argv_append (context, gs_file_get_path_cached (signature));
-  gs_subprocess_context_argv_append (context, gs_file_get_path_cached (file));
+  pubring_path = g_build_filename (temp_dir, "pubring.gpg", NULL);
 
-  proc = gs_subprocess_new (context, cancellable, error);
-  if (proc == NULL)
+  pubring_file = g_file_new_for_path (pubring_path);
+  if (!concatenate_keyrings (self, pubring_file, cancellable, error))
     goto out;
 
-  data = g_data_input_stream_new (output);
+  gpg_error = gpgme_new (&gpg_ctx);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      gpg_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to create context: ");
+      goto out;
+    }
 
-  v.self = self;
-  v.cancellable = cancellable;
-  v.loop = loop;
+  if (!override_gpgme_home_dir (gpg_ctx, temp_dir, error))
+    goto out;
 
-  gs_subprocess_wait (proc, cancellable, on_process_done, &v);
-  g_data_input_stream_read_line_async (data, G_PRIORITY_DEFAULT, cancellable,
-                                       on_read_line, &v);
+  {
+    gs_free char *path = g_file_get_path (file);
+    gpg_error = gpgme_data_new_from_file (&data_buffer, path, 1);
 
-  while (!v.gpgv_done || !v.status_done)
-    g_main_loop_run (loop);
+    if (gpg_error != GPG_ERR_NO_ERROR)
+      {
+        gpg_error_to_gio_error (gpg_error, error);
+        g_prefix_error (error, "Unable to read signed text: ");
+        goto out;
+      }
+  }
 
-  if (v.goodsigs > 0)
-    ret_had_valid_sig = TRUE;
-  
+  {
+    gs_free char *path = g_file_get_path (signature);
+    gpg_error = gpgme_data_new_from_file (&signature_buffer, path, 1);
+
+    if (gpg_error != GPG_ERR_NO_ERROR)
+      {
+        gpg_error_to_gio_error (gpg_error, error);
+        g_prefix_error (error, "Unable to read signature: ");
+        goto out;
+      }
+  }
+
+  gpg_error = gpgme_op_verify (gpg_ctx, signature_buffer, data_buffer, NULL);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      gpg_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to complete signature verification: ");
+      goto out;
+    }
+
+  /* Result data is owned by the context. */
+  verify_result = gpgme_op_verify_result (gpg_ctx);
+
+  /* XXX Needs improvement.  We're throwing away a bunch of result data
+   *     here that could be used for more advanced signature operations.
+   *     Don't want to expose GPGME types in libostree but maybe we can
+   *     wrapper it in GLib types. */
+
+  for (signature_iter = verify_result->signatures;
+       signature_iter != NULL;
+       signature_iter = signature_iter->next)
+    {
+      /* Mimic the way librepo tests for a valid signature, checking both
+       * summary and status fields.
+       *
+       * - VALID summary flag means the signature is fully valid.
+       * - GREEN summary flag means the signature is valid with caveats.
+       * - No summary but also no error means the signature is valid but
+       *   the signing key is not certified with a trusted signature.
+       */
+      if ((signature_iter->summary & GPGME_SIGSUM_VALID) ||
+          (signature_iter->summary & GPGME_SIGSUM_GREEN) ||
+          (signature_iter->summary == 0 &&
+           signature_iter->status == GPG_ERR_NO_ERROR))
+        {
+          had_valid_sig = TRUE;
+          break;
+        }
+    }
+
+  if (out_had_valid_sig != NULL)
+    *out_had_valid_sig = had_valid_sig;
+
   ret = TRUE;
-  *out_had_valid_sig = ret_had_valid_sig;
- out:
-  if (maincontext)
-    {
-      g_main_context_pop_thread_default (maincontext);
-      g_main_context_unref (maincontext);
-    }
-  if (loop)
-    g_main_loop_unref (loop);
+
+out:
+
+  /* Try to clean up the temporary directory. */
+  if (temp_dir != NULL)
+    (void) glnx_shutil_rm_rf_at (-1, temp_dir, NULL, NULL);
+
+  if (gpg_ctx != NULL)
+    gpgme_release (gpg_ctx);
+  if (data_buffer != NULL)
+    gpgme_data_release (data_buffer);
+  if (signature_buffer != NULL)
+    gpgme_data_release (signature_buffer);
+
+  g_prefix_error (error, "GPG: ");
 
   return ret;
 }
