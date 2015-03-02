@@ -848,10 +848,16 @@ process_one_bsdiff (OstreeRepo                       *repo,
   return ret;
 }
 
+typedef enum {
+  DELTAOPT_FLAG_NONE = (1 << 0),
+  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1)
+} DeltaOpts;
+
 static gboolean 
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
                            const char                       *to,
+                           DeltaOpts                         opts,
                            OstreeStaticDeltaBuilder         *builder,
                            GCancellable                     *cancellable,
                            GError                          **error)
@@ -988,12 +994,15 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
           continue;
         }
 
-      if (!try_content_bsdiff (repo, from_checksum, to_checksum,
-                               &bsdiff, cancellable, error))
-        goto out;
+      if (!(opts & DELTAOPT_FLAG_DISABLE_BSDIFF))
+        {
+          if (!try_content_bsdiff (repo, from_checksum, to_checksum,
+                                   &bsdiff, cancellable, error))
+            goto out;
 
-      if (bsdiff)
-        g_hash_table_insert (bsdiff_optimized_content_objects, g_strdup (to_checksum), bsdiff);
+          if (bsdiff)
+            g_hash_table_insert (bsdiff_optimized_content_objects, g_strdup (to_checksum), bsdiff);
+        }
     }
 
   g_printerr ("rollsum for %u/%u modified\n",
@@ -1215,6 +1224,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_chunk_size;
   GVariant *metadata_source;
+  DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   gs_unref_variant_builder GVariantBuilder *part_headers = NULL;
@@ -1238,12 +1248,19 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     max_chunk_size = 32;
   builder.max_chunk_size_bytes = ((guint64)max_chunk_size) * 1000 * 1000;
 
+  { gboolean use_bsdiff;
+    if (!g_variant_lookup (params, "bsdiff-enabled", "b", &use_bsdiff))
+      use_bsdiff = TRUE;
+    if (!use_bsdiff)
+      delta_opts |= DELTAOPT_FLAG_DISABLE_BSDIFF;
+  }
+
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
     goto out;
 
   /* Ignore optimization flags */
-  if (!generate_delta_lowlatency (self, from, to, &builder,
+  if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
                                   cancellable, error))
     goto out;
 
