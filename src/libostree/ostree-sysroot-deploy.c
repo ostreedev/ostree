@@ -35,117 +35,6 @@
 #define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
 
 static gboolean
-copy_one_file_fsync_at (int              src_parent_dfd,
-                        int              dest_parent_dfd,
-                        struct stat     *stbuf,
-                        const char      *name,
-                        GCancellable    *cancellable,
-                        GError         **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_variant GVariant *src_xattrs = NULL;
-
-  if (!gs_dfd_and_name_get_all_xattrs (src_parent_dfd, name,
-                                       &src_xattrs,
-                                       cancellable, error))
-    goto out;
-
-  if (S_ISREG (stbuf->st_mode))
-    {
-      /* Note the objects take ownership of the fds */
-      int dest_fd = -1;
-      gs_unref_object GInputStream *in = NULL;
-      gs_unref_object GOutputStream *out = NULL;
-
-      if (!ot_openat_read_stream (src_parent_dfd, name, FALSE,
-                                  &in, cancellable, error))
-        goto out;
-
-      dest_fd = openat (dest_parent_dfd, name, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC,
-                        stbuf->st_mode);
-      if (dest_fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      out = g_unix_output_stream_new (dest_fd, TRUE);
-
-      if (src_xattrs != NULL)
-        {
-          if (!gs_fd_set_all_xattrs (dest_fd, src_xattrs,
-                                     cancellable, error))
-            goto out;
-        }
-
-      if (g_output_stream_splice (out, in, 0, cancellable, error) < 0)
-        goto out;
-
-      if (fchown (dest_fd, stbuf->st_uid, stbuf->st_gid) != 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      if (fchmod (dest_fd, stbuf->st_mode) != 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      if (fdatasync (dest_fd) != 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      /* Output stream destructor takes care of close */
-    }
-  else if (S_ISLNK (stbuf->st_mode))
-    {
-      char targetbuf[PATH_MAX+1];
-      size_t len;
-
-      do
-        len = readlinkat (src_parent_dfd, name, targetbuf, sizeof (targetbuf) - 1);
-      while (G_UNLIKELY (len == -1 && errno == EINTR));
-      if (len == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      targetbuf[len] = '\0';
-      if (symlinkat (targetbuf, dest_parent_dfd, name) != 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-      if (src_xattrs != NULL)
-        {
-          if (!gs_dfd_and_name_set_all_xattrs (dest_parent_dfd, name, src_xattrs,
-                                               cancellable, error))
-            goto out;
-        }
-      if (fchownat (dest_parent_dfd, name,
-                    stbuf->st_uid, stbuf->st_gid,
-                    AT_SYMLINK_NOFOLLOW) != 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-  else
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to copy non-regular/non-symlink file '%s'",
-                   name);
-      goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
 dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   const char    *src_name,
                                   int            src_dfd,
@@ -250,9 +139,9 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
         }
       else
         {
-          if (!copy_one_file_fsync_at (src_dfd, dest_dfd,
-                                       &child_stbuf, name,
-                                       cancellable, error))
+          if (!glnx_file_copy_at (src_dfd, name, &child_stbuf, dest_dfd, name,
+                                  GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                                  cancellable, error))
             goto out;
         }
     }
@@ -447,9 +336,10 @@ copy_modified_config_file (int                 orig_etc_fd,
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
     {
-      if (!copy_one_file_fsync_at (modified_etc_fd, new_etc_fd,
-                                   &modified_stbuf, path,
-                                   cancellable, error))
+      if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf, 
+                              new_etc_fd, path,
+                              GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                              cancellable, error))
         goto out;
     }
   else

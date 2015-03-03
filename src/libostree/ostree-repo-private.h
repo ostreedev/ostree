@@ -113,17 +113,6 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                GError             **error);
 
 gboolean
-_ostree_repo_get_loose_object_dirs (OstreeRepo       *self,
-                                    GPtrArray       **out_object_dirs,
-                                    GCancellable     *cancellable,
-                                    GError          **error);
-
-GFile *
-_ostree_repo_get_object_path (OstreeRepo   *self,
-                              const char   *checksum,
-                              OstreeObjectType type);
-
-gboolean
 _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GFileInfo    *file_info,
                                    GVariant     *xattrs,

@@ -842,65 +842,57 @@ devino_equal (gconstpointer   a,
 }
 
 static gboolean
-scan_loose_devino (OstreeRepo                     *self,
-                   GHashTable                     *devino_cache,
-                   GCancellable                   *cancellable,
-                   GError                        **error)
+scan_one_loose_devino (OstreeRepo                     *self,
+                       int                             object_dir_fd,
+                       GHashTable                     *devino_cache,
+                       GCancellable                   *cancellable,
+                       GError                        **error)
 {
   gboolean ret = FALSE;
-  guint i;
-  OstreeRepoMode repo_mode;
-  gs_unref_ptrarray GPtrArray *object_dirs = NULL;
+  int res;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  if (self->parent_repo)
-    {
-      if (!scan_loose_devino (self->parent_repo, devino_cache, cancellable, error))
-        goto out;
-    }
-
-  repo_mode = ostree_repo_get_mode (self);
-
-  if (!_ostree_repo_get_loose_object_dirs (self, &object_dirs, cancellable, error))
+  if (!glnx_dirfd_iterator_init_at (object_dir_fd, ".", FALSE,
+                                    &dfd_iter, error))
     goto out;
-
-  for (i = 0; i < object_dirs->len; i++)
+  
+  while (TRUE)
     {
-      GFile *objdir = object_dirs->pdata[i];
-      gs_unref_object GFileEnumerator *enumerator = NULL;
-      gs_unref_object GFileInfo *file_info = NULL;
-      const char *dirname;
+      struct dirent *dent;
+      g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
 
-      enumerator = g_file_enumerate_children (objdir, OSTREE_GIO_FAST_QUERYINFO,
-                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                              cancellable,
-                                              error);
-      if (!enumerator)
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         goto out;
+          
+      if (dent == NULL)
+        break;
 
-      dirname = gs_file_get_basename_cached (objdir);
+      if (strlen (dent->d_name) != 2)
+        continue;
+
+      if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                        &child_dfd_iter, error))
+        goto out;
 
       while (TRUE)
         {
-          const char *name;
-          const char *dot;
-          guint32 type;
+          struct stat stbuf;
           OstreeDevIno *key;
+          struct dirent *child_dent;
+          const char *dot;
           GString *checksum;
           gboolean skip;
+          const char *name;
 
-          if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
-                                           NULL, error))
+          if (!glnx_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
             goto out;
-          if (file_info == NULL)
+          
+          if (child_dent == NULL)
             break;
 
-          name = g_file_info_get_attribute_byte_string (file_info, "standard::name");
-          type = g_file_info_get_attribute_uint32 (file_info, "standard::type");
+          name = child_dent->d_name;
 
-          if (type == G_FILE_TYPE_DIRECTORY)
-            continue;
-
-          switch (repo_mode)
+          switch (self->mode)
             {
             case OSTREE_REPO_MODE_ARCHIVE_Z2:
             case OSTREE_REPO_MODE_BARE:
@@ -915,21 +907,60 @@ scan_loose_devino (OstreeRepo                     *self,
 
           dot = strrchr (name, '.');
           g_assert (dot);
-
+          
           if ((dot - name) != 62)
             continue;
 
-          checksum = g_string_new (dirname);
+          do
+            res = fstatat (child_dfd_iter.fd, child_dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW);
+          while (G_UNLIKELY (res == -1 && errno == EINTR));
+          if (res == -1)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+
+          checksum = g_string_new (dent->d_name);
           g_string_append_len (checksum, name, 62);
-
+          
           key = g_new (OstreeDevIno, 1);
-          key->dev = g_file_info_get_attribute_uint32 (file_info, "unix::device");
-          key->ino = g_file_info_get_attribute_uint64 (file_info, "unix::inode");
-
+          key->dev = stbuf.st_dev;
+          key->ino = stbuf.st_ino;
+          
           g_hash_table_replace (devino_cache, key, g_string_free (checksum, FALSE));
         }
     }
 
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+scan_loose_devino (OstreeRepo                     *self,
+                   GHashTable                     *devino_cache,
+                   GCancellable                   *cancellable,
+                   GError                        **error)
+{
+  gboolean ret = FALSE;
+
+  if (self->parent_repo)
+    {
+      if (!scan_loose_devino (self->parent_repo, devino_cache, cancellable, error))
+        goto out;
+    }
+
+  if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
+    {
+      if (!scan_one_loose_devino (self, self->uncompressed_objects_dir_fd, devino_cache,
+                                  cancellable, error))
+        goto out;
+    }
+
+  if (!scan_one_loose_devino (self, self->objects_dir_fd,
+                              devino_cache, cancellable, error))
+    goto out;
+    
   ret = TRUE;
  out:
   return ret;
@@ -1616,24 +1647,6 @@ _ostree_repo_write_directory_meta (OstreeRepo   *self,
 
   return ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_DIR_META, NULL,
                                      dirmeta, out_csum, cancellable, error);
-}
-
-GFile *
-_ostree_repo_get_object_path (OstreeRepo       *self,
-                              const char       *checksum,
-                              OstreeObjectType  type)
-{
-  char *relpath;
-  GFile *ret;
-  gboolean compressed;
-
-  compressed = (type == OSTREE_OBJECT_TYPE_FILE
-                && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2);
-  relpath = _ostree_get_relative_object_path (checksum, type, compressed);
-  ret = g_file_resolve_relative_path (self->repodir, relpath);
-  g_free (relpath);
-
-  return ret;
 }
 
 /**
