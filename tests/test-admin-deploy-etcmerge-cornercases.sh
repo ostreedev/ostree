@@ -29,12 +29,12 @@ echo "ok setup"
 
 echo "1..2"
 
-ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
-ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 etc=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
@@ -59,9 +59,9 @@ rm ${etc}/testdirectory -rf
 
 # Now deploy a new commit
 os_repository_new_commit
-ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot upgrade --os=testos
-newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 echo "newrev=${newrev}"
 newroot=sysroot/ostree/deploy/testos/deploy/${newrev}.0
 newetc=${newroot}/etc
@@ -95,35 +95,35 @@ echo "ok"
 # Add /etc/initially-empty
 cd "${test_tmpdir}/osdata"
 mkdir -p usr/etc/initially-empty
-ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
 cd ${test_tmpdir}
 
 # Upgrade, check that we have it
-ostree admin --sysroot=sysroot upgrade --os=testos
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_has_dir sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty
 
 # Now add a two files in initially-empty
 cd "${test_tmpdir}/osdata"
 touch usr/etc/initially-empty/{afile,bfile}
-ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add empty directory"
 
 # Upgrade, check that we have the two new files
 cd ${test_tmpdir}
-ostree admin --sysroot=sysroot upgrade --os=testos
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/afile
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/bfile
 
 # Replace config file with default directory
 cd "${test_tmpdir}/osdata"
 mkdir usr/etc/somenewdir
-ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add default dir"
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Add default dir"
 cd ${test_tmpdir}
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/somenewdir
 echo "some content blah" > ${newconfpath}
-if ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
+if ${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
     assert_not_reached "upgrade should have failed"
 fi
 assert_file_has_content err.txt "Modified config file newly defaults to directory"
@@ -132,12 +132,12 @@ rm ${newconfpath}
 # Remove parent directory of modified config file
 cd "${test_tmpdir}/osdata"
 rm -rf usr/etc/initially-empty
-ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Remove default dir"
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmaster/x86_64-runtime -s "Remove default dir"
 cd ${test_tmpdir}
 newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 touch ${newconfpath}
-ostree admin --sysroot=sysroot upgrade --os=testos
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/usr/etc/initially-empty
 assert_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 rm ${newconfpath}

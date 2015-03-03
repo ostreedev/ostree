@@ -30,7 +30,7 @@ echo "ok setup"
 echo "1..2"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
 ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
@@ -49,7 +49,7 @@ bootcsum3=${bootcsum}
 ostree admin --sysroot=sysroot upgrade --os=testos
 
 rev=${newrev}
-newrev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
 assert_not_streq ${bootcsum1} ${bootcsum2}
 assert_not_streq ${bootcsum2} ${bootcsum3}
