@@ -49,6 +49,7 @@ static char *opt_gpg_homedir;
 #endif
 static gboolean opt_generate_sizes;
 static gboolean opt_disable_fsync;
+static gboolean opt_generate_static_delta;
 
 static gboolean
 parse_fsync_cb (const char  *option_name,
@@ -88,6 +89,7 @@ static GOptionEntry options[] = {
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
+  { "generate-static-delta", 0, 0, G_OPTION_ARG_NONE, &opt_generate_static_delta, "Generate a static delta, with default options, to this commit.", NULL },
   { NULL }
 };
 
@@ -529,6 +531,21 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   else
     {
       commit_checksum = g_strdup (parent);
+    }
+
+  if (opt_generate_static_delta)
+    {
+      gs_unref_variant_builder GVariantBuilder *parambuilder = NULL;
+      parambuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+      if (!ostree_repo_static_delta_generate (repo,
+                                              OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR,
+                                              parent,
+                                              commit_checksum,
+                                              NULL,
+                                              g_variant_builder_end (parambuilder),
+                                              cancellable,
+                                              error))
+        goto out;
     }
 
   if (opt_table_output)

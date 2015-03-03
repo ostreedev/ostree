@@ -1119,7 +1119,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
           loose_objpath[1] = dent->d_name[1];
           loose_objpath[2] = '/';
 
-          strncpy (loose_objpath + 3, child_dent->d_name, sizeof (loose_objpath)-3);
+          g_strlcpy (loose_objpath + 3, child_dent->d_name, sizeof (loose_objpath)-3);
 
           if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, loose_objpath,
                                                     cancellable, error))

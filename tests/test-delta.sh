@@ -55,7 +55,7 @@ function permuteDirectory() {
     done
 }
 
-origrev=$(ostree --repo=repo rev-parse test)
+origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 
 ostree --repo=repo static-delta generate --empty --to=${origrev}
 ostree --repo=repo static-delta list | grep ${origrev} || exit 1
@@ -65,7 +65,7 @@ ostree --repo=repo static-delta list | grep ${origrev} || exit 1
 permuteDirectory 1 files
 ostree --repo=repo commit -b test -s test --tree=dir=files
 
-newrev=$(ostree --repo=repo rev-parse test)
+newrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev}
 
 ostree --repo=repo static-delta list | grep ${origrev}-${newrev} || exit 1

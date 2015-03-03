@@ -162,12 +162,12 @@ setup_fake_remote_repo1() {
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir}/ostree-srv ostree
-    ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
+    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
 
-    export OSTREE="ostree --repo=repo"
+    export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 }
 
 setup_os_boot_syslinux() {
@@ -199,9 +199,9 @@ setup_os_repository () {
     cd ${test_tmpdir}
     mkdir testos-repo
     if test -n "$mode"; then
-	ostree --repo=testos-repo init --mode=${mode}
+	${CMD_PREFIX} ostree --repo=testos-repo init --mode=${mode}
     else
-	ostree --repo=testos-repo init
+	${CMD_PREFIX} ostree --repo=testos-repo init
     fi
 
     cd ${test_tmpdir}
@@ -232,26 +232,26 @@ EOF
     mkdir -p usr/etc/testdirectory
     echo "a default daemon file" > usr/etc/testdirectory/test
 
-    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build"
     
     # Ensure these commits have distinct second timestamps
     sleep 2
     echo "a new executable" > usr/bin/sh
-    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmaster/x86_64-runtime -s "Build"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.10 -b testos/buildmaster/x86_64-runtime -s "Build"
 
     cd ${test_tmpdir}
     cp -a osdata osdata-devel
     cd osdata-devel
     mkdir -p usr/include
     echo "a development header" > usr/include/foo.h
-    ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-devel -s "Build"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-devel -s "Build"
 
-    ostree --repo=${test_tmpdir}/testos-repo fsck -q
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo fsck -q
 
     cd ${test_tmpdir}
     mkdir sysroot
-    ostree admin --sysroot=sysroot init-fs sysroot
-    ostree admin --sysroot=sysroot os-init testos
+    ${CMD_PREFIX} ostree admin --sysroot=sysroot init-fs sysroot
+    ${CMD_PREFIX} ostree admin --sysroot=sysroot os-init testos
 
     case $bootmode in
         "syslinux")
@@ -266,7 +266,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
+    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
@@ -300,6 +300,6 @@ os_repository_new_commit ()
 
     version=$(date "+%Y%m%d.${content_iteration}")
 
-    ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b testos/buildmaster/x86_64-runtime -s "Build"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b testos/buildmaster/x86_64-runtime -s "Build"
     cd ${test_tmpdir}
 }

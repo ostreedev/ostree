@@ -43,7 +43,7 @@ if ${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile 2>err.txt; then
     assert_not_reached
 fi
 assert_file_has_content err.txt "Couldn't find file object"
-rev=$(ostree --repo=repo rev-parse origin:main)
+rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_has_file repo/state/${rev}.commitpartial
 
 ${CMD_PREFIX} ostree --repo=repo pull origin main

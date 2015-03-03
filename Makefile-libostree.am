@@ -109,10 +109,10 @@ libostree_1_la_SOURCES += \
 	$(NULL)
 endif
 
-libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
+libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -export-symbols-regex '^ostree_'
-libostree_1_la_LIBADD = libotutil.la libbupsplit.la libglnx.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS)
+libostree_1_la_LIBADD = libotutil.la libbupsplit.la libglnx.la libbsdiff.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS)
 
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)

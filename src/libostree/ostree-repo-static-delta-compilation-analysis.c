@@ -302,4 +302,3 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
  out:
   return ret;
 }
-

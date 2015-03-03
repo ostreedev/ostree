@@ -19,7 +19,7 @@
 
 set -e
 
-if ! ostree --version | grep -q -e '\+gpgme'; then
+if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
     exit 77
 fi
 
@@ -43,7 +43,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -
 echo hi > baz/deeper/ohyeah
 mkdir baz/another/
 echo x > baz/another/y
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --generate-static-delta --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
 cd ..
 rm -rf gnomerepo-files
 
@@ -51,12 +51,12 @@ cd ${test_tmpdir}
 mkdir ${test_tmpdir}/httpd
 cd httpd
 ln -s ${test_tmpdir}/ostree-srv ostree
-ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port
+${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port
 port=$(cat ${test_tmpdir}/httpd-port)
 echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
 cd ${oldpwd} 
 
-export OSTREE="ostree --repo=repo"
+export OSTREE="${CMD_PREFIX} ostree --repo=repo"
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig

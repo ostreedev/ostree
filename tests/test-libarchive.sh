@@ -19,7 +19,7 @@
 
 set -e
 
-if ! ostree --version | grep -q -e '\+libarchive'; then
+if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+libarchive'; then
     exit 77
 fi
 

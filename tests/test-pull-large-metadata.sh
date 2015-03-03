@@ -27,7 +27,7 @@ echo '1..1'
 
 # Overwrite the commit object with 20 M of 
 cd ${test_tmpdir}
-rev=$(cd ostree-srv && ostree --repo=gnomerepo rev-parse main)
+rev=$(cd ostree-srv && ${CMD_PREFIX} ostree --repo=gnomerepo rev-parse main)
 dd if=/dev/zero bs=1M count=20 of=ostree-srv/gnomerepo/objects/$(echo $rev | cut -b 1-2)/$(echo $rev | cut -b 3-).commit
 
 cd ${test_tmpdir}
@@ -35,7 +35,7 @@ mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
-if ostree --repo=repo pull origin main 2>pulllog.txt 1>&2; then
+if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>pulllog.txt 1>&2; then
     assert_not_reached "pull unexpectedly succeeded!"
 fi
 assert_file_has_content pulllog.txt "exceeded maximum"
