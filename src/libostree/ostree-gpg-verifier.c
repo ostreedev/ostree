@@ -244,7 +244,7 @@ out:
 gboolean
 _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GFile              *file,
-                                      GFile              *signature,
+                                      GBytes             *signatures,
                                       gboolean           *out_had_valid_sig,
                                       GCancellable       *cancellable,
                                       GError            **error)
@@ -306,17 +306,16 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
       }
   }
 
-  {
-    gs_free char *path = g_file_get_path (signature);
-    gpg_error = gpgme_data_new_from_file (&signature_buffer, path, 1);
-
-    if (gpg_error != GPG_ERR_NO_ERROR)
-      {
-        gpg_error_to_gio_error (gpg_error, error);
-        g_prefix_error (error, "Unable to read signature: ");
-        goto out;
-      }
-  }
+  gpg_error = gpgme_data_new_from_mem (&signature_buffer,
+                                       g_bytes_get_data (signatures, NULL),
+                                       g_bytes_get_size (signatures),
+                                       0 /* do not copy */);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      gpg_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to read signature: ");
+      goto out;
+    }
 
   gpg_error = gpgme_op_verify (gpg_ctx, signature_buffer, data_buffer, NULL);
   if (gpg_error != GPG_ERR_NO_ERROR)
