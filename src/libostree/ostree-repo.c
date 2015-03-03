@@ -3291,7 +3291,10 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
   gboolean ret = FALSE;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
   gs_unref_variant GVariant *signaturedata = NULL;
-  gint i, n;
+  GByteArray *buffer;
+  GVariantIter iter;
+  GVariant *child;
+  g_autoptr (GBytes) signatures = NULL;
   gboolean had_valid_signataure = FALSE;
 
   verifier = _ostree_gpg_verifier_new (cancellable, error);
@@ -3322,38 +3325,32 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
       goto out;
     }
 
-  n = g_variant_n_children (signaturedata);
-  for (i = 0; i < n; i++)
+  /* OpenPGP data is organized into binary records called packets.  RFC 4880
+   * defines a packet as a chunk of data that has a tag specifying its meaning,
+   * and consists of a packet header followed by a packet body.  Each packet
+   * encodes its own length, and so packets can be concatenated to construct
+   * OpenPGP messages, keyrings, or in this case, detached signatures.
+   *
+   * Each binary blob in the GVariant list is a complete signature packet, so
+   * we can concatenate them together to verify all the signatures at once. */
+  buffer = g_byte_array_new ();
+  g_variant_iter_init (&iter, signaturedata);
+  while ((child = g_variant_iter_next_value (&iter)) != NULL)
     {
-      GVariant *signature_variant = g_variant_get_child_value (signaturedata, i);
-      gs_unref_object GFile *temp_sig_path = NULL;
-
-      if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                                   &temp_sig_path, NULL,
-                                   cancellable, error))
-        goto out;
-
-      if (!g_file_replace_contents (temp_sig_path,
-                                    (char*)g_variant_get_data (signature_variant),
-                                    g_variant_get_size (signature_variant),
-                                    NULL, FALSE, 0, NULL,
-                                    cancellable, error))
-        goto out;
-
-      if (!_ostree_gpg_verifier_check_signature (verifier,
-                                                 path,
-                                                 temp_sig_path,
-                                                 &had_valid_signataure,
-                                                 cancellable, error))
-        {
-          (void) gs_file_unlink (temp_sig_path, NULL, NULL);
-          goto out;
-        }
-      (void) gs_file_unlink (temp_sig_path, NULL, NULL);
-      if (had_valid_signataure)
-        break;
+      g_byte_array_append (buffer,
+                           g_variant_get_data (child),
+                           g_variant_get_size (child));
+      g_variant_unref (child);
     }
-  
+  signatures = g_byte_array_free_to_bytes (buffer);
+
+  if (!_ostree_gpg_verifier_check_signature (verifier,
+                                             path,
+                                             signatures,
+                                             &had_valid_signataure,
+                                             cancellable, error))
+    goto out;
+
   if (!had_valid_signataure)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

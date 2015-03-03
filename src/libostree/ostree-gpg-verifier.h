@@ -43,7 +43,7 @@ OstreeGpgVerifier *_ostree_gpg_verifier_new (GCancellable   *cancellable,
 
 gboolean      _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
                                                     GFile             *file,
-                                                    GFile             *signature,
+                                                    GBytes            *signatures,
                                                     gboolean          *had_valid_signature,
                                                     GCancellable      *cancellable,
                                                     GError           **error);
