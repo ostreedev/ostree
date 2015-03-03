@@ -43,7 +43,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -
 echo hi > baz/deeper/ohyeah
 mkdir baz/another/
 echo x > baz/another/y
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --generate-static-delta --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
 cd ..
 rm -rf gnomerepo-files
 
