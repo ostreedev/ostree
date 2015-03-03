@@ -521,7 +521,7 @@ dispatch_bspatch (OstreeRepo                 *repo,
   gboolean ret = FALSE;
   guint64 offset, length;
   gs_unref_object GInputStream *in_stream = NULL;
-  gs_unref_object GOutputStream *out_mem_stream = NULL;
+  g_autoptr(GMappedFile) input_mfile = NULL;
   gs_free guchar *buf = NULL;
   struct bspatch_stream stream;
   struct bzpatch_opaque_s opaque;
@@ -532,23 +532,19 @@ dispatch_bspatch (OstreeRepo                 *repo,
   if (!read_varuint64 (state, &length, error))
     goto out;
 
-  buf = g_malloc0 (state->content_size);
-
-  in_stream = g_unix_input_stream_new (state->read_source_fd, FALSE);
-
-  out_mem_stream = g_memory_output_stream_new_resizable ();
-
-  if (!g_output_stream_splice (out_mem_stream, in_stream, G_OUTPUT_STREAM_SPLICE_NONE,
-                               cancellable, error) < 0)
+  input_mfile = g_mapped_file_new_from_fd (state->read_source_fd, FALSE, error);
+  if (!input_mfile)
     goto out;
+
+  buf = g_malloc0 (state->content_size);
 
   opaque.state = state;
   opaque.offset = offset;
   opaque.length = length;
   stream.read = bspatch_read;
   stream.opaque = &opaque;
-  if (bspatch (g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (out_mem_stream)),
-               g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out_mem_stream)),
+  if (bspatch ((const guint8*)g_mapped_file_get_contents (input_mfile),
+               g_mapped_file_get_length (input_mfile),
                buf,
                state->content_size,
                &stream) < 0)
