@@ -198,6 +198,8 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
         g_variant_builder_add (parambuilder, "{sv}",
                                "bsdiff-enabled", g_variant_new_boolean (FALSE));
 
+      g_variant_builder_add (parambuilder, "{sv}", "verbose", g_variant_new_boolean (TRUE));
+
       g_print ("Generating static delta:\n");
       g_print ("  From: %s\n", from_resolved ? from_resolved : "empty");
       g_print ("  To:   %s\n", to_resolved);
