@@ -30,28 +30,28 @@ echo "ok setup"
 echo "1..2"
 
 cd ${test_tmpdir}
-ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
-ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime
-rev=$(ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos $(cat httpd-address)/ostree/testos-repo
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime
+rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
-ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 # This should be a no-op
-ostree admin --sysroot=sysroot upgrade --os=testos
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
 
 # Now reset to an older revision
-ostree --repo=${test_tmpdir}/testos-repo reset testos/buildmaster/x86_64-runtime{,^}
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo reset testos/buildmaster/x86_64-runtime{,^}
 
-if ostree admin --sysroot=sysroot upgrade --os=testos 2>upgrade-err.txt; then
+if ${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos 2>upgrade-err.txt; then
     assert_not_reached 'upgrade unexpectedly succeeded'
 fi
 assert_file_has_content upgrade-err.txt 'chronologically older'
 
 echo 'ok upgrade will not go backwards'
 
-ostree admin --sysroot=sysroot upgrade --os=testos --allow-downgrade
+${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos --allow-downgrade
 
 echo 'ok upgrade backwards'

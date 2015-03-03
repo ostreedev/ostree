@@ -38,7 +38,7 @@ $OSTREE rev-parse $partial > partial-results
 assert_file_has_content checksum $(cat partial-results)
 echo "ok shortened checksum"
 
-(cd repo && ostree rev-parse test2)
+(cd repo && ${CMD_PREFIX} ostree rev-parse test2)
 echo "ok repo-in-cwd"
 
 $OSTREE refs > reflist
@@ -199,7 +199,7 @@ mkdir shadow-repo
 ${CMD_PREFIX} ostree --repo=shadow-repo init
 ${CMD_PREFIX} ostree --repo=shadow-repo config set core.parent $(pwd)/repo
 rm -rf test2-checkout
-parent_rev_test2=$(ostree --repo=repo rev-parse test2)
+parent_rev_test2=$(${CMD_PREFIX} ostree --repo=repo rev-parse test2)
 ${CMD_PREFIX} ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-checkout
 echo "ok checkout from shadow repo"
 
@@ -217,14 +217,14 @@ cd ${test_tmpdir}
 mkdir repo3
 ${CMD_PREFIX} ostree --repo=repo3 init
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
-ostree --repo=repo3 rev-parse aremote/test2
+${CMD_PREFIX} ostree --repo=repo3 rev-parse aremote/test2
 echo "ok pull-local with --remote arg"
 
 cd ${test_tmpdir}
-ostree --repo=repo3 prune
+${CMD_PREFIX} ostree --repo=repo3 prune
 find repo3/objects -name '*.commit' > objlist-before-prune
 rm repo3/refs/heads/* repo3/refs/remotes/* -rf
-ostree --repo=repo3 prune --refs-only
+${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
 find repo3/objects -name '*.commit' > objlist-after-prune
 if cmp -s objlist-before-prune objlist-after-prune; then
     echo "Prune didn't delete anything!"; exit 1
@@ -238,7 +238,7 @@ ${CMD_PREFIX} ostree --repo=repo3 init --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
 rm repo3/refs/remotes -rf
 mkdir repo3/refs/remotes
-ostree --repo=repo3 prune --refs-only
+${CMD_PREFIX} ostree --repo=repo3 prune --refs-only
 find repo3/objects -name '*.filez' > file-objects
 if test -s file-objects; then
     assert_not_reached "prune didn't delete all objects"
@@ -247,10 +247,10 @@ echo "ok prune in archive-z2 deleted everything"
 
 cd ${test_tmpdir}
 $OSTREE commit -b test3 -s "Another commit" --tree=ref=test2
-ostree --repo=repo refs > reflist
+${CMD_PREFIX} ostree --repo=repo refs > reflist
 assert_file_has_content reflist '^test3$'
-ostree --repo=repo refs --delete test3
-ostree --repo=repo refs > reflist
+${CMD_PREFIX} ostree --repo=repo refs --delete test3
+${CMD_PREFIX} ostree --repo=repo refs > reflist
 assert_not_file_has_content reflist '^test3$'
 echo "ok reflist --delete"
 
@@ -323,7 +323,7 @@ rm repo2 -rf
 mkdir repo2
 ${CMD_PREFIX} ostree --repo=repo2 init
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
-ostree --repo=repo2 show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
+${CMD_PREFIX} ostree --repo=repo2 show --print-detached-metadata-key=SIGNATURE test2 > test2-meta
 assert_file_has_content test2-meta "HANCOCK"
 echo "ok pull-local after commit metadata"
 
