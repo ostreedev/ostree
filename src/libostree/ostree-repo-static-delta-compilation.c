@@ -57,6 +57,12 @@ typedef struct {
   guint64 rollsum_size;
 } OstreeStaticDeltaBuilder;
 
+typedef enum {
+  DELTAOPT_FLAG_NONE = (1 << 0),
+  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1),
+  DELTAOPT_FLAG_VERBOSE = (1 << 2)
+} DeltaOpts;
+
 static void
 ostree_static_delta_part_builder_unref (OstreeStaticDeltaPartBuilder *part_builder)
 {
@@ -529,6 +535,7 @@ try_content_bsdiff (OstreeRepo                       *repo,
 
 static gboolean
 try_content_rollsum (OstreeRepo                       *repo,
+                     DeltaOpts                        opts,
                      const char                       *from,
                      const char                       *to,
                      ContentRollsum                  **out_rollsum,
@@ -578,10 +585,13 @@ try_content_rollsum (OstreeRepo                       *repo,
       }
   }
 
-  g_printerr ("rollsum for %s; crcs=%u bufs=%u total=%u matchsize=%llu\n",
-              to, matches->crcmatches,
-              matches->bufmatches,
-              matches->total, (unsigned long long)matches->match_size);
+  if (opts & DELTAOPT_FLAG_VERBOSE)
+    {
+      g_printerr ("rollsum for %s; crcs=%u bufs=%u total=%u matchsize=%llu\n",
+                  to, matches->crcmatches,
+                  matches->bufmatches,
+                  matches->total, (unsigned long long)matches->match_size);
+    }
 
   ret_rollsum = g_new0 (ContentRollsum, 1);
   ret_rollsum->from_checksum = g_strdup (from);
@@ -848,11 +858,6 @@ process_one_bsdiff (OstreeRepo                       *repo,
   return ret;
 }
 
-typedef enum {
-  DELTAOPT_FLAG_NONE = (1 << 0),
-  DELTAOPT_FLAG_DISABLE_BSDIFF = (1 << 1)
-} DeltaOpts;
-
 static gboolean 
 generate_delta_lowlatency (OstreeRepo                       *repo,
                            const char                       *from,
@@ -957,11 +962,14 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   else
     modified_regfile_content = g_hash_table_new (g_str_hash, g_str_equal);
 
-  g_printerr ("modified: %u\n", g_hash_table_size (modified_regfile_content));
-  g_printerr ("new reachable: metadata=%u content regular=%u symlink=%u\n",
-              g_hash_table_size (new_reachable_metadata),
-              g_hash_table_size (new_reachable_regfile_content),
-              g_hash_table_size (new_reachable_symlink_content));
+  if (opts & DELTAOPT_FLAG_VERBOSE)
+    {
+      g_printerr ("modified: %u\n", g_hash_table_size (modified_regfile_content));
+      g_printerr ("new reachable: metadata=%u content regular=%u symlink=%u\n",
+                  g_hash_table_size (new_reachable_metadata),
+                  g_hash_table_size (new_reachable_regfile_content),
+                  g_hash_table_size (new_reachable_symlink_content));
+    }
 
   /* We already ship the to commit in the superblock, don't ship it twice */
   g_hash_table_remove (new_reachable_metadata,
@@ -983,7 +991,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       ContentRollsum *rollsum;
       ContentBsdiff *bsdiff;
 
-      if (!try_content_rollsum (repo, from_checksum, to_checksum,
+      if (!try_content_rollsum (repo, opts, from_checksum, to_checksum,
                                 &rollsum, cancellable, error))
         goto out;
 
@@ -1005,9 +1013,12 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         }
     }
 
-  g_printerr ("rollsum for %u/%u modified\n",
-              g_hash_table_size (rollsum_optimized_content_objects),
-              g_hash_table_size (modified_regfile_content));
+  if (opts & DELTAOPT_FLAG_VERBOSE)
+    {
+      g_printerr ("rollsum for %u/%u modified\n",
+                  g_hash_table_size (rollsum_optimized_content_objects),
+                  g_hash_table_size (modified_regfile_content));
+    }
 
   current_part = allocate_part (builder);
 
@@ -1080,7 +1091,10 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (fallback)
         {
           gs_free char *size = g_format_size (uncompressed_size);
-          g_printerr ("fallback for %s (%s)\n", checksum, size);
+
+          if (opts & DELTAOPT_FLAG_VERBOSE)
+            g_printerr ("fallback for %s (%s)\n", checksum, size);
+
           g_ptr_array_add (builder->fallback_objects, 
                            ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
           g_hash_table_iter_remove (&hashiter);
@@ -1207,6 +1221,8 @@ get_fallback_headers (OstreeRepo               *self,
  *   - min-fallback-size: u: Minimume uncompressed size in megabytes to use fallback
  *   - max-chunk-size: u: Maximum size in megabytes of a delta part
  *   - compression: y: Compression type: 0=none, x=lzma, g=gzip
+ *   - bsdiff-enabled: b: Enable bsdiff compression.  Default TRUE.
+ *   - verbose: b: Print diagnostic messages.  Default FALSE.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1253,6 +1269,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       use_bsdiff = TRUE;
     if (!use_bsdiff)
       delta_opts |= DELTAOPT_FLAG_DISABLE_BSDIFF;
+  }
+
+  { gboolean verbose;
+    if (!g_variant_lookup (params, "verbose", "b", &verbose))
+      verbose = FALSE;
+    if (verbose)
+      delta_opts |= DELTAOPT_FLAG_VERBOSE;
   }
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
@@ -1350,10 +1373,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       total_compressed_size += g_variant_get_size (delta_part);
       total_uncompressed_size += part_builder->uncompressed_size;
 
-      g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
-                  i, part_builder->objects->len,
-                  (guint64)g_variant_get_size (delta_part),
-                  part_builder->uncompressed_size);
+      if (delta_opts & DELTAOPT_FLAG_VERBOSE)
+        {
+          g_printerr ("part %u n:%u compressed:%" G_GUINT64_FORMAT " uncompressed:%" G_GUINT64_FORMAT "\n",
+                      i, part_builder->objects->len,
+                      (guint64)g_variant_get_size (delta_part),
+                      part_builder->uncompressed_size);
+        }
     }
 
   descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
@@ -1406,11 +1432,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     g_date_time_unref (now);
   }
 
-  g_printerr ("uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT " loose=%" G_GUINT64_FORMAT "\n",
-              total_uncompressed_size,
-              total_compressed_size,
-              builder.loose_compressed_size);
-  g_printerr ("rollsum=%" G_GUINT64_FORMAT "\n", builder.rollsum_size);
+  if (delta_opts & DELTAOPT_FLAG_VERBOSE)
+    {
+      g_printerr ("uncompressed=%" G_GUINT64_FORMAT " compressed=%" G_GUINT64_FORMAT " loose=%" G_GUINT64_FORMAT "\n",
+                  total_uncompressed_size,
+                  total_compressed_size,
+                  builder.loose_compressed_size);
+      g_printerr ("rollsum=%" G_GUINT64_FORMAT "\n", builder.rollsum_size);
+    }
 
   if (!ot_util_variant_save (descriptor_path, delta_descriptor, cancellable, error))
     goto out;
