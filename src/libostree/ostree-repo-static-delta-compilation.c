@@ -55,6 +55,9 @@ typedef struct {
   guint64 min_fallback_size_bytes;
   guint64 max_chunk_size_bytes;
   guint64 rollsum_size;
+  guint n_rollsum;
+  guint n_bsdiff;
+  guint n_fallback;
 } OstreeStaticDeltaBuilder;
 
 typedef enum {
@@ -1050,6 +1053,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                 checksum, rollsum,
                                 cancellable, error))
         goto out;
+
+      builder->n_rollsum++;
     }
 
   /* Now do bsdiff'ed objects */
@@ -1064,6 +1069,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                checksum, bsdiff,
                                cancellable, error))
         goto out;
+
+      builder->n_bsdiff++;
     }
 
   /* Scan for large objects, so we can fall back to plain HTTP-based
@@ -1098,6 +1105,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
           g_ptr_array_add (builder->fallback_objects, 
                            ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE));
           g_hash_table_iter_remove (&hashiter);
+          builder->n_fallback++;
         }
     }
 
@@ -1438,7 +1446,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                   total_uncompressed_size,
                   total_compressed_size,
                   builder.loose_compressed_size);
-      g_printerr ("rollsum=%" G_GUINT64_FORMAT "\n", builder.rollsum_size);
+      g_printerr ("rollsum=%u objects, %" G_GUINT64_FORMAT " bytes\n",
+                  builder.n_rollsum,
+                  builder.rollsum_size);
+      g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
   if (!ot_util_variant_save (descriptor_path, delta_descriptor, cancellable, error))
