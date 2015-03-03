@@ -682,4 +682,15 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GError        **error);
 
 
+gboolean ostree_repo_verify_commit_with_status (OstreeRepo   *self,
+                                                const gchar  *commit_checksum,
+                                                GFile        *keyringdir,
+                                                GFile        *extra_keyring,
+                                                gboolean     *out_signature_exists,
+                                                gboolean     *out_any_signature_is_good,
+                                                char        **out_status,
+                                                GCancellable *cancellable,
+                                                GError      **error);
+
+
 G_END_DECLS

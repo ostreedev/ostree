@@ -152,10 +152,13 @@ static gboolean
 print_object (OstreeRepo          *repo,
               OstreeObjectType     objtype,
               const char          *checksum,
+              GCancellable        *cancellable,
               GError             **error)
 {
   gs_unref_variant GVariant *variant = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
+  gboolean any_signature_exists = FALSE;
+  gboolean any_signature_is_good = FALSE;
   gboolean ret = FALSE;
 
   if (!ostree_repo_load_variant (repo, objtype, checksum,
@@ -164,6 +167,25 @@ print_object (OstreeRepo          *repo,
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
   ot_dump_object (objtype, checksum, variant, flags);
+
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      gs_unref_variant GVariant *metadata = NULL;
+      if (!ostree_repo_read_commit_detached_metadata (repo, checksum, &metadata,
+                                                      NULL, error))
+        goto out;
+      if (metadata)
+        {
+          g_print ("Metadata: \n");
+          ot_dump_variant (metadata);
+          if (!ostree_repo_verify_commit_with_status (repo, checksum, NULL, NULL,
+                                                      &any_signature_exists,
+                                                      &any_signature_is_good,
+                                                      NULL,
+                                                      cancellable, error))
+            goto out;
+        }
+    }
 
   ret = TRUE;
 out:
@@ -189,7 +211,7 @@ print_if_found (OstreeRepo        *repo,
     goto out;
   if (have_object)
     {
-      if (!print_object (repo, objtype, checksum, error))
+      if (!print_object (repo, objtype, checksum, cancellable, error))
         goto out;
       *inout_was_found = TRUE;
     }
@@ -250,7 +272,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
         {
           if (!ostree_repo_resolve_rev (repo, rev, FALSE, &resolved_rev, error))
             goto out;
-          if (!print_object (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, error))
+          if (!print_object (repo, OSTREE_OBJECT_TYPE_COMMIT, resolved_rev, cancellable, error))
             goto out;
         }
       else
