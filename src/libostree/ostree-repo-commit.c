@@ -1618,24 +1618,6 @@ _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                      dirmeta, out_csum, cancellable, error);
 }
 
-GFile *
-_ostree_repo_get_object_path (OstreeRepo       *self,
-                              const char       *checksum,
-                              OstreeObjectType  type)
-{
-  char *relpath;
-  GFile *ret;
-  gboolean compressed;
-
-  compressed = (type == OSTREE_OBJECT_TYPE_FILE
-                && ostree_repo_get_mode (self) == OSTREE_REPO_MODE_ARCHIVE_Z2);
-  relpath = _ostree_get_relative_object_path (checksum, type, compressed);
-  ret = g_file_resolve_relative_path (self->repodir, relpath);
-  g_free (relpath);
-
-  return ret;
-}
-
 /**
  * ostree_repo_write_content_trusted:
  * @self: Repo
