@@ -23,8 +23,7 @@
 
 //#pragma once
 
-#include <glib-object.h>
-#include <gio/gio.h>
+#include "ostree-gpg-verify-result.h"
 
 G_BEGIN_DECLS
 
@@ -41,12 +40,11 @@ GType _ostree_gpg_verifier_get_type (void);
 OstreeGpgVerifier *_ostree_gpg_verifier_new (GCancellable   *cancellable,
                                              GError        **error);
 
-gboolean      _ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
-                                                    GBytes            *signed_data,
-                                                    GBytes            *signatures,
-                                                    gboolean          *had_valid_signature,
-                                                    GCancellable      *cancellable,
-                                                    GError           **error);
+OstreeGpgVerifyResult *_ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
+                                                             GBytes            *signed_data,
+                                                             GBytes            *signatures,
+                                                             GCancellable      *cancellable,
+                                                             GError           **error);
 
 gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                                     GFile               *path,

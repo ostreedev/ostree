@@ -24,6 +24,7 @@
 #include "config.h"
 
 #include "ostree-gpg-verifier.h"
+#include "ostree-gpg-verify-result-private.h"
 #include "otutil.h"
 
 #include <stdlib.h>
@@ -160,40 +161,6 @@ out:
   return ret;
 }
 
-static void
-gpg_error_to_gio_error (gpgme_error_t gpg_error,
-                        GError **error)
-{
-  GIOErrorEnum errcode;
-
-  /* XXX This list is incomplete.  Add cases as needed. */
-
-  switch (gpg_error)
-    {
-      /* special case - shouldn't be here */
-      case GPG_ERR_NO_ERROR:
-        g_return_if_reached ();
-
-      /* special case - abort on out-of-memory */
-      case GPG_ERR_ENOMEM:
-        g_error ("%s: %s",
-                 gpgme_strsource (gpg_error),
-                 gpgme_strerror (gpg_error));
-
-      case GPG_ERR_INV_VALUE:
-        errcode = G_IO_ERROR_INVALID_ARGUMENT;
-        break;
-
-      default:
-        errcode = G_IO_ERROR_FAILED;
-        break;
-    }
-
-  g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
-               gpgme_strsource (gpg_error),
-               gpgme_strerror (gpg_error));
-}
-
 static gboolean
 override_gpgme_home_dir (gpgme_ctx_t gpg_ctx,
                          const char *home_dir,
@@ -220,7 +187,7 @@ override_gpgme_home_dir (gpgme_ctx_t gpg_ctx,
                                                  home_dir);
           if (gpg_error != GPG_ERR_NO_ERROR)
             {
-              gpg_error_to_gio_error (gpg_error, error);
+              _ostree_gpg_error_to_gio_error (gpg_error, error);
               goto out;
             }
 
@@ -241,11 +208,23 @@ out:
   return ret;
 }
 
-gboolean
+static void
+verify_result_finalized_cb (gpointer data,
+                            GObject *finalized_verify_result)
+{
+  g_autofree gchar *temp_dir = data;  /* assume ownership */
+
+  /* XXX OstreeGpgVerifyResult could do this cleanup in its own
+   *     finalize() method, but I didn't want this keyring hack
+   *     bleeding into multiple classes. */
+
+  (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
+}
+
+OstreeGpgVerifyResult *
 _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GBytes             *signed_data,
                                       GBytes             *signatures,
-                                      gboolean           *out_had_valid_sig,
                                       GCancellable       *cancellable,
                                       GError            **error)
 {
@@ -253,13 +232,11 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   gpgme_error_t gpg_error = NULL;
   gpgme_data_t data_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
-  gpgme_verify_result_t verify_result;
-  gpgme_signature_t signature_iter;
   gs_unref_object GFile *pubring_file = NULL;
   gs_free char *pubring_path = NULL;
   gs_free char *temp_dir = NULL;
-  gboolean had_valid_sig = FALSE;
-  gboolean ret = FALSE;
+  OstreeGpgVerifyResult *result = NULL;
+  gboolean success = FALSE;
 
   /* GPGME has no API for using multiple keyrings (aka, gpg --keyring),
    * so we concatenate all the keyring files into one pubring.gpg in a
@@ -283,15 +260,12 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   if (!concatenate_keyrings (self, pubring_file, cancellable, error))
     goto out;
 
-  gpg_error = gpgme_new (&gpg_ctx);
-  if (gpg_error != GPG_ERR_NO_ERROR)
-    {
-      gpg_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to create context: ");
-      goto out;
-    }
+  result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,
+                           cancellable, error, NULL);
+  if (result == NULL)
+    goto out;
 
-  if (!override_gpgme_home_dir (gpg_ctx, temp_dir, error))
+  if (!override_gpgme_home_dir (result->context, temp_dir, error))
     goto out;
 
   /* Both the signed data and signature GBytes instances will outlive the
@@ -304,7 +278,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                        0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      gpg_error_to_gio_error (gpg_error, error);
+      _ostree_gpg_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to read signed data: ");
       goto out;
     }
@@ -315,59 +289,27 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                        0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      gpg_error_to_gio_error (gpg_error, error);
+      _ostree_gpg_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to read signature: ");
       goto out;
     }
 
-  gpg_error = gpgme_op_verify (gpg_ctx, signature_buffer, data_buffer, NULL);
+  gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      gpg_error_to_gio_error (gpg_error, error);
+      _ostree_gpg_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to complete signature verification: ");
       goto out;
     }
 
   /* Result data is owned by the context. */
-  verify_result = gpgme_op_verify_result (gpg_ctx);
+  result->details = gpgme_op_verify_result (result->context);
 
-  /* XXX Needs improvement.  We're throwing away a bunch of result data
-   *     here that could be used for more advanced signature operations.
-   *     Don't want to expose GPGME types in libostree but maybe we can
-   *     wrapper it in GLib types. */
+  gpgme_result_ref (result->details);
 
-  for (signature_iter = verify_result->signatures;
-       signature_iter != NULL;
-       signature_iter = signature_iter->next)
-    {
-      /* Mimic the way librepo tests for a valid signature, checking both
-       * summary and status fields.
-       *
-       * - VALID summary flag means the signature is fully valid.
-       * - GREEN summary flag means the signature is valid with caveats.
-       * - No summary but also no error means the signature is valid but
-       *   the signing key is not certified with a trusted signature.
-       */
-      if ((signature_iter->summary & GPGME_SIGSUM_VALID) ||
-          (signature_iter->summary & GPGME_SIGSUM_GREEN) ||
-          (signature_iter->summary == 0 &&
-           signature_iter->status == GPG_ERR_NO_ERROR))
-        {
-          had_valid_sig = TRUE;
-          break;
-        }
-    }
-
-  if (out_had_valid_sig != NULL)
-    *out_had_valid_sig = had_valid_sig;
-
-  ret = TRUE;
+  success = TRUE;
 
 out:
-
-  /* Try to clean up the temporary directory. */
-  if (temp_dir != NULL)
-    (void) glnx_shutil_rm_rf_at (-1, temp_dir, NULL, NULL);
 
   if (gpg_ctx != NULL)
     gpgme_release (gpg_ctx);
@@ -376,9 +318,29 @@ out:
   if (signature_buffer != NULL)
     gpgme_data_release (signature_buffer);
 
+  if (success)
+    {
+      /* Keep the temporary directory around for the life of the result
+       * object so its GPGME context remains valid.  It may yet have to
+       * extract user details from signing keys and will need to access
+       * the fabricated pubring.gpg keyring. */
+      g_object_weak_ref (G_OBJECT (result),
+                         verify_result_finalized_cb,
+                         g_strdup (temp_dir));
+    }
+  else
+    {
+      /* Destroy the result object on error. */
+      g_clear_object (&result);
+
+      /* Try to clean up the temporary directory. */
+      if (temp_dir != NULL)
+        (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
+    }
+
   g_prefix_error (error, "GPG: ");
 
-  return ret;
+  return result;
 }
 
 gboolean

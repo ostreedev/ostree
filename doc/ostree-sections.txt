@@ -166,6 +166,22 @@ ostree_diff_item_get_type
 </SECTION>
 
 <SECTION>
+<FILE>libostree-gpg-verify-result</FILE>
+OstreeGpgVerifyResult
+OstreeGpgSignatureAttr
+ostree_gpg_verify_result_count_all
+ostree_gpg_verify_result_count_valid
+ostree_gpg_verify_result_lookup
+ostree_gpg_verify_result_get
+ostree_gpg_verify_result_get_all
+<SUBSECTION Standard>
+OSTREE_GPG_VERIFY_RESULT
+OSTREE_IS_GPG_VERIFY_RESULT
+OSTREE_TYPE_GPG_VERIFY_RESULT
+ostree_gpg_verify_result_get_type
+</SECTION>
+
+<SECTION>
 <FILE>libostree-mutable-tree</FILE>
 OstreeMutableTree
 ostree_mutable_tree_new
