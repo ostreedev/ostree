@@ -1302,7 +1302,7 @@ ostree_repo_transaction_set_ref (OstreeRepo *self,
  * @self: An #OstreeRepo
  * @remote: (allow-none): A remote for the ref
  * @ref: The ref to write
- * @checksum: The checksum to point it to
+ * @checksum: (allow-none): The checksum to point it to, or %NULL to unset
  * @cancellable: GCancellable
  * @error: GError
  *
