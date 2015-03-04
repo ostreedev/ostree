@@ -96,6 +96,9 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-static-delta-private.h \
 	src/libostree/ostree-gpg-verifier.c \
 	src/libostree/ostree-gpg-verifier.h \
+	src/libostree/ostree-gpg-verify-result.c \
+	src/libostree/ostree-gpg-verify-result.h \
+	src/libostree/ostree-gpg-verify-result-private.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
