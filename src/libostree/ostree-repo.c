@@ -671,7 +671,7 @@ impl_repo_remote_add (OstreeRepo     *self,
 
   g_return_val_if_fail (name != NULL, FALSE);
   g_return_val_if_fail (url != NULL, FALSE);
-  g_return_val_if_fail (g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
+  g_return_val_if_fail (options == NULL || g_variant_is_of_type (options, G_VARIANT_TYPE ("a{sv}")), FALSE);
 
   if (strchr (name, '/') != NULL)
     {
