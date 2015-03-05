@@ -1744,7 +1744,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   gs_unref_object OstreeRepo *repo = NULL;
   gs_unref_object GFile *osdeploydir = NULL;
   gs_unref_object GFile *deployment_var = NULL;
-  gs_unref_object GFile *deployment_etc = NULL;
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
@@ -1825,8 +1824,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 
   g_clear_object (&self->sepolicy);
   self->sepolicy = g_object_ref (sepolicy);
-
-  deployment_etc = g_file_get_child (new_deployment_path, "etc");
 
   if (!selinux_relabel_var_if_needed (self, sepolicy, deployment_var,
                                       cancellable, error))

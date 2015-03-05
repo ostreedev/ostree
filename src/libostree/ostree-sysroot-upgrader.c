@@ -115,8 +115,6 @@ ostree_sysroot_upgrader_initable_init (GInitable        *initable,
   OstreeSysrootUpgrader *self = (OstreeSysrootUpgrader*)initable;
   OstreeDeployment *booted_deployment =
     ostree_sysroot_get_booted_deployment (self->sysroot);
-  gs_unref_object GFile *deployment_path = NULL;
-  gs_unref_object GFile *deployment_origin_path = NULL;
 
   if (booted_deployment == NULL && self->osname == NULL)
     {
@@ -144,9 +142,6 @@ ostree_sysroot_upgrader_initable_init (GInitable        *initable,
                    "No previous deployment for OS '%s'", self->osname);
       goto out;
     }
-
-  deployment_path = ostree_sysroot_get_deployment_directory (self->sysroot, self->merge_deployment);
-  deployment_origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
 
   self->origin = ostree_deployment_get_origin (self->merge_deployment);
   if (!self->origin)
