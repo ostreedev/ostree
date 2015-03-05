@@ -360,54 +360,57 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
                                           GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *loader_entries_dir = NULL;
+  int fd; /* Temporary owned by iterator */
+  g_autofree char *entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
   gs_unref_ptrarray GPtrArray *ret_loader_configs = NULL;
-  GError *temp_error = NULL;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
-                                                     bootversion);
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
+
   ret_loader_configs = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 
-  dir_enum = g_file_enumerate_children (loader_entries_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        0, NULL, &temp_error);
-  if (!dir_enum)
+  fd = glnx_opendirat_with_errno (self->sysroot_fd, entries_path, TRUE);
+  if (fd == -1)
     {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-          goto done;
-        } 
+      if (errno == ENOENT)
+        goto done;
       else
         {
-          g_propagate_error (error, temp_error);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
 
+  if (!glnx_dirfd_iterator_init_take_fd (fd, &dfd_iter, error))
+    goto out;
+
   while (TRUE)
     {
-      GFileInfo *file_info;
-      GFile *child;
-      const char *name;
+      struct dirent *dent;
+      struct stat stbuf;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         goto out;
-      if (file_info == NULL)
+          
+      if (dent == NULL)
         break;
 
-      name = g_file_info_get_name (file_info);
+      if (fstatat (dfd_iter.fd, dent->d_name, &stbuf, 0) != 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
 
-      if (g_str_has_prefix (name, "ostree-") &&
-          g_str_has_suffix (name, ".conf") &&
-          g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+      if (g_str_has_prefix (dent->d_name, "ostree-") &&
+          g_str_has_suffix (dent->d_name, ".conf") &&
+          S_ISREG (stbuf.st_mode))
         {
           gs_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
   
-          if (!ostree_bootconfig_parser_parse (config, child, cancellable, error))
+          if (!ostree_bootconfig_parser_parse_at (config, dfd_iter.fd, dent->d_name, cancellable, error))
             {
-              g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (child));
+              g_prefix_error (error, "Parsing %s: ", dent->d_name);
               goto out;
             }
 

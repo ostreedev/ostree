@@ -41,6 +41,12 @@ gboolean ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
                                          GCancellable    *cancellable,
                                          GError         **error);
 
+gboolean ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
+                                            int                      dfd,
+                                            const char              *path,
+                                            GCancellable    *cancellable,
+                                            GError         **error);
+
 gboolean ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
                                          GFile            *output,
                                          GCancellable     *cancellable,
