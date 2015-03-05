@@ -62,11 +62,22 @@ ostree_bootconfig_parser_clone (OstreeBootconfigParser *self)
   return parser;
 }
 
+/**
+ * ostree_bootconfig_parser_parse_at:
+ * @self: Parser
+ * @dfd: Directory fd
+ * @path: File path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Initialize a bootconfig from the given file.
+ */
 gboolean
-ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
-                                GFile           *path,
-                                GCancellable    *cancellable,
-                                GError         **error)
+ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
+                                   int                      dfd,
+                                   const char              *path,
+                                   GCancellable            *cancellable,
+                                   GError                 **error)
 {
   gboolean ret = FALSE;
   gs_free char *contents = NULL;
@@ -75,7 +86,7 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
 
   g_return_val_if_fail (!self->parsed, FALSE);
 
-  contents = gs_file_load_contents_utf8 (path, cancellable, error);
+  contents = glnx_file_get_contents_utf8_at (dfd, path, NULL, cancellable, error);
   if (!contents)
     goto out;
 
@@ -109,6 +120,16 @@ ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
  out:
   g_strfreev (lines);
   return ret;
+}
+
+gboolean
+ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
+                                GFile           *path,
+                                GCancellable    *cancellable,
+                                GError         **error)
+{
+  return ostree_bootconfig_parser_parse_at (self, AT_FDCWD, gs_file_get_path_cached (path),
+                                            cancellable, error);
 }
 
 void
