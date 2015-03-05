@@ -55,6 +55,9 @@ OstreeDeployment *ostree_sysroot_get_booted_deployment (OstreeSysroot *self);
 GFile *ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
                                                 OstreeDeployment *deployment);
 
+char *ostree_sysroot_get_deployment_dirpath (OstreeSysroot    *self,
+                                             OstreeDeployment *deployment);
+
 GFile * ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path);
 
 gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,
