@@ -478,23 +478,37 @@ read_current_bootversion (OstreeSysroot *self,
 
 static gboolean
 parse_origin (OstreeSysroot   *self,
-              GFile           *deployment_path,
+              int              deployment_dfd,
+              const char      *deployment_name,
               GKeyFile       **out_origin,
               GCancellable    *cancellable,
               GError         **error)
 {
   gboolean ret = FALSE;
-  GKeyFile *ret_origin = NULL;
-  gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
+  g_autoptr(GKeyFile) ret_origin = NULL;
+  g_autofree char *origin_path = g_strconcat ("../", deployment_name, ".origin", NULL);
+  struct stat stbuf;
   gs_free char *origin_contents = NULL;
-  
-  if (!ot_gfile_load_contents_utf8_allow_noent (origin_path, &origin_contents,
-                                                cancellable, error))
-    goto out;
 
-  if (origin_contents)
+  ret_origin = g_key_file_new ();
+  
+  if (fstatat (deployment_dfd, origin_path, &stbuf, 0) != 0)
     {
-      ret_origin = g_key_file_new ();
+      if (errno == ENOENT)
+        ;
+      else
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+  else
+    {
+      origin_contents = glnx_file_get_contents_utf8_at (deployment_dfd, origin_path,
+                                                        NULL, cancellable, error);
+      if (!origin_contents)
+        goto out;
+
       if (!g_key_file_load_from_data (ret_origin, origin_contents, -1, 0, error))
         goto out;
     }
@@ -503,7 +517,7 @@ parse_origin (OstreeSysroot   *self,
   gs_transfer_out_value (out_origin, &ret_origin);
  out:
   if (error)
-    g_prefix_error (error, "Parsing %s: ", gs_file_get_path_cached (origin_path));
+    g_prefix_error (error, "Parsing %s: ", origin_path);
   if (ret_origin)
     g_key_file_unref (ret_origin);
   return ret;
@@ -567,10 +581,14 @@ parse_deployment (OstreeSysroot       *self,
   gs_free char *osname = NULL;
   gs_free char *bootcsum = NULL;
   gs_free char *treecsum = NULL;
-  gs_unref_object GFile *treebootserial_link = NULL;
-  gs_unref_object GFileInfo *treebootserial_info = NULL;
-  gs_unref_object GFile *treebootserial_target = NULL;
+  glnx_fd_close int deployment_dfd = -1;
+  const char *deploy_basename;
+  g_autofree char *treebootserial_target = NULL;
+  g_autofree char *deploy_dir = NULL;
   GKeyFile *origin = NULL;
+
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
       
   if (!parse_bootlink (boot_link, &entry_boot_version,
                        &osname, &bootcsum, &treebootserial,
@@ -580,27 +598,28 @@ parse_deployment (OstreeSysroot       *self,
   relative_boot_link = boot_link;
   if (*relative_boot_link == '/')
     relative_boot_link++;
-  treebootserial_link = g_file_resolve_relative_path (self->path, relative_boot_link);
-  treebootserial_info = g_file_query_info (treebootserial_link, OSTREE_GIO_FAST_QUERYINFO,
-                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                           cancellable, error);
-  if (!treebootserial_info)
+
+  treebootserial_target = glnx_readlinkat_malloc (self->sysroot_fd, relative_boot_link,
+                                                  cancellable, error);
+  if (!treebootserial_target)
     goto out;
 
-  if (!ot_gfile_get_symlink_target_from_info (treebootserial_link, treebootserial_info,
-                                              &treebootserial_target, cancellable, error))
-    goto out;
+  deploy_basename = glnx_basename (treebootserial_target);
 
-  if (!_ostree_sysroot_parse_deploy_path_name (gs_file_get_basename_cached (treebootserial_target),
+  if (!_ostree_sysroot_parse_deploy_path_name (deploy_basename,
                                                &treecsum, &deployserial, error))
     goto out;
 
-  if (!parse_origin (self, treebootserial_target, &origin,
+  if (!glnx_opendirat (self->sysroot_fd, relative_boot_link, TRUE,
+                       &deployment_dfd, error))
+    goto out;
+
+  if (!parse_origin (self, deployment_dfd, deploy_basename, &origin,
                      cancellable, error))
     goto out;
 
   ret_deployment = ostree_deployment_new (-1, osname, treecsum, deployserial,
-                                      bootcsum, treebootserial);
+                                          bootcsum, treebootserial);
   if (origin)
     ostree_deployment_set_origin (ret_deployment, origin);
 
