@@ -38,6 +38,10 @@ ot_keyfile_get_boolean_with_default (GKeyFile      *keyfile,
   GError *temp_error = NULL;
   gboolean ret_bool;
 
+  g_return_val_if_fail (keyfile != NULL, ret);
+  g_return_val_if_fail (section != NULL, ret);
+  g_return_val_if_fail (value != NULL, ret);
+
   ret_bool = g_key_file_get_boolean (keyfile, section, value, &temp_error);
   if (temp_error)
     {
@@ -71,6 +75,10 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
   GError *temp_error = NULL;
   gs_free char *ret_value = NULL;
 
+  g_return_val_if_fail (keyfile != NULL, ret);
+  g_return_val_if_fail (section != NULL, ret);
+  g_return_val_if_fail (value != NULL, ret);
+
   ret_value = g_key_file_get_value (keyfile, section, value, &temp_error);
   if (temp_error)
     {
@@ -101,9 +109,9 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
   gsize length, ii;
   gboolean ret = FALSE;
 
-  g_return_if_fail (source_keyfile != NULL);
-  g_return_if_fail (target_keyfile != NULL);
-  g_return_if_fail (group_name != NULL);
+  g_return_val_if_fail (source_keyfile != NULL, ret);
+  g_return_val_if_fail (target_keyfile != NULL, ret);
+  g_return_val_if_fail (group_name != NULL, ret);
 
   keys = g_key_file_get_keys (source_keyfile, group_name, &length, NULL);
 
