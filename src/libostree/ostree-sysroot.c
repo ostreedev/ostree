@@ -178,6 +178,19 @@ ostree_sysroot_get_path (OstreeSysroot  *self)
   return self->path;
 }
 
+static gboolean
+ensure_sysroot_fd (OstreeSysroot          *self,
+                   GError                **error)
+{
+  if (self->sysroot_fd == -1)
+    {
+      if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->path), TRUE,
+                           &self->sysroot_fd, error))
+        return FALSE;
+    }
+  return TRUE;
+}
+
 gboolean
 _ostree_sysroot_get_devino (GFile         *path,
                             guint32       *out_device,
@@ -295,22 +308,31 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
                                              GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ostree_dir = g_file_get_child (self->path, "ostree");
-  gs_free char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-  gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
-  gs_unref_object GFile *ostree_subbootdir = NULL;
+  struct stat stbuf;
+  gs_free char *ostree_bootdir_name = g_strdup_printf ("ostree/boot.%d", bootversion);
 
-  if (!ot_gfile_query_symlink_target_allow_noent (ostree_bootdir, &ostree_subbootdir,
-                                                  cancellable, error))
+  if (!ensure_sysroot_fd (self, error))
     goto out;
 
-  if (ostree_subbootdir == NULL)
+  if (fstatat (self->sysroot_fd, ostree_bootdir_name, &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
     {
-      *out_subbootversion = 0;
+      if (errno == ENOENT)
+        *out_subbootversion = 0;
+      else
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
   else
     {
-      const char *current_subbootdir_name = gs_file_get_basename_cached (ostree_subbootdir);
+      gs_free char *current_subbootdir_name = NULL;
+
+      current_subbootdir_name = glnx_readlinkat_malloc (self->sysroot_fd, ostree_bootdir_name,
+                                                        cancellable, error);
+      if (!current_subbootdir_name)
+        goto out;
+                                                
       if (g_str_has_suffix (current_subbootdir_name, ".0"))
         *out_subbootversion = 0;
       else if (g_str_has_suffix (current_subbootdir_name, ".1"))
@@ -319,8 +341,8 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Invalid target '%s' in %s",
-                       gs_file_get_path_cached (ostree_subbootdir),
-                       gs_file_get_path_cached (ostree_bootdir));
+                       current_subbootdir_name,
+                       ostree_bootdir_name);
           goto out;
         }
     }
@@ -400,7 +422,6 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
   return ret;
 }
 
-
 static gboolean
 read_current_bootversion (OstreeSysroot *self,
                           int           *out_bootversion,
@@ -408,29 +429,32 @@ read_current_bootversion (OstreeSysroot *self,
                           GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *boot_loader_path = g_file_resolve_relative_path (self->path, "boot/loader");
-  gs_unref_object GFileInfo *info = NULL;
-  const char *target;
   int ret_bootversion;
+  struct stat stbuf;
 
-  if (!ot_gfile_query_info_allow_noent (boot_loader_path, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        &info,
-                                        cancellable, error))
-    goto out;
-
-  if (info == NULL)
-    ret_bootversion = 0;
+  if (fstatat (self->sysroot_fd, "boot/loader", &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+    {
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+      ret_bootversion = 0;
+    }
   else
     {
-      if (g_file_info_get_file_type (info) != G_FILE_TYPE_SYMBOLIC_LINK)
+      g_autofree char *target = NULL;
+
+      if (!S_ISLNK (stbuf.st_mode))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Not a symbolic link: %s", gs_file_get_path_cached (boot_loader_path));
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Not a symbolic link: boot/loader");
           goto out;
         }
 
-      target = g_file_info_get_symlink_target (info);
+      target = glnx_readlinkat_malloc (self->sysroot_fd, "boot/loader", cancellable, error);
+      if (!target)
+        goto out;
       if (g_strcmp0 (target, "loader.0") == 0)
         ret_bootversion = 0;
       else if (g_strcmp0 (target, "loader.1") == 0)
@@ -438,7 +462,7 @@ read_current_bootversion (OstreeSysroot *self,
       else
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid target '%s' in %s", target, gs_file_get_path_cached (boot_loader_path));
+                       "Invalid target '%s' in boot/loader", target);
           goto out;
         }
     }
@@ -692,6 +716,9 @@ ostree_sysroot_load (OstreeSysroot  *self,
   self->bootversion = -1;
   self->subbootversion = -1;
 
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
+
   if (!read_current_bootversion (self, &bootversion, cancellable, error))
     goto out;
 
@@ -783,6 +810,27 @@ ostree_sysroot_get_deployments (OstreeSysroot  *self)
 }
 
 /**
+ * ostree_sysroot_get_deployment_dirpath:
+ * @self: Repo
+ * @deployment: A deployment
+ *
+ * Note this function only returns a *relative* path - if you want
+ * to access, it, you must either use fd-relative api such as openat(),
+ * or concatenate it with the full ostree_sysroot_get_path().
+ *
+ * Returns: (transfer full): Path to deployment root directory, relative to sysroot
+ */
+char *
+ostree_sysroot_get_deployment_dirpath (OstreeSysroot    *self,
+                                       OstreeDeployment *deployment)
+{
+  return g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d",
+                          ostree_deployment_get_osname (deployment),
+                          ostree_deployment_get_csum (deployment),
+                          ostree_deployment_get_deployserial (deployment));
+}
+
+/**
  * ostree_sysroot_get_deployment_directory:
  * @self: Sysroot
  * @deployment: A deployment
@@ -793,11 +841,7 @@ GFile *
 ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
                                          OstreeDeployment *deployment)
 {
-  gs_free char *path = g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d",
-                                        ostree_deployment_get_osname (deployment),
-                                        ostree_deployment_get_csum (deployment),
-                                        ostree_deployment_get_deployserial (deployment));
-  return g_file_resolve_relative_path (self->path, path);
+  return g_file_resolve_relative_path (self->path, ostree_sysroot_get_deployment_dirpath (self, deployment));
 }
 
 /**
