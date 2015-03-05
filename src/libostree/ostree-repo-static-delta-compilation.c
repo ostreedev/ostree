@@ -743,10 +743,7 @@ process_one_rollsum (OstreeRepo                       *repo,
         }
 
       if (!reading_payload)
-        {
-          g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
-          reading_payload = TRUE;
-        }
+        g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
 
       { guint64 remainder = tmp_to_len - writing_offset;
         if (remainder > 0)
