@@ -58,7 +58,7 @@ parse_fsync_cb (const char  *option_name,
 {
   gboolean val;
 
-  if (!ot_parse_boolean (option_name, value, &val, error))
+  if (!ot_parse_boolean (value, &val, error))
     return FALSE;
     
   opt_disable_fsync = !val;
