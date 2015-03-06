@@ -107,7 +107,7 @@ endif
 noinst_PROGRAMS += tests/test-rollsum
 
 TESTS = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
-	tests/test-keyfile-utils tests/test-ot-opt-utils
+	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util
 
 check_PROGRAMS =  $(TESTS)
 TESTS_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS)
@@ -135,3 +135,6 @@ tests_test_keyfile_utils_LDADD = $(TESTS_LDADD)
 
 tests_test_ot_opt_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_ot_opt_utils_LDADD = $(TESTS_LDADD)
+
+tests_test_ot_tool_util_CFLAGS = $(TESTS_CFLAGS)
+tests_test_ot_tool_util_LDADD = $(TESTS_LDADD)
