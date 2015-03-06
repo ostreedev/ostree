@@ -25,8 +25,7 @@
 G_BEGIN_DECLS
 
 gboolean
-ot_parse_boolean (const char  *option_name,
-                  const char  *value,
+ot_parse_boolean (const char  *value,
                   gboolean    *out_parsed,
                   GError     **error);
 gboolean
