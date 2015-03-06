@@ -38,7 +38,6 @@
     }                                                      \
   } G_STMT_END;
 
-#include <ot-waitable-queue.h>
 #include <ot-keyfile-utils.h>
 #include <ot-gio-utils.h>
 #include <ot-fs-utils.h>
