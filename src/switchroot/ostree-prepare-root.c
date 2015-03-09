@@ -147,7 +147,7 @@ main(int argc, char *argv[])
     }
 
   snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
-  fprintf (stderr, "Examining %s\n", destpath);
+  printf ("Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
     {
       perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
@@ -164,7 +164,7 @@ main(int argc, char *argv[])
       perrorv ("realpath(%s) failed: ", destpath);
       exit (EXIT_FAILURE);
     }
-  fprintf (stderr, "Resolved OSTree target to: %s\n", deploy_path);
+  printf ("Resolved OSTree target to: %s\n", deploy_path);
   
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
