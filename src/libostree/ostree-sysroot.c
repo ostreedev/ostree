@@ -191,28 +191,6 @@ ensure_sysroot_fd (OstreeSysroot          *self,
   return TRUE;
 }
 
-gboolean
-_ostree_sysroot_get_devino (GFile         *path,
-                            guint32       *out_device,
-                            guint64       *out_inode,
-                            GCancellable  *cancellable,
-                            GError       **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_object GFileInfo *finfo = g_file_query_info (path, "unix::device,unix::inode",
-                                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                                        cancellable, error);
-
-  if (!finfo)
-    goto out;
-
-  ret = TRUE;
-  *out_device = g_file_info_get_attribute_uint32 (finfo, "unix::device");
-  *out_inode = g_file_info_get_attribute_uint64 (finfo, "unix::inode");
- out:
-  return ret;
-}
-
 /**
  * ostree_sysroot_ensure_initialized:
  * @self: Sysroot
@@ -1009,21 +987,32 @@ find_booted_deployment (OstreeSysroot       *self,
                         GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *active_root = g_file_new_for_path ("/");
+  struct stat root_stbuf;
+  struct stat self_stbuf;
   gs_unref_object OstreeDeployment *ret_deployment = NULL;
 
-  if (g_file_equal (active_root, self->path))
+  if (stat ("/", &root_stbuf) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
+
+  if (fstat (self->sysroot_fd, &self_stbuf) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (root_stbuf.st_dev == self_stbuf.st_dev &&
+      root_stbuf.st_ino == self_stbuf.st_ino)
     { 
       guint i;
       const char *bootlink_arg;
       __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kernel_args = NULL;
-      guint32 root_device;
-      guint64 root_inode;
       
-      if (!_ostree_sysroot_get_devino (active_root, &root_device, &root_inode,
-                                       cancellable, error))
-        goto out;
-
       if (!parse_kernel_commandline (&kernel_args, cancellable, error))
         goto out;
       
@@ -1033,20 +1022,23 @@ find_booted_deployment (OstreeSysroot       *self,
           for (i = 0; i < deployments->len; i++)
             {
               OstreeDeployment *deployment = deployments->pdata[i];
-              gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
-              guint32 device;
-              guint64 inode;
+              g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+              struct stat stbuf;
 
-              if (!_ostree_sysroot_get_devino (deployment_path, &device, &inode,
-                                               cancellable, error))
-                goto out;
+              if (fstatat (self->sysroot_fd, deployment_path, &stbuf, 0) != 0)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
 
-              if (device == root_device && inode == root_inode)
+              if (stbuf.st_dev == root_stbuf.st_dev &&
+                  stbuf.st_ino == root_stbuf.st_ino)
                 {
                   ret_deployment = g_object_ref (deployment);
                   break;
                 }
             }
+
           if (ret_deployment == NULL)
             {
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
