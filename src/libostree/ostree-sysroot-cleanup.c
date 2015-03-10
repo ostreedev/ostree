@@ -292,26 +292,26 @@ cleanup_old_deployments (OstreeSysroot       *self,
                          GError             **error)
 {
   gboolean ret = FALSE;
-  guint32 root_device;
-  guint64 root_inode;
+  struct stat root_stbuf;
   guint i;
-  gs_unref_object GFile *active_root = g_file_new_for_path ("/");
   gs_unref_hashtable GHashTable *active_deployment_dirs = NULL;
   gs_unref_hashtable GHashTable *active_boot_checksums = NULL;
   gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
   gs_unref_ptrarray GPtrArray *all_boot_dirs = NULL;
 
-  if (!_ostree_sysroot_get_devino (active_root, &root_device, &root_inode,
-                                   cancellable, error))
-    goto out;
+  if (stat ("/", &root_stbuf) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
 
-  active_deployment_dirs = g_hash_table_new_full (g_file_hash, (GEqualFunc)g_file_equal, g_object_unref, NULL);
+  active_deployment_dirs = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
   active_boot_checksums = g_hash_table_new_full (g_str_hash, (GEqualFunc)g_str_equal, g_free, NULL);
 
   for (i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
-      GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
+      char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
       char *bootcsum = g_strdup (ostree_deployment_get_bootcsum (deployment));
       /* Transfer ownership */
       g_hash_table_replace (active_deployment_dirs, deployment_path, deployment_path);
@@ -325,29 +325,38 @@ cleanup_old_deployments (OstreeSysroot       *self,
   for (i = 0; i < all_deployment_dirs->len; i++)
     {
       OstreeDeployment *deployment = all_deployment_dirs->pdata[i];
-      gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
-      gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
+      g_autofree char *deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+      g_autofree char *origin_relpath = ostree_deployment_get_origin_relpath (deployment);
+
       if (!g_hash_table_lookup (active_deployment_dirs, deployment_path))
         {
-          guint32 device;
-          guint64 inode;
+          struct stat stbuf;
+          glnx_fd_close int deployment_fd = -1;
 
-          if (!_ostree_sysroot_get_devino (deployment_path, &device, &inode,
-                                           cancellable, error))
+          if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE,
+                               &deployment_fd, error))
             goto out;
+
+          if (fstat (deployment_fd, &stbuf) != 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
 
           /* This shouldn't happen, because higher levels should
            * disallow having the booted deployment not in the active
            * deployment list, but let's be extra safe. */
-          if (device == root_device && inode == root_inode)
+          if (stbuf.st_dev == root_stbuf.st_dev &&
+              stbuf.st_ino == root_stbuf.st_ino)
             continue;
 
-          if (!_ostree_linuxfs_alter_immutable_flag (deployment_path, FALSE,
-                                                     cancellable, error))
+          if (!_ostree_linuxfs_fd_alter_immutable_flag (deployment_fd, FALSE,
+                                                        cancellable, error))
             goto out;
-          if (!gs_shutil_rm_rf (deployment_path, cancellable, error))
+          
+          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, deployment_path, cancellable, error))
             goto out;
-          if (!gs_shutil_rm_rf (origin_path, cancellable, error))
+          if (!glnx_shutil_rm_rf_at (self->sysroot_fd, origin_relpath, cancellable, error))
             goto out;
         }
     }

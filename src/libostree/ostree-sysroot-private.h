@@ -68,12 +68,12 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
                                              GCancellable        *cancellable,
                                              GError             **error);
 
-gboolean
-_ostree_sysroot_get_devino (GFile         *path,
-                            guint32       *out_device,
-                            guint64       *out_inode,
-                            GCancellable  *cancellable,
-                            GError       **error);
+char *
+_ostree_sysroot_get_origin_relpath (GFile         *path,
+                                    guint32       *out_device,
+                                    guint64       *out_inode,
+                                    GCancellable  *cancellable,
+                                    GError       **error);
 
 char *_ostree_sysroot_join_lines (GPtrArray  *lines);
 
