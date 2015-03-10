@@ -1014,7 +1014,6 @@ find_booted_deployment (OstreeSysroot       *self,
 
   if (g_file_equal (active_root, self->path))
     { 
-      gs_unref_object OstreeSysroot *active_deployment_root = ostree_sysroot_new_default ();
       guint i;
       const char *bootlink_arg;
       __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kernel_args = NULL;
@@ -1034,7 +1033,7 @@ find_booted_deployment (OstreeSysroot       *self,
           for (i = 0; i < deployments->len; i++)
             {
               OstreeDeployment *deployment = deployments->pdata[i];
-              gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (active_deployment_root, deployment);
+              gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (self, deployment);
               guint32 device;
               guint64 inode;
 
