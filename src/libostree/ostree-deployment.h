@@ -58,5 +58,6 @@ void ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin);
 
 OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 
+char *ostree_deployment_get_origin_relpath (OstreeDeployment *self);
 
 G_END_DECLS

@@ -252,3 +252,22 @@ ostree_deployment_new (int    index,
   self->bootserial = bootserial;
   return self;
 }
+
+/**
+ * ostree_deployment_get_origin_relpath:
+ * @self: A deployment
+ *
+ * Note this function only returns a *relative* path - if you want to
+ * access, it, you must either use fd-relative api such as openat(),
+ * or concatenate it with the full ostree_sysroot_get_path().
+ *
+ * Returns: (transfer full): Path to deployment root directory, relative to sysroot
+ */
+char *
+ostree_deployment_get_origin_relpath (OstreeDeployment *self)
+{
+  return g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d.origin",
+                          ostree_deployment_get_osname (self),
+                          ostree_deployment_get_csum (self),
+                          ostree_deployment_get_deployserial (self));
+}
