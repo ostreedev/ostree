@@ -20,7 +20,6 @@ You can:
 
 Please look at "git log" and match the commit log style.
 
-
 Running the test suite
 ----------------------
 
@@ -30,6 +29,11 @@ To run just ostree's tests:
     ./configure ... --enable-installed-tests
     gnome-desktop-testing-runner -p 0 ostree/
 
+Also, there is a regular:
+
+    make check
+
+That runs a different set of tests.
 
 Coding style
 ------------
