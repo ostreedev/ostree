@@ -3187,7 +3187,7 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   return ret;
 }
 
-gboolean
+OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
                                        GVariant            *metadata,
@@ -3196,9 +3196,8 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GCancellable        *cancellable,
                                        GError             **error)
 {
-  gboolean ret = FALSE;
+  OstreeGpgVerifyResult *result = NULL;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
-  gs_unref_object OstreeGpgVerifyResult *result = NULL;
   gs_unref_variant GVariant *signaturedata = NULL;
   GByteArray *buffer;
   GVariantIter iter;
@@ -3255,19 +3254,9 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
   result = _ostree_gpg_verifier_check_signature (verifier,
                                                  signed_data, signatures,
                                                  cancellable, error);
-  if (result == NULL)
-    goto out;
 
-  if (ostree_gpg_verify_result_count_valid (result) == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "GPG signatures found, but none are in trusted keyring");
-      goto out;
-    }
-
-  ret = TRUE;
  out:
-  return ret;
+  return result;
 }
 
 /**
@@ -3290,7 +3279,51 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
+  gs_unref_object OstreeGpgVerifyResult *result = NULL;
   gboolean ret = FALSE;
+
+  result = ostree_repo_verify_commit_ext (self, commit_checksum,
+                                          keyringdir, extra_keyring,
+                                          cancellable, error);
+  if (result == NULL)
+    goto out;
+
+  if (ostree_gpg_verify_result_count_valid (result) == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "GPG signatures found, but none are in trusted keyring");
+      goto out;
+    }
+
+  ret = TRUE;
+
+ out:
+  return ret;
+}
+
+/**
+ * ostree_repo_verify_commit_ext:
+ * @self: Repository
+ * @commit_checksum: ASCII SHA256 checksum
+ * @keyringdir: (allow-none): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (allow-none): Path to additional keyring file (not a directory)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Read GPG signature(s) on the commit named by the ASCII checksum
+ * @commit_checksum and return detailed results.
+ *
+ * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ */
+OstreeGpgVerifyResult *
+ostree_repo_verify_commit_ext (OstreeRepo    *self,
+                               const gchar   *commit_checksum,
+                               GFile         *keyringdir,
+                               GFile         *extra_keyring,
+                               GCancellable  *cancellable,
+                               GError       **error)
+{
+  OstreeGpgVerifyResult *result = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_unref_object GFile *keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
@@ -3319,15 +3352,13 @@ ostree_repo_verify_commit (OstreeRepo   *self,
 
   signed_data = g_variant_get_data_as_bytes (commit_variant);
 
-  if (!_ostree_repo_gpg_verify_with_metadata (self,
-                                              signed_data, metadata,
-                                              keyringdir, extra_keyring,
-                                              cancellable, error))
-    goto out;
-  
-  ret = TRUE;
+  result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                  signed_data, metadata,
+                                                  keyringdir, extra_keyring,
+                                                  cancellable, error);
+
 out:
-  return ret;
+  return result;
 }
 
 /**
