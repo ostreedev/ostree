@@ -26,6 +26,7 @@
 #include "ostree-types.h"
 #include "ostree-async-progress.h"
 #include "ostree-sepolicy.h"
+#include "ostree-gpg-verify-result.h"
 
 G_BEGIN_DECLS
 
@@ -675,6 +676,13 @@ gboolean ostree_repo_verify_commit (OstreeRepo   *self,
                                     GFile        *extra_keyring,
                                     GCancellable *cancellable,
                                     GError      **error);
+
+OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
+                                                       const gchar   *commit_checksum,
+                                                       GFile         *keyringdir,
+                                                       GFile         *extra_keyring,
+                                                       GCancellable  *cancellable,
+                                                       GError       **error);
 
 gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GVariant       *additional_metadata,

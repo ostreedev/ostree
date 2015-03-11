@@ -185,7 +185,7 @@ _ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
                                         gboolean    *out_value,
                                         GError     **error);
 
-gboolean
+OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
                                        GVariant            *metadata,
