@@ -94,6 +94,8 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo-static-delta-compilation.c \
 	src/libostree/ostree-repo-static-delta-compilation-analysis.c \
 	src/libostree/ostree-repo-static-delta-private.h \
+	src/libostree/ostree-gpg-verifier.c \
+	src/libostree/ostree-gpg-verifier.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \
@@ -106,17 +108,11 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-tls-cert-interaction.h \
 	$(NULL)
 endif
-if USE_GPGME
-libostree_1_la_SOURCES += \
-	src/libostree/ostree-gpg-verifier.c \
-	src/libostree/ostree-gpg-verifier.h \
-	$(NULL)
-endif
 
 libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree \
 	$(OT_INTERNAL_GIO_UNIX_CFLAGS) $(OT_DEP_LZMA_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -export-symbols-regex '^ostree_'
-libostree_1_la_LIBADD = libotutil.la libbupsplit.la libglnx.la libbsdiff.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS)
+libostree_1_la_LIBADD = libotutil.la libbupsplit.la libglnx.la libbsdiff.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS) $(GPGME_LIBS)
 
 if USE_LIBARCHIVE
 libostree_1_la_CFLAGS += $(OT_DEP_LIBARCHIVE_CFLAGS)
@@ -157,13 +153,9 @@ endif
 
 pkgconfig_DATA += src/libostree/ostree-1.pc
 
-if USE_GPGME
-libostree_1_la_LIBADD += $(GPGME_LIBS)
-
 gpgreadme_DATA = src/libostree/README-gpg
 gpgreadmedir = $(pkgdatadir)/trusted.gpg.d
 EXTRA_DIST += src/libostree/README-gpg src/libostree/bupsplit.h
-endif
 
 install-mkdir-remotes-d-hook:
 	mkdir -p $(DESTDIR)$(sysconfdir)/ostree/remotes.d

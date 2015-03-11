@@ -960,7 +960,6 @@ scan_commit_object (OtPullData         *pull_data,
                            GINT_TO_POINTER (depth));
     }
 
-#ifdef HAVE_GPGME
   if (pull_data->gpg_verify)
     {
       if (!ostree_repo_verify_commit (pull_data->repo,
@@ -971,7 +970,6 @@ scan_commit_object (OtPullData         *pull_data,
                                       error))
         goto out;
     }
-#endif
 
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
                                  &commit, error))
@@ -1698,14 +1696,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
-#ifdef HAVE_GPGME
       if (!_ostree_repo_get_remote_boolean_option (self,
                                                    remote_name_or_baseurl, "gpg-verify",
                                                    TRUE, &pull_data->gpg_verify, error))
         goto out;
-#else
-      pull_data->gpg_verify = FALSE;
-#endif
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;

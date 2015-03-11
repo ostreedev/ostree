@@ -100,30 +100,15 @@ AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
 LIBGPGME_DEPENDENCY="1.1.8"
 
-AC_ARG_WITH(gpgme,
-            AS_HELP_STRING([--without-gpgme], [Do not use gpgme]),
-            :, with_gpgme=maybe)
+m4_ifdef([AM_PATH_GPGME], [
+   AM_PATH_GPGME($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+   ],[ have_gpgme=no ])
+AS_IF([ test x$have_gpgme = xno ], [
+   AC_MSG_ERROR([
 
-AS_IF([ test x$with_gpgme != xno ], [
-   AC_MSG_CHECKING([for $LIBGPGME_DEPENDENCY])
-   m4_ifdef([AM_PATH_GPGME], [
-      AM_PATH_GPGME($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
-      ],[
-      AM_CONDITIONAL([have_gpgme],[false])
-      ])
-   AC_MSG_RESULT([$have_gpgme])
-   AS_IF([ test x$have_gpgme = xno && test x$with_gpgme != xmaybe ], [
-       AC_MSG_ERROR([gpgme is enabled but could not be found])
-   ])
-   AS_IF([ test x$have_gpgme = xyes], [
-       AC_DEFINE([HAVE_GPGME], 1, [Define if we have gpgme])
-       with_gpgme=yes
-       AC_PATH_PROG(GPGVPATH, [gpgv2 gpgv])
-       AC_SUBST(GPGVPATH)
-       ], [ with_gpgme=no ])
-], [ with_gpgme=no ])
-if test x$with_gpgme != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"; fi
-AM_CONDITIONAL(USE_GPGME, test $with_gpgme != no)
+   Need GPGME version $LIBGPGME_DEPENDENCY or later
+])])
+OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
@@ -248,7 +233,6 @@ echo "
     libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
-    gpgme (sign commits):                         $with_gpgme
     static deltas:                                $enable_static_deltas
     documentation:                                $enable_gtk_doc
     gjs-based tests:                              $have_gjs

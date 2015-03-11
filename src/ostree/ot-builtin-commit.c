@@ -43,10 +43,8 @@ static char **opt_trees;
 static gint opt_owner_uid = -1;
 static gint opt_owner_gid = -1;
 static gboolean opt_table_output;
-#ifdef HAVE_GPGME
 static char **opt_key_ids;
 static char *opt_gpg_homedir;
-#endif
 static gboolean opt_generate_sizes;
 static gboolean opt_disable_fsync;
 
@@ -81,10 +79,8 @@ static GOptionEntry options[] = {
   { "skip-if-unchanged", 0, 0, G_OPTION_ARG_NONE, &opt_skip_if_unchanged, "If the contents are unchanged from previous commit, do nothing", NULL },
   { "statoverride", 0, 0, G_OPTION_ARG_FILENAME, &opt_statoverride_file, "File containing list of modifications to make to permissions", "PATH" },
   { "table-output", 0, 0, G_OPTION_ARG_NONE, &opt_table_output, "Output more information in a KEY: VALUE format", NULL },
-#ifdef HAVE_GPGME
   { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
-#endif
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
@@ -501,7 +497,6 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
             goto out;
         }
 
-#ifdef HAVE_GPGME
       if (opt_key_ids)
         {
           char **iter;
@@ -519,7 +514,6 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
                 goto out;
             }
         }
-#endif
 
       ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
 

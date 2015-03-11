@@ -34,11 +34,9 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 
-#ifdef HAVE_GPGME
 #include <locale.h>
 #include <gpgme.h>
 #include <glib/gstdio.h>
-#endif
 
 /**
  * SECTION:libostree-repo
@@ -2937,7 +2935,6 @@ sign_data (OstreeRepo     *self,
            GCancellable   *cancellable,
            GError        **error)
 {
-#ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object GFile *tmp_signature_file = NULL;
   gs_unref_object GOutputStream *tmp_signature_output = NULL;
@@ -3061,11 +3058,6 @@ out:
   if (signature_file)
     g_mapped_file_unref (signature_file);
   return ret;
-#else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "This version of ostree was compiled without GPG support");
-  return FALSE;
-#endif
 }
 
 /**
@@ -3204,7 +3196,6 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
                                             GCancellable        *cancellable,
                                             GError             **error)
 {
-#ifdef HAVE_GPGME
   gboolean ret = FALSE;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
   gs_unref_variant GVariant *signaturedata = NULL;
@@ -3278,11 +3269,6 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
   ret = TRUE;
  out:
   return ret;
-#else
-  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-               "This version of ostree was compiled without GPG support");
-  return FALSE;
-#endif
 }
 
 /**
