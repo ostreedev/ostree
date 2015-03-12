@@ -27,10 +27,12 @@
 #include "ostree.h"
 #include "otutil.h"
 
+static gboolean opt_delete;
 static char *opt_gpg_homedir;
 
 static GOptionEntry options[] = {
-  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "delete", 'd', 0, G_OPTION_ARG_NONE, &opt_delete, "Delete signatures having any of the GPG KEY-IDs" },
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR" },
 };
 
 static void
@@ -39,6 +41,153 @@ usage_error (GOptionContext *context, const char *message, GError **error)
   gs_free char *help = g_option_context_get_help (context, TRUE, NULL);
   g_printerr ("%s", help);
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, message);
+}
+
+static gboolean
+delete_signatures (OstreeRepo *repo,
+                   const char *commit_checksum,
+                   const char * const *key_ids,
+                   guint n_key_ids,
+                   guint *out_n_deleted,
+                   GCancellable *cancellable,
+                   GError **error)
+{
+  GVariantDict metadata_dict;
+  gs_unref_object OstreeGpgVerifyResult *result = NULL;
+  gs_unref_variant GVariant *old_metadata = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
+  gs_unref_variant GVariant *signature_data = NULL;
+  GVariantIter iter;
+  GVariant *child;
+  GQueue signatures = G_QUEUE_INIT;
+  GQueue trash = G_QUEUE_INIT;
+  guint n_deleted = 0;
+  guint ii;
+  gboolean ret = FALSE;
+  GError *local_error = NULL;
+
+  /* XXX Should this code be a new OstreeRepo function in libostree?
+   *     Feels slightly too low-level here, and I have to know about
+   *     the metadata key name and format which are both declared in
+   *     ostree-core-private.h.
+   *
+   *     OTOH, would this really be a useful addition to libostree?
+   */
+
+  if (!ostree_repo_read_commit_detached_metadata (repo,
+                                                  commit_checksum,
+                                                  &old_metadata,
+                                                  cancellable,
+                                                  error))
+    goto out;
+
+  g_variant_dict_init (&metadata_dict, old_metadata);
+
+  signature_data = g_variant_dict_lookup_value (&metadata_dict,
+                                                "ostree.gpgsigs",
+                                                G_VARIANT_TYPE ("aay"));
+
+  /* Taking the approach of deleting whatever matches we find for the
+   * provided key IDs, even if we don't find a match for EVERY key ID.
+   * So no signatures means no matches, which is okay... I guess. */
+  if (signature_data == NULL)
+    {
+      g_variant_dict_clear (&metadata_dict);
+      goto shortcut;
+    }
+
+  /* Parse the signatures on this commit by running a verify operation
+   * on it.  Use the result to match key IDs to signatures for deletion.
+   *
+   * XXX Reading detached metadata from disk twice here.  Another reason
+   *     to move this into libostree?
+   */
+  result = ostree_repo_verify_commit_ext (repo, commit_checksum,
+                                          NULL, NULL,
+                                          cancellable, &local_error);
+  if (result == NULL)
+    {
+      g_variant_dict_clear (&metadata_dict);
+      goto out;
+    }
+
+  /* Convert the GVariant array to a GQueue. */
+  g_variant_iter_init (&iter, signature_data);
+  while ((child = g_variant_iter_next_value (&iter)) != NULL)
+    {
+      /* Takes ownership of the child. */
+      g_queue_push_tail (&signatures, child);
+    }
+
+  /* Signature count in the GQueue and OstreeGpgVerifyResult must agree. */
+  g_assert (ostree_gpg_verify_result_count_all (result) == signatures.length);
+
+  /* Build a trash queue which points at nodes in the signature queue. */
+  for (ii = 0; ii < n_key_ids; ii++)
+    {
+      guint index;
+
+      if (ostree_gpg_verify_result_lookup (result, key_ids[ii], &index))
+        {
+          GList *link = g_queue_peek_nth_link (&signatures, index);
+
+          /* Avoid duplicates in the trash queue. */
+          if (g_queue_find (&trash, link) == NULL)
+            g_queue_push_tail (&trash, link);
+        }
+    }
+
+  n_deleted = trash.length;
+
+  /* Reduce the signature queue by emptying the trash. */
+  while (!g_queue_is_empty (&trash))
+    {
+      GList *link = g_queue_pop_head (&trash);
+      g_variant_unref (link->data);
+      g_queue_delete_link (&signatures, link);
+    }
+
+  /* Update the metadata dictionary. */
+  if (g_queue_is_empty (&signatures))
+    {
+      g_variant_dict_remove (&metadata_dict, "ostree.gpgsigs");
+    }
+  else
+    {
+      GVariantBuilder signature_builder;
+
+      g_variant_builder_init (&signature_builder, G_VARIANT_TYPE ("aay"));
+
+      while (!g_queue_is_empty (&signatures))
+        {
+          GVariant *child = g_queue_pop_head (&signatures);
+          g_variant_builder_add_value (&signature_builder, child);
+          g_variant_unref (child);
+        }
+
+      g_variant_dict_insert_value (&metadata_dict,
+                                   "ostree.gpgsigs",
+                                   g_variant_builder_end (&signature_builder));
+    }
+
+  /* Commit the new metadata. */
+  new_metadata = g_variant_dict_end (&metadata_dict);
+  if (!ostree_repo_write_commit_detached_metadata (repo,
+                                                   commit_checksum,
+                                                   new_metadata,
+                                                   cancellable,
+                                                   error))
+    goto out;
+
+shortcut:
+
+  if (out_n_deleted != NULL)
+    *out_n_deleted = n_deleted;
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 gboolean
@@ -75,6 +224,22 @@ ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GErro
 
   if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
     goto out;
+
+  if (opt_delete)
+    {
+      guint n_deleted = 0;
+
+      if (delete_signatures (repo, resolved_commit,
+                             (const char * const *) key_ids, n_key_ids,
+                             &n_deleted, cancellable, error))
+        {
+          g_print ("Deleted %u signature%s\n",
+                   n_deleted, (n_deleted == 1) ? "" : "s");
+          ret = TRUE;
+        }
+
+      goto out;
+    }
 
   for (ii = 0; ii < n_key_ids; ii++)
     {
