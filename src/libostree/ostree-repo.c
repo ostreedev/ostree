@@ -3081,26 +3081,70 @@ ostree_repo_sign_commit (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gs_unref_bytes GBytes *commit_data = NULL;
-  gs_unref_bytes GBytes *signature_data = NULL;
+  gs_unref_bytes GBytes *signature = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
+  gs_unref_variant GVariant *old_metadata = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
+  gs_unref_object OstreeGpgVerifyResult *result = NULL;
+  GError *local_error = NULL;
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant, error))
+    {
+      g_prefix_error (error, "Failed to read commit: ");
+      goto out;
+    }
+
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &old_metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_prefix_error (error, "Failed to read detached metadata: ");
+      goto out;
+    }
+
+  commit_data = g_variant_get_data_as_bytes (commit_variant);
+
+  /* The verify operation is merely to parse any existing signatures to
+   * check if the commit has already been signed with the given key ID.
+   * We want to avoid storing duplicate signatures in the metadata. */
+  result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                  commit_data,
+                                                  old_metadata,
+                                                  NULL, NULL,
+                                                  cancellable,
+                                                  &local_error);
+
+  /* "Not found" just means the commit is not yet signed.  That's okay. */
+  if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    {
+      g_clear_error (&local_error);
+    }
+  else if (local_error != NULL)
+    {
+      g_propagate_error (error, local_error);
+      goto out;
+    }
+  else if (ostree_gpg_verify_result_lookup (result, key_id, NULL))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                   "Commit is already signed with GPG key %s", key_id);
+      goto out;
+    }
+
+  if (!sign_data (self, commit_data, key_id, homedir,
+                  &signature, cancellable, error))
     goto out;
 
-  /* This has the same lifecycle as the variant, so we can just
-   * use static.
-   */
-  signature_data = g_bytes_new_static (g_variant_get_data (commit_variant),
-                                       g_variant_get_size (commit_variant));
+  new_metadata = _ostree_detached_metadata_append_gpg_sig (old_metadata, signature);
 
-  if (!sign_data (self, signature_data, key_id, homedir,
-                  &signature_data,
-                  cancellable, error))
-    goto out;
-
-  if (!ostree_repo_append_gpg_signature (self, commit_checksum, signature_data,
-                                         cancellable, error))
+  if (!ostree_repo_write_commit_detached_metadata (self,
+                                                   commit_checksum,
+                                                   new_metadata,
+                                                   cancellable,
+                                                   error))
     goto out;
 
   ret = TRUE;
