@@ -1970,21 +1970,46 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   gs_unref_object GFile *metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
   gs_unref_variant GVariant *normalized = NULL;
+  gsize normalized_size = 0;
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
                                             cancellable, error))
     goto out;
 
-  normalized = g_variant_get_normal_form (metadata);
-
-  if (!g_file_replace_contents (metadata_path,
-                                g_variant_get_data (normalized),
-                                g_variant_get_size (normalized),
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
+  if (metadata != NULL)
     {
-      g_prefix_error (error, "Unable to write detached metadata: ");
-      goto out;
+      normalized = g_variant_get_normal_form (metadata);
+      normalized_size = g_variant_get_size (normalized);
+    }
+
+  if (normalized_size == 0)
+    {
+      GError *local_error = NULL;
+
+      (void) g_file_delete (metadata_path, cancellable, &local_error);
+
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          g_prefix_error (error, "Unable to delete detached metadata: ");
+          goto out;
+        }
+    }
+  else
+    {
+      if (!g_file_replace_contents (metadata_path,
+                                    g_variant_get_data (normalized),
+                                    g_variant_get_size (normalized),
+                                    NULL, FALSE, 0, NULL,
+                                    cancellable, error))
+        {
+          g_prefix_error (error, "Unable to write detached metadata: ");
+          goto out;
+        }
     }
 
   ret = TRUE;
