@@ -409,6 +409,7 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
     {
       GFileInfo *file_info;
       GFile *path;
+      const char *name;
 
       if (!gs_file_enumerator_iterate (enumerator, &file_info, &path,
                                        cancellable, error))
@@ -416,9 +417,21 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
       if (file_info == NULL)
         break;
 
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR &&
-          g_str_has_suffix (g_file_info_get_name (file_info), ".gpg"))
-        self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
+      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_REGULAR)
+        continue;
+
+      name = g_file_info_get_name (file_info);
+
+      /* Files with a .gpg suffix are typically keyrings except
+       * for trustdb.gpg, which is the GPG trust database. */
+
+      if (!g_str_has_suffix (name, ".gpg"))
+        continue;
+
+      if (g_str_equal (name, "trustdb.gpg"))
+        continue;
+
+      self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
     }
 
   ret = TRUE;
