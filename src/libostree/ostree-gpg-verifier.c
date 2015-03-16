@@ -243,7 +243,7 @@ out:
 
 gboolean
 _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
-                                      GFile              *file,
+                                      GBytes             *signed_data,
                                       GBytes             *signatures,
                                       gboolean           *out_had_valid_sig,
                                       GCancellable       *cancellable,
@@ -294,17 +294,20 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   if (!override_gpgme_home_dir (gpg_ctx, temp_dir, error))
     goto out;
 
-  {
-    gs_free char *path = g_file_get_path (file);
-    gpg_error = gpgme_data_new_from_file (&data_buffer, path, 1);
+  /* Both the signed data and signature GBytes instances will outlive the
+   * gpgme_data_t structs, so we can safely reuse the GBytes memory buffer
+   * directly and avoid a copy. */
 
-    if (gpg_error != GPG_ERR_NO_ERROR)
-      {
-        gpg_error_to_gio_error (gpg_error, error);
-        g_prefix_error (error, "Unable to read signed text: ");
-        goto out;
-      }
-  }
+  gpg_error = gpgme_data_new_from_mem (&data_buffer,
+                                       g_bytes_get_data (signed_data, NULL),
+                                       g_bytes_get_size (signed_data),
+                                       0 /* do not copy */);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      gpg_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to read signed data: ");
+      goto out;
+    }
 
   gpg_error = gpgme_data_new_from_mem (&signature_buffer,
                                        g_bytes_get_data (signatures, NULL),

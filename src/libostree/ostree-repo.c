@@ -3188,13 +3188,13 @@ ostree_repo_sign_delta (OstreeRepo     *self,
 }
 
 gboolean
-_ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
-                                            GFile               *path,
-                                            GVariant            *metadata,
-                                            GFile               *keyringdir,
-                                            GFile               *extra_keyring,
-                                            GCancellable        *cancellable,
-                                            GError             **error)
+_ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
+                                       GBytes              *signed_data,
+                                       GVariant            *metadata,
+                                       GFile               *keyringdir,
+                                       GFile               *extra_keyring,
+                                       GCancellable        *cancellable,
+                                       GError             **error)
 {
   gboolean ret = FALSE;
   gs_unref_object OstreeGpgVerifier *verifier = NULL;
@@ -3253,7 +3253,7 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
   signatures = g_byte_array_free_to_bytes (buffer);
 
   if (!_ostree_gpg_verifier_check_signature (verifier,
-                                             path,
+                                             signed_data,
                                              signatures,
                                              &had_valid_signature,
                                              cancellable, error))
@@ -3293,26 +3293,19 @@ ostree_repo_verify_commit (OstreeRepo   *self,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_object GFile *commit_tmp_path = NULL;
   gs_unref_object GFile *keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_bytes GBytes *signed_data = NULL;
   gs_free gchar *commit_filename = NULL;
 
   /* Create a temporary file for the commit */
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit_checksum, &commit_variant,
                                  error))
-    goto out;
-  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                               &commit_tmp_path, NULL,
-                               cancellable, error))
-    goto out;
-  if (!g_file_replace_contents (commit_tmp_path,
-                                (char*)g_variant_get_data (commit_variant),
-                                g_variant_get_size (commit_variant),
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
-    goto out;
+    {
+      g_prefix_error (error, "Failed to read commit: ");
+      goto out;
+    }
 
   /* Load the metadata */
   if (!ostree_repo_read_commit_detached_metadata (self,
@@ -3324,17 +3317,17 @@ ostree_repo_verify_commit (OstreeRepo   *self,
       g_prefix_error (error, "Failed to read detached metadata: ");
       goto out;
     }
-  
-  if (!_ostree_repo_gpg_verify_file_with_metadata (self,
-                                                   commit_tmp_path, metadata,
-                                                   keyringdir, extra_keyring,
-                                                   cancellable, error))
+
+  signed_data = g_variant_get_data_as_bytes (commit_variant);
+
+  if (!_ostree_repo_gpg_verify_with_metadata (self,
+                                              signed_data, metadata,
+                                              keyringdir, extra_keyring,
+                                              cancellable, error))
     goto out;
   
   ret = TRUE;
 out:
-  if (commit_tmp_path)
-    (void) gs_file_unlink (commit_tmp_path, NULL, NULL);
   return ret;
 }
 

@@ -1286,9 +1286,6 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
   gs_free char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
   gs_unref_bytes GBytes *detached_meta_data = NULL;
   SoupURI *target_uri = NULL;
-  gs_unref_object GFile *temp_input_path = NULL;
-  gs_unref_object GOutputStream *temp_input_stream = NULL;
-  gs_unref_object GInputStream *superblock_in = NULL;
   gs_unref_variant GVariant *metadata = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, meta_path, NULL);
@@ -1301,26 +1298,13 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
       goto out;
     }
 
-  superblock_in = g_memory_input_stream_new_from_bytes (superblock_data);
-
-  if (!gs_file_open_in_tmpdir (pull_data->repo->tmp_dir, 0644,
-                               &temp_input_path, &temp_input_stream,
-                               cancellable, error))
-    goto out;
-
-  if (0 > g_output_stream_splice (temp_input_stream, superblock_in,
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                  cancellable, error))
-    goto out;
-
   metadata = g_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
                                        detached_meta_data,
                                        FALSE);
 
-  if (!_ostree_repo_gpg_verify_file_with_metadata (pull_data->repo, temp_input_path,
-                                                   metadata, NULL, NULL,
-                                                   cancellable, error))
+  if (!_ostree_repo_gpg_verify_with_metadata (pull_data->repo, superblock_data,
+                                              metadata, NULL, NULL,
+                                              cancellable, error))
     goto out;
 
   ret = TRUE;
