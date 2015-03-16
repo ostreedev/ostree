@@ -3203,7 +3203,7 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
   GVariantIter iter;
   GVariant *child;
   g_autoptr (GBytes) signatures = NULL;
-  gboolean had_valid_signataure = FALSE;
+  gboolean had_valid_signature = FALSE;
 
   verifier = _ostree_gpg_verifier_new (cancellable, error);
   if (!verifier)
@@ -3255,11 +3255,11 @@ _ostree_repo_gpg_verify_file_with_metadata (OstreeRepo          *self,
   if (!_ostree_gpg_verifier_check_signature (verifier,
                                              path,
                                              signatures,
-                                             &had_valid_signataure,
+                                             &had_valid_signature,
                                              cancellable, error))
     goto out;
 
-  if (!had_valid_signataure)
+  if (!had_valid_signature)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "GPG signatures found, but none are in trusted keyring");
