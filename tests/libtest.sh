@@ -22,7 +22,9 @@ test_tmpdir=$(pwd)
 
 export G_DEBUG=fatal-warnings
 
-export TEST_GPG_KEYID="472CDAFA"
+export TEST_GPG_KEYID_1="472CDAFA"
+export TEST_GPG_KEYID_2="CA950D41"
+export TEST_GPG_KEYID_3="DF444D67"
 
 # GPG when creating signatures demands a writable
 # homedir in order to create lockfiles.  Work around
