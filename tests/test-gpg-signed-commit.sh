@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Copyright (C) 2013 Jeremy Whiting <jeremy.whiting@collabora.com>
+# Copyright (C) 2015 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,23 +28,46 @@ fi
 
 setup_test_repository "archive-z2"
 
+export OSTREE_GPG_SIGN="${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME}"
+
 cd ${test_tmpdir}
-${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
-$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
+${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
 # We at least got some content here and ran through the code; later
 # tests will actually do verification
-assert_file_has_content test2-gpgsigs 'byte '
+assert_file_has_content test2-show 'Found 1 signature'
 
-# Now sign a commit 3 times (with the same key)
+# Now sign a commit with 3 different keys
 cd ${test_tmpdir}
-${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-sign=${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
-$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
-assert_file_has_content test2-gpgsigs 'byte '
+${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID_1} --gpg-sign=${TEST_GPG_KEYID_2} --gpg-sign=${TEST_GPG_KEYID_3} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
+${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
+assert_file_has_content test2-show 'Found 3 signature'
 
-# Commit and sign separately
+# Commit and sign separately, then monkey around with signatures
 cd ${test_tmpdir}
 ${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --tree=dir=files
-$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 2> /dev/null && (echo 1>&2 "unsigned commit unexpectedly had detached metadata"; exit 1)
-$OSTREE gpg-sign test2 ${TEST_GPG_KEYID} --gpg-homedir=${TEST_GPG_KEYHOME}
-$OSTREE show --print-detached-metadata-key=ostree.gpgsigs test2 > test2-gpgsigs
-assert_file_has_content test2-gpgsigs 'byte '
+if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
+  assert_not_reached
+fi
+${OSTREE_GPG_SIGN} test2 ${TEST_GPG_KEYID_1}
+${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
+assert_file_has_content test2-show 'Found 1 signature'
+# Signing with a previously used key should be caught
+if ${OSTREE_GPG_SIGN} test2 ${TEST_GPG_KEYID_1} 2>/dev/null; then
+  assert_not_reached
+fi
+# Add a few more signatures and then delete them
+${OSTREE_GPG_SIGN} test2 ${TEST_GPG_KEYID_2} ${TEST_GPG_KEYID_3}
+${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
+assert_file_has_content test2-show 'Found 3 signature'
+${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_2} | grep -o 'Signatures deleted: [[:digit:]]' > test2-delete
+assert_file_has_content test2-delete 'Signatures deleted: 1'
+${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
+assert_file_has_content test2-show 'Found 2 signature'
+# Already deleted TEST_GPG_KEYID_2; should be ignored
+${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_1} ${TEST_GPG_KEYID_2} ${TEST_GPG_KEYID_3} | grep -o 'Signatures deleted: [[:digit:]]' > test2-delete
+assert_file_has_content test2-delete 'Signatures deleted: 2'
+# Verify all signatures are gone
+if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
+  assert_not_reached
+fi
