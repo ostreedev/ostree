@@ -60,13 +60,13 @@ fi
 ${OSTREE_GPG_SIGN} test2 ${TEST_GPG_KEYID_2} ${TEST_GPG_KEYID_3}
 ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
 assert_file_has_content test2-show 'Found 3 signature'
-${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_2} | grep -o 'Deleted [[:digit:]] signature' > test2-delete
-assert_file_has_content test2-delete 'Deleted 1 signature'
+${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_2} | grep -o 'Signatures deleted: [[:digit:]]' > test2-delete
+assert_file_has_content test2-delete 'Signatures deleted: 1'
 ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
 assert_file_has_content test2-show 'Found 2 signature'
 # Already deleted TEST_GPG_KEYID_2; should be ignored
-${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_1} ${TEST_GPG_KEYID_2} ${TEST_GPG_KEYID_3} | grep -o 'Deleted [[:digit:]] signature' > test2-delete
-assert_file_has_content test2-delete 'Deleted 2 signature'
+${OSTREE_GPG_SIGN} --delete test2 ${TEST_GPG_KEYID_1} ${TEST_GPG_KEYID_2} ${TEST_GPG_KEYID_3} | grep -o 'Signatures deleted: [[:digit:]]' > test2-delete
+assert_file_has_content test2-delete 'Signatures deleted: 2'
 # Verify all signatures are gone
 if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
