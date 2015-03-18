@@ -212,15 +212,13 @@ static void
 verify_result_finalized_cb (gpointer data,
                             GObject *finalized_verify_result)
 {
-  gchar *temp_dir = data;
+  g_autofree gchar *temp_dir = data;  /* assume ownership */
 
   /* XXX OstreeGpgVerifyResult could do this cleanup in its own
    *     finalize() method, but I didn't want this keyring hack
    *     bleeding into multiple classes. */
 
-  (void) glnx_shutil_rm_rf_at (-1, temp_dir, NULL, NULL);
-
-  g_free (temp_dir);
+  (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
 }
 
 OstreeGpgVerifyResult *
@@ -337,7 +335,7 @@ out:
 
       /* Try to clean up the temporary directory. */
       if (temp_dir != NULL)
-        (void) glnx_shutil_rm_rf_at (-1, temp_dir, NULL, NULL);
+        (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
     }
 
   g_prefix_error (error, "GPG: ");
