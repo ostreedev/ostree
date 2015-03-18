@@ -420,6 +420,17 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
  * #OstreeGpgSignatureAttr description for the #GVariantType of each
  * available attribute.
  *
+ * <note>
+ *   <para>
+ *     The #OstreeGpgSignatureAttr enumeration may be extended in the future
+ *     with new attributes, which would affect the #GVariant tuple returned by
+ *     this function.  While the position and type of current child values in
+ *     the #GVariant tuple will not change, to avoid backward-compatibility
+ *     issues <emphasis>please do not depend on the tuple's overall size or
+ *     type signature</emphasis>.
+ *   </para>
+ * </note>
+ *
  * It is a programmer error to request an invalid @signature_index.  Use
  * ostree_gpg_verify_result_count_all() to find the number of signatures in
  * @result.
