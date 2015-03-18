@@ -194,7 +194,7 @@ print_signature (OstreeGpgVerifyResult *result,
                        "&s", &user_email);
 
   len = strlen (fingerprint);
-  key_id = (len > 8) ? fingerprint + len - 8 : fingerprint;
+  key_id = (len > 16) ? fingerprint + len - 16 : fingerprint;
 
   date_time_utc = g_date_time_new_from_unix_utc (timestamp);
   date_time_local = g_date_time_to_local (date_time_utc);
