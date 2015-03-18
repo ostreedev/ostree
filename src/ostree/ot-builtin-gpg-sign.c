@@ -119,8 +119,11 @@ delete_signatures (OstreeRepo *repo,
       g_queue_push_tail (&signatures, child);
     }
 
-  /* Signature count in the GQueue and OstreeGpgVerifyResult must agree. */
-  g_assert (ostree_gpg_verify_result_count_all (result) == signatures.length);
+  /* Signature count and ordering of signatures in the GQueue and
+   * OstreeGpgVerifyResult must agree.  We use this below to mark
+   * items in the GQueue for deletion based on the index returned
+   * by ostree_gpg_verify_result_lookup(). */
+  g_assert_cmpuint (ostree_gpg_verify_result_count_all (result), ==, signatures.length);
 
   /* Build a trash queue which points at nodes in the signature queue. */
   for (ii = 0; ii < n_key_ids; ii++)
@@ -233,8 +236,7 @@ ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GErro
                              (const char * const *) key_ids, n_key_ids,
                              &n_deleted, cancellable, error))
         {
-          g_print ("Deleted %u signature%s\n",
-                   n_deleted, (n_deleted == 1) ? "" : "s");
+          g_print ("Signatures deleted: %u\n", n_deleted);
           ret = TRUE;
         }
 
