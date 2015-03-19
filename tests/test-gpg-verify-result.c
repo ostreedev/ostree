@@ -114,7 +114,7 @@ test_check_counts (TestFixture *fixture,
   count_valid = ostree_gpg_verify_result_count_valid (fixture->result);
 
   g_assert_cmpint (count_all, ==, 5);
-  g_assert_cmpint (count_valid, ==, 1);
+  g_assert_cmpint (count_valid, ==, 2);
 }
 
 static void
@@ -125,7 +125,7 @@ test_signature_lookup (TestFixture *fixture,
   guint expected_signature_index = GPOINTER_TO_UINT (user_data);
 
   /* Lowercase letters to ensure OstreeGpgVerifyResult handles it. */
-  const char *fingerprint = "20e10cfa61ca9cbedbfb03ad115fd072c8c56093";
+  const char *fingerprint = "68dcc2db4bec5811c2573590bd9d2a44b7f541a6";
 
   guint signature_index;
   gboolean signature_found;
@@ -358,33 +358,8 @@ test_expired_signature (TestFixture *fixture,
                  &key_revoked,
                  &key_missing);
 
-  /* XXX GPGME seems to be mishandling this case entirely.
-   *
-   * GPG itself recognizes the last signature as expired:
-   *
-   *   gpg: Signature made Tue 10 Mar 2015 06:29:07 PM EDT using
-   *        RSA key ID 9A51B00B
-   *   gpg: BAD signature from "J. Random User (valid signing key)
-   *        <testcase@redhat.com>"
-   *   gpg: Signature expired Wed 11 Mar 2015 06:29:07 PM EDT
-   *
-   * But the gpgme_signature_t record comes back with:
-   *
-   *         summary = GPGME_SIGSUM_RED (expected GPGME_SIGSUM_SIG_EXPIRED)
-   *          status = GPG_ERR_BAD_SIGNATURE (expected GPG_ERR_SIG_EXPIRED)
-   *       timestamp = 0             }
-   *   exp_timestamp = 0             } all wrong values!
-   *     pubkey_algo = 0             }
-   *       hash_algo = GPGME_MD_NONE }
-   *
-   * Possibly a parsing error in GPGME?  It acts like it sees the BAD
-   * token and just gives up on the rest.  Worth investigating further?
-   */
-
-  g_assert_false (valid);
-#if 0
+  g_assert_true (valid);
   g_assert_true (sig_expired);
-#endif
   g_assert_false (key_expired);
   g_assert_false (key_revoked);
   g_assert_false (key_missing);
