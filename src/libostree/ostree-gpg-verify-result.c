@@ -97,7 +97,10 @@ signing_key_is_revoked (gpgme_signature_t signature)
    * bit on a revoked signing key but rather GPGME_SIGSUM_SYS_ERROR and the
    * status field shows GPG_ERR_CERT_REVOKED.  Turns out GPGME is expecting
    * GPG_ERR_CERT_REVOKED in the validity_reason field which would then set
-   * the summary bit.  Unsure if this is a bug, but best check for both. */
+   * the summary bit.
+   *
+   * Reported to GPGME: https://bugs.g10code.com/gnupg/issue1929
+   */
 
   return (signature->summary & GPGME_SIGSUM_KEY_REVOKED) ||
          ((signature->summary & GPGME_SIGSUM_SYS_ERROR) &&
