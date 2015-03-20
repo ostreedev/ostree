@@ -69,6 +69,14 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
+                <term><option>--delete</option></term>
+
+                <listitem><para>
+                    Delete signatures having any of the GPG KEY-IDs.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--gpg-homedir</option>="HOMEDIR"</term>
 
                 <listitem><para>
