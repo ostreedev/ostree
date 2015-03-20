@@ -155,7 +155,7 @@ print_signature (OstreeGpgVerifyResult *result,
   g_autoptr(GVariant) variant = NULL;
   g_autoptr(GDateTime) date_time_utc = NULL;
   g_autoptr(GDateTime) date_time_local = NULL;
-  g_autoptr(gchar) formatted_date_time = NULL;
+  g_autofree char *formatted_date_time = NULL;
   gint64 timestamp;
   gint64 exp_timestamp;
   const char *fingerprint;
