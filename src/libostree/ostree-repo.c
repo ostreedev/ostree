@@ -2740,6 +2740,7 @@ ostree_repo_pull (OstreeRepo               *self,
 gboolean
 ostree_repo_pull_one_dir (OstreeRepo               *self,
                           const char               *remote_name,
+                          const char               *dir_to_pull,
                           char                    **refs_to_fetch,
                           OstreeRepoPullFlags       flags,
                           OstreeAsyncProgress      *progress,
