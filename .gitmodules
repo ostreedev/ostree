@@ -3,4 +3,4 @@
 	url = https://git.gnome.org/browse/libglnx
 [submodule "bsdiff"]
 	path = bsdiff
-	url = https://github.com/giuseppe/bsdiff.git
+	url = https://github.com/mendsley/bsdiff
