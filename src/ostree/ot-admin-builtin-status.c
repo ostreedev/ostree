@@ -88,6 +88,10 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           GKeyFile *origin;
           const char *ref = ostree_deployment_get_csum (deployment);
           gs_free gchar *version = version_of_commit (repo, ref);
+          gs_unref_object OstreeGpgVerifyResult *result = NULL;
+          GString *output_buffer;
+          guint jj, n_signatures;
+          GError *local_error = NULL;
 
           g_print ("%c %s %s.%d\n",
                    deployment == booted_deployment ? '*' : ' ',
@@ -107,6 +111,35 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
               else
                 g_print ("    origin refspec: %s\n", origin_refspec);
             }
+
+          /* Print any digital signatures on this commit. */
+
+          result = ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
+                                                  cancellable, &local_error);
+
+          /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (&local_error);
+              continue;
+            }
+          else if (local_error != NULL)
+            {
+              g_propagate_error (error, local_error);
+              goto out;
+            }
+
+          output_buffer = g_string_sized_new (256);
+          n_signatures = ostree_gpg_verify_result_count_all (result);
+
+          for (jj = 0; jj < n_signatures; jj++)
+            {
+              ostree_gpg_verify_result_describe (result, jj, output_buffer, "    ",
+                                                 OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+            }
+
+          g_print ("%s", output_buffer->str);
+          g_string_free (output_buffer, TRUE);
         }
     }
 
