@@ -315,11 +315,9 @@ ostree_mutable_tree_walk (OstreeMutableTree     *self,
                           OstreeMutableTree    **out_subdir,
                           GError               **error)
 {
-  if (start >= split_path->len)
-    {
-      return set_error_noent (error, (char*)split_path->pdata[start]);
-    }
-  else if (start == split_path->len - 1)
+  g_return_val_if_fail (start < split_path->len, FALSE);
+
+  if (start == split_path->len - 1)
     {
       *out_subdir = g_object_ref (self);
       return TRUE;

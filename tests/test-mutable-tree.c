@@ -70,13 +70,6 @@ test_mutable_tree_walk (void)
 
   {
     gs_unref_object OstreeMutableTree *subdir = NULL;
-    g_assert_false (ostree_mutable_tree_walk (tree, split_path, 10, &subdir, &error));
-    g_assert_null (subdir);
-    g_clear_error (&error);
-  }
-
-  {
-    gs_unref_object OstreeMutableTree *subdir = NULL;
     gs_unref_object OstreeMutableTree *a = NULL;
     gs_free char *source_checksum = NULL;
     ostree_mutable_tree_lookup (tree, "a", &source_checksum, &a, &error);
