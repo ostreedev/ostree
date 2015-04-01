@@ -327,7 +327,8 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
-      if (getuid () != 0)
+      if ((opt_sysroot == NULL || strcmp (opt_sysroot, "/") == 0)
+          && getuid () != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
