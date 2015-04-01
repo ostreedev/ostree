@@ -34,7 +34,7 @@
 #include "ostree-checksum-input-stream.h"
 #include "ostree-mutable-tree.h"
 #include "ostree-varint.h"
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 #include <glib/gprintf.h>
 
 gboolean

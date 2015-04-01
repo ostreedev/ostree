@@ -23,7 +23,7 @@
 #include "config.h"
 
 #include <glib-unix.h>
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 #include "otutil.h"

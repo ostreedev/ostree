@@ -22,7 +22,7 @@
 
 #include "ot-fs-utils.h"
 #include "libgsystem.h"
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 #include <gio/gunixinputstream.h>
 
 int
