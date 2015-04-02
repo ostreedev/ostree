@@ -1,6 +1,7 @@
 /* -*- mode: C; c-file-style: "gnu"; indent-tabs-mode: nil; -*-
  *
  * Copyright (C) 2011 Colin Walters <walters@verbum.org>
+ * Copyright (C) 2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -3461,10 +3462,8 @@ out:
  * An OSTree repository can contain a high level "summary" file that
  * describes the available branches and other metadata.
  *
- * It is not regenerated automatically when commits are created; this
- * API is available to atomically regenerate the summary after
- * multiple commits.  It should only be invoked by one process at a
- * time.
+ * It is regenerated automatically after a commit if
+ * `core/commit-update-summary` is set.
  */
 gboolean
 ostree_repo_regenerate_summary (OstreeRepo     *self,
@@ -3473,7 +3472,6 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *summary_path = NULL;
   gs_unref_hashtable GHashTable *refs = NULL;
   gs_unref_variant_builder GVariantBuilder *refs_builder = NULL;
   gs_unref_variant GVariant *summary = NULL;
@@ -3516,9 +3514,13 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     g_variant_ref_sink (summary);
   }
 
-  summary_path = g_file_get_child (self->repodir, "summary");
-
-  if (!ot_util_variant_save (summary_path, summary, cancellable, error))
+  if (!_ostree_repo_file_replace_contents (self,
+                                           self->repo_dir_fd,
+                                           "summary",
+                                           g_variant_get_data (summary),
+                                           g_variant_get_size (summary),
+                                           cancellable,
+                                           error))
     goto out;
 
   ret = TRUE;
