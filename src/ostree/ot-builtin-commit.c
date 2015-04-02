@@ -487,6 +487,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (!skip_commit)
     {
+      gboolean update_summary;
       if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
                                      OSTREE_REPO_FILE (root),
                                      &commit_checksum, cancellable, error))
@@ -521,6 +522,17 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
+        goto out;
+
+      if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
+                                                "commit-update-summary", FALSE,
+                                                &update_summary, error))
+        goto out;
+
+      if (update_summary && !ostree_repo_regenerate_summary (repo,
+                                                             NULL,
+                                                             cancellable,
+                                                             error))
         goto out;
     }
   else

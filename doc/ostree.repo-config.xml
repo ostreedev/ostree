@@ -85,6 +85,13 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
+        <term><varname>commit-update-summary</varname></term>
+        <listitem><para>Boolean value controlling whether or not to
+        automatically update the summary file after a commit.  Defaults
+        to <literal>false</literal>.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><varname>fsync</varname></term>
         <listitem><para>Boolean value controlling whether or not to
         ensure files are on stable storage when performing operations

@@ -49,6 +49,7 @@ testfiles = test-basic \
 	test-setuid \
 	test-delta \
 	test-xattrs \
+	test-auto-summary \
 	$(NULL)
 insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
 
