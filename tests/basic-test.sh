@@ -369,13 +369,16 @@ cd test2-checkout
 touch should-not-be-fsynced
 $OSTREE commit -b test2 -s "Unfsynced commit" --fsync=false
 
-cd ${test_tmpdir}
-rm -f expected-fail error-message
-$OSTREE init --mode=archive-z2 --repo=repo-noperm
-chmod -w repo-noperm
-$OSTREE --repo=repo-noperm pull-local repo 2> error-message || touch expected-fail
-assert_has_file expected-fail
-assert_file_has_content error-message "Permission denied"
-chmod +w repo-noperm
-echo "ok unwritable repo was caught"
-
+# Run this test only as non-root user.  When run as root, the chmod
+# won't have any effect.
+if test "$(id -u)" != "0"; then
+    cd ${test_tmpdir}
+    rm -f expected-fail error-message
+    $OSTREE init --mode=archive-z2 --repo=repo-noperm
+    chmod -w repo-noperm
+    $OSTREE --repo=repo-noperm pull-local repo 2> error-message || touch expected-fail
+    assert_has_file expected-fail
+    assert_file_has_content error-message "Permission denied"
+    chmod +w repo-noperm
+    echo "ok unwritable repo was caught"
+fi
