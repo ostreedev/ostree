@@ -23,6 +23,12 @@ if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
     exit 77
 fi
 
+# Skip the test when non-root as gpgme would not read files owned by
+# another user.
+if test "$(id -i)" != "0"; then
+    exit 77
+fi
+
 . $(dirname $0)/libtest.sh
 
 keyid="472CDAFA"
