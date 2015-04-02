@@ -385,4 +385,3 @@ ostree_ensure_repo_writable (OstreeRepo *repo,
 
   return ret;
 }
-
