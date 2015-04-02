@@ -17,7 +17,6 @@ BuildRequires: pkgconfig(gio-unix-2.0)
 BuildRequires: pkgconfig(libsoup-2.4)
 BuildRequires: pkgconfig(libgsystem)
 BuildRequires: pkgconfig(e2p)
-BuildRequires: libattr-devel
 # Extras
 BuildRequires: pkgconfig(libarchive)
 BuildRequires: pkgconfig(libselinux)
