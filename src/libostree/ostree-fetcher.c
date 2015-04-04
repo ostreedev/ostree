@@ -492,7 +492,18 @@ on_request_sent (GObject        *object,
 
   if (!pending->is_stream)
     {
-      int fd = openat (pending->self->tmpdir_dfd, pending->out_tmpfile, O_CREAT | O_WRONLY | O_APPEND | O_CLOEXEC, 0600);
+      int oflags = O_CREAT | O_WRONLY | O_CLOEXEC;
+      int fd;
+
+      /* If we got partial content, we can append; if the server
+       * ignored our range request, we need to truncate.
+       */
+      if (msg && msg->status_code == SOUP_STATUS_PARTIAL_CONTENT)
+        oflags |= O_APPEND;
+      else
+        oflags |= O_TRUNC;
+
+      fd = openat (pending->self->tmpdir_dfd, pending->out_tmpfile, oflags, 0600);
       if (fd == -1)
         {
           gs_set_error_from_errno (&local_error, errno);
