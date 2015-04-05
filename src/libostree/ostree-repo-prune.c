@@ -43,10 +43,16 @@ prune_commitpartial_file (OstreeRepo    *repo,
                           GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *objpath = ot_gfile_resolve_path_printf (repo->repodir, "state/%s.commitpartial", checksum);
+  g_autofree char *path = _ostree_get_commitpartial_path (checksum);
   
-  if (!ot_gfile_ensure_unlinked (objpath, cancellable, error))
-    goto out;
+  if (unlinkat (repo->repo_dir_fd, path, 0) != 0)
+    {
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
 
   ret = TRUE;
  out:

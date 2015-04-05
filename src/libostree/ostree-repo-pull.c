@@ -713,15 +713,6 @@ on_metadata_written (GObject           *object,
   check_outstanding_requests_handle_error (pull_data, local_error);
 }
 
-/* GFile pointing to the <repodir>/state/<checksum>.commitpartial file */
-static GFile *
-get_commitpartial_path (OstreeRepo  *repo,
-                        const char  *commit)
-{
-  gs_free char *commitpartial_filename = g_strdup_printf ("%s.commitpartial", commit);
-  return g_file_get_child (repo->state_dir, commitpartial_filename);
-}
-
 static void
 meta_fetch_on_complete (GObject           *object,
                         GAsyncResult      *result,
@@ -791,14 +782,17 @@ meta_fetch_on_complete (GObject           *object,
       /* Write the commitpartial file now while we're still fetching data */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, checksum);
+          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+          glnx_fd_close int fd = -1;
 
-          if (!g_file_query_exists (commitpartial_path, NULL))
+          fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0600);
+          if (fd == -1)
             {
-              if (!g_file_replace_contents (commitpartial_path, "", 0, NULL, FALSE, 
-                                            G_FILE_CREATE_REPLACE_DESTINATION, NULL,
-                                            pull_data->cancellable, error))
-                goto out;
+              if (errno != EEXIST)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
             }
         }
       
@@ -1132,9 +1126,10 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       /* For commits, check whether we only had a partial fetch */
       if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          gs_unref_object GFile *commitpartial_file = get_commitpartial_path (pull_data->repo, tmp_checksum);
+          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (tmp_checksum);
+          struct stat stbuf;
 
-          if (g_file_query_exists (commitpartial_file, NULL))
+          if (fstatat (pull_data->repo->repo_dir_fd, commitpartial_path, &stbuf, 0) == 0)
             {
               do_scan = TRUE;
               pull_data->commitpartial_exists = TRUE;
@@ -2018,8 +2013,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* Create the state directory here - it's new with the commitpartial code,
    * and may not exist in older repositories.
    */
-  if (!gs_file_ensure_directory (pull_data->repo->state_dir, FALSE, pull_data->cancellable, error))
-    goto out;
+  if (mkdirat (pull_data->repo->repo_dir_fd, "state", 0777) != 0)
+    {
+      if (G_UNLIKELY (errno != EEXIST))
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
 
@@ -2175,17 +2176,31 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
-          gs_unref_object GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, checksum);
-          if (!ot_gfile_ensure_unlinked (commitpartial_path, cancellable, error))
-            goto out;
+          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+
+          if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
+            {
+              if (errno != ENOENT)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
+            }
         }
         g_hash_table_iter_init (&hash_iter, commits_to_fetch);
         while (g_hash_table_iter_next (&hash_iter, &key, &value))
           {
             const char *commit = value;
-            gs_unref_object GFile *commitpartial_path = get_commitpartial_path (pull_data->repo, commit);
-            if (!ot_gfile_ensure_unlinked (commitpartial_path, cancellable, error))
-              goto out;
+            g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
+
+            if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
+              {
+                if (errno != ENOENT)
+                  {
+                    glnx_set_error_from_errno (error);
+                    goto out;
+                  }
+              }
           }
     }
 
