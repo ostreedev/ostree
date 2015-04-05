@@ -9,6 +9,7 @@ PACKAGE=ostree
 PKG_VER = $(PACKAGE)-$(GITREV_FOR_PKG)
 
 dist-snapshot:
+	rm -f *.tar.xz
 	set -x; \
 	echo "PACKAGE=$(PACKAGE)"; \
 	TARFILE_TMP=$(PKG_VER).tar.tmp; \
@@ -26,8 +27,14 @@ dist-snapshot:
 	xz $(PKG_VER).tar 
 
 srpm: dist-snapshot
-	 sed -e "s,^Version:.*,Version: $(GITREV_FOR_PKG)," $(PACKAGE).spec.in > $(PACKAGE).spec; \
-	 ./rpmbuild-cwd -bs $(PACKAGE).spec
+	(tmpd=`pwd`/tmp-packaging; rm -rf "$${tmpd}";  mkdir "$${tmpd}"; \
+	 sed -e "s,^Version:.*,Version: $(GITREV_FOR_PKG)," $(PACKAGE).spec.in > "$${tmpd}/$(PACKAGE).spec"; \
+	 cp 91-ostree.preset "$${tmpd}"; ln $(PKG_VER).tar.xz "$${tmpd}"; \
+	 cd "$${tmpd}" && ../rpmbuild-cwd -bs $(PACKAGE).spec && mv *.src.rpm ..)
 
-rpm: srpm
-	./rpmbuild-cwd --rebuild $(PKG_VER)*.src.rpm
+rpm: dist-snapshot
+	rm -f *.rpm
+	(tmpd=`pwd`/tmp-packaging; rm -rf "$${tmpd}";  mkdir "$${tmpd}"; \
+	 sed -e "s,^Version:.*,Version: $(GITREV_FOR_PKG)," $(PACKAGE).spec.in > "$${tmpd}/$(PACKAGE).spec"; \
+	 cp 91-ostree.preset "$${tmpd}"; ln $(PKG_VER).tar.xz "$${tmpd}"; \
+	 cd "$${tmpd}" && ../rpmbuild-cwd -bb $(PACKAGE).spec && mv $$(arch)/*.rpm ..)
