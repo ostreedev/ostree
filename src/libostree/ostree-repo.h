@@ -451,12 +451,12 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 
 /**
  * OstreeRepoCheckoutOptions:
- * @OSTREE_REPO_CHECKOUT_OPTIONS_NONE: No special options
- * @OSTREE_REPO_CHECKOUT_OPTIONS_CACHE: Make use of the uncompressed objects cache for archive type repositories
  *
  * An extensible options structure controlling checkout.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
- * options.
+ * options.  This is used by ostree_repo_checkout_tree_at() which
+ * supercedes previous separate enumeration usage in
+ * ostree_repo_checkout_tree().
  */
 typedef struct {
   OstreeRepoCheckoutMode mode;
