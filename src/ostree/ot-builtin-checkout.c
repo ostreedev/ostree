@@ -33,6 +33,7 @@
 
 static gboolean opt_user_mode;
 static gboolean opt_allow_noent;
+static gboolean opt_disable_cache;
 static char *opt_subpath;
 static gboolean opt_union;
 static gboolean opt_from_stdin;
@@ -57,6 +58,7 @@ parse_fsync_cb (const char  *option_name,
 
 static GOptionEntry options[] = {
   { "user-mode", 'U', 0, G_OPTION_ARG_NONE, &opt_user_mode, "Do not change file ownership or initialize extended attributes", NULL },
+  { "disable-cache", 0, 0, G_OPTION_ARG_NONE, &opt_disable_cache, "Do not update or use the internal repository uncompressed object cache", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
@@ -70,46 +72,76 @@ static gboolean
 process_one_checkout (OstreeRepo           *repo,
                       const char           *resolved_commit,
                       const char           *subpath,
-                      GFile                *target,
+                      const char           *destination,
                       GCancellable         *cancellable,
                       GError              **error)
 {
   gboolean ret = FALSE;
-  GError *tmp_error = NULL;
-  gs_unref_object GFile *root = NULL;
-  gs_unref_object GFile *subtree = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
 
-  if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
-    goto out;
-
-  if (subpath)
-    subtree = g_file_resolve_relative_path (root, subpath);
-  else
-    subtree = g_object_ref (root);
-
-  file_info = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, &tmp_error);
-  if (!file_info)
+  /* This strange code structure is to preserve testing
+   * coverage of both `ostree_repo_checkout_tree` and
+   * `ostree_repo_checkout_tree_at` until such time as we have a more
+   * convenient infrastructure for testing C APIs with data.
+   */
+  if (opt_disable_cache)
     {
-      if (opt_allow_noent
-          && g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&tmp_error);
-          ret = TRUE;
-        }
-      else
-        {
-          g_propagate_error (error, tmp_error);
-        }
-      goto out;
-    }
+      OstreeRepoCheckoutOptions options = { 0, };
+      
+      if (opt_user_mode)
+        options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
+      if (opt_union)
+        options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
+      if (subpath)
+        options.subpath = subpath;
 
-  if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
-                                  opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
-                                  target, OSTREE_REPO_FILE (subtree), file_info, cancellable, error))
-    goto out;
+
+      if (!ostree_repo_checkout_tree_at (repo, &options,
+                                         AT_FDCWD, destination,
+                                         resolved_commit,
+                                         cancellable, error))
+        goto out;
+    }
+  else
+    {
+      GError *tmp_error = NULL;
+      gs_unref_object GFile *root = NULL;
+      gs_unref_object GFile *subtree = NULL;
+      gs_unref_object GFileInfo *file_info = NULL;
+      gs_unref_object GFile *destination_file = g_file_new_for_path (destination);
+
+      if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
+        goto out;
+
+      if (subpath)
+        subtree = g_file_resolve_relative_path (root, subpath);
+      else
+        subtree = g_object_ref (root);
+
+      file_info = g_file_query_info (subtree, OSTREE_GIO_FAST_QUERYINFO,
+                                     G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                     cancellable, &tmp_error);
+      if (!file_info)
+        {
+          if (opt_allow_noent
+              && g_error_matches (tmp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (&tmp_error);
+              ret = TRUE;
+            }
+          else
+            {
+              g_propagate_error (error, tmp_error);
+            }
+          goto out;
+        }
+
+      if (!ostree_repo_checkout_tree (repo, opt_user_mode ? OSTREE_REPO_CHECKOUT_MODE_USER : 0,
+                                      opt_union ? OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES : 0,
+                                      destination_file,
+                                      OSTREE_REPO_FILE (subtree), file_info,
+                                      cancellable, error))
+        goto out;
+    }
                       
   ret = TRUE;
  out:
@@ -118,7 +150,7 @@ process_one_checkout (OstreeRepo           *repo,
 
 static gboolean
 process_many_checkouts (OstreeRepo         *repo,
-                        GFile              *target,
+                        const char         *target,
                         GCancellable       *cancellable,
                         GError            **error)
 {
@@ -198,7 +230,6 @@ ostree_builtin_checkout (int argc, char **argv, GCancellable *cancellable, GErro
   const char *commit;
   const char *destination;
   gs_free char *resolved_commit = NULL;
-  gs_unref_object GFile *checkout_target = NULL;
 
   context = g_option_context_new ("COMMIT [DESTINATION] - Check out a commit into a filesystem tree");
 
@@ -221,9 +252,8 @@ ostree_builtin_checkout (int argc, char **argv, GCancellable *cancellable, GErro
   if (opt_from_stdin || opt_from_file)
     {
       destination = argv[1];
-      checkout_target = g_file_new_for_path (destination);
 
-      if (!process_many_checkouts (repo, checkout_target, cancellable, error))
+      if (!process_many_checkouts (repo, destination, cancellable, error))
         goto out;
     }
   else
@@ -237,10 +267,8 @@ ostree_builtin_checkout (int argc, char **argv, GCancellable *cancellable, GErro
       if (!ostree_repo_resolve_rev (repo, commit, FALSE, &resolved_commit, error))
         goto out;
 
-      checkout_target = g_file_new_for_path (destination);
-
       if (!process_one_checkout (repo, resolved_commit, opt_subpath,
-                                 checkout_target,
+                                 destination,
                                  cancellable, error))
         goto out;
     }

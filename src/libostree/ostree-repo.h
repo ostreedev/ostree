@@ -449,6 +449,36 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GCancellable             *cancellable,
                            GError                  **error);
 
+/**
+ * OstreeRepoCheckoutOptions:
+ *
+ * An extensible options structure controlling checkout.  Ensure that
+ * you have entirely zeroed the structure, then set just the desired
+ * options.  This is used by ostree_repo_checkout_tree_at() which
+ * supercedes previous separate enumeration usage in
+ * ostree_repo_checkout_tree().
+ */
+typedef struct {
+  OstreeRepoCheckoutMode mode;
+  OstreeRepoCheckoutOverwriteMode overwrite_mode;
+  
+  guint enable_uncompressed_cache : 1;
+  guint unused : 31;
+
+  const char *subpath;
+
+  guint unused_uints[6];
+  gpointer unused_ptrs[8];
+} OstreeRepoCheckoutOptions;
+
+gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
+                                       OstreeRepoCheckoutOptions          *options,
+                                       int                                 destination_dfd,
+                                       const char                         *destination_path,
+                                       const char                         *commit,
+                                       GCancellable                       *cancellable,
+                                       GError                            **error);
+
 gboolean       ostree_repo_checkout_gc (OstreeRepo        *self,
                                         GCancellable      *cancellable,
                                         GError           **error);
