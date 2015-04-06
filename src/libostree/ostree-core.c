@@ -124,7 +124,7 @@ ostree_parse_refspec (const char   *refspec,
 {
   gboolean ret = FALSE;
   GMatchInfo *match = NULL;
-  char *remote;
+  gs_free char *remote = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -155,8 +155,10 @@ ostree_parse_refspec (const char   *refspec,
     }
 
   ret = TRUE;
-  *out_remote = remote;
-  *out_ref = g_match_info_fetch (match, 2);
+
+  gs_transfer_out_value (out_remote, &remote);
+  if (out_ref != NULL)
+    *out_ref = g_match_info_fetch (match, 2);
  out:
   if (match)
     g_match_info_unref (match);
