@@ -48,6 +48,7 @@ testfiles = test-basic \
 	test-admin-locking \
 	test-repo-checkout-subpath	\
 	test-reset-nonlinear \
+	test-oldstyle-partial \
 	test-setuid \
 	test-delta \
 	test-xattrs \

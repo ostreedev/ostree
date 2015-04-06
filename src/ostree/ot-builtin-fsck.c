@@ -25,6 +25,7 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "ostree-cmdprivate.h"
 #include "otutil.h"
 
 static gboolean opt_quiet;
@@ -242,6 +243,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   GHashTableIter hash_iter;
   gpointer key, value;
   gboolean found_corruption = FALSE;
+  guint n_partial = 0;
   gs_unref_hashtable GHashTable *objects = NULL;
   gs_unref_hashtable GHashTable *commits = NULL;
 
@@ -267,11 +269,22 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       GVariant *serialized_key = key;
       const char *checksum;
       OstreeObjectType objtype;
+      OstreeRepoCommitState commitstate = 0;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
+        {
+          if (!ostree_repo_load_commit (repo, checksum, NULL, &commitstate, error))
+            goto out;
+
+          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
+            {
+              n_partial++;
+            }
+          else
+            g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
+        }
     }
 
   g_clear_pointer (&objects, (GDestroyNotify) g_hash_table_unref);
@@ -283,6 +296,11 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption,
                                             cancellable, error))
     goto out;
+
+  if (n_partial > 0)
+    {
+      g_print ("%u partial commits not verified\n", n_partial);
+    }
 
   if (found_corruption)
     {

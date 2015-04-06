@@ -21,6 +21,8 @@
 #include "config.h"
 
 #include "ostree-cmdprivate.h"
+#include "ostree-repo-private.h"
+#include "ostree-core-private.h"
 #include "ostree-sysroot.h"
 #include "ostree-bootloader-grub2.h"
 

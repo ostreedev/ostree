@@ -2652,6 +2652,58 @@ ostree_repo_load_variant (OstreeRepo       *self,
 }
 
 /**
+ * ostree_repo_load_commit:
+ * @self: Repo
+ * @checksum: Commit checksum
+ * @out_commit: (out) (allow-none): Commit
+ * @out_state: (out) (allow-none): Commit state
+ * @error: Error
+ *
+ * A version of ostree_repo_load_variant() specialized to commits,
+ * capable of returning extended state information.  Currently
+ * the only extended state is %OSTREE_REPO_COMMIT_STATE_PARTIAL, which
+ * means that only a sub-path of the commit is available.
+ */
+gboolean
+ostree_repo_load_commit (OstreeRepo            *self,
+                         const char            *checksum, 
+                         GVariant             **out_variant,
+                         OstreeRepoCommitState *out_state,
+                         GError               **error)
+{
+  gboolean ret = FALSE;
+
+  if (out_variant)
+    {
+      if (!load_metadata_internal (self, OSTREE_OBJECT_TYPE_COMMIT, checksum, TRUE,
+                                   out_variant, NULL, NULL, NULL, error))
+        goto out;
+    }
+
+  if (out_state)
+    {
+      g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+      struct stat stbuf;
+
+      *out_state = 0;
+
+      if (fstatat (self->repo_dir_fd, commitpartial_path, &stbuf, 0) == 0)
+        {
+          *out_state |= OSTREE_REPO_COMMIT_STATE_PARTIAL;
+        }
+      else if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
  * ostree_repo_list_objects:
  * @self: Repo
  * @flags: Flags controlling enumeration

@@ -22,6 +22,7 @@
 
 #include "ot-fs-utils.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 #include <sys/xattr.h>
 #include <gio/gunixinputstream.h>
 
@@ -188,3 +189,20 @@ ot_openat_read_stream (int             dfd,
  out:
   return ret;
 }
+
+gboolean
+ot_ensure_unlinked_at (int dfd,
+                       const char *path,
+                       GError **error)
+{
+  if (unlinkat (dfd, path, 0) != 0)
+    {
+      if (G_UNLIKELY (errno != ENOENT))
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+

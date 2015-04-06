@@ -1126,10 +1126,12 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       /* For commits, check whether we only had a partial fetch */
       if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (tmp_checksum);
-          struct stat stbuf;
+          OstreeRepoCommitState commitstate;
 
-          if (fstatat (pull_data->repo->repo_dir_fd, commitpartial_path, &stbuf, 0) == 0)
+          if (!ostree_repo_load_commit (pull_data->repo, tmp_checksum, NULL, &commitstate, error))
+            goto out;
+
+          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
             {
               do_scan = TRUE;
               pull_data->commitpartial_exists = TRUE;
@@ -2178,14 +2180,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           const char *checksum = value;
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
 
-          if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
-            {
-              if (errno != ENOENT)
-                {
-                  glnx_set_error_from_errno (error);
-                  goto out;
-                }
-            }
+          if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+            goto out;
         }
         g_hash_table_iter_init (&hash_iter, commits_to_fetch);
         while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2193,14 +2189,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             const char *commit = value;
             g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
 
-            if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
-              {
-                if (errno != ENOENT)
-                  {
-                    glnx_set_error_from_errno (error);
-                    goto out;
-                  }
-              }
+            if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+              goto out;
           }
     }
 
