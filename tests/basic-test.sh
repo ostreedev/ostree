@@ -19,7 +19,7 @@
 
 set -e
 
-echo "1..47"
+echo "1..48"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -361,6 +361,25 @@ if $OSTREE commit -b test2 -s "Attempt to commit a FIFO" 2>../errmsg; then
     assert_file_has_content ../errmsg "Unsupported file type"
 fi
 echo "ok commit of fifo was rejected"
+
+cd ${test_tmpdir}
+rm repo2 -rf
+mkdir repo2
+${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo
+rm -rf test2-checkout
+${CMD_PREFIX} ostree --repo=repo2 checkout -U --disable-cache test2 test2-checkout
+if test -d repo2/uncompressed-objects-cache; then
+    ls repo2/uncompressed-objects-cache > ls.txt
+    if test -s ls.txt; then
+	assert_not_reached "repo has uncompressed objects"
+    fi
+fi
+rm test2-checkout -rf
+${CMD_PREFIX} ostree --repo=repo2 checkout -U test2 test2-checkout
+assert_file_has_content test2-checkout/baz/cow moo
+assert_has_dir repo2/uncompressed-objects-cache
+echo "ok disable cache checkout"
 
 cd ${test_tmpdir}
 rm -rf test2-checkout

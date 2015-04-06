@@ -173,7 +173,7 @@ write_regular_file_content (OstreeRepo            *self,
 
 static gboolean
 checkout_file_from_input_at (OstreeRepo     *self,
-                             OstreeRepoCheckoutMode mode,
+                             OstreeRepoCheckoutOptions *options,
                              GFileInfo      *file_info,
                              GVariant       *xattrs,
                              GInputStream   *input,
@@ -197,7 +197,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
           goto out;
         }
 
-      if (mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+      if (options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         {
           if (G_UNLIKELY (fchownat (destination_dfd, destination_name,
                                     g_file_info_get_attribute_uint32 (file_info, "unix::uid"),
@@ -224,7 +224,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
 
       file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
       /* Don't make setuid files on checkout when we're doing --user */
-      if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+      if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
         file_mode &= ~(S_ISUID|S_ISGID);
 
       do
@@ -238,7 +238,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
       temp_out = g_unix_output_stream_new (fd, TRUE);
       fd = -1; /* Transfer ownership */
 
-      if (!write_regular_file_content (self, mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (self, options->mode, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -256,7 +256,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
  */
 static gboolean
 checkout_file_unioning_from_input_at (OstreeRepo     *repo,
-                                      OstreeRepoCheckoutMode mode,
+                                      OstreeRepoCheckoutOptions  *options,
                                       GFileInfo      *file_info,
                                       GVariant       *xattrs,
                                       GInputStream   *input,
@@ -290,7 +290,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
 
       file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
       /* Don't make setuid files on checkout when we're doing --user */
-      if (mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+      if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
         file_mode &= ~(S_ISUID|S_ISGID);
 
       if (!gs_file_open_in_tmpdir_at (destination_dfd, file_mode,
@@ -298,7 +298,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                       cancellable, error))
         goto out;
 
-      if (!write_regular_file_content (repo, mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (repo, options->mode, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -319,8 +319,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
 
 static gboolean
 checkout_file_hardlink (OstreeRepo                          *self,
-                        OstreeRepoCheckoutMode               mode,
-                        OstreeRepoCheckoutOverwriteMode      overwrite_mode,
+                        OstreeRepoCheckoutOptions           *options,
                         const char                          *loose_path,
                         int                                  destination_dfd,
                         const char                          *destination_name,
@@ -348,7 +347,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
     {
       ret_was_supported = FALSE;
     }
-  else if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+  else if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
     { 
       /* Idiocy, from man rename(2)
        *
@@ -377,18 +376,18 @@ checkout_file_hardlink (OstreeRepo                          *self,
 
 static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
+                      OstreeRepoCheckoutOptions         *options,
                       GFile                             *source,
                       GFileInfo                         *source_info,
                       int                                destination_dfd,
                       const char                        *destination_name,
-                      OstreeRepoCheckoutMode             mode,
-                      OstreeRepoCheckoutOverwriteMode    overwrite_mode,
                       GCancellable                      *cancellable,
                       GError                           **error)
 {
   gboolean ret = FALSE;
   const char *checksum;
   gboolean is_symlink;
+  gboolean can_cache;
   gboolean did_hardlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   gs_unref_object GInputStream *input = NULL;
@@ -408,12 +407,14 @@ checkout_one_file_at (OstreeRepo                        *repo,
       while (current_repo)
         {
           gboolean is_bare = ((current_repo->mode == OSTREE_REPO_MODE_BARE
-                               && mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
+                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
                               (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
-                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER));
+                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER));
+          gboolean current_can_cache = (options->enable_uncompressed_cache
+                                        && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
-                                               && mode == OSTREE_REPO_CHECKOUT_MODE_USER
-                                               && current_repo->enable_uncompressed_cache);
+                                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
+                                               && current_can_cache);
 
           /* But only under these conditions */
           if (is_bare || is_archive_z2_with_cache)
@@ -422,7 +423,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
                  the cache, which is in "bare" form */
               _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, OSTREE_REPO_MODE_BARE);
               if (!checkout_file_hardlink (current_repo,
-                                           mode, overwrite_mode, loose_path_buf,
+                                           options,
+                                           loose_path_buf,
                                            destination_dfd, destination_name,
                                            TRUE, &did_hardlink,
                                            cancellable, error))
@@ -434,14 +436,17 @@ checkout_one_file_at (OstreeRepo                        *repo,
         }
     }
 
+  can_cache = (options->enable_uncompressed_cache
+               && repo->enable_uncompressed_cache);
+
   /* Ok, if we're archive-z2 and we didn't find an object, uncompress
    * it now, stick it in the cache, and then hardlink to that.
    */
-  if (!is_symlink
+  if (can_cache
+      && !is_symlink
       && !did_hardlink
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
-      && mode == OSTREE_REPO_CHECKOUT_MODE_USER
-      && repo->enable_uncompressed_cache)
+      && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, NULL,
                                   cancellable, error))
@@ -485,7 +490,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
       }
       g_mutex_unlock (&repo->cache_lock);
 
-      if (!checkout_file_hardlink (repo, mode, overwrite_mode, loose_path_buf,
+      if (!checkout_file_hardlink (repo, options, loose_path_buf,
                                    destination_dfd, destination_name,
                                    FALSE, &did_hardlink,
                                    cancellable, error))
@@ -502,9 +507,9 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                   cancellable, error))
         goto out;
 
-      if (overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+      if (options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
         {
-          if (!checkout_file_unioning_from_input_at (repo, mode, source_info, xattrs, input,
+          if (!checkout_file_unioning_from_input_at (repo, options, source_info, xattrs, input,
                                                      destination_dfd,
                                                      destination_name,
                                                      cancellable, error)) 
@@ -515,7 +520,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
         }
       else
         {
-          if (!checkout_file_from_input_at (repo, mode, source_info, xattrs, input,
+          if (!checkout_file_from_input_at (repo, options, source_info, xattrs, input,
                                             destination_dfd,
                                             destination_name,
                                             cancellable, error))
@@ -554,8 +559,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
  */
 static gboolean
 checkout_tree_at (OstreeRepo                        *self,
-                  OstreeRepoCheckoutMode             mode,
-                  OstreeRepoCheckoutOverwriteMode    overwrite_mode,
+                  OstreeRepoCheckoutOptions         *options,
                   int                                destination_parent_fd,
                   const char                        *destination_name,
                   OstreeRepoFile                    *source,
@@ -579,7 +583,7 @@ checkout_tree_at (OstreeRepo                        *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1)
     {
-      if (errno == EEXIST && overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+      if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
         did_exist = TRUE;
       else
         {
@@ -594,7 +598,7 @@ checkout_tree_at (OstreeRepo                        *self,
     goto out;
 
   /* Set the xattrs now, so any derived labeling works */
-  if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+  if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       if (!ostree_repo_file_get_xattrs (source, &xattrs, NULL, error))
         goto out;
@@ -608,11 +612,11 @@ checkout_tree_at (OstreeRepo                        *self,
 
   if (g_file_info_get_file_type (source_info) != G_FILE_TYPE_DIRECTORY)
     {
-      ret = checkout_one_file_at (self, (GFile *) source,
+      ret = checkout_one_file_at (self, options,
+                                  (GFile *) source,
                                   source_info,
                                   destination_dfd,
                                   g_file_info_get_name (source_info),
-                                  mode, TRUE,
                                   cancellable, error);
       goto out;
     }
@@ -640,7 +644,7 @@ checkout_tree_at (OstreeRepo                        *self,
 
       if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
         {
-          if (!checkout_tree_at (self, mode, overwrite_mode,
+          if (!checkout_tree_at (self, options,
                                  destination_dfd, name,
                                  (OstreeRepoFile*)src_child, file_info,
                                  cancellable, error))
@@ -648,9 +652,9 @@ checkout_tree_at (OstreeRepo                        *self,
         }
       else
         {
-          if (!checkout_one_file_at (self, src_child, file_info,
+          if (!checkout_one_file_at (self, options,
+                                     src_child, file_info,
                                      destination_dfd, name,
-                                     mode, overwrite_mode,
                                      cancellable, error))
             goto out;
         }
@@ -672,7 +676,7 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
-  if (!did_exist && mode != OSTREE_REPO_CHECKOUT_MODE_USER)
+  if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
     {
       do
         res = fchown (destination_dfd,
@@ -748,11 +752,87 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GCancellable             *cancellable,
                            GError                  **error)
 {
-  return checkout_tree_at (self, mode, overwrite_mode,
-                           AT_FDCWD,
-                           gs_file_get_path_cached (destination),
+  OstreeRepoCheckoutOptions options = { 0, };
+
+  options.mode = mode;
+  options.overwrite_mode = overwrite_mode;
+  /* Backwards compatibility */
+  options.enable_uncompressed_cache = TRUE;
+
+  return checkout_tree_at (self, &options,
+                           AT_FDCWD, gs_file_get_path_cached (destination),
                            source, source_info,
                            cancellable, error);
+}
+
+/**
+ * ostree_repo_checkout_tree_at:
+ * @self: Repo
+ * @options: (allow-none): Options
+ * @destination_dfd: Directory FD for destination
+ * @destination_path: Directory for destination
+ * @commit: Checksum for commit
+ * @subpath: (allow-none): Subdirectory path
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Similar to ostree_repo_checkout_tree(), but uses directory-relative
+ * paths for the destination, uses a new `OstreeRepoCheckoutOptions`,
+ * and takes a commit checksum and optional subpath pair, rather than
+ * requiring use of `GFile` APIs for the caller.
+ *
+ * Note in addition that unlike ostree_repo_checkout_tree(), the
+ * default is not to use the repository-internal uncompressed objects
+ * cache.
+ */
+gboolean
+ostree_repo_checkout_tree_at (OstreeRepo                         *self,
+                              OstreeRepoCheckoutOptions         *options,
+                              int                                destination_dfd,
+                              const char                        *destination_path,
+                              const char                        *commit,
+                              GCancellable                      *cancellable,
+                              GError                           **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile* commit_root = NULL;
+  gs_unref_object GFile* target_dir = NULL;
+  gs_unref_object GFileInfo* target_info = NULL;
+  OstreeRepoCheckoutOptions default_options = { 0, };
+
+  if (!options)
+    {
+      default_options.subpath = NULL;
+      options = &default_options;
+    }
+
+  commit_root = (GFile*) _ostree_repo_file_new_for_commit (self, commit, error);
+  if (!commit_root)
+    goto out;
+
+  if (!ostree_repo_file_ensure_resolved ((OstreeRepoFile*)commit_root, error))
+    goto out;
+
+  if (options->subpath && strcmp (options->subpath, "/") != 0)
+    target_dir = g_file_get_child (commit_root, options->subpath);
+  else
+    target_dir = g_object_ref (commit_root);
+  target_info = g_file_query_info (target_dir, OSTREE_GIO_FAST_QUERYINFO,
+                                   G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                   cancellable, error);
+  if (!target_info)
+    goto out;
+
+  if (!checkout_tree_at (self, options,
+                         destination_dfd,
+                         destination_path,
+                         (OstreeRepoFile*)target_dir, target_info,
+                         cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /**
