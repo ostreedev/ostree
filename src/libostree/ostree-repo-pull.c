@@ -1126,10 +1126,12 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       /* For commits, check whether we only had a partial fetch */
       if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (tmp_checksum);
-          struct stat stbuf;
+          OstreeRepoCommitState commitstate;
 
-          if (fstatat (pull_data->repo->repo_dir_fd, commitpartial_path, &stbuf, 0) == 0)
+          if (!ostree_repo_load_commit (pull_data->repo, tmp_checksum, NULL, &commitstate, error))
+            goto out;
+
+          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
             {
               do_scan = TRUE;
               pull_data->commitpartial_exists = TRUE;

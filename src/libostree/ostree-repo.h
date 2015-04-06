@@ -280,6 +280,16 @@ gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   GVariant     **out_variant,
                                                   GError       **error);
 
+typedef enum {
+  OSTREE_REPO_COMMIT_STATE_PARTIAL = (1 << 0),
+} OstreeRepoCommitState;
+
+gboolean      ostree_repo_load_commit (OstreeRepo            *self,
+                                       const char            *checksum, 
+                                       GVariant             **out_commit,
+                                       OstreeRepoCommitState *out_state,
+                                       GError               **error);
+
 gboolean ostree_repo_load_file (OstreeRepo         *self,
                                 const char         *checksum,
                                 GInputStream      **out_input,
