@@ -167,6 +167,22 @@ suburi_new (SoupURI   *base,
 }
 
 static gboolean
+ensure_unlinked_at (int dfd,
+                    const char *path,
+                    GError **error)
+{
+  if (unlinkat (dfd, path, 0) != 0)
+    {
+      if (G_UNLIKELY (error != ENOENT))
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
+static gboolean
 update_progress (gpointer user_data)
 {
   OtPullData *pull_data;
@@ -2180,14 +2196,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           const char *checksum = value;
           g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
 
-          if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
-            {
-              if (errno != ENOENT)
-                {
-                  glnx_set_error_from_errno (error);
-                  goto out;
-                }
-            }
+          if (!ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+            goto out;
         }
         g_hash_table_iter_init (&hash_iter, commits_to_fetch);
         while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2195,14 +2205,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             const char *commit = value;
             g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (commit);
 
-            if (unlinkat (pull_data->repo->repo_dir_fd, commitpartial_path, 0) != 0)
-              {
-                if (errno != ENOENT)
-                  {
-                    glnx_set_error_from_errno (error);
-                    goto out;
-                  }
-              }
+            if (!ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
+              goto out;
           }
     }
 
