@@ -35,6 +35,9 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 
+/* XXX Only for _ostree_gpg_error_to_gio_error().  Move it elsewhere? */
+#include "ostree-gpg-verify-result-private.h"
+
 #include <locale.h>
 #include <gpgme.h>
 #include <glib/gstdio.h>
@@ -3005,8 +3008,8 @@ sign_data (OstreeRepo     *self,
   
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to create gpg context");
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Unable to create gpg context: ");
       goto out;
     }
 
@@ -3015,8 +3018,8 @@ sign_data (OstreeRepo     *self,
   if ((err = gpgme_set_protocol (context, GPGME_PROTOCOL_OpenPGP)) !=
       GPG_ERR_NO_ERROR)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to set gpg protocol");
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Unable to set gpg protocol: ");
       goto out;
     }
   
@@ -3025,27 +3028,34 @@ sign_data (OstreeRepo     *self,
       if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
           != GPG_ERR_NO_ERROR)
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to set gpg homedir to '%s'",
-                       homedir);
+          _ostree_gpg_error_to_gio_error (err, error);
+          g_prefix_error (error, "Unable to set gpg homedir to '%s': ",
+                          homedir);
           goto out;
         }
     }
 
   /* Get the secret keys with the given key id */
-  if ((err = gpgme_get_key (context, key_id, &key, 1)) != GPG_ERR_NO_ERROR)
+  err = gpgme_get_key (context, key_id, &key, 1);
+  if (gpgme_err_code (err) == GPG_ERR_EOF)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "No gpg key found with ID %s (homedir: %s)", key_id,
                    homedir ? homedir : "<default>");
       goto out;
     }
+  else if (err != GPG_ERR_NO_ERROR)
+    {
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Unable to lookup key ID %s: ", key_id);
+      goto out;
+    }
   
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Error signing commit");
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Error signing commit: ");
       goto out;
     }
   
@@ -3054,8 +3064,8 @@ sign_data (OstreeRepo     *self,
     const char *buf = g_bytes_get_data (input_data, &len);
     if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
       {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "Failed to create buffer from commit file");
+        _ostree_gpg_error_to_gio_error (err, error);
+        g_prefix_error (error, "Failed to create buffer from commit file: ");
         goto out;
       }
   }
@@ -3070,16 +3080,16 @@ sign_data (OstreeRepo     *self,
   
   if ((err = gpgme_data_new_from_fd (&signature_buffer, signature_fd)) != GPG_ERR_NO_ERROR)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failed to create buffer for signature file");
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Failed to create buffer for signature file: ");
       goto out;
     }
   
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Failure signing commit file");
+      _ostree_gpg_error_to_gio_error (err, error);
+      g_prefix_error (error, "Failure signing commit file: ");
       goto out;
     }
   
