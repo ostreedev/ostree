@@ -100,4 +100,23 @@ GVariant * ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
 GVariant * ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
                                              guint signature_index);
 
+/**
+ * OstreeGpgSignatureFormatFlags:
+ * @OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT:
+ *   Use the default output format
+ *
+ * Formatting flags for ostree_gpg_verify_result_describe().  Currently
+ * there's only one possible output format, but this enumeration allows
+ * for future variations.
+ **/
+typedef enum {
+  OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT = 0
+} OstreeGpgSignatureFormatFlags;
+
+void ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
+                                        guint signature_index,
+                                        GString *output_buffer,
+                                        const gchar *line_prefix,
+                                        OstreeGpgSignatureFormatFlags flags);
+
 G_END_DECLS
