@@ -49,38 +49,6 @@ find_current_ref (OstreeRepo   *repo,
   return ret;
 }
 
-static gboolean
-check_revision_is_parent (OstreeRepo   *repo,
-                          const char   *descendant,
-                          const char   *ancestor,
-                          GCancellable *cancellable,
-                          GError      **error)
-{
-  gs_free char *parent = NULL;
-  gs_unref_variant GVariant *variant = NULL;
-  gboolean ret = FALSE;
-
-  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
-                                 descendant, &variant, error))
-    goto out;
-
-  parent = ostree_commit_get_parent (variant);
-  if (!parent)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "The ref does not have this commit as an ancestor: %s", ancestor);
-      goto out;
-    }
-
-  if (!g_str_equal (parent, ancestor) &&
-      !check_revision_is_parent (repo, parent, ancestor, cancellable, error))
-    goto out;
-
-  ret = TRUE;
-out:
-  return ret;
-}
-
 gboolean
 ostree_builtin_reset (int           argc,
                       char        **argv,
@@ -116,9 +84,6 @@ ostree_builtin_reset (int           argc,
 
   current = find_current_ref (repo, ref, cancellable, error);
   if (current == NULL)
-    goto out;
-
-  if (!check_revision_is_parent (repo, current, checksum, cancellable, error))
     goto out;
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
