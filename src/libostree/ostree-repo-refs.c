@@ -60,19 +60,15 @@ add_ref_to_set (const char       *remote,
 }
 
 static gboolean
-write_checksum_file (GFile *parentdir,
-                     const char *name,
-                     const char *sha256,
-                     GCancellable *cancellable,
-                     GError **error)
+write_checksum_file_at (OstreeRepo   *self,
+                        int dfd,
+                        const char *name,
+                        const char *sha256,
+                        GCancellable *cancellable,
+                        GError **error)
 {
   gboolean ret = FALSE;
-  gsize bytes_written;
-  int i;
-  gs_unref_object GFile *parent = NULL;
-  gs_unref_object GFile *child = NULL;
-  gs_unref_object GOutputStream *out = NULL;
-  gs_unref_ptrarray GPtrArray *components = NULL;
+  const char *lastslash;
 
   if (!ostree_validate_checksum_string (sha256, error))
     goto out;
@@ -84,38 +80,37 @@ write_checksum_file (GFile *parentdir,
       goto out;
     }
 
-  if (!ot_util_path_split_validate (name, &components, error))
-    goto out;
-
-  if (components->len == 0)
+  if (!*name)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid empty ref name");
       goto out;
     }
 
-  parent = g_object_ref (parentdir);
-  for (i = 0; i+1 < components->len; i++)
+  lastslash = strrchr (name, '/');
+
+  if (lastslash)
     {
-      child = g_file_get_child (parent, (char*)components->pdata[i]);
+      char *parent = strdupa (name);
+      parent[lastslash - name] = '\0';
 
-      if (!gs_file_ensure_directory (child, FALSE, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (dfd, parent, 0777, cancellable, error))
         goto out;
-
-      g_clear_object (&parent);
-      parent = child;
-      child = NULL;
     }
 
-  child = g_file_get_child (parent, components->pdata[components->len - 1]);
-  if ((out = (GOutputStream*)g_file_replace (child, NULL, FALSE, 0, cancellable, error)) == NULL)
-    goto out;
-  if (!g_output_stream_write_all (out, sha256, strlen (sha256), &bytes_written, cancellable, error))
-    goto out;
-  if (!g_output_stream_write_all (out, "\n", 1, &bytes_written, cancellable, error))
-    goto out;
-  if (!g_output_stream_close (out, cancellable, error))
-    goto out;
+  {
+    size_t l = strlen (sha256);
+    char *bufnl = alloca (l + 2);
+
+    memcpy (bufnl, sha256, l);
+    bufnl[l] = '\n';
+    bufnl[l+1] = '\0';
+
+    if (!glnx_file_replace_contents_at (dfd, name, (guint8*)bufnl, l + 1,
+                                        self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                        cancellable, error))
+      goto out;
+  }
 
   ret = TRUE;
  out:
@@ -593,34 +588,47 @@ _ostree_repo_write_ref (OstreeRepo    *self,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *dir = NULL;
+  glnx_fd_close int dfd = -1;
 
   if (remote == NULL)
-    dir = g_object_ref (self->local_heads_dir);
+    {
+      if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE,
+                           &dfd, error))
+        goto out;
+    }
   else
     {
-      dir = g_file_get_child (self->remote_heads_dir, remote);
-      
+      glnx_fd_close int refs_remotes_dfd = -1;
+
+      if (!glnx_opendirat (self->repo_dir_fd, "refs/remotes", TRUE,
+                           &refs_remotes_dfd, error))
+        goto out;
+
       if (rev != NULL)
         {
-          if (!gs_file_ensure_directory (dir, FALSE, cancellable, error))
+          /* Ensure we have a dir for the remote */
+          if (!glnx_shutil_mkdir_p_at (refs_remotes_dfd, remote, 0777, cancellable, error))
             goto out;
         }
+
+      if (!glnx_opendirat (refs_remotes_dfd, remote, TRUE, &dfd, error))
+        goto out;
     }
 
   if (rev == NULL)
     {
-      gs_unref_object GFile *child = g_file_resolve_relative_path (dir, ref);
-
-      if (g_file_query_exists (child, cancellable))
+      if (unlinkat (dfd, ref, 0) != 0)
         {
-          if (!gs_file_unlink (child, cancellable, error))
-            goto out;
+          if (errno != ENOENT)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
         }
     }
   else
     {
-      if (!write_checksum_file (dir, ref, rev, cancellable, error))
+      if (!write_checksum_file_at (self, dfd, ref, rev, cancellable, error))
         goto out;
     }
 
