@@ -82,7 +82,6 @@ test_metalink_pull_error() {
     if ${CMD_PREFIX} ostree --repo=repo pull origin:main 2>err.txt; then
 	assert_not_reached "pull unexpectedly succeeded"
     fi
-    cat err.txt
     assert_file_has_content err.txt "${msg}"
 }
 
