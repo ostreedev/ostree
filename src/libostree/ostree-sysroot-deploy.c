@@ -1829,8 +1829,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                       cancellable, error))
     goto out;
 
-  if (!_ostree_linuxfs_alter_immutable_flag (new_deployment_path, TRUE,
-                                             cancellable, error))
+  if (!ostree_sysroot_deployment_set_mutable (self, new_deployment, FALSE,
+                                              cancellable, error))
     goto out;
 
   { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
@@ -1921,6 +1921,35 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 
   if (!ostree_sysroot_write_deployments (self, new_deployments,
                                          cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
+ * ostree_sysroot_deployment_set_mutable:
+ * @self: Sysroot
+ * @deployment: A deployment
+ * @mutable: Whether or not deployment's files can be changed
+ * @error: Error
+ *
+ * By default, deployment directories are not mutable.  This function
+ * will allow making them temporarily mutable, for example to allow
+ * layering additional non-OSTree content.
+ */
+gboolean
+ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
+                                       OstreeDeployment  *deployment,
+                                       gboolean           mutable,
+                                       GCancellable      *cancellable,
+                                       GError           **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_object GFile *path = ostree_sysroot_get_deployment_directory (self, deployment);
+
+  if (!_ostree_linuxfs_alter_immutable_flag (path, !mutable, cancellable, error))
     goto out;
 
   ret = TRUE;
