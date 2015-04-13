@@ -106,9 +106,8 @@ write_checksum_file_at (OstreeRepo   *self,
     bufnl[l] = '\n';
     bufnl[l+1] = '\0';
 
-    if (!glnx_file_replace_contents_at (dfd, name, (guint8*)bufnl, l + 1,
-                                        self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                        cancellable, error))
+    if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
+                                             cancellable, error))
       goto out;
   }
 

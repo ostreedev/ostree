@@ -1502,6 +1502,23 @@ ostree_repo_set_disable_fsync (OstreeRepo    *self,
 }
 
 
+/* Replace the contents of a file, honoring the repository's fsync
+ * policy.
+ */ 
+gboolean      
+_ostree_repo_file_replace_contents (OstreeRepo    *self,
+                                    int            dfd,
+                                    const char    *path,
+                                    guint8        *buf,
+                                    gsize          len,
+                                    GCancellable  *cancellable,
+                                    GError       **error)
+{
+  return glnx_file_replace_contents_at (dfd, path, buf, len,
+                                        self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                        cancellable, error);
+}
+
 /**
  * ostree_repo_get_path:
  * @self:

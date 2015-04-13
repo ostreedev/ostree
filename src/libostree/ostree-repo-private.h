@@ -127,6 +127,15 @@ _ostree_repo_update_refs (OstreeRepo        *self,
                           GError           **error);
 
 gboolean      
+_ostree_repo_file_replace_contents (OstreeRepo    *self,
+                                    int            dfd,
+                                    const char    *path,
+                                    guint8        *buf,
+                                    gsize          len,
+                                    GCancellable  *cancellable,
+                                    GError       **error);
+
+gboolean      
 _ostree_repo_write_ref (OstreeRepo    *self,
                         const char    *remote,
                         const char    *ref,
