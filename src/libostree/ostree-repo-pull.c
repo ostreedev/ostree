@@ -962,13 +962,29 @@ scan_commit_object (OtPullData         *pull_data,
 
   if (pull_data->gpg_verify)
     {
-      if (!ostree_repo_verify_commit (pull_data->repo,
-                                      checksum,
-                                      NULL,
-                                      NULL,
-                                      cancellable,
-                                      error))
+      gs_unref_object OstreeGpgVerifyResult *result = NULL;
+
+      result = ostree_repo_verify_commit_ext (pull_data->repo,
+                                              checksum,
+                                              NULL,
+                                              NULL,
+                                              cancellable,
+                                              error);
+
+      if (result == NULL)
         goto out;
+
+      /* Allow callers to output the results immediately. */
+      g_signal_emit_by_name (pull_data->repo,
+                             "gpg-verify-result",
+                             checksum, result);
+
+      if (ostree_gpg_verify_result_count_valid (result) == 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "GPG signatures found, but none are in trusted keyring");
+          goto out;
+        }
     }
 
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
