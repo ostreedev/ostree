@@ -77,6 +77,10 @@
  */
 typedef struct {
   GObjectClass parent_class;
+
+  void (*gpg_verify_result) (OstreeRepo *self,
+                             const char *checksum,
+                             OstreeGpgVerifyResult *result);
 } OstreeRepoClass;
 
 enum {
@@ -84,6 +88,13 @@ enum {
 
   PROP_PATH
 };
+
+enum {
+  GPG_VERIFY_RESULT,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0 };
 
 G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 
@@ -472,6 +483,29 @@ ostree_repo_class_init (OstreeRepoClass *klass)
                                                         "",
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  /**
+   * OstreeRepo::gpg-verify-result:
+   * @self: an #OstreeRepo
+   * @checksum: checksum of the signed object
+   * @result: an #OstreeGpgVerifyResult
+   *
+   * Emitted during a pull operation upon GPG verification (if enabled).
+   * Applications can connect to this signal to output the verification
+   * results if desired.
+   *
+   * The signal will be emitted from whichever #GMainContext is the
+   * thread-default at the point when ostree_repo_pull_with_options()
+   * is called.
+   */
+  signals[GPG_VERIFY_RESULT] = g_signal_new ("gpg-verify-result",
+                                             OSTREE_TYPE_REPO,
+                                             G_SIGNAL_RUN_LAST,
+                                             G_STRUCT_OFFSET (OstreeRepoClass, gpg_verify_result),
+                                             NULL, NULL, NULL,
+                                             G_TYPE_NONE, 2,
+                                             G_TYPE_STRING,
+                                             OSTREE_TYPE_GPG_VERIFY_RESULT);
 }
 
 static void
