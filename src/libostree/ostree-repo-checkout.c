@@ -772,7 +772,6 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
  * @destination_dfd: Directory FD for destination
  * @destination_path: Directory for destination
  * @commit: Checksum for commit
- * @subpath: (allow-none): Subdirectory path
  * @cancellable: Cancellable
  * @error: Error
  *
