@@ -1509,7 +1509,7 @@ gboolean
 _ostree_repo_file_replace_contents (OstreeRepo    *self,
                                     int            dfd,
                                     const char    *path,
-                                    guint8        *buf,
+                                    const guint8   *buf,
                                     gsize          len,
                                     GCancellable  *cancellable,
                                     GError       **error)
