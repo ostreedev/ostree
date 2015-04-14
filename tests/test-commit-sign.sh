@@ -25,7 +25,7 @@ fi
 
 # Skip the test when non-root as gpgme would not read files owned by
 # another user.
-if test "$(id -i)" != "0"; then
+if test "$(id -u)" != "0"; then
     exit 77
 fi
 
