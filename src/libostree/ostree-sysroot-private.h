@@ -43,6 +43,8 @@ struct OstreeSysroot {
 
   /* Only access through ostree_sysroot_get_repo() */
   OstreeRepo *repo;
+
+  gboolean did_relabel_var;
 };
 
 gboolean
