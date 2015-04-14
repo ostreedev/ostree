@@ -385,3 +385,27 @@ ostree_ensure_repo_writable (OstreeRepo *repo,
 
   return ret;
 }
+
+void
+ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
+{
+  GString *buffer;
+  guint n_sigs, ii;
+
+  n_sigs = ostree_gpg_verify_result_count_all (result);
+
+  /* XXX If we ever add internationalization, use ngettext() here. */
+  g_print ("Found %u signature%s:\n", n_sigs, n_sigs == 1 ? "" : "s");
+
+  buffer = g_string_sized_new (256);
+
+  for (ii = 0; ii < n_sigs; ii++)
+    {
+      g_string_append_c (buffer, '\n');
+      ostree_gpg_verify_result_describe (result, ii, buffer, "  ",
+                                         OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+    }
+
+  g_print ("%s", buffer->str);
+  g_string_free (buffer, TRUE);
+}
