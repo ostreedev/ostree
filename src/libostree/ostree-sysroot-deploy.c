@@ -1005,16 +1005,59 @@ checksum_from_kernel_src (GFile        *src,
   return TRUE;
 }
 
-/* FIXME: We should really do individual fdatasync() on files/dirs,
- * since this causes us to block on unrelated I/O.  However, it's just
- * safer for now.
+static gboolean
+syncfs_dir_at (int            dfd,
+               const char    *path,
+               GCancellable  *cancellable,
+               GError       **error)
+{
+  gboolean ret = FALSE;
+  glnx_fd_close int child_dfd = -1;
+
+  if (!glnx_opendirat (dfd, path, TRUE, &child_dfd, error))
+    goto out;
+  if (syncfs (child_dfd) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/* First, sync the root directory as well as /var and /boot which may
+ * be separate mount points.  Then *in addition*, do a global
+ * `sync()`.
  */
 static gboolean
-full_system_sync (GCancellable      *cancellable,
+full_system_sync (OstreeSysroot     *self,
+                  GCancellable      *cancellable,
                   GError           **error)
 {
+  gboolean ret = FALSE;
+
+  if (syncfs (self->sysroot_fd) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
+    goto out;
+
+  /* And now out of an excess of conservativism, we still invoke
+   * sync().  The advantage of still using `syncfs()` above is that we
+   * actually get error codes out of that API, and we more clearly
+   * delineate what we actually want to sync in the future when this
+   * global sync call is removed.
+   */
   sync ();
-  return TRUE;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 static gboolean
@@ -1537,7 +1580,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
   if (!requires_new_bootversion)
     {
-      if (!full_system_sync (cancellable, error))
+      if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
@@ -1629,7 +1672,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
             }
         }
 
-      if (!full_system_sync (cancellable, error))
+      if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
