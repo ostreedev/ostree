@@ -40,6 +40,18 @@ static int opt_depth = 0;
    { NULL }
  };
 
+static void
+gpg_verify_result_cb (OstreeRepo *repo,
+                      const char *checksum,
+                      OstreeGpgVerifyResult *result,
+                      OstreeAsyncProgress *progress)
+{
+  if (progress)
+    ostree_async_progress_finish (progress);
+
+  ostree_print_gpg_verify_result (result);
+}
+
 gboolean
 ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
@@ -51,6 +63,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   GSConsole *console = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
+  gulong signal_handler_id = 0;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");
 
@@ -116,7 +129,11 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
                              g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
-    
+
+    signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
+                                          G_CALLBACK (gpg_verify_result_cb),
+                                          progress);
+   
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
       goto out;
@@ -127,6 +144,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   ret = TRUE;
  out:
+  if (signal_handler_id > 0)
+    g_signal_handler_disconnect (repo, signal_handler_id);
+
   if (console)
     gs_console_end_status_line (console, NULL, NULL);
  

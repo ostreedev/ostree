@@ -59,3 +59,5 @@ gboolean ostree_admin_option_context_parse (GOptionContext *context,
                                             GCancellable *cancellable, GError **error);
 
 gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
+
+void ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result);
