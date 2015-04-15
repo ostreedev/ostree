@@ -44,11 +44,13 @@ static void
 gpg_verify_result_cb (OstreeRepo *repo,
                       const char *checksum,
                       OstreeGpgVerifyResult *result,
-                      OstreeAsyncProgress *progress)
+                      GSConsole *console)
 {
-  if (progress)
-    ostree_async_progress_finish (progress);
+  /* Temporarily place the GSConsole stream (which is just stdout)
+   * back in normal mode before printing GPG verification results. */
+  gs_console_end_status_line (console, NULL, NULL);
 
+  g_print ("\n");
   ostree_print_gpg_verify_result (result);
 }
 
@@ -113,6 +115,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     {
       gs_console_begin_status_line (console, "", NULL, NULL);
       progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
+      signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
+                                            G_CALLBACK (gpg_verify_result_cb),
+                                            console);
     }
 
   {
@@ -129,10 +134,6 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
                              g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
-
-    signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
-                                          G_CALLBACK (gpg_verify_result_cb),
-                                          progress);
    
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
