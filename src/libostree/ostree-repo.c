@@ -492,6 +492,10 @@ ostree_repo_class_init (OstreeRepoClass *klass)
    * Emitted during a pull operation upon GPG verification (if enabled).
    * Applications can connect to this signal to output the verification
    * results if desired.
+   *
+   * The signal will be emitted from whichever #GMainContext is the
+   * thread-default at the point when ostree_repo_pull_with_options()
+   * is called.
    */
   signals[GPG_VERIFY_RESULT] = g_signal_new ("gpg-verify-result",
                                              OSTREE_TYPE_REPO,
