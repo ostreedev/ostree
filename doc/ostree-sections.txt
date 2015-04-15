@@ -231,6 +231,7 @@ OstreeRepoRemoteChange
 ostree_repo_remote_change
 ostree_repo_remote_list
 ostree_repo_remote_get_url
+ostree_repo_remote_get_gpg_verify
 ostree_repo_get_parent
 ostree_repo_write_config
 OstreeRepoTransactionStats
