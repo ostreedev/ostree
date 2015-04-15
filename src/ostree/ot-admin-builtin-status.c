@@ -49,6 +49,37 @@ version_of_commit (OstreeRepo *repo, const char *checksum)
   return NULL;
 }
 
+static gboolean
+deployment_get_gpg_verify (OstreeDeployment *deployment,
+                           OstreeRepo *repo)
+{
+  /* XXX Something like this could be added to the OstreeDeployment
+   *     API in libostree if the OstreeRepo parameter is acceptable. */
+
+  GKeyFile *origin;
+  gs_free char *refspec = NULL;
+  gs_free char *remote = NULL;
+  gboolean gpg_verify = FALSE;
+
+  origin = ostree_deployment_get_origin (deployment);
+
+  if (origin == NULL)
+    goto out;
+
+  refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+
+  if (refspec == NULL)
+    goto out;
+
+  if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
+    goto out;
+
+  (void) ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
+
+out:
+  return gpg_verify;
+}
+
 gboolean
 ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
@@ -112,34 +143,37 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
                 g_print ("    origin refspec: %s\n", origin_refspec);
             }
 
-          /* Print any digital signatures on this commit. */
-
-          result = ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
-                                                  cancellable, &local_error);
-
-          /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+          if (deployment_get_gpg_verify (deployment, repo))
             {
-              g_clear_error (&local_error);
-              continue;
-            }
-          else if (local_error != NULL)
-            {
-              g_propagate_error (error, local_error);
-              goto out;
-            }
+              /* Print any digital signatures on this commit. */
 
-          output_buffer = g_string_sized_new (256);
-          n_signatures = ostree_gpg_verify_result_count_all (result);
+              result = ostree_repo_verify_commit_ext (repo, ref, NULL, NULL,
+                                                      cancellable, &local_error);
 
-          for (jj = 0; jj < n_signatures; jj++)
-            {
-              ostree_gpg_verify_result_describe (result, jj, output_buffer, "    GPG: ",
-                                                 OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+              /* G_IO_ERROR_NOT_FOUND just means the commit is not signed. */
+              if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+                {
+                  g_clear_error (&local_error);
+                  continue;
+                }
+              else if (local_error != NULL)
+                {
+                  g_propagate_error (error, local_error);
+                  goto out;
+                }
+
+              output_buffer = g_string_sized_new (256);
+              n_signatures = ostree_gpg_verify_result_count_all (result);
+
+              for (jj = 0; jj < n_signatures; jj++)
+                {
+                  ostree_gpg_verify_result_describe (result, jj, output_buffer, "    GPG: ",
+                                                     OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT);
+                }
+
+              g_print ("%s", output_buffer->str);
+              g_string_free (output_buffer, TRUE);
             }
-
-          g_print ("%s", output_buffer->str);
-          g_string_free (output_buffer, TRUE);
         }
     }
 
