@@ -1696,9 +1696,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
-      if (!_ostree_repo_get_remote_boolean_option (self,
-                                                   remote_name_or_baseurl, "gpg-verify",
-                                                   TRUE, &pull_data->gpg_verify, error))
+      if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
+                                              &pull_data->gpg_verify, error))
         goto out;
     }
 

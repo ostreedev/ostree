@@ -107,6 +107,11 @@ gboolean      ostree_repo_remote_get_url (OstreeRepo   *self,
                                           char        **out_url,
                                           GError      **error);
 
+gboolean      ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
+                                                 const char  *name,
+                                                 gboolean    *out_gpg_verify,
+                                                 GError     **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,
