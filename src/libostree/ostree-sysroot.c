@@ -197,6 +197,23 @@ ensure_sysroot_fd (OstreeSysroot          *self,
 }
 
 /**
+ * ostree_sysroot_get_fd:
+ * @self: Sysroot
+ *
+ * Access a file descriptor that refers to the root directory of this
+ * sysroot.  ostree_sysroot_load() must have been invoked prior to
+ * calling this function.
+ * 
+ * Returns: A file descriptor valid for the lifetime of @self
+ */
+int
+ostree_sysroot_get_fd (OstreeSysroot *self)
+{
+  g_return_val_if_fail (self->sysroot_fd != -1, -1);
+  return self->sysroot_fd;
+}
+
+/**
  * ostree_sysroot_ensure_initialized:
  * @self: Sysroot
  * @cancellable: Cancellable
