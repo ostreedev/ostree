@@ -64,6 +64,7 @@ ostree_sysroot_finalize (GObject *object)
 
   g_clear_object (&self->path);
   g_clear_object (&self->sepolicy);
+  g_clear_object (&self->repo);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->finalize (object);
 }
@@ -111,8 +112,12 @@ static void
 ostree_sysroot_constructed (GObject *object)
 {
   OstreeSysroot *self = OSTREE_SYSROOT (object);
+  gs_unref_object GFile *repo_path = NULL;
 
   g_assert (self->path != NULL);
+
+  repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
+  self->repo = ostree_repo_new (repo_path);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->constructed (object);
 }
@@ -875,15 +880,15 @@ ostree_sysroot_get_repo (OstreeSysroot         *self,
                          GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object OstreeRepo *ret_repo = NULL;
-  gs_unref_object GFile *repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
 
-  ret_repo = ostree_repo_new (repo_path);
-  if (!ostree_repo_open (ret_repo, cancellable, error))
+  /* ostree_repo_open() is idempotent. */
+  if (!ostree_repo_open (self->repo, cancellable, error))
     goto out;
-    
+
+  if (out_repo != NULL)
+    *out_repo = g_object_ref (self->repo);
+
   ret = TRUE;
-  ot_transfer_out_value (out_repo, &ret_repo);
  out:
   return ret;
 }
