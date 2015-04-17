@@ -39,6 +39,8 @@ OstreeSysroot* ostree_sysroot_new_default (void);
 
 GFile *ostree_sysroot_get_path (OstreeSysroot *self);
 
+int ostree_sysroot_get_fd (OstreeSysroot *self);
+
 gboolean ostree_sysroot_load (OstreeSysroot  *self,
                               GCancellable   *cancellable,
                               GError        **error);
