@@ -173,7 +173,7 @@ ensure_unlinked_at (int dfd,
 {
   if (unlinkat (dfd, path, 0) != 0)
     {
-      if (G_UNLIKELY (error != ENOENT))
+      if (G_UNLIKELY (errno != ENOENT))
         {
           glnx_set_error_from_errno (error);
           return FALSE;
