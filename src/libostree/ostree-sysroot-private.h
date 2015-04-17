@@ -40,6 +40,9 @@ struct OstreeSysroot {
   int bootversion;
   int subbootversion;
   OstreeDeployment *booted_deployment;
+
+  /* Only access through ostree_sysroot_get_repo() */
+  OstreeRepo *repo;
 };
 
 gboolean
