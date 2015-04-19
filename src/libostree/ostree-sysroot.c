@@ -66,6 +66,8 @@ ostree_sysroot_finalize (GObject *object)
   g_clear_object (&self->sepolicy);
   g_clear_object (&self->repo);
 
+  (void) close (self->sysroot_fd);
+
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->finalize (object);
 }
 
