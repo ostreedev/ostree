@@ -79,11 +79,11 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
 }
 
 static gboolean
-copy_dir_recurse_fsync (int              src_parent_dfd,
-                        int              dest_parent_dfd,
-                        const char      *name,
-                        GCancellable    *cancellable,
-                        GError         **error)
+copy_dir_recurse (int              src_parent_dfd,
+                  int              dest_parent_dfd,
+                  const char      *name,
+                  GCancellable    *cancellable,
+                  GError         **error)
 {
   gboolean ret = FALSE;
   int src_dfd = -1;
@@ -133,24 +133,17 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
-          if (!copy_dir_recurse_fsync (src_dfd, dest_dfd, name,
-                                       cancellable, error))
+          if (!copy_dir_recurse (src_dfd, dest_dfd, name,
+                                 cancellable, error))
             goto out;
         }
       else
         {
           if (!glnx_file_copy_at (src_dfd, name, &child_stbuf, dest_dfd, name,
-                                  GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                                  GLNX_FILE_COPY_OVERWRITE,
                                   cancellable, error))
             goto out;
         }
-    }
-
-  /* And finally, fsync the fd */
-  if (fsync (dest_dfd) != 0)
-    {
-      gs_set_error_from_errno (error, errno);
-      goto out;
     }
 
   ret = TRUE;
@@ -330,15 +323,15 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
-      if (!copy_dir_recurse_fsync (modified_etc_fd, new_etc_fd, path,
-                                   cancellable, error))
+      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path,
+                             cancellable, error))
         goto out;
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
     {
       if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf, 
                               new_etc_fd, path,
-                              GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                              GLNX_FILE_COPY_OVERWRITE,
                               cancellable, error))
         goto out;
     }
@@ -347,12 +340,6 @@ copy_modified_config_file (int                 orig_etc_fd,
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Unsupported non-regular/non-symlink file in /etc '%s'",
                    path);
-      goto out;
-    }
-
-  if (fsync (dest_parent_dfd) != 0)
-    {
-      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
