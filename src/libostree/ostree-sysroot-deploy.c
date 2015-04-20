@@ -467,45 +467,39 @@ merge_etc_changes (GFile          *orig_etc,
 static gboolean
 checkout_deployment_tree (OstreeSysroot     *sysroot,
                           OstreeRepo        *repo,
-                          OstreeDeployment      *deployment,
-                          GFile            **out_deployment_path,
+                          OstreeDeployment  *deployment,
+                          int               *out_deployment_dfd,
                           GCancellable      *cancellable,
                           GError           **error)
 {
   gboolean ret = FALSE;
+  OstreeRepoCheckoutOptions checkout_opts = { 0, };
   const char *csum = ostree_deployment_get_csum (deployment);
-  gs_unref_object GFile *root = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
   gs_free char *checkout_target_name = NULL;
-  gs_unref_object GFile *osdeploy_path = NULL;
-  gs_unref_object GFile *deploy_target_path = NULL;
-  gs_unref_object GFile *deploy_parent = NULL;
+  g_autofree char *osdeploy_path = NULL;
+  gs_unref_object GFile *ret_deploy_target_path = NULL;
+  glnx_fd_close int osdeploy_dfd = -1;
+  int ret_fd;
 
-  if (!ostree_repo_read_commit (repo, csum, &root, NULL, cancellable, error))
-    goto out;
-
-  file_info = g_file_query_info (root, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
-  if (!file_info)
-    goto out;
-
-  osdeploy_path = ot_gfile_get_child_build_path (sysroot->path, "ostree", "deploy",
-                                                 ostree_deployment_get_osname (deployment),
-                                                 "deploy", NULL);
+  osdeploy_path = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
   checkout_target_name = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
-  deploy_target_path = g_file_get_child (osdeploy_path, checkout_target_name);
 
-  deploy_parent = g_file_get_parent (deploy_target_path);
-  if (!ot_util_ensure_directory_and_fsync (deploy_parent, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->sysroot_fd, osdeploy_path, 0775, cancellable, error))
+    goto out;
+
+  if (!glnx_opendirat (sysroot->sysroot_fd, osdeploy_path, TRUE, &osdeploy_dfd, error))
+    goto out;
+
+  if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
+                                     checkout_target_name, csum,
+                                     cancellable, error))
+    goto out;
+
+  if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
     goto out;
   
-  if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, OSTREE_REPO_FILE (root),
-                                  file_info, cancellable, error))
-    goto out;
-
   ret = TRUE;
-  ot_transfer_out_value (out_deployment_path, &deploy_target_path);
+  *out_deployment_dfd = ret_fd;
  out:
   return ret;
 }
@@ -734,12 +728,14 @@ static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
                      OstreeDeployment      *previous_deployment,
                      OstreeDeployment      *deployment,
-                     GFile                 *deployment_path,
+                     int                    deployment_dfd,
                      OstreeSePolicy       **out_sepolicy,
                      GCancellable          *cancellable,
                      GError               **error)
 {
   gboolean ret = FALSE;
+  g_autofree char *deployment_abspath = glnx_fdrel_abspath (deployment_dfd, ".");
+  gs_unref_object GFile *deployment_path = g_file_new_for_path (deployment_abspath);
   gs_unref_object GFile *source_etc_path = NULL;
   gs_unref_object GFile *source_etc_pristine_path = NULL;
   gs_unref_object GFile *deployment_usretc_path = NULL;
@@ -1777,7 +1773,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
-  gs_unref_object GFile *new_deployment_path = NULL;
+  glnx_fd_close int deployment_dfd = -1;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_free char *new_bootcsum = NULL;
   gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
@@ -1830,7 +1826,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
-  if (!checkout_deployment_tree (self, repo, new_deployment, &new_deployment_path,
+  if (!checkout_deployment_tree (self, repo, new_deployment, &deployment_dfd,
                                  cancellable, error))
     {
       g_prefix_error (error, "Checking out tree: ");
@@ -1844,7 +1840,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
   if (!merge_configuration (self, merge_deployment, new_deployment,
-                            new_deployment_path,
+                            deployment_dfd,
                             &sepolicy,
                             cancellable, error))
     {
