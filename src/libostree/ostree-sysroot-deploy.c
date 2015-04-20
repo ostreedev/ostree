@@ -874,114 +874,110 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
 }
 
 static gboolean
-get_kernel_from_tree (GFile         *deployroot,
-                      GFile        **out_kernel,
-                      GFile        **out_initramfs,
-                      GCancellable  *cancellable,
-                      GError       **error)
+get_kernel_from_tree (int             deployment_dfd,
+                      int            *out_boot_dfd,
+                      char          **out_kernel_name,
+                      char          **out_initramfs_name,
+                      GCancellable   *cancellable,
+                      GError        **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) ostree_bootdir
-    = g_file_resolve_relative_path (deployroot, "usr/lib/ostree-boot");
-  g_autoptr(GFile) bootdir = g_file_get_child (deployroot, "boot");
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
-  g_autoptr(GFile) ret_kernel = NULL;
-  g_autoptr(GFile) ret_initramfs = NULL;
-  g_autofree char *kernel_checksum = NULL;
-  g_autofree char *initramfs_checksum = NULL;
+  glnx_fd_close int ret_boot_dfd = -1;
+  g_auto(GLnxDirFdIterator) dfditer = { 0, };
+  g_autofree char *ret_kernel_name = NULL;
+  g_autofree char *ret_initramfs_name = NULL;
+  gs_free char *kernel_checksum = NULL;
+  gs_free char *initramfs_checksum = NULL;
 
-  if (g_file_query_exists (ostree_bootdir, NULL))
+  ret_boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot", TRUE);
+  if (ret_boot_dfd == -1)
     {
-      dir_enum = g_file_enumerate_children (ostree_bootdir, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            NULL, error);
-      if (!dir_enum)
-        goto out;
+      if (errno != ENOENT)
+        {
+          glnx_set_prefix_error_from_errno (error, "%s", "openat");
+          goto out;
+        }
+      else
+        {
+          if (!glnx_opendirat (deployment_dfd, "boot", TRUE, &ret_boot_dfd, error))
+            goto out;
+        }
     }
-  else
-    {
-      dir_enum = g_file_enumerate_children (bootdir, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            NULL, error);
-      if (!dir_enum)
-        goto out;
-    }
+
+  if (!glnx_dirfd_iterator_init_at (ret_boot_dfd, ".", FALSE, &dfditer, error))
+    goto out;
 
   while (TRUE)
     {
-      GFileInfo *file_info = NULL;
-      const char *name;
+      struct dirent *dent;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, NULL,
-                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
         goto out;
-      if (file_info == NULL)
+          
+      if (dent == NULL)
         break;
 
-      name = g_file_info_get_name (file_info);
-      
-      if (ret_kernel == NULL && g_str_has_prefix (name, "vmlinuz-"))
+      if (ret_kernel_name == NULL && g_str_has_prefix (dent->d_name, "vmlinuz-"))
         {
-          const char *dash = strrchr (name, '-');
+          const char *dash = strrchr (dent->d_name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               kernel_checksum = g_strdup (dash + 1);
-              ret_kernel = g_file_enumerator_get_child (dir_enum, file_info);
+              ret_kernel_name = g_strdup (dent->d_name);
             }
         }
-      else if (ret_initramfs == NULL && g_str_has_prefix (name, "initramfs-"))
+      else if (ret_initramfs_name == NULL && g_str_has_prefix (dent->d_name, "initramfs-"))
         {
-          const char *dash = strrchr (name, '-');
+          const char *dash = strrchr (dent->d_name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               initramfs_checksum = g_strdup (dash + 1);
-              ret_initramfs = g_file_enumerator_get_child (dir_enum, file_info);
+              ret_initramfs_name = g_strdup (dent->d_name);
             }
         }
       
-      if (ret_kernel && ret_initramfs)
+      if (ret_kernel_name != NULL && ret_initramfs_name != NULL)
         break;
     }
 
-  if (ret_kernel == NULL)
+  if (ret_kernel_name == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find boot/vmlinuz-<CHECKSUM> in %s",
-                   gs_file_get_path_cached (deployroot));
+                   "Failed to find boot/vmlinuz-<CHECKSUM> in tree");
       goto out;
     }
 
-  if (ret_initramfs != NULL)
+  if (ret_initramfs_name != NULL)
     {
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Mismatched kernel %s checksum vs initrd %s",
-                       gs_file_get_basename_cached (ret_initramfs),
-                       gs_file_get_basename_cached (ret_initramfs));
+                       "Mismatched kernel checksum vs initrd in tree");
           goto out;
         }
     }
 
-  ot_transfer_out_value (out_kernel, &ret_kernel);
-  ot_transfer_out_value (out_initramfs, &ret_initramfs);
+  *out_boot_dfd = ret_boot_dfd;
+  ret_boot_dfd = -1;
+  *out_kernel_name = g_steal_pointer (&ret_kernel_name);
+  *out_initramfs_name = g_steal_pointer (&ret_initramfs_name);
   ret = TRUE;
  out:
   return ret;
 }
 
 static gboolean
-checksum_from_kernel_src (GFile        *src,
+checksum_from_kernel_src (const char   *name,
                           char        **out_checksum,
                           GError     **error)
 {
-  const char *last_dash = strrchr (gs_file_get_path_cached (src), '-');
+  const char *last_dash = strrchr (name, '-');
   if (!last_dash)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Malformed initramfs name '%s', missing '-'", gs_file_get_basename_cached (src));
+                   "Malformed kernel/initramfs name '%s', missing '-'", name);
       return FALSE;
     }
   *out_checksum = g_strdup (last_dash + 1);
@@ -1174,16 +1170,18 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   g_autoptr(GFile) bootdir = NULL;
-  g_autoptr(GFile) bootcsumdir = NULL;
-  g_autoptr(GFile) bootconfpath = NULL;
-  g_autoptr(GFile) bootconfpath_parent = NULL;
+  g_autofree char *bootcsumdir = NULL;
+  g_autofree char *bootconfdir = NULL;
+  g_autofree char *bootconf_name = NULL;
   g_autofree char *dest_kernel_name = NULL;
-  g_autoptr(GFile) dest_kernel_path = NULL;
-  g_autoptr(GFile) dest_initramfs_path = NULL;
-  g_autoptr(GFile) tree_kernel_path = NULL;
-  g_autoptr(GFile) tree_initramfs_path = NULL;
-  g_autoptr(GFile) deployment_dir = NULL;
+  g_autofree char *dest_initramfs_name = NULL;
+  g_autofree char *tree_kernel_name = NULL;
+  g_autofree char *tree_initramfs_name = NULL;
+  g_autofree char *deployment_dirpath = NULL;
   glnx_fd_close int deployment_dfd = -1;
+  glnx_fd_close int tree_boot_dfd = -1;
+  glnx_fd_close int boot_dfd = -1;
+  glnx_fd_close int bootcsum_dfd = -1;
   g_autofree char *contents = NULL;
   g_autofree char *deployment_version = NULL;
   g_autoptr(GHashTable) osrelease_values = NULL;
@@ -1200,50 +1198,62 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   OstreeBootconfigParser *bootconfig;
 
   bootconfig = ostree_deployment_get_bootconfig (deployment);
-  deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
+  deployment_dirpath = ostree_sysroot_get_deployment_dirpath (sysroot, deployment);
 
-  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (deployment_dir), FALSE,
+  if (!glnx_opendirat (sysroot->sysroot_fd, deployment_dirpath, FALSE,
                        &deployment_dfd, error))
     goto out;
 
-  if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
+  if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
+                             &tree_kernel_name, &tree_initramfs_name,
                              cancellable, error))
     goto out;
 
-  bootdir = g_file_get_child (ostree_sysroot_get_path (sysroot), "boot");
-  bootcsumdir = ot_gfile_resolve_path_printf (bootdir, "ostree/%s-%s",
-                                              osname,
-                                              bootcsum);
-  bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%d.conf",
-                                               new_bootversion, osname, 
-                                               ostree_deployment_get_index (deployment));
-
-  if (!ot_util_ensure_directory_and_fsync (bootcsumdir, cancellable, error))
-    goto out;
-  bootconfpath_parent = g_file_get_parent (bootconfpath);
-  if (!ot_util_ensure_directory_and_fsync (bootconfpath_parent, cancellable, error))
+  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     goto out;
 
-  dest_kernel_name = remove_checksum_from_kernel_name (gs_file_get_basename_cached (tree_kernel_path),
-                                                       bootcsum);
-  dest_kernel_path = g_file_get_child (bootcsumdir, dest_kernel_name);
-  if (!g_file_query_exists (dest_kernel_path, NULL))
+  bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
+  bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
+  bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname, 
+                                   ostree_deployment_get_index (deployment));
+
+  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootcsumdir, 0775, cancellable, error))
+    goto out;
+  if (!glnx_opendirat (boot_dfd, bootcsumdir, TRUE, &bootcsum_dfd, error))
+    goto out;
+
+  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
+    goto out;
+
+  dest_kernel_name = remove_checksum_from_kernel_name (tree_kernel_name, bootcsum);
+
+  if (fstatat (bootcsum_dfd, dest_kernel_name, &stbuf, 0) != 0)
     {
-      if (!gs_file_linkcopy_sync_data (tree_kernel_path, dest_kernel_path, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
-                                       cancellable, error))
+      if (errno != ENOENT)
+        {
+          glnx_set_prefix_error_from_errno (error, "fstat %s", dest_kernel_name);
+          goto out;
+        }
+      if (!glnx_file_copy_at (tree_boot_dfd, tree_kernel_name, NULL,
+                              bootcsum_dfd, dest_kernel_name, 0,
+                              cancellable, error))
         goto out;
     }
 
-  if (tree_initramfs_path)
+  if (tree_initramfs_name)
     {
-      g_autofree char *dest_initramfs_name = remove_checksum_from_kernel_name (gs_file_get_basename_cached (tree_initramfs_path),
-                                                                       bootcsum);
-      dest_initramfs_path = g_file_get_child (bootcsumdir, dest_initramfs_name);
+      dest_initramfs_name = remove_checksum_from_kernel_name (tree_initramfs_name, bootcsum);
 
-      if (!g_file_query_exists (dest_initramfs_path, NULL))
+      if (fstatat (bootcsum_dfd, dest_initramfs_name, &stbuf, 0) != 0)
         {
-          if (!gs_file_linkcopy_sync_data (tree_initramfs_path, dest_initramfs_path, G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
-                                           cancellable, error))
+          if (errno != ENOENT)
+            {
+              glnx_set_prefix_error_from_errno (error, "fstat %s", dest_initramfs_name);
+              goto out;
+            }
+          if (!glnx_file_copy_at (tree_boot_dfd, tree_initramfs_name, NULL,
+                                  bootcsum_dfd, dest_initramfs_name, 0,
+                                  cancellable, error))
             goto out;
         }
     }
@@ -1335,15 +1345,14 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   version_key = g_strdup_printf ("%d", n_deployments - ostree_deployment_get_index (deployment));
   ostree_bootconfig_parser_set (bootconfig, "version", version_key);
 
-  linux_relpath = g_file_get_relative_path (bootdir, dest_kernel_path);
-  linux_key = g_strconcat ("/", linux_relpath, NULL);
-  ostree_bootconfig_parser_set (bootconfig, "linux", linux_key);
+  { g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_kernel_name, NULL);
+    ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
+  }
 
-  if (dest_initramfs_path)
+  if (dest_initramfs_name)
     {
-      initramfs_relpath = g_file_get_relative_path (bootdir, dest_initramfs_path);
-      initrd_key = g_strconcat ("/", initramfs_relpath, NULL);
-      ostree_bootconfig_parser_set (bootconfig, "initrd", initrd_key);
+      g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_initramfs_name, NULL);
+      ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
     }
 
   val = ostree_bootconfig_parser_get (bootconfig, "options");
@@ -1357,15 +1366,16 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
   
-  if (!ostree_bootconfig_parser_write (ostree_deployment_get_bootconfig (deployment), bootconfpath,
-                               cancellable, error))
+  { glnx_fd_close int bootconf_dfd = -1;
+
+    if (!glnx_opendirat (boot_dfd, bootconfdir, TRUE, &bootconf_dfd, error))
       goto out;
 
-  /* Now sync out parent directories */
-  if (!ot_util_fsync_directory (bootcsumdir, cancellable, error))
-    goto out;
-  if (!ot_util_fsync_directory (bootconfpath_parent, cancellable, error))
-    goto out;
+    if (!ostree_bootconfig_parser_write_at (ostree_deployment_get_bootconfig (deployment),
+                                            bootconf_dfd, bootconf_name,
+                                            cancellable, error))
+      goto out;
+  }
 
   ret = TRUE;
  out:
@@ -1770,8 +1780,9 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autoptr(GFile) osdeploydir = NULL;
   g_autoptr(GFile) deployment_var = NULL;
-  g_autoptr(GFile) tree_kernel_path = NULL;
-  g_autoptr(GFile) tree_initramfs_path = NULL;
+  glnx_fd_close int tree_boot_dfd = -1;
+  g_autofree char *tree_kernel_path = NULL;
+  g_autofree char *tree_initramfs_path = NULL;
   glnx_fd_close int deployment_dfd = -1;
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   g_autofree char *new_bootcsum = NULL;
@@ -1814,9 +1825,8 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       goto out;
     }
 
-  deployment_dir = ostree_sysroot_get_deployment_directory (self, new_deployment);
-
-  if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
+  if (!get_kernel_from_tree (deployment_dfd, &tree_boot_dfd,
+                             &tree_kernel_path, &tree_initramfs_path,
                              cancellable, error))
     goto out;
   
