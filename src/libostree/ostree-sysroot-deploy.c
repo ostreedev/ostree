@@ -79,11 +79,11 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
 }
 
 static gboolean
-copy_dir_recurse_fsync (int              src_parent_dfd,
-                        int              dest_parent_dfd,
-                        const char      *name,
-                        GCancellable    *cancellable,
-                        GError         **error)
+copy_dir_recurse (int              src_parent_dfd,
+                  int              dest_parent_dfd,
+                  const char      *name,
+                  GCancellable    *cancellable,
+                  GError         **error)
 {
   gboolean ret = FALSE;
   int src_dfd = -1;
@@ -133,24 +133,17 @@ copy_dir_recurse_fsync (int              src_parent_dfd,
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
-          if (!copy_dir_recurse_fsync (src_dfd, dest_dfd, name,
-                                       cancellable, error))
+          if (!copy_dir_recurse (src_dfd, dest_dfd, name,
+                                 cancellable, error))
             goto out;
         }
       else
         {
           if (!glnx_file_copy_at (src_dfd, name, &child_stbuf, dest_dfd, name,
-                                  GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                                  GLNX_FILE_COPY_OVERWRITE,
                                   cancellable, error))
             goto out;
         }
-    }
-
-  /* And finally, fsync the fd */
-  if (fsync (dest_dfd) != 0)
-    {
-      gs_set_error_from_errno (error, errno);
-      goto out;
     }
 
   ret = TRUE;
@@ -330,15 +323,15 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (S_ISDIR (modified_stbuf.st_mode))
     {
-      if (!copy_dir_recurse_fsync (modified_etc_fd, new_etc_fd, path,
-                                   cancellable, error))
+      if (!copy_dir_recurse (modified_etc_fd, new_etc_fd, path,
+                             cancellable, error))
         goto out;
     }
   else if (S_ISLNK (modified_stbuf.st_mode) || S_ISREG (modified_stbuf.st_mode))
     {
       if (!glnx_file_copy_at (modified_etc_fd, path, &modified_stbuf, 
                               new_etc_fd, path,
-                              GLNX_FILE_COPY_OVERWRITE | GLNX_FILE_COPY_DATASYNC,
+                              GLNX_FILE_COPY_OVERWRITE,
                               cancellable, error))
         goto out;
     }
@@ -347,12 +340,6 @@ copy_modified_config_file (int                 orig_etc_fd,
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Unsupported non-regular/non-symlink file in /etc '%s'",
                    path);
-      goto out;
-    }
-
-  if (fsync (dest_parent_dfd) != 0)
-    {
-      gs_set_error_from_errno (error, errno);
       goto out;
     }
 
@@ -480,45 +467,39 @@ merge_etc_changes (GFile          *orig_etc,
 static gboolean
 checkout_deployment_tree (OstreeSysroot     *sysroot,
                           OstreeRepo        *repo,
-                          OstreeDeployment      *deployment,
-                          GFile            **out_deployment_path,
+                          OstreeDeployment  *deployment,
+                          int               *out_deployment_dfd,
                           GCancellable      *cancellable,
                           GError           **error)
 {
   gboolean ret = FALSE;
+  OstreeRepoCheckoutOptions checkout_opts = { 0, };
   const char *csum = ostree_deployment_get_csum (deployment);
-  gs_unref_object GFile *root = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
   gs_free char *checkout_target_name = NULL;
-  gs_unref_object GFile *osdeploy_path = NULL;
-  gs_unref_object GFile *deploy_target_path = NULL;
-  gs_unref_object GFile *deploy_parent = NULL;
+  g_autofree char *osdeploy_path = NULL;
+  gs_unref_object GFile *ret_deploy_target_path = NULL;
+  glnx_fd_close int osdeploy_dfd = -1;
+  int ret_fd;
 
-  if (!ostree_repo_read_commit (repo, csum, &root, NULL, cancellable, error))
-    goto out;
-
-  file_info = g_file_query_info (root, OSTREE_GIO_FAST_QUERYINFO,
-                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                 cancellable, error);
-  if (!file_info)
-    goto out;
-
-  osdeploy_path = ot_gfile_get_child_build_path (sysroot->path, "ostree", "deploy",
-                                                 ostree_deployment_get_osname (deployment),
-                                                 "deploy", NULL);
+  osdeploy_path = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
   checkout_target_name = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
-  deploy_target_path = g_file_get_child (osdeploy_path, checkout_target_name);
 
-  deploy_parent = g_file_get_parent (deploy_target_path);
-  if (!ot_util_ensure_directory_and_fsync (deploy_parent, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (sysroot->sysroot_fd, osdeploy_path, 0775, cancellable, error))
+    goto out;
+
+  if (!glnx_opendirat (sysroot->sysroot_fd, osdeploy_path, TRUE, &osdeploy_dfd, error))
+    goto out;
+
+  if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
+                                     checkout_target_name, csum,
+                                     cancellable, error))
+    goto out;
+
+  if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
     goto out;
   
-  if (!ostree_repo_checkout_tree (repo, 0, 0, deploy_target_path, OSTREE_REPO_FILE (root),
-                                  file_info, cancellable, error))
-    goto out;
-
   ret = TRUE;
-  ot_transfer_out_value (out_deployment_path, &deploy_target_path);
+  *out_deployment_dfd = ret_fd;
  out:
   return ret;
 }
@@ -747,12 +728,14 @@ static gboolean
 merge_configuration (OstreeSysroot         *sysroot,
                      OstreeDeployment      *previous_deployment,
                      OstreeDeployment      *deployment,
-                     GFile                 *deployment_path,
+                     int                    deployment_dfd,
                      OstreeSePolicy       **out_sepolicy,
                      GCancellable          *cancellable,
                      GError               **error)
 {
   gboolean ret = FALSE;
+  g_autofree char *deployment_abspath = glnx_fdrel_abspath (deployment_dfd, ".");
+  gs_unref_object GFile *deployment_path = g_file_new_for_path (deployment_abspath);
   gs_unref_object GFile *source_etc_path = NULL;
   gs_unref_object GFile *source_etc_pristine_path = NULL;
   gs_unref_object GFile *deployment_usretc_path = NULL;
@@ -891,99 +874,106 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
 }
 
 static gboolean
-get_kernel_from_tree (GFile         *deployroot,
-                      GFile        **out_kernel,
-                      GFile        **out_initramfs,
-                      GCancellable  *cancellable,
-                      GError       **error)
+get_kernel_from_tree (int             deployment_dfd,
+                      int            *out_kernel_fd,
+                      int            *out_initramfs_fd,
+                      GCancellable   *cancellable,
+                      GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ostree_bootdir
-    = g_file_resolve_relative_path (deployroot, "usr/lib/ostree-boot");
-  gs_unref_object GFile *bootdir = g_file_get_child (deployroot, "boot");
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *ret_kernel = NULL;
-  gs_unref_object GFile *ret_initramfs = NULL;
+  struct stat stbuf;
+  glnx_fd_close int boot_dfd = -1;
+  g_auto(GLnxDirFdIterator) dfditer = { 0, };
+  glnx_fd_close int ret_kernel_fd = -1;
+  glnx_fd_close int ret_initramfs_fd = -1;
   gs_free char *kernel_checksum = NULL;
   gs_free char *initramfs_checksum = NULL;
 
-  if (g_file_query_exists (ostree_bootdir, NULL))
+  boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot");
+  if (boot_dfd == -1)
     {
-      dir_enum = g_file_enumerate_children (ostree_bootdir, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            NULL, error);
-      if (!dir_enum)
-        goto out;
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+      else
+        {
+          if (!glnx_opendirat (deployment_dfd, "boot", TRUE, &boot_dfd, error))
+            goto out;
+        }
     }
-  else
-    {
-      dir_enum = g_file_enumerate_children (bootdir, OSTREE_GIO_FAST_QUERYINFO,
-                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                            NULL, error);
-      if (!dir_enum)
-        goto out;
-    }
+
+  if (!glnx_dirfd_iterator_init_take_fd (boot_dfd, &dfditer, error))
+    goto out;
+  boot_dfd = -1; /* Transfer ownership */
 
   while (TRUE)
     {
-      GFileInfo *file_info = NULL;
-      const char *name;
+      struct dirent *dent;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, NULL,
-                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent (&dfditer, &dent, cancellable, error))
         goto out;
-      if (file_info == NULL)
+          
+      if (dent == NULL)
         break;
 
-      name = g_file_info_get_name (file_info);
-      
-      if (ret_kernel == NULL && g_str_has_prefix (name, "vmlinuz-"))
+      if (ret_kernel_fd == -1 && g_str_has_prefix (dent->d_name, "vmlinuz-"))
         {
-          const char *dash = strrchr (name, '-');
+          const char *dash = strrchr (dent->d_name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               kernel_checksum = g_strdup (dash + 1);
-              ret_kernel = g_file_enumerator_get_child (dir_enum, file_info);
+              ret_kernel_fd = openat (dfditer.fd, dent->d_name, O_RDONLY);
+              if (ret_kernel_fd == -1)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
             }
         }
-      else if (ret_initramfs == NULL && g_str_has_prefix (name, "initramfs-"))
+      else if (ret_initramfs_fd == -1 && g_str_has_prefix (name, "initramfs-"))
         {
-          const char *dash = strrchr (name, '-');
+          const char *dash = strrchr (dent->d_name, '-');
           g_assert (dash);
           if (ostree_validate_structureof_checksum_string (dash + 1, NULL))
             {
               initramfs_checksum = g_strdup (dash + 1);
-              ret_initramfs = g_file_enumerator_get_child (dir_enum, file_info);
+              ret_initramfs_fd = openat (dfditer.fd, dent->d_name, O_RDONLY);
+              if (ret_initramfs_fd == -1)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
             }
         }
       
-      if (ret_kernel && ret_initramfs)
+      if (ret_kernel_fd != -1 && ret_initramfs_fd != -1)
         break;
     }
 
-  if (ret_kernel == NULL)
+  if (ret_kernel_fd == -1)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "Failed to find boot/vmlinuz-<CHECKSUM> in %s",
-                   gs_file_get_path_cached (deployroot));
+                   "Failed to find boot/vmlinuz-<CHECKSUM> in tree");
       goto out;
     }
 
-  if (ret_initramfs != NULL)
+  if (ret_initramfs_fd != -1)
     {
       if (strcmp (kernel_checksum, initramfs_checksum) != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "Mismatched kernel %s checksum vs initrd %s",
-                       gs_file_get_basename_cached (ret_initramfs),
-                       gs_file_get_basename_cached (ret_initramfs));
+                       "Mismatched kernel checksum vs initrd in tree");
           goto out;
         }
     }
 
-  ot_transfer_out_value (out_kernel, &ret_kernel);
-  ot_transfer_out_value (out_initramfs, &ret_initramfs);
+  *out_kernel_fd = ret_kernel_fd;
+  ret_kernel_fd = -1;
+  *out_initramfs_fd = ret_initramfs_fd;
+  ret_initramfs_fd = -1;
   ret = TRUE;
  out:
   return ret;
@@ -1005,16 +995,59 @@ checksum_from_kernel_src (GFile        *src,
   return TRUE;
 }
 
-/* FIXME: We should really do individual fdatasync() on files/dirs,
- * since this causes us to block on unrelated I/O.  However, it's just
- * safer for now.
+static gboolean
+syncfs_dir_at (int            dfd,
+               const char    *path,
+               GCancellable  *cancellable,
+               GError       **error)
+{
+  gboolean ret = FALSE;
+  glnx_fd_close int child_dfd = -1;
+
+  if (!glnx_opendirat (dfd, path, TRUE, &child_dfd, error))
+    goto out;
+  if (syncfs (child_dfd) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/* First, sync the root directory as well as /var and /boot which may
+ * be separate mount points.  Then *in addition*, do a global
+ * `sync()`.
  */
 static gboolean
-full_system_sync (GCancellable      *cancellable,
+full_system_sync (OstreeSysroot     *self,
+                  GCancellable      *cancellable,
                   GError           **error)
 {
+  gboolean ret = FALSE;
+
+  if (syncfs (self->sysroot_fd) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!syncfs_dir_at (self->sysroot_fd, "boot", cancellable, error))
+    goto out;
+
+  /* And now out of an excess of conservativism, we still invoke
+   * sync().  The advantage of still using `syncfs()` above is that we
+   * actually get error codes out of that API, and we more clearly
+   * delineate what we actually want to sync in the future when this
+   * global sync call is removed.
+   */
   sync ();
-  return TRUE;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 static gboolean
@@ -1148,16 +1181,18 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
   gs_unref_object GFile *bootdir = NULL;
-  gs_unref_object GFile *bootcsumdir = NULL;
-  gs_unref_object GFile *bootconfpath = NULL;
+  g_autofree char *bootcsumdir = NULL;
+  g_autofree char *bootconfdir = NULL;
+  g_autofree char *bootconf_name = NULL;
   gs_unref_object GFile *bootconfpath_parent = NULL;
   gs_free char *dest_kernel_name = NULL;
   gs_unref_object GFile *dest_kernel_path = NULL;
   gs_unref_object GFile *dest_initramfs_path = NULL;
-  gs_unref_object GFile *tree_kernel_path = NULL;
-  gs_unref_object GFile *tree_initramfs_path = NULL;
-  gs_unref_object GFile *deployment_dir = NULL;
+  g_autofree char *tree_kernel_path = NULL;
+  g_autofree char *tree_initramfs_path = NULL;
+  g_autofree char *deployment_dirpath = NULL;
   glnx_fd_close int deployment_dfd = -1;
+  glnx_fd_close int boot_dfd = -1;
   gs_free char *contents = NULL;
   gs_free char *deployment_version = NULL;
   gs_unref_hashtable GHashTable *osrelease_values = NULL;
@@ -1174,28 +1209,29 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   OstreeBootconfigParser *bootconfig;
 
   bootconfig = ostree_deployment_get_bootconfig (deployment);
-  deployment_dir = ostree_sysroot_get_deployment_directory (sysroot, deployment);
+  deployment_dirpath = ostree_sysroot_get_deployment_dirpath (sysroot, deployment);
 
   if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (deployment_dir), FALSE,
                        &deployment_dfd, error))
     goto out;
 
-  if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
+  if (!get_kernel_from_tree (deployment_dfd,
+                             &kernel_fd, &initramfs_fd,
                              cancellable, error))
     goto out;
 
-  bootdir = g_file_get_child (ostree_sysroot_get_path (sysroot), "boot");
-  bootcsumdir = ot_gfile_resolve_path_printf (bootdir, "ostree/%s-%s",
-                                              osname,
-                                              bootcsum);
-  bootconfpath = ot_gfile_resolve_path_printf (bootdir, "loader.%d/entries/ostree-%s-%d.conf",
-                                               new_bootversion, osname, 
-                                               ostree_deployment_get_index (deployment));
-
-  if (!ot_util_ensure_directory_and_fsync (bootcsumdir, cancellable, error))
+  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     goto out;
-  bootconfpath_parent = g_file_get_parent (bootconfpath);
-  if (!ot_util_ensure_directory_and_fsync (bootconfpath_parent, cancellable, error))
+
+  bootcsumdir = g_strdup_printf ("ostree/%s-%s", osname, bootcsum);
+  bootconfdir = g_strdup_printf ("loader.%d/entries", new_bootversion);
+  bootconf_name = g_strdup_printf ("ostree-%s-%d.conf", osname, 
+                                   ostree_deployment_get_index (deployment));
+
+  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, bootcsumdir, 0775, cancellable, error))
+    goto out;
+
+  if (!glnx_shutil_mkdir_p_at (boot_dfd, bootconfdir, 0775, cancellable, error))
     goto out;
 
   dest_kernel_name = remove_checksum_from_kernel_name (gs_file_get_basename_cached (tree_kernel_path),
@@ -1537,7 +1573,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
   if (!requires_new_bootversion)
     {
-      if (!full_system_sync (cancellable, error))
+      if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
@@ -1629,7 +1665,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
             }
         }
 
-      if (!full_system_sync (cancellable, error))
+      if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
           goto out;
@@ -1747,7 +1783,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   gs_unref_object GFile *commit_root = NULL;
   gs_unref_object GFile *tree_kernel_path = NULL;
   gs_unref_object GFile *tree_initramfs_path = NULL;
-  gs_unref_object GFile *new_deployment_path = NULL;
+  glnx_fd_close int deployment_dfd = -1;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_free char *new_bootcsum = NULL;
   gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
@@ -1800,7 +1836,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_origin (new_deployment, origin);
 
   /* Check out the userspace tree onto the filesystem */
-  if (!checkout_deployment_tree (self, repo, new_deployment, &new_deployment_path,
+  if (!checkout_deployment_tree (self, repo, new_deployment, &deployment_dfd,
                                  cancellable, error))
     {
       g_prefix_error (error, "Checking out tree: ");
@@ -1814,7 +1850,7 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   ostree_deployment_set_bootconfig (new_deployment, bootconfig);
 
   if (!merge_configuration (self, merge_deployment, new_deployment,
-                            new_deployment_path,
+                            deployment_dfd,
                             &sepolicy,
                             cancellable, error))
     {
