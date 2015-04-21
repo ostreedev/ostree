@@ -20,7 +20,7 @@
 
 #include "config.h"
 
-#include "ostree-deployment.h"
+#include "ostree-deployment-private.h"
 #include "libglnx.h"
 
 struct _OstreeDeployment
@@ -127,6 +127,14 @@ ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
   g_clear_pointer (&self->origin, g_key_file_unref);
   if (origin)
     self->origin = g_key_file_ref (origin);
+}
+
+void
+_ostree_deployment_set_bootcsum (OstreeDeployment *self,
+                                 const char *bootcsum)
+{
+  g_free (self->bootcsum);
+  self->bootcsum = g_strdup (bootcsum);
 }
 
 /**
