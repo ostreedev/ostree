@@ -24,6 +24,7 @@
 #include <gio/gunixoutputstream.h>
 
 #include "ostree-sysroot-private.h"
+#include "ostree-deployment-private.h"
 #include "ostree-core-private.h"
 #include "ostree-linuxfsutil.h"
 #include "otutil.h"
@@ -1769,7 +1770,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   glnx_unref_object OstreeRepo *repo = NULL;
   g_autoptr(GFile) osdeploydir = NULL;
   g_autoptr(GFile) deployment_var = NULL;
-  g_autoptr(GFile) commit_root = NULL;
   g_autoptr(GFile) tree_kernel_path = NULL;
   g_autoptr(GFile) tree_initramfs_path = NULL;
   glnx_fd_close int deployment_dfd = -1;
@@ -1795,24 +1795,6 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
     goto out;
 
-  if (!ostree_repo_read_commit (repo, revision, &commit_root, NULL, cancellable, error))
-    goto out;
-
-  if (!get_kernel_from_tree (commit_root, &tree_kernel_path, &tree_initramfs_path,
-                             cancellable, error))
-    goto out;
-  
-  if (tree_initramfs_path != NULL)
-    {
-      if (!checksum_from_kernel_src (tree_initramfs_path, &new_bootcsum, error))
-        goto out;
-    }
-  else
-    {
-      if (!checksum_from_kernel_src (tree_kernel_path, &new_bootcsum, error))
-        goto out;
-    }
-
   if (provided_merge_deployment != NULL)
     merge_deployment = g_object_ref (provided_merge_deployment);
 
@@ -1831,6 +1813,25 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
       g_prefix_error (error, "Checking out tree: ");
       goto out;
     }
+
+  deployment_dir = ostree_sysroot_get_deployment_directory (self, new_deployment);
+
+  if (!get_kernel_from_tree (deployment_dir, &tree_kernel_path, &tree_initramfs_path,
+                             cancellable, error))
+    goto out;
+  
+  if (tree_initramfs_path != NULL)
+    {
+      if (!checksum_from_kernel_src (tree_initramfs_path, &new_bootcsum, error))
+        goto out;
+    }
+  else
+    {
+      if (!checksum_from_kernel_src (tree_kernel_path, &new_bootcsum, error))
+        goto out;
+    }
+  
+  _ostree_deployment_set_bootcsum (new_deployment, new_bootcsum);
 
   /* Create an empty boot configuration; we will merge things into
    * it as we go.
