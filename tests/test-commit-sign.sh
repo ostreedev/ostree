@@ -51,7 +51,6 @@ mkdir baz/another/
 echo x > baz/another/y
 ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
 cd ..
-rm -rf gnomerepo-files
 
 cd ${test_tmpdir}
 mkdir ${test_tmpdir}/httpd
@@ -106,3 +105,23 @@ ${CMD_PREFIX} ostree --repo=repo init
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 rm repo -rf
+
+# Add an unsigned commit to the repo, then pull, then sign the commit,
+# then pull again.  Make sure we get the expected number of signatures
+# each time.
+cd ${test_tmpdir}/ostree-srv/gnomerepo-files
+echo secret > signme
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Don't forget to sign me!"
+cd ${test_tmpdir}
+mkdir repo
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=repo pull origin main
+if ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature'; then
+  assert_not_reached
+fi
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${SRCDIR}/gpghome main $keyid
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature' > show
+assert_file_has_content show 'Found 1 signature'
+rm -rf repo gnomerepo-files
