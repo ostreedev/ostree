@@ -74,7 +74,8 @@ deployment_get_gpg_verify (OstreeDeployment *deployment,
   if (!ostree_parse_refspec (refspec, &remote, NULL, NULL))
     goto out;
 
-  (void) ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
+  if (remote)
+    (void) ostree_repo_remote_get_gpg_verify (repo, remote, &gpg_verify, NULL);
 
 out:
   return gpg_verify;
