@@ -158,18 +158,18 @@ write_key (OstreeBootconfigParser    *self,
   g_string_append (buf, value);
   g_string_append_c (buf, '\n');
 }
-           
+
 gboolean
-ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
-                                GFile            *output,
-                                GCancellable     *cancellable,
-                                GError          **error)
+ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
+                                   int                       dfd,
+                                   const char               *path,
+                                   GCancellable             *cancellable,
+                                   GError                  **error)
 {
   gboolean ret = FALSE;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   GString *buf = g_string_new ("");
-  g_autoptr(GBytes) bytes = NULL;
   guint i;
   g_autoptr(GHashTable) written_overrides = NULL;
 
@@ -205,17 +205,27 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
       write_key (self, buf, hashkey, hashvalue);
     }
 
-  bytes = g_string_free_to_bytes (buf);
-  buf = NULL;
-
-  if (!ot_gfile_replace_contents_fsync (output, bytes,
-                                        cancellable, error))
+  if (!glnx_file_replace_contents_at (dfd, path, (guint8*)buf->str, buf->len,
+                                      GLNX_FILE_REPLACE_NODATASYNC,
+                                      cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
-  if (buf) g_string_free (buf, TRUE);
+  if (buf)
+    g_string_free (buf, TRUE);
   return ret;
+}
+           
+gboolean
+ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
+                                GFile            *output,
+                                GCancellable     *cancellable,
+                                GError          **error)
+{
+  return ostree_bootconfig_parser_write_at (self,
+                                            AT_FDCWD, gs_file_get_path_cached (output),
+                                            cancellable, error);
 }
 
 static void
