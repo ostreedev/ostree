@@ -63,7 +63,7 @@ ostree_builtin_reset (int           argc,
   gs_free gchar *current = NULL;
   gs_free gchar *checksum = NULL;
 
-  context = g_option_context_new ("[ARG] - Reset a ref to a previous commit");
+  context = g_option_context_new ("REF COMMIT - Reset a REF to a previous COMMIT");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
@@ -73,7 +73,7 @@ ostree_builtin_reset (int           argc,
 
   if (argc <= 2)
     {
-      ot_util_usage_error (context, "A ref and commit argument is required", error);
+      ot_util_usage_error (context, "A REF and COMMIT argument is required", error);
       goto out;
     }
   ref = argv[1];
