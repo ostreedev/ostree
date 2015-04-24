@@ -43,7 +43,7 @@ echo hello2 > test/a
 ${CMD_PREFIX} $OSTREE commit -b test -s "Another commit" test
 echo "ok commit 2"
 
-assert_streq $OLD_MD5 $(md5sum repo/summary)
+assert_streq "$OLD_MD5" "$(md5sum repo/summary)"
 
 ${CMD_PREFIX} $OSTREE --repo=repo config set core.commit-update-summary true
 
@@ -52,4 +52,4 @@ echo hello3 > test/a
 ${CMD_PREFIX} $OSTREE commit -b test -s "Another commit..." test
 echo "ok commit 3"
 
-assert_not_streq $OLD_MD5 $(md5sum repo/summary)
+assert_not_streq "$OLD_MD5" "$(md5sum repo/summary)"
