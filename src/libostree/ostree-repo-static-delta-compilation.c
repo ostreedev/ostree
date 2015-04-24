@@ -1344,10 +1344,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       part_payload_out = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
       part_payload_compressor = (GConverterOutputStream*)g_converter_output_stream_new ((GOutputStream*)part_payload_out, compressor);
 
-      if (0 > g_output_stream_splice ((GOutputStream*)part_payload_compressor, part_payload_in,
-                                      G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                      cancellable, error))
-        goto out;
+      {
+        gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)part_payload_compressor, part_payload_in,
+                                                         G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                                         cancellable, error);
+        if (n_bytes_written < 0)
+          goto out;
+      }
 
       /* FIXME - avoid duplicating memory here */
       delta_part = g_variant_new ("(y@ay)",

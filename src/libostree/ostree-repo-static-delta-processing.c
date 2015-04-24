@@ -294,11 +294,14 @@ decompress_all (GConverter   *converter,
   gs_unref_object GMemoryOutputStream *memout = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
   gs_unref_object GInputStream *convin = g_converter_input_stream_new ((GInputStream*)memin, converter);
 
-  if (0 > g_output_stream_splice ((GOutputStream*)memout, convin,
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
-                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
-                                  cancellable, error))
-    goto out;
+  {
+    gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)memout, convin,
+                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                                     cancellable, error);
+      if (n_bytes_written < 0)
+        goto out;
+  }
 
   ret = TRUE;
   *out_uncompressed = g_memory_output_stream_steal_as_bytes (memout);
