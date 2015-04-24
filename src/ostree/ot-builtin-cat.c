@@ -46,9 +46,12 @@ cat_one_file (GFile         *f,
   if (!in)
     goto out;
 
-  if (!g_output_stream_splice (stdout_stream, in, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                               cancellable, error))
-    goto out;
+  {
+    gssize n_bytes_written = g_output_stream_splice (stdout_stream, in, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                                     cancellable, error);
+    if (n_bytes_written < 0)
+      goto out;
+  }
 
   ret = TRUE;
  out:
