@@ -20,18 +20,11 @@
 
 #pragma once
 
-#include "ostree-gpg-verify-result.h"
+#include <gpgme.h>
+#include <gio/gio.h>
 
-#include "otutil.h"
+G_BEGIN_DECLS
 
-/**
- * OstreeGpgVerifyResult:
- *
- * Private instance structure.
- */
-struct OstreeGpgVerifyResult {
-  GObject parent;
+void ot_gpgme_error_to_gio_error (gpgme_error_t gpg_error, GError **error);
 
-  gpgme_ctx_t context;
-  gpgme_verify_result_t details;
-};
+G_END_DECLS

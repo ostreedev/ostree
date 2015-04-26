@@ -29,7 +29,6 @@
 
 #include <stdlib.h>
 #include <glib/gstdio.h>
-#include <gpgme.h>
 
 typedef struct {
   GObjectClass parent_class;
@@ -187,7 +186,7 @@ override_gpgme_home_dir (gpgme_ctx_t gpg_ctx,
                                                  home_dir);
           if (gpg_error != GPG_ERR_NO_ERROR)
             {
-              _ostree_gpg_error_to_gio_error (gpg_error, error);
+              ot_gpgme_error_to_gio_error (gpg_error, error);
               goto out;
             }
 
@@ -278,7 +277,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                        0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (gpg_error, error);
+      ot_gpgme_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to read signed data: ");
       goto out;
     }
@@ -289,7 +288,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                        0 /* do not copy */);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (gpg_error, error);
+      ot_gpgme_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to read signature: ");
       goto out;
     }
@@ -297,7 +296,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   gpg_error = gpgme_op_verify (result->context, signature_buffer, data_buffer, NULL);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (gpg_error, error);
+      ot_gpgme_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to complete signature verification: ");
       goto out;
     }

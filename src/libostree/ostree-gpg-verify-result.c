@@ -27,8 +27,6 @@
 
 #include "ostree-gpg-verify-result-private.h"
 
-#include <gpgme.h>
-
 /**
  * SECTION: libostree-gpg-verify-result
  * @title: GPG signature verification results
@@ -136,7 +134,7 @@ ostree_gpg_verify_result_initable_init (GInitable     *initable,
   gpg_error = gpgme_new (&result->context);
   if (gpg_error != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (gpg_error, error);
+      ot_gpgme_error_to_gio_error (gpg_error, error);
       g_prefix_error (error, "Unable to create context: ");
       goto out;
     }
@@ -593,38 +591,4 @@ ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
                                   formatted_date_time);
         }
     }
-}
-
-void
-_ostree_gpg_error_to_gio_error (gpgme_error_t   gpg_error,
-                                GError        **error)
-{
-  GIOErrorEnum errcode;
-
-  /* XXX This list is incomplete.  Add cases as needed. */
-
-  switch (gpg_error)
-    {
-      /* special case - shouldn't be here */
-      case GPG_ERR_NO_ERROR:
-        g_return_if_reached ();
-
-      /* special case - abort on out-of-memory */
-      case GPG_ERR_ENOMEM:
-        g_error ("%s: %s",
-                 gpgme_strsource (gpg_error),
-                 gpgme_strerror (gpg_error));
-
-      case GPG_ERR_INV_VALUE:
-        errcode = G_IO_ERROR_INVALID_ARGUMENT;
-        break;
-
-      default:
-        errcode = G_IO_ERROR_FAILED;
-        break;
-    }
-
-  g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
-               gpgme_strsource (gpg_error),
-               gpgme_strerror (gpg_error));
 }

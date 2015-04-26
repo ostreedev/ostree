@@ -35,11 +35,7 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 
-/* XXX Only for _ostree_gpg_error_to_gio_error().  Move it elsewhere? */
-#include "ostree-gpg-verify-result-private.h"
-
 #include <locale.h>
-#include <gpgme.h>
 #include <glib/gstdio.h>
 
 /**
@@ -3065,7 +3061,7 @@ sign_data (OstreeRepo     *self,
   
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Unable to create gpg context: ");
       goto out;
     }
@@ -3075,7 +3071,7 @@ sign_data (OstreeRepo     *self,
   if ((err = gpgme_set_protocol (context, GPGME_PROTOCOL_OpenPGP)) !=
       GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Unable to set gpg protocol: ");
       goto out;
     }
@@ -3085,7 +3081,7 @@ sign_data (OstreeRepo     *self,
       if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
           != GPG_ERR_NO_ERROR)
         {
-          _ostree_gpg_error_to_gio_error (err, error);
+          ot_gpgme_error_to_gio_error (err, error);
           g_prefix_error (error, "Unable to set gpg homedir to '%s': ",
                           homedir);
           goto out;
@@ -3103,7 +3099,7 @@ sign_data (OstreeRepo     *self,
     }
   else if (err != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Unable to lookup key ID %s: ", key_id);
       goto out;
     }
@@ -3111,7 +3107,7 @@ sign_data (OstreeRepo     *self,
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Error signing commit: ");
       goto out;
     }
@@ -3121,7 +3117,7 @@ sign_data (OstreeRepo     *self,
     const char *buf = g_bytes_get_data (input_data, &len);
     if ((err = gpgme_data_new_from_mem (&commit_buffer, buf, len, FALSE)) != GPG_ERR_NO_ERROR)
       {
-        _ostree_gpg_error_to_gio_error (err, error);
+        ot_gpgme_error_to_gio_error (err, error);
         g_prefix_error (error, "Failed to create buffer from commit file: ");
         goto out;
       }
@@ -3137,7 +3133,7 @@ sign_data (OstreeRepo     *self,
   
   if ((err = gpgme_data_new_from_fd (&signature_buffer, signature_fd)) != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Failed to create buffer for signature file: ");
       goto out;
     }
@@ -3145,7 +3141,7 @@ sign_data (OstreeRepo     *self,
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
     {
-      _ostree_gpg_error_to_gio_error (err, error);
+      ot_gpgme_error_to_gio_error (err, error);
       g_prefix_error (error, "Failure signing commit file: ");
       goto out;
     }
