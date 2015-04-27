@@ -3544,10 +3544,12 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   gs_unref_variant GVariant *summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
+  gs_unref_variant_builder GVariantBuilder *additional_metadata_builder = NULL;
 
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
     goto out;
 
+  additional_metadata_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
   refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
   ordered_keys = g_hash_table_get_keys (refs);
@@ -3571,12 +3573,64 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                                   ot_gvariant_new_empty_string_dict ()));
     }
 
+
+  {
+    guint i;
+    gs_unref_ptrarray GPtrArray *delta_names = NULL;
+    gs_unref_variant_builder GVariantBuilder *deltas_builder = NULL;
+    gs_unref_variant GVariant *deltas = NULL;
+    char to[65];
+    char from[65];
+
+    if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
+      goto out;
+
+    deltas_builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+    for (i = 0; i < delta_names->len; i++)
+      {
+        gs_free guchar *csum = NULL;
+        gs_free char *superblock;
+        gs_unref_object GFile *superblock_file;
+        gs_unref_object GInputStream *in = NULL;
+        gs_unref_object GFileInfo * file_info = _ostree_header_gfile_info_new (0, 0, 0);
+
+        _ostree_parse_delta_name (delta_names->pdata[i], from, to);
+        superblock = _ostree_get_relative_static_delta_superblock_path (from[0] ? from : NULL,
+                                                                        to);
+        superblock_file = g_file_resolve_relative_path (self->repodir, superblock);
+
+        in = (GInputStream*) g_file_read (superblock_file, cancellable, error);
+        if (!ostree_checksum_file_from_input (file_info,
+                                              NULL,
+                                              in,
+                                              G_FILE_TYPE_REGULAR,
+                                              &csum,
+                                              cancellable,
+                                              error))
+          goto out;
+
+        g_variant_builder_add (deltas_builder, "{sv}", delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
+      }
+
+    g_variant_builder_add_value (additional_metadata_builder, g_variant_new ("{sv}", "static-deltas",
+                                                                             g_variant_builder_end (deltas_builder)));
+  }
+
+  if (additional_metadata)
+    {
+      GVariantIter *iter;
+      GVariant *var;
+
+      g_variant_get (additional_metadata, "a{sv}", &iter);
+      while (g_variant_iter_loop (iter, "{sv}", &var))
+        g_variant_builder_add_value (additional_metadata_builder, var);
+    }
   {
     gs_unref_variant_builder GVariantBuilder *summary_builder =
       g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
 
     g_variant_builder_add_value (summary_builder, g_variant_builder_end (refs_builder));
-    g_variant_builder_add_value (summary_builder, additional_metadata ? additional_metadata : ot_gvariant_new_empty_string_dict ());
+    g_variant_builder_add_value (summary_builder, g_variant_builder_end (additional_metadata_builder));
     summary = g_variant_builder_end (summary_builder);
     g_variant_ref_sink (summary);
   }
