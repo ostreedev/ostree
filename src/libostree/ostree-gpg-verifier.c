@@ -104,32 +104,62 @@ _ostree_gpg_verifier_initable_iface_init (GInitableIface *iface)
   iface->init = ostree_gpg_verifier_initable_init;
 }
 
-static gboolean
-concatenate_keyrings (OstreeGpgVerifier *self,
-                      GFile *destination,
-                      GCancellable *cancellable,
-                      GError **error)
+static void
+verify_result_finalized_cb (gpointer data,
+                            GObject *finalized_verify_result)
 {
-  gs_unref_object GOutputStream *target_stream = NULL;
-  GList *link;
-  gboolean ret = FALSE;
+  g_autofree gchar *tmp_dir = data;  /* assume ownership */
 
-  target_stream = (GOutputStream *) g_file_replace (destination,
-                                                    NULL,   /* no etag */
-                                                    FALSE,  /* no backup */
-                                                    G_FILE_CREATE_NONE,
-                                                    cancellable, error);
-  if (target_stream == NULL)
+  /* XXX OstreeGpgVerifyResult could do this cleanup in its own
+   *     finalize() method, but I didn't want this keyring hack
+   *     bleeding into multiple classes. */
+
+  (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
+}
+
+OstreeGpgVerifyResult *
+_ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
+                                      GBytes             *signed_data,
+                                      GBytes             *signatures,
+                                      GCancellable       *cancellable,
+                                      GError            **error)
+{
+  gpgme_ctx_t gpg_ctx = NULL;
+  gpgme_error_t gpg_error = NULL;
+  gpgme_data_t data_buffer = NULL;
+  gpgme_data_t signature_buffer = NULL;
+  g_autofree char *tmp_dir = NULL;
+  glnx_unref_object GOutputStream *target_stream = NULL;
+  OstreeGpgVerifyResult *result = NULL;
+  gboolean success = FALSE;
+  GList *link;
+
+  /* GPGME has no API for using multiple keyrings (aka, gpg --keyring),
+   * so we concatenate all the keyring files into one pubring.gpg in a
+   * temporary directory, then tell GPGME to use that directory as the
+   * home directory. */
+
+  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+    goto out;
+
+  result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,
+                           cancellable, error, NULL);
+  if (result == NULL)
+    goto out;
+
+  if (!ot_gpgme_ctx_tmp_home_dir (result->context, NULL,
+                                  &tmp_dir, &target_stream,
+                                  cancellable, error))
     goto out;
 
   for (link = self->keyrings; link != NULL; link = link->next)
     {
-      gs_unref_object GInputStream *source_stream = NULL;
+      glnx_unref_object GFileInputStream *source_stream = NULL;
       GFile *keyring_file = link->data;
       gssize bytes_written;
       GError *local_error = NULL;
 
-      source_stream = (GInputStream *) g_file_read (keyring_file, cancellable, &local_error);
+      source_stream = g_file_read (keyring_file, cancellable, &local_error);
 
       /* Disregard non-existent keyrings. */
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -144,127 +174,14 @@ concatenate_keyrings (OstreeGpgVerifier *self,
         }
 
       bytes_written = g_output_stream_splice (target_stream,
-                                              source_stream,
+                                              G_INPUT_STREAM (source_stream),
                                               G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                               cancellable, error);
-      if (bytes_written == -1)
+      if (bytes_written < 0)
         goto out;
     }
 
   if (!g_output_stream_close (target_stream, cancellable, error))
-    goto out;
-
-  ret = TRUE;
-
-out:
-  return ret;
-}
-
-static gboolean
-override_gpgme_home_dir (gpgme_ctx_t gpg_ctx,
-                         const char *home_dir,
-                         GError **error)
-{
-  gpgme_engine_info_t gpg_engine_info;
-  gboolean ret = FALSE;
-
-  /* Override the OpenPGP engine's configuration directory without
-   * affecting other parameters.  This requires finding the current
-   * parameters since the engine API takes all parameters at once. */
-
-  for (gpg_engine_info = gpgme_ctx_get_engine_info (gpg_ctx);
-       gpg_engine_info != NULL;
-       gpg_engine_info = gpg_engine_info->next)
-    {
-      if (gpg_engine_info->protocol == GPGME_PROTOCOL_OpenPGP)
-        {
-          gpgme_error_t gpg_error;
-
-          gpg_error = gpgme_ctx_set_engine_info (gpg_ctx,
-                                                 gpg_engine_info->protocol,
-                                                 gpg_engine_info->file_name,
-                                                 home_dir);
-          if (gpg_error != GPG_ERR_NO_ERROR)
-            {
-              ot_gpgme_error_to_gio_error (gpg_error, error);
-              goto out;
-            }
-
-          break;
-        }
-    }
-
-  if (gpg_engine_info == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "GPGME: No OpenPGP engine available");
-      goto out;
-    }
-
-  ret = TRUE;
-
-out:
-  return ret;
-}
-
-static void
-verify_result_finalized_cb (gpointer data,
-                            GObject *finalized_verify_result)
-{
-  g_autofree gchar *temp_dir = data;  /* assume ownership */
-
-  /* XXX OstreeGpgVerifyResult could do this cleanup in its own
-   *     finalize() method, but I didn't want this keyring hack
-   *     bleeding into multiple classes. */
-
-  (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
-}
-
-OstreeGpgVerifyResult *
-_ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
-                                      GBytes             *signed_data,
-                                      GBytes             *signatures,
-                                      GCancellable       *cancellable,
-                                      GError            **error)
-{
-  gpgme_ctx_t gpg_ctx = NULL;
-  gpgme_error_t gpg_error = NULL;
-  gpgme_data_t data_buffer = NULL;
-  gpgme_data_t signature_buffer = NULL;
-  gs_unref_object GFile *pubring_file = NULL;
-  gs_free char *pubring_path = NULL;
-  gs_free char *temp_dir = NULL;
-  OstreeGpgVerifyResult *result = NULL;
-  gboolean success = FALSE;
-
-  /* GPGME has no API for using multiple keyrings (aka, gpg --keyring),
-   * so we concatenate all the keyring files into one pubring.gpg in a
-   * temporary directory, then tell GPGME to use that directory as the
-   * home directory. */
-
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
-    goto out;
-
-  temp_dir = g_build_filename (g_get_tmp_dir (), "ostree-gpg-XXXXXX", NULL);
-
-  if (mkdtemp (temp_dir) == NULL)
-    {
-      gs_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  pubring_path = g_build_filename (temp_dir, "pubring.gpg", NULL);
-
-  pubring_file = g_file_new_for_path (pubring_path);
-  if (!concatenate_keyrings (self, pubring_file, cancellable, error))
-    goto out;
-
-  result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,
-                           cancellable, error, NULL);
-  if (result == NULL)
-    goto out;
-
-  if (!override_gpgme_home_dir (result->context, temp_dir, error))
     goto out;
 
   /* Both the signed data and signature GBytes instances will outlive the
@@ -325,7 +242,7 @@ out:
        * the fabricated pubring.gpg keyring. */
       g_object_weak_ref (G_OBJECT (result),
                          verify_result_finalized_cb,
-                         g_strdup (temp_dir));
+                         g_strdup (tmp_dir));
     }
   else
     {
@@ -333,8 +250,8 @@ out:
       g_clear_object (&result);
 
       /* Try to clean up the temporary directory. */
-      if (temp_dir != NULL)
-        (void) glnx_shutil_rm_rf_at (AT_FDCWD, temp_dir, NULL, NULL);
+      if (tmp_dir != NULL)
+        (void) glnx_shutil_rm_rf_at (AT_FDCWD, tmp_dir, NULL, NULL);
     }
 
   g_prefix_error (error, "GPG: ");
