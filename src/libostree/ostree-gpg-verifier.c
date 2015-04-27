@@ -396,6 +396,9 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
       if (g_str_equal (name, "trustdb.gpg"))
         continue;
 
+      if (g_str_equal (name, "secring.gpg"))
+        continue;
+
       self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
     }
 
