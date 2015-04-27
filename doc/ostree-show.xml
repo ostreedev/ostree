@@ -104,6 +104,14 @@ Boston, MA 02111-1307, USA.
                     Show raw variant data.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-homedir</option>="HOMEDIR"</term>
+
+                <listitem><para>
+                    GPG home directory to use when looking for keyrings (if have GPGME - GNU Privacy Guard Made Easy).
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
