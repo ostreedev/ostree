@@ -3595,15 +3595,17 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   g_autoptr(GVariant) summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
+  GVariantDict additional_metadata_builder;
 
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
     goto out;
 
+  g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
   ordered_keys = g_hash_table_get_keys (refs);
   ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
-  
+
   for (iter = ordered_keys; iter; iter = iter->next)
     {
       const char *ref = iter->data;
@@ -3622,12 +3624,58 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                                   ot_gvariant_new_empty_string_dict ()));
     }
 
+
+  {
+    guint i;
+    g_autoptr(GPtrArray) delta_names = NULL;
+    GVariantDict deltas_builder;
+    g_autoptr(GVariant) deltas = NULL;
+
+    if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
+      goto out;
+
+    g_variant_dict_init (&deltas_builder, NULL);
+    for (i = 0; i < delta_names->len; i++)
+      {
+        gs_free char *from = NULL;
+        gs_free char *to = NULL;
+        gs_free guchar *csum = NULL;
+        gs_free char *superblock;
+        gs_fd_close int superblock_file_fd;
+        g_autoptr(GInputStream) in_stream = NULL;
+
+        _ostree_parse_delta_name (delta_names->pdata[i], &from, &to);
+        superblock = _ostree_get_relative_static_delta_superblock_path (from[0] ? from : NULL,
+                                                                        to);
+        superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
+        if (superblock_file_fd == -1)
+          {
+            gs_set_error_from_errno (error, errno);
+            goto out;
+          }
+
+        in_stream = g_unix_input_stream_new (superblock_file_fd, TRUE);
+        if (!in_stream)
+          goto out;
+
+        if (!ot_gio_checksum_stream (in_stream,
+                                     &csum,
+                                     cancellable,
+                                     error))
+          goto out;
+
+        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
+      }
+
+    g_variant_dict_insert_value (&additional_metadata_builder, "ostree.static-deltas", g_variant_dict_end (&deltas_builder));
+  }
+
   {
     g_autoptr(GVariantBuilder) summary_builder =
       g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
 
     g_variant_builder_add_value (summary_builder, g_variant_builder_end (refs_builder));
-    g_variant_builder_add_value (summary_builder, additional_metadata ? additional_metadata : ot_gvariant_new_empty_string_dict ());
+    g_variant_builder_add_value (summary_builder, g_variant_dict_end (&additional_metadata_builder));
     summary = g_variant_builder_end (summary_builder);
     g_variant_ref_sink (summary);
   }
