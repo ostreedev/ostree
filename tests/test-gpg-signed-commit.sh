@@ -37,6 +37,9 @@ ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature' > test2-show
 # tests will actually do verification
 assert_file_has_content test2-show 'Found 1 signature'
 
+${OSTREE} show --gpg-homedir=${TEST_GPG_KEYHOME} test2 | grep -o 'Found [[:digit:]] signature' > test2-show
+assert_file_has_content test2-show 'Found 1 signature'
+
 # Now sign a commit with 3 different keys
 cd ${test_tmpdir}
 ${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID_1} --gpg-sign=${TEST_GPG_KEYID_2} --gpg-sign=${TEST_GPG_KEYID_3} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
