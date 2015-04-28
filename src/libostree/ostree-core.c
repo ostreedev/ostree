@@ -1496,6 +1496,25 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
   return _ostree_get_relative_static_delta_path (from, to, partstr);
 }
 
+void
+_ostree_parse_delta_name (const char  *delta_name,
+                          char        **out_from,
+                          char        **out_to)
+{
+  gs_strfreev char **parts = g_strsplit (delta_name, "-", 2);
+
+  *out_from = *out_to = NULL;
+  if (parts[0] && parts[1])
+    {
+      ot_transfer_out_value (out_from, &parts[0]);
+      ot_transfer_out_value (out_to, &parts[1]);
+    }
+  else
+    {
+      ot_transfer_out_value (out_to, &parts[0]);
+    }
+}
+
 /*
  * file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
