@@ -1379,6 +1379,33 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
             goto out;
         }
 
+      {
+        gs_free gchar *delta = NULL;
+        gs_free guchar *ret_csum = NULL;
+        guchar *summary_csum;
+        gs_unref_object GInputStream *summary_is = NULL;
+        gs_unref_object GFileInfo * file_info = _ostree_header_gfile_info_new (0, 0, 0);
+
+        summary_is = g_memory_input_stream_new_from_data (g_bytes_get_data (delta_superblock_data, NULL),
+                                                          g_bytes_get_size (delta_superblock_data),
+                                                          NULL);
+
+        if (!ostree_checksum_file_from_input (file_info,
+                                              NULL,
+                                              summary_is,
+                                              G_FILE_TYPE_REGULAR,
+                                              &ret_csum,
+                                              cancellable,
+                                              error))
+          goto out;
+
+        delta = g_strdup_printf ("%s%s%s", from_revision ? from_revision : "", from_revision ? "-" : "", to_revision);
+        summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
+
+        if (summary_csum && memcmp (summary_csum, ret_csum, 32))
+          goto out;
+      }
+
       ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
                                                        delta_superblock_data, FALSE);
     }
