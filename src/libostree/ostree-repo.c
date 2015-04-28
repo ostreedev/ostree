@@ -101,6 +101,7 @@ typedef struct {
   volatile int ref_count;
   char *name;
   char *group;   /* group name in options */
+  char *keyring; /* keyring name (NAME.trustedkeys.gpg) */
   GFile *file;   /* NULL if remote defined in repo/config */
   GKeyFile *options;
 } OstreeRemote;
@@ -144,6 +145,7 @@ ost_remote_new_from_keyfile (GKeyFile    *keyfile,
   remote = ost_remote_new ();
   remote->name = g_match_info_fetch (match, 1);
   remote->group = g_strdup (group);
+  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", remote->name);
 
   ot_keyfile_copy_group (keyfile, remote->options, group);
 
@@ -173,6 +175,7 @@ ost_remote_unref (OstreeRemote *remote)
     {
       g_clear_pointer (&remote->name, g_free);
       g_clear_pointer (&remote->group, g_free);
+      g_clear_pointer (&remote->keyring, g_free);
       g_clear_object (&remote->file);
       g_clear_pointer (&remote->options, g_key_file_free);
       g_slice_free (OstreeRemote, remote);
@@ -770,6 +773,7 @@ impl_repo_remote_add (OstreeRepo     *self,
   remote = ost_remote_new ();
   remote->name = g_strdup (name);
   remote->group = g_strdup_printf ("remote \"%s\"", name);
+  remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", name);
 
   if (sysroot != NULL || ostree_repo_is_system (self))
     {
