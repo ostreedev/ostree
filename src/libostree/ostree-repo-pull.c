@@ -1228,7 +1228,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   fetch_data->is_detached_meta = is_detached_meta;
   fetch_data->object_is_stored = object_is_stored;
 
-  expected_max_size_p = g_hash_table_lookup (pull_data->expected_commit_sizes, checksum);
+  expected_max_size_p = is_detached_meta ? NULL : g_hash_table_lookup (pull_data->expected_commit_sizes, checksum);
   if (expected_max_size_p)
     expected_max_size = *expected_max_size_p;
   else if (is_meta)
