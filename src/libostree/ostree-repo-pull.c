@@ -61,6 +61,7 @@ typedef struct {
 
   GBytes           *summary_data;
   GVariant         *summary;
+  GHashTable       *summary_deltas_checksums;
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
@@ -1686,6 +1687,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->commit_to_depth = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                       (GDestroyNotify)g_free,
                                                       NULL);
+  pull_data->summary_deltas_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                               (GDestroyNotify)g_free,
+                                                               (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1919,6 +1923,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (bytes)
         {
           g_autoptr(GVariant) refs = NULL;
+          g_autoptr(GVariant) additional_metadata = NULL;
+          g_autoptr(GVariant) deltas = NULL;
           gsize i, n;
 
           pull_data->summary_data = g_bytes_ref (bytes);
@@ -1936,6 +1942,32 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                 goto out;
               
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+            }
+
+          additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+          deltas = g_variant_lookup_value (additional_metadata, "static-deltas", G_VARIANT_TYPE ("a{sv}"));
+          n = deltas ? g_variant_n_children (deltas) : 0;
+          for (i = 0; i < n; i++)
+            {
+              gsize size;
+              const char *delta;
+              GVariant *csum_v = NULL;
+              guchar *csum_data = g_malloc (32);
+              g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
+
+              g_variant_get_child (ref, 0, "&s", &delta);
+              g_variant_get_child (ref, 1, "v", &csum_v);
+
+              size = g_variant_get_size (csum_v);
+
+              g_assert_cmpint (size, ==, 32);
+              if (size != 32)
+                continue;
+
+              memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
+              g_hash_table_insert (pull_data->summary_deltas_checksums,
+                                   g_strdup (delta),
+                                   csum_data);
             }
         }
       else
@@ -2213,6 +2245,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
