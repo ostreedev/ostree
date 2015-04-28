@@ -1376,6 +1376,29 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
             goto out;
         }
 
+      {
+        gs_free gchar *delta = NULL;
+        gs_free guchar *ret_csum = NULL;
+        guchar *summary_csum;
+        g_autoptr (GInputStream) summary_is = NULL;
+
+        summary_is = g_memory_input_stream_new_from_data (g_bytes_get_data (delta_superblock_data, NULL),
+                                                          g_bytes_get_size (delta_superblock_data),
+                                                          NULL);
+
+        if (!ot_gio_checksum_stream (summary_is, &ret_csum, cancellable, error))
+          goto out;
+
+        delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
+        summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
+
+        if (summary_csum && memcmp (summary_csum, ret_csum, 32))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
+            goto out;
+          }
+      }
+
       ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
                                                        delta_superblock_data, FALSE);
     }
@@ -1945,7 +1968,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
 
           additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-          deltas = g_variant_lookup_value (additional_metadata, "static-deltas", G_VARIANT_TYPE ("a{sv}"));
+          deltas = g_variant_lookup_value (additional_metadata, "ostree.static-deltas", G_VARIANT_TYPE ("a{sv}"));
           n = deltas ? g_variant_n_children (deltas) : 0;
           for (i = 0; i < n; i++)
             {
