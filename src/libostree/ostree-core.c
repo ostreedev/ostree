@@ -1497,6 +1497,26 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
   return _ostree_get_relative_static_delta_path (from, to, partstr);
 }
 
+void
+_ostree_parse_delta_name (const char  *delta_name,
+                          char        *from,
+                          char        *to)
+{
+  char *sep = strchr (delta_name, '-');
+  if (sep)
+    {
+      memcpy (from, delta_name, 64);
+      memcpy (to, sep + 1, 64);
+    }
+  else
+    {
+      from[0] = '\0';
+      memcpy (to, delta_name, 64);
+    }
+  from[64] = '\0';
+  to[64] = '\0';
+}
+
 /*
  * file_header_parse:
  * @metadata: A metadata variant of type %OSTREE_FILE_HEADER_GVARIANT_FORMAT
