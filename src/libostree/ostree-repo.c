@@ -1104,6 +1104,292 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
                                                  TRUE, out_gpg_verify, error);
 }
 
+/**
+ * ostree_repo_remote_gpg_import:
+ * @self: Self
+ * @name: name of a remote
+ * @source_stream: (allow-none): a #GInputStream, or %NULL
+ * @key_ids: (allow-none): a %NULL-terminated array of GPG key IDs, or %NULL
+ * @out_imported: (allow-none): return location for the number of imported
+ *                              keys, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Imports one or more GPG keys from the open @source_stream, or from the
+ * user's personal keyring if @source_stream is %NULL.  The @key_ids array
+ * can optionally restrict which keys are imported.  If @key_ids is %NULL,
+ * then all keys are imported.
+ *
+ * The imported keys will be used to conduct GPG verification when pulling
+ * from the remote named @name.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_gpg_import (OstreeRepo         *self,
+                               const char         *name,
+                               GInputStream       *source_stream,
+                               const char * const *key_ids,
+                               guint              *out_imported,
+                               GCancellable       *cancellable,
+                               GError            **error)
+{
+  OstreeRemote *remote;
+  gpgme_ctx_t source_context = NULL;
+  gpgme_ctx_t target_context = NULL;
+  gpgme_data_t data_buffer = NULL;
+  gpgme_import_result_t import_result;
+  gpgme_import_status_t import_status;
+  const char *tmp_dir = NULL;
+  g_autofree char *source_tmp_dir = NULL;
+  g_autofree char *target_tmp_dir = NULL;
+  glnx_fd_close int target_temp_fd = -1;
+  g_autoptr(GPtrArray) keys = NULL;
+  struct stat stbuf;
+  gpgme_error_t gpg_error;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  /* First make sure the remote name is valid. */
+
+  remote = ost_repo_get_remote (self, name, error);
+  if (remote == NULL)
+    goto out;
+
+  /* Use OstreeRepo's "tmp" directory so the keyring files remain
+   * under one mount point.  Necessary for renameat() below. */
+
+  /* XXX This produces a path under "/proc/self/fd/" which won't
+   *     work in a child process so I had to resort to the GFile.
+   *     I was trying to avoid the GFile so we can get rid of it.
+   *
+   *     tmp_dir = glnx_fdrel_abspath (self->repo_dir_fd, "tmp");
+   */
+  tmp_dir = gs_file_get_path_cached (self->tmp_dir);
+
+  /* Prepare the source GPGME context.  If reading GPG keys from an input
+   * stream, point the OpenPGP engine at a temporary directory and import
+   * the keys to a new pubring.gpg file.  If the key data format is ASCII
+   * armored, this step will convert them to binary. */
+
+  gpg_error = gpgme_new (&source_context);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to create context: ");
+      goto out;
+    }
+
+  if (source_stream != NULL)
+    {
+      data_buffer = ot_gpgme_data_input (source_stream);
+
+      if (!ot_gpgme_ctx_tmp_home_dir (source_context, tmp_dir, &source_tmp_dir,
+                                      NULL, cancellable, error))
+        {
+          g_prefix_error (error, "Unable to configure context: ");
+          goto out;
+        }
+
+      gpg_error = gpgme_op_import (source_context, data_buffer);
+      if (gpg_error != GPG_ERR_NO_ERROR)
+        {
+          ot_gpgme_error_to_gio_error (gpg_error, error);
+          g_prefix_error (error, "Unable to import keys: ");
+          goto out;
+        }
+
+      g_clear_pointer (&data_buffer, (GDestroyNotify) gpgme_data_release);
+    }
+
+  /* Retrieve all keys or specific keys from the source GPGME context.
+   * Assemble a NULL-terminated array of gpgme_key_t structs to import. */
+
+  /* The keys array will contain a NULL terminator, but it turns out,
+   * although not documented, gpgme_key_unref() gracefully handles it. */
+  keys = g_ptr_array_new_with_free_func ((GDestroyNotify) gpgme_key_unref);
+
+  if (key_ids != NULL)
+    {
+      guint ii;
+
+      for (ii = 0; key_ids[ii] != NULL; ii++)
+        {
+          gpgme_key_t key = NULL;
+
+          gpg_error = gpgme_get_key (source_context, key_ids[ii], &key, 0);
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            {
+              ot_gpgme_error_to_gio_error (gpg_error, error);
+              g_prefix_error (error, "Unable to find key \"%s\": ", key_ids[ii]);
+              goto out;
+            }
+
+          /* Transfer ownership. */
+          g_ptr_array_add (keys, key);
+        }
+    }
+  else
+    {
+      gpg_error = gpgme_op_keylist_start (source_context, NULL, 0);
+
+      while (gpg_error == GPG_ERR_NO_ERROR)
+        {
+          gpgme_key_t key = NULL;
+
+          gpg_error = gpgme_op_keylist_next (source_context, &key);
+
+          if (gpg_error != GPG_ERR_NO_ERROR)
+            break;
+
+          /* Transfer ownership. */
+          g_ptr_array_add (keys, key);
+        }
+
+      if (gpgme_err_code (gpg_error) != GPG_ERR_EOF)
+        {
+          ot_gpgme_error_to_gio_error (gpg_error, error);
+          g_prefix_error (error, "Unable to list keys: ");
+          goto out;
+        }
+    }
+
+  /* Add the NULL terminator. */
+  g_ptr_array_add (keys, NULL);
+
+  /* Prepare the target GPGME context to serve as the import destination.
+   * Here the pubring.gpg file in a second temporary directory is a copy
+   * of the remote's keyring file.  We'll let the import operation alter
+   * the pubring.gpg file, then rename it back to its permanent home. */
+
+  gpg_error = gpgme_new (&target_context);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to create context: ");
+      goto out;
+    }
+
+  /* No need for an output stream since we copy in a pubring.gpg. */
+  if (!ot_gpgme_ctx_tmp_home_dir (target_context, tmp_dir, &target_tmp_dir,
+                                  NULL, cancellable, error))
+    {
+      g_prefix_error (error, "Unable to configure context: ");
+      goto out;
+    }
+
+  if (!glnx_opendirat (AT_FDCWD, target_tmp_dir, FALSE, &target_temp_fd, error))
+    {
+      g_prefix_error (error, "Unable to open directory: ");
+      goto out;
+    }
+
+  if (fstatat (self->repo_dir_fd, remote->keyring, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
+    {
+      if (!glnx_file_copy_at (self->repo_dir_fd, remote->keyring,
+                              &stbuf, target_temp_fd, "pubring.gpg", 0,
+                              cancellable, error))
+        {
+          g_prefix_error (error, "Unable to copy remote's keyring: ");
+          goto out;
+        }
+    }
+  else if (errno != ENOENT)
+    {
+      glnx_set_prefix_error_from_errno (error, "%s", "Unable to copy remote's keyring");
+      goto out;
+    }
+
+  /* Export the selected keys from the source context and import them into
+   * the target context. */
+
+  gpg_error = gpgme_data_new (&data_buffer);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to create data buffer: ");
+      goto out;
+    }
+
+  gpg_error = gpgme_op_export_keys (source_context,
+                                    (gpgme_key_t *) keys->pdata, 0,
+                                    data_buffer);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to export keys: ");
+      goto out;
+    }
+
+  (void) gpgme_data_seek (data_buffer, 0, SEEK_SET);
+
+  gpg_error = gpgme_op_import (target_context, data_buffer);
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (gpg_error, error);
+      g_prefix_error (error, "Unable to import keys: ");
+      goto out;
+    }
+
+  import_result = gpgme_op_import_result (target_context);
+  g_return_val_if_fail (import_result != NULL, FALSE);
+
+  /* Check the status of each import and fail on the first error.
+   * All imports must be successful to update the remote's keyring. */
+  for (import_status = import_result->imports;
+       import_status != NULL;
+       import_status = import_status->next)
+    {
+      if (import_status->result != GPG_ERR_NO_ERROR)
+        {
+          ot_gpgme_error_to_gio_error (gpg_error, error);
+          g_prefix_error (error, "Unable to import key \"%s\": ",
+                          import_status->fpr);
+          goto out;
+        }
+    }
+
+  /* Import successful; replace the remote's old keyring with the
+   * updated keyring in the target context's temporary directory. */
+
+  if (renameat (target_temp_fd, "pubring.gpg",
+                self->repo_dir_fd, remote->keyring) == -1)
+    {
+      glnx_set_prefix_error_from_errno (error, "%s", "Unable to rename keyring");
+      goto out;
+    }
+
+  if (out_imported != NULL)
+    *out_imported = (guint) import_result->imported;
+
+  ret = TRUE;
+
+out:
+  if (remote != NULL)
+    ost_remote_unref (remote);
+
+  if (source_tmp_dir != NULL)
+    (void) glnx_shutil_rm_rf_at (AT_FDCWD, source_tmp_dir, NULL, NULL);
+
+  if (target_tmp_dir != NULL)
+    (void) glnx_shutil_rm_rf_at (AT_FDCWD, target_tmp_dir, NULL, NULL);
+
+  if (source_context != NULL)
+    gpgme_release (source_context);
+
+  if (target_context != NULL)
+    gpgme_release (target_context);
+
+  if (data_buffer != NULL)
+    gpgme_data_release (data_buffer);
+
+  g_prefix_error (error, "GPG: ");
+
+  return ret;
+}
+
 static gboolean
 ostree_repo_mode_to_string (OstreeRepoMode   mode,
                             const char     **out_mode,

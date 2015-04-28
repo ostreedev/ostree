@@ -112,6 +112,14 @@ gboolean      ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
                                                  gboolean    *out_gpg_verify,
                                                  GError     **error);
 
+gboolean      ostree_repo_remote_gpg_import (OstreeRepo         *self,
+                                             const char         *name,
+                                             GInputStream       *source_stream,
+                                             const char * const *key_ids,
+                                             guint              *out_imported,
+                                             GCancellable       *cancellable,
+                                             GError            **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,
