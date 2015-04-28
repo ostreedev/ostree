@@ -3276,6 +3276,7 @@ out:
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
+ * This function is deprecated, sign the summary file instead.
  * Add a GPG signature to a static delta.
  */
 gboolean
@@ -3286,66 +3287,12 @@ ostree_repo_sign_delta (OstreeRepo     *self,
                         const gchar    *homedir,
                         GCancellable   *cancellable,
                         GError        **error)
-{
-  gboolean ret = FALSE;
-  gs_unref_bytes GBytes *delta_data = NULL;
-  gs_unref_bytes GBytes *signature_data = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_free char *delta_path = NULL;
-  gs_unref_object GFile *delta_file = NULL;
-  gs_unref_object char *detached_metadata_relpath = NULL;
-  gs_unref_object GFile *detached_metadata_path = NULL;
-  gs_unref_variant GVariant *existing_detached_metadata = NULL;
-  gs_unref_variant GVariant *normalized = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
-  GError *temp_error = NULL;
-
-  detached_metadata_relpath =
-    _ostree_get_relative_static_delta_detachedmeta_path (from_commit, to_commit);
-  detached_metadata_path = g_file_resolve_relative_path (self->repodir, detached_metadata_relpath);
-
-  delta_path = _ostree_get_relative_static_delta_superblock_path (from_commit, to_commit);
-  delta_file = g_file_resolve_relative_path (self->repodir, delta_path);
-  delta_data = gs_file_map_readonly (delta_file, cancellable, error);
-  if (!delta_data)
-    goto out;
-  
-  if (!ot_util_variant_map (detached_metadata_path, G_VARIANT_TYPE ("a{sv}"),
-                            TRUE, &existing_detached_metadata, &temp_error))
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
-
-  if (!sign_data (self, delta_data, key_id, homedir,
-                  &signature_data,
-                  cancellable, error))
-    goto out;
-
-  new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_detached_metadata, signature_data);
-
-  normalized = g_variant_get_normal_form (new_metadata);
-
-  if (!g_file_replace_contents (detached_metadata_path,
-                                g_variant_get_data (normalized),
-                                g_variant_get_size (normalized),
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
+{      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "ostree_repo_sign_delta is deprecated");
+  return FALSE;
 }
 
-OstreeGpgVerifyResult *
+ OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
                                        GVariant            *metadata,
