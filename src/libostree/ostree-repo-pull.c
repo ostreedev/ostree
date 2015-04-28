@@ -1303,44 +1303,6 @@ load_remote_repo_config (OtPullData    *pull_data,
 }
 
 static gboolean
-fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
-                                           const char      *from_revision,
-                                           const char      *checksum,
-                                           GBytes          *superblock_data,
-                                           GCancellable    *cancellable,
-                                           GError         **error)
-{
-  gboolean ret = FALSE;
-  g_autofree char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
-  g_autoptr(GBytes) detached_meta_data = NULL;
-  SoupURI *target_uri = NULL;
-  g_autoptr(GVariant) metadata = NULL;
-
-  target_uri = suburi_new (pull_data->base_uri, meta_path, NULL);
-
-  if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, FALSE,
-                                       &detached_meta_data,
-                                       pull_data->cancellable, error))
-    {
-      g_prefix_error (error, "GPG verification enabled, but failed to fetch metadata: ");
-      goto out;
-    }
-
-  metadata = g_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
-                                       detached_meta_data,
-                                       FALSE);
-
-  if (!_ostree_repo_gpg_verify_with_metadata (pull_data->repo, superblock_data,
-                                              metadata, NULL, NULL,
-                                              cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
 request_static_delta_superblock_sync (OtPullData  *pull_data,
                                       const char  *from_revision,
                                       const char  *to_revision,
@@ -1366,16 +1328,6 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   
   if (delta_superblock_data)
     {
-      if (pull_data->gpg_verify)
-        {
-          if (!fetch_metadata_to_verify_delta_superblock (pull_data,
-                                                          from_revision,
-                                                          to_revision,
-                                                          delta_superblock_data,
-                                                          pull_data->cancellable, error))
-            goto out;
-        }
-
       {
         gs_free gchar *delta = NULL;
         gs_free guchar *ret_csum = NULL;
