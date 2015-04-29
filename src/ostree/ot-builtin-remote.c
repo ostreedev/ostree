@@ -24,240 +24,7 @@
 
 #include "ot-main.h"
 #include "ot-builtins.h"
-#include "ostree.h"
-#include "ot-tool-util.h"
-#include "otutil.h"
-
-static void
-usage_error (GOptionContext *context, const char *message, GError **error)
-{
-  gs_free gchar *help = g_option_context_get_help (context, TRUE, NULL);
-  g_printerr ("%s", help);
-  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, message);
-}
-
-static char **opt_set;
-static gboolean opt_no_gpg_verify;
-static gboolean opt_if_not_exists;
-
-static GOptionEntry add_option_entries[] = {
-  { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
-  { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
-  { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
-  { NULL }
-};
-
-static gboolean
-ostree_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError **error)
-{
-  GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
-  const char *remote_name;
-  const char *remote_url;
-  char **iter;
-  gs_free char *target_name = NULL;
-  gs_unref_object GFile *target_conf = NULL;
-  gs_unref_variant_builder GVariantBuilder *optbuilder = NULL;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("NAME URL [BRANCH...] - Add a remote repository");
-
-  if (!ostree_option_context_parse (context, add_option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
-
-  if (argc < 3)
-    {
-      usage_error (context, "NAME and URL must be specified", error);
-      goto out;
-    }
-
-  remote_name = argv[1];
-  remote_url  = argv[2];
-
-  optbuilder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-
-  if (argc > 3)
-    {
-      gs_unref_ptrarray GPtrArray *branchesp = g_ptr_array_new ();
-      int i;
-
-      for (i = 3; i < argc; i++)
-        g_ptr_array_add (branchesp, argv[i]);
-      g_ptr_array_add (branchesp, NULL);
-
-      g_variant_builder_add (optbuilder, "{s@v}",
-                             "branches",
-                             g_variant_new_variant (g_variant_new_strv ((const char*const*)branchesp->pdata, -1)));
-    }
-
-  for (iter = opt_set; iter && *iter; iter++)
-    {
-      const char *keyvalue = *iter;
-      gs_free char *subkey = NULL;
-      gs_free char *subvalue = NULL;
-
-      if (!ot_parse_keyvalue (keyvalue, &subkey, &subvalue, error))
-        goto out;
-
-      g_variant_builder_add (optbuilder, "{s@v}",
-                             subkey, g_variant_new_variant (g_variant_new_string (subvalue)));
-    }
-
-  if (opt_no_gpg_verify)
-    g_variant_builder_add (optbuilder, "{s@v}",
-                           "gpg-verify",
-                           g_variant_new_variant (g_variant_new_boolean (FALSE)));
-
-  if (!ostree_repo_remote_change (repo, NULL,
-                                  opt_if_not_exists ? OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS : 
-                                  OSTREE_REPO_REMOTE_CHANGE_ADD,
-                                  remote_name, remote_url,
-                                  g_variant_builder_end (optbuilder),
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  g_option_context_free (context);
-
-  return ret;
-}
-
-gboolean opt_if_exists = FALSE;
-
-static GOptionEntry delete_option_entries[] = {
-  { "if-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_exists, "Do nothing if the provided remote does not exist", NULL },
-  { NULL }
-};
-
-static gboolean
-ostree_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error)
-{
-  GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
-  const char *remote_name;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("NAME - Delete a remote repository");
-
-  if (!ostree_option_context_parse (context, delete_option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
-
-  if (argc < 2)
-    {
-      usage_error (context, "NAME must be specified", error);
-      goto out;
-    }
-
-  remote_name = argv[1];
-
-  if (!ostree_repo_remote_change (repo, NULL,
-                                  opt_if_exists ? OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS : 
-                                  OSTREE_REPO_REMOTE_CHANGE_DELETE,
-                                  remote_name, NULL, NULL,
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  g_option_context_free (context);
-
-  return ret;
-}
-
-static GOptionEntry show_url_option_entries[] = {
-  { NULL }
-};
-
-static gboolean
-ostree_remote_builtin_show_url (int argc, char **argv, GCancellable *cancellable, GError **error)
-{
-  GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
-  const char *remote_name;
-  gs_free char *remote_url = NULL;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("NAME - Show remote repository URL");
-
-  if (!ostree_option_context_parse (context, show_url_option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
-
-  if (argc < 2)
-    {
-      usage_error (context, "NAME must be specified", error);
-      goto out;
-    }
-
-  remote_name = argv[1];
-
-  if (ostree_repo_remote_get_url (repo, remote_name, &remote_url, error))
-    {
-      g_print ("%s\n", remote_url);
-      ret = TRUE;
-    }
-
- out:
-  return ret;
-}
-
-static gboolean opt_show_urls;
-
-static GOptionEntry list_option_entries[] = {
-  { "show-urls", 'u', 0, G_OPTION_ARG_NONE, &opt_show_urls, "Show remote URLs in list", NULL },
-  { NULL }
-};
-
-static gboolean
-ostree_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
-{
-  GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
-  gs_strfreev char **remotes = NULL;
-  guint ii, n_remotes = 0;
-  gboolean ret = FALSE;
-
-  context = g_option_context_new ("- List remote repository names");
-
-  if (!ostree_option_context_parse (context, list_option_entries, &argc, &argv,
-                                    OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
-
-  remotes = ostree_repo_remote_list (repo, &n_remotes);
-
-  if (opt_show_urls)
-    {
-      int max_length = 0;
-
-      for (ii = 0; ii < n_remotes; ii++)
-        max_length = MAX (max_length, strlen (remotes[ii]));
-
-      for (ii = 0; ii < n_remotes; ii++)
-        {
-          gs_free char *remote_url = NULL;
-
-          if (!ostree_repo_remote_get_url (repo, remotes[ii], &remote_url, error))
-            goto out;
-
-          g_print ("%-*s  %s\n", max_length, remotes[ii], remote_url);
-        }
-    }
-  else
-    {
-      for (ii = 0; ii < n_remotes; ii++)
-        g_print ("%s\n", remotes[ii]);
-    }
-
-  ret = TRUE;
-
- out:
-  g_option_context_free (context);
-
-  return ret;
-}
+#include "ot-remote-builtins.h"
 
 typedef struct {
   const char *name;
@@ -265,10 +32,10 @@ typedef struct {
 } OstreeRemoteCommand;
 
 static OstreeRemoteCommand remote_subcommands[] = {
-  { "add", ostree_remote_builtin_add },
-  { "delete", ostree_remote_builtin_delete },
-  { "show-url", ostree_remote_builtin_show_url },
-  { "list", ostree_remote_builtin_list },
+  { "add", ot_remote_builtin_add },
+  { "delete", ot_remote_builtin_delete },
+  { "show-url", ot_remote_builtin_show_url },
+  { "list", ot_remote_builtin_list },
   { NULL, NULL }
 };
 
@@ -301,7 +68,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
 {
   OstreeRemoteCommand *subcommand;
   const char *subcommand_name = NULL;
-  gs_free char *prgname = NULL;
+  g_autofree char *prgname = NULL;
   gboolean ret = FALSE;
   int in, out;
 
@@ -339,7 +106,7 @@ ostree_builtin_remote (int argc, char **argv, GCancellable *cancellable, GError 
   if (!subcommand->name)
     {
       GOptionContext *context;
-      gs_free char *help;
+      g_autofree char *help;
 
       context = remote_option_context_new_with_commands ();
 
