@@ -142,6 +142,9 @@ typedef enum {
 #define OSTREE_SUMMARY_GVARIANT_STRING "(a(s(taya{sv}))a{sv})"
 #define OSTREE_SUMMARY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_GVARIANT_STRING)
 
+#define OSTREE_SUMMARY_SIG_GVARIANT_STRING "a{sv}"
+#define OSTREE_SUMMARY_SIG_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING)
+
 /**
  * OstreeRepoMode:
  * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root

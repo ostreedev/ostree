@@ -60,6 +60,7 @@ typedef struct {
   gboolean          gpg_verify;
 
   GBytes           *summary_data;
+  GBytes           *summary_data_sig;
   GVariant         *summary;
   GHashTable       *summary_deltas_checksums;
   GPtrArray        *static_delta_superblocks;
@@ -1892,16 +1893,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
-      SoupURI *summary_uri = NULL;
+      SoupURI *uri = NULL;
       gs_unref_bytes GBytes *bytes = NULL;
+      gs_unref_bytes GBytes *bytes_sig = NULL;
       gs_free char *ret_contents = NULL;
       
-      summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, summary_uri, FALSE, TRUE,
+      uri = suburi_new (pull_data->base_uri, "summary", NULL);
+      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
                                            &bytes, cancellable, error))
         goto out;
-      soup_uri_free (summary_uri);
-      
+      soup_uri_free (uri);
+
+      uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
+      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                           &bytes_sig, cancellable, error))
+        goto out;
+      soup_uri_free (uri);
+
       if (bytes)
         {
           gs_unref_variant GVariant *refs = NULL;
@@ -1910,6 +1918,32 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           gsize i, n;
 
           pull_data->summary_data = g_bytes_ref (bytes);
+          if (bytes_sig)
+            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+          if (pull_data->gpg_verify && bytes_sig)
+            {
+              gs_unref_object OstreeGpgVerifyResult *result = NULL;
+              gs_unref_variant GVariant *sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                                                 bytes_sig,
+                                                                                 FALSE);
+              result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                              bytes,
+                                                              sig_variant,
+                                                              NULL,
+                                                              NULL,
+                                                              cancellable,
+                                                              error);
+              if (result == NULL)
+                goto out;
+
+              if (ostree_gpg_verify_result_count_valid (result) == 0)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "GPG signatures found, but none are in trusted keyring");
+                  goto out;
+                }
+            }
+
           pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
           refs = g_variant_get_child_value (pull_data->summary, 0);
           n = g_variant_n_children (refs);
@@ -2142,6 +2176,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                         pull_data->summary_data, !pull_data->repo->disable_fsync,
                                         cancellable, error))
         goto out;
+
+      if (pull_data->summary_data_sig &&
+          !ot_file_replace_contents_at (pull_data->repo->repo_dir_fd, "summary.sig",
+                                        pull_data->summary_data_sig, !pull_data->repo->disable_fsync,
+                                        cancellable, error))
+        goto out;
     }
 
   if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
@@ -2212,6 +2252,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
