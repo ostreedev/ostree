@@ -76,6 +76,23 @@ Boston, MA 02111-1307, USA.
 		  Update the summary file.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-sign</option>=KEYID</term>
+
+                <listitem><para>
+                    GPG Key ID to sign the delta with.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-homedir</option>=HOMEDIR</term>
+
+                <listitem><para>
+                    GPG Homedir to use when looking for keyrings.
+                </para></listitem>
+            </varlistentry>
+
         </variablelist>
     </refsect1>
 </refentry>

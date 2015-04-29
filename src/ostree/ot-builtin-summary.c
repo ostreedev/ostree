@@ -26,9 +26,13 @@
 #include "otutil.h"
 
 static gboolean opt_update;
+static char **opt_key_ids;
+static char *opt_gpg_homedir;
 
 static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "KEY-ID"},
+  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
   { NULL }
 };
 
@@ -51,6 +55,23 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 
       if (!ostree_repo_regenerate_summary (repo, NULL, cancellable, error))
         goto out;
+
+      if (opt_key_ids)
+        {
+          char **iter;
+
+          for (iter = opt_key_ids; iter && *iter; iter++)
+            {
+              const char *keyid = *iter;
+
+              if (!ostree_repo_add_gpg_signature_summary (repo,
+                                                          keyid,
+                                                          opt_gpg_homedir,
+                                                          cancellable,
+                                                          error))
+                goto out;
+            }
+        }
     }
   else
     {
