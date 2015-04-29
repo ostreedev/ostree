@@ -3373,7 +3373,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   if (!summary_data)
     goto out;
 
-  if (!ot_util_variant_map (signature_path, G_VARIANT_TYPE ("a{sv}"),
+  if (!ot_util_variant_map (signature_path, G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
                             TRUE, &existing_signatures, &temp_error))
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
