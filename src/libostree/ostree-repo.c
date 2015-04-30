@@ -507,6 +507,15 @@ ostree_repo_class_init (OstreeRepoClass *klass)
 static void
 ostree_repo_init (OstreeRepo *self)
 {
+  static gsize gpgme_initialized;
+
+  if (g_once_init_enter (&gpgme_initialized))
+    {
+      gpgme_check_version (NULL);
+      gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
+      g_once_init_leave (&gpgme_initialized, 1);
+    }
+
   g_mutex_init (&self->cache_lock);
   g_mutex_init (&self->txn_stats_lock);
 
@@ -3056,9 +3065,6 @@ sign_data (OstreeRepo     *self,
                                cancellable, error))
     goto out;
 
-  gpgme_check_version (NULL);
-  gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
-  
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
       ot_gpgme_error_to_gio_error (err, error);
