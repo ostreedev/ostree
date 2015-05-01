@@ -3561,7 +3561,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   result = _ostree_repo_gpg_verify_with_metadata (self,
                                                   commit_data,
                                                   old_metadata,
-                                                  NULL, NULL,
+                                                  NULL, NULL, NULL,
                                                   cancellable,
                                                   &local_error);
 
@@ -3694,10 +3694,14 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   return ret;
 }
 
+/* Special remote for _ostree_repo_gpg_verify_with_metadata() */
+static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";
+
 OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
                                        GVariant            *metadata,
+                                       const char          *remote_name,
                                        GFile               *keyringdir,
                                        GFile               *extra_keyring,
                                        GCancellable        *cancellable,
@@ -3714,6 +3718,33 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
   verifier = _ostree_gpg_verifier_new (cancellable, error);
   if (!verifier)
     goto out;
+
+  if (remote_name == OSTREE_ALL_REMOTES)
+    {
+      /* Add all available remote keyring files. */
+
+      if (!_ostree_gpg_verifier_add_keyring_dir (verifier, self->repodir,
+                                                 cancellable, error))
+        goto out;
+    }
+  else if (remote_name != NULL)
+    {
+      /* Add the remote's keyring file.  OstreeGpgVerifier
+       * will ignore it if the keyring file does not exist. */
+
+      OstreeRemote *remote;
+      g_autoptr(GFile) file = NULL;
+
+      remote = ost_repo_get_remote (self, remote_name, error);
+      if (remote == NULL)
+        goto out;
+
+      file = g_file_get_child (self->repodir, remote->keyring);
+
+      _ostree_gpg_verifier_add_keyring (verifier, file);
+
+      ost_remote_unref (remote);
+    }
 
   if (keyringdir)
     {
@@ -3761,6 +3792,62 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                                  cancellable, error);
 
  out:
+  return result;
+}
+
+/* Needed an internal version for the remote_name parameter. */
+OstreeGpgVerifyResult *
+_ostree_repo_verify_commit_internal (OstreeRepo    *self,
+                                     const char    *commit_checksum,
+                                     const char    *remote_name,
+                                     GFile         *keyringdir,
+                                     GFile         *extra_keyring,
+                                     GCancellable  *cancellable,
+                                     GError       **error)
+{
+  OstreeGpgVerifyResult *result = NULL;
+  gs_unref_variant GVariant *commit_variant = NULL;
+  gs_unref_variant GVariant *metadata = NULL;
+  gs_unref_bytes GBytes *signed_data = NULL;
+
+  /* Load the commit */
+  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                 commit_checksum, &commit_variant,
+                                 error))
+    {
+      g_prefix_error (error, "Failed to read commit: ");
+      goto out;
+    }
+
+  /* Load the metadata */
+  if (!ostree_repo_read_commit_detached_metadata (self,
+                                                  commit_checksum,
+                                                  &metadata,
+                                                  cancellable,
+                                                  error))
+    {
+      g_prefix_error (error, "Failed to read detached metadata: ");
+      goto out;
+    }
+
+  signed_data = g_variant_get_data_as_bytes (commit_variant);
+
+  /* XXX This is a hackish way to indicate to use ALL remote-specific
+   *     keyrings in the signature verification.  We want this when
+   *     verifying a signed commit that's already been pulled. */
+  if (remote_name == NULL)
+    remote_name = OSTREE_ALL_REMOTES;
+
+  result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                  signed_data,
+                                                  metadata,
+                                                  remote_name,
+                                                  keyringdir,
+                                                  extra_keyring,
+                                                  cancellable,
+                                                  error);
+
+out:
   return result;
 }
 
@@ -3828,42 +3915,13 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                GCancellable  *cancellable,
                                GError       **error)
 {
-  OstreeGpgVerifyResult *result = NULL;
-  g_autoptr(GVariant) commit_variant = NULL;
-  g_autoptr(GFile) keyringdir_ref = NULL;
-  g_autoptr(GVariant) metadata = NULL;
-  g_autoptr(GBytes) signed_data = NULL;
-  g_autofree char *commit_filename = NULL;
-
-  /* Create a temporary file for the commit */
-  if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
-                                 commit_checksum, &commit_variant,
-                                 error))
-    {
-      g_prefix_error (error, "Failed to read commit: ");
-      goto out;
-    }
-
-  /* Load the metadata */
-  if (!ostree_repo_read_commit_detached_metadata (self,
-                                                  commit_checksum,
-                                                  &metadata,
-                                                  cancellable,
-                                                  error))
-    {
-      g_prefix_error (error, "Failed to read detached metadata: ");
-      goto out;
-    }
-
-  signed_data = g_variant_get_data_as_bytes (commit_variant);
-
-  result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                  signed_data, metadata,
-                                                  keyringdir, extra_keyring,
-                                                  cancellable, error);
-
-out:
-  return result;
+  return _ostree_repo_verify_commit_internal (self,
+                                              commit_checksum,
+                                              NULL,
+                                              keyringdir,
+                                              extra_keyring,
+                                              cancellable,
+                                              error);
 }
 
 /**
