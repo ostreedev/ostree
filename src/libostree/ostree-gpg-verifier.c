@@ -259,16 +259,13 @@ out:
   return result;
 }
 
-gboolean
+void
 _ostree_gpg_verifier_add_keyring (OstreeGpgVerifier  *self,
-                                  GFile              *path,
-                                  GCancellable       *cancellable,
-                                  GError            **error)
+                                  GFile              *path)
 {
-  g_return_val_if_fail (path != NULL, FALSE);
+  g_return_if_fail (G_IS_FILE (path));
 
   self->keyrings = g_list_append (self->keyrings, g_object_ref (path));
-  return TRUE;
 }
 
 gboolean

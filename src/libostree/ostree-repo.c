@@ -3376,9 +3376,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     }
   if (extra_keyring != NULL)
     {
-      if (!_ostree_gpg_verifier_add_keyring (verifier, extra_keyring,
-                                             cancellable, error))
-        goto out;
+      _ostree_gpg_verifier_add_keyring (verifier, extra_keyring);
     }
 
   if (metadata)

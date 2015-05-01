@@ -51,8 +51,7 @@ gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                                     GCancellable        *cancellable,
                                                     GError             **error);
 
-gboolean      _ostree_gpg_verifier_add_keyring (OstreeGpgVerifier   *self,
-                                                GFile               *path,
-                                                GCancellable        *cancellable,
-                                                GError             **error);
+void _ostree_gpg_verifier_add_keyring (OstreeGpgVerifier *self,
+                                       GFile             *path);
+
 G_END_DECLS
