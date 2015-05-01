@@ -37,6 +37,8 @@ po
 ABOUT-NLS
 _build
 
+/build-aux/test-driver
+
 /doc/ostree-decl.txt
 /doc/ostree-overrides.txt
 /doc/ostree-undeclared.txt

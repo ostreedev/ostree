@@ -2,3 +2,4 @@
 ostree-http-server
 run-apache
 tmpdir-lifecycle
+test-rollsum
