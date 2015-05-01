@@ -915,6 +915,10 @@ impl_repo_remote_delete (OstreeRepo     *self,
         }
     }
 
+  /* Delete the remote's keyring file, if it exists. */
+  if (!ot_ensure_unlinked_at (self->repo_dir_fd, remote->keyring, error))
+    goto out;
+
   ost_repo_remove_remote (self, remote);
 
   ret = TRUE;
