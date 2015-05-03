@@ -30,19 +30,29 @@
 static void
 test_ostree_parse_delta_name (void)
 {
-  char from[65];
-  char to[65];
-  _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d", from, to);
-  g_assert_cmpstr (to, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
-  g_assert_cmpstr (from, ==, "");
+  {
+    gs_free char *from;
+    gs_free char *to;
+    _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d", &from, &to);
+    g_assert_cmpstr (to, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
+    g_assert_null (from);
+  }
 
-  _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d-5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", from, to);
-  g_assert_cmpstr (from, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
-  g_assert_cmpstr (to, ==, "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03");
+  {
+    gs_free char *from;
+    gs_free char *to;
+    _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d-5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", &from, &to);
+    g_assert_cmpstr (from, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
+    g_assert_cmpstr (to, ==, "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03");
+  }
 
-  _ostree_parse_delta_name ("", from, to);
-  g_assert_cmpstr (from, ==, "");
-  g_assert_cmpstr (to, ==, "");
+  {
+    gs_free char *from;
+    gs_free char *to;
+    _ostree_parse_delta_name ("", &from, &to);
+    g_assert_null (from);
+    g_assert_null (to);
+  }
 }
 
 int main (int argc, char **argv)

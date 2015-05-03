@@ -1499,22 +1499,21 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
 
 void
 _ostree_parse_delta_name (const char  *delta_name,
-                          char        *from,
-                          char        *to)
+                          char        **out_from,
+                          char        **out_to)
 {
-  char *sep = strchr (delta_name, '-');
-  if (sep)
+  gs_strfreev char **parts = g_strsplit (delta_name, "-", 2);
+
+  *out_from = *out_to = NULL;
+  if (parts[0] && parts[1])
     {
-      memcpy (from, delta_name, 64);
-      memcpy (to, sep + 1, 64);
+      ot_transfer_out_value (out_from, &parts[0]);
+      ot_transfer_out_value (out_to, &parts[1]);
     }
   else
     {
-      from[0] = '\0';
-      memcpy (to, delta_name, 64);
+      ot_transfer_out_value (out_to, &parts[0]);
     }
-  from[64] = '\0';
-  to[64] = '\0';
 }
 
 /*
