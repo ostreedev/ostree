@@ -3271,11 +3271,6 @@ out:
  * @self: Self
  * @from_commit: SHA256 of starting commit to sign, or %NULL
  * @to_commit: SHA256 of target commit to sign
- * @key_id: Use this GPG key id
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
  * This function is deprecated, sign the summary file instead.
  * Add a GPG signature to a static delta.
  */
@@ -3292,7 +3287,75 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   return FALSE;
 }
 
- OstreeGpgVerifyResult *
+/**
+ * ostree_repo_add_gpg_signature_summary:
+ * @self: Self
+ * @key_id: Use this GPG key id
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a static delta.
+ */
+gboolean
+ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                       const gchar    *key_id,
+                                       const gchar    *homedir,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
+{
+  gboolean ret = FALSE;
+  gs_unref_bytes GBytes *summary_data = NULL;
+  gs_unref_bytes GBytes *signature_data = NULL;
+  gs_unref_object GFile *summary_file = NULL;
+  gs_unref_object GFile *signature_path = NULL;
+  GError *temp_error = NULL;
+  gs_unref_variant GVariant *existing_signatures = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
+  gs_unref_variant GVariant *normalized = NULL;
+
+  signature_path = g_file_resolve_relative_path (self->repodir, "summary.sig");
+
+  summary_file = g_file_resolve_relative_path (self->repodir, "summary");
+  summary_data = gs_file_map_readonly (summary_file, cancellable, error);
+  if (!summary_data)
+    goto out;
+
+  if (!ot_util_variant_map (signature_path, G_VARIANT_TYPE ("a{sv}"),
+                            TRUE, &existing_signatures, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+        }
+      else
+        {
+          g_propagate_error (error, temp_error);
+          goto out;
+        }
+    }
+
+  if (!sign_data (self, summary_data, key_id, homedir,
+                  &signature_data,
+                  cancellable, error))
+    goto out;
+
+  new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_signatures, signature_data);
+  normalized = g_variant_get_normal_form (new_metadata);
+
+  if (!g_file_replace_contents (signature_path,
+                                g_variant_get_data (normalized),
+                                g_variant_get_size (normalized),
+                                NULL, FALSE, 0, NULL,
+                                cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
                                        GVariant            *metadata,
