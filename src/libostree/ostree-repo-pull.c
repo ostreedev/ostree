@@ -1337,19 +1337,12 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
         gs_free guchar *ret_csum = NULL;
         guchar *summary_csum;
         gs_unref_object GInputStream *summary_is = NULL;
-        gs_unref_object GFileInfo * file_info = _ostree_header_gfile_info_new (0, 0, 0);
 
         summary_is = g_memory_input_stream_new_from_data (g_bytes_get_data (delta_superblock_data, NULL),
                                                           g_bytes_get_size (delta_superblock_data),
                                                           NULL);
 
-        if (!ostree_checksum_file_from_input (file_info,
-                                              NULL,
-                                              summary_is,
-                                              G_FILE_TYPE_REGULAR,
-                                              &ret_csum,
-                                              cancellable,
-                                              error))
+        if (!ot_gio_checksum_stream (summary_is, &ret_csum, cancellable, error))
           goto out;
 
         delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
@@ -1964,7 +1957,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
 
           additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-          deltas = g_variant_lookup_value (additional_metadata, "static-deltas", G_VARIANT_TYPE ("a{sv}"));
+          deltas = g_variant_lookup_value (additional_metadata, "ostree.static-deltas", G_VARIANT_TYPE ("a{sv}"));
           n = deltas ? g_variant_n_children (deltas) : 0;
           for (i = 0; i < n; i++)
             {
