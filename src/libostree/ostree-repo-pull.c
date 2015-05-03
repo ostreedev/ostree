@@ -1352,11 +1352,14 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
                                               error))
           goto out;
 
-        delta = g_strdup_printf ("%s%s%s", from_revision ? from_revision : "", from_revision ? "-" : "", to_revision);
+        delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
         summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
 
         if (summary_csum && memcmp (summary_csum, ret_csum, 32))
-          goto out;
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
+            goto out;
+          }
       }
 
       ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
@@ -1977,6 +1980,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               size = g_variant_get_size (csum_v);
 
               g_assert_cmpint (size, ==, 32);
+              if (size != 32)
+                continue;
 
               memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
               g_hash_table_insert (pull_data->summary_deltas_checksums,
