@@ -79,6 +79,9 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   refspec = argv[1];
 
+  if (!ostree_sysroot_lock (sysroot, error))
+    goto out;
+
   if (!ostree_sysroot_load (sysroot, cancellable, error))
     goto out;
 
@@ -172,6 +175,8 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
+  if (sysroot)
+    ostree_sysroot_unlock (sysroot);
   if (origin)
     g_key_file_unref (origin);
   if (context)

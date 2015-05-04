@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "libglnx.h"
 #include "ostree.h"
 #include "ostree-kernel-args.h"
 #include "ostree-bootloader.h"
@@ -31,6 +32,7 @@ struct OstreeSysroot {
 
   GFile *path;
   int sysroot_fd;
+  GLnxLockFile lock;
 
   gboolean loaded;
   
@@ -43,7 +45,10 @@ struct OstreeSysroot {
 
   /* Only access through ostree_sysroot_get_repo() */
   OstreeRepo *repo;
+
 };
+
+#define OSTREE_SYSROOT_LOCKFILE "ostree/lock"
 
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
