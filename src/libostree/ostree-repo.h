@@ -704,7 +704,7 @@ gboolean ostree_repo_sign_delta (OstreeRepo     *self,
 
 gboolean
 ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
-                                       const gchar    *key_id,
+                                       const gchar    **key_id,
                                        const gchar    *homedir,
                                        GCancellable   *cancellable,
                                        GError        **error);
