@@ -58,19 +58,12 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 
       if (opt_key_ids)
         {
-          char **iter;
-
-          for (iter = opt_key_ids; iter && *iter; iter++)
-            {
-              const char *keyid = *iter;
-
-              if (!ostree_repo_add_gpg_signature_summary (repo,
-                                                          keyid,
-                                                          opt_gpg_homedir,
-                                                          cancellable,
-                                                          error))
-                goto out;
-            }
+          if (!ostree_repo_add_gpg_signature_summary (repo,
+                                                      (const gchar **) opt_key_ids,
+                                                      opt_gpg_homedir,
+                                                      cancellable,
+                                                      error))
+            goto out;
         }
     }
   else
