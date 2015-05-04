@@ -22,6 +22,7 @@
 
 #include "ostree-kernel-args.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 
 #include <string.h>
 

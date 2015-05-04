@@ -20,8 +20,6 @@
 
 #include "config.h"
 
-#include <libglnx.h>
-
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 

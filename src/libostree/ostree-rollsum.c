@@ -25,6 +25,7 @@
 
 #include "ostree-rollsum.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 #include "bupsplit.h"
 
 #define ROLLSUM_BLOB_MAX (8192*4)

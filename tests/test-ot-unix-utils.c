@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "libgsystem.h"
+#include "libglnx.h"
 #include "ot-unix-utils.h"
 #include <glib.h>
 

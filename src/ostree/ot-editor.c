@@ -24,6 +24,7 @@
 
 #include "ot-editor.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 
 #include <sys/wait.h>
 #include <string.h>

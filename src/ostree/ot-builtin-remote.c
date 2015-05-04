@@ -22,8 +22,6 @@
 
 #include "config.h"
 
-#include <libglnx.h>
-
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ot-remote-builtins.h"

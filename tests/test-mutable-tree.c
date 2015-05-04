@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "libgsystem.h"
+#include "libglnx.h"
 #include "ostree-mutable-tree.h"
 #include <glib.h>
 #include <stdlib.h>

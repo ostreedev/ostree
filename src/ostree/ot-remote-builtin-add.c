@@ -20,8 +20,6 @@
 
 #include "config.h"
 
-#include <libglnx.h>
-
 #include "otutil.h"
 #include "ot-tool-util.h"
 

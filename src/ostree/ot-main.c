@@ -27,8 +27,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libglnx.h>
-
 #include "ostree.h"
 #include "ot-main.h"
 #include "otutil.h"
