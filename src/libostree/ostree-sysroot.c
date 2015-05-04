@@ -44,6 +44,10 @@ find_booted_deployment (OstreeSysroot       *self,
  * which in particular should contain a toplevel /ostree directory.
  * Inside this directory is an #OstreeRepo in /ostree/repo, plus a set
  * of deployments in /ostree/deploy.
+ *
+ * This class is not by default safe against concurrent use by threads
+ * or external processes.  You can use ostree_sysroot_lock() to
+ * perform locking externally.
  */
 typedef struct {
   GObjectClass parent_class;
@@ -65,6 +69,8 @@ ostree_sysroot_finalize (GObject *object)
   g_clear_object (&self->path);
   g_clear_object (&self->sepolicy);
   g_clear_object (&self->repo);
+
+  glnx_release_lock_file (&self->lock);
 
   if (self->sysroot_fd != -1)
     (void) close (self->sysroot_fd);
@@ -148,6 +154,7 @@ static void
 ostree_sysroot_init (OstreeSysroot *self)
 {
   self->sysroot_fd = -1;
+  self->lock = (GLnxLockFile)GLNX_LOCK_FILE_INIT;
 }
 
 /**
@@ -1140,6 +1147,43 @@ ostree_sysroot_origin_new_from_refspec (OstreeSysroot  *sysroot,
   GKeyFile *ret = g_key_file_new ();
   g_key_file_set_string (ret, "origin", "refspec", refspec);
   return ret;
+}
+
+/**
+ * ostree_sysroot_lock:
+ * @self: Self
+ * @error: Error
+ *
+ * Acquire an exclusive multi-process write lock for @self.  This call
+ * blocks until the lock has been acquired.  The lock is not
+ * reentrant.
+ *
+ * Release the lock with ostree_sysroot_unlock().  The lock will also
+ * be released if @self is deallocated.
+ */
+gboolean
+ostree_sysroot_lock (OstreeSysroot     *self,
+                     GError           **error)
+{
+  if (!ensure_sysroot_fd (self, error))
+    return FALSE;
+  return glnx_make_lock_file (self->sysroot_fd, OSTREE_SYSROOT_LOCKFILE,
+                              LOCK_EX, &self->lock, error);
+}
+
+/**
+ * ostree_sysroot_unlock:
+ * @self: Self
+ * @error: Error
+ *
+ * Clear the lock previously acquired with ostree_sysroot_lock().  It
+ * is safe to call this function if the lock has not been previously
+ * acquired.
+ */
+void
+ostree_sysroot_unlock (OstreeSysroot  *self)
+{
+  glnx_release_lock_file (&self->lock);
 }
 
 /**

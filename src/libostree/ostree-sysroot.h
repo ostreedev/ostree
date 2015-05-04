@@ -62,6 +62,9 @@ char *ostree_sysroot_get_deployment_dirpath (OstreeSysroot    *self,
 
 GFile * ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path);
 
+gboolean ostree_sysroot_lock (OstreeSysroot  *self, GError **error);
+void ostree_sysroot_unlock (OstreeSysroot  *self);
+
 gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,
                                  GCancellable        *cancellable,
                                  GError             **error);
