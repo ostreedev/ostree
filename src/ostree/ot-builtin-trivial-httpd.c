@@ -150,7 +150,7 @@ do_get (OtTrivialHttpd    *self,
   char *slash;
   int ret;
   struct stat stbuf;
-  gs_free char *safepath = NULL;
+  g_autofree char *safepath = NULL;
 
   if (strstr (path, "../") != NULL)
     {
@@ -188,7 +188,7 @@ do_get (OtTrivialHttpd    *self,
       slash = strrchr (safepath, '/');
       if (!slash || slash[1])
         {
-          gs_free char *redir_uri = NULL;
+          g_autofree char *redir_uri = NULL;
 
           redir_uri = g_strdup_printf ("%s/", soup_message_get_uri (msg)->path);
           soup_message_set_redirect (msg, SOUP_STATUS_MOVED_PERMANENTLY,
@@ -196,10 +196,10 @@ do_get (OtTrivialHttpd    *self,
         }
       else
         {
-          gs_free char *index_realpath = g_strconcat (safepath, "/index.html", NULL);
+          g_autofree char *index_realpath = g_strconcat (safepath, "/index.html", NULL);
           if (stat (index_realpath, &stbuf) != -1)
             {
-              gs_free char *index_path = g_strconcat (path, "/index.html", NULL);
+              g_autofree char *index_path = g_strconcat (path, "/index.html", NULL);
               do_get (self, server, msg, index_path, context);
             }
           else
@@ -276,7 +276,7 @@ do_get (OtTrivialHttpd    *self,
         }
       else /* msg->method == SOUP_METHOD_HEAD */
         {
-          gs_free char *length = NULL;
+          g_autofree char *length = NULL;
 
           /* We could just use the same code for both GET and
            * HEAD (soup-message-server-io.c will fix things up).
@@ -360,7 +360,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   soup_server_add_handler (server, NULL, httpd_callback, app, NULL);
   if (opt_port_file)
     {
-      gs_free char *portstr = NULL;
+      g_autofree char *portstr = NULL;
 #if SOUP_CHECK_VERSION(2, 48, 0)
       GSList *listeners = soup_server_get_listeners (server);
       gs_unref_object GSocket *listener = NULL;

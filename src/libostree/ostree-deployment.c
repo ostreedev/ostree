@@ -150,7 +150,7 @@ ostree_deployment_clone (OstreeDeployment *self)
 
   if (self->origin)
     {
-      gs_free char *data = NULL;
+      g_autofree char *data = NULL;
       gsize len;
       gboolean success;
 

@@ -87,8 +87,8 @@ test_ot_parse_keyvalue (void)
 
   for (i = 0; i < G_N_ELEMENTS (keyvalue); i++)
     {
-      gs_free char *out_key = NULL;
-      gs_free char *out_value = NULL;
+      g_autofree char *out_key = NULL;
+      g_autofree char *out_value = NULL;
       g_assert_true (ot_parse_keyvalue (keyvalue[i],
                                         &out_key,
                                         &out_value,
@@ -98,8 +98,8 @@ test_ot_parse_keyvalue (void)
     }
 
   {
-    gs_free char *out_key = NULL;
-    gs_free char *out_value = NULL;
+    g_autofree char *out_key = NULL;
+    g_autofree char *out_value = NULL;
     g_assert_false (ot_parse_keyvalue ("blabla",
                                        &out_key,
                                        &out_value,

@@ -44,7 +44,7 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
   gboolean ret = FALSE;
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_free char *formatted_freed_size = NULL;
+  g_autofree char *formatted_freed_size = NULL;
   OstreeRepoPruneFlags pruneflags = 0;
   gint n_objects_total;
   gint n_objects_pruned;

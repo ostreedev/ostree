@@ -176,7 +176,7 @@ resolve_refspec_fallback (OstreeRepo     *self,
                           GError        **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ret_rev = NULL;
+  g_autofree char *ret_rev = NULL;
 
   if (self->parent_repo)
     {
@@ -211,7 +211,7 @@ resolve_refspec (OstreeRepo     *self,
   gboolean ret = FALSE;
   __attribute__((unused)) GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
-  gs_free char *ret_rev = NULL;
+  g_autofree char *ret_rev = NULL;
   gs_unref_object GFile *child = NULL;
   
   g_return_val_if_fail (ref != NULL, FALSE);
@@ -294,7 +294,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   static const char hexchars[] = "0123456789abcdef";
   gsize off;
   gs_unref_hashtable GHashTable *ref_list = NULL;
-  gs_free char *ret_rev = NULL;
+  g_autofree char *ret_rev = NULL;
   guint length;
   const char *checksum = NULL;
   OstreeObjectType objtype;
@@ -370,7 +370,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
                          GError        **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ret_rev = NULL;
+  g_autofree char *ret_rev = NULL;
 
   g_return_val_if_fail (refspec != NULL, FALSE);
 
@@ -389,8 +389,8 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
 
       if (g_str_has_suffix (refspec, "^"))
         {
-          gs_free char *parent_refspec = NULL;
-          gs_free char *parent_rev = NULL;
+          g_autofree char *parent_refspec = NULL;
+          g_autofree char *parent_rev = NULL;
           gs_unref_variant GVariant *commit = NULL;
 
           parent_refspec = g_strdup (refspec);
@@ -412,8 +412,8 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
         }
       else
         {
-          gs_free char *remote = NULL;
-          gs_free char *ref = NULL;
+          g_autofree char *remote = NULL;
+          g_autofree char *ref = NULL;
 
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             goto out;
@@ -498,8 +498,8 @@ ostree_repo_list_refs (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   gs_unref_hashtable GHashTable *ret_all_refs = NULL;
-  gs_free char *remote = NULL;
-  gs_free char *ref_prefix = NULL;
+  g_autofree char *remote = NULL;
+  g_autofree char *ref_prefix = NULL;
 
   ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
@@ -651,8 +651,8 @@ _ostree_repo_update_refs (OstreeRepo        *self,
     {
       const char *refspec = key;
       const char *rev = value;
-      gs_free char *remote = NULL;
-      gs_free char *ref = NULL;
+      g_autofree char *remote = NULL;
+      g_autofree char *ref = NULL;
 
       if (!ostree_parse_refspec (refspec, &remote, &ref, error))
         goto out;

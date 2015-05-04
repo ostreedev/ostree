@@ -155,9 +155,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
   else
     {
       const char *from_source;
-      gs_free char *from_resolved = NULL;
-      gs_free char *to_resolved = NULL;
-      gs_free char *from_parent_str = NULL;
+      g_autofree char *from_resolved = NULL;
+      g_autofree char *to_resolved = NULL;
+      g_autofree char *from_parent_str = NULL;
       gs_unref_variant_builder GVariantBuilder *parambuilder = NULL;
 
       g_assert (opt_to_rev);
@@ -332,7 +332,7 @@ ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, G
 
   if (!command->fn)
     {
-      gs_free char *msg = g_strdup_printf ("Unknown command '%s'", cmdname);
+      g_autofree char *msg = g_strdup_printf ("Unknown command '%s'", cmdname);
       static_delta_usage (argv, TRUE);
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, msg);
       goto out;

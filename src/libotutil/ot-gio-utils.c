@@ -56,7 +56,7 @@ ot_gfile_from_build_path (const char *first, ...)
 {
   va_list args;
   const char *arg;
-  gs_free char *path = NULL;
+  g_autofree char *path = NULL;
   gs_unref_ptrarray GPtrArray *components = NULL;  
 
   va_start (args, first);
@@ -113,7 +113,7 @@ ot_gfile_get_child_build_path (GFile      *parent,
 {
   va_list args;
   const char *arg;
-  gs_free char *path = NULL;
+  g_autofree char *path = NULL;
   gs_unref_ptrarray GPtrArray *components = NULL;  
 
   va_start (args, first);
@@ -142,7 +142,7 @@ ot_gfile_resolve_path_printf (GFile       *path,
                               ...)
 {
   va_list args;
-  gs_free char *relpath = NULL;
+  g_autofree char *relpath = NULL;
 
   va_start (args, format);
   relpath = g_strdup_vprintf (format, args);
@@ -252,7 +252,7 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  gs_free char *ret_contents = NULL;
+  g_autofree char *ret_contents = NULL;
 
   ret_contents = gs_file_load_contents_utf8 (path, cancellable, &temp_error);
   if (!ret_contents)
@@ -290,7 +290,7 @@ ot_file_replace_contents_at (int             dfd,
 {
   gboolean ret = FALSE;
   int fd;
-  gs_free char *tmpname = NULL;
+  g_autofree char *tmpname = NULL;
   gs_unref_object GOutputStream *stream = NULL;
   gs_unref_object GInputStream *instream = NULL;
 
@@ -529,7 +529,7 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *parent = g_file_get_parent (path);
-  gs_free char *tmpname = g_strconcat (gs_file_get_basename_cached (path), ".tmp", NULL);
+  g_autofree char *tmpname = g_strconcat (gs_file_get_basename_cached (path), ".tmp", NULL);
   gs_unref_object GFile *tmppath = g_file_get_child (parent, tmpname);
   int parent_dfd = -1;
 

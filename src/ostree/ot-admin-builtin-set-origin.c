@@ -101,8 +101,8 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
     for (iter = opt_set; iter && *iter; iter++)
       {
         const char *keyvalue = *iter;
-        gs_free char *subkey = NULL;
-        gs_free char *subvalue = NULL;
+        g_autofree char *subkey = NULL;
+        g_autofree char *subvalue = NULL;
 
         if (!ot_parse_keyvalue (keyvalue, &subkey, &subvalue, error))
           goto out;
@@ -120,15 +120,15 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   }
   
   { GKeyFile *old_origin = ostree_deployment_get_origin (target_deployment);
-    gs_free char *origin_refspec = g_key_file_get_string (old_origin, "origin", "refspec", NULL);
-    gs_free char *new_refspec = NULL;
-    gs_free char *origin_remote = NULL;
-    gs_free char *origin_ref = NULL;
+    g_autofree char *origin_refspec = g_key_file_get_string (old_origin, "origin", "refspec", NULL);
+    g_autofree char *new_refspec = NULL;
+    g_autofree char *origin_remote = NULL;
+    g_autofree char *origin_ref = NULL;
   
     if (!ostree_parse_refspec (origin_refspec, &origin_remote, &origin_ref, error))
       goto out;
 
-    { gs_free char *new_refspec = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
+    { g_autofree char *new_refspec = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
       gs_unref_keyfile GKeyFile *new_origin = NULL;
       gs_unref_object GFile *origin_path = NULL;
       

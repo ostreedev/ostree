@@ -670,7 +670,7 @@ ostree_repo_write_config (OstreeRepo *self,
                           GError    **error)
 {
   gboolean ret = FALSE;
-  gs_free char *data = NULL;
+  g_autofree char *data = NULL;
   gsize len;
 
   g_return_val_if_fail (self->inited, FALSE);
@@ -774,7 +774,7 @@ impl_repo_remote_add (OstreeRepo     *self,
   if (sysroot != NULL || ostree_repo_is_system (self))
     {
       const char *sysconf_remotes = SYSCONFDIR "/ostree/remotes.d";
-      gs_free char *basename = g_strconcat (name, ".conf", NULL);
+      g_autofree char *basename = g_strconcat (name, ".conf", NULL);
       gs_unref_object GFile *etc_ostree_remotes_d = NULL;
 
       if (sysroot == NULL)
@@ -795,7 +795,7 @@ impl_repo_remote_add (OstreeRepo     *self,
 
   if (remote->file != NULL)
     {
-      gs_free char *data = NULL;
+      g_autofree char *data = NULL;
       gsize length;
 
       data = g_key_file_to_data (remote->options, &length, NULL);
@@ -1051,7 +1051,7 @@ ostree_repo_remote_get_url (OstreeRepo  *self,
                             GError     **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
-  gs_free char *url = NULL;
+  g_autofree char *url = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (name != NULL, FALSE);
@@ -1395,9 +1395,9 @@ ostree_repo_open (OstreeRepo    *self,
   gboolean ret = FALSE;
   gboolean is_archive;
   struct stat stbuf;
-  gs_free char *version = NULL;
-  gs_free char *mode = NULL;
-  gs_free char *parent_repo_path = NULL;
+  g_autofree char *version = NULL;
+  g_autofree char *mode = NULL;
+  g_autofree char *parent_repo_path = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -2828,7 +2828,7 @@ ostree_repo_read_commit (OstreeRepo   *self,
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *ret_root = NULL;
-  gs_free char *resolved_commit = NULL;
+  g_autofree char *resolved_commit = NULL;
 
   if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved_commit, error))
     goto out;
@@ -2967,7 +2967,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
 {
   GSConsole *console = user_data;
   GString *buf;
-  gs_free char *status = NULL;
+  g_autofree char *status = NULL;
   guint outstanding_fetches;
   guint outstanding_metadata_fetches;
   guint outstanding_writes;
@@ -2999,9 +2999,9 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       guint metadata_fetched = ostree_async_progress_get_uint (progress, "metadata-fetched");
       guint requested = ostree_async_progress_get_uint (progress, "requested");
       guint64 bytes_sec = (g_get_monotonic_time () - ostree_async_progress_get_uint64 (progress, "start-time")) / G_USEC_PER_SEC;
-      gs_free char *formatted_bytes_transferred =
+      g_autofree char *formatted_bytes_transferred =
         g_format_size_full (bytes_transferred, 0);
-      gs_free char *formatted_bytes_sec = NULL;
+      g_autofree char *formatted_bytes_sec = NULL;
 
       if (!bytes_sec) // Ignore first second
         formatted_bytes_sec = g_strdup ("-");
@@ -3014,7 +3014,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       if (total_delta_parts > 0)
         {
           guint64 total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
-          gs_free char *formatted_total =
+          g_autofree char *formatted_total =
             g_format_size (total_delta_part_size);
           g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/s %s/%s",
                                   fetched_delta_parts, total_delta_parts,
@@ -3345,9 +3345,9 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   gs_unref_bytes GBytes *delta_data = NULL;
   gs_unref_bytes GBytes *signature_data = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
-  gs_free char *delta_path = NULL;
+  g_autofree char *delta_path = NULL;
   gs_unref_object GFile *delta_file = NULL;
-  gs_free char *detached_metadata_relpath = NULL;
+  g_autofree char *detached_metadata_relpath = NULL;
   gs_unref_object GFile *detached_metadata_path = NULL;
   gs_unref_variant GVariant *existing_detached_metadata = NULL;
   gs_unref_variant GVariant *normalized = NULL;
@@ -3538,7 +3538,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
   gs_unref_object GFile *keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_bytes GBytes *signed_data = NULL;
-  gs_free gchar *commit_filename = NULL;
+  g_autofree char *commit_filename = NULL;
 
   /* Create a temporary file for the commit */
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,

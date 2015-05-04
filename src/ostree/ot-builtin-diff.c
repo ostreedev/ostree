@@ -123,7 +123,7 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
   gs_unref_object OstreeRepo *repo = NULL;
   const char *src;
   const char *target;
-  gs_free char *src_prev = NULL;
+  g_autofree char *src_prev = NULL;
   gs_unref_object GFile *srcf = NULL;
   gs_unref_object GFile *targetf = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
@@ -183,9 +183,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       gs_unref_hashtable GHashTable *reachable_a = NULL;
       gs_unref_hashtable GHashTable *reachable_b = NULL;
       gs_unref_hashtable GHashTable *reachable_intersection = NULL;
-      gs_free char *rev_a = NULL;
-      gs_free char *rev_b = NULL;
-      gs_free char *size = NULL;
+      g_autofree char *rev_a = NULL;
+      g_autofree char *rev_b = NULL;
+      g_autofree char *size = NULL;
       guint a_size;
       guint b_size;
       guint64 total_common;

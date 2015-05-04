@@ -142,8 +142,8 @@ load_and_fsck_one_object (OstreeRepo            *repo,
     }
   else
     {
-      gs_free guchar *computed_csum = NULL;
-      gs_free char *tmp_checksum = NULL;
+      g_autofree guchar *computed_csum = NULL;
+      g_autofree char *tmp_checksum = NULL;
 
       if (!ostree_checksum_file_from_input (file_info, xattrs, input,
                                             objtype, &computed_csum,
@@ -153,7 +153,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
       tmp_checksum = ostree_checksum_from_bytes (computed_csum);
       if (strcmp (checksum, tmp_checksum) != 0)
         {
-          gs_free char *msg = g_strdup_printf ("corrupted object %s.%s; actual checksum: %s",
+          g_autofree char *msg = g_strdup_printf ("corrupted object %s.%s; actual checksum: %s",
                                                checksum, ostree_object_type_to_string (objtype),
                                                tmp_checksum);
           if (opt_delete)

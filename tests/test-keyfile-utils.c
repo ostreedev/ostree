@@ -181,8 +181,8 @@ test_copy_group (void)
 
   for (ii = 0; ii < length; ii++)
     {
-      gs_free char *value = NULL;
-      gs_free char *value2 = NULL;
+      g_autofree char *value = NULL;
+      g_autofree char *value2 = NULL;
 
       value = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);
       value2 = g_key_file_get_value (g_keyfile, section, keys[ii], NULL);

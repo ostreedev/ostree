@@ -35,8 +35,8 @@ get_file_checksum (OstreeDiffFlags  flags,
                    GError   **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ret_checksum = NULL;
-  gs_free guchar *csum = NULL;
+  g_autofree char *ret_checksum = NULL;
+  g_autofree guchar *csum = NULL;
 
   if (OSTREE_IS_REPO_FILE (f))
     {
@@ -129,8 +129,8 @@ diff_files (OstreeDiffFlags  flags,
             GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *checksum_a = NULL;
-  gs_free char *checksum_b = NULL;
+  g_autofree char *checksum_a = NULL;
+  g_autofree char *checksum_b = NULL;
   OstreeDiffItem *ret_item = NULL;
 
   if (!get_file_checksum (flags, a, a_info, &checksum_a, cancellable, error))
@@ -412,7 +412,7 @@ print_diff_item (char        prefix,
 {
   if (g_file_is_native (file))
     {
-      gs_free char *relpath = g_file_get_relative_path (base, file);
+      g_autofree char *relpath = g_file_get_relative_path (base, file);
       g_print ("%c    %s\n", prefix, relpath);
     }
   else

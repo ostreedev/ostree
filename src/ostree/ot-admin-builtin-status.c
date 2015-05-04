@@ -57,8 +57,8 @@ deployment_get_gpg_verify (OstreeDeployment *deployment,
    *     API in libostree if the OstreeRepo parameter is acceptable. */
 
   GKeyFile *origin;
-  gs_free char *refspec = NULL;
-  gs_free char *remote = NULL;
+  g_autofree char *refspec = NULL;
+  g_autofree char *remote = NULL;
   gboolean gpg_verify = FALSE;
 
   origin = ostree_deployment_get_origin (deployment);
@@ -119,7 +119,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           OstreeDeployment *deployment = deployments->pdata[i];
           GKeyFile *origin;
           const char *ref = ostree_deployment_get_csum (deployment);
-          gs_free gchar *version = version_of_commit (repo, ref);
+          g_autofree char *version = version_of_commit (repo, ref);
           gs_unref_object OstreeGpgVerifyResult *result = NULL;
           GString *output_buffer;
           guint jj, n_signatures;
@@ -137,7 +137,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
             g_print ("    origin: none\n");
           else
             {
-              gs_free char *origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
+              g_autofree char *origin_refspec = g_key_file_get_string (origin, "origin", "refspec", NULL);
               if (!origin_refspec)
                 g_print ("    origin: <unknown origin type>\n");
               else

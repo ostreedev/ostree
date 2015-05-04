@@ -218,7 +218,7 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   gs_unref_variant GVariant *tree_metadata = NULL;
   gs_unref_variant GVariant *contents_csum_v = NULL;
   gs_unref_variant GVariant *metadata_csum_v = NULL;
-  gs_free char *tmp_checksum = NULL;
+  g_autofree char *tmp_checksum = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self->parent, error))
     goto out;

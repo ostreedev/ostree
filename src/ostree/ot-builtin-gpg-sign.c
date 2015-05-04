@@ -39,7 +39,7 @@ static GOptionEntry options[] = {
 static void
 usage_error (GOptionContext *context, const char *message, GError **error)
 {
-  gs_free char *help = g_option_context_get_help (context, TRUE, NULL);
+  g_autofree char *help = g_option_context_get_help (context, TRUE, NULL);
   g_printerr ("%s", help);
   g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, message);
 }
@@ -199,7 +199,7 @@ ostree_builtin_gpg_sign (int argc, char **argv, GCancellable *cancellable, GErro
 {
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_free char *resolved_commit = NULL;
+  g_autofree char *resolved_commit = NULL;
   const char *commit;
   char **key_ids;
   int n_key_ids, ii;

@@ -238,7 +238,7 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
                                  const gchar *key_id,
                                  guint *out_signature_index)
 {
-  gs_free char *key_id_upper = NULL;
+  g_autofree char *key_id_upper = NULL;
   gpgme_signature_t signature;
   guint signature_index;
   gboolean ret = FALSE;

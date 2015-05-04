@@ -60,7 +60,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
-  gs_free char *remote = NULL;
+  g_autofree char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
   GSConsole *console = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;

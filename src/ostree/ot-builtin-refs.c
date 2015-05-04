@@ -80,8 +80,8 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
           const char *refspec = hashkey;
-          gs_free char *remote = NULL;
-          gs_free char *ref = NULL;
+          g_autofree char *remote = NULL;
+          g_autofree char *ref = NULL;
 
           if (!ostree_parse_refspec (refspec, &remote, &ref, error))
             goto out;

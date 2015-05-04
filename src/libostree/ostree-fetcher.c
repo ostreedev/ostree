@@ -404,7 +404,7 @@ on_stream_read (GObject        *object,
           if (bytes_read > pending->max_size ||
               (bytes_read + pending->current_size) > pending->max_size)
             {
-              gs_free char *uristr = soup_uri_to_string (pending->uri, FALSE);
+              g_autofree char *uristr = soup_uri_to_string (pending->uri, FALSE);
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
                            uristr,
@@ -576,8 +576,8 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
     }
   else
     {
-      gs_free char *uristring = soup_uri_to_string (uri, FALSE);
-      gs_free char *tmpfile = NULL;
+      g_autofree char *uristring = soup_uri_to_string (uri, FALSE);
+      g_autofree char *tmpfile = NULL;
       struct stat stbuf;
       gboolean exists;
 
@@ -746,7 +746,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
-  gs_free char *ret_contents = NULL;
+  g_autofree char *ret_contents = NULL;
   gs_unref_object GMemoryOutputStream *buf = NULL;
   FetchUriSyncData data;
   g_assert (error != NULL);

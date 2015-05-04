@@ -41,7 +41,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                         GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *temp_filename = NULL;
+  g_autofree char *temp_filename = NULL;
   gs_unref_object GOutputStream *temp_out = NULL;
   int fd;
   int res;
@@ -266,7 +266,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                       GError        **error)
 {
   gboolean ret = FALSE;
-  gs_free char *temp_filename = NULL;
+  g_autofree char *temp_filename = NULL;
 
   if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_SYMBOLIC_LINK)
     {
@@ -865,7 +865,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
     {
       gs_unref_object GFile *objdir = NULL;
       gs_unref_object GFileEnumerator *enumerator = NULL;
-      gs_free char *objdir_name = NULL;
+      g_autofree char *objdir_name = NULL;
 
       objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
       objdir = g_file_get_child (self->uncompressed_objects_dir, objdir_name);

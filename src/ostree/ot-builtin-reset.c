@@ -60,8 +60,8 @@ ostree_builtin_reset (int           argc,
   gboolean ret = FALSE;
   const char *ref;
   const char *target = NULL;
-  gs_free gchar *current = NULL;
-  gs_free gchar *checksum = NULL;
+  g_autofree char *current = NULL;
+  g_autofree char *checksum = NULL;
 
   context = g_option_context_new ("REF COMMIT - Reset a REF to a previous COMMIT");
 

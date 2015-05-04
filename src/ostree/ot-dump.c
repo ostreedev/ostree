@@ -31,7 +31,7 @@
 void
 ot_dump_variant (GVariant *variant)
 {
-  gs_free char *formatted_variant = NULL;
+  g_autofree char *formatted_variant = NULL;
   gs_unref_variant GVariant *byteswapped = NULL;
 
   if (G_BYTE_ORDER != G_BIG_ENDIAN)
@@ -92,8 +92,8 @@ dump_commit (GVariant            *variant,
   const gchar *subject;
   const gchar *body;
   guint64 timestamp;
-  gs_free gchar *str = NULL;
-  gs_free gchar *version = NULL;
+  g_autofree char *str = NULL;
+  g_autofree char *version = NULL;
 
   /* See OSTREE_COMMIT_GVARIANT_FORMAT */
   g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,

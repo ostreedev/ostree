@@ -158,8 +158,8 @@ _ostree_static_delta_part_validate (OstreeRepo     *repo,
 {
   gboolean ret = FALSE;
   gs_unref_object GInputStream *tmp_in = NULL;
-  gs_free guchar *actual_checksum_bytes = NULL;
-  gs_free gchar *actual_checksum = NULL;
+  g_autofree guchar *actual_checksum_bytes = NULL;
+  g_autofree char *actual_checksum = NULL;
   
   tmp_in = (GInputStream*)g_file_read (part_path, cancellable, error);
   if (!tmp_in)
@@ -525,7 +525,7 @@ dispatch_bspatch (OstreeRepo                 *repo,
   guint64 offset, length;
   gs_unref_object GInputStream *in_stream = NULL;
   g_autoptr(GMappedFile) input_mfile = NULL;
-  gs_free guchar *buf = NULL;
+  g_autofree guchar *buf = NULL;
   struct bspatch_stream stream;
   struct bzpatch_opaque_s opaque;
   gsize bytes_written;
@@ -651,7 +651,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
           if (S_ISLNK (state->mode))
             {
-              gs_free char *nulterminated_target =
+              g_autofree char *nulterminated_target =
                 g_strndup ((char*)state->payload_data + content_offset, state->content_size);
               g_file_info_set_symlink_target (finfo, nulterminated_target);
             }

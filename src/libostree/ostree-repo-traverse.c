@@ -417,7 +417,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                    GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *tmp_checksum = NULL;
+  g_autofree char *tmp_checksum = NULL;
 
   while (TRUE)
     {

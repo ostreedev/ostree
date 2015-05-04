@@ -74,7 +74,7 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
   gboolean ret = FALSE;
   OstreeAdminInstUtilCommand *subcommand;
   const char *subcommand_name = NULL;
-  gs_free char *prgname = NULL;
+  g_autofree char *prgname = NULL;
   int in, out;
 
   for (in = 1, out = 1; in < argc; in++, out++)
@@ -111,7 +111,7 @@ ot_admin_builtin_instutil (int argc, char **argv, GCancellable *cancellable, GEr
   if (!subcommand->name)
     {
       GOptionContext *context;
-      gs_free char *help;
+      g_autofree char *help;
 
       context = ostree_admin_instutil_option_context_new_with_commands ();
 

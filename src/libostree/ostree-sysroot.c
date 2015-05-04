@@ -282,7 +282,7 @@ _ostree_sysroot_parse_deploy_path_name (const char *name,
 {
   gboolean ret = FALSE;
   __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
-  gs_free char *serial_str = NULL;
+  g_autofree char *serial_str = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -319,7 +319,7 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
 {
   gboolean ret = FALSE;
   struct stat stbuf;
-  gs_free char *ostree_bootdir_name = g_strdup_printf ("ostree/boot.%d", bootversion);
+  g_autofree char *ostree_bootdir_name = g_strdup_printf ("ostree/boot.%d", bootversion);
 
   if (!ensure_sysroot_fd (self, error))
     goto out;
@@ -336,7 +336,7 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
     }
   else
     {
-      gs_free char *current_subbootdir_name = NULL;
+      g_autofree char *current_subbootdir_name = NULL;
 
       current_subbootdir_name = glnx_readlinkat_malloc (self->sysroot_fd, ostree_bootdir_name,
                                                         cancellable, error);
@@ -498,7 +498,7 @@ parse_origin (OstreeSysroot   *self,
   g_autoptr(GKeyFile) ret_origin = NULL;
   g_autofree char *origin_path = g_strconcat ("../", deployment_name, ".origin", NULL);
   struct stat stbuf;
-  gs_free char *origin_contents = NULL;
+  g_autofree char *origin_contents = NULL;
 
   ret_origin = g_key_file_new ();
   
@@ -543,8 +543,8 @@ parse_bootlink (const char    *bootlink,
 {
   gboolean ret = FALSE;
   __attribute__((cleanup(match_info_cleanup))) GMatchInfo *match = NULL;
-  gs_free char *bootversion_str = NULL;
-  gs_free char *treebootserial_str = NULL;
+  g_autofree char *bootversion_str = NULL;
+  g_autofree char *treebootserial_str = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -588,9 +588,9 @@ parse_deployment (OstreeSysroot       *self,
   int entry_boot_version;
   int treebootserial = -1;
   int deployserial = -1;
-  gs_free char *osname = NULL;
-  gs_free char *bootcsum = NULL;
-  gs_free char *treecsum = NULL;
+  g_autofree char *osname = NULL;
+  g_autofree char *bootcsum = NULL;
+  g_autofree char *treecsum = NULL;
   glnx_fd_close int deployment_dfd = -1;
   const char *deploy_basename;
   g_autofree char *treebootserial_target = NULL;
@@ -675,7 +675,7 @@ list_deployments_process_one_boot_entry (OstreeSysroot               *self,
                                          GError                     **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ostree_arg = NULL;
+  g_autofree char *ostree_arg = NULL;
   gs_unref_object OstreeDeployment *deployment = NULL;
 
   ostree_arg = get_ostree_kernel_arg_from_config (config);
@@ -996,7 +996,7 @@ parse_kernel_commandline (OstreeKernelArgs  **out_args,
 {
   gboolean ret = FALSE;
   gs_unref_object GFile *proc_cmdline = g_file_new_for_path ("/proc/cmdline");
-  gs_free char *contents = NULL;
+  g_autofree char *contents = NULL;
   gsize len;
 
   if (!g_file_load_contents (proc_cmdline, cancellable, &contents, &len, NULL,

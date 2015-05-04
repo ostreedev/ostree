@@ -233,8 +233,8 @@ ostree_repo_prune (OstreeRepo        *self,
         const char *dash = strchr (deltaname, '-');
         const char *to = NULL;
         gboolean have_commit;
-        gs_free char *from = NULL;
-        gs_free char *deltadir = NULL;
+        g_autofree char *from = NULL;
+        g_autofree char *deltadir = NULL;
 
         if (!dash)
           {

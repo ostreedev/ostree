@@ -159,9 +159,9 @@ process_many_checkouts (OstreeRepo         *repo,
   GError *temp_error = NULL;
   gs_unref_object GInputStream *instream = NULL;
   gs_unref_object GDataInputStream *datastream = NULL;
-  gs_free char *revision = NULL;
-  gs_free char *subpath = NULL;
-  gs_free char *resolved_commit = NULL;
+  g_autofree char *revision = NULL;
+  g_autofree char *subpath = NULL;
+  g_autofree char *resolved_commit = NULL;
 
   if (opt_from_stdin)
     {
@@ -229,7 +229,7 @@ ostree_builtin_checkout (int argc, char **argv, GCancellable *cancellable, GErro
   gboolean ret = FALSE;
   const char *commit;
   const char *destination;
-  gs_free char *resolved_commit = NULL;
+  g_autofree char *resolved_commit = NULL;
 
   context = g_option_context_new ("COMMIT [DESTINATION] - Check out a commit into a filesystem tree");
 

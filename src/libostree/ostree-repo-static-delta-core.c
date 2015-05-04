@@ -127,7 +127,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
 
                 if (g_file_query_exists (meta_path, NULL))
                   {
-                    gs_free char *buf = g_strconcat (name1, name2, NULL);
+                    g_autofree char *buf = g_strconcat (name1, name2, NULL);
                     GString *out = g_string_new ("");
                     char checksum[65];
                     guchar csum[32];
@@ -238,7 +238,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   /* Write the to-commit object */
   {
     gs_unref_variant GVariant *to_csum_v = NULL;
-    gs_free char *to_checksum = NULL;
+    g_autofree char *to_checksum = NULL;
     gs_unref_variant GVariant *to_commit = NULL;
     gboolean have_to_commit;
 
@@ -309,7 +309,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
       if (!skip_validation)
         {
-          gs_free char *expected_checksum = ostree_checksum_from_bytes (csum);
+          g_autofree char *expected_checksum = ostree_checksum_from_bytes (csum);
           if (!_ostree_static_delta_part_validate (self, part_path, i,
                                                    expected_checksum,
                                                    cancellable, error))

@@ -458,7 +458,7 @@ _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
                                         GError             **error)
 {
   gboolean ret = FALSE;
-  gs_free char *temp_filename = NULL;
+  g_autofree char *temp_filename = NULL;
   gs_unref_object GOutputStream *ret_stream = NULL;
   gboolean have_obj;
   char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
@@ -536,9 +536,9 @@ write_object (OstreeRepo         *self,
   const char *actual_checksum;
   gboolean do_commit;
   OstreeRepoMode repo_mode;
-  gs_free char *temp_filename = NULL;
+  g_autofree char *temp_filename = NULL;
   gs_unref_object GFile *stored_path = NULL;
-  gs_free guchar *ret_csum = NULL;
+  g_autofree guchar *ret_csum = NULL;
   gs_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   gs_unref_object GInputStream *file_input = NULL;
   gs_unref_object GFileInfo *file_info = NULL;
@@ -775,9 +775,9 @@ write_object (OstreeRepo         *self,
         {
           if (G_UNLIKELY (file_object_length > OSTREE_MAX_METADATA_WARN_SIZE))
             {
-              gs_free char *metasize = g_format_size (file_object_length);
-              gs_free char *warnsize = g_format_size (OSTREE_MAX_METADATA_WARN_SIZE);
-              gs_free char *maxsize = g_format_size (OSTREE_MAX_METADATA_SIZE);
+              g_autofree char *metasize = g_format_size (file_object_length);
+              g_autofree char *warnsize = g_format_size (OSTREE_MAX_METADATA_WARN_SIZE);
+              g_autofree char *maxsize = g_format_size (OSTREE_MAX_METADATA_SIZE);
               g_warning ("metadata object %s is %s, which is larger than the warning threshold of %s." \
                          "  The hard limit on metadata size is %s.  Put large content in the tree itself, not in metadata.",
                          actual_checksum,
@@ -1450,8 +1450,8 @@ ostree_repo_write_metadata (OstreeRepo         *self,
 
   if (G_UNLIKELY (g_variant_get_size (normalized) > OSTREE_MAX_METADATA_SIZE))
     {
-      gs_free char *input_bytes = g_format_size (g_variant_get_size (normalized));
-      gs_free char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
+      g_autofree char *input_bytes = g_format_size (g_variant_get_size (normalized));
+      g_autofree char *max_bytes = g_format_size (OSTREE_MAX_METADATA_SIZE);
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Metadata object of type '%s' is %s; maximum metadata size is %s",
                    ostree_object_type_to_string (objtype),
@@ -1852,10 +1852,10 @@ ostree_repo_write_commit (OstreeRepo      *self,
                           GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ret_commit = NULL;
+  g_autofree char *ret_commit = NULL;
   gs_unref_variant GVariant *commit = NULL;
   gs_unref_variant GVariant *new_metadata = NULL;
-  gs_free guchar *commit_csum = NULL;
+  g_autofree guchar *commit_csum = NULL;
   GDateTime *now = NULL;
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
@@ -2213,7 +2213,7 @@ get_modified_xattrs (OstreeRepo                       *self,
 
   if (modifier && modifier->sepolicy)
     {
-      gs_free char *label = NULL;
+      g_autofree char *label = NULL;
 
       if (!ostree_sepolicy_get_label (modifier->sepolicy, relpath,
                                       g_file_info_get_attribute_uint32 (file_info, "unix::mode"),
@@ -2279,7 +2279,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   gs_unref_object GFile *child = NULL;
   gs_unref_object GFileInfo *modified_info = NULL;
   gs_unref_object OstreeMutableTree *child_mtree = NULL;
-  gs_free char *child_relpath = NULL;
+  g_autofree char *child_relpath = NULL;
   const char *name;
   GFileType file_type;
   OstreeRepoCommitFilterResult filter_result;
@@ -2359,8 +2359,8 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       gs_unref_object GInputStream *file_input = NULL;
       gs_unref_variant GVariant *xattrs = NULL;
       gs_unref_object GInputStream *file_object_input = NULL;
-      gs_free guchar *child_file_csum = NULL;
-      gs_free char *tmp_checksum = NULL;
+      g_autofree guchar *child_file_csum = NULL;
+      g_autofree char *tmp_checksum = NULL;
 
       loose_checksum = devino_cache_lookup (self,
                                             g_file_info_get_attribute_uint32 (child_info, "unix::device"),
@@ -2466,9 +2466,9 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
     {
       gs_unref_object GFileInfo *modified_info = NULL;
       gs_unref_variant GVariant *xattrs = NULL;
-      gs_free guchar *child_file_csum = NULL;
-      gs_free char *tmp_checksum = NULL;
-      gs_free char *relpath = NULL;
+      g_autofree guchar *child_file_csum = NULL;
+      g_autofree char *tmp_checksum = NULL;
+      g_autofree char *relpath = NULL;
 
       child_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -2548,9 +2548,9 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   gs_unref_object GFileInfo *child_info = NULL;
   gs_unref_object GFileInfo *modified_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
-  gs_free guchar *child_file_csum = NULL;
-  gs_free char *tmp_checksum = NULL;
-  gs_free char *relpath = NULL;
+  g_autofree guchar *child_file_csum = NULL;
+  g_autofree char *tmp_checksum = NULL;
+  g_autofree char *relpath = NULL;
   OstreeRepoCommitFilterResult filter_result;
   struct stat dir_stbuf;
 
@@ -2759,7 +2759,7 @@ ostree_repo_write_mtree (OstreeRepo           *self,
       gs_unref_hashtable GHashTable *dir_metadata_checksums = NULL;
       gs_unref_hashtable GHashTable *dir_contents_checksums = NULL;
       gs_unref_variant GVariant *serialized_tree = NULL;
-      gs_free guchar *contents_csum = NULL;
+      g_autofree guchar *contents_csum = NULL;
       char contents_checksum_buf[65];
 
       dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,

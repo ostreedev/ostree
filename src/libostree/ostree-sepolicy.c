@@ -194,7 +194,7 @@ initable_init (GInitable     *initable,
         {
           gsize len;
           GError *temp_error = NULL;
-          gs_free char *line = g_data_input_stream_read_line_utf8 (datain, &len,
+          g_autofree char *line = g_data_input_stream_read_line_utf8 (datain, &len,
                                                                    cancellable, &temp_error);
       
           if (temp_error)
@@ -397,7 +397,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
   gs_unref_object GFileInfo *src_info = NULL;
-  gs_free char *label = NULL;
+  g_autofree char *label = NULL;
   gboolean do_relabel = TRUE;
 
   if (info != NULL)
@@ -475,7 +475,7 @@ ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
 {
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
-  gs_free char *label = NULL;
+  g_autofree char *label = NULL;
 
   /* setfscreatecon() will bomb out if the host has SELinux disabled,
    * but we're enabled for the target system.  This is kind of a

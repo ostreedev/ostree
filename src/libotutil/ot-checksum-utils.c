@@ -112,7 +112,7 @@ ot_gio_splice_get_checksum (GOutputStream  *out,
 {
   gboolean ret = FALSE;
   GChecksum *checksum = NULL;
-  gs_free guchar *ret_csum = NULL;
+  g_autofree guchar *ret_csum = NULL;
 
   checksum = g_checksum_new (G_CHECKSUM_SHA256);
 

@@ -218,7 +218,7 @@ ostree_mutable_tree_lookup (OstreeMutableTree   *self,
 {
   gboolean ret = FALSE;
   gs_unref_object OstreeMutableTree *ret_subdir = NULL;
-  gs_free char *ret_file_checksum = NULL;
+  g_autofree char *ret_file_checksum = NULL;
   
   ret_subdir = ot_gobject_refz (g_hash_table_lookup (self->subdirs, name));
   if (!ret_subdir)

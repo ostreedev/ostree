@@ -82,7 +82,7 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
         {
           GFileInfo *file_info;
           const char *fname;
-          gs_free char *subdir_grub_cfg = NULL;
+          g_autofree char *subdir_grub_cfg = NULL;
 
           if (!gs_file_enumerator_iterate (direnum, &file_info, NULL,
                                            cancellable, error))
@@ -297,9 +297,9 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   gs_unref_object GSSubprocessContext *procctx = NULL;
   gs_unref_object GSSubprocess *proc = NULL;
   gs_strfreev char **child_env = g_get_environ ();
-  gs_free char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
+  g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   gs_unref_object GFile *config_path_efi_dir = NULL;
-  gs_free char *grub2_mkconfig_chroot = NULL;
+  g_autofree char *grub2_mkconfig_chroot = NULL;
 
   if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))

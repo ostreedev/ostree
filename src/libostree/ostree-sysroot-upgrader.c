@@ -71,8 +71,8 @@ parse_refspec (OstreeSysrootUpgrader  *self,
                GError                **error)
 {
   gboolean ret = FALSE;
-  gs_free char *origin_refspec = NULL;
-  gs_free char *unconfigured_state = NULL;
+  g_autofree char *origin_refspec = NULL;
+  g_autofree char *unconfigured_state = NULL;
 
   if ((self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED) == 0)
     {
@@ -423,8 +423,8 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
     {
       GDateTime *old_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (old_commit));
       GDateTime *new_ts = g_date_time_new_from_unix_utc (ostree_commit_get_timestamp (new_commit));
-      gs_free char *old_ts_str = NULL;
-      gs_free char *new_ts_str = NULL;
+      g_autofree char *old_ts_str = NULL;
+      g_autofree char *new_ts_str = NULL;
 
       g_assert (old_ts);
       g_assert (new_ts);
@@ -496,8 +496,8 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   gs_unref_object OstreeRepo *repo = NULL;
   char *refs_to_fetch[] = { self->origin_ref, NULL };
   const char *from_revision = NULL;
-  gs_free char *new_revision = NULL;
-  gs_free char *origin_refspec = NULL;
+  g_autofree char *new_revision = NULL;
+  g_autofree char *origin_refspec = NULL;
 
   if (!ostree_sysroot_get_repo (self->sysroot, &repo, cancellable, error))
     goto out;

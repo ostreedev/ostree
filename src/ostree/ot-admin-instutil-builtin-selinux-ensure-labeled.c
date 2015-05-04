@@ -61,8 +61,8 @@ relabel_one_path (OstreeSePolicy *sepolicy,
                   GError        **error)
 {
   gboolean ret = FALSE;
-  gs_free char *relpath = NULL;
-  gs_free char *new_label = NULL;
+  g_autofree char *relpath = NULL;
+  g_autofree char *new_label = NULL;
 
   relpath = ptrarray_path_join (path_parts);
   if (!ostree_sepolicy_restorecon (sepolicy, relpath,

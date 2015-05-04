@@ -48,7 +48,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   int i;
   const char *src_repo_arg;
   GSConsole *console = NULL;
-  gs_free char *src_repo_uri = NULL;
+  g_autofree char *src_repo_uri = NULL;
   gs_unref_object OstreeAsyncProgress *progress = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *source_objects = NULL;
@@ -77,7 +77,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     src_repo_uri = g_strconcat ("file://", src_repo_arg, NULL);
   else
     { 
-      gs_free char *cwd = g_get_current_dir ();
+      g_autofree char *cwd = g_get_current_dir ();
       src_repo_uri = g_strconcat ("file://", cwd, "/", src_repo_arg, NULL);
     }
 

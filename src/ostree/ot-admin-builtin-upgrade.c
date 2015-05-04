@@ -51,10 +51,10 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
   GOptionContext *context;
   gs_unref_object OstreeSysroot *sysroot = NULL;
   gs_unref_object OstreeSysrootUpgrader *upgrader = NULL;
-  gs_free char *origin_remote = NULL;
-  gs_free char *origin_ref = NULL;
-  gs_free char *origin_refspec = NULL;
-  gs_free char *new_revision = NULL;
+  g_autofree char *origin_remote = NULL;
+  g_autofree char *origin_ref = NULL;
+  g_autofree char *origin_refspec = NULL;
+  g_autofree char *new_revision = NULL;
   gs_unref_object GFile *deployment_path = NULL;
   gs_unref_object GFile *deployment_origin_path = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;

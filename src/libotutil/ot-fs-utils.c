@@ -61,7 +61,7 @@ ot_lgetxattrat (int            dfd,
   /* A workaround for the lack of lgetxattrat(), thanks to Florian Weimer:
    * https://mail.gnome.org/archives/ostree-list/2014-February/msg00017.html
    */
-  gs_free char *full_path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, path);
+  g_autofree char *full_path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, path);
   GBytes *bytes = NULL;
   ssize_t bytes_read, real_size;
   char *buf;
@@ -103,7 +103,7 @@ ot_lsetxattrat (int            dfd,
   /* A workaround for the lack of lsetxattrat(), thanks to Florian Weimer:
    * https://mail.gnome.org/archives/ostree-list/2014-February/msg00017.html
    */
-  gs_free char *full_path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, path);
+  g_autofree char *full_path = g_strdup_printf ("/proc/self/fd/%d/%s", dfd, path);
   int res;
 
   do

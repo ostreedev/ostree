@@ -61,8 +61,8 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
   const char *op;
   const char *section_key;
   const char *value;
-  gs_free char *section = NULL;
-  gs_free char *key = NULL;
+  g_autofree char *section = NULL;
+  g_autofree char *key = NULL;
   GKeyFile *config = NULL;
 
   context = g_option_context_new ("- Change configuration settings");
@@ -102,7 +102,7 @@ ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError 
   else if (!strcmp (op, "get"))
     {
       GKeyFile *readonly_config = NULL;
-      gs_free char *value = NULL;
+      g_autofree char *value = NULL;
       if (argc < 3)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,

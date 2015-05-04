@@ -124,7 +124,7 @@ ostree_parse_refspec (const char   *refspec,
 {
   gboolean ret = FALSE;
   GMatchInfo *match = NULL;
-  gs_free char *remote = NULL;
+  g_autofree char *remote = NULL;
 
   static gsize regex_initialized;
   static GRegex *regex;
@@ -497,7 +497,7 @@ ostree_content_stream_parse (gboolean                compressed,
   gs_unref_object GFileInfo *ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
   gs_unref_variant GVariant *file_header = NULL;
-  gs_free guchar *buf = NULL;
+  g_autofree guchar *buf = NULL;
 
   if (!g_input_stream_read_all (input,
                                 &archive_header_size, 4, &bytes_read,
@@ -683,7 +683,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
                                  GError          **error)
 {
   gboolean ret = FALSE;
-  gs_free guchar *ret_csum = NULL;
+  g_autofree guchar *ret_csum = NULL;
   GChecksum *checksum = NULL;
 
   checksum = g_checksum_new (G_CHECKSUM_SHA256);
@@ -747,7 +747,7 @@ ostree_checksum_file (GFile            *f,
   gs_unref_object GFileInfo *file_info = NULL;
   gs_unref_object GInputStream *in = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
-  gs_free guchar *ret_csum = NULL;
+  g_autofree guchar *ret_csum = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -920,7 +920,7 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GError        **error)
 {
   gboolean ret = FALSE;
-  gs_free char *tmpname = NULL;
+  g_autofree char *tmpname = NULL;
   guint i;
   const int max_attempts = 128;
 
@@ -1493,7 +1493,7 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
                                              const char        *to,
                                              guint              i)
 {
-  gs_free char *partstr = g_strdup_printf ("%u", i);
+  g_autofree char *partstr = g_strdup_printf ("%u", i);
   return _ostree_get_relative_static_delta_path (from, to, partstr);
 }
 

@@ -84,7 +84,7 @@ ostree_usage (OstreeCommand *commands,
               gboolean is_error)
 {
   GOptionContext *context;
-  gs_free char *help;
+  g_autofree char *help;
 
   context = ostree_option_context_new_with_commands (commands);
 
@@ -125,7 +125,7 @@ ostree_run (int    argc,
   GError *error = NULL;
   GCancellable *cancellable = NULL;
   const char *command_name = NULL;
-  gs_free char *prgname = NULL;
+  g_autofree char *prgname = NULL;
   gboolean success = FALSE;
   int in, out;
 
@@ -174,7 +174,7 @@ ostree_run (int    argc,
   if (!command->fn)
     {
       GOptionContext *context;
-      gs_free char *help;
+      g_autofree char *help;
 
       context = ostree_option_context_new_with_commands (commands);
 
@@ -265,7 +265,7 @@ ostree_option_context_parse (GOptionContext *context,
         {
           if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
             {
-              gs_free char *help = NULL;
+              g_autofree char *help = NULL;
 
               g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                                    "Command requires a --repo argument");
@@ -342,7 +342,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
       gs_unref_ptrarray GPtrArray *deployments = NULL;
       OstreeDeployment *first_deployment;
       gs_unref_object GFile *deployment_file = NULL;
-      gs_free char *deployment_path = NULL;
+      g_autofree char *deployment_path = NULL;
 
       if (!ostree_sysroot_load (sysroot, cancellable, error))
         goto out;

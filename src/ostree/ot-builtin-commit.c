@@ -97,7 +97,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   char **iter = NULL; /* nofree */
   gs_unref_hashtable GHashTable *ret_hash = NULL;
   gs_unref_object GFile *path = NULL;
-  gs_free char *contents = NULL;
+  g_autofree char *contents = NULL;
   char **lines = NULL;
 
   path = g_file_new_for_path (opt_statoverride_file);
@@ -174,8 +174,8 @@ commit_editor (OstreeRepo     *repo,
                GCancellable   *cancellable,
                GError        **error)
 {
-  gs_free char *input = NULL;
-  gs_free char *output = NULL;
+  g_autofree char *input = NULL;
+  g_autofree char *output = NULL;
   gboolean ret = FALSE;
   GString *bodybuf = NULL;
   char **lines = NULL;
@@ -264,7 +264,7 @@ parse_keyvalue_strings (char             **strings,
     {
       const char *s;
       const char *eq;
-      gs_free char *key = NULL;
+      g_autofree char *key = NULL;
 
       s = *iter;
 
@@ -296,13 +296,13 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   gs_unref_object GFile *arg = NULL;
-  gs_free char *parent = NULL;
-  gs_free char *commit_checksum = NULL;
+  g_autofree char *parent = NULL;
+  g_autofree char *commit_checksum = NULL;
   gs_unref_object GFile *root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *detached_metadata = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
-  gs_free char *tree_type = NULL;
+  g_autofree char *tree_type = NULL;
   gs_unref_hashtable GHashTable *mode_adds = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;

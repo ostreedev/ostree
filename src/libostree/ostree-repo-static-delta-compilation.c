@@ -453,7 +453,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
                                GError          **error)
 {
   gboolean ret = FALSE;
-  gs_free char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
+  g_autofree char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
   gs_fd_close int fd = -1;
   gs_unref_bytes GBytes *ret_content = NULL;
   gs_unref_object GInputStream *istream = NULL;
@@ -1094,7 +1094,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   
       if (fallback)
         {
-          gs_free char *size = g_format_size (uncompressed_size);
+          g_autofree char *size = g_format_size (uncompressed_size);
 
           if (opts & DELTAOPT_FLAG_VERBOSE)
             g_printerr ("fallback for %s (%s)\n", checksum, size);
@@ -1252,7 +1252,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   gs_unref_ptrarray GPtrArray *part_tempfiles = NULL;
   gs_unref_variant GVariant *delta_descriptor = NULL;
   gs_unref_variant GVariant *to_commit = NULL;
-  gs_free char *descriptor_relpath = NULL;
+  g_autofree char *descriptor_relpath = NULL;
   gs_unref_object GFile *descriptor_path = NULL;
   gs_unref_object GFile *descriptor_dir = NULL;
   gs_unref_variant GVariant *tmp_metadata = NULL;
@@ -1299,7 +1299,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
       GBytes *payload_b;
       GBytes *operations_b;
-      gs_free guchar *part_checksum = NULL;
+      g_autofree guchar *part_checksum = NULL;
       gs_free_checksum GChecksum *checksum = NULL;
       gs_unref_bytes GBytes *objtype_checksum_array = NULL;
       gs_unref_bytes GBytes *checksum_bytes = NULL;
@@ -1400,7 +1400,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   for (i = 0; i < builder.parts->len; i++)
     {
       GFile *tempfile = part_tempfiles->pdata[i];
-      gs_free char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
+      g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
       gs_unref_object GFile *part_path = g_file_resolve_relative_path (self->repodir, part_relpath);
 
       if (!gs_file_rename (tempfile, part_path, cancellable, error))

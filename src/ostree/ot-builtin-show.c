@@ -90,7 +90,7 @@ do_print_related (OstreeRepo  *repo,
 
   while (g_variant_iter_loop (viter, "(&s@ay)", &name, &csum_v))
     {
-      gs_free char *checksum = ostree_checksum_from_bytes_v (csum_v);
+      g_autofree char *checksum = ostree_checksum_from_bytes_v (csum_v);
       g_print ("%s %s\n", name, checksum);
     }
   csum_v = NULL;
@@ -249,7 +249,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
   gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
-  gs_free char *resolved_rev = NULL;
+  g_autofree char *resolved_rev = NULL;
 
   context = g_option_context_new ("OBJECT - Output a metadata object");
 
@@ -341,7 +341,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
               g_print ("Extended Attributes: ");
               if (xattrs)
                 {
-                  gs_free char *xattr_string = g_variant_print (xattrs, TRUE);
+                  g_autofree char *xattr_string = g_variant_print (xattrs, TRUE);
                   g_print ("{ %s }\n", xattr_string);
                 }
               else

@@ -164,7 +164,7 @@ _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
                                          GError          **error)
 {
   gs_unref_object GFile *proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
-  gs_free char *proc_cmdline = NULL;
+  g_autofree char *proc_cmdline = NULL;
   gsize proc_cmdline_len = 0;
   gs_strfreev char **proc_cmdline_args = NULL;
 

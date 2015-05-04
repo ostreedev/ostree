@@ -66,9 +66,9 @@ test_bsdiff (void)
   struct bsdiff_stream bsdiff_stream;
   struct bspatch_stream bspatch_stream;
   int i;
-  gs_free guint8 *old = g_new (guint8, OLD_SIZE);
-  gs_free guint8 *new = g_new (guint8, NEW_SIZE);
-  gs_free guint8 *new_generated = g_new0 (guint8, NEW_SIZE);
+  g_autofree guint8 *old = g_new (guint8, OLD_SIZE);
+  g_autofree guint8 *new = g_new (guint8, NEW_SIZE);
+  g_autofree guint8 *new_generated = g_new0 (guint8, NEW_SIZE);
   gs_unref_object GOutputStream *out = g_memory_output_stream_new_resizable ();
   gs_unref_object GInputStream *in = NULL;
 

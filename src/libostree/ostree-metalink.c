@@ -328,7 +328,7 @@ metalink_parser_text (GMarkupParseContext *context,
       break;
     case OSTREE_METALINK_STATE_SIZE:
       {
-        gs_free char *duped = g_strndup (text, text_len);
+        g_autofree char *duped = g_strndup (text, text_len);
         self->size = g_ascii_strtoull (duped, NULL, 10);
       }
       break;
@@ -356,7 +356,7 @@ metalink_parser_text (GMarkupParseContext *context,
       break;
     case OSTREE_METALINK_STATE_URL:
       {
-        gs_free char *uri_text = g_strndup (text, text_len);
+        g_autofree char *uri_text = g_strndup (text, text_len);
         SoupURI *uri = soup_uri_new (uri_text);
         if (uri != NULL)
           g_ptr_array_add (self->urls, uri);
@@ -433,7 +433,7 @@ on_fetched_url (GObject              *src,
   struct stat stbuf;
   int parent_dfd = _ostree_fetcher_get_dfd (self->metalink->fetcher);
   gs_unref_object GInputStream *instream = NULL;
-  gs_free char *result = NULL;
+  g_autofree char *result = NULL;
   GChecksum *checksum = NULL;
 
   result = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)src, res, &local_error);

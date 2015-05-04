@@ -219,8 +219,8 @@ update_progress (gpointer user_data)
 
   if (pull_data->fetching_sync_uri)
     {
-      gs_free char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
-      gs_free char *status_string = g_strconcat ("Requesting ", uri_string, NULL);
+      g_autofree char *uri_string = soup_uri_to_string (pull_data->fetching_sync_uri, TRUE);
+      g_autofree char *status_string = g_strconcat ("Requesting ", uri_string, NULL);
       ostree_async_progress_set_status (pull_data->progress, status_string);
     }
   else
@@ -324,7 +324,7 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_bytes GBytes *bytes = NULL;
-  gs_free char *ret_contents = NULL;
+  g_autofree char *ret_contents = NULL;
   gsize len;
 
   if (!fetch_uri_contents_membuf_sync (pull_data, uri, TRUE, FALSE,
@@ -395,7 +395,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       const char *filename;
       gboolean file_is_stored;
       gs_unref_variant GVariant *csum = NULL;
-      gs_free char *file_checksum = NULL;
+      g_autofree char *file_checksum = NULL;
 
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
 
@@ -427,7 +427,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       {
         const char *subpath = NULL;  
         const char *nextslash = NULL;
-        gs_free char *dir_data = NULL;
+        g_autofree char *dir_data = NULL;
 
         g_assert (pull_data->dir[0] == '/'); // assert it starts with / like "/usr/share/rpm"
         subpath = pull_data->dir + 1;  // refers to name minus / like "usr/share/rpm"
@@ -484,7 +484,7 @@ fetch_ref_contents (OtPullData    *pull_data,
                     GError       **error)
 {
   gboolean ret = FALSE;
-  gs_free char *ret_contents = NULL;
+  g_autofree char *ret_contents = NULL;
   SoupURI *target_uri = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
@@ -555,8 +555,8 @@ content_fetch_on_write_complete (GObject        *object,
   GError **error = &local_error;
   OstreeObjectType objtype;
   const char *expected_checksum;
-  gs_free guchar *csum = NULL;
-  gs_free char *checksum = NULL;
+  g_autofree guchar *csum = NULL;
+  g_autofree char *checksum = NULL;
 
   if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result, 
                                          &csum, error))
@@ -600,7 +600,7 @@ content_fetch_on_complete (GObject        *object,
   gs_unref_variant GVariant *xattrs = NULL;
   gs_unref_object GInputStream *file_in = NULL;
   gs_unref_object GInputStream *object_input = NULL;
-  gs_free char *temp_path = NULL;
+  g_autofree char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
 
@@ -677,9 +677,9 @@ on_metadata_written (GObject           *object,
   GError **error = &local_error;
   const char *expected_checksum;
   OstreeObjectType objtype;
-  gs_free char *checksum = NULL;
-  gs_free guchar *csum = NULL;
-  gs_free char *stringified_object = NULL;
+  g_autofree char *checksum = NULL;
+  g_autofree guchar *csum = NULL;
+  g_autofree char *stringified_object = NULL;
 
   if (!ostree_repo_write_metadata_finish ((OstreeRepo*)object, result, 
                                           &csum, error))
@@ -721,7 +721,7 @@ meta_fetch_on_complete (GObject           *object,
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_free char *temp_path = NULL;
+  g_autofree char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
   GError *local_error = NULL;
@@ -854,10 +854,10 @@ static_deltapart_fetch_on_complete (GObject           *object,
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_free char *temp_path = NULL;
+  g_autofree char *temp_path = NULL;
   gs_unref_object GInputStream *in = NULL;
-  gs_free char *actual_checksum = NULL;
-  gs_free guint8 *csum = NULL;
+  g_autofree char *actual_checksum = NULL;
+  g_autofree guint8 *csum = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
   gs_fd_close int fd = -1;
@@ -1080,7 +1080,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *object = NULL;
-  gs_free char *tmp_checksum = NULL;
+  g_autofree char *tmp_checksum = NULL;
   gboolean is_requested;
   gboolean is_stored;
 
@@ -1187,7 +1187,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   SoupURI *obj_uri = NULL;
   gboolean is_meta;
   FetchObjectData *fetch_data;
-  gs_free char *objpath = NULL;
+  g_autofree char *objpath = NULL;
   guint64 *expected_max_size_p;
   guint64 expected_max_size;
 
@@ -1250,7 +1250,7 @@ repo_get_remote_option_inherit (OstreeRepo  *self,
                                 GError     **error)
 {
   OstreeRepo *parent = ostree_repo_get_parent (self);
-  gs_free char *value = NULL;
+  g_autofree char *value = NULL;
   gboolean ret = FALSE;
 
   if (!_ostree_repo_get_remote_option (self, remote_name, option_name, NULL, &value, error))
@@ -1278,7 +1278,7 @@ load_remote_repo_config (OtPullData    *pull_data,
                          GError       **error)
 {
   gboolean ret = FALSE;
-  gs_free char *contents = NULL;
+  g_autofree char *contents = NULL;
   GKeyFile *ret_keyfile = NULL;
   SoupURI *target_uri = NULL;
 
@@ -1310,7 +1310,7 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
                                            GError         **error)
 {
   gboolean ret = FALSE;
-  gs_free char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
+  g_autofree char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
   gs_unref_bytes GBytes *detached_meta_data = NULL;
   SoupURI *target_uri = NULL;
   gs_unref_variant GVariant *metadata = NULL;
@@ -1349,7 +1349,7 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *ret_delta_superblock = NULL;
-  gs_free char *delta_name =
+  g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
   gs_unref_bytes GBytes *delta_superblock_data = NULL;
   gs_unref_bytes GBytes *delta_meta_data = NULL;
@@ -1393,7 +1393,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
 {
   gboolean ret = FALSE;
   gs_unref_variant GVariant *csum_v = NULL;
-  gs_free char *checksum = NULL;
+  g_autofree char *checksum = NULL;
   guint8 objtype_y;
   OstreeObjectType objtype;
   gboolean is_stored;
@@ -1479,7 +1479,7 @@ process_one_static_delta (OtPullData   *pull_data,
   /* Write the to-commit object */
   {
     gs_unref_variant GVariant *to_csum_v = NULL;
-    gs_free char *to_checksum = NULL;
+    g_autofree char *to_checksum = NULL;
     gs_unref_variant GVariant *to_commit = NULL;
     gboolean have_to_commit;
 
@@ -1519,7 +1519,7 @@ process_one_static_delta (OtPullData   *pull_data,
       gs_unref_variant GVariant *header = NULL;
       gboolean have_all = FALSE;
       SoupURI *target_uri = NULL;
-      gs_free char *deltapart_path = NULL;
+      g_autofree char *deltapart_path = NULL;
       FetchStaticDeltaData *fetch_data;
       gs_unref_variant GVariant *csum_v = NULL;
       gs_unref_variant GVariant *objects = NULL;
@@ -1633,13 +1633,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gpointer key, value;
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
-  gs_free char *remote_key = NULL;
-  gs_free char *path = NULL;
-  gs_free char *baseurl = NULL;
-  gs_free char *metalink_url_str = NULL;
+  g_autofree char *remote_key = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *baseurl = NULL;
+  g_autofree char *metalink_url_str = NULL;
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
-  gs_free char *remote_mode_str = NULL;
+  g_autofree char *remote_mode_str = NULL;
   gs_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
@@ -1728,8 +1728,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   {
-    gs_free char *tls_client_cert_path = NULL;
-    gs_free char *tls_client_key_path = NULL;
+    g_autofree char *tls_client_cert_path = NULL;
+    g_autofree char *tls_client_key_path = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
                                          remote_name_or_baseurl, "tls-client-cert-path",
@@ -1764,7 +1764,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   }
 
   {
-    gs_free char *tls_ca_path = NULL;
+    g_autofree char *tls_ca_path = NULL;
     gs_unref_object GTlsDatabase *db = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
@@ -1783,7 +1783,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   }
 
   {
-    gs_free char *http_proxy = NULL;
+    g_autofree char *http_proxy = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
                                          remote_name_or_baseurl, "proxy",
@@ -1826,7 +1826,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      gs_free char *metalink_data = NULL;
+      g_autofree char *metalink_data = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
       SoupURI *target_uri = NULL;
       gs_fd_close int fd = -1;
@@ -1852,7 +1852,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
 
       {
-        gs_free char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
+        g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
         pull_data->base_uri = soup_uri_copy (target_uri);
         soup_uri_set_path (pull_data->base_uri, repo_base);
       }
@@ -1908,7 +1908,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       SoupURI *summary_uri = NULL;
       gs_unref_bytes GBytes *bytes = NULL;
-      gs_free char *ret_contents = NULL;
+      g_autofree char *ret_contents = NULL;
       
       summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);
       if (!fetch_uri_contents_membuf_sync (pull_data, summary_uri, FALSE, TRUE,
@@ -2044,7 +2044,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      gs_free char *from_revision = NULL;
+      g_autofree char *from_revision = NULL;
       const char *ref = key;
       const char *to_revision = value;
       GVariant *delta_superblock = NULL;
@@ -2109,8 +2109,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       const char *ref = key;
       const char *checksum = value;
-      gs_free char *remote_ref = NULL;
-      gs_free char *original_rev = NULL;
+      g_autofree char *remote_ref = NULL;
+      g_autofree char *original_rev = NULL;
           
       if (pull_data->remote_name)
         remote_ref = g_strdup_printf ("%s/%s", pull_data->remote_name, ref);

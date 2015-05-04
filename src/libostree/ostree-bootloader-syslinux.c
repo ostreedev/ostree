@@ -123,11 +123,11 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
   gboolean ret = FALSE;
   OstreeBootloaderSyslinux *self = OSTREE_BOOTLOADER_SYSLINUX (bootloader);
   gs_unref_object GFile *new_config_path = NULL;
-  gs_free char *config_contents = NULL;
-  gs_free char *new_config_contents = NULL;
+  g_autofree char *config_contents = NULL;
+  g_autofree char *new_config_contents = NULL;
   gs_unref_ptrarray GPtrArray *new_lines = NULL;
   gs_unref_ptrarray GPtrArray *tmp_lines = NULL;
-  gs_free char *kernel_arg = NULL;
+  g_autofree char *kernel_arg = NULL;
   gboolean saw_default = FALSE;
   gboolean regenerate_default = FALSE;
   gboolean parsing_label = FALSE;

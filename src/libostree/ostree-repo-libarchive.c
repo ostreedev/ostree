@@ -128,10 +128,10 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   gs_unref_object OstreeMutableTree *subdir = NULL;
   gs_unref_object OstreeMutableTree *parent = NULL;
   gs_unref_object OstreeMutableTree *hardlink_source_parent = NULL;
-  gs_free char *hardlink_source_checksum = NULL;
+  g_autofree char *hardlink_source_checksum = NULL;
   gs_unref_object OstreeMutableTree *hardlink_source_subdir = NULL;
-  gs_free guchar *tmp_csum = NULL;
-  gs_free char *tmp_checksum = NULL;
+  g_autofree guchar *tmp_csum = NULL;
+  g_autofree char *tmp_checksum = NULL;
 
   pathname = archive_entry_pathname (entry); 
       
@@ -295,7 +295,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   struct archive_entry *entry;
   int r;
   gs_unref_object GFileInfo *tmp_dir_info = NULL;
-  gs_free guchar *tmp_csum = NULL;
+  g_autofree guchar *tmp_csum = NULL;
 
   a = archive_read_new ();
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL

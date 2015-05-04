@@ -80,7 +80,7 @@ ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
                                    GError                 **error)
 {
   gboolean ret = FALSE;
-  gs_free char *contents = NULL;
+  g_autofree char *contents = NULL;
   char **lines = NULL;
   char **iter = NULL;
 

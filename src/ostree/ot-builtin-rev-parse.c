@@ -39,7 +39,7 @@ ostree_builtin_rev_parse (int argc, char **argv, GCancellable *cancellable, GErr
   gboolean ret = FALSE;
   const char *rev = "master";
   int i;
-  gs_free char *resolved_rev = NULL;
+  g_autofree char *resolved_rev = NULL;
 
   context = g_option_context_new ("REV - Output the target of a rev");
 

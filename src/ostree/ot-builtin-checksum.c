@@ -43,8 +43,8 @@ on_checksum_received (GObject    *obj,
                       GAsyncResult  *result,
                       gpointer       user_data)
 {
-  gs_free guchar *csum = NULL;
-  gs_free char *checksum = NULL;
+  g_autofree guchar *csum = NULL;
+  g_autofree char *checksum = NULL;
   AsyncChecksumData *data = user_data;
 
   if (ostree_checksum_file_async_finish ((GFile*)obj, result, &csum, data->error))

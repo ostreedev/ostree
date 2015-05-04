@@ -72,7 +72,7 @@ test_mutable_tree_walk (void)
   {
     gs_unref_object OstreeMutableTree *subdir = NULL;
     gs_unref_object OstreeMutableTree *a = NULL;
-    gs_free char *source_checksum = NULL;
+    g_autofree char *source_checksum = NULL;
     ostree_mutable_tree_lookup (tree, "a", &source_checksum, &a, &error);
     g_assert (ostree_mutable_tree_walk (a, split_path, 1, &subdir, &error));
     g_assert (subdir);
@@ -88,9 +88,9 @@ test_ensure_parent_dirs (void)
   GError *error = NULL;
   const char *pathname = "/foo/bar/baz";
   const char *checksum = "01234567890123456789012345678901";
-  gs_free char *source_checksum = NULL;
+  g_autofree char *source_checksum = NULL;
   gs_unref_object OstreeMutableTree *source_subdir = NULL;
-  gs_free char *source_checksum2 = NULL;
+  g_autofree char *source_checksum2 = NULL;
   gs_unref_object OstreeMutableTree *source_subdir2 = NULL;
 
   g_assert (ot_util_path_split_validate (pathname, &split_path, &error));
@@ -116,7 +116,7 @@ test_ensure_dir (void)
   const char *dirname = "foo";
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
-  gs_free char *source_checksum = NULL;
+  g_autofree char *source_checksum = NULL;
   gs_unref_object OstreeMutableTree *source_subdir = NULL;
 
   g_assert (ostree_mutable_tree_ensure_dir (tree, dirname, &parent, &error));
@@ -139,7 +139,7 @@ test_replace_file (void)
 
   g_assert (ostree_mutable_tree_replace_file (tree, filename, checksum, &error));
   {
-    gs_free char *out_checksum = NULL;
+    g_autofree char *out_checksum = NULL;
     gs_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_lookup (tree, filename, &out_checksum, &subdir, &error));
     g_assert_cmpstr (checksum, ==, out_checksum);
@@ -147,7 +147,7 @@ test_replace_file (void)
 
   g_assert (ostree_mutable_tree_replace_file (tree, filename, checksum2, &error));
   {
-    gs_free char *out_checksum = NULL;
+    g_autofree char *out_checksum = NULL;
     gs_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_lookup (tree, filename, &out_checksum, &subdir, &error));
     g_assert_cmpstr (checksum2, ==, out_checksum);

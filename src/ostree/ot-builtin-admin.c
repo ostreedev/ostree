@@ -82,7 +82,7 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
   gboolean ret = FALSE;
   const char *subcommand_name = NULL;
   OstreeAdminCommand *subcommand;
-  gs_free char *prgname = NULL;
+  g_autofree char *prgname = NULL;
   int in, out;
 
   /*
@@ -125,7 +125,7 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
   if (!subcommand->name)
     {
       GOptionContext *context;
-      gs_free char *help;
+      g_autofree char *help;
 
       context = ostree_admin_option_context_new_with_commands ();
 

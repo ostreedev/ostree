@@ -63,7 +63,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
       GFileInfo *file_info = NULL;
       GFile *child = NULL;
       gs_unref_object OstreeDeployment *deployment = NULL;
-      gs_free char *csum = NULL;
+      g_autofree char *csum = NULL;
       gint deployserial;
 
       if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
@@ -368,8 +368,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
   for (i = 0; i < all_boot_dirs->len; i++)
     {
       GFile *bootdir = all_boot_dirs->pdata[i];
-      gs_free char *osname = NULL;
-      gs_free char *bootcsum = NULL;
+      g_autofree char *osname = NULL;
+      g_autofree char *bootcsum = NULL;
 
       if (!parse_bootdir_name (gs_file_get_basename_cached (bootdir),
                                &osname, &bootcsum))
@@ -395,7 +395,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
                     GError            **error)
 {
   gboolean ret = FALSE;
-  gs_free char *prefix = NULL;
+  g_autofree char *prefix = NULL;
   gs_unref_hashtable GHashTable *refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
@@ -412,7 +412,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
   while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
     {
       const char *suffix = hashkey;
-      gs_free char *ref = g_strconcat (prefix, "/", suffix, NULL);
+      g_autofree char *ref = g_strconcat (prefix, "/", suffix, NULL);
       ostree_repo_transaction_set_refspec (repo, ref, NULL);
     }
 
@@ -459,7 +459,7 @@ generate_deployment_refs_and_prune (OstreeSysroot       *self,
   for (i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
-      gs_free char *refname = g_strdup_printf ("ostree/%d/%d/%u",
+      g_autofree char *refname = g_strdup_printf ("ostree/%d/%d/%u",
                                                bootversion, subbootversion,
                                                i);
 

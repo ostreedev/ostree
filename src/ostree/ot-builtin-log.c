@@ -43,7 +43,7 @@ log_commit (OstreeRepo     *repo,
             GError        **error)
 {
   gs_unref_variant GVariant *variant = NULL;
-  gs_free gchar *parent = NULL;
+  g_autofree char *parent = NULL;
   gboolean ret = FALSE;
   GError *local_error = NULL;
 
@@ -85,7 +85,7 @@ ostree_builtin_log (int           argc,
   gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
-  gs_free char *checksum = NULL;
+  g_autofree char *checksum = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
 
   context = g_option_context_new ("REF - Show log starting at commit or ref");

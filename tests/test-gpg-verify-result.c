@@ -56,8 +56,8 @@ test_fixture_setup (TestFixture *fixture,
   gpgme_data_t data_buffer;
   gpgme_data_t signature_buffer;
   OstreeGpgVerifyResult *result;
-  gs_free char *homedir = NULL;
-  gs_free char *filename = NULL;
+  g_autofree char *homedir = NULL;
+  g_autofree char *filename = NULL;
   GError *local_error = NULL;
 
   /* Mimic what OstreeGpgVerifier does to create OstreeGpgVerifyResult.

@@ -73,7 +73,7 @@ ot_keyfile_get_value_with_default (GKeyFile      *keyfile,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  gs_free char *ret_value = NULL;
+  g_autofree char *ret_value = NULL;
 
   g_return_val_if_fail (keyfile != NULL, ret);
   g_return_val_if_fail (section != NULL, ret);
@@ -120,7 +120,7 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
 
   for (ii = 0; ii < length; ii++)
     {
-      gs_free char *value = NULL;
+      g_autofree char *value = NULL;
 
       value = g_key_file_get_value (source_keyfile, group_name, keys[ii], NULL);
       g_key_file_set_value (target_keyfile, group_name, keys[ii], value);
