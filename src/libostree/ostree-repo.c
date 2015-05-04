@@ -3704,6 +3704,15 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            error))
     goto out;
 
+  if (unlinkat (self->repo_dir_fd, "summary.sig", 0) < 0)
+    {
+      if (errno != ENOENT)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+    }
+
   ret = TRUE;
  out:
   if (ordered_keys)
