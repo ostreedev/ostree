@@ -1044,26 +1044,31 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gboolean ret_transaction_resume = FALSE;
-  gs_free char *transaction_str = NULL;
+  struct stat stbuf;
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
-  if (self->transaction_lock_path == NULL)
-    self->transaction_lock_path = g_file_resolve_relative_path (self->repodir, "transaction");
-
-  if (g_file_query_file_type (self->transaction_lock_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK)
+  /* We used to create a `transaction` symbolic link, but it's now
+   * obsoleted by the per-commit .commitpartial files.  We no longer
+   * create it, but let's still read it if it exists, as well as
+   * unlink it when we're done.
+   */
+  if (fstatat (self->repo_dir_fd, "transaction", &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
+    {
+      if (errno == ENOENT)
+        ret_transaction_resume = FALSE;
+      else
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+  else 
     ret_transaction_resume = TRUE;
-  else
-    ret_transaction_resume = FALSE;
 
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
-  if (ret_transaction_resume)
-    {
-      if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
-        goto out;
-    }
 
   self->commit_stagedir_name = g_strconcat ("tmpobjects-", self->boot_id, NULL);
   if (mkdirat (self->tmp_dir_fd, self->commit_stagedir_name, 0777) == -1)
@@ -1080,11 +1085,6 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
                      &self->commit_stagedir_fd, error))
     goto out;
   
-  transaction_str = g_strdup_printf ("pid=%llu", (unsigned long long) getpid ());
-  if (!g_file_make_symbolic_link (self->transaction_lock_path, transaction_str,
-                                  cancellable, error))
-    goto out;
-
   ret = TRUE;
   if (out_transaction_resume)
     *out_transaction_resume = ret_transaction_resume;
@@ -1374,7 +1374,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
 
   self->in_transaction = FALSE;
 
-  if (!ot_gfile_ensure_unlinked (self->transaction_lock_path, cancellable, error))
+  if (!ot_ensure_unlinked_at (self->repo_dir_fd, "transaction", 0))
     goto out;
 
   if (out_stats)
