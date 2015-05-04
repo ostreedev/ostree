@@ -60,7 +60,9 @@ typedef struct {
   gboolean          gpg_verify;
 
   GBytes           *summary_data;
+  GBytes           *summary_data_sig;
   GVariant         *summary;
+  GHashTable       *summary_deltas_checksums;
   GPtrArray        *static_delta_superblocks;
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
@@ -1305,44 +1307,6 @@ load_remote_repo_config (OtPullData    *pull_data,
 }
 
 static gboolean
-fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
-                                           const char      *from_revision,
-                                           const char      *checksum,
-                                           GBytes          *superblock_data,
-                                           GCancellable    *cancellable,
-                                           GError         **error)
-{
-  gboolean ret = FALSE;
-  gs_free char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
-  gs_unref_bytes GBytes *detached_meta_data = NULL;
-  SoupURI *target_uri = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-
-  target_uri = suburi_new (pull_data->base_uri, meta_path, NULL);
-
-  if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, FALSE,
-                                       &detached_meta_data,
-                                       pull_data->cancellable, error))
-    {
-      g_prefix_error (error, "GPG verification enabled, but failed to fetch metadata: ");
-      goto out;
-    }
-
-  metadata = g_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"),
-                                       detached_meta_data,
-                                       FALSE);
-
-  if (!_ostree_repo_gpg_verify_with_metadata (pull_data->repo, superblock_data,
-                                              metadata, NULL, NULL,
-                                              cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static gboolean
 request_static_delta_superblock_sync (OtPullData  *pull_data,
                                       const char  *from_revision,
                                       const char  *to_revision,
@@ -1368,15 +1332,28 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   
   if (delta_superblock_data)
     {
-      if (pull_data->gpg_verify)
-        {
-          if (!fetch_metadata_to_verify_delta_superblock (pull_data,
-                                                          from_revision,
-                                                          to_revision,
-                                                          delta_superblock_data,
-                                                          pull_data->cancellable, error))
+      {
+        gs_free gchar *delta = NULL;
+        gs_free guchar *ret_csum = NULL;
+        guchar *summary_csum;
+        gs_unref_object GInputStream *summary_is = NULL;
+
+        summary_is = g_memory_input_stream_new_from_data (g_bytes_get_data (delta_superblock_data, NULL),
+                                                          g_bytes_get_size (delta_superblock_data),
+                                                          NULL);
+
+        if (!ot_gio_checksum_stream (summary_is, &ret_csum, cancellable, error))
+          goto out;
+
+        delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
+        summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
+
+        if (summary_csum && memcmp (summary_csum, ret_csum, 32))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
             goto out;
-        }
+          }
+      }
 
       ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
                                                        delta_superblock_data, FALSE);
@@ -1689,6 +1666,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->commit_to_depth = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                       (GDestroyNotify)g_free,
                                                       NULL);
+  pull_data->summary_deltas_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                               (GDestroyNotify)g_free,
+                                                               (GDestroyNotify)g_free);
   pull_data->scanned_metadata = g_hash_table_new_full (ostree_hash_object_name, g_variant_equal,
                                                        (GDestroyNotify)g_variant_unref, NULL);
   pull_data->requested_content = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1909,22 +1889,57 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
-      SoupURI *summary_uri = NULL;
+      SoupURI *uri = NULL;
       gs_unref_bytes GBytes *bytes = NULL;
+      gs_unref_bytes GBytes *bytes_sig = NULL;
       gs_free char *ret_contents = NULL;
       
-      summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, summary_uri, FALSE, TRUE,
+      uri = suburi_new (pull_data->base_uri, "summary", NULL);
+      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
                                            &bytes, cancellable, error))
         goto out;
-      soup_uri_free (summary_uri);
-      
+      soup_uri_free (uri);
+
+      uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
+      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                           &bytes_sig, cancellable, error))
+        goto out;
+      soup_uri_free (uri);
+
       if (bytes)
         {
           gs_unref_variant GVariant *refs = NULL;
+          gs_unref_variant GVariant *additional_metadata = NULL;
+          gs_unref_variant GVariant *deltas = NULL;
           gsize i, n;
 
           pull_data->summary_data = g_bytes_ref (bytes);
+          if (bytes_sig)
+            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+          if (pull_data->gpg_verify && bytes_sig)
+            {
+              gs_unref_object OstreeGpgVerifyResult *result = NULL;
+              gs_unref_variant GVariant *sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                                                 bytes_sig,
+                                                                                 FALSE);
+              result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                              bytes,
+                                                              sig_variant,
+                                                              NULL,
+                                                              NULL,
+                                                              cancellable,
+                                                              error);
+              if (result == NULL)
+                goto out;
+
+              if (ostree_gpg_verify_result_count_valid (result) == 0)
+                {
+                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "GPG signatures found, but none are in trusted keyring");
+                  goto out;
+                }
+            }
+
           pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
           refs = g_variant_get_child_value (pull_data->summary, 0);
           n = g_variant_n_children (refs);
@@ -1939,6 +1954,32 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                 goto out;
               
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+            }
+
+          additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+          deltas = g_variant_lookup_value (additional_metadata, "ostree.static-deltas", G_VARIANT_TYPE ("a{sv}"));
+          n = deltas ? g_variant_n_children (deltas) : 0;
+          for (i = 0; i < n; i++)
+            {
+              gsize size;
+              const char *delta;
+              GVariant *csum_v = NULL;
+              guchar *csum_data = g_malloc (32);
+              gs_unref_variant GVariant *ref = g_variant_get_child_value (deltas, i);
+
+              g_variant_get_child (ref, 0, "&s", &delta);
+              g_variant_get_child (ref, 1, "v", &csum_v);
+
+              size = g_variant_get_size (csum_v);
+
+              g_assert_cmpint (size, ==, 32);
+              if (size != 32)
+                continue;
+
+              memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
+              g_hash_table_insert (pull_data->summary_deltas_checksums,
+                                   g_strdup (delta),
+                                   csum_data);
             }
         }
       else
@@ -2133,6 +2174,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                         pull_data->summary_data, !pull_data->repo->disable_fsync,
                                         cancellable, error))
         goto out;
+
+      if (pull_data->summary_data_sig &&
+          !ot_file_replace_contents_at (pull_data->repo->repo_dir_fd, "summary.sig",
+                                        pull_data->summary_data_sig, !pull_data->repo->disable_fsync,
+                                        cancellable, error))
+        goto out;
     }
 
   if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
@@ -2203,11 +2250,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
+  g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
   g_clear_pointer (&pull_data->static_delta_superblocks, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->commit_to_depth, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->expected_commit_sizes, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->scanned_metadata, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);

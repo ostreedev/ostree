@@ -113,6 +113,11 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
                                              guint              i);
 
 void
+_ostree_parse_delta_name (const char  *delta_name,
+                          char        **out_from,
+                          char        **out_to);
+
+void
 _ostree_loose_path (char              *buf,
                     const char        *checksum,
                     OstreeObjectType   objtype,

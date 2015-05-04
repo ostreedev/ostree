@@ -3273,11 +3273,7 @@ out:
  * @self: Self
  * @from_commit: SHA256 of starting commit to sign, or %NULL
  * @to_commit: SHA256 of target commit to sign
- * @key_id: Use this GPG key id
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
+ * This function is deprecated, sign the summary file instead.
  * Add a GPG signature to a static delta.
  */
 gboolean
@@ -3288,32 +3284,46 @@ ostree_repo_sign_delta (OstreeRepo     *self,
                         const gchar    *homedir,
                         GCancellable   *cancellable,
                         GError        **error)
+{      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "ostree_repo_sign_delta is deprecated");
+  return FALSE;
+}
+
+/**
+ * ostree_repo_add_gpg_signature_summary:
+ * @self: Self
+ * @key_id: NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to a static delta.
+ */
+gboolean
+ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                       const gchar    **key_id,
+                                       const gchar    *homedir,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_bytes GBytes *delta_data = NULL;
-  gs_unref_bytes GBytes *signature_data = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_free char *delta_path = NULL;
-  gs_unref_object GFile *delta_file = NULL;
-  gs_unref_object char *detached_metadata_relpath = NULL;
-  gs_unref_object GFile *detached_metadata_path = NULL;
-  gs_unref_variant GVariant *existing_detached_metadata = NULL;
-  gs_unref_variant GVariant *normalized = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
+  gs_unref_bytes GBytes *summary_data = NULL;
+  gs_unref_object GFile *summary_file = NULL;
+  gs_unref_object GFile *signature_path = NULL;
   GError *temp_error = NULL;
+  gs_unref_variant GVariant *existing_signatures = NULL;
+  gs_unref_variant GVariant *new_metadata = NULL;
+  gs_unref_variant GVariant *normalized = NULL;
+  guint i;
+  signature_path = g_file_resolve_relative_path (self->repodir, "summary.sig");
 
-  detached_metadata_relpath =
-    _ostree_get_relative_static_delta_detachedmeta_path (from_commit, to_commit);
-  detached_metadata_path = g_file_resolve_relative_path (self->repodir, detached_metadata_relpath);
-
-  delta_path = _ostree_get_relative_static_delta_superblock_path (from_commit, to_commit);
-  delta_file = g_file_resolve_relative_path (self->repodir, delta_path);
-  delta_data = gs_file_map_readonly (delta_file, cancellable, error);
-  if (!delta_data)
+  summary_file = g_file_resolve_relative_path (self->repodir, "summary");
+  summary_data = gs_file_map_readonly (summary_file, cancellable, error);
+  if (!summary_data)
     goto out;
-  
-  if (!ot_util_variant_map (detached_metadata_path, G_VARIANT_TYPE ("a{sv}"),
-                            TRUE, &existing_detached_metadata, &temp_error))
+
+  if (!ot_util_variant_map (signature_path, G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
+                            TRUE, &existing_signatures, &temp_error))
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
@@ -3326,20 +3336,25 @@ ostree_repo_sign_delta (OstreeRepo     *self,
         }
     }
 
-  if (!sign_data (self, delta_data, key_id, homedir,
-                  &signature_data,
-                  cancellable, error))
-    goto out;
+  for (i = 0; key_id[i]; i++)
+    {
+      gs_unref_bytes GBytes *signature_data = NULL;
+      if (!sign_data (self, summary_data, key_id[i], homedir,
+                      &signature_data,
+                      cancellable, error))
+        goto out;
 
-  new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_detached_metadata, signature_data);
+      new_metadata = _ostree_detached_metadata_append_gpg_sig (existing_signatures, signature_data);
+    }
 
   normalized = g_variant_get_normal_form (new_metadata);
 
-  if (!g_file_replace_contents (detached_metadata_path,
-                                g_variant_get_data (normalized),
-                                g_variant_get_size (normalized),
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
+  if (!_ostree_repo_file_replace_contents (self,
+                                           self->repo_dir_fd,
+                                           "summary.sig",
+                                           g_variant_get_data (normalized),
+                                           g_variant_get_size (normalized),
+                                           cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -3544,15 +3559,17 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   gs_unref_variant GVariant *summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
+  GVariantDict additional_metadata_builder;
 
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
     goto out;
 
+  g_variant_dict_init (&additional_metadata_builder, additional_metadata);
   refs_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(s(taya{sv}))"));
 
   ordered_keys = g_hash_table_get_keys (refs);
   ordered_keys = g_list_sort (ordered_keys, (GCompareFunc)strcmp);
-  
+
   for (iter = ordered_keys; iter; iter = iter->next)
     {
       const char *ref = iter->data;
@@ -3571,12 +3588,58 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                                   ot_gvariant_new_empty_string_dict ()));
     }
 
+
+  {
+    guint i;
+    gs_unref_ptrarray GPtrArray *delta_names = NULL;
+    GVariantDict deltas_builder;
+    gs_unref_variant GVariant *deltas = NULL;
+
+    if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
+      goto out;
+
+    g_variant_dict_init (&deltas_builder, NULL);
+    for (i = 0; i < delta_names->len; i++)
+      {
+        gs_free char *from = NULL;
+        gs_free char *to = NULL;
+        gs_free guchar *csum = NULL;
+        gs_free char *superblock;
+        gs_fd_close int superblock_file_fd;
+        gs_unref_object GInputStream *in_stream = NULL;
+
+        _ostree_parse_delta_name (delta_names->pdata[i], &from, &to);
+        superblock = _ostree_get_relative_static_delta_superblock_path (from[0] ? from : NULL,
+                                                                        to);
+        superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
+        if (superblock_file_fd == -1)
+          {
+            gs_set_error_from_errno (error, errno);
+            goto out;
+          }
+
+        in_stream = g_unix_input_stream_new (superblock_file_fd, TRUE);
+        if (!in_stream)
+          goto out;
+
+        if (!ot_gio_checksum_stream (in_stream,
+                                     &csum,
+                                     cancellable,
+                                     error))
+          goto out;
+
+        g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
+      }
+
+    g_variant_dict_insert_value (&additional_metadata_builder, "ostree.static-deltas", g_variant_dict_end (&deltas_builder));
+  }
+
   {
     gs_unref_variant_builder GVariantBuilder *summary_builder =
       g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
 
     g_variant_builder_add_value (summary_builder, g_variant_builder_end (refs_builder));
-    g_variant_builder_add_value (summary_builder, additional_metadata ? additional_metadata : ot_gvariant_new_empty_string_dict ());
+    g_variant_builder_add_value (summary_builder, g_variant_dict_end (&additional_metadata_builder));
     summary = g_variant_builder_end (summary_builder);
     g_variant_ref_sink (summary);
   }
@@ -3588,6 +3651,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            g_variant_get_size (summary),
                                            cancellable,
                                            error))
+    goto out;
+
+  if (!gs_shutil_rm_rf_at (self->repo_dir_fd, "summary.sig", cancellable, error))
     goto out;
 
   ret = TRUE;

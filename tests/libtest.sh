@@ -137,7 +137,8 @@ setup_test_repository () {
 
 setup_fake_remote_repo1() {
     mode=$1
-    args=$2
+    commit_opts=$2
+    args=$3
     shift
     oldpwd=`pwd`
     mkdir ostree-srv
@@ -150,13 +151,13 @@ setup_fake_remote_repo1() {
     mkdir baz
     echo moo > baz/cow
     echo alien > baz/saucer
-    ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.0 -b main -s "A remote commit" -m "Some Commit body"
+    ${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit $commit_opts --add-metadata-string version=3.0 -b main -s "A remote commit" -m "Some Commit body"
     mkdir baz/deeper
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.1 -b main -s "Add deeper"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit $commit_opts --add-metadata-string version=3.1 -b main -s "Add deeper"
     echo hi > baz/deeper/ohyeah
     mkdir baz/another/
     echo x > baz/another/y
-    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit --add-metadata-string version=3.2 -b main -s "The rest"
+    ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit $commit_opts --add-metadata-string version=3.2 -b main -s "The rest"
     cd ..
     rm -rf gnomerepo-files
     

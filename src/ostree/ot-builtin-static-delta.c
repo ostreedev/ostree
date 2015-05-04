@@ -28,8 +28,6 @@
 
 static char *opt_from_rev;
 static char *opt_to_rev;
-static char **opt_key_ids;
-static char *opt_gpg_homedir;
 static char *opt_min_fallback_size;
 static char *opt_max_chunk_size;
 static gboolean opt_empty;
@@ -56,8 +54,6 @@ static GOptionEntry generate_options[] = {
   { "empty", 0, 0, G_OPTION_ARG_NONE, &opt_empty, "Create delta from scratch", NULL },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "disable-bsdiff", 0, 0, G_OPTION_ARG_NONE, &opt_disable_bsdiff, "Disable use of bsdiff", NULL },
-  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the delta with", "key-id"},
-  { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "homedir"},
   { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
   { NULL }
@@ -212,23 +208,6 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
                                               cancellable, error))
         goto out;
 
-      if (opt_key_ids)
-        {
-          char **iter;
-
-          for (iter = opt_key_ids; iter && *iter; iter++)
-            {
-              const char *keyid = *iter;
-
-              if (!ostree_repo_sign_delta (repo,
-                                           from_resolved, to_resolved,
-                                           keyid,
-                                           opt_gpg_homedir,
-                                           cancellable,
-                                           error))
-                goto out;
-            }
-        }
     }
 
   ret = TRUE;

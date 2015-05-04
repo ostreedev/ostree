@@ -21,23 +21,24 @@ set -e
 
 . $(dirname $0)/libtest.sh
 
-setup_fake_remote_repo1 "archive-z2"
+COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
+setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
 
 # Now, setup multiple branches
 mkdir ${test_tmpdir}/ostree-srv/other-files
 cd ${test_tmpdir}/ostree-srv/other-files
 echo 'hello world another object' > hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b other -s "A commit" -m "Another Commit body"
+ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b other -s "A commit" -m "Another Commit body"
 
 mkdir ${test_tmpdir}/ostree-srv/yet-other-files
 cd ${test_tmpdir}/ostree-srv/yet-other-files
 echo 'hello world yet another object' > yet-another-hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b yet-another -s "A commit" -m "Another Commit body"
+ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b yet-another -s "A commit" -m "Another Commit body"
 
 ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 
+prev_dir=`pwd`
 cd ${test_tmpdir}
-mkdir repo
 ostree --repo=repo init --mode=archive-z2
 ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 ostree --repo=repo pull --mirror origin
@@ -50,3 +51,21 @@ ostree --repo=repo checkout -U yet-another yet-another-copy
 assert_file_has_content yet-another-copy/yet-another-hello-world "hello world yet another object"
 ostree --repo=repo fsck
 echo "ok pull mirror summary"
+
+if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
+    exit 0;
+fi
+
+cd $prev_dir
+
+${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
+
+cd ${test_tmpdir}
+rm -rf repo
+mkdir repo
+${OSTREE} --repo=repo init --mode=archive-z2
+${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} --repo=repo pull --mirror origin
+assert_has_file repo/summary
+assert_has_file repo/summary.sig
+echo "ok pull mirror with signed summary"
