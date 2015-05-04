@@ -164,11 +164,11 @@ initable_init (GInitable     *initable,
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
   OstreeSePolicy *self = OSTREE_SEPOLICY (initable);
-  gs_unref_object GFile *etc_selinux_dir = NULL;
-  gs_unref_object GFile *policy_config_path = NULL;
-  gs_unref_object GFile *policy_root = NULL;
-  gs_unref_object GFileInputStream *filein = NULL;
-  gs_unref_object GDataInputStream *datain = NULL;
+  g_autoptr(GFile) etc_selinux_dir = NULL;
+  g_autoptr(GFile) policy_config_path = NULL;
+  g_autoptr(GFile) policy_root = NULL;
+  g_autoptr(GFileInputStream) filein = NULL;
+  g_autoptr(GDataInputStream) datain = NULL;
   gboolean enabled = FALSE;
   char *policytype = NULL;
   const char *selinux_prefix = "SELINUX=";
@@ -396,7 +396,7 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
 {
 #ifdef HAVE_SELINUX
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *src_info = NULL;
+  g_autoptr(GFileInfo) src_info = NULL;
   g_autofree char *label = NULL;
   gboolean do_relabel = TRUE;
 

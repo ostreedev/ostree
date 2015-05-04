@@ -104,10 +104,10 @@ process_one_checkout (OstreeRepo           *repo,
   else
     {
       GError *tmp_error = NULL;
-      gs_unref_object GFile *root = NULL;
-      gs_unref_object GFile *subtree = NULL;
-      gs_unref_object GFileInfo *file_info = NULL;
-      gs_unref_object GFile *destination_file = g_file_new_for_path (destination);
+      g_autoptr(GFile) root = NULL;
+      g_autoptr(GFile) subtree = NULL;
+      g_autoptr(GFileInfo) file_info = NULL;
+      g_autoptr(GFile) destination_file = g_file_new_for_path (destination);
 
       if (!ostree_repo_read_commit (repo, resolved_commit, &root, NULL, cancellable, error))
         goto out;
@@ -157,8 +157,8 @@ process_many_checkouts (OstreeRepo         *repo,
   gboolean ret = FALSE;
   gsize len;
   GError *temp_error = NULL;
-  gs_unref_object GInputStream *instream = NULL;
-  gs_unref_object GDataInputStream *datastream = NULL;
+  g_autoptr(GInputStream) instream = NULL;
+  g_autoptr(GDataInputStream) datastream = NULL;
   g_autofree char *revision = NULL;
   g_autofree char *subpath = NULL;
   g_autofree char *resolved_commit = NULL;
@@ -169,7 +169,7 @@ process_many_checkouts (OstreeRepo         *repo,
     }
   else
     {
-      gs_unref_object GFile *f = g_file_new_for_path (opt_from_file);
+      g_autoptr(GFile) f = g_file_new_for_path (opt_from_file);
 
       instream = (GInputStream*)g_file_read (f, cancellable, error);
       if (!instream)

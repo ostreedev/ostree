@@ -413,7 +413,7 @@ merge_etc_changes (GFile          *orig_etc,
   for (i = 0; i < removed->len; i++)
     {
       GFile *file = removed->pdata[i];
-      gs_unref_object GFile *target_file = NULL;
+      g_autoptr(GFile) target_file = NULL;
       g_autofree char *path = NULL;
 
       path = g_file_get_relative_path (orig_etc, file);
@@ -477,7 +477,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   const char *csum = ostree_deployment_get_csum (deployment);
   g_autofree char *checkout_target_name = NULL;
   g_autofree char *osdeploy_path = NULL;
-  gs_unref_object GFile *ret_deploy_target_path = NULL;
+  g_autoptr(GFile) ret_deploy_target_path = NULL;
   glnx_fd_close int osdeploy_dfd = -1;
   int ret_fd;
 
@@ -563,7 +563,7 @@ relabel_recursively (OstreeSysroot  *sysroot,
                      GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *direnum = NULL;
+  g_autoptr(GFileEnumerator) direnum = NULL;
 
   if (!relabel_one_path (sysroot, sepolicy, dir, dir_info, path_parts,
                          cancellable, error))
@@ -621,7 +621,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
 {
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
-  gs_unref_object GFileInfo *root_info = NULL;
+  g_autoptr(GFileInfo) root_info = NULL;
 
   root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -652,7 +652,7 @@ selinux_relabel_file (OstreeSysroot                 *sysroot,
 {
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
-  gs_unref_object GFileInfo *file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
+  g_autoptr(GFileInfo) file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
                                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                             cancellable, error);
   if (!file_info)
@@ -685,9 +685,9 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
    * point in the distant future to only create (and label) /var
    * when doing a deployment.
    */
-  gs_unref_object GFile *deployment_var_labeled = 
+  g_autoptr(GFile) deployment_var_labeled = 
     g_file_get_child (deployment_var_path, ".ostree-selabeled");
-  gs_unref_object GFile *deployment_var_labeled_tmp = 
+  g_autoptr(GFile) deployment_var_labeled_tmp = 
     g_file_get_child (deployment_var_path, ".ostree-selabeled.tmp");
       
   if (!g_file_query_exists (deployment_var_labeled, NULL))
@@ -735,18 +735,18 @@ merge_configuration (OstreeSysroot         *sysroot,
 {
   gboolean ret = FALSE;
   g_autofree char *deployment_abspath = glnx_fdrel_abspath (deployment_dfd, ".");
-  gs_unref_object GFile *deployment_path = g_file_new_for_path (deployment_abspath);
-  gs_unref_object GFile *source_etc_path = NULL;
-  gs_unref_object GFile *source_etc_pristine_path = NULL;
-  gs_unref_object GFile *deployment_usretc_path = NULL;
-  gs_unref_object GFile *deployment_etc_path = NULL;
+  g_autoptr(GFile) deployment_path = g_file_new_for_path (deployment_abspath);
+  g_autoptr(GFile) source_etc_path = NULL;
+  g_autoptr(GFile) source_etc_pristine_path = NULL;
+  g_autoptr(GFile) deployment_usretc_path = NULL;
+  g_autoptr(GFile) deployment_etc_path = NULL;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gboolean etc_exists;
   gboolean usretc_exists;
 
   if (previous_deployment)
     {
-      gs_unref_object GFile *previous_path = NULL;
+      g_autoptr(GFile) previous_path = NULL;
       OstreeBootconfigParser *previous_bootconfig;
 
       previous_path = ostree_sysroot_get_deployment_directory (sysroot, previous_deployment);
@@ -848,9 +848,9 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
 
   if (origin)
     {
-      gs_unref_object GFile *deployment_path = ostree_sysroot_get_deployment_directory (sysroot, deployment);
-      gs_unref_object GFile *origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
-      gs_unref_object GFile *origin_parent = g_file_get_parent (origin_path);
+      g_autoptr(GFile) deployment_path = ostree_sysroot_get_deployment_directory (sysroot, deployment);
+      g_autoptr(GFile) origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
+      g_autoptr(GFile) origin_parent = g_file_get_parent (origin_path);
       g_autofree char *contents = NULL;
       gsize len;
       gs_unref_bytes GBytes *contents_bytes = NULL;
@@ -881,12 +881,12 @@ get_kernel_from_tree (GFile         *deployroot,
                       GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ostree_bootdir
+  g_autoptr(GFile) ostree_bootdir
     = g_file_resolve_relative_path (deployroot, "usr/lib/ostree-boot");
-  gs_unref_object GFile *bootdir = g_file_get_child (deployroot, "boot");
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *ret_kernel = NULL;
-  gs_unref_object GFile *ret_initramfs = NULL;
+  g_autoptr(GFile) bootdir = g_file_get_child (deployroot, "boot");
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) ret_kernel = NULL;
+  g_autoptr(GFile) ret_initramfs = NULL;
   g_autofree char *kernel_checksum = NULL;
   g_autofree char *initramfs_checksum = NULL;
 
@@ -1054,11 +1054,11 @@ swap_bootlinks (OstreeSysroot *self,
   guint i;
   int old_subbootversion;
   int new_subbootversion;
-  gs_unref_object GFile *ostree_dir = g_file_get_child (self->path, "ostree");
+  g_autoptr(GFile) ostree_dir = g_file_get_child (self->path, "ostree");
   g_autofree char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-  gs_unref_object GFile *ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
+  g_autoptr(GFile) ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
   g_autofree char *ostree_subbootdir_name = NULL;
-  gs_unref_object GFile *ostree_subbootdir = NULL;
+  g_autoptr(GFile) ostree_subbootdir = NULL;
 
   if (bootversion != self->bootversion)
     {
@@ -1091,8 +1091,8 @@ swap_bootlinks (OstreeSysroot *self,
                                                        ostree_deployment_get_osname (deployment),
                                                        ostree_deployment_get_csum (deployment),
                                                        ostree_deployment_get_deployserial (deployment));
-      gs_unref_object GFile *linkname = g_file_get_child (ostree_subbootdir, bootlink_pathname);
-      gs_unref_object GFile *linkname_parent = g_file_get_parent (linkname);
+      g_autoptr(GFile) linkname = g_file_get_child (ostree_subbootdir, bootlink_pathname);
+      g_autoptr(GFile) linkname_parent = g_file_get_parent (linkname);
 
       if (!ot_util_ensure_directory_and_fsync (linkname_parent, cancellable, error))
         goto out;
@@ -1173,16 +1173,16 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   struct stat stbuf;
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-  gs_unref_object GFile *bootdir = NULL;
-  gs_unref_object GFile *bootcsumdir = NULL;
-  gs_unref_object GFile *bootconfpath = NULL;
-  gs_unref_object GFile *bootconfpath_parent = NULL;
+  g_autoptr(GFile) bootdir = NULL;
+  g_autoptr(GFile) bootcsumdir = NULL;
+  g_autoptr(GFile) bootconfpath = NULL;
+  g_autoptr(GFile) bootconfpath_parent = NULL;
   g_autofree char *dest_kernel_name = NULL;
-  gs_unref_object GFile *dest_kernel_path = NULL;
-  gs_unref_object GFile *dest_initramfs_path = NULL;
-  gs_unref_object GFile *tree_kernel_path = NULL;
-  gs_unref_object GFile *tree_initramfs_path = NULL;
-  gs_unref_object GFile *deployment_dir = NULL;
+  g_autoptr(GFile) dest_kernel_path = NULL;
+  g_autoptr(GFile) dest_initramfs_path = NULL;
+  g_autoptr(GFile) tree_kernel_path = NULL;
+  g_autoptr(GFile) tree_initramfs_path = NULL;
+  g_autoptr(GFile) deployment_dir = NULL;
   glnx_fd_close int deployment_dfd = -1;
   g_autofree char *contents = NULL;
   g_autofree char *deployment_version = NULL;
@@ -1380,7 +1380,7 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *boot_loader_link = NULL;
+  g_autoptr(GFile) boot_loader_link = NULL;
   g_autofree char *new_target = NULL;
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
@@ -1475,8 +1475,8 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       const char *osname = ostree_deployment_get_osname (deployment);
-      gs_unref_object GFile *osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
-      gs_unref_object GFile *legacy_link = g_file_get_child (osdir, "current");
+      g_autoptr(GFile) osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
+      g_autoptr(GFile) legacy_link = g_file_get_child (osdir, "current");
 
       if (!ot_gfile_ensure_unlinked (legacy_link, cancellable, error))
         goto out;
@@ -1538,7 +1538,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   for (i = 0; i < new_deployments->len; i++)
     {
       OstreeDeployment *deployment = new_deployments->pdata[i];
-      gs_unref_object GFile *deployment_root = NULL;
+      g_autoptr(GFile) deployment_root = NULL;
       
       if (deployment == self->booted_deployment)
         found_booted_deployment = TRUE;
@@ -1583,7 +1583,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
     {
       int new_bootversion = self->bootversion ? 0 : 1;
       gs_unref_object OstreeBootloader *bootloader = NULL;
-      gs_unref_object GFile *new_loader_entries_dir = NULL;
+      g_autoptr(GFile) new_loader_entries_dir = NULL;
       gs_unref_object OstreeRepo *repo = NULL;
       gboolean show_osname = FALSE;
 
@@ -1709,7 +1709,7 @@ allocate_deployserial (OstreeSysroot           *self,
   gboolean ret = FALSE;
   guint i;
   int new_deployserial = 0;
-  gs_unref_object GFile *osdir = NULL;
+  g_autoptr(GFile) osdir = NULL;
   gs_unref_ptrarray GPtrArray *tmp_current_deployments =
     g_ptr_array_new_with_free_func (g_object_unref);
 
@@ -1768,11 +1768,11 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeRepo *repo = NULL;
-  gs_unref_object GFile *osdeploydir = NULL;
-  gs_unref_object GFile *deployment_var = NULL;
-  gs_unref_object GFile *commit_root = NULL;
-  gs_unref_object GFile *tree_kernel_path = NULL;
-  gs_unref_object GFile *tree_initramfs_path = NULL;
+  g_autoptr(GFile) osdeploydir = NULL;
+  g_autoptr(GFile) deployment_var = NULL;
+  g_autoptr(GFile) commit_root = NULL;
+  g_autoptr(GFile) tree_kernel_path = NULL;
+  g_autoptr(GFile) tree_initramfs_path = NULL;
   glnx_fd_close int deployment_dfd = -1;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   g_autofree char *new_bootcsum = NULL;

@@ -722,7 +722,7 @@ query_child_info_dir (OstreeRepo               *repo,
                       GError                  **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *ret_info = NULL;
+  g_autoptr(GFileInfo) ret_info = NULL;
   gs_unref_variant GVariant *metadata = NULL;
 
   ret_info = g_file_info_new ();
@@ -848,7 +848,7 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   gboolean ret = FALSE;
   const char *name = NULL;
   int c;
-  gs_unref_object GFileInfo *ret_info = NULL;
+  g_autoptr(GFileInfo) ret_info = NULL;
   gs_unref_variant GVariant *files_variant = NULL;
   gs_unref_variant GVariant *dirs_variant = NULL;
   gs_unref_variant GVariant *content_csum_v = NULL;
@@ -928,7 +928,7 @@ ostree_repo_file_query_info (GFile                *file,
 {
   gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
-  gs_unref_object GFileInfo *info = NULL;
+  g_autoptr(GFileInfo) info = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
@@ -980,7 +980,7 @@ ostree_repo_file_read (GFile         *file,
   gboolean ret = FALSE;
   OstreeRepoFile *self = OSTREE_REPO_FILE (file);
   const char *checksum;
-  gs_unref_object GInputStream *ret_stream = NULL;
+  g_autoptr(GInputStream) ret_stream = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;

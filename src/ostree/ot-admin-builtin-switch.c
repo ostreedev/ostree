@@ -54,8 +54,8 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   g_autofree char *new_ref = NULL;
   g_autofree char *new_refspec = NULL;
   g_autofree char *new_revision = NULL;
-  gs_unref_object GFile *deployment_path = NULL;
-  gs_unref_object GFile *deployment_origin_path = NULL;
+  g_autoptr(GFile) deployment_path = NULL;
+  g_autoptr(GFile) deployment_origin_path = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   gs_unref_object OstreeSysrootUpgrader *upgrader = NULL;
@@ -164,7 +164,7 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
     goto out;
   
   {
-    gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
+    g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
       
     if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
       {

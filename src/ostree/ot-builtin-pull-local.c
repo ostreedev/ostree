@@ -86,7 +86,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 
   if (argc == 2)
     {
-      gs_unref_object GFile *src_repo_path = g_file_new_for_path (src_repo_arg);
+      g_autoptr(GFile) src_repo_path = g_file_new_for_path (src_repo_arg);
       gs_unref_object OstreeRepo *src_repo = ostree_repo_new (src_repo_path);
       gs_unref_hashtable GHashTable *refs_to_clone = NULL;
 

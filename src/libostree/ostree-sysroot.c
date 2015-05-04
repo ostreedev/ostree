@@ -121,7 +121,7 @@ static void
 ostree_sysroot_constructed (GObject *object)
 {
   OstreeSysroot *self = OSTREE_SYSROOT (object);
-  gs_unref_object GFile *repo_path = NULL;
+  g_autoptr(GFile) repo_path = NULL;
 
   g_assert (self->path != NULL);
 
@@ -177,7 +177,7 @@ ostree_sysroot_new (GFile *path)
 OstreeSysroot*
 ostree_sysroot_new_default (void)
 {
-  gs_unref_object GFile *rootfs = g_file_new_for_path ("/");
+  g_autoptr(GFile) rootfs = g_file_new_for_path ("/");
   return ostree_sysroot_new (rootfs);
 }
 
@@ -238,9 +238,9 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
                                    GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *dir = NULL;
-  gs_unref_object GFile *ostree_dir = NULL;
-  gs_unref_object GFile *repo_dir = NULL;
+  g_autoptr(GFile) dir = NULL;
+  g_autoptr(GFile) ostree_dir = NULL;
+  g_autoptr(GFile) repo_dir = NULL;
 
   ostree_dir = g_file_get_child (self->path, "ostree");
   repo_dir = g_file_get_child (ostree_dir, "repo");
@@ -885,7 +885,7 @@ ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
 GFile *
 ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path)
 {
-  gs_unref_object GFile *deployment_parent = g_file_get_parent (deployment_path);
+  g_autoptr(GFile) deployment_parent = g_file_get_parent (deployment_path);
   return ot_gfile_resolve_path_printf (deployment_parent,
                                        "%s.origin",
                                        gs_file_get_path_cached (deployment_path));
@@ -995,7 +995,7 @@ parse_kernel_commandline (OstreeKernelArgs  **out_args,
                           GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *proc_cmdline = g_file_new_for_path ("/proc/cmdline");
+  g_autoptr(GFile) proc_cmdline = g_file_new_for_path ("/proc/cmdline");
   g_autofree char *contents = NULL;
   gsize len;
 

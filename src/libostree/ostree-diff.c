@@ -45,7 +45,7 @@ get_file_checksum (OstreeDiffFlags  flags,
   else
     {
       gs_unref_variant GVariant *xattrs = NULL;
-      gs_unref_object GInputStream *in = NULL;
+      g_autoptr(GInputStream) in = NULL;
 
       if (!(flags & OSTREE_DIFF_FLAGS_IGNORE_XATTRS))
         {
@@ -160,9 +160,9 @@ diff_add_dir_recurse (GFile          *d,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *child = NULL;
-  gs_unref_object GFileInfo *child_info = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) child = NULL;
+  g_autoptr(GFileInfo) child_info = NULL;
 
   dir_enum = g_file_enumerate_children (d, OSTREE_GIO_FAST_QUERYINFO, 
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -225,11 +225,11 @@ ostree_diff_dirs (OstreeDiffFlags flags,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *child_a = NULL;
-  gs_unref_object GFile *child_b = NULL;
-  gs_unref_object GFileInfo *child_a_info = NULL;
-  gs_unref_object GFileInfo *child_b_info = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) child_a = NULL;
+  g_autoptr(GFile) child_b = NULL;
+  g_autoptr(GFileInfo) child_a_info = NULL;
+  g_autoptr(GFileInfo) child_b_info = NULL;
 
   if (a == NULL)
     {

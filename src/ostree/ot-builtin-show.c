@@ -51,7 +51,7 @@ do_print_variant_generic (const GVariantType *type,
                           GError **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *f = NULL;
+  g_autoptr(GFile) f = NULL;
   gs_unref_variant GVariant *variant = NULL;
 
   f = g_file_new_for_path (filename);
@@ -171,7 +171,7 @@ print_object (OstreeRepo          *repo,
     {
       gs_unref_object OstreeGpgVerifyResult *result = NULL;
       GError *local_error = NULL;
-      gs_unref_object GFile *gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
+      g_autoptr(GFile) gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
 
       result = ostree_repo_verify_commit_ext (repo, checksum,
                                               gpg_homedir, NULL, NULL,
@@ -309,7 +309,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
             goto out;
           if (!found)
             {
-              gs_unref_object GFileInfo *finfo = NULL;
+              g_autoptr(GFileInfo) finfo = NULL;
               gs_unref_variant GVariant *xattrs = NULL;
               GFileType filetype;
               

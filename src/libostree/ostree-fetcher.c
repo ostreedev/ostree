@@ -258,7 +258,7 @@ _ostree_fetcher_set_client_cert (OstreeFetcher *fetcher,
   if (fetcher->client_cert)
     {
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
-      gs_unref_object GTlsInteraction *interaction =
+      g_autoptr(GTlsInteraction) interaction =
         (GTlsInteraction*)_ostree_tls_cert_interaction_new (fetcher->client_cert);
       g_object_set (fetcher->session, "tls-interaction", interaction, NULL);
 #else
@@ -419,7 +419,7 @@ on_stream_read (GObject        *object,
        * guaranteed to do a complete write.
        */
       {
-        gs_unref_object GInputStream *membuf =
+        g_autoptr(GInputStream) membuf =
           g_memory_input_stream_new_from_bytes (bytes);
         g_output_stream_splice_async (pending->out_stream, membuf,
                                       G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
@@ -747,7 +747,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
   g_autofree char *ret_contents = NULL;
-  gs_unref_object GMemoryOutputStream *buf = NULL;
+  g_autoptr(GMemoryOutputStream) buf = NULL;
   FetchUriSyncData data;
   g_assert (error != NULL);
 

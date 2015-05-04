@@ -157,7 +157,7 @@ _ostree_static_delta_part_validate (OstreeRepo     *repo,
                                     GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GInputStream *tmp_in = NULL;
+  g_autoptr(GInputStream) tmp_in = NULL;
   g_autofree guchar *actual_checksum_bytes = NULL;
   g_autofree char *actual_checksum = NULL;
   
@@ -290,9 +290,9 @@ decompress_all (GConverter   *converter,
                 GError      **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GMemoryInputStream *memin = (GMemoryInputStream*)g_memory_input_stream_new_from_bytes (data);
-  gs_unref_object GMemoryOutputStream *memout = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-  gs_unref_object GInputStream *convin = g_converter_input_stream_new ((GInputStream*)memin, converter);
+  g_autoptr(GMemoryInputStream) memin = (GMemoryInputStream*)g_memory_input_stream_new_from_bytes (data);
+  g_autoptr(GMemoryOutputStream) memout = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  g_autoptr(GInputStream) convin = g_converter_input_stream_new ((GInputStream*)memin, converter);
 
   {
     gssize n_bytes_written = g_output_stream_splice ((GOutputStream*)memout, convin,
@@ -345,7 +345,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
       break;
     case 'x':
       {
-        gs_unref_object GConverter *decomp =
+        g_autoptr(GConverter) decomp =
           (GConverter*) _ostree_lzma_decompressor_new ();
 
         if (!decompress_all (decomp, part_payload_bytes, &payload_data,
@@ -523,7 +523,7 @@ dispatch_bspatch (OstreeRepo                 *repo,
 {
   gboolean ret = FALSE;
   guint64 offset, length;
-  gs_unref_object GInputStream *in_stream = NULL;
+  g_autoptr(GInputStream) in_stream = NULL;
   g_autoptr(GMappedFile) input_mfile = NULL;
   g_autofree guchar *buf = NULL;
   struct bspatch_stream stream;
@@ -606,8 +606,8 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       guint64 content_offset;
       guint64 objlen;
       gsize bytes_written;
-      gs_unref_object GInputStream *object_input = NULL;
-      gs_unref_object GInputStream *memin = NULL;
+      g_autoptr(GInputStream) object_input = NULL;
+      g_autoptr(GInputStream) memin = NULL;
       
       if (!do_content_open_generic (repo, state, cancellable, error))
         goto out;
@@ -645,7 +645,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
       else
         {
           /* Slower path, for symlinks and unpacking deltas into archive-z2 */
-          gs_unref_object GFileInfo *finfo = NULL;
+          g_autoptr(GFileInfo) finfo = NULL;
       
           finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
 

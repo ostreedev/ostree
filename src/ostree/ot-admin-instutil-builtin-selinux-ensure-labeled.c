@@ -96,7 +96,7 @@ relabel_recursively (OstreeSePolicy *sepolicy,
                      GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *direnum = NULL;
+  g_autoptr(GFileEnumerator) direnum = NULL;
 
   if (!relabel_one_path (sepolicy, dir, dir_info, path_parts,
                          cancellable, error))
@@ -153,7 +153,7 @@ selinux_relabel_dir (OstreeSePolicy                *sepolicy,
 {
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
-  gs_unref_object GFileInfo *root_info = NULL;
+  g_autoptr(GFileInfo) root_info = NULL;
 
   root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                  G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -183,14 +183,14 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
 {
   gboolean ret = FALSE;
   const char *policy_name;
-  gs_unref_object GFile *subpath = NULL;
+  g_autoptr(GFile) subpath = NULL;
   const char *prefix = NULL;
   gs_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment;
   GOptionContext *context = NULL;
   gs_unref_object OstreeSysroot *sysroot = NULL;
-  gs_unref_object GFile *deployment_path = NULL;
+  g_autoptr(GFile) deployment_path = NULL;
 
   context = g_option_context_new ("[SUBPATH PREFIX] - relabel all or part of a deployment");
 

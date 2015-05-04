@@ -283,7 +283,7 @@ ostree_option_context_parse (GOptionContext *context,
     }
   else if (opt_repo != NULL)
     {
-      gs_unref_object GFile *repo_file = g_file_new_for_path (opt_repo);
+      g_autoptr(GFile) repo_file = g_file_new_for_path (opt_repo);
 
       repo = ostree_repo_new (repo_file);
       if (!(flags & OSTREE_BUILTIN_FLAG_NO_CHECK))
@@ -311,7 +311,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
                                    GCancellable *cancellable,
                                    GError **error)
 {
-  gs_unref_object GFile *sysroot_path = NULL;
+  g_autoptr(GFile) sysroot_path = NULL;
   gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean success = FALSE;
 
@@ -341,7 +341,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
     {
       gs_unref_ptrarray GPtrArray *deployments = NULL;
       OstreeDeployment *first_deployment;
-      gs_unref_object GFile *deployment_file = NULL;
+      g_autoptr(GFile) deployment_file = NULL;
       g_autofree char *deployment_path = NULL;
 
       if (!ostree_sysroot_load (sysroot, cancellable, error))

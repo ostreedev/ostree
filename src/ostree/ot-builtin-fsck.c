@@ -48,8 +48,8 @@ load_and_fsck_one_object (OstreeRepo            *repo,
   gboolean ret = FALSE;
   gboolean missing = FALSE;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_object GInputStream *input = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
+  g_autoptr(GInputStream) input = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
   GError *temp_error = NULL;
 

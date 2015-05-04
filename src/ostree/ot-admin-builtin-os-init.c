@@ -41,8 +41,8 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
   gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
-  gs_unref_object GFile *deploy_dir = NULL;
-  gs_unref_object GFile *dir = NULL;
+  g_autoptr(GFile) deploy_dir = NULL;
+  g_autoptr(GFile) dir = NULL;
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
 

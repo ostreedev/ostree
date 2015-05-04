@@ -44,12 +44,12 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
   gs_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   gs_unref_object OstreeDeployment *deployment = NULL;
-  gs_unref_object GFile *deployment_dir = NULL;
+  g_autoptr(GFile) deployment_dir = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;
-  gs_unref_object GFile *orig_etc_path = NULL;
-  gs_unref_object GFile *new_etc_path = NULL;
+  g_autoptr(GFile) orig_etc_path = NULL;
+  g_autoptr(GFile) new_etc_path = NULL;
 
   context = g_option_context_new ("Diff current /etc configuration versus default");
 

@@ -42,7 +42,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 {
   gboolean ret = FALSE;
   g_autofree char *temp_filename = NULL;
-  gs_unref_object GOutputStream *temp_out = NULL;
+  g_autoptr(GOutputStream) temp_out = NULL;
   int fd;
   int res;
   guint32 file_mode;
@@ -218,7 +218,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      gs_unref_object GOutputStream *temp_out = NULL;
+      g_autoptr(GOutputStream) temp_out = NULL;
       int fd;
       guint32 file_mode;
 
@@ -285,7 +285,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
-      gs_unref_object GOutputStream *temp_out = NULL;
+      g_autoptr(GOutputStream) temp_out = NULL;
       guint32 file_mode;
 
       file_mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
@@ -390,7 +390,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean can_cache;
   gboolean did_hardlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  gs_unref_object GInputStream *input = NULL;
+  g_autoptr(GInputStream) input = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
 
   is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
@@ -572,7 +572,7 @@ checkout_tree_at (OstreeRepo                        *self,
   int destination_dfd = -1;
   int res;
   gs_unref_variant GVariant *xattrs = NULL;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
 
   /* Create initially with mode 0700, then chown/chmod only when we're
    * done.  This avoids anyone else being able to operate on partially
@@ -794,9 +794,9 @@ ostree_repo_checkout_tree_at (OstreeRepo                         *self,
                               GError                           **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile* commit_root = NULL;
-  gs_unref_object GFile* target_dir = NULL;
-  gs_unref_object GFileInfo* target_info = NULL;
+  g_autoptr(GFile) commit_root = NULL;
+  g_autoptr(GFile) target_dir = NULL;
+  g_autoptr(GFileInfo) target_info = NULL;
   OstreeRepoCheckoutOptions default_options = { 0, };
 
   if (!options)
@@ -863,8 +863,8 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
     g_hash_table_iter_init (&iter, to_clean_dirs);
   while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
     {
-      gs_unref_object GFile *objdir = NULL;
-      gs_unref_object GFileEnumerator *enumerator = NULL;
+      g_autoptr(GFile) objdir = NULL;
+      g_autoptr(GFileEnumerator) enumerator = NULL;
       g_autofree char *objdir_name = NULL;
 
       objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
@@ -891,7 +891,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
           nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
           if (nlinks == 1)
             {
-              gs_unref_object GFile *objpath = NULL;
+              g_autoptr(GFile) objpath = NULL;
               objpath = g_file_get_child (objdir, g_file_info_get_name (file_info));
               if (!gs_file_unlink (objpath, cancellable, error))
                 goto out;

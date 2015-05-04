@@ -61,7 +61,7 @@ ostree_builtin_checksum (int argc, char **argv, GCancellable *cancellable, GErro
 {
   GOptionContext *context;
   gboolean ret = FALSE;
-  gs_unref_object GFile *f = NULL;
+  g_autoptr(GFile) f = NULL;
   AsyncChecksumData data = { 0, };
 
   context = g_option_context_new ("PATH - Checksum a file or directory");

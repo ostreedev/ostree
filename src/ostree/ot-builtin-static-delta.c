@@ -243,7 +243,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
 {
   gboolean ret = FALSE;
   const char *patharg;
-  gs_unref_object GFile *path = NULL;
+  g_autoptr(GFile) path = NULL;
   GOptionContext *context;
   gs_unref_object OstreeRepo *repo = NULL;
 

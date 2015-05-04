@@ -34,8 +34,8 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
 {
   gboolean ret = FALSE;
   const char *osname = gs_file_get_basename_cached (osdir);
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *osdeploy_dir = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) osdeploy_dir = NULL;
   GError *temp_error = NULL;
 
   osdeploy_dir = g_file_get_child (osdir, "deploy");
@@ -97,8 +97,8 @@ list_all_deployment_directories (OstreeSysroot       *self,
                                  GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *deploydir = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) deploydir = NULL;
   gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
   GError *temp_error = NULL;
 
@@ -184,8 +184,8 @@ list_all_boot_directories (OstreeSysroot       *self,
                            GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *boot_ostree = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) boot_ostree = NULL;
   gs_unref_ptrarray GPtrArray *ret_bootdirs = NULL;
   GError *temp_error = NULL;
 
@@ -250,7 +250,7 @@ cleanup_other_bootversions (OstreeSysroot       *self,
   gboolean ret = FALSE;
   int cleanup_bootversion;
   int cleanup_subbootversion;
-  gs_unref_object GFile *cleanup_boot_dir = NULL;
+  g_autoptr(GFile) cleanup_boot_dir = NULL;
 
   cleanup_bootversion = self->bootversion == 0 ? 1 : 0;
   cleanup_subbootversion = self->subbootversion == 0 ? 1 : 0;

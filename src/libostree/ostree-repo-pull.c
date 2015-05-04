@@ -596,10 +596,10 @@ content_fetch_on_complete (GObject        *object,
   GError **error = &local_error;
   GCancellable *cancellable = NULL;
   guint64 length;
-  gs_unref_object GFileInfo *file_info = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
-  gs_unref_object GInputStream *file_in = NULL;
-  gs_unref_object GInputStream *object_input = NULL;
+  g_autoptr(GInputStream) file_in = NULL;
+  g_autoptr(GInputStream) object_input = NULL;
   g_autofree char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
@@ -855,7 +855,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   OtPullData *pull_data = fetch_data->pull_data;
   gs_unref_variant GVariant *metadata = NULL;
   g_autofree char *temp_path = NULL;
-  gs_unref_object GInputStream *in = NULL;
+  g_autoptr(GInputStream) in = NULL;
   g_autofree char *actual_checksum = NULL;
   g_autofree guint8 *csum = NULL;
   GError *local_error = NULL;
@@ -1749,7 +1749,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
     else if (tls_client_cert_path)
       {
-        gs_unref_object GTlsCertificate *client_cert = NULL;
+        g_autoptr(GTlsCertificate) client_cert = NULL;
 
         g_assert (tls_client_key_path);
 
@@ -1765,7 +1765,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   {
     g_autofree char *tls_ca_path = NULL;
-    gs_unref_object GTlsDatabase *db = NULL;
+    g_autoptr(GTlsDatabase) db = NULL;
 
     if (!_ostree_repo_get_remote_option (self,
                                          remote_name_or_baseurl, "tls-ca-path",
@@ -1876,7 +1876,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (strcmp (soup_uri_get_scheme (pull_data->base_uri), "file") == 0)
     {
-      gs_unref_object GFile *remote_repo_path = g_file_new_for_path (soup_uri_get_path (pull_data->base_uri));
+      g_autoptr(GFile) remote_repo_path = g_file_new_for_path (soup_uri_get_path (pull_data->base_uri));
       pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
       if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
         goto out;

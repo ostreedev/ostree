@@ -123,8 +123,8 @@ find_ref_in_remotes (OstreeRepo         *self,
                      GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *ret_file = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) ret_file = NULL;
 
   dir_enum = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -212,7 +212,7 @@ resolve_refspec (OstreeRepo     *self,
   __attribute__((unused)) GCancellable *cancellable = NULL;
   GError *temp_error = NULL;
   g_autofree char *ret_rev = NULL;
-  gs_unref_object GFile *child = NULL;
+  g_autoptr(GFile) child = NULL;
   
   g_return_val_if_fail (ref != NULL, FALSE);
 
@@ -440,7 +440,7 @@ enumerate_refs_recurse (OstreeRepo    *repo,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *enumerator = NULL;
+  g_autoptr(GFileEnumerator) enumerator = NULL;
 
   enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
                                           G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -505,9 +505,9 @@ ostree_repo_list_refs (OstreeRepo       *self,
 
   if (refspec_prefix)
     {
-      gs_unref_object GFile *dir = NULL;
-      gs_unref_object GFile *child = NULL;
-      gs_unref_object GFileInfo *info = NULL;
+      g_autoptr(GFile) dir = NULL;
+      g_autoptr(GFile) child = NULL;
+      g_autoptr(GFileInfo) info = NULL;
 
       if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
         goto out;
@@ -541,7 +541,7 @@ ostree_repo_list_refs (OstreeRepo       *self,
     }
   else
     {
-      gs_unref_object GFileEnumerator *remote_enumerator = NULL;
+      g_autoptr(GFileEnumerator) remote_enumerator = NULL;
 
       if (!enumerate_refs_recurse (self, NULL, self->local_heads_dir, self->local_heads_dir,
                                    ret_all_refs,

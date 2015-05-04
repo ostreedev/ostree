@@ -40,7 +40,7 @@ cat_one_file (GFile         *f,
               GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GInputStream *in = NULL;
+  g_autoptr(GInputStream) in = NULL;
   
   in = (GInputStream*)g_file_read (f, cancellable, error);
   if (!in)
@@ -66,9 +66,9 @@ ostree_builtin_cat (int argc, char **argv, GCancellable *cancellable, GError **e
   gboolean ret = FALSE;
   int i;
   const char *rev;
-  gs_unref_object GOutputStream *stdout_stream = NULL;
-  gs_unref_object GFile *root = NULL;
-  gs_unref_object GFile *f = NULL;
+  g_autoptr(GOutputStream) stdout_stream = NULL;
+  g_autoptr(GFile) root = NULL;
+  g_autoptr(GFile) f = NULL;
 
   context = g_option_context_new ("COMMIT PATH... - Concatenate contents of files");
 

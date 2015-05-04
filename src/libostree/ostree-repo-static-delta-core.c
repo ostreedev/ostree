@@ -69,7 +69,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
 {
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *ret_deltas = NULL;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
 
   ret_deltas = g_ptr_array_new_with_free_func (g_free);
 
@@ -83,7 +83,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
 
       while (TRUE)
         {
-          gs_unref_object GFileEnumerator *dir_enum2 = NULL;
+          g_autoptr(GFileEnumerator) dir_enum2 = NULL;
           GFileInfo *file_info;
           GFile *child;
 
@@ -123,7 +123,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
               name2 = gs_file_get_basename_cached (child2);
 
               {
-                gs_unref_object GFile *meta_path = g_file_get_child (child2, "superblock");
+                g_autoptr(GFile) meta_path = g_file_get_child (child2, "superblock");
 
                 if (g_file_query_exists (meta_path, NULL))
                   {
@@ -224,7 +224,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 {
   gboolean ret = FALSE;
   guint i, n;
-  gs_unref_object GFile *meta_file = g_file_get_child (dir, "superblock");
+  g_autoptr(GFile) meta_file = g_file_get_child (dir, "superblock");
   gs_unref_variant GVariant *meta = NULL;
   gs_unref_variant GVariant *headers = NULL;
   gs_unref_variant GVariant *fallback = NULL;
@@ -280,9 +280,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       gs_unref_variant GVariant *header = NULL;
       gs_unref_variant GVariant *csum_v = NULL;
       gs_unref_variant GVariant *objects = NULL;
-      gs_unref_object GFile *part_path = NULL;
-      gs_unref_object GInputStream *raw_in = NULL;
-      gs_unref_object GInputStream *in = NULL;
+      g_autoptr(GFile) part_path = NULL;
+      g_autoptr(GInputStream) raw_in = NULL;
+      g_autoptr(GInputStream) in = NULL;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(@aytt@ay)", &csum_v, &size, &usize, &objects);

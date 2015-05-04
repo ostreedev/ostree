@@ -49,7 +49,7 @@ file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
                                            struct archive_entry *entry,
                                            OstreeRepoCommitModifier *modifier)
 {
-  gs_unref_object GFileInfo *info = NULL;
+  g_autoptr(GFileInfo) info = NULL;
   GFileInfo *modified_info = NULL;
   const struct stat *st;
   guint32 file_type;
@@ -85,8 +85,8 @@ import_libarchive_entry_file (OstreeRepo           *self,
                               GError              **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GInputStream *file_object_input = NULL;
-  gs_unref_object GInputStream *archive_stream = NULL;
+  g_autoptr(GInputStream) file_object_input = NULL;
+  g_autoptr(GInputStream) archive_stream = NULL;
   guint64 length;
   
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -122,7 +122,7 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   const char *pathname;
   const char *hardlink;
   const char *basename;
-  gs_unref_object GFileInfo *file_info = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
   gs_unref_ptrarray GPtrArray *split_path = NULL;
   gs_unref_ptrarray GPtrArray *hardlink_split_path = NULL;
   gs_unref_object OstreeMutableTree *subdir = NULL;
@@ -294,7 +294,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   struct archive *a = NULL;
   struct archive_entry *entry;
   int r;
-  gs_unref_object GFileInfo *tmp_dir_info = NULL;
+  g_autoptr(GFileInfo) tmp_dir_info = NULL;
   g_autofree guchar *tmp_csum = NULL;
 
   a = archive_read_new ();

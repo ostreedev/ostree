@@ -55,8 +55,8 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
   g_autofree char *origin_ref = NULL;
   g_autofree char *origin_refspec = NULL;
   g_autofree char *new_revision = NULL;
-  gs_unref_object GFile *deployment_path = NULL;
-  gs_unref_object GFile *deployment_origin_path = NULL;
+  g_autoptr(GFile) deployment_path = NULL;
+  g_autoptr(GFile) deployment_origin_path = NULL;
   gs_unref_object OstreeDeployment *merge_deployment = NULL;
   gs_unref_object OstreeDeployment *new_deployment = NULL;
   GSConsole *console = NULL;
@@ -108,7 +108,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
     }
   else
     {
-      gs_unref_object GFile *real_sysroot = g_file_new_for_path ("/");
+      g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
 
       if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
         goto out;

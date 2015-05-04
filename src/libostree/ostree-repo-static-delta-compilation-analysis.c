@@ -74,7 +74,7 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
           csizenames = g_hash_table_lookup (sizenames_map, checksum);
           if (!csizenames)
             {
-              gs_unref_object GFileInfo *finfo = NULL;
+              g_autoptr(GFileInfo) finfo = NULL;
 
               csizenames = g_new0 (OstreeDeltaContentSizeNames, 1);
               csizenames->checksum = g_strdup (checksum);

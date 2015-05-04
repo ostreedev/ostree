@@ -333,7 +333,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   OtTrivialHttpd appstruct = { 0, };
   OtTrivialHttpd *app = &appstruct;
   gs_unref_object SoupServer *server = NULL;
-  gs_unref_object GFileMonitor *dirmon = NULL;
+  g_autoptr(GFileMonitor) dirmon = NULL;
 
   context = g_option_context_new ("[DIR] - Simple webserver");
 
@@ -363,8 +363,8 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
       g_autofree char *portstr = NULL;
 #if SOUP_CHECK_VERSION(2, 48, 0)
       GSList *listeners = soup_server_get_listeners (server);
-      gs_unref_object GSocket *listener = NULL;
-      gs_unref_object GSocketAddress *addr = NULL;
+      g_autoptr(GSocket) listener = NULL;
+      g_autoptr(GSocketAddress) addr = NULL;
       
       g_assert (listeners);
       listener = g_object_ref (listeners->data);
@@ -433,7 +433,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   if (opt_autoexit)
     {
       gboolean is_symlink = FALSE;
-      gs_unref_object GFileInfo *info = NULL;
+      g_autoptr(GFileInfo) info = NULL;
 
       info = g_file_query_info (app->root,
                                G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,

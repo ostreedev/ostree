@@ -108,7 +108,7 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
                                   GError               **error)
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
-  gs_unref_object GFile *new_config_path = NULL;
+  g_autoptr(GFile) new_config_path = NULL;
   g_autofree char *config_contents = NULL;
   g_autofree char *new_config_contents = NULL;
   gs_unref_ptrarray GPtrArray *new_lines = NULL;

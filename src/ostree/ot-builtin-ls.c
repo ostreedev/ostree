@@ -154,9 +154,9 @@ print_directory_recurse (GFile    *f,
                          GError  **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *dir_enum = NULL;
-  gs_unref_object GFile *child = NULL;
-  gs_unref_object GFileInfo *child_info = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  g_autoptr(GFile) child = NULL;
+  g_autoptr(GFileInfo) child_info = NULL;
   GError *temp_error = NULL;
 
   if (depth > 0)
@@ -207,8 +207,8 @@ print_one_argument (OstreeRepo   *repo,
                     GError      **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *f = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
+  g_autoptr(GFile) f = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
 
   f = g_file_resolve_relative_path (root, arg);
   
@@ -247,7 +247,7 @@ ostree_builtin_ls (int argc, char **argv, GCancellable *cancellable, GError **er
   gboolean ret = FALSE;
   const char *rev;
   int i;
-  gs_unref_object GFile *root = NULL;
+  g_autoptr(GFile) root = NULL;
 
   context = g_option_context_new ("COMMIT [PATH...] - List file paths");
 

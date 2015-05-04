@@ -565,13 +565,13 @@ ostree_repo_new_default (void)
   if (g_file_test ("objects", G_FILE_TEST_IS_DIR)
       && g_file_test ("config", G_FILE_TEST_IS_REGULAR))
     {
-      gs_unref_object GFile *cwd = g_file_new_for_path (".");
+      g_autoptr(GFile) cwd = g_file_new_for_path (".");
       return ostree_repo_new (cwd);
     }
   else
     {
       const char *envvar = g_getenv ("OSTREE_REPO");
-      gs_unref_object GFile *repo_path = NULL;
+      g_autoptr(GFile) repo_path = NULL;
 
       if (envvar == NULL || *envvar == '\0')
         repo_path = get_default_repo_path ();
@@ -591,7 +591,7 @@ ostree_repo_new_default (void)
 gboolean
 ostree_repo_is_system (OstreeRepo   *repo)
 {
-  gs_unref_object GFile *default_repo_path = get_default_repo_path ();
+  g_autoptr(GFile) default_repo_path = get_default_repo_path ();
   return g_file_equal (repo->repodir, default_repo_path);
 }
 
@@ -775,7 +775,7 @@ impl_repo_remote_add (OstreeRepo     *self,
     {
       const char *sysconf_remotes = SYSCONFDIR "/ostree/remotes.d";
       g_autofree char *basename = g_strconcat (name, ".conf", NULL);
-      gs_unref_object GFile *etc_ostree_remotes_d = NULL;
+      g_autoptr(GFile) etc_ostree_remotes_d = NULL;
 
       if (sysroot == NULL)
         etc_ostree_remotes_d = g_file_new_for_path (sysconf_remotes);
@@ -1175,8 +1175,8 @@ ostree_repo_create (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   GString *config_data = NULL;
-  gs_unref_object GFile *child = NULL;
-  gs_unref_object GFile *grandchild = NULL;
+  g_autoptr(GFile) child = NULL;
+  g_autoptr(GFile) grandchild = NULL;
   const char *mode_str;
 
   if (!ostree_repo_mode_to_string (mode, &mode_str, error))
@@ -1242,7 +1242,7 @@ enumerate_directory_allow_noent (GFile               *dirpath,
 {
   gboolean ret = FALSE;
   GError *temp_error = NULL;
-  gs_unref_object GFileEnumerator *ret_direnum = NULL;
+  g_autoptr(GFileEnumerator) ret_direnum = NULL;
 
   ret_direnum = g_file_enumerate_children (dirpath, queryargs, queryflags,
                                            cancellable, &temp_error);
@@ -1347,8 +1347,8 @@ append_remotes_d (OstreeRepo          *self,
                   GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *etc_ostree_remotes_d = NULL;
-  gs_unref_object GFileEnumerator *direnum = NULL;
+  g_autoptr(GFile) etc_ostree_remotes_d = NULL;
+  g_autoptr(GFileEnumerator) direnum = NULL;
 
   etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
   if (!enumerate_directory_allow_noent (etc_ostree_remotes_d, OSTREE_GIO_FAST_QUERYINFO, 0,
@@ -1492,7 +1492,7 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (parent_repo_path && parent_repo_path[0])
     {
-      gs_unref_object GFile *parent_repo_f = g_file_new_for_path (parent_repo_path);
+      g_autoptr(GFile) parent_repo_f = g_file_new_for_path (parent_repo_path);
 
       self->parent_repo = ostree_repo_new (parent_repo_f);
 
@@ -1787,7 +1787,7 @@ load_metadata_internal (OstreeRepo       *self,
   gboolean ret = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   int fd = -1;
-  gs_unref_object GInputStream *ret_stream = NULL;
+  g_autoptr(GInputStream) ret_stream = NULL;
   gs_unref_variant GVariant *ret_variant = NULL;
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
@@ -1875,7 +1875,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
   gboolean ret = FALSE;
   struct stat stbuf;
   int res;
-  gs_unref_object GFileInfo *ret_info = NULL;
+  g_autoptr(GFileInfo) ret_info = NULL;
 
   do
     res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
@@ -1980,8 +1980,8 @@ ostree_repo_load_file (OstreeRepo         *self,
   gboolean ret = FALSE;
   gboolean found = FALSE;
   OstreeRepoMode repo_mode;
-  gs_unref_object GInputStream *ret_input = NULL;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
@@ -1993,7 +1993,7 @@ ostree_repo_load_file (OstreeRepo         *self,
     {
       int fd = -1;
       struct stat stbuf;
-      gs_unref_object GInputStream *tmp_stream = NULL;
+      g_autoptr(GInputStream) tmp_stream = NULL;
 
       if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
                                cancellable, error))
@@ -2068,7 +2068,7 @@ ostree_repo_load_file (OstreeRepo         *self,
                 }
               else if (S_ISLNK (mode))
                 {
-                  gs_unref_object GInputStream *target_input = NULL;
+                  g_autoptr(GInputStream) target_input = NULL;
                   char targetbuf[PATH_MAX+1];
                   gsize target_size;
 
@@ -2174,7 +2174,7 @@ ostree_repo_load_object_stream (OstreeRepo         *self,
 {
   gboolean ret = FALSE;
   guint64 size;
-  gs_unref_object GInputStream *ret_input = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))
     {
@@ -2185,8 +2185,8 @@ ostree_repo_load_object_stream (OstreeRepo         *self,
     }
   else
     {
-      gs_unref_object GInputStream *input = NULL;
-      gs_unref_object GFileInfo *finfo = NULL;
+      g_autoptr(GInputStream) input = NULL;
+      g_autoptr(GFileInfo) finfo = NULL;
       gs_unref_variant GVariant *xattrs = NULL;
 
       if (!ostree_repo_load_file (self, checksum, &input, &finfo, &xattrs,
@@ -2308,7 +2308,7 @@ ostree_repo_has_object (OstreeRepo           *self,
 {
   gboolean ret = FALSE;
   gboolean ret_have_object;
-  gs_unref_object GFile *loose_path = NULL;
+  g_autoptr(GFile) loose_path = NULL;
 
   if (!_ostree_repo_find_object (self, objtype, checksum, &loose_path,
                                  cancellable, error))
@@ -2427,7 +2427,7 @@ import_one_object_copy (OstreeRepo    *self,
 {
   gboolean ret = FALSE;
   guint64 length;
-  gs_unref_object GInputStream *object = NULL;
+  g_autoptr(GInputStream) object = NULL;
 
   if (!ostree_repo_load_object_stream (source, objtype, checksum,
                                        &object, &length,
@@ -2827,7 +2827,7 @@ ostree_repo_read_commit (OstreeRepo   *self,
                          GError **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ret_root = NULL;
+  g_autoptr(GFile) ret_root = NULL;
   g_autofree char *resolved_commit = NULL;
 
   if (!ostree_repo_resolve_rev (self, ref, FALSE, &resolved_commit, error))
@@ -3100,8 +3100,8 @@ sign_data (OstreeRepo     *self,
            GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *tmp_signature_file = NULL;
-  gs_unref_object GOutputStream *tmp_signature_output = NULL;
+  g_autoptr(GFile) tmp_signature_file = NULL;
+  g_autoptr(GOutputStream) tmp_signature_output = NULL;
   gpgme_ctx_t context = NULL;
   gs_unref_bytes GBytes *ret_signature = NULL;
   gpgme_engine_info_t info;
@@ -3346,9 +3346,9 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   gs_unref_bytes GBytes *signature_data = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
   g_autofree char *delta_path = NULL;
-  gs_unref_object GFile *delta_file = NULL;
+  g_autoptr(GFile) delta_file = NULL;
   g_autofree char *detached_metadata_relpath = NULL;
-  gs_unref_object GFile *detached_metadata_path = NULL;
+  g_autoptr(GFile) detached_metadata_path = NULL;
   gs_unref_variant GVariant *existing_detached_metadata = NULL;
   gs_unref_variant GVariant *normalized = NULL;
   gs_unref_variant GVariant *new_metadata = NULL;
@@ -3535,7 +3535,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
 {
   OstreeGpgVerifyResult *result = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_object GFile *keyringdir_ref = NULL;
+  g_autoptr(GFile) keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_bytes GBytes *signed_data = NULL;
   g_autofree char *commit_filename = NULL;

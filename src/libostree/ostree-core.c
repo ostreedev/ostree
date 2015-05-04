@@ -426,11 +426,11 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   gboolean ret = FALSE;
   gpointer header_data;
   gsize header_size;
-  gs_unref_object GInputStream *ret_input = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
   gs_unref_variant GVariant *file_header = NULL;
   gs_unref_ptrarray GPtrArray *streams = NULL;
-  gs_unref_object GOutputStream *header_out_stream = NULL;
-  gs_unref_object GInputStream *header_in_stream = NULL;
+  g_autoptr(GOutputStream) header_out_stream = NULL;
+  g_autoptr(GInputStream) header_in_stream = NULL;
 
   file_header = file_header_new (file_info, xattrs);
 
@@ -493,8 +493,8 @@ ostree_content_stream_parse (gboolean                compressed,
   guint32 archive_header_size;
   guchar dummy[4];
   gsize bytes_read;
-  gs_unref_object GInputStream *ret_input = NULL;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
   gs_unref_variant GVariant *file_header = NULL;
   g_autofree guchar *buf = NULL;
@@ -561,7 +561,7 @@ ostree_content_stream_parse (gboolean                compressed,
        **/
       if (compressed)
         {
-          gs_unref_object GConverter *zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
+          g_autoptr(GConverter) zlib_decomp = (GConverter*)g_zlib_decompressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW);
           ret_input = g_converter_input_stream_new (input, zlib_decomp);
         }
       else
@@ -604,9 +604,9 @@ ostree_content_file_parse_at (gboolean                compressed,
 {
   gboolean ret = FALSE;
   struct stat stbuf;
-  gs_unref_object GInputStream *file_input = NULL;
-  gs_unref_object GInputStream *ret_input = NULL;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GInputStream) file_input = NULL;
+  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
 
   if (!ot_openat_read_stream (parent_dfd, path, TRUE, &file_input,
@@ -744,8 +744,8 @@ ostree_checksum_file (GFile            *f,
                       GError          **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *file_info = NULL;
-  gs_unref_object GInputStream *in = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
+  g_autoptr(GInputStream) in = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
   g_autofree guchar *ret_csum = NULL;
 
@@ -1516,7 +1516,7 @@ file_header_parse (GVariant         *metadata,
   gboolean ret = FALSE;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
 
   g_variant_get (metadata, "(uuuu&s@a(ayay))",
@@ -1577,7 +1577,7 @@ zlib_file_header_parse (GVariant         *metadata,
   guint64 size;
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   gs_unref_variant GVariant *ret_xattrs = NULL;
 
   g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,

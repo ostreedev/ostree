@@ -313,8 +313,8 @@ process_one_object (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  gs_unref_object GInputStream *content_stream = NULL;
-  gs_unref_object GFileInfo *content_finfo = NULL;
+  g_autoptr(GInputStream) content_stream = NULL;
+  g_autoptr(GFileInfo) content_finfo = NULL;
   gs_unref_variant GVariant *content_xattrs = NULL;
   guint64 compressed_size;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
@@ -456,9 +456,9 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
   g_autofree char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
   gs_fd_close int fd = -1;
   gs_unref_bytes GBytes *ret_content = NULL;
-  gs_unref_object GInputStream *istream = NULL;
-  gs_unref_object GFileInfo *ret_finfo = NULL;
-  gs_unref_object GOutputStream *out = NULL;
+  g_autoptr(GInputStream) istream = NULL;
+  g_autoptr(GFileInfo) ret_finfo = NULL;
+  g_autoptr(GOutputStream) out = NULL;
 
   fd = g_mkstemp (tmpname);
   if (fd == -1)
@@ -508,8 +508,8 @@ try_content_bsdiff (OstreeRepo                       *repo,
   gs_unref_hashtable GHashTable *to_bsdiff = NULL;
   gs_unref_bytes GBytes *tmp_from = NULL;
   gs_unref_bytes GBytes *tmp_to = NULL;
-  gs_unref_object GFileInfo *from_finfo = NULL;
-  gs_unref_object GFileInfo *to_finfo = NULL;
+  g_autoptr(GFileInfo) from_finfo = NULL;
+  g_autoptr(GFileInfo) to_finfo = NULL;
   ContentBsdiff *ret_bsdiff = NULL;
 
   *out_bsdiff = NULL;
@@ -550,8 +550,8 @@ try_content_rollsum (OstreeRepo                       *repo,
   gs_unref_hashtable GHashTable *to_rollsum = NULL;
   gs_unref_bytes GBytes *tmp_from = NULL;
   gs_unref_bytes GBytes *tmp_to = NULL;
-  gs_unref_object GFileInfo *from_finfo = NULL;
-  gs_unref_object GFileInfo *to_finfo = NULL;
+  g_autoptr(GFileInfo) from_finfo = NULL;
+  g_autoptr(GFileInfo) to_finfo = NULL;
   OstreeRollsumMatches *matches = NULL;
   ContentRollsum *ret_rollsum = NULL;
 
@@ -656,8 +656,8 @@ process_one_rollsum (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  gs_unref_object GInputStream *content_stream = NULL;
-  gs_unref_object GFileInfo *content_finfo = NULL;
+  g_autoptr(GInputStream) content_stream = NULL;
+  g_autoptr(GFileInfo) content_finfo = NULL;
   gs_unref_variant GVariant *content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
   const guint8 *tmp_to_buf;
@@ -775,8 +775,8 @@ process_one_bsdiff (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  gs_unref_object GInputStream *content_stream = NULL;
-  gs_unref_object GFileInfo *content_finfo = NULL;
+  g_autoptr(GInputStream) content_stream = NULL;
+  g_autoptr(GFileInfo) content_finfo = NULL;
   gs_unref_variant GVariant *content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
   const guint8 *tmp_to_buf;
@@ -828,7 +828,7 @@ process_one_bsdiff (OstreeRepo                       *repo,
       struct bzdiff_opaque_s op;
       const gchar *payload;
       gssize payload_size;
-      gs_unref_object GOutputStream *out = g_memory_output_stream_new_resizable ();
+      g_autoptr(GOutputStream) out = g_memory_output_stream_new_resizable ();
       stream.malloc = malloc;
       stream.free = free;
       stream.write = bzdiff_write;
@@ -871,9 +871,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   GHashTableIter hashiter;
   gpointer key, value;
   OstreeStaticDeltaPartBuilder *current_part = NULL;
-  gs_unref_object GFile *root_from = NULL;
+  g_autoptr(GFile) root_from = NULL;
   gs_unref_variant GVariant *from_commit = NULL;
-  gs_unref_object GFile *root_to = NULL;
+  g_autoptr(GFile) root_to = NULL;
   gs_unref_variant GVariant *to_commit = NULL;
   gs_unref_hashtable GHashTable *to_reachable_objects = NULL;
   gs_unref_hashtable GHashTable *from_reachable_objects = NULL;
@@ -933,7 +933,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
         g_hash_table_add (new_reachable_metadata, serialized_key);
       else
         {
-          gs_unref_object GFileInfo *finfo = NULL;
+          g_autoptr(GFileInfo) finfo = NULL;
           GFileType ftype;
 
           if (!ostree_repo_load_file (repo, checksum, NULL, &finfo, NULL,
@@ -1174,7 +1174,7 @@ get_fallback_headers (OstreeRepo               *self,
         }
       else
         {
-          gs_unref_object GFileInfo *file_info = NULL;
+          g_autoptr(GFileInfo) file_info = NULL;
 
           if (!ostree_repo_query_object_storage_size (self, OSTREE_OBJECT_TYPE_FILE,
                                                       checksum,
@@ -1253,8 +1253,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   gs_unref_variant GVariant *delta_descriptor = NULL;
   gs_unref_variant GVariant *to_commit = NULL;
   g_autofree char *descriptor_relpath = NULL;
-  gs_unref_object GFile *descriptor_path = NULL;
-  gs_unref_object GFile *descriptor_dir = NULL;
+  g_autoptr(GFile) descriptor_path = NULL;
+  g_autoptr(GFile) descriptor_dir = NULL;
   gs_unref_variant GVariant *tmp_metadata = NULL;
   gs_unref_variant GVariant *fallback_headers = NULL;
 
@@ -1303,13 +1303,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       gs_free_checksum GChecksum *checksum = NULL;
       gs_unref_bytes GBytes *objtype_checksum_array = NULL;
       gs_unref_bytes GBytes *checksum_bytes = NULL;
-      gs_unref_object GFile *part_tempfile = NULL;
-      gs_unref_object GOutputStream *part_temp_outstream = NULL;
-      gs_unref_object GInputStream *part_in = NULL;
-      gs_unref_object GInputStream *part_payload_in = NULL;
-      gs_unref_object GMemoryOutputStream *part_payload_out = NULL;
-      gs_unref_object GConverterOutputStream *part_payload_compressor = NULL;
-      gs_unref_object GConverter *compressor = NULL;
+      g_autoptr(GFile) part_tempfile = NULL;
+      g_autoptr(GOutputStream) part_temp_outstream = NULL;
+      g_autoptr(GInputStream) part_in = NULL;
+      g_autoptr(GInputStream) part_payload_in = NULL;
+      g_autoptr(GMemoryOutputStream) part_payload_out = NULL;
+      g_autoptr(GConverterOutputStream) part_payload_compressor = NULL;
+      g_autoptr(GConverter) compressor = NULL;
       gs_unref_variant GVariant *delta_part_content = NULL;
       gs_unref_variant GVariant *delta_part = NULL;
       gs_unref_variant GVariant *delta_part_header = NULL;
@@ -1401,7 +1401,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     {
       GFile *tempfile = part_tempfiles->pdata[i];
       g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
-      gs_unref_object GFile *part_path = g_file_resolve_relative_path (self->repodir, part_relpath);
+      g_autoptr(GFile) part_path = g_file_resolve_relative_path (self->repodir, part_relpath);
 
       if (!gs_file_rename (tempfile, part_path, cancellable, error))
         goto out;

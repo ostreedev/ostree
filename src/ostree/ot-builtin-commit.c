@@ -96,7 +96,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   gsize len;
   char **iter = NULL; /* nofree */
   gs_unref_hashtable GHashTable *ret_hash = NULL;
-  gs_unref_object GFile *path = NULL;
+  g_autoptr(GFile) path = NULL;
   g_autofree char *contents = NULL;
   char **lines = NULL;
 
@@ -295,10 +295,10 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   gs_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
-  gs_unref_object GFile *arg = NULL;
+  g_autoptr(GFile) arg = NULL;
   g_autofree char *parent = NULL;
   g_autofree char *commit_checksum = NULL;
-  gs_unref_object GFile *root = NULL;
+  g_autoptr(GFile) root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *detached_metadata = NULL;
   gs_unref_object OstreeMutableTree *mtree = NULL;
@@ -476,7 +476,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (opt_skip_if_unchanged && parent)
     {
-      gs_unref_object GFile *parent_root;
+      g_autoptr(GFile) parent_root;
 
       if (!ostree_repo_read_commit (repo, parent, &parent_root, NULL, cancellable, error))
         goto out;

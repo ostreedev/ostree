@@ -161,8 +161,8 @@ ot_gfile_get_symlink_target_from_info (GFile             *path,
 {
   gboolean ret = FALSE;
   const char *target;
-  gs_unref_object GFile *path_parent = NULL;
-  gs_unref_object GFile *ret_target = NULL;
+  g_autoptr(GFile) path_parent = NULL;
+  g_autoptr(GFile) ret_target = NULL;
 
   if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_SYMBOLIC_LINK)
     {
@@ -191,7 +191,7 @@ ot_gfile_query_info_allow_noent (GFile                *path,
                                  GError              **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *ret_file_info = NULL;
+  g_autoptr(GFileInfo) ret_file_info = NULL;
   GError *temp_error = NULL;
 
   ret_file_info = g_file_query_info (path, queryopts, flags,
@@ -222,8 +222,8 @@ ot_gfile_query_symlink_target_allow_noent (GFile          *path,
                                            GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileInfo *file_info = NULL;
-  gs_unref_object GFile *ret_target = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
+  g_autoptr(GFile) ret_target = NULL;
 
   if (!ot_gfile_query_info_allow_noent (path, OSTREE_GIO_FAST_QUERYINFO,
                                         G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -291,8 +291,8 @@ ot_file_replace_contents_at (int             dfd,
   gboolean ret = FALSE;
   int fd;
   g_autofree char *tmpname = NULL;
-  gs_unref_object GOutputStream *stream = NULL;
-  gs_unref_object GInputStream *instream = NULL;
+  g_autoptr(GOutputStream) stream = NULL;
+  g_autoptr(GInputStream) instream = NULL;
 
   if (!gs_file_open_in_tmpdir_at (dfd, 0644,
                                   &tmpname, &stream,
@@ -356,7 +356,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
   gboolean ret = FALSE;
   int parent_dfd;
   const char *target_basename = gs_file_get_basename_cached (path);
-  gs_unref_object GFile *parent = NULL;
+  g_autoptr(GFile) parent = NULL;
 
   parent = g_file_get_parent (path);
 
@@ -457,7 +457,7 @@ ot_util_ensure_directory_and_fsync (GFile         *dir,
   gboolean ret = FALSE;
   int parentfd = -1;
   const char *basename = gs_file_get_basename_cached (dir);
-  gs_unref_object GFile *parent = g_file_get_parent (dir);
+  g_autoptr(GFile) parent = g_file_get_parent (dir);
   
  again:
   parentfd = open (gs_file_get_path_cached (parent),
@@ -528,9 +528,9 @@ ot_gfile_atomic_symlink_swap (GFile          *path,
                               GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *parent = g_file_get_parent (path);
+  g_autoptr(GFile) parent = g_file_get_parent (path);
   g_autofree char *tmpname = g_strconcat (gs_file_get_basename_cached (path), ".tmp", NULL);
-  gs_unref_object GFile *tmppath = g_file_get_child (parent, tmpname);
+  g_autoptr(GFile) tmppath = g_file_get_child (parent, tmpname);
   int parent_dfd = -1;
 
   if (!ot_gfile_ensure_unlinked (tmppath, cancellable, error))

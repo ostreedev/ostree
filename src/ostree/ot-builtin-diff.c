@@ -44,7 +44,7 @@ parse_file_or_commit (OstreeRepo  *repo,
                       GError     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFile *ret_file = NULL;
+  g_autoptr(GFile) ret_file = NULL;
 
   if (g_str_has_prefix (arg, "/")
       || g_str_has_prefix (arg, "./")
@@ -124,8 +124,8 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
   const char *src;
   const char *target;
   g_autofree char *src_prev = NULL;
-  gs_unref_object GFile *srcf = NULL;
-  gs_unref_object GFile *targetf = NULL;
+  g_autoptr(GFile) srcf = NULL;
+  g_autoptr(GFile) targetf = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;
   gs_unref_ptrarray GPtrArray *added = NULL;

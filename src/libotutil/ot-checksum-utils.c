@@ -147,7 +147,7 @@ ot_checksum_file (GFile          *file,
 {
   GChecksum *checksum = NULL;
   char *ret = NULL;
-  gs_unref_object GInputStream *in = NULL;
+  g_autoptr(GInputStream) in = NULL;
 
   in = (GInputStream*)g_file_read (file, cancellable, error);
   if (!in)

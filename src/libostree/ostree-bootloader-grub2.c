@@ -54,8 +54,8 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
 {
   gboolean ret = FALSE;
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
-  gs_unref_object GFile* efi_basedir = NULL;
-  gs_unref_object GFileInfo *file_info = NULL;
+  g_autoptr(GFile) efi_basedir = NULL;
+  g_autoptr(GFileInfo) file_info = NULL;
 
   if (g_file_query_exists (self->config_path_bios, NULL))
     {
@@ -70,7 +70,7 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
 
   if (g_file_query_exists (efi_basedir, NULL))
     {
-      gs_unref_object GFileEnumerator *direnum = NULL;
+      g_autoptr(GFileEnumerator) direnum = NULL;
 
       direnum = g_file_enumerate_children (efi_basedir, OSTREE_GIO_FAST_QUERYINFO,
                                            G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -137,7 +137,7 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
 {
   gboolean ret = FALSE;
   GString *output = g_string_new ("");
-  gs_unref_object GOutputStream *out_stream = NULL;
+  g_autoptr(GOutputStream) out_stream = NULL;
   gs_unref_ptrarray GPtrArray *loader_configs = NULL;
   guint i;
   gsize bytes_written;
@@ -291,14 +291,14 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   gboolean ret = FALSE;
-  gs_unref_object GFile *efi_new_config_temp = NULL;
-  gs_unref_object GFile *efi_orig_config = NULL;
-  gs_unref_object GFile *new_config_path = NULL;
+  g_autoptr(GFile) efi_new_config_temp = NULL;
+  g_autoptr(GFile) efi_orig_config = NULL;
+  g_autoptr(GFile) new_config_path = NULL;
   gs_unref_object GSSubprocessContext *procctx = NULL;
   gs_unref_object GSSubprocess *proc = NULL;
   gs_strfreev char **child_env = g_get_environ ();
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
-  gs_unref_object GFile *config_path_efi_dir = NULL;
+  g_autoptr(GFile) config_path_efi_dir = NULL;
   g_autofree char *grub2_mkconfig_chroot = NULL;
 
   if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
@@ -306,7 +306,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
     {
       gs_unref_ptrarray GPtrArray *deployments = NULL;
       OstreeDeployment *tool_deployment;
-      gs_unref_object GFile *tool_deployment_root = NULL;
+      g_autoptr(GFile) tool_deployment_root = NULL;
 
       deployments = ostree_sysroot_get_deployments (self->sysroot);
 
@@ -381,7 +381,7 @@ rm -f ${grub_cfg}.new
 
   if (self->is_efi)
     {
-      gs_unref_object GFile *config_path_efi_old = g_file_get_child (config_path_efi_dir, "grub.cfg.old");
+      g_autoptr(GFile) config_path_efi_old = g_file_get_child (config_path_efi_dir, "grub.cfg.old");
       
       /* copy current to old */
       if (!ot_gfile_ensure_unlinked (config_path_efi_old, cancellable, error))

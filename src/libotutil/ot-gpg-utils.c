@@ -108,7 +108,7 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
   if (out_pubring_stream != NULL)
     {
       GFileOutputStream *pubring_stream;
-      glnx_unref_object GFile *pubring_file = NULL;
+      g_autoptr(GFile) pubring_file = NULL;
       g_autofree char *pubring_path = NULL;
 
       pubring_path = g_build_filename (tmp_home_dir, "pubring.gpg", NULL);

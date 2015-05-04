@@ -432,7 +432,7 @@ on_fetched_url (GObject              *src,
   GError *local_error = NULL;
   struct stat stbuf;
   int parent_dfd = _ostree_fetcher_get_dfd (self->metalink->fetcher);
-  gs_unref_object GInputStream *instream = NULL;
+  g_autoptr(GInputStream) instream = NULL;
   g_autofree char *result = NULL;
   GChecksum *checksum = NULL;
 

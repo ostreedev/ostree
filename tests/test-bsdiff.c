@@ -69,8 +69,8 @@ test_bsdiff (void)
   g_autofree guint8 *old = g_new (guint8, OLD_SIZE);
   g_autofree guint8 *new = g_new (guint8, NEW_SIZE);
   g_autofree guint8 *new_generated = g_new0 (guint8, NEW_SIZE);
-  gs_unref_object GOutputStream *out = g_memory_output_stream_new_resizable ();
-  gs_unref_object GInputStream *in = NULL;
+  g_autoptr(GOutputStream) out = g_memory_output_stream_new_resizable ();
+  g_autoptr(GInputStream) in = NULL;
 
   new[0] = 'A';
   for (i = 0; i < OLD_SIZE; i++)

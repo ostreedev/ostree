@@ -64,8 +64,8 @@ ot_editor_prompt (OstreeRepo *repo,
 {
   gs_unref_object GSSubprocessContext *ctx = NULL;
   gs_unref_object GSSubprocess *proc = NULL;
-  gs_unref_object GFile *file = NULL;
-  gs_unref_object GFileIOStream *io = NULL;
+  g_autoptr(GFile) file = NULL;
+  g_autoptr(GFileIOStream) io = NULL;
   GOutputStream *output;
   const char *editor;
   char *ret = NULL;

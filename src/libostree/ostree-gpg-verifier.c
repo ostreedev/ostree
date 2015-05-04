@@ -79,7 +79,7 @@ ostree_gpg_verifier_initable_init (GInitable        *initable,
   gboolean ret = FALSE;
   OstreeGpgVerifier *self = (OstreeGpgVerifier*)initable;
   const char *default_keyring_path = g_getenv ("OSTREE_GPG_HOME");
-  gs_unref_object GFile *default_keyring_dir = NULL;
+  g_autoptr(GFile) default_keyring_dir = NULL;
 
   if (!default_keyring_path)
     default_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
@@ -129,7 +129,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   gpgme_data_t data_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
   g_autofree char *tmp_dir = NULL;
-  glnx_unref_object GOutputStream *target_stream = NULL;
+  g_autoptr(GOutputStream) target_stream = NULL;
   OstreeGpgVerifyResult *result = NULL;
   gboolean success = FALSE;
   GList *link;
@@ -154,7 +154,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
 
   for (link = self->keyrings; link != NULL; link = link->next)
     {
-      glnx_unref_object GFileInputStream *source_stream = NULL;
+      g_autoptr(GFileInputStream) source_stream = NULL;
       GFile *keyring_file = link->data;
       gssize bytes_written;
       GError *local_error = NULL;
@@ -275,7 +275,7 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                       GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object GFileEnumerator *enumerator = NULL;
+  g_autoptr(GFileEnumerator) enumerator = NULL;
   
   enumerator = g_file_enumerate_children (path, OSTREE_GIO_FAST_QUERYINFO,
                                           G_FILE_QUERY_INFO_NONE,
