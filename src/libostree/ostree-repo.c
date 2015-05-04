@@ -3648,6 +3648,9 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                            error))
     goto out;
 
+  if (!gs_shutil_rm_rf_at (self->repo_dir_fd, "summary.sig", cancellable, error))
+    goto out;
+
   ret = TRUE;
  out:
   if (ordered_keys)

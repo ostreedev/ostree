@@ -53,3 +53,8 @@ ${CMD_PREFIX} $OSTREE commit -b test -s "Another commit..." test
 echo "ok commit 3"
 
 assert_not_streq "$OLD_MD5" "$(md5sum repo/summary)"
+
+# Check that summary --update deletes the .sig file
+touch repo/summary.sig
+${CMD_PREFIX} $OSTREE summary --update
+assert_not_has_file repo/summary.sig
