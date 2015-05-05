@@ -3295,7 +3295,7 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_free char *delta_path = NULL;
   gs_unref_object GFile *delta_file = NULL;
-  gs_unref_object char *detached_metadata_relpath = NULL;
+  gs_free char *detached_metadata_relpath = NULL;
   gs_unref_object GFile *detached_metadata_path = NULL;
   gs_unref_variant GVariant *existing_detached_metadata = NULL;
   gs_unref_variant GVariant *normalized = NULL;
