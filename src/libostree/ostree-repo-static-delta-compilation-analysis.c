@@ -101,7 +101,7 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
           char *name;
           char *content_checksum;
           char *meta_checksum;
-          gs_unref_variant GVariant *dirtree = NULL;
+          g_autoptr(GVariant) dirtree = NULL;
           ostree_cleanup_repo_commit_traverse_iter
             OstreeRepoCommitTraverseIter subiter = { 0, };
 

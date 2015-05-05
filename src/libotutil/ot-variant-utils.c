@@ -221,7 +221,7 @@ ot_util_variant_from_stream (GInputStream         *src,
 {
   gboolean ret = FALSE;
   g_autoptr(GMemoryOutputStream) data_stream = NULL;
-  gs_unref_variant GVariant *ret_variant = NULL;
+  g_autoptr(GVariant) ret_variant = NULL;
 
   data_stream = (GMemoryOutputStream*)g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
 
@@ -308,7 +308,7 @@ ot_variant_bsearch_str (GVariant   *array,
   imin = 0;
   while (imax >= imin)
     {
-      gs_unref_variant GVariant *child = NULL;
+      g_autoptr(GVariant) child = NULL;
       const char *cur;
       int cmp;
 

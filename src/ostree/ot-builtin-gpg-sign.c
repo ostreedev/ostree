@@ -55,9 +55,9 @@ delete_signatures (OstreeRepo *repo,
 {
   GVariantDict metadata_dict;
   glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-  gs_unref_variant GVariant *old_metadata = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
-  gs_unref_variant GVariant *signature_data = NULL;
+  g_autoptr(GVariant) old_metadata = NULL;
+  g_autoptr(GVariant) new_metadata = NULL;
+  g_autoptr(GVariant) signature_data = NULL;
   GVariantIter iter;
   GVariant *child;
   GQueue signatures = G_QUEUE_INIT;

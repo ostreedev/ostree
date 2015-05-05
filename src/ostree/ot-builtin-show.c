@@ -52,7 +52,7 @@ do_print_variant_generic (const GVariantType *type,
 {
   gboolean ret = FALSE;
   g_autoptr(GFile) f = NULL;
-  gs_unref_variant GVariant *variant = NULL;
+  g_autoptr(GVariant) variant = NULL;
 
   f = g_file_new_for_path (filename);
 
@@ -74,9 +74,9 @@ do_print_related (OstreeRepo  *repo,
 {
   gboolean ret = FALSE;
   const char *name;
-  gs_unref_variant GVariant *csum_v = NULL;
-  gs_unref_variant GVariant *variant = NULL;
-  gs_unref_variant GVariant *related = NULL;
+  g_autoptr(GVariant) csum_v = NULL;
+  g_autoptr(GVariant) variant = NULL;
+  g_autoptr(GVariant) related = NULL;
   GVariantIter *viter = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
@@ -110,9 +110,9 @@ do_print_metadata_key (OstreeRepo     *repo,
                        GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *value = NULL;
-  gs_unref_variant GVariant *commit = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) value = NULL;
+  g_autoptr(GVariant) commit = NULL;
+  g_autoptr(GVariant) metadata = NULL;
 
   if (!detached)
     {
@@ -156,7 +156,7 @@ print_object (OstreeRepo          *repo,
               const char          *checksum,
               GError             **error)
 {
-  gs_unref_variant GVariant *variant = NULL;
+  g_autoptr(GVariant) variant = NULL;
   OstreeDumpFlags flags = OSTREE_DUMP_NONE;
   gboolean ret = FALSE;
 
@@ -310,7 +310,7 @@ ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **
           if (!found)
             {
               g_autoptr(GFileInfo) finfo = NULL;
-              gs_unref_variant GVariant *xattrs = NULL;
+              g_autoptr(GVariant) xattrs = NULL;
               GFileType filetype;
               
               if (!ostree_repo_load_file (repo, rev, NULL, &finfo, &xattrs,

@@ -44,7 +44,7 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
 {
   gboolean ret = FALSE;
   struct stat src_stbuf;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
 
   /* Clone all xattrs first, so we get the SELinux security context
    * right.  This will allow other users access if they have ACLs, but
@@ -1295,8 +1295,8 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     {
       /* Try extracting a version for this deployment. */
       const char *csum = ostree_deployment_get_csum (deployment);
-      gs_unref_variant GVariant *variant = NULL;
-      gs_unref_variant GVariant *metadata = NULL;
+      g_autoptr(GVariant) variant = NULL;
+      g_autoptr(GVariant) metadata = NULL;
 
       /* XXX Copying ot_admin_checksum_version() + bits from
        *     ot-admin-builtin-status.c.  Maybe this should be

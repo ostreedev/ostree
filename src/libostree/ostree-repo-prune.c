@@ -68,7 +68,7 @@ maybe_prune_loose_object (OtPruneData        *data,
                           GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *key = NULL;
+  g_autoptr(GVariant) key = NULL;
 
   key = ostree_object_name_serialize (checksum, objtype);
 

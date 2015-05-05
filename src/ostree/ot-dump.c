@@ -32,7 +32,7 @@ void
 ot_dump_variant (GVariant *variant)
 {
   g_autofree char *formatted_variant = NULL;
-  gs_unref_variant GVariant *byteswapped = NULL;
+  g_autoptr(GVariant) byteswapped = NULL;
 
   if (G_BYTE_ORDER != G_BIG_ENDIAN)
     {

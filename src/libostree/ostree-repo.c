@@ -703,7 +703,7 @@ keyfile_set_from_vardict (GKeyFile     *keyfile,
   g_variant_iter_init (&viter, vardict);
   while (g_variant_iter_loop (&viter, "{&s@v}", &key, &val))
     {
-      gs_unref_variant GVariant *child = g_variant_get_variant (val);
+      g_autoptr(GVariant) child = g_variant_get_variant (val);
       if (g_variant_is_of_type (child, G_VARIANT_TYPE_STRING))
         g_key_file_set_string (keyfile, section, key, g_variant_get_string (child, NULL));
       else if (g_variant_is_of_type (child, G_VARIANT_TYPE_BOOLEAN))
@@ -1788,7 +1788,7 @@ load_metadata_internal (OstreeRepo       *self,
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   int fd = -1;
   g_autoptr(GInputStream) ret_stream = NULL;
-  gs_unref_variant GVariant *ret_variant = NULL;
+  g_autoptr(GVariant) ret_variant = NULL;
 
   g_return_val_if_fail (OSTREE_OBJECT_TYPE_IS_META (objtype), FALSE);
 
@@ -1982,7 +1982,7 @@ ostree_repo_load_file (OstreeRepo         *self,
   OstreeRepoMode repo_mode;
   g_autoptr(GInputStream) ret_input = NULL;
   g_autoptr(GFileInfo) ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
   repo_mode = ostree_repo_get_mode (self);
@@ -2031,7 +2031,7 @@ ostree_repo_load_file (OstreeRepo         *self,
           if (repo_mode == OSTREE_REPO_MODE_BARE_USER)
             {
               guint32 mode;
-              gs_unref_variant GVariant *metadata = NULL;
+              g_autoptr(GVariant) metadata = NULL;
               g_autoptr(GBytes) bytes = NULL;
               gs_fd_close int fd = -1;
 
@@ -2187,7 +2187,7 @@ ostree_repo_load_object_stream (OstreeRepo         *self,
     {
       g_autoptr(GInputStream) input = NULL;
       g_autoptr(GFileInfo) finfo = NULL;
-      gs_unref_variant GVariant *xattrs = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
 
       if (!ostree_repo_load_file (self, checksum, &input, &finfo, &xattrs,
                                   cancellable, error))
@@ -2397,7 +2397,7 @@ copy_detached_metadata (OstreeRepo    *self,
                         GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *detached_meta = NULL;
+  g_autoptr(GVariant) detached_meta = NULL;
           
   if (!ostree_repo_read_commit_detached_metadata (source,
                                                   checksum, &detached_meta,
@@ -3065,8 +3065,8 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                   GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariant) new_metadata = NULL;
   gs_unref_variant_builder GVariantBuilder *builder = NULL;
 
   if (!ostree_repo_read_commit_detached_metadata (self,
@@ -3250,9 +3250,9 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gboolean ret = FALSE;
   g_autoptr(GBytes) commit_data = NULL;
   g_autoptr(GBytes) signature = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_variant GVariant *old_metadata = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
+  g_autoptr(GVariant) commit_variant = NULL;
+  g_autoptr(GVariant) old_metadata = NULL;
+  g_autoptr(GVariant) new_metadata = NULL;
   glnx_unref_object OstreeGpgVerifyResult *result = NULL;
   GError *local_error = NULL;
 
@@ -3344,14 +3344,14 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   gboolean ret = FALSE;
   g_autoptr(GBytes) delta_data = NULL;
   g_autoptr(GBytes) signature_data = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
+  g_autoptr(GVariant) commit_variant = NULL;
   g_autofree char *delta_path = NULL;
   g_autoptr(GFile) delta_file = NULL;
   g_autofree char *detached_metadata_relpath = NULL;
   g_autoptr(GFile) detached_metadata_path = NULL;
-  gs_unref_variant GVariant *existing_detached_metadata = NULL;
-  gs_unref_variant GVariant *normalized = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
+  g_autoptr(GVariant) existing_detached_metadata = NULL;
+  g_autoptr(GVariant) normalized = NULL;
+  g_autoptr(GVariant) new_metadata = NULL;
   GError *temp_error = NULL;
 
   detached_metadata_relpath =
@@ -3410,7 +3410,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
 {
   OstreeGpgVerifyResult *result = NULL;
   glnx_unref_object OstreeGpgVerifier *verifier = NULL;
-  gs_unref_variant GVariant *signaturedata = NULL;
+  g_autoptr(GVariant) signaturedata = NULL;
   GByteArray *buffer;
   GVariantIter iter;
   GVariant *child;
@@ -3534,9 +3534,9 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                GError       **error)
 {
   OstreeGpgVerifyResult *result = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
+  g_autoptr(GVariant) commit_variant = NULL;
   g_autoptr(GFile) keyringdir_ref = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GBytes) signed_data = NULL;
   g_autofree char *commit_filename = NULL;
 
@@ -3593,7 +3593,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   gboolean ret = FALSE;
   g_autoptr(GHashTable) refs = NULL;
   gs_unref_variant_builder GVariantBuilder *refs_builder = NULL;
-  gs_unref_variant GVariant *summary = NULL;
+  g_autoptr(GVariant) summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
 
@@ -3609,7 +3609,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     {
       const char *ref = iter->data;
       const char *commit = g_hash_table_lookup (refs, ref);
-      gs_unref_variant GVariant *commit_obj = NULL;
+      g_autoptr(GVariant) commit_obj = NULL;
 
       g_assert (commit);
 

@@ -192,11 +192,11 @@ _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
 {
   gboolean ret = FALSE;
   guint8 *checksums_data;
-  gs_unref_variant GVariant *checksums = NULL;
-  gs_unref_variant GVariant *mode_dict = NULL;
-  gs_unref_variant GVariant *xattr_dict = NULL;
-  gs_unref_variant GVariant *payload = NULL;
-  gs_unref_variant GVariant *ops = NULL;
+  g_autoptr(GVariant) checksums = NULL;
+  g_autoptr(GVariant) mode_dict = NULL;
+  g_autoptr(GVariant) xattr_dict = NULL;
+  g_autoptr(GVariant) payload = NULL;
+  g_autoptr(GVariant) ops = NULL;
   StaticDeltaExecutionState statedata = { 0, };
   StaticDeltaExecutionState *state = &statedata;
   guint n_executed = 0;
@@ -321,7 +321,7 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
   const guint8*partdata;
   g_autoptr(GBytes) part_payload_bytes = NULL;
   g_autoptr(GBytes) payload_data = NULL;
-  gs_unref_variant GVariant *payload = NULL;
+  g_autoptr(GVariant) payload = NULL;
   guint8 comptype;
 
   partdata = g_bytes_get_data (part_bytes, &partlen);
@@ -470,7 +470,7 @@ do_content_open_generic (OstreeRepo                 *repo,
                          GError                    **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *modev = NULL;
+  g_autoptr(GVariant) modev = NULL;
   guint64 mode_offset;
   guint64 xattr_offset;
   guint32 uid, gid, mode;
@@ -580,7 +580,7 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
 
   if (OSTREE_OBJECT_TYPE_IS_META (state->output_objtype))
     {
-      gs_unref_variant GVariant *metadata = NULL;
+      g_autoptr(GVariant) metadata = NULL;
       guint64 offset;
       guint64 length;
 

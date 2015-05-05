@@ -44,7 +44,7 @@ get_file_checksum (OstreeDiffFlags  flags,
     }
   else
     {
-      gs_unref_variant GVariant *xattrs = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
       g_autoptr(GInputStream) in = NULL;
 
       if (!(flags & OSTREE_DIFF_FLAGS_IGNORE_XATTRS))

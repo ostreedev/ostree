@@ -47,10 +47,10 @@ load_and_fsck_one_object (OstreeRepo            *repo,
 {
   gboolean ret = FALSE;
   gboolean missing = FALSE;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GInputStream) input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   GError *temp_error = NULL;
 
   if (OSTREE_OBJECT_TYPE_IS_META (objtype))

@@ -149,9 +149,9 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
                                   GError     **error)
 {
   OstreeRepoFile *ret = NULL;
-  gs_unref_variant GVariant *commit_v = NULL;
-  gs_unref_variant GVariant *tree_contents_csum_v = NULL;
-  gs_unref_variant GVariant *tree_metadata_csum_v = NULL;
+  g_autoptr(GVariant) commit_v = NULL;
+  g_autoptr(GVariant) tree_contents_csum_v = NULL;
+  g_autoptr(GVariant) tree_metadata_csum_v = NULL;
   char tree_contents_csum[65];
   char tree_metadata_csum[65];
 
@@ -183,8 +183,8 @@ do_resolve (OstreeRepoFile  *self,
             GError         **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *root_contents = NULL;
-  gs_unref_variant GVariant *root_metadata = NULL;
+  g_autoptr(GVariant) root_contents = NULL;
+  g_autoptr(GVariant) root_metadata = NULL;
 
   g_assert (self->parent == NULL);
 
@@ -213,11 +213,11 @@ do_resolve_nonroot (OstreeRepoFile     *self,
   gboolean ret = FALSE;
   gboolean is_dir;
   int i;
-  gs_unref_variant GVariant *container = NULL;
-  gs_unref_variant GVariant *tree_contents = NULL;
-  gs_unref_variant GVariant *tree_metadata = NULL;
-  gs_unref_variant GVariant *contents_csum_v = NULL;
-  gs_unref_variant GVariant *metadata_csum_v = NULL;
+  g_autoptr(GVariant) container = NULL;
+  g_autoptr(GVariant) tree_contents = NULL;
+  g_autoptr(GVariant) tree_metadata = NULL;
+  g_autoptr(GVariant) contents_csum_v = NULL;
+  g_autoptr(GVariant) metadata_csum_v = NULL;
   g_autofree char *tmp_checksum = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self->parent, error))
@@ -312,7 +312,7 @@ ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                              GError         **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))
     goto out;
@@ -723,7 +723,7 @@ query_child_info_dir (OstreeRepo               *repo,
 {
   gboolean ret = FALSE;
   g_autoptr(GFileInfo) ret_info = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
 
   ret_info = g_file_info_new ();
 
@@ -762,7 +762,7 @@ bsearch_in_file_variant (GVariant  *variant,
   imin = 0;
   while (imax >= imin)
     {
-      gs_unref_variant GVariant *child = NULL;
+      g_autoptr(GVariant) child = NULL;
       const char *cur;
       int cmp;
 
@@ -849,10 +849,10 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   const char *name = NULL;
   int c;
   g_autoptr(GFileInfo) ret_info = NULL;
-  gs_unref_variant GVariant *files_variant = NULL;
-  gs_unref_variant GVariant *dirs_variant = NULL;
-  gs_unref_variant GVariant *content_csum_v = NULL;
-  gs_unref_variant GVariant *meta_csum_v = NULL;
+  g_autoptr(GVariant) files_variant = NULL;
+  g_autoptr(GVariant) dirs_variant = NULL;
+  g_autoptr(GVariant) content_csum_v = NULL;
+  g_autoptr(GVariant) meta_csum_v = NULL;
   char tmp_checksum[65];
   GFileAttributeMatcher *matcher = NULL;
 

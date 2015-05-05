@@ -59,8 +59,8 @@ ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter   *it
     (struct _OstreeRepoRealCommitTraverseIter*)iter;
   gboolean ret = FALSE;
   const guchar *csum;
-  gs_unref_variant GVariant *meta_csum_bytes = NULL;
-  gs_unref_variant GVariant *content_csum_bytes = NULL;
+  g_autoptr(GVariant) meta_csum_bytes = NULL;
+  g_autoptr(GVariant) content_csum_bytes = NULL;
 
   memset (real, 0, sizeof (*real));
   real->initialized = TRUE;
@@ -158,10 +158,10 @@ ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
       guint ndirs;
       guint idx;
       const guchar *csum;
-      gs_unref_variant GVariant *content_csum_v = NULL;
-      gs_unref_variant GVariant *meta_csum_v = NULL;
-      gs_unref_variant GVariant *files_variant = NULL;
-      gs_unref_variant GVariant *dirs_variant = NULL;
+      g_autoptr(GVariant) content_csum_v = NULL;
+      g_autoptr(GVariant) meta_csum_v = NULL;
+      g_autoptr(GVariant) files_variant = NULL;
+      g_autoptr(GVariant) dirs_variant = NULL;
 
       files_variant = g_variant_get_child_value (real->current_dir, 0);
       dirs_variant = g_variant_get_child_value (real->current_dir, 1);
@@ -314,7 +314,7 @@ traverse_iter (OstreeRepo                          *repo,
 
   while (TRUE)
     {
-      gs_unref_variant GVariant *key = NULL;
+      g_autoptr(GVariant) key = NULL;
       OstreeRepoCommitIterResult iterres =
         ostree_repo_commit_traverse_iter_next (iter, cancellable, error);
           
@@ -374,7 +374,7 @@ traverse_dirtree (OstreeRepo           *repo,
                   GError              **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *dirtree = NULL;
+  g_autoptr(GVariant) dirtree = NULL;
   ostree_cleanup_repo_commit_traverse_iter
     OstreeRepoCommitTraverseIter iter = { 0, };
 
@@ -422,8 +422,8 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
   while (TRUE)
     {
       gboolean recurse = FALSE;
-      gs_unref_variant GVariant *key = NULL;
-      gs_unref_variant GVariant *commit = NULL;
+      g_autoptr(GVariant) key = NULL;
+      g_autoptr(GVariant) commit = NULL;
       ostree_cleanup_repo_commit_traverse_iter
         OstreeRepoCommitTraverseIter iter = { 0, };
 

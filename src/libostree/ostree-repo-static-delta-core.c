@@ -225,9 +225,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   gboolean ret = FALSE;
   guint i, n;
   g_autoptr(GFile) meta_file = g_file_get_child (dir, "superblock");
-  gs_unref_variant GVariant *meta = NULL;
-  gs_unref_variant GVariant *headers = NULL;
-  gs_unref_variant GVariant *fallback = NULL;
+  g_autoptr(GVariant) meta = NULL;
+  g_autoptr(GVariant) headers = NULL;
+  g_autoptr(GVariant) fallback = NULL;
 
   if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
                             FALSE, &meta, error))
@@ -237,9 +237,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
   /* Write the to-commit object */
   {
-    gs_unref_variant GVariant *to_csum_v = NULL;
+    g_autoptr(GVariant) to_csum_v = NULL;
     g_autofree char *to_checksum = NULL;
-    gs_unref_variant GVariant *to_commit = NULL;
+    g_autoptr(GVariant) to_commit = NULL;
     gboolean have_to_commit;
 
     to_csum_v = g_variant_get_child_value (meta, 3);
@@ -277,9 +277,9 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       guint64 usize;
       const guchar *csum;
       gboolean have_all;
-      gs_unref_variant GVariant *header = NULL;
-      gs_unref_variant GVariant *csum_v = NULL;
-      gs_unref_variant GVariant *objects = NULL;
+      g_autoptr(GVariant) header = NULL;
+      g_autoptr(GVariant) csum_v = NULL;
+      g_autoptr(GVariant) objects = NULL;
       g_autoptr(GFile) part_path = NULL;
       g_autoptr(GInputStream) raw_in = NULL;
       g_autoptr(GInputStream) in = NULL;

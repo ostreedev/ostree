@@ -391,7 +391,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   gboolean did_hardlink = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GInputStream) input = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
 
   is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
 
@@ -571,7 +571,7 @@ checkout_tree_at (OstreeRepo                        *self,
   gboolean did_exist = FALSE;
   int destination_dfd = -1;
   int res;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
 
   /* Create initially with mode 0700, then chown/chmod only when we're

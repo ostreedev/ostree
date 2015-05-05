@@ -42,7 +42,7 @@ log_commit (OstreeRepo     *repo,
             OstreeDumpFlags flags,
             GError        **error)
 {
-  gs_unref_variant GVariant *variant = NULL;
+  g_autoptr(GVariant) variant = NULL;
   g_autofree char *parent = NULL;
   gboolean ret = FALSE;
   GError *local_error = NULL;

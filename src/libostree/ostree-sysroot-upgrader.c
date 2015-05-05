@@ -404,8 +404,8 @@ ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
                                           GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *old_commit = NULL;
-  gs_unref_variant GVariant *new_commit = NULL;
+  g_autoptr(GVariant) old_commit = NULL;
+  g_autoptr(GVariant) new_commit = NULL;
 
   if (!ostree_repo_load_variant (repo,
                                  OSTREE_OBJECT_TYPE_COMMIT,

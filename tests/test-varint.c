@@ -35,7 +35,7 @@ check_one_roundtrip (guint64    val)
   _ostree_write_varuint64 (buf, val);
   if (g_test_verbose ())
     {
-      gs_unref_variant GVariant *v = g_variant_new_from_data (G_VARIANT_TYPE ("ay"), buf->str, buf->len, TRUE, NULL, NULL);
+      g_autoptr(GVariant) v = g_variant_new_from_data (G_VARIANT_TYPE ("ay"), buf->str, buf->len, TRUE, NULL, NULL);
       g_autofree char *data = g_variant_print (v, FALSE);
       g_test_message ("%" G_GUINT64_FORMAT " -> %s", val, data);
     }

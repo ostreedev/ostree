@@ -67,7 +67,7 @@ create_file_metadata (guint32       uid,
                       GVariant     *xattrs)
 {
   GVariant *ret_metadata = NULL;
-  gs_unref_variant GVariant *tmp_xattrs = NULL;
+  g_autoptr(GVariant) tmp_xattrs = NULL;
 
   if (xattrs == NULL)
     tmp_xattrs = g_variant_ref_sink (g_variant_new_array (G_VARIANT_TYPE ("(ayay)"), NULL, 0));
@@ -90,7 +90,7 @@ write_file_metadata_to_xattr (int fd,
                               GVariant     *xattrs,
                               GError       **error)
 {
-  gs_unref_variant GVariant *filemeta = NULL;
+  g_autoptr(GVariant) filemeta = NULL;
   int res;
 
   filemeta = create_file_metadata (uid, gid, mode, xattrs);
@@ -542,7 +542,7 @@ write_object (OstreeRepo         *self,
   glnx_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   g_autoptr(GInputStream) file_input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GOutputStream) temp_out = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
@@ -651,7 +651,7 @@ write_object (OstreeRepo         *self,
         }
       else if (repo_mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
         {
-          gs_unref_variant GVariant *file_meta = NULL;
+          g_autoptr(GVariant) file_meta = NULL;
           g_autoptr(GConverter) zlib_compressor = NULL;
           g_autoptr(GOutputStream) compressed_out_stream = NULL;
 
@@ -1444,7 +1444,7 @@ ostree_repo_write_metadata (OstreeRepo         *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GInputStream) input = NULL;
-  gs_unref_variant GVariant *normalized = NULL;
+  g_autoptr(GVariant) normalized = NULL;
 
   normalized = g_variant_get_normal_form (object);
 
@@ -1520,7 +1520,7 @@ ostree_repo_write_metadata_trusted (OstreeRepo         *self,
                                     GError            **error)
 {
   g_autoptr(GInputStream) input = NULL;
-  gs_unref_variant GVariant *normalized = NULL;
+  g_autoptr(GVariant) normalized = NULL;
 
   normalized = g_variant_get_normal_form (variant);
   input = ot_variant_read (normalized);
@@ -1641,7 +1641,7 @@ _ostree_repo_write_directory_meta (OstreeRepo   *self,
                                    GCancellable *cancellable,
                                    GError      **error)
 {
-  gs_unref_variant GVariant *dirmeta = NULL;
+  g_autoptr(GVariant) dirmeta = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -1853,8 +1853,8 @@ ostree_repo_write_commit (OstreeRepo      *self,
 {
   gboolean ret = FALSE;
   g_autofree char *ret_commit = NULL;
-  gs_unref_variant GVariant *commit = NULL;
-  gs_unref_variant GVariant *new_metadata = NULL;
+  g_autoptr(GVariant) commit = NULL;
+  g_autoptr(GVariant) new_metadata = NULL;
   g_autofree guchar *commit_csum = NULL;
   GDateTime *now = NULL;
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
@@ -1923,7 +1923,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   gboolean ret = FALSE;
   g_autoptr(GFile) metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
-  gs_unref_variant GVariant *ret_metadata = NULL;
+  g_autoptr(GVariant) ret_metadata = NULL;
   GError *temp_error = NULL;
   
   if (!ot_util_variant_map (metadata_path, G_VARIANT_TYPE ("a{sv}"),
@@ -1969,7 +1969,7 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   gboolean ret = FALSE;
   g_autoptr(GFile) metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
-  gs_unref_variant GVariant *normalized = NULL;
+  g_autoptr(GVariant) normalized = NULL;
   gsize normalized_size = 0;
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
@@ -2181,7 +2181,7 @@ get_modified_xattrs (OstreeRepo                       *self,
                      GError                          **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
 
   if (modifier && modifier->xattr_callback)
     {
@@ -2357,7 +2357,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       guint64 file_obj_length;
       const char *loose_checksum;
       g_autoptr(GInputStream) file_input = NULL;
-      gs_unref_variant GVariant *xattrs = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
       g_autoptr(GInputStream) file_object_input = NULL;
       g_autofree guchar *child_file_csum = NULL;
       g_autofree char *tmp_checksum = NULL;
@@ -2465,7 +2465,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
   else
     {
       g_autoptr(GFileInfo) modified_info = NULL;
-      gs_unref_variant GVariant *xattrs = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
       g_autofree guchar *child_file_csum = NULL;
       g_autofree char *tmp_checksum = NULL;
       g_autofree char *relpath = NULL;
@@ -2547,7 +2547,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
   gboolean ret = FALSE;
   g_autoptr(GFileInfo) child_info = NULL;
   g_autoptr(GFileInfo) modified_info = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   g_autofree guchar *child_file_csum = NULL;
   g_autofree char *tmp_checksum = NULL;
   g_autofree char *relpath = NULL;
@@ -2758,7 +2758,7 @@ ostree_repo_write_mtree (OstreeRepo           *self,
     {
       g_autoptr(GHashTable) dir_metadata_checksums = NULL;
       g_autoptr(GHashTable) dir_contents_checksums = NULL;
-      gs_unref_variant GVariant *serialized_tree = NULL;
+      g_autoptr(GVariant) serialized_tree = NULL;
       g_autofree guchar *contents_csum = NULL;
       char contents_checksum_buf[65];
 

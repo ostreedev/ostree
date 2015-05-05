@@ -391,7 +391,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
         {
           g_autofree char *parent_refspec = NULL;
           g_autofree char *parent_rev = NULL;
-          gs_unref_variant GVariant *commit = NULL;
+          g_autoptr(GVariant) commit = NULL;
 
           parent_refspec = g_strdup (refspec);
           parent_refspec[strlen(parent_refspec) - 1] = '\0';

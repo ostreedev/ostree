@@ -299,8 +299,8 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   g_autofree char *parent = NULL;
   g_autofree char *commit_checksum = NULL;
   g_autoptr(GFile) root = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_variant GVariant *detached_metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GVariant) detached_metadata = NULL;
   glnx_unref_object OstreeMutableTree *mtree = NULL;
   g_autofree char *tree_type = NULL;
   g_autoptr(GHashTable) mode_adds = NULL;

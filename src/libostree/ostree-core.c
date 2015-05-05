@@ -250,7 +250,7 @@ _ostree_zlib_file_header_new (GFileInfo         *file_info,
   guint32 mode;
   const char *symlink_target;
   GVariant *ret;
-  gs_unref_variant GVariant *tmp_xattrs = NULL;
+  g_autoptr(GVariant) tmp_xattrs = NULL;
 
   size = g_file_info_get_size (file_info);
   uid = g_file_info_get_attribute_uint32 (file_info, "unix::uid");
@@ -427,7 +427,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   gpointer header_data;
   gsize header_size;
   g_autoptr(GInputStream) ret_input = NULL;
-  gs_unref_variant GVariant *file_header = NULL;
+  g_autoptr(GVariant) file_header = NULL;
   g_autoptr(GPtrArray) streams = NULL;
   g_autoptr(GOutputStream) header_out_stream = NULL;
   g_autoptr(GInputStream) header_in_stream = NULL;
@@ -495,8 +495,8 @@ ostree_content_stream_parse (gboolean                compressed,
   gsize bytes_read;
   g_autoptr(GInputStream) ret_input = NULL;
   g_autoptr(GFileInfo) ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
-  gs_unref_variant GVariant *file_header = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
+  g_autoptr(GVariant) file_header = NULL;
   g_autofree guchar *buf = NULL;
 
   if (!g_input_stream_read_all (input,
@@ -607,7 +607,7 @@ ostree_content_file_parse_at (gboolean                compressed,
   g_autoptr(GInputStream) file_input = NULL;
   g_autoptr(GInputStream) ret_input = NULL;
   g_autoptr(GFileInfo) ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
 
   if (!ot_openat_read_stream (parent_dfd, path, TRUE, &file_input,
                               cancellable, error))
@@ -695,14 +695,14 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
     {
-      gs_unref_variant GVariant *dirmeta = ostree_create_directory_metadata (file_info, xattrs);
+      g_autoptr(GVariant) dirmeta = ostree_create_directory_metadata (file_info, xattrs);
       g_checksum_update (checksum, g_variant_get_data (dirmeta),
                          g_variant_get_size (dirmeta));
       
     }
   else
     {
-      gs_unref_variant GVariant *file_header = NULL;
+      g_autoptr(GVariant) file_header = NULL;
 
       file_header = file_header_new (file_info, xattrs);
 
@@ -746,7 +746,7 @@ ostree_checksum_file (GFile            *f,
   gboolean ret = FALSE;
   g_autoptr(GFileInfo) file_info = NULL;
   g_autoptr(GInputStream) in = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   g_autofree guchar *ret_csum = NULL;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
@@ -1517,7 +1517,7 @@ file_header_parse (GVariant         *metadata,
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
   g_autoptr(GFileInfo) ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
 
   g_variant_get (metadata, "(uuuu&s@a(ayay))",
                  &uid, &gid, &mode, &rdev,
@@ -1578,7 +1578,7 @@ zlib_file_header_parse (GVariant         *metadata,
   guint32 uid, gid, mode, rdev;
   const char *symlink_target;
   g_autoptr(GFileInfo) ret_file_info = NULL;
-  gs_unref_variant GVariant *ret_xattrs = NULL;
+  g_autoptr(GVariant) ret_xattrs = NULL;
 
   g_variant_get (metadata, "(tuuuu&s@a(ayay))", &size,
                  &uid, &gid, &mode, &rdev,
@@ -1728,9 +1728,9 @@ ostree_validate_structureof_commit (GVariant      *commit,
                                     GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *parent_csum_v = NULL;
-  gs_unref_variant GVariant *content_csum_v = NULL;
-  gs_unref_variant GVariant *metadata_csum_v = NULL;
+  g_autoptr(GVariant) parent_csum_v = NULL;
+  g_autoptr(GVariant) content_csum_v = NULL;
+  g_autoptr(GVariant) metadata_csum_v = NULL;
   gsize n_elts;
 
   if (!validate_variant (commit, OSTREE_COMMIT_GVARIANT_FORMAT, error))
@@ -1773,8 +1773,8 @@ ostree_validate_structureof_dirtree (GVariant      *dirtree,
 {
   gboolean ret = FALSE;
   const char *filename;
-  gs_unref_variant GVariant *content_csum_v = NULL;
-  gs_unref_variant GVariant *meta_csum_v = NULL;
+  g_autoptr(GVariant) content_csum_v = NULL;
+  g_autoptr(GVariant) meta_csum_v = NULL;
   GVariantIter *contents_iter = NULL;
 
   if (!validate_variant (dirtree, OSTREE_TREE_GVARIANT_FORMAT, error))
@@ -1909,7 +1909,7 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
 gchar *
 ostree_commit_get_parent (GVariant  *commit_variant)
 {
-  gs_unref_variant GVariant *bytes = NULL;
+  g_autoptr(GVariant) bytes = NULL;
   bytes = g_variant_get_child_value (commit_variant, 1);
   if (g_variant_n_children (bytes) == 0)
     return NULL;
@@ -1929,7 +1929,7 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes)
 {
   GVariantDict metadata_dict;
-  gs_unref_variant GVariant *signature_data = NULL;
+  g_autoptr(GVariant) signature_data = NULL;
   gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
 
   g_variant_dict_init (&metadata_dict, existing_metadata);

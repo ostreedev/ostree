@@ -363,9 +363,9 @@ scan_dirtree_object (OtPullData   *pull_data,
 {
   gboolean ret = FALSE;
   int i, n;
-  gs_unref_variant GVariant *tree = NULL;
-  gs_unref_variant GVariant *files_variant = NULL;
-  gs_unref_variant GVariant *dirs_variant = NULL;
+  g_autoptr(GVariant) tree = NULL;
+  g_autoptr(GVariant) files_variant = NULL;
+  g_autoptr(GVariant) dirs_variant = NULL;
   char *subdir_target = NULL;
   const char *dirname = NULL;
 
@@ -394,7 +394,7 @@ scan_dirtree_object (OtPullData   *pull_data,
     {
       const char *filename;
       gboolean file_is_stored;
-      gs_unref_variant GVariant *csum = NULL;
+      g_autoptr(GVariant) csum = NULL;
       g_autofree char *file_checksum = NULL;
 
       g_variant_get_child (files_variant, i, "(&s@ay)", &filename, &csum);
@@ -448,8 +448,8 @@ scan_dirtree_object (OtPullData   *pull_data,
 
   for (i = 0; i < n; i++)
     {
-      gs_unref_variant GVariant *tree_csum = NULL;
-      gs_unref_variant GVariant *meta_csum = NULL;
+      g_autoptr(GVariant) tree_csum = NULL;
+      g_autoptr(GVariant) meta_csum = NULL;
 
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
@@ -513,12 +513,12 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
                                      GError       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *refs = g_variant_get_child_value (pull_data->summary, 0);
-  gs_unref_variant GVariant *refdata = NULL;
-  gs_unref_variant GVariant *reftargetdata = NULL;
-  gs_unref_variant GVariant *commit_data = NULL;
+  g_autoptr(GVariant) refs = g_variant_get_child_value (pull_data->summary, 0);
+  g_autoptr(GVariant) refdata = NULL;
+  g_autoptr(GVariant) reftargetdata = NULL;
+  g_autoptr(GVariant) commit_data = NULL;
   guint64 commit_size;
-  gs_unref_variant GVariant *commit_csum_v = NULL;
+  g_autoptr(GVariant) commit_csum_v = NULL;
   g_autoptr(GBytes) commit_bytes = NULL;
   int i;
   
@@ -597,7 +597,7 @@ content_fetch_on_complete (GObject        *object,
   GCancellable *cancellable = NULL;
   guint64 length;
   g_autoptr(GFileInfo) file_info = NULL;
-  gs_unref_variant GVariant *xattrs = NULL;
+  g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GInputStream) file_in = NULL;
   g_autoptr(GInputStream) object_input = NULL;
   g_autofree char *temp_path = NULL;
@@ -720,7 +720,7 @@ meta_fetch_on_complete (GObject           *object,
 {
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   g_autofree char *temp_path = NULL;
   const char *checksum;
   OstreeObjectType objtype;
@@ -853,7 +853,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 {
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   g_autofree char *temp_path = NULL;
   g_autoptr(GInputStream) in = NULL;
   g_autofree char *actual_checksum = NULL;
@@ -936,10 +936,10 @@ scan_commit_object (OtPullData         *pull_data,
 {
   gboolean ret = FALSE;
   gboolean have_parent;
-  gs_unref_variant GVariant *commit = NULL;
-  gs_unref_variant GVariant *parent_csum = NULL;
-  gs_unref_variant GVariant *tree_contents_csum = NULL;
-  gs_unref_variant GVariant *tree_meta_csum = NULL;
+  g_autoptr(GVariant) commit = NULL;
+  g_autoptr(GVariant) parent_csum = NULL;
+  g_autoptr(GVariant) tree_contents_csum = NULL;
+  g_autoptr(GVariant) tree_meta_csum = NULL;
   gpointer depthp;
   gint depth;
 
@@ -1079,7 +1079,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
                             GError            **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *object = NULL;
+  g_autoptr(GVariant) object = NULL;
   g_autofree char *tmp_checksum = NULL;
   gboolean is_requested;
   gboolean is_stored;
@@ -1313,7 +1313,7 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
   g_autofree char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
   g_autoptr(GBytes) detached_meta_data = NULL;
   SoupURI *target_uri = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
+  g_autoptr(GVariant) metadata = NULL;
 
   target_uri = suburi_new (pull_data->base_uri, meta_path, NULL);
 
@@ -1348,12 +1348,12 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
                                       GError     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *ret_delta_superblock = NULL;
+  g_autoptr(GVariant) ret_delta_superblock = NULL;
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
   g_autoptr(GBytes) delta_superblock_data = NULL;
   g_autoptr(GBytes) delta_meta_data = NULL;
-  gs_unref_variant GVariant *delta_superblock = NULL;
+  g_autoptr(GVariant) delta_superblock = NULL;
   SoupURI *target_uri = NULL;
   
   target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
@@ -1392,7 +1392,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
                                    GError      **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *csum_v = NULL;
+  g_autoptr(GVariant) csum_v = NULL;
   g_autofree char *checksum = NULL;
   guint8 objtype_y;
   OstreeObjectType objtype;
@@ -1455,8 +1455,8 @@ process_one_static_delta (OtPullData   *pull_data,
                           GError      **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant GVariant *headers = NULL;
-  gs_unref_variant GVariant *fallback_objects = NULL;
+  g_autoptr(GVariant) headers = NULL;
+  g_autoptr(GVariant) fallback_objects = NULL;
   guint i, n;
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
@@ -1467,7 +1467,7 @@ process_one_static_delta (OtPullData   *pull_data,
   n = g_variant_n_children (fallback_objects);
   for (i = 0; i < n; i++)
     {
-      gs_unref_variant GVariant *fallback_object =
+      g_autoptr(GVariant) fallback_object =
         g_variant_get_child_value (fallback_objects, i);
 
       if (!process_one_static_delta_fallback (pull_data,
@@ -1478,9 +1478,9 @@ process_one_static_delta (OtPullData   *pull_data,
 
   /* Write the to-commit object */
   {
-    gs_unref_variant GVariant *to_csum_v = NULL;
+    g_autoptr(GVariant) to_csum_v = NULL;
     g_autofree char *to_checksum = NULL;
-    gs_unref_variant GVariant *to_commit = NULL;
+    g_autoptr(GVariant) to_commit = NULL;
     gboolean have_to_commit;
 
     to_csum_v = g_variant_get_child_value (delta_superblock, 3);
@@ -1516,13 +1516,13 @@ process_one_static_delta (OtPullData   *pull_data,
   for (i = 0; i < n; i++)
     {
       const guchar *csum;
-      gs_unref_variant GVariant *header = NULL;
+      g_autoptr(GVariant) header = NULL;
       gboolean have_all = FALSE;
       SoupURI *target_uri = NULL;
       g_autofree char *deltapart_path = NULL;
       FetchStaticDeltaData *fetch_data;
-      gs_unref_variant GVariant *csum_v = NULL;
-      gs_unref_variant GVariant *objects = NULL;
+      g_autoptr(GVariant) csum_v = NULL;
+      g_autoptr(GVariant) objects = NULL;
       guint64 size, usize;
       guint32 version;
 
@@ -1918,7 +1918,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       
       if (bytes)
         {
-          gs_unref_variant GVariant *refs = NULL;
+          g_autoptr(GVariant) refs = NULL;
           gsize i, n;
 
           pull_data->summary_data = g_bytes_ref (bytes);
@@ -1928,7 +1928,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           for (i = 0; i < n; i++)
             {
               const char *refname;
-              gs_unref_variant GVariant *ref = g_variant_get_child_value (refs, i);
+              g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
 
               g_variant_get_child (ref, 0, "&s", &refname);
 

@@ -166,7 +166,7 @@ test_attribute_basics (TestFixture *fixture,
 
   for (ii = 0; ii < n_signatures; ii++)
     {
-      gs_unref_variant GVariant *tuple = NULL;
+      g_autoptr(GVariant) tuple = NULL;
       const char *attr_string;
       const char *type_string;
       gboolean key_missing;
@@ -215,7 +215,7 @@ test_valid_signature (TestFixture *fixture,
                       gconstpointer user_data)
 {
   guint signature_index = GPOINTER_TO_UINT (user_data);
-  gs_unref_variant GVariant *tuple = NULL;
+  g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;
@@ -246,7 +246,7 @@ test_expired_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
   guint signature_index = GPOINTER_TO_UINT (user_data);
-  gs_unref_variant GVariant *tuple = NULL;
+  g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;
@@ -277,7 +277,7 @@ test_revoked_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
   guint signature_index = GPOINTER_TO_UINT (user_data);
-  gs_unref_variant GVariant *tuple = NULL;
+  g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;
@@ -308,7 +308,7 @@ test_missing_key (TestFixture *fixture,
                   gconstpointer user_data)
 {
   guint signature_index = GPOINTER_TO_UINT (user_data);
-  gs_unref_variant GVariant *tuple = NULL;
+  g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;
@@ -339,7 +339,7 @@ test_expired_signature (TestFixture *fixture,
                         gconstpointer user_data)
 {
   guint signature_index = GPOINTER_TO_UINT (user_data);
-  gs_unref_variant GVariant *tuple = NULL;
+  g_autoptr(GVariant) tuple = NULL;
   gboolean valid;
   gboolean sig_expired;
   gboolean key_expired;

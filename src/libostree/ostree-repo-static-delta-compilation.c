@@ -286,7 +286,7 @@ write_content_mode_xattrs (OstreeRepo                       *repo,
     g_file_info_get_attribute_uint32 (content_finfo, "unix::gid");
   guint32 mode =
     g_file_info_get_attribute_uint32 (content_finfo, "unix::mode");
-  gs_unref_variant GVariant *modev
+  g_autoptr(GVariant) modev
     = g_variant_ref_sink (g_variant_new ("(uuu)", 
                                          GUINT32_TO_BE (uid),
                                          GUINT32_TO_BE (gid),
@@ -315,7 +315,7 @@ process_one_object (OstreeRepo                       *repo,
   guint64 content_size;
   g_autoptr(GInputStream) content_stream = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
-  gs_unref_variant GVariant *content_xattrs = NULL;
+  g_autoptr(GVariant) content_xattrs = NULL;
   guint64 compressed_size;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
 
@@ -658,7 +658,7 @@ process_one_rollsum (OstreeRepo                       *repo,
   guint64 content_size;
   g_autoptr(GInputStream) content_stream = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
-  gs_unref_variant GVariant *content_xattrs = NULL;
+  g_autoptr(GVariant) content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
   const guint8 *tmp_to_buf;
   gsize tmp_to_len;
@@ -777,7 +777,7 @@ process_one_bsdiff (OstreeRepo                       *repo,
   guint64 content_size;
   g_autoptr(GInputStream) content_stream = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
-  gs_unref_variant GVariant *content_xattrs = NULL;
+  g_autoptr(GVariant) content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
   const guint8 *tmp_to_buf;
   gsize tmp_to_len;
@@ -872,9 +872,9 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   gpointer key, value;
   OstreeStaticDeltaPartBuilder *current_part = NULL;
   g_autoptr(GFile) root_from = NULL;
-  gs_unref_variant GVariant *from_commit = NULL;
+  g_autoptr(GVariant) from_commit = NULL;
   g_autoptr(GFile) root_to = NULL;
-  gs_unref_variant GVariant *to_commit = NULL;
+  g_autoptr(GVariant) to_commit = NULL;
   g_autoptr(GHashTable) to_reachable_objects = NULL;
   g_autoptr(GHashTable) from_reachable_objects = NULL;
   g_autoptr(GHashTable) from_regfile_content = NULL;
@@ -1149,7 +1149,7 @@ get_fallback_headers (OstreeRepo               *self,
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_variant GVariant *ret_headers = NULL;
+  g_autoptr(GVariant) ret_headers = NULL;
   gs_unref_variant_builder GVariantBuilder *fallback_builder = NULL;
 
   fallback_builder = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT));
@@ -1250,13 +1250,13 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint64 total_uncompressed_size = 0;
   gs_unref_variant_builder GVariantBuilder *part_headers = NULL;
   g_autoptr(GPtrArray) part_tempfiles = NULL;
-  gs_unref_variant GVariant *delta_descriptor = NULL;
-  gs_unref_variant GVariant *to_commit = NULL;
+  g_autoptr(GVariant) delta_descriptor = NULL;
+  g_autoptr(GVariant) to_commit = NULL;
   g_autofree char *descriptor_relpath = NULL;
   g_autoptr(GFile) descriptor_path = NULL;
   g_autoptr(GFile) descriptor_dir = NULL;
-  gs_unref_variant GVariant *tmp_metadata = NULL;
-  gs_unref_variant GVariant *fallback_headers = NULL;
+  g_autoptr(GVariant) tmp_metadata = NULL;
+  g_autoptr(GVariant) fallback_headers = NULL;
 
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -1310,9 +1310,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_autoptr(GMemoryOutputStream) part_payload_out = NULL;
       g_autoptr(GConverterOutputStream) part_payload_compressor = NULL;
       g_autoptr(GConverter) compressor = NULL;
-      gs_unref_variant GVariant *delta_part_content = NULL;
-      gs_unref_variant GVariant *delta_part = NULL;
-      gs_unref_variant GVariant *delta_part_header = NULL;
+      g_autoptr(GVariant) delta_part_content = NULL;
+      g_autoptr(GVariant) delta_part = NULL;
+      g_autoptr(GVariant) delta_part_header = NULL;
       GVariantBuilder *mode_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(uuu)"));
       GVariantBuilder *xattr_builder = g_variant_builder_new (G_VARIANT_TYPE ("aa(ayay)"));
       guint8 compression_type_char;
