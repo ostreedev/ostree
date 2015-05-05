@@ -78,7 +78,7 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
                                  GError        **error)
 
 {
-  gs_unref_ptrarray GPtrArray *current_deployments =
+  g_autoptr(GPtrArray) current_deployments =
     ostree_sysroot_get_deployments (sysroot);
 
   if (index < 0)

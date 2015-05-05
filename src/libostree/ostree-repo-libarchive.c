@@ -123,8 +123,8 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   const char *hardlink;
   const char *basename;
   g_autoptr(GFileInfo) file_info = NULL;
-  gs_unref_ptrarray GPtrArray *split_path = NULL;
-  gs_unref_ptrarray GPtrArray *hardlink_split_path = NULL;
+  g_autoptr(GPtrArray) split_path = NULL;
+  g_autoptr(GPtrArray) hardlink_split_path = NULL;
   glnx_unref_object OstreeMutableTree *subdir = NULL;
   glnx_unref_object OstreeMutableTree *parent = NULL;
   glnx_unref_object OstreeMutableTree *hardlink_source_parent = NULL;

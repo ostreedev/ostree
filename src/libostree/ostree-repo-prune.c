@@ -220,7 +220,7 @@ ostree_repo_prune (OstreeRepo        *self,
         goto out;
     }
 
-  { gs_unref_ptrarray GPtrArray *deltas = NULL;
+  { g_autoptr(GPtrArray) deltas = NULL;
     guint i;
 
     if (!ostree_repo_list_static_delta_names (self, &deltas,

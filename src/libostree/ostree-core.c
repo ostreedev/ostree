@@ -428,7 +428,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   gsize header_size;
   g_autoptr(GInputStream) ret_input = NULL;
   gs_unref_variant GVariant *file_header = NULL;
-  gs_unref_ptrarray GPtrArray *streams = NULL;
+  g_autoptr(GPtrArray) streams = NULL;
   g_autoptr(GOutputStream) header_out_stream = NULL;
   g_autoptr(GInputStream) header_in_stream = NULL;
 

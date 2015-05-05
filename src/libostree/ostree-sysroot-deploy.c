@@ -369,9 +369,9 @@ merge_etc_changes (GFile          *orig_etc,
                    GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *modified = NULL;
-  gs_unref_ptrarray GPtrArray *removed = NULL;
-  gs_unref_ptrarray GPtrArray *added = NULL;
+  g_autoptr(GPtrArray) modified = NULL;
+  g_autoptr(GPtrArray) removed = NULL;
+  g_autoptr(GPtrArray) added = NULL;
   guint i;
   int orig_etc_fd = -1;
   int modified_etc_fd = -1;
@@ -620,7 +620,7 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
                      GError                       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
   g_autoptr(GFileInfo) root_info = NULL;
 
   root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
@@ -651,7 +651,7 @@ selinux_relabel_file (OstreeSysroot                 *sysroot,
                       GError                       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
   g_autoptr(GFileInfo) file_info = g_file_query_info (path, OSTREE_GIO_FAST_QUERYINFO,
                                                             G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                                             cancellable, error);
@@ -1710,7 +1710,7 @@ allocate_deployserial (OstreeSysroot           *self,
   guint i;
   int new_deployserial = 0;
   g_autoptr(GFile) osdir = NULL;
-  gs_unref_ptrarray GPtrArray *tmp_current_deployments =
+  g_autoptr(GPtrArray) tmp_current_deployments =
     g_ptr_array_new_with_free_func (g_object_unref);
 
   osdir = ot_gfile_get_child_build_path (self->path, "ostree/deploy", osname, NULL);
@@ -1922,7 +1922,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   glnx_unref_object OstreeDeployment *new_deployment = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   g_autofree char *new_options = NULL;

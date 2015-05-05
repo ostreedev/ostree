@@ -99,7 +99,7 @@ list_all_deployment_directories (OstreeSysroot       *self,
   gboolean ret = FALSE;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFile) deploydir = NULL;
-  gs_unref_ptrarray GPtrArray *ret_deployments = NULL;
+  g_autoptr(GPtrArray) ret_deployments = NULL;
   GError *temp_error = NULL;
 
   deploydir = g_file_resolve_relative_path (self->path, "ostree/deploy");
@@ -186,7 +186,7 @@ list_all_boot_directories (OstreeSysroot       *self,
   gboolean ret = FALSE;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFile) boot_ostree = NULL;
-  gs_unref_ptrarray GPtrArray *ret_bootdirs = NULL;
+  g_autoptr(GPtrArray) ret_bootdirs = NULL;
   GError *temp_error = NULL;
 
   boot_ostree = g_file_resolve_relative_path (self->path, "boot/ostree");
@@ -296,8 +296,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
   guint i;
   g_autoptr(GHashTable) active_deployment_dirs = NULL;
   g_autoptr(GHashTable) active_boot_checksums = NULL;
-  gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
-  gs_unref_ptrarray GPtrArray *all_boot_dirs = NULL;
+  g_autoptr(GPtrArray) all_deployment_dirs = NULL;
+  g_autoptr(GPtrArray) all_boot_dirs = NULL;
 
   if (stat ("/", &root_stbuf) != 0)
     {

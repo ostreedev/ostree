@@ -50,7 +50,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   GSConsole *console = NULL;
   g_autofree char *src_repo_uri = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
-  gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
+  g_autoptr(GPtrArray) refs_to_fetch = NULL;
   g_autoptr(GHashTable) source_objects = NULL;
 
   context = g_option_context_new ("SRC_REPO [REFS...] -  Copy data from SRC_REPO");

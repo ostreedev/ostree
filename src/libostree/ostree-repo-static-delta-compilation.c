@@ -1249,7 +1249,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   gs_unref_variant_builder GVariantBuilder *part_headers = NULL;
-  gs_unref_ptrarray GPtrArray *part_tempfiles = NULL;
+  g_autoptr(GPtrArray) part_tempfiles = NULL;
   gs_unref_variant GVariant *delta_descriptor = NULL;
   gs_unref_variant GVariant *to_commit = NULL;
   g_autofree char *descriptor_relpath = NULL;

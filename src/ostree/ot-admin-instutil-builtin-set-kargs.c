@@ -48,7 +48,7 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  g_autoptr(GPtrArray) deployments = NULL;
   OstreeDeployment *first_deployment = NULL;
   GOptionContext *context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;

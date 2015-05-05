@@ -114,7 +114,7 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
   OstreeRollsumMatches *ret_rollsum = NULL;
   g_autoptr(GHashTable) from_rollsum = NULL;
   g_autoptr(GHashTable) to_rollsum = NULL;
-  gs_unref_ptrarray GPtrArray *matches = NULL;
+  g_autoptr(GPtrArray) matches = NULL;
   const guint8 *from_buf;
   gsize from_len;
   const guint8 *to_buf;

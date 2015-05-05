@@ -380,7 +380,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
       OstreeContentSizeCacheEntry *e_size = NULL;
       GVariantBuilder index_builder;
       guint i;
-      gs_unref_ptrarray GPtrArray *sorted_keys = NULL;
+      g_autoptr(GPtrArray) sorted_keys = NULL;
       
       g_hash_table_iter_init (&entries, self->object_sizes);
       g_variant_builder_init (&index_builder,

@@ -97,7 +97,7 @@ static gboolean
 ot_static_delta_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *delta_names = NULL;
+  g_autoptr(GPtrArray) delta_names = NULL;
   guint i;
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;

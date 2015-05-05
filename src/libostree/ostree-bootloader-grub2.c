@@ -138,7 +138,7 @@ _ostree_bootloader_grub2_generate_config (OstreeSysroot                 *sysroot
   gboolean ret = FALSE;
   GString *output = g_string_new ("");
   g_autoptr(GOutputStream) out_stream = NULL;
-  gs_unref_ptrarray GPtrArray *loader_configs = NULL;
+  g_autoptr(GPtrArray) loader_configs = NULL;
   guint i;
   gsize bytes_written;
   gboolean is_efi;
@@ -304,7 +304,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))
     {
-      gs_unref_ptrarray GPtrArray *deployments = NULL;
+      g_autoptr(GPtrArray) deployments = NULL;
       OstreeDeployment *tool_deployment;
       g_autoptr(GFile) tool_deployment_root = NULL;
 

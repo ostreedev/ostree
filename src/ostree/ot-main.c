@@ -339,7 +339,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   if (opt_print_current_dir)
     {
-      gs_unref_ptrarray GPtrArray *deployments = NULL;
+      g_autoptr(GPtrArray) deployments = NULL;
       OstreeDeployment *first_deployment;
       g_autoptr(GFile) deployment_file = NULL;
       g_autofree char *deployment_path = NULL;

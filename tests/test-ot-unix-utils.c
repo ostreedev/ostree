@@ -34,7 +34,7 @@ test_ot_util_path_split_validate (void)
   for (i = 0; paths[i]; i++)
     {
       GError *error = NULL;
-      GPtrArray *components = NULL;
+      g_autoptr(GPtrArray) components = NULL;
       if (! ot_util_path_split_validate (paths[i], &components, &error))
         {
           int j;
@@ -45,7 +45,6 @@ test_ot_util_path_split_validate (void)
               g_assert_null (strchr (components->pdata[i], '/'));
             }
         }
-      gs_local_ptrarray_unref (components);
     }
 }
 

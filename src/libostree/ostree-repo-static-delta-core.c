@@ -68,7 +68,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                      GError                     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *ret_deltas = NULL;
+  g_autoptr(GPtrArray) ret_deltas = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
 
   ret_deltas = g_ptr_array_new_with_free_func (g_free);

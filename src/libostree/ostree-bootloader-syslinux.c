@@ -68,7 +68,7 @@ append_config_from_boostree_loader_entries (OstreeBootloaderSyslinux  *self,
                                         GError               **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *boostree_loader_configs = NULL;
+  g_autoptr(GPtrArray) boostree_loader_configs = NULL;
   guint i;
 
   if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boostree_loader_configs,
@@ -125,8 +125,8 @@ _ostree_bootloader_syslinux_write_config (OstreeBootloader          *bootloader,
   g_autoptr(GFile) new_config_path = NULL;
   g_autofree char *config_contents = NULL;
   g_autofree char *new_config_contents = NULL;
-  gs_unref_ptrarray GPtrArray *new_lines = NULL;
-  gs_unref_ptrarray GPtrArray *tmp_lines = NULL;
+  g_autoptr(GPtrArray) new_lines = NULL;
+  g_autoptr(GPtrArray) tmp_lines = NULL;
   g_autofree char *kernel_arg = NULL;
   gboolean saw_default = FALSE;
   gboolean regenerate_default = FALSE;

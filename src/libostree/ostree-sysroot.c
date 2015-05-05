@@ -372,7 +372,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
   gboolean ret = FALSE;
   int fd; /* Temporary owned by iterator */
   g_autofree char *entries_path = g_strdup_printf ("boot/loader.%d/entries", bootversion);
-  gs_unref_ptrarray GPtrArray *ret_loader_configs = NULL;
+  g_autoptr(GPtrArray) ret_loader_configs = NULL;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
   if (!ensure_sysroot_fd (self, error))
@@ -740,8 +740,8 @@ ostree_sysroot_load (OstreeSysroot  *self,
   guint i;
   int bootversion = 0;
   int subbootversion = 0;
-  gs_unref_ptrarray GPtrArray *boot_loader_configs = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  g_autoptr(GPtrArray) boot_loader_configs = NULL;
+  g_autoptr(GPtrArray) deployments = NULL;
 
   g_clear_pointer (&self->deployments, g_ptr_array_unref);
   g_clear_pointer (&self->booted_deployment, g_object_unref);
@@ -1215,8 +1215,8 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   gboolean ret = FALSE;
   guint i;
   OstreeDeployment *booted_deployment = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
-  gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
+  g_autoptr(GPtrArray) deployments = NULL;
+  g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
 
   deployments = ostree_sysroot_get_deployments (sysroot);

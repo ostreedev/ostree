@@ -91,7 +91,7 @@ ot_util_path_split_validate (const char *path,
 {
   gboolean ret = FALSE;
   int i;
-  gs_unref_ptrarray GPtrArray *ret_components = NULL;
+  g_autoptr(GPtrArray) ret_components = NULL;
 
   if (strlen (path) > PATH_MAX)
     {

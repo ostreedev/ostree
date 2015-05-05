@@ -58,7 +58,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   GKeyFile *origin = NULL;
   glnx_unref_object OstreeRepo *repo = NULL;
-  gs_unref_ptrarray GPtrArray *new_deployments = NULL;
+  g_autoptr(GPtrArray) new_deployments = NULL;
   glnx_unref_object OstreeDeployment *new_deployment = NULL;
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   g_autofree char *revision = NULL;

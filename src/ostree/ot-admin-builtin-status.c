@@ -89,7 +89,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
   gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  g_autoptr(GPtrArray) deployments = NULL;
   guint i;
 
   context = g_option_context_new ("List deployments");

@@ -45,9 +45,9 @@ ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError 
   gboolean ret = FALSE;
   glnx_unref_object OstreeDeployment *deployment = NULL;
   g_autoptr(GFile) deployment_dir = NULL;
-  gs_unref_ptrarray GPtrArray *modified = NULL;
-  gs_unref_ptrarray GPtrArray *removed = NULL;
-  gs_unref_ptrarray GPtrArray *added = NULL;
+  g_autoptr(GPtrArray) modified = NULL;
+  g_autoptr(GPtrArray) removed = NULL;
+  g_autoptr(GPtrArray) added = NULL;
   g_autoptr(GFile) orig_etc_path = NULL;
   g_autoptr(GFile) new_etc_path = NULL;
 

@@ -152,7 +152,7 @@ selinux_relabel_dir (OstreeSePolicy                *sepolicy,
                      GError                       **error)
 {
   gboolean ret = FALSE;
-  gs_unref_ptrarray GPtrArray *path_parts = g_ptr_array_new ();
+  g_autoptr(GPtrArray) path_parts = g_ptr_array_new ();
   g_autoptr(GFileInfo) root_info = NULL;
 
   root_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
@@ -186,7 +186,7 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
   g_autoptr(GFile) subpath = NULL;
   const char *prefix = NULL;
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  g_autoptr(GPtrArray) deployments = NULL;
   OstreeDeployment *first_deployment;
   GOptionContext *context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;

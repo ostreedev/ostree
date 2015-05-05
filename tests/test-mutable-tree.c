@@ -46,7 +46,7 @@ test_mutable_tree_walk (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  gs_unref_ptrarray GPtrArray *split_path = NULL;
+  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *pathname = "a/b/c/d/e/f/g/i";
   const char *checksum = "01234567890123456789012345678901";
@@ -84,7 +84,7 @@ test_ensure_parent_dirs (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  gs_unref_ptrarray GPtrArray *split_path = NULL;
+  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *pathname = "/foo/bar/baz";
   const char *checksum = "01234567890123456789012345678901";
@@ -111,7 +111,7 @@ test_ensure_dir (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  gs_unref_ptrarray GPtrArray *split_path = NULL;
+  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";
@@ -131,7 +131,7 @@ test_replace_file (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  gs_unref_ptrarray GPtrArray *split_path = NULL;
+  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";

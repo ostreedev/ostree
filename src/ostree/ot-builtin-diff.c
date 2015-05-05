@@ -126,9 +126,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
   g_autofree char *src_prev = NULL;
   g_autoptr(GFile) srcf = NULL;
   g_autoptr(GFile) targetf = NULL;
-  gs_unref_ptrarray GPtrArray *modified = NULL;
-  gs_unref_ptrarray GPtrArray *removed = NULL;
-  gs_unref_ptrarray GPtrArray *added = NULL;
+  g_autoptr(GPtrArray) modified = NULL;
+  g_autoptr(GPtrArray) removed = NULL;
+  g_autoptr(GPtrArray) added = NULL;
 
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
   g_option_context_add_main_entries (context, options, NULL);

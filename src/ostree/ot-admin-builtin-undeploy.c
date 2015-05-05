@@ -40,7 +40,7 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   const char *deploy_index_str;
   int deploy_index;
-  gs_unref_ptrarray GPtrArray *current_deployments = NULL;
+  g_autoptr(GPtrArray) current_deployments = NULL;
   glnx_unref_object OstreeDeployment *booted_deployment = NULL;
   glnx_unref_object OstreeDeployment *target_deployment = NULL;
 

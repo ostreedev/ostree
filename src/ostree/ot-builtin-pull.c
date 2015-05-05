@@ -63,7 +63,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   g_autofree char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
   GSConsole *console = NULL;
-  gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
+  g_autoptr(GPtrArray) refs_to_fetch = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gulong signal_handler_id = 0;
 

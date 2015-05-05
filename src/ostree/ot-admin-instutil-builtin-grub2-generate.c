@@ -40,7 +40,7 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
   guint bootversion;
   g_autoptr(GFile) subpath = NULL;
   glnx_unref_object OstreeSePolicy *sepolicy = NULL;
-  gs_unref_ptrarray GPtrArray *deployments = NULL;
+  g_autoptr(GPtrArray) deployments = NULL;
   GOptionContext *context = NULL;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   g_autoptr(GFile) deployment_path = NULL;
