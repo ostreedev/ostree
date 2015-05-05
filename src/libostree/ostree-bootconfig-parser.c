@@ -169,7 +169,7 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   GString *buf = g_string_new ("");
-  gs_unref_bytes GBytes *bytes = NULL;
+  g_autoptr(GBytes) bytes = NULL;
   guint i;
   gs_unref_hashtable GHashTable *written_overrides = NULL;
 

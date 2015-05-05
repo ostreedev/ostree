@@ -2032,7 +2032,7 @@ ostree_repo_load_file (OstreeRepo         *self,
             {
               guint32 mode;
               gs_unref_variant GVariant *metadata = NULL;
-              gs_unref_bytes GBytes *bytes = NULL;
+              g_autoptr(GBytes) bytes = NULL;
               gs_fd_close int fd = -1;
 
               bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
@@ -3103,7 +3103,7 @@ sign_data (OstreeRepo     *self,
   g_autoptr(GFile) tmp_signature_file = NULL;
   g_autoptr(GOutputStream) tmp_signature_output = NULL;
   gpgme_ctx_t context = NULL;
-  gs_unref_bytes GBytes *ret_signature = NULL;
+  g_autoptr(GBytes) ret_signature = NULL;
   gpgme_engine_info_t info;
   gpgme_error_t err;
   gpgme_key_t key = NULL;
@@ -3248,8 +3248,8 @@ ostree_repo_sign_commit (OstreeRepo     *self,
                          GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_bytes GBytes *commit_data = NULL;
-  gs_unref_bytes GBytes *signature = NULL;
+  g_autoptr(GBytes) commit_data = NULL;
+  g_autoptr(GBytes) signature = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_unref_variant GVariant *old_metadata = NULL;
   gs_unref_variant GVariant *new_metadata = NULL;
@@ -3342,8 +3342,8 @@ ostree_repo_sign_delta (OstreeRepo     *self,
                         GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_bytes GBytes *delta_data = NULL;
-  gs_unref_bytes GBytes *signature_data = NULL;
+  g_autoptr(GBytes) delta_data = NULL;
+  g_autoptr(GBytes) signature_data = NULL;
   gs_unref_variant GVariant *commit_variant = NULL;
   g_autofree char *delta_path = NULL;
   g_autoptr(GFile) delta_file = NULL;
@@ -3537,7 +3537,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
   gs_unref_variant GVariant *commit_variant = NULL;
   g_autoptr(GFile) keyringdir_ref = NULL;
   gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_bytes GBytes *signed_data = NULL;
+  g_autoptr(GBytes) signed_data = NULL;
   g_autofree char *commit_filename = NULL;
 
   /* Create a temporary file for the commit */

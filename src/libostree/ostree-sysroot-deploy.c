@@ -853,7 +853,7 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
       g_autoptr(GFile) origin_parent = g_file_get_parent (origin_path);
       g_autofree char *contents = NULL;
       gsize len;
-      gs_unref_bytes GBytes *contents_bytes = NULL;
+      g_autoptr(GBytes) contents_bytes = NULL;
 
       contents = g_key_file_to_data (origin, &len, error);
       if (!contents)

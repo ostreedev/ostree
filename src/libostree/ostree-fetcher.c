@@ -380,7 +380,7 @@ on_stream_read (GObject        *object,
                 gpointer        user_data) 
 {
   OstreeFetcherPendingURI *pending = user_data;
-  gs_unref_bytes GBytes *bytes = NULL;
+  g_autoptr(GBytes) bytes = NULL;
   gsize bytes_read;
   GError *local_error = NULL;
   GError **error = &local_error;

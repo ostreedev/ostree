@@ -323,7 +323,7 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
                               GError     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_bytes GBytes *bytes = NULL;
+  g_autoptr(GBytes) bytes = NULL;
   g_autofree char *ret_contents = NULL;
   gsize len;
 
@@ -519,7 +519,7 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
   gs_unref_variant GVariant *commit_data = NULL;
   guint64 commit_size;
   gs_unref_variant GVariant *commit_csum_v = NULL;
-  gs_unref_bytes GBytes *commit_bytes = NULL;
+  g_autoptr(GBytes) commit_bytes = NULL;
   int i;
   
   if (!ot_variant_bsearch_str (refs, ref, &i))
@@ -895,7 +895,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   {
     GMappedFile *mfile = NULL;
-    gs_unref_bytes GBytes *delta_data = NULL;
+    g_autoptr(GBytes) delta_data = NULL;
 
     mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
     if (!mfile)
@@ -1311,7 +1311,7 @@ fetch_metadata_to_verify_delta_superblock (OtPullData      *pull_data,
 {
   gboolean ret = FALSE;
   g_autofree char *meta_path = _ostree_get_relative_static_delta_detachedmeta_path (from_revision, checksum);
-  gs_unref_bytes GBytes *detached_meta_data = NULL;
+  g_autoptr(GBytes) detached_meta_data = NULL;
   SoupURI *target_uri = NULL;
   gs_unref_variant GVariant *metadata = NULL;
 
@@ -1351,8 +1351,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   gs_unref_variant GVariant *ret_delta_superblock = NULL;
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
-  gs_unref_bytes GBytes *delta_superblock_data = NULL;
-  gs_unref_bytes GBytes *delta_meta_data = NULL;
+  g_autoptr(GBytes) delta_superblock_data = NULL;
+  g_autoptr(GBytes) delta_meta_data = NULL;
   gs_unref_variant GVariant *delta_superblock = NULL;
   SoupURI *target_uri = NULL;
   
@@ -1907,7 +1907,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
       SoupURI *summary_uri = NULL;
-      gs_unref_bytes GBytes *bytes = NULL;
+      g_autoptr(GBytes) bytes = NULL;
       g_autofree char *ret_contents = NULL;
       
       summary_uri = suburi_new (pull_data->base_uri, "summary", NULL);

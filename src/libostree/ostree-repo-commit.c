@@ -597,7 +597,7 @@ write_object (OstreeRepo         *self,
       if (repo_mode == OSTREE_REPO_MODE_BARE_USER && object_is_symlink)
         {
           const char *target_str = g_file_info_get_symlink_target (file_info);
-          gs_unref_bytes GBytes *target = g_bytes_new (target_str, strlen (target_str) + 1);
+          g_autoptr(GBytes) target = g_bytes_new (target_str, strlen (target_str) + 1);
 
           /* For bare-user we can't store symlinks as symlinks, as symlinks don't
              support user xattrs to store the ownership. So, instead store them

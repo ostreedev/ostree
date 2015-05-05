@@ -318,7 +318,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
       {
         GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
-        gs_unref_bytes GBytes *bytes = NULL;
+        g_autoptr(GBytes) bytes = NULL;
 
         if (!mfile)
           goto out;

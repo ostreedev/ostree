@@ -455,7 +455,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
   gboolean ret = FALSE;
   g_autofree char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
   gs_fd_close int fd = -1;
-  gs_unref_bytes GBytes *ret_content = NULL;
+  g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
   g_autoptr(GFileInfo) ret_finfo = NULL;
   g_autoptr(GOutputStream) out = NULL;
@@ -506,8 +506,8 @@ try_content_bsdiff (OstreeRepo                       *repo,
   gboolean ret = FALSE;
   gs_unref_hashtable GHashTable *from_bsdiff = NULL;
   gs_unref_hashtable GHashTable *to_bsdiff = NULL;
-  gs_unref_bytes GBytes *tmp_from = NULL;
-  gs_unref_bytes GBytes *tmp_to = NULL;
+  g_autoptr(GBytes) tmp_from = NULL;
+  g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) from_finfo = NULL;
   g_autoptr(GFileInfo) to_finfo = NULL;
   ContentBsdiff *ret_bsdiff = NULL;
@@ -548,8 +548,8 @@ try_content_rollsum (OstreeRepo                       *repo,
   gboolean ret = FALSE;
   gs_unref_hashtable GHashTable *from_rollsum = NULL;
   gs_unref_hashtable GHashTable *to_rollsum = NULL;
-  gs_unref_bytes GBytes *tmp_from = NULL;
-  gs_unref_bytes GBytes *tmp_to = NULL;
+  g_autoptr(GBytes) tmp_from = NULL;
+  g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) from_finfo = NULL;
   g_autoptr(GFileInfo) to_finfo = NULL;
   OstreeRollsumMatches *matches = NULL;
@@ -1301,8 +1301,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       GBytes *operations_b;
       g_autofree guchar *part_checksum = NULL;
       g_autoptr(GChecksum) checksum = NULL;
-      gs_unref_bytes GBytes *objtype_checksum_array = NULL;
-      gs_unref_bytes GBytes *checksum_bytes = NULL;
+      g_autoptr(GBytes) objtype_checksum_array = NULL;
+      g_autoptr(GBytes) checksum_bytes = NULL;
       g_autoptr(GFile) part_tempfile = NULL;
       g_autoptr(GOutputStream) part_temp_outstream = NULL;
       g_autoptr(GInputStream) part_in = NULL;

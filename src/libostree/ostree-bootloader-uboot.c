@@ -129,7 +129,7 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
 
   new_config_contents = _ostree_sysroot_join_lines (new_lines);
   {
-    gs_unref_bytes GBytes *new_config_contents_bytes =
+    g_autoptr(GBytes) new_config_contents_bytes =
       g_bytes_new_static (new_config_contents,
                           strlen (new_config_contents));
 

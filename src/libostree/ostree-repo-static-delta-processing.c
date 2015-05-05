@@ -319,8 +319,8 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
   gboolean ret = FALSE;
   gsize partlen;
   const guint8*partdata;
-  gs_unref_bytes GBytes *part_payload_bytes = NULL;
-  gs_unref_bytes GBytes *payload_data = NULL;
+  g_autoptr(GBytes) part_payload_bytes = NULL;
+  g_autoptr(GBytes) payload_data = NULL;
   gs_unref_variant GVariant *payload = NULL;
   guint8 comptype;
 
