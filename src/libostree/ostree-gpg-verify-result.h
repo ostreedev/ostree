@@ -119,4 +119,9 @@ void ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
                                         const gchar *line_prefix,
                                         OstreeGpgSignatureFormatFlags flags);
 
+void ostree_gpg_verify_result_describe_variant (GVariant *variant,
+                                                GString *output_buffer,
+                                                const gchar *line_prefix,
+                                                OstreeGpgSignatureFormatFlags flags);
+
 G_END_DECLS

@@ -176,6 +176,7 @@ ostree_gpg_verify_result_get
 ostree_gpg_verify_result_get_all
 OstreeGpgSignatureFormatFlags
 ostree_gpg_verify_result_describe
+ostree_gpg_verify_result_describe_variant
 <SUBSECTION Standard>
 OSTREE_GPG_VERIFY_RESULT
 OSTREE_IS_GPG_VERIFY_RESULT
