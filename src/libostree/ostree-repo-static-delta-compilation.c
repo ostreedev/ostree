@@ -1300,7 +1300,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       GBytes *payload_b;
       GBytes *operations_b;
       g_autofree guchar *part_checksum = NULL;
-      gs_free_checksum GChecksum *checksum = NULL;
+      g_autoptr(GChecksum) checksum = NULL;
       gs_unref_bytes GBytes *objtype_checksum_array = NULL;
       gs_unref_bytes GBytes *checksum_bytes = NULL;
       g_autoptr(GFile) part_tempfile = NULL;
