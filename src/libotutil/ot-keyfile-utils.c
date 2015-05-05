@@ -105,7 +105,7 @@ ot_keyfile_copy_group (GKeyFile   *source_keyfile,
                        GKeyFile   *target_keyfile,
                        const char *group_name)
 {
-  gs_strfreev char **keys = NULL;
+  g_auto(GStrv) keys = NULL;
   gsize length, ii;
   gboolean ret = FALSE;
 

@@ -156,8 +156,8 @@ test_get_value_with_default (void)
 static void
 test_copy_group (void)
 {
-  gs_strfreev char **keys = NULL;
-  gs_strfreev char **keys2 = NULL;
+  g_auto(GStrv) keys = NULL;
+  g_auto(GStrv) keys2 = NULL;
   gsize length, length2, ii;
   GKeyFile *tmp = g_key_file_new ();
   const char *section = "section";

@@ -298,7 +298,7 @@ _ostree_repo_get_remote_list_option (OstreeRepo   *self,
 
   if (remote != NULL)
     {
-      gs_strfreev char **value = NULL;
+      g_auto(GStrv) value = NULL;
       GError *local_error = NULL;
 
       value = g_key_file_get_string_list (remote->options,
@@ -1272,7 +1272,7 @@ add_remotes_from_keyfile (OstreeRepo *self,
                           GError    **error)
 {
   GQueue queue = G_QUEUE_INIT;
-  gs_strfreev char **groups = NULL;
+  g_auto(GStrv) groups = NULL;
   gsize length, ii;
   gboolean ret = FALSE;
 

@@ -166,7 +166,7 @@ _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
   g_autoptr(GFile) proc_cmdline_path = g_file_new_for_path ("/proc/cmdline");
   g_autofree char *proc_cmdline = NULL;
   gsize proc_cmdline_len = 0;
-  gs_strfreev char **proc_cmdline_args = NULL;
+  g_auto(GStrv) proc_cmdline_args = NULL;
 
   if (!g_file_load_contents (proc_cmdline_path, cancellable,
                              &proc_cmdline, &proc_cmdline_len,

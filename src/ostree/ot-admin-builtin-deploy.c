@@ -141,7 +141,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   else if (merge_deployment)
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
-      gs_strfreev char **previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+      g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
 
       _ostree_kernel_args_append_argv (kargs, previous_args);
     }
@@ -157,7 +157,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
     }
 
   {
-    gs_strfreev char **kargs_strv = _ostree_kernel_args_to_strv (kargs);
+    g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
 
     if (!ostree_sysroot_deploy_tree (sysroot,
                                      opt_osname, revision, origin,

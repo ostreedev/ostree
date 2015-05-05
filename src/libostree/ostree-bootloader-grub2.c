@@ -296,7 +296,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   g_autoptr(GFile) new_config_path = NULL;
   glnx_unref_object GSSubprocessContext *procctx = NULL;
   glnx_unref_object GSSubprocess *proc = NULL;
-  gs_strfreev char **child_env = g_get_environ ();
+  g_auto(GStrv) child_env = g_get_environ ();
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   g_autoptr(GFile) config_path_efi_dir = NULL;
   g_autofree char *grub2_mkconfig_chroot = NULL;

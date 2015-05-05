@@ -86,7 +86,7 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
   else if (opt_merge)
     {
       OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (first_deployment);
-      gs_strfreev char **previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+      g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
 
       _ostree_kernel_args_append_argv (kargs, previous_args);
     }
@@ -105,7 +105,7 @@ ot_admin_instutil_builtin_set_kargs (int argc, char **argv, GCancellable *cancel
     _ostree_kernel_args_append (kargs, argv[i]);
 
   {
-    gs_strfreev char **kargs_strv = _ostree_kernel_args_to_strv (kargs);
+    g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
 
     if (!ostree_sysroot_deployment_set_kargs (sysroot, first_deployment,
                                               kargs_strv,
