@@ -496,7 +496,7 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
                              GError         **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_reachable =
+  g_autoptr(GHashTable) ret_reachable =
     ostree_repo_traverse_new_reachable ();
 
   if (!ostree_repo_traverse_commit_union (repo, commit_checksum, maxdepth,

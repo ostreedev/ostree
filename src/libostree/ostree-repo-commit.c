@@ -2756,8 +2756,8 @@ ostree_repo_write_mtree (OstreeRepo           *self,
     }
   else
     {
-      gs_unref_hashtable GHashTable *dir_metadata_checksums = NULL;
-      gs_unref_hashtable GHashTable *dir_contents_checksums = NULL;
+      g_autoptr(GHashTable) dir_metadata_checksums = NULL;
+      g_autoptr(GHashTable) dir_contents_checksums = NULL;
       gs_unref_variant GVariant *serialized_tree = NULL;
       g_autofree guchar *contents_csum = NULL;
       char contents_checksum_buf[65];

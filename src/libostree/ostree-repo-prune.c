@@ -150,8 +150,8 @@ ostree_repo_prune (OstreeRepo        *self,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  gs_unref_hashtable GHashTable *objects = NULL;
-  gs_unref_hashtable GHashTable *all_refs = NULL;
+  g_autoptr(GHashTable) objects = NULL;
+  g_autoptr(GHashTable) all_refs = NULL;
   OtPruneData data = { 0, };
   gboolean refs_only = flags & OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;
 

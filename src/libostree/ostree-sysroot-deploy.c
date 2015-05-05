@@ -1186,7 +1186,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   glnx_fd_close int deployment_dfd = -1;
   g_autofree char *contents = NULL;
   g_autofree char *deployment_version = NULL;
-  gs_unref_hashtable GHashTable *osrelease_values = NULL;
+  g_autoptr(GHashTable) osrelease_values = NULL;
   g_autofree char *linux_relpath = NULL;
   g_autofree char *linux_key = NULL;
   g_autofree char *initramfs_relpath = NULL;
@@ -1468,7 +1468,7 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
 {
   gboolean ret = FALSE;
   guint i;
-  gs_unref_hashtable GHashTable *created_current_for_osname =
+  g_autoptr(GHashTable) created_current_for_osname =
     g_hash_table_new (g_str_hash, g_str_equal);
 
   for (i = 0; i < self->deployments->len; i++)

@@ -185,7 +185,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  gs_unref_hashtable GHashTable *reachable_objects = NULL;
+  g_autoptr(GHashTable) reachable_objects = NULL;
   guint i;
   guint mod;
   guint count;
@@ -244,8 +244,8 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   gpointer key, value;
   gboolean found_corruption = FALSE;
   guint n_partial = 0;
-  gs_unref_hashtable GHashTable *objects = NULL;
-  gs_unref_hashtable GHashTable *commits = NULL;
+  g_autoptr(GHashTable) objects = NULL;
+  g_autoptr(GHashTable) commits = NULL;
 
   context = g_option_context_new ("- Check the repository for consistency");
 

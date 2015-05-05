@@ -293,7 +293,7 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   gboolean ret = FALSE;
   static const char hexchars[] = "0123456789abcdef";
   gsize off;
-  gs_unref_hashtable GHashTable *ref_list = NULL;
+  g_autoptr(GHashTable) ref_list = NULL;
   g_autofree char *ret_rev = NULL;
   guint length;
   const char *checksum = NULL;
@@ -497,7 +497,7 @@ ostree_repo_list_refs (OstreeRepo       *self,
                        GError          **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_all_refs = NULL;
+  g_autoptr(GHashTable) ret_all_refs = NULL;
   g_autofree char *remote = NULL;
   g_autofree char *ref_prefix = NULL;
 

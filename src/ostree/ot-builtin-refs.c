@@ -41,7 +41,7 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *refspec_prefix = NULL;
-  gs_unref_hashtable GHashTable *refs = NULL;
+  g_autoptr(GHashTable) refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
 

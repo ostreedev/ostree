@@ -155,7 +155,7 @@ build_content_sizenames_filtered (OstreeRepo              *repo,
   gboolean ret = FALSE;
   gs_unref_ptrarray GPtrArray *ret_sizenames =
     g_ptr_array_new_with_free_func (_ostree_delta_content_sizenames_free);
-  gs_unref_hashtable GHashTable *sizenames_map =
+  g_autoptr(GHashTable) sizenames_map =
     g_hash_table_new_full (g_str_hash, g_str_equal, NULL, _ostree_delta_content_sizenames_free);
   ostree_cleanup_repo_commit_traverse_iter
     OstreeRepoCommitTraverseIter iter = { 0, };
@@ -231,7 +231,7 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
                                        GError                    **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_modified_regfile_content =
+  g_autoptr(GHashTable) ret_modified_regfile_content =
     g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   gs_unref_ptrarray GPtrArray *from_sizes = NULL;
   gs_unref_ptrarray GPtrArray *to_sizes = NULL;

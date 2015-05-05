@@ -1637,8 +1637,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char *path = NULL;
   g_autofree char *baseurl = NULL;
   g_autofree char *metalink_url_str = NULL;
-  gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
-  gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
+  g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
+  g_autoptr(GHashTable) commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
   glnx_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };

@@ -850,7 +850,7 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
                          GError           **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *to_clean_dirs = NULL;
+  g_autoptr(GHashTable) to_clean_dirs = NULL;
   GHashTableIter iter;
   gpointer key, value;
 

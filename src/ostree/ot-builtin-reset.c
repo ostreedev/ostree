@@ -37,7 +37,7 @@ find_current_ref (OstreeRepo   *repo,
                   GCancellable *cancellable,
                   GError      **error)
 {
-  gs_unref_hashtable GHashTable *refs = NULL;
+  g_autoptr(GHashTable) refs = NULL;
   gchar *ret;
 
   if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))

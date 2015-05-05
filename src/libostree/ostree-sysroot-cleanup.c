@@ -294,8 +294,8 @@ cleanup_old_deployments (OstreeSysroot       *self,
   gboolean ret = FALSE;
   struct stat root_stbuf;
   guint i;
-  gs_unref_hashtable GHashTable *active_deployment_dirs = NULL;
-  gs_unref_hashtable GHashTable *active_boot_checksums = NULL;
+  g_autoptr(GHashTable) active_deployment_dirs = NULL;
+  g_autoptr(GHashTable) active_boot_checksums = NULL;
   gs_unref_ptrarray GPtrArray *all_deployment_dirs = NULL;
   gs_unref_ptrarray GPtrArray *all_boot_dirs = NULL;
 
@@ -396,7 +396,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
 {
   gboolean ret = FALSE;
   g_autofree char *prefix = NULL;
-  gs_unref_hashtable GHashTable *refs = NULL;
+  g_autoptr(GHashTable) refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
 

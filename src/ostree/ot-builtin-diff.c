@@ -180,9 +180,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_stats)
     {
-      gs_unref_hashtable GHashTable *reachable_a = NULL;
-      gs_unref_hashtable GHashTable *reachable_b = NULL;
-      gs_unref_hashtable GHashTable *reachable_intersection = NULL;
+      g_autoptr(GHashTable) reachable_a = NULL;
+      g_autoptr(GHashTable) reachable_b = NULL;
+      g_autoptr(GHashTable) reachable_intersection = NULL;
       g_autofree char *rev_a = NULL;
       g_autofree char *rev_b = NULL;
       g_autofree char *size = NULL;

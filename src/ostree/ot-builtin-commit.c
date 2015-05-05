@@ -95,7 +95,7 @@ parse_statoverride_file (GHashTable   **out_mode_add,
   gboolean ret = FALSE;
   gsize len;
   char **iter = NULL; /* nofree */
-  gs_unref_hashtable GHashTable *ret_hash = NULL;
+  g_autoptr(GHashTable) ret_hash = NULL;
   g_autoptr(GFile) path = NULL;
   g_autofree char *contents = NULL;
   char **lines = NULL;
@@ -303,7 +303,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   gs_unref_variant GVariant *detached_metadata = NULL;
   glnx_unref_object OstreeMutableTree *mtree = NULL;
   g_autofree char *tree_type = NULL;
-  gs_unref_hashtable GHashTable *mode_adds = NULL;
+  g_autoptr(GHashTable) mode_adds = NULL;
   OstreeRepoCommitModifierFlags flags = 0;
   OstreeRepoCommitModifier *modifier = NULL;
   OstreeRepoTransactionStats stats;

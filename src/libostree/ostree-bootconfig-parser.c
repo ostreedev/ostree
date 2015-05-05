@@ -171,7 +171,7 @@ ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
   GString *buf = g_string_new ("");
   g_autoptr(GBytes) bytes = NULL;
   guint i;
-  gs_unref_hashtable GHashTable *written_overrides = NULL;
+  g_autoptr(GHashTable) written_overrides = NULL;
 
   written_overrides = g_hash_table_new (g_str_hash, g_str_equal);
 

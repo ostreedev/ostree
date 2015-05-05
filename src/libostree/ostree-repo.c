@@ -2726,7 +2726,7 @@ ostree_repo_list_objects (OstreeRepo                  *self,
                           GError                     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_objects = NULL;
+  g_autoptr(GHashTable) ret_objects = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (self->inited, FALSE);
@@ -2781,7 +2781,7 @@ ostree_repo_list_commit_objects_starting_with (OstreeRepo                  *self
                                                GError                     **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *ret_commits = NULL;
+  g_autoptr(GHashTable) ret_commits = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
   g_return_val_if_fail (self->inited, FALSE);
@@ -3591,7 +3591,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
                                 GError        **error)
 {
   gboolean ret = FALSE;
-  gs_unref_hashtable GHashTable *refs = NULL;
+  g_autoptr(GHashTable) refs = NULL;
   gs_unref_variant_builder GVariantBuilder *refs_builder = NULL;
   gs_unref_variant GVariant *summary = NULL;
   GList *ordered_keys = NULL;
