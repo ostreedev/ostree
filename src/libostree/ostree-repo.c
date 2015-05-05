@@ -3067,7 +3067,7 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
   gboolean ret = FALSE;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
-  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+  g_autoptr(GVariantBuilder) builder = NULL;
 
   if (!ostree_repo_read_commit_detached_metadata (self,
                                                   commit_checksum,
@@ -3592,7 +3592,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GHashTable) refs = NULL;
-  gs_unref_variant_builder GVariantBuilder *refs_builder = NULL;
+  g_autoptr(GVariantBuilder) refs_builder = NULL;
   g_autoptr(GVariant) summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
@@ -3624,7 +3624,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     }
 
   {
-    gs_unref_variant_builder GVariantBuilder *summary_builder =
+    g_autoptr(GVariantBuilder) summary_builder =
       g_variant_builder_new (OSTREE_SUMMARY_GVARIANT_FORMAT);
 
     g_variant_builder_add_value (summary_builder, g_variant_builder_end (refs_builder));

@@ -256,7 +256,7 @@ parse_keyvalue_strings (char             **strings,
 {
   gboolean ret = FALSE;
   char **iter;
-  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+  g_autoptr(GVariantBuilder) builder = NULL;
 
   builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 

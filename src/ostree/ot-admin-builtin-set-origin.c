@@ -95,7 +95,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
     }
 
   { char **iter;
-    gs_unref_variant_builder GVariantBuilder *optbuilder =
+    g_autoptr(GVariantBuilder) optbuilder =
       g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
 
     for (iter = opt_set; iter && *iter; iter++)

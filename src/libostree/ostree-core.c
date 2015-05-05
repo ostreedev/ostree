@@ -1930,7 +1930,7 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
 {
   GVariantDict metadata_dict;
   g_autoptr(GVariant) signature_data = NULL;
-  gs_unref_variant_builder GVariantBuilder *signature_builder = NULL;
+  g_autoptr(GVariantBuilder) signature_builder = NULL;
 
   g_variant_dict_init (&metadata_dict, existing_metadata);
 

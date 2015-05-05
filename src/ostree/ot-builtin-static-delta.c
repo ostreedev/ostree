@@ -158,7 +158,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
       g_autofree char *from_resolved = NULL;
       g_autofree char *to_resolved = NULL;
       g_autofree char *from_parent_str = NULL;
-      gs_unref_variant_builder GVariantBuilder *parambuilder = NULL;
+      g_autoptr(GVariantBuilder) parambuilder = NULL;
 
       g_assert (opt_to_rev);
 

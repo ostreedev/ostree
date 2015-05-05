@@ -1150,7 +1150,7 @@ get_fallback_headers (OstreeRepo               *self,
   gboolean ret = FALSE;
   guint i;
   g_autoptr(GVariant) ret_headers = NULL;
-  gs_unref_variant_builder GVariantBuilder *fallback_builder = NULL;
+  g_autoptr(GVariantBuilder) fallback_builder = NULL;
 
   fallback_builder = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT));
 
@@ -1248,7 +1248,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
-  gs_unref_variant_builder GVariantBuilder *part_headers = NULL;
+  g_autoptr(GVariantBuilder) part_headers = NULL;
   g_autoptr(GPtrArray) part_tempfiles = NULL;
   g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;

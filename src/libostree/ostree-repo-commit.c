@@ -367,7 +367,7 @@ add_size_index_to_metadata (OstreeRepo        *self,
                             GError           **error)
 {
   gboolean ret = FALSE;
-  gs_unref_variant_builder GVariantBuilder *builder = NULL;
+  g_autoptr(GVariantBuilder) builder = NULL;
     
   /* original_metadata may be NULL */
   builder = ot_util_variant_builder_from_variant (original_metadata, G_VARIANT_TYPE ("a{sv}"));
