@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "ostree-deployment.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 
 struct _OstreeDeployment

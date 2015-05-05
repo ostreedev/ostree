@@ -20,7 +20,6 @@
 
 #include "config.h"
 #include "ostree-bootloader.h"
-#include "libgsystem.h"
 
 G_DEFINE_INTERFACE (OstreeBootloader, _ostree_bootloader, G_TYPE_OBJECT)
 

@@ -26,7 +26,6 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"

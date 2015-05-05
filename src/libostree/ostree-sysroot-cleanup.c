@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "otutil.h"
-#include "libgsystem.h"
 #include "ostree-linuxfsutil.h"
 
 #include "ostree-sysroot-private.h"

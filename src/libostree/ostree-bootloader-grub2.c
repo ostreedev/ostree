@@ -25,7 +25,6 @@
 #include "otutil.h"
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
-#include "libgsystem.h"
 #include <sys/mount.h>
 
 #include <string.h>

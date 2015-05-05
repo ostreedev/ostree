@@ -27,7 +27,6 @@
 #include "ot-admin-functions.h"
 #include "ostree.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include <unistd.h>
 #include <stdlib.h>

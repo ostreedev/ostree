@@ -25,7 +25,6 @@
 #include "ot-admin-functions.h"
 #include "otutil.h"
 #include "ostree.h"
-#include "libgsystem.h"
 
 gboolean
 ot_admin_require_booted_deployment_or_osname (OstreeSysroot       *sysroot,

@@ -30,7 +30,6 @@
 #include "ostree-core-private.h"
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 
 #define ALIGN_VALUE(this, boundary) \

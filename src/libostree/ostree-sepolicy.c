@@ -26,7 +26,6 @@
 #endif
 
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include "ostree-sepolicy.h"
 #include "ostree-bootloader-uboot.h"

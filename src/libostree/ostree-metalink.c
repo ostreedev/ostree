@@ -24,7 +24,6 @@
 #include <gio/gfiledescriptorbased.h>
 
 #include "otutil.h"
-#include "libgsystem.h"
 
 typedef enum {
   OSTREE_METALINK_STATE_INITIAL,

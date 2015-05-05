@@ -27,7 +27,6 @@
 #include "ostree-core-private.h"
 #include "ostree-linuxfsutil.h"
 #include "otutil.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 
 #define OSTREE_VARRELABEL_ID          "da679b08acd34504b789d96f818ea781"

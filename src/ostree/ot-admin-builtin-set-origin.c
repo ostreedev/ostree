@@ -26,7 +26,6 @@
 #include "ostree.h"
 #include "ot-tool-util.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include <unistd.h>
 #include <stdlib.h>

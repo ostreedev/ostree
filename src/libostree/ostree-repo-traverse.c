@@ -24,7 +24,6 @@
 
 #include "ostree.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 struct _OstreeRepoRealCommitTraverseIter {
   gboolean initialized;

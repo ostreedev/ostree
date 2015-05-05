@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "otutil.h"
-#include "libgsystem.h"
 #include "ot-tool-util.h"
 
 gboolean

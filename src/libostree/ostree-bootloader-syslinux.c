@@ -23,7 +23,6 @@
 #include "ostree-sysroot-private.h"
 #include "ostree-bootloader-syslinux.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include <string.h>
 

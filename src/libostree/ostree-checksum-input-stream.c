@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "ostree-checksum-input-stream.h"
-#include "libgsystem.h"
 
 enum {
   PROP_0,

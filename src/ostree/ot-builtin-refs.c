@@ -25,7 +25,6 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "libgsystem.h"
 
 static gboolean opt_delete;
 

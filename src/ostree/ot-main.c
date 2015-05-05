@@ -30,7 +30,6 @@
 #include "ostree.h"
 #include "ot-main.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 static char *opt_repo;
 static char *opt_sysroot = "/";

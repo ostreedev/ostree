@@ -25,7 +25,6 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
-#include "libgsystem.h"
 
 #include <string.h>
 

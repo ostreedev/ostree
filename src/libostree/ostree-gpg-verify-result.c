@@ -23,7 +23,6 @@
 #include <string.h>
 
 #include "libglnx.h"
-#include "libgsystem.h"
 
 #include "ostree-gpg-verify-result-private.h"
 

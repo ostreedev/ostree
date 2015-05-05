@@ -24,7 +24,6 @@
 
 #include "ostree.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 static gboolean
 get_file_checksum (OstreeDiffFlags  flags,

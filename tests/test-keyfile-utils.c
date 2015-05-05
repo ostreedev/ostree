@@ -19,7 +19,6 @@
  */
 
 #include "config.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 #include <glib.h>
 #include <stdlib.h>

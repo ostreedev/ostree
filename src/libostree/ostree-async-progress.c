@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "ostree-async-progress.h"
-#include "libgsystem.h"
 
 /**
  * SECTION:libostree-async-progress

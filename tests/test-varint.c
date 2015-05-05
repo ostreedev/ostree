@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include "libgsystem.h"
 #include "libglnx.h"
 
 #include "ostree-varint.h"

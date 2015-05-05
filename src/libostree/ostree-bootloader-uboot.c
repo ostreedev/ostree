@@ -27,7 +27,6 @@
 #include "ostree-sysroot-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include <string.h>
 

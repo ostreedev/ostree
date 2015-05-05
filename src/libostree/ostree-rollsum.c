@@ -24,7 +24,6 @@
 #include <zlib.h>
 
 #include "ostree-rollsum.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 #include "bupsplit.h"
 

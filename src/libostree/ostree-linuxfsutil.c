@@ -22,7 +22,6 @@
 
 #include "ostree-linuxfsutil.h"
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>

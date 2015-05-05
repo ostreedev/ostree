@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "otutil.h"
-#include "libgsystem.h"
 
 #include "ostree-sysroot-upgrader.h"
 
