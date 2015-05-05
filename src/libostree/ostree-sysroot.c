@@ -44,6 +44,10 @@ find_booted_deployment (OstreeSysroot       *self,
  * which in particular should contain a toplevel /ostree directory.
  * Inside this directory is an #OstreeRepo in /ostree/repo, plus a set
  * of deployments in /ostree/deploy.
+ *
+ * This class is not by default safe against concurrent use by threads
+ * or external processes.  You can use ostree_sysroot_lock() to
+ * perform locking externally.
  */
 typedef struct {
   GObjectClass parent_class;
