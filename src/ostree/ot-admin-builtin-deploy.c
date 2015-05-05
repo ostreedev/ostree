@@ -55,12 +55,12 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   gboolean ret = FALSE;
   const char *refspec;
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   GKeyFile *origin = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gs_unref_ptrarray GPtrArray *new_deployments = NULL;
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
-  gs_unref_object OstreeDeployment *merge_deployment = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
+  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   g_autofree char *revision = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
 

@@ -85,9 +85,9 @@ gboolean
 ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   guint i;
@@ -120,7 +120,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           GKeyFile *origin;
           const char *ref = ostree_deployment_get_csum (deployment);
           g_autofree char *version = version_of_commit (repo, ref);
-          gs_unref_object OstreeGpgVerifyResult *result = NULL;
+          glnx_unref_object OstreeGpgVerifyResult *result = NULL;
           GString *output_buffer;
           guint jj, n_signatures;
           GError *local_error = NULL;

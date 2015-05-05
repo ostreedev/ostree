@@ -446,7 +446,7 @@ on_request_sent (GObject        *object,
 {
   OstreeFetcherPendingURI *pending = user_data;
   GError *local_error = NULL;
-  gs_unref_object SoupMessage *msg = NULL;
+  glnx_unref_object SoupMessage *msg = NULL;
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,

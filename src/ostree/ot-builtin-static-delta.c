@@ -100,7 +100,7 @@ ot_static_delta_builtin_list (int argc, char **argv, GCancellable *cancellable, 
   gs_unref_ptrarray GPtrArray *delta_names = NULL;
   guint i;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   context = g_option_context_new ("LIST - list static delta files");
 
@@ -134,7 +134,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   context = g_option_context_new ("Generate static delta files");
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
@@ -245,7 +245,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
   const char *patharg;
   g_autoptr(GFile) path = NULL;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   context = g_option_context_new ("DELTA - Apply static delta file");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
@@ -286,7 +286,7 @@ ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, G
   gboolean ret = FALSE;
   OstreeCommand *command = NULL;
   const char *cmdname = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   int i;
   gboolean want_help = FALSE;
 

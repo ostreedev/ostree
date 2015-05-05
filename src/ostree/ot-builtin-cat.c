@@ -62,7 +62,7 @@ gboolean
 ostree_builtin_cat (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   int i;
   const char *rev;

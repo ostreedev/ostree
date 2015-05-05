@@ -37,12 +37,12 @@ ot_admin_builtin_undeploy (int argc, char **argv, GCancellable *cancellable, GEr
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   const char *deploy_index_str;
   int deploy_index;
   gs_unref_ptrarray GPtrArray *current_deployments = NULL;
-  gs_unref_object OstreeDeployment *booted_deployment = NULL;
-  gs_unref_object OstreeDeployment *target_deployment = NULL;
+  glnx_unref_object OstreeDeployment *booted_deployment = NULL;
+  glnx_unref_object OstreeDeployment *target_deployment = NULL;
 
   context = g_option_context_new ("INDEX - Delete deployment INDEX");
 

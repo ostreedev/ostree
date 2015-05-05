@@ -312,7 +312,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
                                    GError **error)
 {
   g_autoptr(GFile) sysroot_path = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean success = FALSE;
 
   /* Entries are listed in --help output in the order added.  We add the

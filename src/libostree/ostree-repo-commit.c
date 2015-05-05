@@ -539,7 +539,7 @@ write_object (OstreeRepo         *self,
   g_autofree char *temp_filename = NULL;
   g_autoptr(GFile) stored_path = NULL;
   g_autofree guchar *ret_csum = NULL;
-  gs_unref_object OstreeChecksumInputStream *checksum_input = NULL;
+  glnx_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   g_autoptr(GInputStream) file_input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
   gs_unref_variant GVariant *xattrs = NULL;
@@ -2278,7 +2278,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   gboolean ret = FALSE;
   g_autoptr(GFile) child = NULL;
   g_autoptr(GFileInfo) modified_info = NULL;
-  gs_unref_object OstreeMutableTree *child_mtree = NULL;
+  glnx_unref_object OstreeMutableTree *child_mtree = NULL;
   g_autofree char *child_relpath = NULL;
   const char *name;
   GFileType file_type;

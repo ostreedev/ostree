@@ -139,7 +139,7 @@ ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin)
 OstreeDeployment *
 ostree_deployment_clone (OstreeDeployment *self)
 {
-  gs_unref_object OstreeBootconfigParser *new_bootconfig = NULL;
+  glnx_unref_object OstreeBootconfigParser *new_bootconfig = NULL;
   GKeyFile *new_origin = NULL;
   OstreeDeployment *ret = ostree_deployment_new (self->index, self->osname, self->csum,
                                                  self->deployserial,

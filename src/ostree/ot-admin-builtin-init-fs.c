@@ -38,11 +38,11 @@ gboolean
 ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   g_autoptr(GFile) dir = NULL;
   g_autoptr(GFile) child = NULL;
-  gs_unref_object OstreeSysroot *target_sysroot = NULL;
+  glnx_unref_object OstreeSysroot *target_sysroot = NULL;
   guint i;
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
 

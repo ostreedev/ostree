@@ -3253,7 +3253,7 @@ ostree_repo_sign_commit (OstreeRepo     *self,
   gs_unref_variant GVariant *commit_variant = NULL;
   gs_unref_variant GVariant *old_metadata = NULL;
   gs_unref_variant GVariant *new_metadata = NULL;
-  gs_unref_object OstreeGpgVerifyResult *result = NULL;
+  glnx_unref_object OstreeGpgVerifyResult *result = NULL;
   GError *local_error = NULL;
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
@@ -3409,7 +3409,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GError             **error)
 {
   OstreeGpgVerifyResult *result = NULL;
-  gs_unref_object OstreeGpgVerifier *verifier = NULL;
+  glnx_unref_object OstreeGpgVerifier *verifier = NULL;
   gs_unref_variant GVariant *signaturedata = NULL;
   GByteArray *buffer;
   GVariantIter iter;
@@ -3489,7 +3489,7 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GCancellable *cancellable,
                            GError      **error)
 {
-  gs_unref_object OstreeGpgVerifyResult *result = NULL;
+  glnx_unref_object OstreeGpgVerifyResult *result = NULL;
   gboolean ret = FALSE;
 
   result = ostree_repo_verify_commit_ext (self, commit_checksum,

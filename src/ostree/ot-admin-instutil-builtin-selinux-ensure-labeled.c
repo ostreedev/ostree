@@ -185,11 +185,11 @@ ot_admin_instutil_builtin_selinux_ensure_labeled (int argc, char **argv, GCancel
   const char *policy_name;
   g_autoptr(GFile) subpath = NULL;
   const char *prefix = NULL;
-  gs_unref_object OstreeSePolicy *sepolicy = NULL;
+  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   OstreeDeployment *first_deployment;
   GOptionContext *context = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   g_autoptr(GFile) deployment_path = NULL;
 
   context = g_option_context_new ("[SUBPATH PREFIX] - relabel all or part of a deployment");

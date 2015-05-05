@@ -38,7 +38,7 @@ gboolean
 ostree_builtin_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   OstreeRepoMode mode;
 

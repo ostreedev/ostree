@@ -49,8 +49,8 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   const char *remotename = NULL;
   const char *url = NULL;
   const char *branch = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   OstreeDeployment *target_deployment = NULL;
 
   context = g_option_context_new ("REMOTENAME URL [BRANCH]");

@@ -740,7 +740,7 @@ merge_configuration (OstreeSysroot         *sysroot,
   g_autoptr(GFile) source_etc_pristine_path = NULL;
   g_autoptr(GFile) deployment_usretc_path = NULL;
   g_autoptr(GFile) deployment_etc_path = NULL;
-  gs_unref_object OstreeSePolicy *sepolicy = NULL;
+  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   gboolean etc_exists;
   gboolean usretc_exists;
 
@@ -1582,9 +1582,9 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
   else
     {
       int new_bootversion = self->bootversion ? 0 : 1;
-      gs_unref_object OstreeBootloader *bootloader = NULL;
+      glnx_unref_object OstreeBootloader *bootloader = NULL;
       g_autoptr(GFile) new_loader_entries_dir = NULL;
-      gs_unref_object OstreeRepo *repo = NULL;
+      glnx_unref_object OstreeRepo *repo = NULL;
       gboolean show_osname = FALSE;
 
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
@@ -1765,18 +1765,18 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 {
   gboolean ret = FALSE;
   gint new_deployserial;
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
-  gs_unref_object OstreeDeployment *merge_deployment = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
+  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   g_autoptr(GFile) osdeploydir = NULL;
   g_autoptr(GFile) deployment_var = NULL;
   g_autoptr(GFile) commit_root = NULL;
   g_autoptr(GFile) tree_kernel_path = NULL;
   g_autoptr(GFile) tree_initramfs_path = NULL;
   glnx_fd_close int deployment_dfd = -1;
-  gs_unref_object OstreeSePolicy *sepolicy = NULL;
+  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   g_autofree char *new_bootcsum = NULL;
-  gs_unref_object OstreeBootconfigParser *bootconfig = NULL;
+  glnx_unref_object OstreeBootconfigParser *bootconfig = NULL;
 
   g_return_val_if_fail (osname != NULL || self->booted_deployment != NULL, FALSE);
 
@@ -1923,7 +1923,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
   gboolean ret = FALSE;
   guint i;
   gs_unref_ptrarray GPtrArray *new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
   __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
   g_autofree char *new_options = NULL;
   OstreeBootconfigParser *new_bootconfig;

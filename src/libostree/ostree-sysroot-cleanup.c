@@ -62,7 +62,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
       const char *name;
       GFileInfo *file_info = NULL;
       GFile *child = NULL;
-      gs_unref_object OstreeDeployment *deployment = NULL;
+      glnx_unref_object OstreeDeployment *deployment = NULL;
       g_autofree char *csum = NULL;
       gint deployserial;
 
@@ -503,7 +503,7 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
                         GError             **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   g_return_val_if_fail (self->loaded, FALSE);
 

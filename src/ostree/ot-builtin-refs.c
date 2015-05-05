@@ -39,7 +39,7 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   const char *refspec_prefix = NULL;
   gs_unref_hashtable GHashTable *refs = NULL;
   GHashTableIter hashiter;

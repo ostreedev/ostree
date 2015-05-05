@@ -294,8 +294,8 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   g_autoptr(GFile) efi_new_config_temp = NULL;
   g_autoptr(GFile) efi_orig_config = NULL;
   g_autoptr(GFile) new_config_path = NULL;
-  gs_unref_object GSSubprocessContext *procctx = NULL;
-  gs_unref_object GSSubprocess *proc = NULL;
+  glnx_unref_object GSSubprocessContext *procctx = NULL;
+  glnx_unref_object GSSubprocess *proc = NULL;
   gs_strfreev char **child_env = g_get_environ ();
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   g_autoptr(GFile) config_path_efi_dir = NULL;

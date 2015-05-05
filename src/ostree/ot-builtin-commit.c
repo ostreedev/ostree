@@ -292,7 +292,7 @@ gboolean
 ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   gboolean skip_commit = FALSE;
   g_autoptr(GFile) arg = NULL;
@@ -301,7 +301,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GFile) root = NULL;
   gs_unref_variant GVariant *metadata = NULL;
   gs_unref_variant GVariant *detached_metadata = NULL;
-  gs_unref_object OstreeMutableTree *mtree = NULL;
+  glnx_unref_object OstreeMutableTree *mtree = NULL;
   g_autofree char *tree_type = NULL;
   gs_unref_hashtable GHashTable *mode_adds = NULL;
   OstreeRepoCommitModifierFlags flags = 0;

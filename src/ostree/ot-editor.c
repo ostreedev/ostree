@@ -62,8 +62,8 @@ ot_editor_prompt (OstreeRepo *repo,
                   GCancellable *cancellable,
                   GError **error)
 {
-  gs_unref_object GSSubprocessContext *ctx = NULL;
-  gs_unref_object GSSubprocess *proc = NULL;
+  glnx_unref_object GSSubprocessContext *ctx = NULL;
+  glnx_unref_object GSSubprocess *proc = NULL;
   g_autoptr(GFile) file = NULL;
   g_autoptr(GFileIOStream) io = NULL;
   GOutputStream *output;

@@ -44,12 +44,12 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   int i;
   const char *src_repo_arg;
   GSConsole *console = NULL;
   g_autofree char *src_repo_uri = NULL;
-  gs_unref_object OstreeAsyncProgress *progress = NULL;
+  glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *source_objects = NULL;
 
@@ -87,7 +87,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   if (argc == 2)
     {
       g_autoptr(GFile) src_repo_path = g_file_new_for_path (src_repo_arg);
-      gs_unref_object OstreeRepo *src_repo = ostree_repo_new (src_repo_path);
+      glnx_unref_object OstreeRepo *src_repo = ostree_repo_new (src_repo_path);
       gs_unref_hashtable GHashTable *refs_to_clone = NULL;
 
       refs_to_fetch = g_ptr_array_new_with_free_func (g_free);

@@ -49,19 +49,19 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
-  gs_unref_object OstreeSysrootUpgrader *upgrader = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   g_autofree char *origin_remote = NULL;
   g_autofree char *origin_ref = NULL;
   g_autofree char *origin_refspec = NULL;
   g_autofree char *new_revision = NULL;
   g_autoptr(GFile) deployment_path = NULL;
   g_autoptr(GFile) deployment_origin_path = NULL;
-  gs_unref_object OstreeDeployment *merge_deployment = NULL;
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
+  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
   GSConsole *console = NULL;
   gboolean in_status_line = FALSE;
-  gs_unref_object OstreeAsyncProgress *progress = NULL;
+  glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
 

@@ -58,13 +58,13 @@ gboolean
 ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   g_autofree char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
   GSConsole *console = NULL;
   gs_unref_ptrarray GPtrArray *refs_to_fetch = NULL;
-  gs_unref_object OstreeAsyncProgress *progress = NULL;
+  glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gulong signal_handler_id = 0;
 
   context = g_option_context_new ("REMOTE [BRANCH...] - Download data from remote repository");

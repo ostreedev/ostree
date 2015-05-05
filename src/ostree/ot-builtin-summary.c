@@ -37,7 +37,7 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   context = g_option_context_new ("Manage summary metadata");
 

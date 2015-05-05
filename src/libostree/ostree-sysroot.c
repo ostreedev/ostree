@@ -256,7 +256,7 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
   dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
   if (!g_file_query_exists (dir, NULL))
     {
-      gs_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
+      glnx_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
       if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
                                cancellable, error))
         goto out;
@@ -416,7 +416,7 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
           g_str_has_suffix (dent->d_name, ".conf") &&
           S_ISREG (stbuf.st_mode))
         {
-          gs_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
+          glnx_unref_object OstreeBootconfigParser *config = ostree_bootconfig_parser_new ();
   
           if (!ostree_bootconfig_parser_parse_at (config, dfd_iter.fd, dent->d_name, cancellable, error))
             {
@@ -584,7 +584,7 @@ parse_deployment (OstreeSysroot       *self,
 {
   gboolean ret = FALSE;
   const char *relative_boot_link;
-  gs_unref_object OstreeDeployment *ret_deployment = NULL;
+  glnx_unref_object OstreeDeployment *ret_deployment = NULL;
   int entry_boot_version;
   int treebootserial = -1;
   int deployserial = -1;
@@ -676,7 +676,7 @@ list_deployments_process_one_boot_entry (OstreeSysroot               *self,
 {
   gboolean ret = FALSE;
   g_autofree char *ostree_arg = NULL;
-  gs_unref_object OstreeDeployment *deployment = NULL;
+  glnx_unref_object OstreeDeployment *deployment = NULL;
 
   ostree_arg = get_ostree_kernel_arg_from_config (config);
   if (ostree_arg == NULL)
@@ -935,7 +935,7 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
 {
   gboolean ret = FALSE;
   gboolean is_active;
-  gs_unref_object OstreeBootloader *ret_loader = NULL;
+  glnx_unref_object OstreeBootloader *ret_loader = NULL;
 
   ret_loader = (OstreeBootloader*)_ostree_bootloader_syslinux_new (sysroot);
   if (!_ostree_bootloader_query (ret_loader, &is_active,
@@ -1021,7 +1021,7 @@ find_booted_deployment (OstreeSysroot       *self,
   gboolean ret = FALSE;
   struct stat root_stbuf;
   struct stat self_stbuf;
-  gs_unref_object OstreeDeployment *ret_deployment = NULL;
+  glnx_unref_object OstreeDeployment *ret_deployment = NULL;
 
   if (stat ("/", &root_stbuf) != 0)
     {

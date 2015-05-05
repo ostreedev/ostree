@@ -82,7 +82,7 @@ ostree_builtin_log (int           argc,
                     GError      **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
   g_autofree char *checksum = NULL;

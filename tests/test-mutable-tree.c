@@ -32,7 +32,7 @@ static void
 test_metadata_checksum (void)
 {
   const char *checksum = "12345678901234567890123456789012";
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
 
   g_assert_null (ostree_mutable_tree_get_metadata_checksum (tree));
 
@@ -44,8 +44,8 @@ test_metadata_checksum (void)
 static void
 test_mutable_tree_walk (void)
 {
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  gs_unref_object OstreeMutableTree *parent = NULL;
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *parent = NULL;
   gs_unref_ptrarray GPtrArray *split_path = NULL;
   GError *error = NULL;
   const char *pathname = "a/b/c/d/e/f/g/i";
@@ -57,21 +57,21 @@ test_mutable_tree_walk (void)
                                                     checksum, &parent,
                                                     &error));
   {
-    gs_unref_object OstreeMutableTree *subdir = NULL;
+    glnx_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_walk (tree, split_path, 0, &subdir, &error));
     g_assert_nonnull (subdir);
   }
 
   {
-    gs_unref_object OstreeMutableTree *subdir = NULL;
+    glnx_unref_object OstreeMutableTree *subdir = NULL;
     g_assert_false (ostree_mutable_tree_walk (tree, split_path, 1, &subdir, &error));
     g_assert_null (subdir);
     g_clear_error (&error);
   }
 
   {
-    gs_unref_object OstreeMutableTree *subdir = NULL;
-    gs_unref_object OstreeMutableTree *a = NULL;
+    glnx_unref_object OstreeMutableTree *subdir = NULL;
+    glnx_unref_object OstreeMutableTree *a = NULL;
     g_autofree char *source_checksum = NULL;
     ostree_mutable_tree_lookup (tree, "a", &source_checksum, &a, &error);
     g_assert (ostree_mutable_tree_walk (a, split_path, 1, &subdir, &error));
@@ -82,16 +82,16 @@ test_mutable_tree_walk (void)
 static void
 test_ensure_parent_dirs (void)
 {
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  gs_unref_object OstreeMutableTree *parent = NULL;
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *parent = NULL;
   gs_unref_ptrarray GPtrArray *split_path = NULL;
   GError *error = NULL;
   const char *pathname = "/foo/bar/baz";
   const char *checksum = "01234567890123456789012345678901";
   g_autofree char *source_checksum = NULL;
-  gs_unref_object OstreeMutableTree *source_subdir = NULL;
+  glnx_unref_object OstreeMutableTree *source_subdir = NULL;
   g_autofree char *source_checksum2 = NULL;
-  gs_unref_object OstreeMutableTree *source_subdir2 = NULL;
+  glnx_unref_object OstreeMutableTree *source_subdir2 = NULL;
 
   g_assert (ot_util_path_split_validate (pathname, &split_path, &error));
 
@@ -109,15 +109,15 @@ test_ensure_parent_dirs (void)
 static void
 test_ensure_dir (void)
 {
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  gs_unref_object OstreeMutableTree *parent = NULL;
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *parent = NULL;
   gs_unref_ptrarray GPtrArray *split_path = NULL;
   GError *error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";
   g_autofree char *source_checksum = NULL;
-  gs_unref_object OstreeMutableTree *source_subdir = NULL;
+  glnx_unref_object OstreeMutableTree *source_subdir = NULL;
 
   g_assert (ostree_mutable_tree_ensure_dir (tree, dirname, &parent, &error));
   g_assert (ostree_mutable_tree_lookup (tree, dirname, &source_checksum, &source_subdir, &error));
@@ -129,8 +129,8 @@ test_ensure_dir (void)
 static void
 test_replace_file (void)
 {
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  gs_unref_object OstreeMutableTree *parent = NULL;
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *parent = NULL;
   gs_unref_ptrarray GPtrArray *split_path = NULL;
   GError *error = NULL;
   const char *filename = "bar";
@@ -140,7 +140,7 @@ test_replace_file (void)
   g_assert (ostree_mutable_tree_replace_file (tree, filename, checksum, &error));
   {
     g_autofree char *out_checksum = NULL;
-    gs_unref_object OstreeMutableTree *subdir = NULL;
+    glnx_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_lookup (tree, filename, &out_checksum, &subdir, &error));
     g_assert_cmpstr (checksum, ==, out_checksum);
   }
@@ -148,7 +148,7 @@ test_replace_file (void)
   g_assert (ostree_mutable_tree_replace_file (tree, filename, checksum2, &error));
   {
     g_autofree char *out_checksum = NULL;
-    gs_unref_object OstreeMutableTree *subdir = NULL;
+    glnx_unref_object OstreeMutableTree *subdir = NULL;
     g_assert (ostree_mutable_tree_lookup (tree, filename, &out_checksum, &subdir, &error));
     g_assert_cmpstr (checksum2, ==, out_checksum);
   }
@@ -159,8 +159,8 @@ test_contents_checksum (void)
 {
   const char *checksum = "01234567890123456789012345678901";
   const char *subdir_checksum = "ABCD0123456789012345678901234567";
-  gs_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  gs_unref_object OstreeMutableTree *subdir = NULL;
+  glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
+  glnx_unref_object OstreeMutableTree *subdir = NULL;
   GError *error = NULL;
   g_assert_null (ostree_mutable_tree_get_contents_checksum (tree));
 

@@ -41,9 +41,9 @@ gboolean
 ot_admin_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
-  gs_unref_object OstreeDeployment *deployment = NULL;
+  glnx_unref_object OstreeDeployment *deployment = NULL;
   g_autoptr(GFile) deployment_dir = NULL;
   gs_unref_ptrarray GPtrArray *modified = NULL;
   gs_unref_ptrarray GPtrArray *removed = NULL;

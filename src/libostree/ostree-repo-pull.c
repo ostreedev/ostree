@@ -964,7 +964,7 @@ scan_commit_object (OtPullData         *pull_data,
 
   if (pull_data->gpg_verify)
     {
-      gs_unref_object OstreeGpgVerifyResult *result = NULL;
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
 
       result = ostree_repo_verify_commit_ext (pull_data->repo,
                                               checksum,
@@ -1640,7 +1640,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gs_unref_hashtable GHashTable *requested_refs_to_fetch = NULL;
   gs_unref_hashtable GHashTable *commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
-  gs_unref_object OstreeMetalink *metalink = NULL;
+  glnx_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   GKeyFile *remote_config = NULL;

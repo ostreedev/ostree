@@ -35,7 +35,7 @@ gboolean
 ostree_builtin_rev_parse (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev = "master";
   int i;

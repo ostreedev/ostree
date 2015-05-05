@@ -169,7 +169,7 @@ print_object (OstreeRepo          *repo,
 
   if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      gs_unref_object OstreeGpgVerifyResult *result = NULL;
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
       GError *local_error = NULL;
       g_autoptr(GFile) gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
 
@@ -246,7 +246,7 @@ gboolean
 ostree_builtin_show (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *rev;
   g_autofree char *resolved_rev = NULL;

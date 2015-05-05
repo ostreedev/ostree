@@ -332,7 +332,7 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   const char *dirpath;
   OtTrivialHttpd appstruct = { 0, };
   OtTrivialHttpd *app = &appstruct;
-  gs_unref_object SoupServer *server = NULL;
+  glnx_unref_object SoupServer *server = NULL;
   g_autoptr(GFileMonitor) dirmon = NULL;
 
   context = g_option_context_new ("[DIR] - Simple webserver");

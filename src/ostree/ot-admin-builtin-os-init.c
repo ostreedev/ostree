@@ -38,7 +38,7 @@ gboolean
 ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
   g_autoptr(GFile) deploy_dir = NULL;

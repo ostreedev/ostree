@@ -56,7 +56,7 @@ gboolean
 ostree_builtin_config (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   GOptionContext *context = NULL;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *op;
   const char *section_key;

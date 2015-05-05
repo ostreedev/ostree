@@ -39,10 +39,10 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
   gboolean ret = FALSE;
   guint bootversion;
   g_autoptr(GFile) subpath = NULL;
-  gs_unref_object OstreeSePolicy *sepolicy = NULL;
+  glnx_unref_object OstreeSePolicy *sepolicy = NULL;
   gs_unref_ptrarray GPtrArray *deployments = NULL;
   GOptionContext *context = NULL;
-  gs_unref_object OstreeSysroot *sysroot = NULL;
+  glnx_unref_object OstreeSysroot *sysroot = NULL;
   g_autoptr(GFile) deployment_path = NULL;
 
   context = g_option_context_new ("[BOOTVERSION] - generate GRUB2 configuration from given BLS entries");

@@ -493,7 +493,7 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
                                       GError                **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   char *refs_to_fetch[] = { self->origin_ref, NULL };
   const char *from_revision = NULL;
   g_autofree char *new_revision = NULL;
@@ -564,7 +564,7 @@ ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
                                 GError                **error)
 {
   gboolean ret = FALSE;
-  gs_unref_object OstreeDeployment *new_deployment = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
 
   if (!ostree_sysroot_deploy_tree (self->sysroot, self->osname,
                                    self->new_revision,

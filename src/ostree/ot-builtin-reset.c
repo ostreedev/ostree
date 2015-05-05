@@ -56,7 +56,7 @@ ostree_builtin_reset (int           argc,
                       GError      **error)
 {
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   gboolean ret = FALSE;
   const char *ref;
   const char *target = NULL;

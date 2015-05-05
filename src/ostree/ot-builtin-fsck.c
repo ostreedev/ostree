@@ -239,7 +239,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
 {
   gboolean ret = FALSE;
   GOptionContext *context;
-  gs_unref_object OstreeRepo *repo = NULL;
+  glnx_unref_object OstreeRepo *repo = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
   gboolean found_corruption = FALSE;
