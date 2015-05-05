@@ -129,7 +129,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
       goto out;
 
     { g_autofree char *new_refspec = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
-      gs_unref_keyfile GKeyFile *new_origin = NULL;
+      g_autoptr(GKeyFile) new_origin = NULL;
       g_autoptr(GFile) origin_path = NULL;
       
       new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
