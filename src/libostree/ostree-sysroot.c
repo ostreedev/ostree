@@ -1174,7 +1174,6 @@ ostree_sysroot_lock (OstreeSysroot     *self,
 /**
  * ostree_sysroot_unlock:
  * @self: Self
- * @error: Error
  *
  * Clear the lock previously acquired with ostree_sysroot_lock().  It
  * is safe to call this function if the lock has not been previously
