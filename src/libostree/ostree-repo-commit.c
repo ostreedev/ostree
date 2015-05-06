@@ -1048,7 +1048,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
-  /* We used to create a `transaction` symbolic link, but it's not
+  /* We used to create a `transaction` symbolic link, but it's now
    * obsoleted by the per-commit .commitpartial files.  We no longer
    * create it, but let's still read it if it exists, as well as
    * unlink it when we're done.
@@ -1056,7 +1056,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
   if (fstatat (self->repo_dir_fd, "transaction", &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
     {
       if (errno == ENOENT)
-        ret_transaction_resume = TRUE;
+        ret_transaction_resume = FALSE;
       else
         {
           glnx_set_error_from_errno (error);
@@ -1064,7 +1064,7 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
         }
     }
   else 
-    ret_transaction_resume = FALSE;
+    ret_transaction_resume = TRUE;
 
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
