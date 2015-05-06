@@ -2063,7 +2063,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
           malloced_size = g_new0 (guint64, 1);
           *malloced_size = commit_size;
-          g_hash_table_insert (pull_data->expected_commit_sizes, contents, malloced_size);
+          g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (contents), malloced_size);
         }
       else
         {
