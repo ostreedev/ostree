@@ -57,4 +57,8 @@ gboolean ot_openat_read_stream (int             dfd,
                                 GCancellable   *cancellable,
                                 GError        **error);
 
+gboolean ot_ensure_unlinked_at (int dfd,
+                                const char *path,
+                                GError **error);
+
 G_END_DECLS
