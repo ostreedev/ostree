@@ -4004,7 +4004,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 
       g_variant_builder_add_value (refs_builder, 
                                    g_variant_new ("(s(t@ay@a{sv}))", ref,
-                                                  g_variant_get_size (commit_obj),
+                                                  (guint64) g_variant_get_size (commit_obj),
                                                   ostree_checksum_to_bytes_v (commit),
                                                   ot_gvariant_new_empty_string_dict ()));
     }

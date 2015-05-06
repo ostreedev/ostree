@@ -1372,7 +1372,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       delta_part_header = g_variant_new ("(u@aytt@ay)",
                                          OSTREE_DELTAPART_VERSION,
                                          ot_gvariant_new_ay_bytes (checksum_bytes),
-                                         g_variant_get_size (delta_part),
+                                         (guint64) g_variant_get_size (delta_part),
                                          part_builder->uncompressed_size,
                                          ot_gvariant_new_ay_bytes (objtype_checksum_array));
       g_variant_builder_add_value (part_headers, g_variant_ref (delta_part_header));
