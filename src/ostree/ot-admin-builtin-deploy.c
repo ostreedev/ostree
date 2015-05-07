@@ -79,7 +79,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
 
   refspec = argv[1];
 
-  if (!ostree_sysroot_lock (sysroot, error))
+  if (!ot_admin_sysroot_lock (sysroot, error))
     goto out;
 
   if (!ostree_sysroot_load (sysroot, cancellable, error))

@@ -41,5 +41,9 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
                                  int             index,
                                  GError        **error);
 
+gboolean
+ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
+                       GError        **error);
+
 
 G_END_DECLS

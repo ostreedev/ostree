@@ -63,6 +63,16 @@ char *ostree_sysroot_get_deployment_dirpath (OstreeSysroot    *self,
 GFile * ostree_sysroot_get_deployment_origin_path (GFile   *deployment_path);
 
 gboolean ostree_sysroot_lock (OstreeSysroot  *self, GError **error);
+gboolean ostree_sysroot_try_lock (OstreeSysroot         *self,
+                                  gboolean              *out_acquired,
+                                  GError               **error);
+void     ostree_sysroot_lock_async (OstreeSysroot         *self,
+                                    GCancellable          *cancellable,
+                                    GAsyncReadyCallback    callback,
+                                    gpointer               user_data);
+gboolean ostree_sysroot_lock_finish (OstreeSysroot         *self,
+                                     GAsyncResult          *result,
+                                     GError               **error);
 void ostree_sysroot_unlock (OstreeSysroot  *self);
 
 gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,

@@ -1171,6 +1171,55 @@ ostree_sysroot_lock (OstreeSysroot     *self,
 }
 
 /**
+ * ostree_sysroot_try_lock:
+ * @self: Self
+ * @out_acquired: (out): Whether or not the lock has been acquired
+ * @error: Error
+ *
+ * Try to acquire an exclusive multi-process write lock for @self.  If
+ * another process holds the lock, this function will return
+ * immediately, setting @out_acquired to %FALSE, and returning %TRUE
+ * (and no error).
+ *
+ * Release the lock with ostree_sysroot_unlock().  The lock will also
+ * be released if @self is deallocated.
+ */
+gboolean
+ostree_sysroot_try_lock (OstreeSysroot         *self,
+                         gboolean              *out_acquired,
+                         GError               **error)
+{
+  gboolean ret = FALSE;
+  GError *local_error = NULL;
+
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
+
+  /* Note use of LOCK_NB */
+  if (!glnx_make_lock_file (self->sysroot_fd, OSTREE_SYSROOT_LOCKFILE,
+                            LOCK_EX | LOCK_NB, &self->lock, &local_error))
+    {
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+        {
+          *out_acquired = FALSE;
+        }
+      else
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+    }
+  else
+    {
+      *out_acquired = TRUE;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
  * ostree_sysroot_unlock:
  * @self: Self
  *
@@ -1182,6 +1231,61 @@ void
 ostree_sysroot_unlock (OstreeSysroot  *self)
 {
   glnx_release_lock_file (&self->lock);
+}
+
+static void
+lock_in_thread (GTask            *task,
+                gpointer          source,
+                gpointer          task_data,
+                GCancellable     *cancellable)
+{
+  GError *local_error = NULL;
+  OstreeSysroot *self = source;
+
+  if (!ostree_sysroot_lock (self, &local_error))
+    goto out;
+
+ out:
+  if (local_error)
+    g_task_return_error (task, local_error);
+  else
+    g_task_return_boolean (task, TRUE);
+}
+
+/**
+ * ostree_sysroot_lock_async:
+ * @self: Self
+ * @cancellable: Cancellable
+ * @callback: Callback
+ * @user_data: User data
+ * 
+ * An asynchronous version of ostree_sysroot_lock().
+ */
+void
+ostree_sysroot_lock_async (OstreeSysroot         *self,
+                           GCancellable          *cancellable,
+                           GAsyncReadyCallback    callback,
+                           gpointer               user_data)
+{
+  g_autoptr(GTask) task = g_task_new (self, cancellable, callback, user_data);
+  g_task_run_in_thread (task, lock_in_thread);
+}
+
+/**
+ * ostree_sysroot_lock_finish:
+ * @self: Self
+ * @result: Result
+ * @error: Error
+ * 
+ * Call when ostree_sysroot_lock_async() is ready.
+ */
+gboolean
+ostree_sysroot_lock_finish (OstreeSysroot         *self,
+                            GAsyncResult          *result,
+                            GError               **error)
+{
+  g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
+  return g_task_propagate_boolean ((GTask*)result, error);
 }
 
 /**
