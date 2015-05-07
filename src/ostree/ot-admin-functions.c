@@ -96,3 +96,62 @@ ot_admin_get_indexed_deployment (OstreeSysroot  *sysroot,
   
   return g_object_ref (current_deployments->pdata[index]);
 }
+
+struct ContextState {
+  GMainContext *mainctx;
+  gboolean running;
+};
+
+static gboolean
+on_sysroot_lock_timeout (gpointer user_data)
+{
+  g_print ("Waiting for sysroot lock...\n");
+  return TRUE;
+}
+
+static void
+on_sysroot_lock_acquired (OstreeSysroot       *sysroot,
+                          GAsyncResult        *result,
+                          struct ContextState *state)
+{
+  state->running = FALSE;
+  g_main_context_wakeup (state->mainctx);
+}
+
+gboolean
+ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
+                       GError        **error)
+{
+  gboolean ret = FALSE;
+  gboolean acquired;
+  struct ContextState state = {
+    .mainctx = g_main_context_new (),
+    .running = TRUE,
+  };
+
+  g_main_context_push_thread_default (state.mainctx);
+
+  if (!ostree_sysroot_try_lock (sysroot, &acquired, error))
+    goto out;
+
+  if (!acquired)
+    {
+      GSource *timeout_src = g_timeout_source_new_seconds (3);
+      g_source_set_callback (timeout_src, (GSourceFunc)on_sysroot_lock_timeout, &state, NULL);
+      g_source_attach (timeout_src, state.mainctx);
+      g_source_unref (timeout_src);
+      
+      on_sysroot_lock_timeout (&state);
+
+      ostree_sysroot_lock_async (sysroot, NULL, (GAsyncReadyCallback)on_sysroot_lock_acquired, &state);
+
+      while (state.running)
+        g_main_context_iteration (state.mainctx, TRUE);
+    }
+
+  ret = TRUE;
+ out:
+  g_main_context_pop_thread_default (state.mainctx);
+  g_main_context_unref (state.mainctx);
+  return ret;
+}
