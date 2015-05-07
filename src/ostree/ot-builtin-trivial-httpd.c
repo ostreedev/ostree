@@ -35,6 +35,7 @@ static char *opt_port_file = NULL;
 static gboolean opt_daemonize;
 static gboolean opt_autoexit;
 static gboolean opt_force_ranges;
+static gint opt_port = 0;
 
 typedef struct {
   GFile *root;
@@ -44,6 +45,7 @@ typedef struct {
 static GOptionEntry options[] = {
   { "daemonize", 'd', 0, G_OPTION_ARG_NONE, &opt_daemonize, "Fork into background when ready", NULL },
   { "autoexit", 0, 0, G_OPTION_ARG_NONE, &opt_autoexit, "Automatically exit when directory is deleted", NULL },
+  { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", NULL },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
   { NULL }
@@ -349,10 +351,10 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
 
 #if SOUP_CHECK_VERSION(2, 48, 0)
   server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
-  if (!soup_server_listen_all (server, 0, 0, error))
+  if (!soup_server_listen_all (server, opt_port, 0, error))
     goto out;
 #else
-  server = soup_server_new (SOUP_SERVER_PORT, 0,
+  server = soup_server_new (SOUP_SERVER_PORT, opt_port,
                             SOUP_SERVER_SERVER_HEADER, "ostree-httpd ",
                             NULL);
 #endif
