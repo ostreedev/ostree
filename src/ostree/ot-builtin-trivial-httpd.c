@@ -126,17 +126,17 @@ is_safe_to_access (struct stat *stbuf)
 static void
 close_socket (SoupMessage *msg, gpointer user_data)
 {
-	SoupSocket *sock = user_data;
-	int sockfd;
+  SoupSocket *sock = user_data;
+  int sockfd;
 
-	/* Actually calling soup_socket_disconnect() here would cause
-	 * us to leak memory, so just shutdown the socket instead.
-	 */
-	sockfd = soup_socket_get_fd (sock);
+  /* Actually calling soup_socket_disconnect() here would cause
+   * us to leak memory, so just shutdown the socket instead.
+   */
+  sockfd = soup_socket_get_fd (sock);
 #ifdef G_OS_WIN32
-	shutdown (sockfd, SD_SEND);
+  shutdown (sockfd, SD_SEND);
 #else
-	shutdown (sockfd, SHUT_WR);
+  shutdown (sockfd, SHUT_WR);
 #endif
 }
 
@@ -436,9 +436,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
       g_autoptr(GFileInfo) info = NULL;
 
       info = g_file_query_info (app->root,
-                               G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               cancellable, error);
+                                G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
+                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                cancellable, error);
       if (!info)
         goto out;
 
