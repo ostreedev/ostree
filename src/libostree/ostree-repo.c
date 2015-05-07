@@ -3108,7 +3108,6 @@ sign_data (OstreeRepo     *self,
   gpgme_key_t key = NULL;
   gpgme_data_t commit_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
-  int signature_fd = -1;
   GMappedFile *signature_file = NULL;
   
   if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
@@ -3179,22 +3178,9 @@ sign_data (OstreeRepo     *self,
         goto out;
       }
   }
-  
-  signature_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)tmp_signature_output);
-  if (signature_fd < 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Unable to open signature file");
-      goto out;
-    }
-  
-  if ((err = gpgme_data_new_from_fd (&signature_buffer, signature_fd)) != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Failed to create buffer for signature file: ");
-      goto out;
-    }
-  
+
+  signature_buffer = ot_gpgme_data_output (tmp_signature_output);
+
   if ((err = gpgme_op_sign (context, commit_buffer, signature_buffer, GPGME_SIG_MODE_DETACH))
       != GPG_ERR_NO_ERROR)
     {
