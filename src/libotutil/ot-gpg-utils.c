@@ -34,7 +34,7 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
 
   /* XXX This list is incomplete.  Add cases as needed. */
 
-  switch (gpg_error)
+  switch (gpgme_err_code (gpg_error))
     {
       /* special case - shouldn't be here */
       case GPG_ERR_NO_ERROR:
