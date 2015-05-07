@@ -138,3 +138,274 @@ out:
 
   return ret;
 }
+
+/**** The functions below are based on seahorse-gpgme-data.c ****/
+
+static void
+set_errno_from_gio_error (GError *error)
+{
+  /* This is the reverse of g_io_error_from_errno() */
+
+  g_return_if_fail (error != NULL);
+
+  switch (error->code)
+    {
+      case G_IO_ERROR_FAILED:
+        errno = EIO;
+        break;
+      case G_IO_ERROR_NOT_FOUND:
+        errno = ENOENT;
+        break;
+      case G_IO_ERROR_EXISTS:
+        errno = EEXIST;
+        break;
+      case G_IO_ERROR_IS_DIRECTORY:
+        errno = EISDIR;
+        break;
+      case G_IO_ERROR_NOT_DIRECTORY:
+        errno = ENOTDIR;
+        break;
+      case G_IO_ERROR_NOT_EMPTY:
+        errno = ENOTEMPTY;
+        break;
+      case G_IO_ERROR_NOT_REGULAR_FILE:
+      case G_IO_ERROR_NOT_SYMBOLIC_LINK:
+      case G_IO_ERROR_NOT_MOUNTABLE_FILE:
+        errno = EBADF;
+        break;
+      case G_IO_ERROR_FILENAME_TOO_LONG:
+        errno = ENAMETOOLONG;
+        break;
+      case G_IO_ERROR_INVALID_FILENAME:
+        errno = EINVAL;
+        break;
+      case G_IO_ERROR_TOO_MANY_LINKS:
+        errno = EMLINK;
+        break;
+      case G_IO_ERROR_NO_SPACE:
+        errno = ENOSPC;
+        break;
+      case G_IO_ERROR_INVALID_ARGUMENT:
+        errno = EINVAL;
+        break;
+      case G_IO_ERROR_PERMISSION_DENIED:
+        errno = EPERM;
+        break;
+      case G_IO_ERROR_NOT_SUPPORTED:
+        errno = ENOTSUP;
+        break;
+      case G_IO_ERROR_NOT_MOUNTED:
+        errno = ENOENT;
+        break;
+      case G_IO_ERROR_ALREADY_MOUNTED:
+        errno = EALREADY;
+        break;
+      case G_IO_ERROR_CLOSED:
+        errno = EBADF;
+        break;
+      case G_IO_ERROR_CANCELLED:
+        errno = EINTR;
+        break;
+      case G_IO_ERROR_PENDING:
+        errno = EALREADY;
+        break;
+      case G_IO_ERROR_READ_ONLY:
+        errno = EACCES;
+        break;
+      case G_IO_ERROR_CANT_CREATE_BACKUP:
+        errno = EIO;
+        break;
+      case G_IO_ERROR_WRONG_ETAG:
+        errno = EACCES;
+        break;
+      case G_IO_ERROR_TIMED_OUT:
+        errno = EIO;
+        break;
+      case G_IO_ERROR_WOULD_RECURSE:
+        errno = ELOOP;
+        break;
+      case G_IO_ERROR_BUSY:
+        errno = EBUSY;
+        break;
+      case G_IO_ERROR_WOULD_BLOCK:
+        errno = EWOULDBLOCK;
+        break;
+      case G_IO_ERROR_HOST_NOT_FOUND:
+        errno = EHOSTDOWN;
+        break;
+      case G_IO_ERROR_WOULD_MERGE:
+        errno = EIO;
+        break;
+      case G_IO_ERROR_FAILED_HANDLED:
+        errno = 0;
+        break;
+      default:
+        errno = EIO;
+        break;
+    }
+}
+
+static ssize_t
+data_read_cb (void *handle, void *buffer, size_t size)
+{
+  GInputStream *input_stream = handle;
+  gsize bytes_read;
+  GError *local_error = NULL;
+
+  g_return_val_if_fail (G_IS_INPUT_STREAM (input_stream), -1);
+
+  g_input_stream_read_all (input_stream, buffer, size,
+                           &bytes_read, NULL, &local_error);
+
+  if (local_error != NULL)
+    {
+      set_errno_from_gio_error (local_error);
+      g_clear_error (&local_error);
+      bytes_read = -1;
+    }
+
+  return bytes_read;
+}
+
+static ssize_t
+data_write_cb (void *handle, const void *buffer, size_t size)
+{
+  GOutputStream *output_stream = handle;
+  gsize bytes_written;
+  GError *local_error = NULL;
+
+  g_return_val_if_fail (G_IS_OUTPUT_STREAM (output_stream), -1);
+
+  if (g_output_stream_write_all (output_stream, buffer, size,
+                                 &bytes_written, NULL, &local_error))
+    {
+      g_output_stream_flush (output_stream, NULL, &local_error);
+    }
+
+  if (local_error != NULL)
+    {
+      set_errno_from_gio_error (local_error);
+      g_clear_error (&local_error);
+      bytes_written = -1;
+    }
+
+  return bytes_written;
+}
+
+static off_t
+data_seek_cb (void *handle, off_t offset, int whence)
+{
+  GObject *stream = handle;
+  GSeekable *seekable;
+  GSeekType seek_type = 0;
+  off_t position = -1;
+  GError *local_error = NULL;
+
+  g_return_val_if_fail (G_IS_INPUT_STREAM (stream) ||
+                        G_IS_OUTPUT_STREAM (stream), -1);
+
+  if (!G_IS_SEEKABLE (stream)) {
+    errno = EOPNOTSUPP;
+    goto out;
+  }
+
+  switch (whence)
+    {
+      case SEEK_SET:
+        seek_type = G_SEEK_SET;
+        break;
+      case SEEK_CUR:
+        seek_type = G_SEEK_CUR;
+        break;
+      case SEEK_END:
+        seek_type = G_SEEK_END;
+        break;
+      default:
+        g_assert_not_reached ();
+    }
+
+  seekable = G_SEEKABLE (stream);
+
+  if (!g_seekable_seek (seekable, offset, seek_type, NULL, &local_error))
+    {
+      set_errno_from_gio_error (local_error);
+      g_clear_error (&local_error);
+      goto out;
+    }
+
+  position = g_seekable_tell (seekable);
+
+out:
+  return position;
+}
+
+static void
+data_release_cb (void *handle)
+{
+  GObject *stream = handle;
+
+  g_return_if_fail (G_IS_INPUT_STREAM (stream) ||
+                    G_IS_OUTPUT_STREAM (stream));
+
+  g_object_unref (stream);
+}
+
+static struct gpgme_data_cbs data_input_cbs = {
+  data_read_cb,
+  NULL,
+  data_seek_cb,
+  data_release_cb
+};
+
+static struct gpgme_data_cbs data_output_cbs = {
+  NULL,
+  data_write_cb,
+  data_seek_cb,
+  data_release_cb
+};
+
+gpgme_data_t
+ot_gpgme_data_input (GInputStream *input_stream)
+{
+  gpgme_data_t data = NULL;
+  gpgme_error_t gpg_error;
+
+  g_return_val_if_fail (G_IS_INPUT_STREAM (input_stream), NULL);
+
+  gpg_error = gpgme_data_new_from_cbs (&data, &data_input_cbs, input_stream);
+
+  /* The only possible error is ENOMEM, which we abort on. */
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      g_assert (gpgme_err_code (gpg_error) == GPG_ERR_ENOMEM);
+      ot_gpgme_error_to_gio_error (gpg_error, NULL);
+      g_assert_not_reached ();
+    }
+
+  g_object_ref (input_stream);
+
+  return data;
+}
+
+gpgme_data_t
+ot_gpgme_data_output (GOutputStream *output_stream)
+{
+  gpgme_data_t data = NULL;
+  gpgme_error_t gpg_error;
+
+  g_return_val_if_fail (G_IS_OUTPUT_STREAM (output_stream), NULL);
+
+  gpg_error = gpgme_data_new_from_cbs (&data, &data_output_cbs, output_stream);
+
+  /* The only possible error is ENOMEM, which we abort on. */
+  if (gpg_error != GPG_ERR_NO_ERROR)
+    {
+      g_assert (gpgme_err_code (gpg_error) == GPG_ERR_ENOMEM);
+      ot_gpgme_error_to_gio_error (gpg_error, NULL);
+      g_assert_not_reached ();
+    }
+
+  g_object_ref (output_stream);
+
+  return data;
+}

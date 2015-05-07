@@ -34,4 +34,7 @@ gboolean ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
                                     GCancellable   *cancellable,
                                     GError        **error);
 
+gpgme_data_t ot_gpgme_data_input (GInputStream *input_stream);
+gpgme_data_t ot_gpgme_data_output (GOutputStream *output_stream);
+
 G_END_DECLS
