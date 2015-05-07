@@ -205,4 +205,3 @@ ot_ensure_unlinked_at (int dfd,
     }
   return TRUE;
 }
-
