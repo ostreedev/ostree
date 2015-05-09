@@ -98,6 +98,17 @@ Boston, MA 02111-1307, USA.
                     Disable GPG verification.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--gpg-import</option>=FILE</term>
+
+                <listitem><para>
+                  Import one or more GPG keys from a file.
+                </para><para>
+                  Equivalent to
+                  <command>ostree remote gpg-import --keyring=FILE</command>.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 

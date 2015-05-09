@@ -29,11 +29,13 @@
 static char **opt_set;
 static gboolean opt_no_gpg_verify;
 static gboolean opt_if_not_exists;
+static char *opt_gpg_import;
 
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
+  { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
   { NULL }
 };
 
@@ -106,6 +108,33 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
                                   g_variant_builder_end (optbuilder),
                                   cancellable, error))
     goto out;
+
+  /* This is just a convenience option and is not as flexible as the full
+   * "ostree remote gpg-import" command.  It imports all keys from a file,
+   * which is likely the most common case.
+   *
+   * XXX Not sure this interacts well with if-not-exists since we don't
+   *     know whether the remote already existed.  We import regardless. */
+  if (opt_gpg_import != NULL)
+    {
+      g_autoptr(GFile) file = NULL;
+      g_autoptr(GInputStream) input_stream = NULL;
+      guint imported = 0;
+
+      file = g_file_new_for_path (opt_gpg_import);
+      input_stream = (GInputStream *) g_file_read (file, cancellable, error);
+
+      if (input_stream == NULL)
+        goto out;
+
+      if (!ostree_repo_remote_gpg_import (repo, remote_name, input_stream,
+                                          NULL, &imported, cancellable, error))
+        goto out;
+
+      /* XXX If we ever add internationalization, use ngettext() here. */
+      g_print ("Imported %u GPG key%s to remote \"%s\"\n",
+               imported, (imported == 1) ? "" : "s", remote_name);
+    }
 
   ret = TRUE;
  out:
