@@ -1245,6 +1245,9 @@ lock_in_thread (GTask            *task,
   if (!ostree_sysroot_lock (self, &local_error))
     goto out;
 
+  if (g_cancellable_set_error_if_cancelled (cancellable, &local_error))
+    ostree_sysroot_unlock (self);
+  
  out:
   if (local_error)
     g_task_return_error (task, local_error);
