@@ -1956,7 +1956,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
 
           additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-          deltas = g_variant_lookup_value (additional_metadata, "ostree.static-deltas", G_VARIANT_TYPE ("a{sv}"));
+          deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
           n = deltas ? g_variant_n_children (deltas) : 0;
           for (i = 0; i < n; i++)
             {

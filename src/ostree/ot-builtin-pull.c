@@ -29,11 +29,13 @@
 
 static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
+static gboolean opt_disable_static_deltas;
 static char* opt_subpath;
 static int opt_depth = 0;
  
  static GOptionEntry options[] = {
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+   { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
@@ -135,6 +137,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
    
+    g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
+                           g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
+
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
       goto out;
