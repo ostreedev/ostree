@@ -96,6 +96,10 @@ cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo pull --disable-static-deltas origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+
 rm checkout-origin-main -rf
 $OSTREE checkout origin:main checkout-origin-main
 cd checkout-origin-main
