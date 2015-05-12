@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 /* 1 byte for object type, 32 bytes for checksum */
 #define OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN 33
 
+#define OSTREE_SUMMARY_STATIC_DELTAS "ostree.static-deltas"
+
 /**
  * OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0:
  *

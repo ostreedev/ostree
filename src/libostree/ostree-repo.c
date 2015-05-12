@@ -33,6 +33,7 @@
 #include "ostree-repo-file.h"
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
+#include "ostree-repo-static-delta-private.h"
 
 #include <locale.h>
 #include <glib/gstdio.h>
@@ -3668,7 +3669,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         g_variant_dict_insert_value (&deltas_builder, delta_names->pdata[i], ot_gvariant_new_bytearray (csum, 32));
       }
 
-    g_variant_dict_insert_value (&additional_metadata_builder, "ostree.static-deltas", g_variant_dict_end (&deltas_builder));
+    g_variant_dict_insert_value (&additional_metadata_builder, OSTREE_SUMMARY_STATIC_DELTAS, g_variant_dict_end (&deltas_builder));
   }
 
   {
