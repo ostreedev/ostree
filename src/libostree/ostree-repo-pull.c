@@ -1629,6 +1629,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **refs_to_fetch = NULL;
   GSource *update_timeout = NULL;
   GSource *idle_src;
+  gboolean disable_static_deltas = FALSE;
 
   if (options)
     {
@@ -1640,6 +1641,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
+      (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2095,7 +2097,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
 
 #ifdef BUILDOPT_STATIC_DELTAS
-      if (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0)
+      if (!disable_static_deltas && (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
                                                      &delta_superblock, cancellable, error))
