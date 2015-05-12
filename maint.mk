@@ -103,43 +103,6 @@ else
 endif
 my_distdir = $(PACKAGE)-$(VERSION)
 
-# Old releases are stored here.
-release_archive_dir ?= ../release
-
-# If RELEASE_TYPE is undefined, but RELEASE is, use its second word.
-# But overwrite VERSION.
-ifdef RELEASE
-  VERSION := $(word 1, $(RELEASE))
-  RELEASE_TYPE ?= $(word 2, $(RELEASE))
-endif
-
-# Validate and return $(RELEASE_TYPE), or die.
-RELEASE_TYPES = alpha beta stable
-release-type = $(call member-check,RELEASE_TYPE,$(RELEASE_TYPES))
-
-# Override gnu_rel_host and url_dir_list in cfg.mk if these are not right.
-# Use alpha.gnu.org for alpha and beta releases.
-# Use ftp.gnu.org for stable releases.
-gnu_ftp_host-alpha = alpha.gnu.org
-gnu_ftp_host-beta = alpha.gnu.org
-gnu_ftp_host-stable = ftp.gnu.org
-gnu_rel_host ?= $(gnu_ftp_host-$(release-type))
-
-url_dir_list ?= $(if $(call _equal,$(gnu_rel_host),ftp.gnu.org),	\
-                     http://ftpmirror.gnu.org/$(PACKAGE),		\
-                     ftp://$(gnu_rel_host)/gnu/$(PACKAGE))
-
-# Override this in cfg.mk if you are using a different format in your
-# NEWS file.
-today = $(shell date +%Y-%m-%d)
-
-# Select which lines of NEWS are searched for $(news-check-regexp).
-# This is a sed line number spec.  The default says that we search
-# lines 1..10 of NEWS for $(news-check-regexp).
-# If you want to search only line 3 or only lines 20-22, use "3" or "20,22".
-news-check-lines-spec ?= 1,10
-news-check-regexp ?= '^\*.* $(VERSION_REGEXP) \($(today)\)'
-
 # Prevent programs like 'sort' from considering distinct strings to be equal.
 # Doing it here saves us from having to set LC_ALL elsewhere in this file.
 export LC_ALL = C
@@ -1050,19 +1013,6 @@ NEWS_hash =								\
      | md5sum -								\
      | $(SED) 's/ .*//')
 
-# Ensure that we don't accidentally insert an entry into an old NEWS block.
-sc_immutable_NEWS:
-	@if test -f $(srcdir)/NEWS; then				\
-	  test "$(NEWS_hash)" = '$(old_NEWS_hash)' && : ||		\
-	    { echo '$(ME): you have modified old NEWS' 1>&2; exit 1; };	\
-	fi
-
-# Update the hash stored above.  Do this after each release and
-# for any corrections to old entries.
-update-NEWS-hash: NEWS
-	perl -pi -e 's/^(old_NEWS_hash[ \t]+:?=[ \t]+).*/$${1}'"$(NEWS_hash)/" \
-	  $(srcdir)/cfg.mk
-
 # Ensure that we use only the standard $(VAR) notation,
 # not @...@ in Makefile.am, now that we can rely on automake
 # to emit a definition for each substituted variable.
@@ -1150,22 +1100,6 @@ sc_makefile_path_separator_check:
 	in_vc_files='akefile|\.mk$$'					\
 	halt=$(msg)							\
 	  $(_sc_search_regexp)
-
-# Check that 'make alpha' will not fail at the end of the process,
-# i.e., when pkg-M.N.tar.xz already exists (either in "." or in ../release)
-# and is read-only.
-writable-files:
-	$(AM_V_GEN)if test -d $(release_archive_dir); then		\
-	  for file in $(DIST_ARCHIVES); do				\
-	    for p in ./ $(release_archive_dir)/; do			\
-	      test -e $$p$$file || continue;				\
-	      test -w $$p$$file						\
-		|| { echo ERROR: $$p$$file is not writable; fail=1; };	\
-	    done;							\
-	  done;								\
-	  test "$$fail" && exit 1 || : ;				\
-	else :;								\
-	fi
 
 v_etc_file = $(gnulib_dir)/lib/version-etc.c
 sample-test = tests/sample-test
@@ -1269,96 +1203,6 @@ vc-diff-check:
 	  rm vc-diffs;						\
 	fi
 
-rel-files = $(DIST_ARCHIVES)
-
-gnulib_dir ?= $(srcdir)/gnulib
-gnulib-version = $$(cd $(gnulib_dir)				\
-                    && { git describe || git rev-parse --short=10 HEAD; } )
-bootstrap-tools ?= autoconf,automake,gnulib
-
-gpgv = $$(gpgv2 --version >/dev/null && echo gpgv2 || echo gpgv)
-# If it's not already specified, derive the GPG key ID from
-# the signed tag we've just applied to mark this release.
-gpg_key_ID ?=								\
-  $$(cd $(srcdir)							\
-     && git cat-file tag v$(VERSION)					\
-        | $(gpgv) --status-fd 1 --keyring /dev/null - - 2>/dev/null	\
-        | awk '/^\[GNUPG:\] ERRSIG / {print $$3; exit}')
-
-translation_project_ ?= coordinator@translationproject.org
-
-# Make info-gnu the default only for a stable release.
-announcement_Cc_stable = $(translation_project_), $(PACKAGE_BUGREPORT)
-announcement_mail_headers_stable =		\
-  To: info-gnu@gnu.org				\
-  Cc: $(announcement_Cc_)			\
-  Mail-Followup-To: $(PACKAGE_BUGREPORT)
-
-announcement_Cc_alpha = $(translation_project_)
-announcement_mail_headers_alpha =		\
-  To: $(PACKAGE_BUGREPORT)			\
-  Cc: $(announcement_Cc_)
-
-announcement_mail_Cc_beta = $(announcement_mail_Cc_alpha)
-announcement_mail_headers_beta = $(announcement_mail_headers_alpha)
-
-announcement_mail_Cc_ ?= $(announcement_mail_Cc_$(release-type))
-announcement_mail_headers_ ?= $(announcement_mail_headers_$(release-type))
-announcement: NEWS ChangeLog $(rel-files)
-# Not $(AM_V_GEN) since the output of this command serves as
-# announcement message: it would start with " GEN announcement".
-	$(AM_V_at)$(srcdir)/$(_build-aux)/announce-gen			\
-	    --mail-headers='$(announcement_mail_headers_)'		\
-	    --release-type=$(release-type)				\
-	    --package=$(PACKAGE)					\
-	    --prev=$(PREV_VERSION)					\
-	    --curr=$(VERSION)						\
-	    --gpg-key-id=$(gpg_key_ID)					\
-	    --srcdir=$(srcdir)						\
-	    --news=$(srcdir)/NEWS					\
-	    --bootstrap-tools=$(bootstrap-tools)			\
-	    $$(case ,$(bootstrap-tools), in (*,gnulib,*)		\
-	       echo --gnulib-version=$(gnulib-version);; esac)		\
-	    --no-print-checksums					\
-	    $(addprefix --url-dir=, $(url_dir_list))
-
-.PHONY: release-commit
-release-commit:
-	$(AM_V_GEN)cd $(srcdir)				\
-	  && $(_build-aux)/do-release-commit-and-tag	\
-	       -C $(abs_builddir) $(RELEASE)
-
-## ---------------- ##
-## Updating files.  ##
-## ---------------- ##
-
-ftp-gnu = ftp://ftp.gnu.org/gnu
-www-gnu = http://www.gnu.org
-
-upload_dest_dir_ ?= $(PACKAGE)
-upload_command =						\
-  $(srcdir)/$(_build-aux)/gnupload $(GNUPLOADFLAGS)		\
-  --to $(gnu_rel_host):$(upload_dest_dir_)			\
-  $(rel-files)
-emit_upload_commands:
-	@echo =====================================
-	@echo =====================================
-	@echo '$(upload_command)'
-	@echo '# send the ~/announce-$(my_distdir) e-mail'
-	@echo =====================================
-	@echo =====================================
-
-.PHONY: upload
-upload:
-	$(AM_V_GEN)$(upload_command)
-
-define emit-commit-log
-  printf '%s\n' 'maint: post-release administrivia' ''			\
-    '* NEWS: Add header line for next release.'				\
-    '* .prev-version: Record previous version.'				\
-    '* cfg.mk (old_NEWS_hash): Auto-update.'
-endef
-
 .PHONY: no-submodule-changes
 no-submodule-changes:
 	$(AM_V_GEN)if test -d $(srcdir)/.git				\
@@ -1391,73 +1235,6 @@ public-submodule-commit:
 	else								\
 	  : ;								\
 	fi
-# This rule has a high enough utility/cost ratio that it should be a
-# dependent of "check" by default.  However, some of us do occasionally
-# commit a temporary change that deliberately points to a non-public
-# submodule commit, and want to be able to use rules like "make check".
-# In that case, run e.g., "make check gl_public_submodule_commit="
-# to disable this test.
-gl_public_submodule_commit ?= public-submodule-commit
-check: $(gl_public_submodule_commit)
-
-.PHONY: alpha beta stable release
-ALL_RECURSIVE_TARGETS += alpha beta stable
-alpha beta stable: $(local-check) writable-files $(submodule-checks)
-	$(AM_V_GEN)test $@ = stable					\
-	  && { echo $(VERSION) | grep -E '^[0-9]+(\.[0-9]+)+$$'		\
-	       || { echo "invalid version string: $(VERSION)" 1>&2; exit 1;};}\
-	  || :
-	$(AM_V_at)$(MAKE) vc-diff-check
-	$(AM_V_at)$(MAKE) news-check
-	$(AM_V_at)$(MAKE) distcheck
-	$(AM_V_at)$(MAKE) dist
-	$(AM_V_at)$(MAKE) $(release-prep-hook) RELEASE_TYPE=$@
-	$(AM_V_at)$(MAKE) -s emit_upload_commands RELEASE_TYPE=$@
-
-release:
-	$(AM_V_GEN)$(MAKE) _version
-	$(AM_V_GEN)$(MAKE) $(release-type)
-
-# Override this in cfg.mk if you follow different procedures.
-release-prep-hook ?= release-prep
-
-gl_noteworthy_news_ = * Noteworthy changes in release ?.? (????-??-??) [?]
-.PHONY: release-prep
-release-prep:
-	$(AM_V_GEN)$(MAKE) --no-print-directory -s announcement \
-	  > ~/announce-$(my_distdir)
-	$(AM_V_at)if test -d $(release_archive_dir); then	\
-	  ln $(rel-files) $(release_archive_dir);		\
-	  chmod a-w $(rel-files);				\
-	fi
-	$(AM_V_at)echo $(VERSION) > $(prev_version_file)
-	$(AM_V_at)$(MAKE) update-NEWS-hash
-	$(AM_V_at)perl -pi						\
-	  -e '$$. == 3 and print "$(gl_noteworthy_news_)\n\n\n"'	\
-	  $(srcdir)/NEWS
-	$(AM_V_at)msg=$$($(emit-commit-log)) || exit 1;		\
-	cd $(srcdir) && $(VC) commit -m "$$msg" -a
-
-# Override this with e.g., -s $(srcdir)/some_other_name.texi
-# if the default $(PACKAGE)-derived name doesn't apply.
-gendocs_options_ ?=
-
-.PHONY: web-manual
-web-manual:
-	$(AM_V_GEN)test -z "$(manual_title)" \
-	  && { echo define manual_title in cfg.mk 1>&2; exit 1; } || :
-	$(AM_V_at)cd '$(srcdir)/doc'; \
-	  $(SHELL) ../$(_build-aux)/gendocs.sh $(gendocs_options_) \
-	     -o '$(abs_builddir)/doc/manual' \
-	     --email $(PACKAGE_BUGREPORT) $(PACKAGE) \
-	    "$(PACKAGE_NAME) - $(manual_title)"
-	$(AM_V_at)echo " *** Upload the doc/manual directory to web-cvs."
-
-.PHONY: web-manual-update
-web-manual-update:
-	$(AM_V_GEN)cd $(srcdir) \
-	  && $(_build-aux)/gnu-web-doc-update -C $(abs_builddir)
-
 
 # Code Coverage
 
