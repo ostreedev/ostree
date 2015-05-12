@@ -1501,7 +1501,7 @@ _ostree_parse_delta_name (const char  *delta_name,
                           char        **out_from,
                           char        **out_to)
 {
-  gs_strfreev char **parts = g_strsplit (delta_name, "-", 2);
+  g_auto(GStrv) parts = g_strsplit (delta_name, "-", 2);
 
   *out_from = *out_to = NULL;
   if (parts[0] && parts[1])

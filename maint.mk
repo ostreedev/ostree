@@ -1032,6 +1032,11 @@ sc_const_long_option:
 	halt='add "const" to the above declarations'			\
 	  $(_sc_search_regexp)
 
+sc_prohibit_gs_strfreev:
+	@prohibit='\bgs_strfreev\b' \
+	halt="do not use gs_strfreev; use g_autoptr instead"		\
+	  $(_sc_search_regexp)
+
 sc_prohibit_gs_unref:
 	@prohibit='\bgs_unref_(keyfile|variant*|ptrarray|hashtable|bytes|object)\b' \
 	halt="do not use gs_unref_*; use g_autoptr instead"		\
