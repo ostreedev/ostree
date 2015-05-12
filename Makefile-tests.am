@@ -169,8 +169,8 @@ tests_test_ot_tool_util_LDADD = $(TESTS_LDADD)
 tests_test_gpg_verify_result_SOURCES = \
 	src/libostree/ostree-gpg-verify-result-private.h \
 	tests/test-gpg-verify-result.c
-tests_test_gpg_verify_result_CFLAGS = $(TESTS_CFLAGS)
-tests_test_gpg_verify_result_LDADD = $(TESTS_LDADD)
+tests_test_gpg_verify_result_CFLAGS = $(TESTS_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS)
+tests_test_gpg_verify_result_LDADD = $(TESTS_LDADD) $(OT_INTERNAL_GPGME_LIBS)
 
 EXTRA_DIST += \
 	tests/gpg-verify-data/README.md \
