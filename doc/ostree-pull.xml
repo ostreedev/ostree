@@ -54,6 +54,52 @@ Boston, MA 02111-1307, USA.
     </refsynopsisdiv>
 
     <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--disable-fsync</option></term>
+
+                <listitem><para>
+                    Do no invoke fsync().
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--disable-static-deltas</option></term>
+
+                <listitem><para>
+                    Do not use static deltas.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--mirror</option></term>
+
+                <listitem><para>
+                    Write refs suitable for a mirror.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--subpath</option>=SUBPATH</term>
+
+                <listitem><para>
+                    Only pull the provided subpath.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--depth</option>=DEPTH</term>
+
+                <listitem><para>
+                    Traverse DEPTH parents (-1=infinite) (default: 0).
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
         <title>Description</title>
 
         <para>
