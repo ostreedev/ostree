@@ -48,7 +48,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GErr
   context = g_option_context_new ("PATH - Initialize a root filesystem");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           &sysroot, cancellable, error))
     goto out;
 

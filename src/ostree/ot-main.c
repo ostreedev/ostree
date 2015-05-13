@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include "ostree.h"
+#include "ot-admin-functions.h"
 #include "ot-main.h"
 #include "otutil.h"
 
@@ -360,6 +361,13 @@ ostree_admin_option_context_parse (GOptionContext *context,
       g_print ("%s\n", deployment_path);
 
       exit (EXIT_SUCCESS);
+    }
+
+  if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
+    {
+      /* Released when sysroot is finalized, or on process exit */
+      if (!ot_admin_sysroot_lock (sysroot, error))
+        goto out;
     }
 
   gs_transfer_out_value (out_sysroot, &sysroot);
