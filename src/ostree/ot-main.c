@@ -365,6 +365,7 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
   if ((flags & OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED) == 0)
     {
+      /* Released when sysroot is finalized, or on process exit */
       if (!ot_admin_sysroot_lock (sysroot, error))
         goto out;
     }
