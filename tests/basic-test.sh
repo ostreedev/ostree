@@ -394,10 +394,10 @@ if test "$(id -u)" != "0"; then
     cd ${test_tmpdir}
     rm -f expected-fail error-message
     $OSTREE init --mode=archive-z2 --repo=repo-noperm
-    chmod -w repo-noperm
+    chmod -w repo-noperm/objects
     $OSTREE --repo=repo-noperm pull-local repo 2> error-message || touch expected-fail
     assert_has_file expected-fail
     assert_file_has_content error-message "Permission denied"
-    chmod +w repo-noperm
+    chmod +w repo-noperm/objects
     echo "ok unwritable repo was caught"
 fi
