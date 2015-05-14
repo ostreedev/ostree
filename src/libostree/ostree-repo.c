@@ -1308,7 +1308,26 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
           goto out;
         }
     }
-  else if (errno != ENOENT)
+  else if (errno == ENOENT)
+    {
+      glnx_fd_close int fd = -1;
+
+      /* Create an empty pubring.gpg file prior to importing keys.  This
+       * prevents gpg2 from creating a pubring.kbx file in the new keybox
+       * format [1].  We want to stay with the older keyring format since
+       * its performance issues are not relevant here.
+       *
+       * [1] https://gnupg.org/faq/whats-new-in-2.1.html#keybox
+       */
+      fd = openat (target_temp_fd, "pubring.gpg",
+                   O_WRONLY | O_CREAT | O_CLOEXEC | O_NOCTTY, 0644);
+      if (fd == -1)
+        {
+          glnx_set_prefix_error_from_errno (error, "%s", "Unable to create pubring.gpg");
+          goto out;
+        }
+    }
+  else
     {
       glnx_set_prefix_error_from_errno (error, "%s", "Unable to copy remote's keyring");
       goto out;
