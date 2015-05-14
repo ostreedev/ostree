@@ -3806,9 +3806,9 @@ _ostree_repo_verify_commit_internal (OstreeRepo    *self,
                                      GError       **error)
 {
   OstreeGpgVerifyResult *result = NULL;
-  gs_unref_variant GVariant *commit_variant = NULL;
-  gs_unref_variant GVariant *metadata = NULL;
-  gs_unref_bytes GBytes *signed_data = NULL;
+  g_autoptr(GVariant) commit_variant = NULL;
+  g_autoptr(GVariant) metadata = NULL;
+  g_autoptr(GBytes) signed_data = NULL;
 
   /* Load the commit */
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT,
