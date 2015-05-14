@@ -620,6 +620,18 @@ ostree_repo_is_writable (OstreeRepo *self,
   return self->writable;
 }
 
+gboolean
+_ostree_repo_update_mtime (OstreeRepo        *self,
+                           GError           **error)
+{
+  if (futimens (self->repo_dir_fd, NULL) != 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "%s", "futimens");
+      return FALSE;
+    }
+  return TRUE;
+}
+
 /**
  * ostree_repo_get_config:
  * @self:

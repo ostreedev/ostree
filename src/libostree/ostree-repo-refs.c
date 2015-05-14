@@ -631,6 +631,9 @@ _ostree_repo_write_ref (OstreeRepo    *self,
         goto out;
     }
 
+  if (!_ostree_repo_update_mtime (self, error))
+    goto out;
+
   ret = TRUE;
  out:
   return ret;
