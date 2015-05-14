@@ -255,5 +255,9 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
                            int                  *out_fd,
                            GCancellable        *cancellable,
                            GError             **error);
+
+gboolean
+_ostree_repo_update_mtime (OstreeRepo        *self,
+                           GError           **error);
                            
 G_END_DECLS

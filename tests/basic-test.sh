@@ -401,3 +401,16 @@ if test "$(id -u)" != "0"; then
     assert_file_has_content error-message "Permission denied"
     echo "ok unwritable repo was caught"
 fi
+
+cd ${test_tmpdir}
+rm -rf test2-checkout
+mkdir -p test2-checkout
+cd test2-checkout
+touch blah
+stat --printf="%Z\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-orig.txt
+$OSTREE commit -b test2 -s "Should bump the mtime"
+stat --printf="%Z\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-new.txt
+cd ..
+if ! cmp timestamp-{orig,new}.txt; then
+    assert_not_reached "failed to update mtime on repo"
+fi
