@@ -130,7 +130,7 @@ ostree_builtin_admin (int argc, char **argv, GCancellable *cancellable, GError *
 
       /* This will not return for some options (e.g. --version). */
       if (ostree_admin_option_context_parse (context, NULL, &argc, &argv,
-                                             OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                             OSTREE_ADMIN_BUILTIN_FLAG_NONE | OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                              NULL, cancellable, error))
         {
           if (subcommand_name == NULL)
