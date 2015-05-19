@@ -362,6 +362,7 @@ typedef OstreeRepoCommitFilterResult (*OstreeRepoCommitFilter) (OstreeRepo    *r
  * OstreeRepoCommitModifierFlags:
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE: No special flags
  * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS: Do not process extended attributes
+ * @OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES: Generate size information.
  */
 typedef enum {
   OSTREE_REPO_COMMIT_MODIFIER_FLAGS_NONE = 0,
