@@ -394,6 +394,15 @@ void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier   
                                                      GDestroyNotify                         destroy,
                                                      gpointer                               user_data);
 
+typedef char *(*OstreeRepoCommitModifierFileCacheCallback) (OstreeRepo     *repo,
+                                                            const char     *path,
+                                                            gpointer        user_data);
+
+void ostree_repo_commit_modifier_set_file_cache_callback (OstreeRepoCommitModifier              *modifier,
+                                                          OstreeRepoCommitModifierFileCacheCallback  callback,
+                                                          GDestroyNotify                         destroy,
+                                                          gpointer                               user_data);
+
 void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              *modifier,
                                                OstreeSePolicy                        *sepolicy);
 

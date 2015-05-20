@@ -2101,6 +2101,10 @@ struct OstreeRepoCommitModifier {
   GDestroyNotify xattr_destroy;
   gpointer xattr_user_data;
 
+  OstreeRepoCommitModifierFileCacheCallback file_cache_callback;
+  GDestroyNotify file_cache_destroy;
+  gpointer file_cache_user_data;
+
   OstreeSePolicy *sepolicy;
 };
 
@@ -2354,20 +2358,30 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
   else
     {
       guint64 file_obj_length;
-      const char *loose_checksum;
+      g_autofree char *user_cached_checksum = NULL;
+      const char *cached_checksum;
       g_autoptr(GInputStream) file_input = NULL;
       g_autoptr(GVariant) xattrs = NULL;
       g_autoptr(GInputStream) file_object_input = NULL;
       g_autofree guchar *child_file_csum = NULL;
       g_autofree char *tmp_checksum = NULL;
 
-      loose_checksum = devino_cache_lookup (self,
-                                            g_file_info_get_attribute_uint32 (child_info, "unix::device"),
-                                            g_file_info_get_attribute_uint64 (child_info, "unix::inode"));
-
-      if (loose_checksum)
+      if (modifier && modifier->file_cache_callback)
         {
-          if (!ostree_mutable_tree_replace_file (mtree, name, loose_checksum,
+          user_cached_checksum = modifier->file_cache_callback (self, child_relpath,
+                                                                modifier->file_cache_user_data);
+          cached_checksum = user_cached_checksum;
+        }
+      else
+        {
+          cached_checksum = devino_cache_lookup (self,
+                                                 g_file_info_get_attribute_uint32 (child_info, "unix::device"),
+                                                 g_file_info_get_attribute_uint64 (child_info, "unix::inode"));
+        }
+
+      if (cached_checksum)
+        {
+          if (!ostree_mutable_tree_replace_file (mtree, name, cached_checksum,
                                                  error))
             goto out;
         }
@@ -2851,6 +2865,9 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
   if (modifier->xattr_destroy)
     modifier->xattr_destroy (modifier->xattr_user_data);
 
+  if (modifier->file_cache_destroy)
+    modifier->file_cache_destroy (modifier->file_cache_user_data);
+
   g_clear_object (&modifier->sepolicy);
 
   g_free (modifier);
@@ -2879,6 +2896,30 @@ ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier  *modif
   modifier->xattr_destroy = destroy;
   modifier->xattr_user_data = user_data;
 }
+
+/**
+ * ostree_repo_commit_modifier_set_file_cache_callback:
+ * @modifier: Modifier
+ * @callback: Callback
+ * @destroy: Destroy notification
+ * @user_data: User data
+ * 
+ * If set, this function will be called to potentiallyoverride the
+ * object checksum for a given file path.  If the function returns
+ * %NULL, the file will be checksummed normally.  This callback is
+ * ever only invoked for regular files; not symlinks or directories.
+ */
+void
+ostree_repo_commit_modifier_set_file_cache_callback (OstreeRepoCommitModifier              *modifier,
+                                                     OstreeRepoCommitModifierFileCacheCallback  callback,
+                                                     GDestroyNotify                         destroy,
+                                                     gpointer                               user_data)
+{
+  modifier->file_cache_callback = callback;
+  modifier->file_cache_destroy = destroy;
+  modifier->file_cache_user_data = user_data;
+}
+
 
 /**
  * ostree_repo_commit_modifier_set_sepolicy:
