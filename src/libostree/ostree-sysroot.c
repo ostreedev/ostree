@@ -361,6 +361,35 @@ _ostree_sysroot_read_current_subbootversion (OstreeSysroot *self,
   return ret;
 }
 
+static gint
+compare_boot_loader_configs (OstreeBootconfigParser     *a,
+                             OstreeBootconfigParser     *b)
+{
+  const char *a_version = ostree_bootconfig_parser_get (a, "version");
+  const char *b_version = ostree_bootconfig_parser_get (b, "version");
+
+  if (a_version && b_version)
+    {
+      int r = strverscmp (a_version, b_version);
+      /* Reverse */
+      return -r;
+    }
+  else if (a_version)
+    return -1;
+  else
+    return 1;
+}
+
+static int
+compare_loader_configs_for_sorting (gconstpointer  a_pp,
+                                    gconstpointer  b_pp)
+{
+  OstreeBootconfigParser *a = *((OstreeBootconfigParser**)a_pp);
+  OstreeBootconfigParser *b = *((OstreeBootconfigParser**)b_pp);
+
+  return compare_boot_loader_configs (a, b);
+}
+
 gboolean
 _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
                                           int            bootversion,
@@ -426,6 +455,9 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
           g_ptr_array_add (ret_loader_configs, g_object_ref (config));
         }
     }
+
+  /* Callers expect us to give them a sorted array */
+  g_ptr_array_sort (ret_loader_configs, compare_loader_configs_for_sorting);
 
  done:
   gs_transfer_out_value (out_loader_configs, &ret_loader_configs);
@@ -706,19 +738,8 @@ compare_deployments_by_boot_loader_version_reversed (gconstpointer     a_pp,
   OstreeDeployment *b = *((OstreeDeployment**)b_pp);
   OstreeBootconfigParser *a_bootconfig = ostree_deployment_get_bootconfig (a);
   OstreeBootconfigParser *b_bootconfig = ostree_deployment_get_bootconfig (b);
-  const char *a_version = ostree_bootconfig_parser_get (a_bootconfig, "version");
-  const char *b_version = ostree_bootconfig_parser_get (b_bootconfig, "version");
-  
-  if (a_version && b_version)
-    {
-      int r = strverscmp (a_version, b_version);
-      /* Reverse */
-      return -r;
-    }
-  else if (a_version)
-    return -1;
-  else
-    return 1;
+
+  return compare_boot_loader_configs (a_bootconfig, b_bootconfig);
 }
 
 /**
