@@ -1121,7 +1121,7 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
  * @self: Self
  * @name: name of a remote
  * @source_stream: (allow-none): a #GInputStream, or %NULL
- * @key_ids: (allow-none): a %NULL-terminated array of GPG key IDs, or %NULL
+ * @key_ids: (array zero-terminated=1) (element-type utf8) (allow-none): a %NULL-terminated array of GPG key IDs, or %NULL
  * @out_imported: (allow-none): return location for the number of imported
  *                              keys, or %NULL
  * @cancellable: a #GCancellable
