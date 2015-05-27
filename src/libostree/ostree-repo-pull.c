@@ -58,6 +58,7 @@ typedef struct {
   SoupURI       *fetching_sync_uri;
   
   gboolean          gpg_verify;
+  gboolean          gpg_verify_summary;
 
   GBytes           *summary_data;
   GBytes           *summary_data_sig;
@@ -1317,6 +1318,14 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
         delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
         summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
 
+
+        if (pull_data->gpg_verify_summary && !summary_csum)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+            goto out;
+          }
+
         if (summary_csum && memcmp (summary_csum, ret_csum, 32))
           {
             g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
@@ -1671,11 +1680,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->start_time = g_get_monotonic_time ();
 
   if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
-    pull_data->remote_name = g_strdup (remote_name_or_baseurl);
-
-  if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
-                                          &pull_data->gpg_verify, error))
-    goto out;
+    {
+      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
+      /* For compatibility with pull-local, don't gpg verify local
+       * pulls.
+       */
+      pull_data->gpg_verify = FALSE;
+      pull_data->gpg_verify_summary = FALSE;
+    }
+  else
+    {
+      if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
+                                              &pull_data->gpg_verify, error))
+        goto out;
+      if (!ostree_repo_remote_get_gpg_verify_summary (self, remote_name_or_baseurl,
+                                                      &pull_data->gpg_verify_summary, error))
+        goto out;
+    }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
@@ -1799,6 +1820,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (bytes_summary)
       {
+        g_autoptr(GVariant) sig_variant = NULL;
+        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
         pull_data->summary_data = g_bytes_ref (bytes_summary);
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
@@ -1809,29 +1832,31 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_free (uri);
 
         if (bytes_sig)
+          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+        else
           {
-            glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-            g_autoptr(GVariant) sig_variant = NULL;
-            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+            goto out;
+          }
 
-            sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
-            result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                            bytes_summary,
-                                                            sig_variant,
-                                                            remote_name_or_baseurl,
-                                                            NULL,
-                                                            NULL,
-                                                            cancellable,
-                                                            error);
-            if (result == NULL)
-              goto out;
+        sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
+        result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                        bytes_summary,
+                                                        sig_variant,
+                                                        remote_name_or_baseurl,
+                                                        NULL,
+                                                        NULL,
+                                                        cancellable,
+                                                        error);
+        if (result == NULL)
+          goto out;
 
-            if (ostree_gpg_verify_result_count_valid (result) == 0)
-              {
-                g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                             "GPG signatures found, but none are in trusted keyring");
-                goto out;
-              }
+        if (ostree_gpg_verify_result_count_valid (result) == 0)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG signatures found, but none are in trusted keyring");
+            goto out;
           }
       }
 
