@@ -1602,6 +1602,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
+  g_autoptr(GBytes) bytes_summary = NULL;
   g_autofree char *remote_key = NULL;
   g_autofree char *path = NULL;
   g_autofree char *metalink_url_str = NULL;
@@ -1778,99 +1779,106 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
+  {
+    SoupURI *uri = NULL;
+    g_autoptr(GBytes) bytes_sig = NULL;
+    g_autofree char *ret_contents = NULL;
+    gsize i, n;
+    g_autoptr(GVariant) refs = NULL;
+    g_autoptr(GVariant) deltas = NULL;
+    g_autoptr(GVariant) additional_metadata = NULL;
+      
+    if (!pull_data->summary)
+      {
+        uri = suburi_new (pull_data->base_uri, "summary", NULL);
+        if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                             &bytes_summary, cancellable, error))
+          goto out;
+        soup_uri_free (uri);
+     }
+
+    if (bytes_summary)
+      {
+        pull_data->summary_data = g_bytes_ref (bytes_summary);
+        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+        uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
+        if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                             &bytes_sig, cancellable, error))
+          goto out;
+        soup_uri_free (uri);
+
+        if (bytes_sig)
+          {
+            glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+            g_autoptr(GVariant) sig_variant = NULL;
+            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+
+            sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
+            result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                            bytes_summary,
+                                                            sig_variant,
+                                                            remote_name_or_baseurl,
+                                                            NULL,
+                                                            NULL,
+                                                            cancellable,
+                                                            error);
+            if (result == NULL)
+              goto out;
+
+            if (ostree_gpg_verify_result_count_valid (result) == 0)
+              {
+                g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "GPG signatures found, but none are in trusted keyring");
+                goto out;
+              }
+          }
+      }
+
+    if (pull_data->summary)
+      {
+        refs = g_variant_get_child_value (pull_data->summary, 0);
+        n = g_variant_n_children (refs);
+        for (i = 0; i < n; i++)
+          {
+            const char *refname;
+            g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
+
+            g_variant_get_child (ref, 0, "&s", &refname);
+
+            if (!ostree_validate_rev (refname, error))
+              goto out;
+
+            g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+          }
+
+        additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+        deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
+        n = deltas ? g_variant_n_children (deltas) : 0;
+        for (i = 0; i < n; i++)
+          {
+            const char *delta;
+            GVariant *csum_v = NULL;
+            guchar *csum_data = g_malloc (32);
+            g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
+
+            g_variant_get_child (ref, 0, "&s", &delta);
+            g_variant_get_child (ref, 1, "v", &csum_v);
+
+            if (!validate_variant_is_csum (csum_v, error))
+              goto out;
+
+            memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
+            g_hash_table_insert (pull_data->summary_deltas_checksums,
+                                 g_strdup (delta),
+                                 csum_data);
+          }
+      }
+  }
+
   if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
-      SoupURI *uri = NULL;
-      g_autoptr(GBytes) bytes = NULL;
-      g_autoptr(GBytes) bytes_sig = NULL;
-      g_autofree char *ret_contents = NULL;
-      
-      uri = suburi_new (pull_data->base_uri, "summary", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
-                                           &bytes, cancellable, error))
-        goto out;
-      soup_uri_free (uri);
-
-      uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
-                                           &bytes_sig, cancellable, error))
-        goto out;
-      soup_uri_free (uri);
-
-      if (bytes)
-        {
-          g_autoptr(GVariant) refs = NULL;
-          g_autoptr(GVariant) additional_metadata = NULL;
-          g_autoptr(GVariant) deltas = NULL;
-          gsize i, n;
-
-          pull_data->summary_data = g_bytes_ref (bytes);
-          if (bytes_sig)
-            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
-          if (pull_data->gpg_verify && bytes_sig)
-            {
-              glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-              g_autoptr(GVariant) sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                                          bytes_sig,
-                                                                          FALSE);
-              result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                              bytes,
-                                                              sig_variant,
-                                                              NULL,
-                                                              NULL,
-                                                              NULL,
-                                                              cancellable,
-                                                              error);
-              if (result == NULL)
-                goto out;
-
-              if (ostree_gpg_verify_result_count_valid (result) == 0)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "GPG signatures found, but none are in trusted keyring");
-                  goto out;
-                }
-            }
-
-          pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
-          refs = g_variant_get_child_value (pull_data->summary, 0);
-          n = g_variant_n_children (refs);
-          for (i = 0; i < n; i++)
-            {
-              const char *refname;
-              g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
-
-              g_variant_get_child (ref, 0, "&s", &refname);
-
-              if (!ostree_validate_rev (refname, error))
-                goto out;
-              
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
-            }
-
-          additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-          deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
-          n = deltas ? g_variant_n_children (deltas) : 0;
-          for (i = 0; i < n; i++)
-            {
-              const char *delta;
-              GVariant *csum_v = NULL;
-              guchar *csum_data = g_malloc (32);
-              g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
-
-              g_variant_get_child (ref, 0, "&s", &delta);
-              g_variant_get_child (ref, 1, "v", &csum_v);
-
-              if (!validate_variant_is_csum (csum_v, error))
-                goto out;
-
-              memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
-              g_hash_table_insert (pull_data->summary_deltas_checksums,
-                                   g_strdup (delta),
-                                   csum_data);
-            }
-        }
-      else
+      if (!bytes_summary)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
