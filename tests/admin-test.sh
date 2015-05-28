@@ -20,17 +20,20 @@ set -e
 
 echo "1..10"
 
+function validate_bootloader() {
+    (cd ${test_tmpdir};
+     if test -f sysroot/boot/syslinux/syslinux.cfg; then
+	$(dirname $0)/syslinux-entries-crosscheck.py sysroot
+     fi)
+}
+
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status | tee status.txt
-
-assert_file_has_content status.txt 'Version: 1.0.10'
-if test -f sysroot/boot/loader/syslinux.cfg; then
-    assert_file_has_content sysroot/boot/loader/syslinux.cfg 'TestOS 42 1.0.10'
-fi
+validate_bootloader
 
 echo "ok deploy command"
 
@@ -66,6 +69,7 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'option
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/boot.0/testos/${bootcsum}/0/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok second deploy"
 
@@ -77,6 +81,7 @@ assert_not_has_dir sysroot/boot/loader.1
 assert_has_dir sysroot/ostree/boot.0.0
 assert_not_has_dir sysroot/ostree/boot.0.1
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok third deploy (swap)"
 
@@ -90,6 +95,7 @@ assert_has_file sysroot/boot/loader/entries/ostree-otheros-0.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.1/etc/os-release 'NAME=TestOS'
 assert_file_has_content sysroot/ostree/deploy/otheros/deploy/${rev}.0/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok independent deploy"
 
@@ -101,6 +107,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.2/etc/os-rele
 assert_has_file sysroot/boot/loader/entries/ostree-testos-2.conf
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok fourth deploy (retain)"
 
@@ -116,6 +123,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/os-rele
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/a-new-config-file 'a new local config file'
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.4/etc/aconfigfile
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok deploy with modified /etc"
 
@@ -133,6 +141,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/new-
 # And persist /etc changes from before
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.3/etc/aconfigfile
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok upgrade bare"
 
@@ -145,6 +154,7 @@ newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildm
 assert_not_streq ${rev} ${newrev}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok upgrade"
 
@@ -155,6 +165,7 @@ assert_file_has_content "${originfile}" "bacon:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote list -u > remotes.txt
 assert_file_has_content remotes.txt 'bacon.*http://tasty.com'
 cp saved-origin ${originfile}
+validate_bootloader
 
 echo "ok set-origin"
 
@@ -167,6 +178,7 @@ assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${rev}.0
 ${CMD_PREFIX} ostree admin --sysroot=sysroot undeploy 0
 assert_not_has_dir sysroot/ostree/deploy/testos/deploy/${newrev}.0
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status
+validate_bootloader
 
 echo "ok undeploy"
 
@@ -178,6 +190,7 @@ echo "ok deploy with unknown OS"
 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --os=testos --karg-append=console=/dev/foo --karg-append=console=/dev/bar testos:testos/buildmaster/x86_64-runtime
 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+validate_bootloader
 
 echo "ok deploy with multiple kernel args"
 
@@ -187,5 +200,6 @@ ${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
 newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${origrev} ${newrev}
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'console=/dev/foo.*console=/dev/bar'
+validate_bootloader
 
 echo "ok upgrade with multiple kernel args"
