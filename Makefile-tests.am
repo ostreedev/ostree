@@ -75,6 +75,10 @@ insttest_DATA = tests/archive-test.sh \
 	tests/corrupt-repo-ref.js \
 	$(NULL)
 
+insttest_SCRIPTS += \
+	tests/syslinux-entries-crosscheck.py \
+	$(NULL)
+
 gpginsttestdir = $(pkglibexecdir)/installed-tests/gpghome
 gpginsttest_DATA = tests/gpghome/secring.gpg \
 	tests/gpghome/trustdb.gpg \
