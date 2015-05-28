@@ -84,13 +84,16 @@ ostree_gpg_verifier_initable_init (GInitable        *initable,
   if (!default_keyring_path)
     default_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
 
-  default_keyring_dir = g_file_new_for_path (default_keyring_path);
-  if (!_ostree_gpg_verifier_add_keyring_dir (self, default_keyring_dir,
-                                             cancellable, error))
+  if (g_file_test (default_keyring_path, G_FILE_TEST_IS_DIR))
     {
-      g_prefix_error (error, "Reading keyring directory '%s'",
-                      gs_file_get_path_cached (default_keyring_dir));
-      goto out;
+      default_keyring_dir = g_file_new_for_path (default_keyring_path);
+      if (!_ostree_gpg_verifier_add_keyring_dir (self, default_keyring_dir,
+                                                 cancellable, error))
+        {
+          g_prefix_error (error, "Reading keyring directory '%s'",
+                          gs_file_get_path_cached (default_keyring_dir));
+          goto out;
+        }
     }
 
   ret = TRUE;
