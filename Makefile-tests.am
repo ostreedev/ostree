@@ -35,6 +35,7 @@ testfiles = test-basic \
 	test-pull-mirror-summary \
 	test-pull-large-metadata \
 	test-pull-metalink \
+	test-pull-summary-sigs \
 	test-pull-resume \
 	test-gpg-signed-commit \
 	test-admin-upgrade-unconfigured \
