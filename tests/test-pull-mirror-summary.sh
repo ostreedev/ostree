@@ -69,3 +69,16 @@ ${OSTREE} --repo=repo pull --mirror origin
 assert_has_file repo/summary
 assert_has_file repo/summary.sig
 echo "ok pull mirror with signed summary"
+
+# Uncomment when we support mirroring deltas
+#
+# ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate main
+# origmain=$(ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-parse main^)
+# newmain=$(ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-parse main)
+# ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
+# ${OSTREE} --repo=repo pull --mirror origin
+# ${OSTREE} --repo=repo static-delta list >deltas.txt
+# assert_file_has_content deltas.txt "${origmain}-${newmain}"
+
+# echo "ok pull mirror with signed summary covering static deltas"
+
