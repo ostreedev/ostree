@@ -4030,8 +4030,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         g_autoptr(GInputStream) in_stream = NULL;
 
         _ostree_parse_delta_name (delta_names->pdata[i], &from, &to);
-        superblock = _ostree_get_relative_static_delta_superblock_path (from[0] ? from : NULL,
-                                                                        to);
+        superblock = _ostree_get_relative_static_delta_superblock_path ((from && from[0]) ? from : NULL, to);
         superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
         if (superblock_file_fd == -1)
           {
