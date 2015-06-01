@@ -1557,6 +1557,28 @@ process_one_static_delta (OtPullData   *pull_data,
   return ret;
 }
 
+static gboolean
+validate_variant_is_csum (GVariant       *csum,
+                          GError        **error)
+{
+  gboolean ret = FALSE;
+
+  if (!g_variant_is_of_type (csum, G_VARIANT_TYPE ("ay")))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid checksum variant of type '%s', expected 'ay'",
+                   g_variant_get_type_string (csum));
+      goto out;
+    }
+
+  if (!ostree_validate_structureof_csum_v (csum, error))
+    goto out;
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 /* documented in ostree-repo.c */
 gboolean
 ostree_repo_pull (OstreeRepo               *self,
@@ -1962,7 +1984,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           n = deltas ? g_variant_n_children (deltas) : 0;
           for (i = 0; i < n; i++)
             {
-              gsize size;
               const char *delta;
               GVariant *csum_v = NULL;
               guchar *csum_data = g_malloc (32);
@@ -1971,11 +1992,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               g_variant_get_child (ref, 0, "&s", &delta);
               g_variant_get_child (ref, 1, "v", &csum_v);
 
-              size = g_variant_get_size (csum_v);
-
-              g_assert_cmpint (size, ==, 32);
-              if (size != 32)
-                continue;
+              if (!validate_variant_is_csum (csum_v, error))
+                goto out;
 
               memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
               g_hash_table_insert (pull_data->summary_deltas_checksums,
