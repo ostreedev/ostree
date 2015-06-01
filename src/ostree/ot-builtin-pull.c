@@ -54,6 +54,8 @@ gpg_verify_result_cb (OstreeRepo *repo,
 
   g_print ("\n");
   ostree_print_gpg_verify_result (result);
+
+  gs_console_begin_status_line (console, "", NULL, NULL);
 }
 
 gboolean
