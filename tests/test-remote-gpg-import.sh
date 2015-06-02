@@ -110,7 +110,7 @@ ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo checkout main workdir
 
 # Sign a new commit with key1 and try pulling from each remote
 echo shadow > workdir/blinky
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add blinky" --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add blinky" --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${SRCDIR}/gpghome workdir
 if ${OSTREE} pull R2:main >/dev/null 2>&1; then
     assert_not_reached "(key1/R2) GPG verification unexpectedly succeeded"
 fi
@@ -121,7 +121,7 @@ ${OSTREE} pull R1:main >/dev/null
 
 # Sign a new commit with key2 and try pulling from each remote
 echo speedy > workdir/pinky
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add pinky" --gpg-sign ${TEST_GPG_KEYID_2} --gpg-homedir ${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add pinky" --gpg-sign ${TEST_GPG_KEYID_2} --gpg-homedir ${SRCDIR}/gpghome workdir
 if ${OSTREE} pull R1:main >/dev/null 2>&1; then
     assert_not_reached "(key2/R1) GPG verification unexpectedly succeeded"
 fi
@@ -132,7 +132,7 @@ ${OSTREE} pull R2:main >/dev/null
 
 # Sign a new commit with key3 and try pulling from each remote
 echo bashful > workdir/inky
-${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add inky" --gpg-sign ${TEST_GPG_KEYID_3} --gpg-homedir ${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Add inky" --gpg-sign ${TEST_GPG_KEYID_3} --gpg-homedir ${SRCDIR}/gpghome workdir
 if ${OSTREE} pull R1:main >/dev/null 2>&1; then
     assert_not_reached "(key3/R1) GPG verification unexpectedly succeeded"
 fi
