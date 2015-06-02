@@ -30,15 +30,6 @@
 #include <sys/stat.h>
 #include <glib.h>
 
-struct linux_dirent {
-  long           d_ino;
-  off_t          d_off;
-  unsigned short d_reclen;
-  char           d_name[];
-};
-
-#define BUF_SIZE 1024
-
 static GHashTable *direntcache;
 static GMutex direntcache_lock;
 static gsize initialized;
@@ -80,11 +71,19 @@ readdir (DIR *dirp)
 {
   struct dirent *(*real_readdir)(DIR *dirp) = dlsym (RTLD_NEXT, "readdir");
   struct dirent *ret;
-  gboolean doloop = TRUE;
+  gboolean cache_another = TRUE;
   
   ensure_initialized ();
 
-  while (doloop)
+  /* The core idea here is that each time through the loop, we read a
+   * directory entry.  If there is one, we choose whether to cache it
+   * or to return it.  Because multiple entries can be cached,
+   * ordering is randomized.  Statistically, the order will still be
+   * *weighted* towards the ordering returned from the
+   * kernel/filesystem, but the goal here is just to provide some
+   * randomness in order to trigger bugs, not to be perfectly random.
+   */
+  while (cache_another)
     {
       DirEntries *de;
       GSList *l;
@@ -111,7 +110,7 @@ readdir (DIR *dirp)
 	    }
 	  else
 	    {
-	      doloop = FALSE;
+	      cache_another = FALSE;
 	    }
 	}
       else
@@ -121,7 +120,7 @@ readdir (DIR *dirp)
 	      ret = de->entries->pdata[de->offset];
 	      de->offset++;
 	    }
-	  doloop = FALSE;
+	  cache_another = FALSE;
 	}
       g_mutex_unlock (&direntcache_lock);
     }
@@ -142,4 +141,59 @@ closedir (DIR *dirp)
   g_mutex_unlock (&direntcache_lock);
 
   return real_closedir (dirp);
+}
+
+static void
+assert_no_cached_entries (DIR *dirp)
+{
+  DirEntries *de;
+  g_mutex_lock (&direntcache_lock);
+  de = g_hash_table_lookup (direntcache, dirp);
+  g_assert (!de || de->entries->len == 0);
+  g_mutex_unlock (&direntcache_lock);
+}
+
+void
+seekdir (DIR *dirp, long loc)
+{
+  void (*real_seekdir)(DIR *dirp, long loc) = dlsym (RTLD_NEXT, "seekdir");
+
+  ensure_initialized ();
+
+  /* For now, crash if seekdir is called when we have cached entries. 
+   * If some app wants to use this and seekdir() we can implement it.
+   */
+  assert_no_cached_entries (dirp);
+
+  real_seekdir (dirp, loc);
+}
+
+void
+rewinddir (DIR *dirp)
+{
+  void (*real_rewinddir)(DIR *dirp) = dlsym (RTLD_NEXT, "rewinddir");
+
+  ensure_initialized ();
+
+  /* Blow away the cache */
+  g_mutex_lock (&direntcache_lock);
+  g_hash_table_remove (direntcache, dirp);
+  g_mutex_unlock (&direntcache_lock);
+
+  real_rewinddir (dirp);
+}
+
+int
+readdir_r (DIR *dirp, struct dirent *entry, struct dirent **result)
+{
+  int (*real_readdir_r)(DIR *dirp, struct dirent *entry, struct dirent **result) = dlsym (RTLD_NEXT, "readdir_r");
+
+  ensure_initialized ();
+
+  /* For now, assert that no one is mixing readdir_r() with readdir().
+   * It'd be broken to do so, and very few programs use readdir_r()
+   * anyways. */
+  assert_no_cached_entries (dirp);
+
+  return real_readdir_r (dirp, entry, result);
 }
