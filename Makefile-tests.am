@@ -113,6 +113,12 @@ insttest_SCRIPTS += tests/test-core.js \
 testmeta_DATA += test-core.test test-sizes.test test-sysroot.test
 endif
 
+insttest_LTLIBRARIES = libreaddir-rand.la
+libreaddir_rand_la_SOURCES = tests/readdir-rand.c
+libreaddir_rand_la_CFLAGS = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
+libreaddir_rand_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS)
+libreaddir_rand_la_LDFLAGS = -avoid-version
+
 endif
 
 # "make check" do not depend from --enable-installed-tests
