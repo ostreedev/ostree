@@ -39,8 +39,6 @@ fi
 
 if test -n "$OT_TESTS_VALGRIND"; then
     CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
-else
-    CMD_PREFIX="env LD_PRELOAD=${SRCDIR}/libreaddir-rand.so"
 fi
 
 assert_not_reached () {
