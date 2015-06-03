@@ -43,13 +43,13 @@ echo first > firstfile
 mkdir baz
 echo moo > baz/cow
 echo alien > baz/saucer
-${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "A remote commit" -m "Some Commit body" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 mkdir baz/deeper
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "Add deeper" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 echo hi > baz/deeper/ohyeah
 mkdir baz/another/
 echo x > baz/another/y
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --gpg-sign=$keyid --gpg-homedir=${SRCDIR}/gpghome
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s "The rest" --gpg-sign=$keyid --gpg-homedir=${test_tmpdir}/gpghome
 cd ..
 
 cd ${test_tmpdir}
@@ -121,7 +121,7 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 if ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${SRCDIR}/gpghome main $keyid
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${test_tmpdir}/gpghome main $keyid
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature' > show
 assert_file_has_content show 'Found 1 signature'
