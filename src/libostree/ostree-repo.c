@@ -1273,6 +1273,29 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
 }
 
 /**
+ * ostree_repo_remote_get_gpg_verify_summary:
+ * @self: Repo
+ * @name: Name of remote
+ * @out_gpg_verify_summary: (out) (allow-none): Remote's GPG option
+ * @error: Error
+ *
+ * Return whether GPG verification of the summary is enabled for the remote
+ * named @name through @out_gpg_verify_summary.  It is an error if the provided
+ * remote does not exist.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
+                                           const char  *name,
+                                           gboolean    *out_gpg_verify_summary,
+                                           GError     **error)
+{
+  return _ostree_repo_get_remote_boolean_option (self, name, "gpg-verify-summary",
+                                                 FALSE, out_gpg_verify_summary, error);
+}
+
+/**
  * ostree_repo_remote_gpg_import:
  * @self: Self
  * @name: name of a remote
