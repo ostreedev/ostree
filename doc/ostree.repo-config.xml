@@ -149,6 +149,15 @@ Boston, MA 02111-1307, USA.
       </varlistentry>
 
       <varlistentry>
+        <term><varname>gpg-verify-summary</varname></term>
+        <listitem><para>A boolean value, defaults to false.
+        Controls whether or not OSTree will check if the summary
+        is signed by a known GPG key.
+        For more information, see the <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+        manual under GPG.</para></listitem>
+      </varlistentry>
+
+      <varlistentry>
         <term><varname>tls-permissive</varname></term>
         <listitem><para>A boolean value, defaults to false.  By
         default, server TLS certificates will be checked against the
