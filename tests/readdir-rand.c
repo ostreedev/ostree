@@ -30,6 +30,17 @@
 #include <sys/stat.h>
 #include <glib.h>
 
+/* Glibc uses readdir64 when _FILE_OFFSET_BITS == 64 as set by
+ * AC_SYS_LARGEFILE on 32 bit systems.
+ */
+#if defined(_FILE_OFFSET_BITS) && (_FILE_OFFSET_BITS == 64)
+# define READDIR "readdir64"
+# define READDIR_R "readdir64_r"
+#else
+# define READDIR "readdir"
+# define READDIR_R "readdir_r"
+#endif
+
 static GHashTable *direntcache;
 static GMutex direntcache_lock;
 static gsize initialized;
@@ -69,7 +80,7 @@ ensure_initialized (void)
 struct dirent *
 readdir (DIR *dirp)
 {
-  struct dirent *(*real_readdir)(DIR *dirp) = dlsym (RTLD_NEXT, "readdir");
+  struct dirent *(*real_readdir)(DIR *dirp) = dlsym (RTLD_NEXT, READDIR);
   struct dirent *ret;
   gboolean cache_another = TRUE;
   
@@ -186,7 +197,7 @@ rewinddir (DIR *dirp)
 int
 readdir_r (DIR *dirp, struct dirent *entry, struct dirent **result)
 {
-  int (*real_readdir_r)(DIR *dirp, struct dirent *entry, struct dirent **result) = dlsym (RTLD_NEXT, "readdir_r");
+  int (*real_readdir_r)(DIR *dirp, struct dirent *entry, struct dirent **result) = dlsym (RTLD_NEXT, READDIR_R);
 
   ensure_initialized ();
 
