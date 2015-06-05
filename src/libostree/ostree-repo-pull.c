@@ -1631,8 +1631,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  gboolean tls_permissive = FALSE;
-  OstreeFetcherConfigFlags fetcher_flags = 0;
   g_autofree char *remote_key = NULL;
   g_autofree char *path = NULL;
   g_autofree char *baseurl = NULL;
@@ -1720,84 +1718,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
-  if (!_ostree_repo_get_remote_boolean_option (self,
-                                               remote_name_or_baseurl, "tls-permissive",
-                                               FALSE, &tls_permissive, error))
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
+  if (pull_data->fetcher == NULL)
     goto out;
-  if (tls_permissive)
-    fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
   pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
-  pull_data->fetcher = _ostree_fetcher_new (pull_data->tmpdir_dfd, fetcher_flags);
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-
-  {
-    g_autofree char *tls_client_cert_path = NULL;
-    g_autofree char *tls_client_key_path = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-client-cert-path",
-                                         NULL, &tls_client_cert_path, error))
-      goto out;
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-client-key-path",
-                                         NULL, &tls_client_key_path, error))
-      goto out;
-
-    if ((tls_client_cert_path != NULL) != (tls_client_key_path != NULL))
-      {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "remote \"%s\" must specify both \"tls-client-cert-path\" and \"tls-client-key-path\"",
-                     remote_name_or_baseurl);
-        goto out;
-      }
-    else if (tls_client_cert_path)
-      {
-        g_autoptr(GTlsCertificate) client_cert = NULL;
-
-        g_assert (tls_client_key_path);
-
-        client_cert = g_tls_certificate_new_from_files (tls_client_cert_path,
-                                                        tls_client_key_path,
-                                                        error);
-        if (!client_cert)
-          goto out;
-
-        _ostree_fetcher_set_client_cert (pull_data->fetcher, client_cert);
-      }
-  }
-
-  {
-    g_autofree char *tls_ca_path = NULL;
-    g_autoptr(GTlsDatabase) db = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-ca-path",
-                                         NULL, &tls_ca_path, error))
-      goto out;
-
-    if (tls_ca_path)
-      {
-        db = g_tls_file_database_new (tls_ca_path, error);
-        if (!db)
-          goto out;
-        
-        _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
-      }
-  }
-
-  {
-    g_autofree char *http_proxy = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "proxy",
-                                         NULL, &http_proxy, error))
-      goto out;
-
-    if (http_proxy)
-      _ostree_fetcher_set_proxy (pull_data->fetcher, http_proxy);
-  }
 
   if (!_ostree_repo_get_remote_option (self,
                                        remote_name_or_baseurl, "metalink",
