@@ -40,10 +40,7 @@ struct OstreeGpgVerifier {
   GList *keyrings;
 };
 
-static void _ostree_gpg_verifier_initable_iface_init (GInitableIface *iface);
-
-G_DEFINE_TYPE_WITH_CODE (OstreeGpgVerifier, _ostree_gpg_verifier, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, _ostree_gpg_verifier_initable_iface_init))
+G_DEFINE_TYPE (OstreeGpgVerifier, _ostree_gpg_verifier, G_TYPE_OBJECT)
 
 static void
 ostree_gpg_verifier_finalize (GObject *object)
@@ -69,42 +66,6 @@ _ostree_gpg_verifier_class_init (OstreeGpgVerifierClass *klass)
 static void
 _ostree_gpg_verifier_init (OstreeGpgVerifier *self)
 {
-}
-
-static gboolean
-ostree_gpg_verifier_initable_init (GInitable        *initable,
-                                   GCancellable     *cancellable,
-                                   GError          **error)
-{
-  gboolean ret = FALSE;
-  OstreeGpgVerifier *self = (OstreeGpgVerifier*)initable;
-  const char *default_keyring_path = g_getenv ("OSTREE_GPG_HOME");
-  g_autoptr(GFile) default_keyring_dir = NULL;
-
-  if (!default_keyring_path)
-    default_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
-
-  if (g_file_test (default_keyring_path, G_FILE_TEST_IS_DIR))
-    {
-      default_keyring_dir = g_file_new_for_path (default_keyring_path);
-      if (!_ostree_gpg_verifier_add_keyring_dir (self, default_keyring_dir,
-                                                 cancellable, error))
-        {
-          g_prefix_error (error, "Reading keyring directory '%s'",
-                          gs_file_get_path_cached (default_keyring_dir));
-          goto out;
-        }
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-static void
-_ostree_gpg_verifier_initable_iface_init (GInitableIface *iface)
-{
-  iface->init = ostree_gpg_verifier_initable_init;
 }
 
 static void
@@ -323,9 +284,40 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
   return ret;
 }
 
-OstreeGpgVerifier*
-_ostree_gpg_verifier_new (GCancellable   *cancellable,
-                          GError        **error)
+gboolean
+_ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
+                                             GCancellable       *cancellable,
+                                             GError            **error)
 {
-  return g_initable_new (OSTREE_TYPE_GPG_VERIFIER, cancellable, error, NULL);
+  const char *global_keyring_path = g_getenv ("OSTREE_GPG_HOME");
+  g_autoptr(GFile) global_keyring_dir = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (OSTREE_IS_GPG_VERIFIER (self), FALSE);
+
+  if (global_keyring_path == NULL)
+    global_keyring_path = DATADIR "/ostree/trusted.gpg.d/";
+
+  if (g_file_test (global_keyring_path, G_FILE_TEST_IS_DIR))
+    {
+      global_keyring_dir = g_file_new_for_path (global_keyring_path);
+      if (!_ostree_gpg_verifier_add_keyring_dir (self, global_keyring_dir,
+                                                 cancellable, error))
+        {
+          g_prefix_error (error, "Reading keyring directory '%s'",
+                          gs_file_get_path_cached (global_keyring_dir));
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+OstreeGpgVerifier*
+_ostree_gpg_verifier_new (void)
+{
+  return g_object_new (OSTREE_TYPE_GPG_VERIFIER, NULL);
 }

@@ -37,8 +37,7 @@ typedef struct OstreeGpgVerifier OstreeGpgVerifier;
 
 GType _ostree_gpg_verifier_get_type (void);
 
-OstreeGpgVerifier *_ostree_gpg_verifier_new (GCancellable   *cancellable,
-                                             GError        **error);
+OstreeGpgVerifier *_ostree_gpg_verifier_new (void);
 
 OstreeGpgVerifyResult *_ostree_gpg_verifier_check_signature (OstreeGpgVerifier *self,
                                                              GBytes            *signed_data,
@@ -50,6 +49,10 @@ gboolean      _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
                                                     GFile               *path,
                                                     GCancellable        *cancellable,
                                                     GError             **error);
+
+gboolean      _ostree_gpg_verifier_add_global_keyring_dir (OstreeGpgVerifier  *self,
+                                                           GCancellable       *cancellable,
+                                                           GError            **error);
 
 void _ostree_gpg_verifier_add_keyring (OstreeGpgVerifier *self,
                                        GFile             *path);

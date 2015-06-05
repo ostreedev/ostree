@@ -3745,10 +3745,9 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
   GVariantIter iter;
   GVariant *child;
   g_autoptr (GBytes) signatures = NULL;
+  gboolean add_global_keyring_dir = TRUE;
 
-  verifier = _ostree_gpg_verifier_new (cancellable, error);
-  if (!verifier)
-    goto out;
+  verifier = _ostree_gpg_verifier_new ();
 
   if (remote_name == OSTREE_ALL_REMOTES)
     {
@@ -3760,8 +3759,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     }
   else if (remote_name != NULL)
     {
-      /* Add the remote's keyring file.  OstreeGpgVerifier
-       * will ignore it if the keyring file does not exist. */
+      /* Add the remote's keyring file if it exists. */
 
       OstreeRemote *remote;
       g_autoptr(GFile) file = NULL;
@@ -3772,9 +3770,20 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
 
       file = g_file_get_child (self->repodir, remote->keyring);
 
-      _ostree_gpg_verifier_add_keyring (verifier, file);
+      if (g_file_query_exists (file, cancellable))
+        {
+          _ostree_gpg_verifier_add_keyring (verifier, file);
+          add_global_keyring_dir = FALSE;
+        }
 
       ost_remote_unref (remote);
+    }
+
+  if (add_global_keyring_dir)
+    {
+      /* Use the deprecated global keyring directory. */
+      if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
+        goto out;
     }
 
   if (keyringdir)
