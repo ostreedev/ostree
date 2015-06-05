@@ -1628,6 +1628,57 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                                         progress, cancellable, error);
 }
 
+static GBytes *
+ostree_request_metalink_bytes (OtPullData    *pull_data,
+                               const char    *metalink_url_str,
+                               const char    *file,
+                               GCancellable  *cancellable,
+                               GError        **error)
+{
+  g_autofree char *metalink_data = NULL;
+  SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
+  SoupURI *target_uri = NULL;
+  gs_fd_close int fd = -1;
+  GBytes *bytes = NULL;
+  glnx_unref_object OstreeMetalink *metalink = NULL;
+
+  if (!metalink_uri)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid metalink URL: %s", metalink_url_str);
+      goto out;
+    }
+
+  metalink = _ostree_metalink_new (pull_data->fetcher, file, OSTREE_MAX_METADATA_SIZE, metalink_uri);
+  soup_uri_free (metalink_uri);
+
+  if (! _ostree_metalink_request_sync (metalink,
+                                       pull_data->loop,
+                                       &target_uri,
+                                       &metalink_data,
+                                       &pull_data->fetching_sync_uri,
+                                       cancellable,
+                                       error))
+    goto out;
+
+  {
+    g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
+    pull_data->base_uri = soup_uri_copy (target_uri);
+    soup_uri_set_path (pull_data->base_uri, repo_base);
+  }
+
+  fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
+  if (fd == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  bytes = glnx_fd_readall_bytes (fd, cancellable, error);
+ out:
+  return bytes;
+}
+
 /* Documented in ostree-repo.c */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -1650,7 +1701,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
-  glnx_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   GKeyFile *remote_config = NULL;
@@ -1848,47 +1898,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      g_autofree char *metalink_data = NULL;
-      SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
-      SoupURI *target_uri = NULL;
-      gs_fd_close int fd = -1;
-      
-      if (!metalink_uri)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid metalink URL: %s", metalink_url_str);
-          goto out;
-        }
-      
-      metalink = _ostree_metalink_new (pull_data->fetcher, "summary",
-                                       OSTREE_MAX_METADATA_SIZE, metalink_uri);
-      soup_uri_free (metalink_uri);
+      g_autoptr(GBytes) bytes_summary = NULL;
 
-      if (! _ostree_metalink_request_sync (metalink,
-                                           pull_data->loop,
-                                           &target_uri,
-                                           &metalink_data,
-                                           &pull_data->fetching_sync_uri,
-                                           cancellable,
-                                           error))
+      bytes_summary = ostree_request_metalink_bytes (pull_data, metalink_url_str, "summary", cancellable, error);
+      if (bytes_summary == NULL)
         goto out;
 
-      {
-        g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
-        pull_data->base_uri = soup_uri_copy (target_uri);
-        soup_uri_set_path (pull_data->base_uri, repo_base);
-      }
-
-      fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
-      if (fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      if (!ot_util_variant_map_fd (fd, 0, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
-                                   &pull_data->summary, error))
-        goto out;
+      pull_data->summary_data = g_bytes_ref (bytes_summary);
+      pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
     }
 
   if (!_ostree_repo_get_remote_list_option (self,
