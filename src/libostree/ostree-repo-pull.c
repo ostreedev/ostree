@@ -1899,6 +1899,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else
     {
       g_autoptr(GBytes) bytes_summary = NULL;
+      g_autoptr(GBytes) bytes_summary_sig = NULL;
 
       bytes_summary = ostree_request_metalink_bytes (pull_data, metalink_url_str, "summary", cancellable, error);
       if (bytes_summary == NULL)
@@ -1906,6 +1907,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       pull_data->summary_data = g_bytes_ref (bytes_summary);
       pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+      if (pull_data->gpg_verify_summary)
+        {
+          bytes_summary_sig = ostree_request_metalink_bytes (pull_data, metalink_url_str, "summary.sig", cancellable, error);
+          if (bytes_summary_sig == NULL)
+            goto out;
+          pull_data->summary_data_sig = g_bytes_ref (bytes_summary_sig);
+        }
     }
 
   if (!_ostree_repo_get_remote_list_option (self,
@@ -1966,14 +1975,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         pull_data->summary_data = g_bytes_ref (bytes_summary);
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
-        uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
-        if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
-                                             &bytes_sig, cancellable, error))
-          goto out;
-        soup_uri_free (uri);
+        if (!pull_data->summary_data_sig)
+          {
+            uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
+            if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                                 &bytes_sig, cancellable, error))
+              goto out;
+            soup_uri_free (uri);
 
-        if (bytes_sig)
-          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+            if (bytes_sig)
+              pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+          }
+      }
+
+    if (pull_data->gpg_verify_summary)
+      {
+        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+        g_autoptr(GVariant) sig_variant = NULL;
 
         if (!bytes_sig)
           {
