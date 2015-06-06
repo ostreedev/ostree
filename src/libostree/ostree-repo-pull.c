@@ -1604,7 +1604,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gpointer key, value;
   g_autofree char *remote_key = NULL;
   g_autofree char *path = NULL;
-  g_autofree char *baseurl = NULL;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
@@ -1670,14 +1669,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->start_time = g_get_monotonic_time ();
 
-  if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
-    {
-      baseurl = g_strdup (remote_name_or_baseurl);
-    }
-  else
-    {
-      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
-    }
+  if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
+    pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
   if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
                                           &pull_data->gpg_verify, error))
@@ -1700,19 +1693,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (!metalink_url_str)
     {
-      if (baseurl == NULL)
-        {
-          if (!_ostree_repo_get_remote_option_inherit (self, remote_name_or_baseurl, "url", &baseurl, error))
-            goto out;
-        }
+      g_autofree char *baseurl = NULL;
 
-      if (baseurl == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "No \"url\" option in remote \"%s\"",
-                       remote_name_or_baseurl);
-          goto out;
-        }
+      if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+        goto out;
 
       pull_data->base_uri = soup_uri_new (baseurl);
 

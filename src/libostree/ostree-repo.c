@@ -1206,24 +1206,32 @@ ostree_repo_remote_get_url (OstreeRepo  *self,
                             char       **out_url,
                             GError     **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
   g_autofree char *url = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (name != NULL, FALSE);
 
-  remote = ost_repo_get_remote (self, name, error);
-
-  if (remote == NULL)
-    goto out;
-
-  url = g_key_file_get_string (remote->options, remote->group, "url", error);
-
-  if (url != NULL)
+  if (_ostree_repo_remote_name_is_file (name))
     {
-      gs_transfer_out_value (out_url, &url);
-      ret = TRUE;
+      url = g_strdup (name);
     }
+  else
+    {
+      if (!_ostree_repo_get_remote_option_inherit (self, name, "url", &url, error))
+        goto out;
+
+      if (url == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "No \"url\" option in remote \"%s\"", name);
+          goto out;
+        }
+    }
+
+  if (out_url != NULL)
+    *out_url = g_steal_pointer (&url);
+
+  ret = TRUE;
 
  out:
   return ret;
