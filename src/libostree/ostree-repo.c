@@ -355,6 +355,41 @@ _ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
   return ret;
 }
 
+gboolean
+_ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
+                                        const char  *remote_name,
+                                        const char  *option_name,
+                                        char       **out_value,
+                                        GError     **error)
+{
+  OstreeRepo *parent = ostree_repo_get_parent (self);
+  g_autofree char *value = NULL;
+  gboolean ret = FALSE;
+
+  if (!_ostree_repo_get_remote_option (self,
+                                       remote_name, option_name,
+                                       NULL, &value, error))
+    goto out;
+
+  if (value == NULL && parent != NULL)
+    {
+      if (!_ostree_repo_get_remote_option_inherit (parent,
+                                                   remote_name, option_name,
+                                                   &value, error))
+        goto out;
+    }
+
+  /* Success here just means no error occurred during lookup,
+   * not necessarily that we found a value for the option name. */
+  if (out_value != NULL)
+    *out_value = g_steal_pointer (&value);
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
 OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,

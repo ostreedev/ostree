@@ -1246,35 +1246,6 @@ enqueue_one_object_request (OtPullData        *pull_data,
 }
 
 static gboolean
-repo_get_remote_option_inherit (OstreeRepo  *self,
-                                const char  *remote_name,
-                                const char  *option_name,
-                                char       **out_value,
-                                GError     **error)
-{
-  OstreeRepo *parent = ostree_repo_get_parent (self);
-  g_autofree char *value = NULL;
-  gboolean ret = FALSE;
-
-  if (!_ostree_repo_get_remote_option (self, remote_name, option_name, NULL, &value, error))
-    goto out;
-
-  if (value == NULL && parent != NULL)
-    {
-        if (!repo_get_remote_option_inherit (parent, remote_name, option_name, &value, error))
-          goto out;
-    }
-
-  /* Success here just means no error occurred during lookup,
-   * not necessarily that we found a value for the option name. */
-  ot_transfer_out_value (out_value, &value);
-  ret = TRUE;
-
- out:
-  return ret;
-}
-
-static gboolean
 load_remote_repo_config (OtPullData    *pull_data,
                          GKeyFile     **out_keyfile,
                          GCancellable  *cancellable,
@@ -1735,7 +1706,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       if (baseurl == NULL)
         {
-          if (!repo_get_remote_option_inherit (self, remote_name_or_baseurl, "url", &baseurl, error))
+          if (!_ostree_repo_get_remote_option_inherit (self, remote_name_or_baseurl, "url", &baseurl, error))
             goto out;
         }
 

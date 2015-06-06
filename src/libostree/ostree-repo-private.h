@@ -196,6 +196,13 @@ _ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
                                         gboolean    *out_value,
                                         GError     **error);
 
+gboolean
+_ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
+                                        const char  *remote_name,
+                                        const char  *option_name,
+                                        char       **out_value,
+                                        GError     **error);
+
 OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
