@@ -1248,8 +1248,19 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
                                    gboolean    *out_gpg_verify,
                                    GError     **error)
 {
-  return _ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
-                                                 TRUE, out_gpg_verify, error);
+  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  /* For compatibility with pull-local, don't GPG verify file:// URIs. */
+  if (_ostree_repo_remote_name_is_file (name))
+    {
+      if (out_gpg_verify != NULL)
+        *out_gpg_verify = FALSE;
+      return TRUE;
+    }
+
+ return _ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
+                                                TRUE, out_gpg_verify, error);
 }
 
 /**
