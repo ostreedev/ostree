@@ -70,6 +70,11 @@ ${CMD_PREFIX} ostree --repo=repo rev-parse origin:main
 ${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull via metalink"
 
+# Test fetching the summary through ostree_repo_remote_fetch_summary()
+${CMD_PREFIX} ostree --repo=repo remote refs origin > origin_refs
+assert_file_has_content origin_refs "main"
+echo "ok remote refs via metalink"
+
 cp metalink-data/metalink.xml{,.orig}
 cp ostree-srv/gnomerepo/summary{,.orig}
 

@@ -29,5 +29,6 @@ gboolean ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancella
 gboolean ot_remote_builtin_gpg_import (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_show_url (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **error);
 
 G_END_DECLS
