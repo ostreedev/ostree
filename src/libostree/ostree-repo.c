@@ -34,6 +34,7 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 #include "ostree-repo-static-delta-private.h"
+#include "ostree-metalink.h"
 
 #include <locale.h>
 #include <glib/gstdio.h>
@@ -1573,6 +1574,276 @@ out:
 
   g_prefix_error (error, "GPG: ");
 
+  return ret;
+}
+
+static gboolean
+repo_remote_fetch_summary_url (OstreeRepo    *self,
+                               const char    *name,
+                               GBytes       **out_summary,
+                               GBytes       **out_signatures,
+                               GCancellable  *cancellable,
+                               GError       **error)
+{
+  glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(GMainLoop) main_loop = NULL;
+  g_autofree char *url_string = NULL;
+  SoupURI *base_uri = NULL;
+  gboolean ret = FALSE;
+
+  if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+    goto out;
+
+  base_uri = soup_uri_new (url_string);
+
+  if (base_uri == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid URL '%s'", url_string);
+      goto out;
+    }
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+
+  if (fetcher == NULL)
+    goto out;
+
+  main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
+
+  {
+    SoupURI *uri;
+    const char *base_path;
+    g_autofree char *path = NULL;
+
+    base_path = soup_uri_get_path (base_uri);
+    path = g_build_filename (base_path, "summary", NULL);
+    uri = soup_uri_new_with_base (base_uri, path);
+
+    ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
+                                                 FALSE, TRUE,
+                                                 out_summary,
+                                                 main_loop,
+                                                 OSTREE_MAX_METADATA_SIZE,
+                                                 cancellable, error);
+    soup_uri_free (uri);
+
+    if (!ret)
+      goto out;
+  }
+
+  {
+    SoupURI *uri;
+    const char *base_path;
+    g_autofree char *path = NULL;
+
+    base_path = soup_uri_get_path (base_uri);
+    path = g_build_filename (base_path, "summary.sig", NULL);
+    uri = soup_uri_new_with_base (base_uri, path);
+
+    ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
+                                                 FALSE, TRUE,
+                                                 out_signatures,
+                                                 main_loop,
+                                                 OSTREE_MAX_METADATA_SIZE,
+                                                 cancellable, error);
+    soup_uri_free (uri);
+
+    if (!ret)
+      goto out;
+  }
+
+out:
+  if (base_uri != NULL)
+    soup_uri_free (base_uri);
+
+  return ret;
+}
+
+static gboolean
+repo_remote_fetch_summary_metalink (OstreeRepo    *self,
+                                    const char    *name,
+                                    const char    *metalink_url_string,
+                                    GBytes       **out_summary,
+                                    GBytes       **out_signatures,
+                                    GCancellable  *cancellable,
+                                    GError       **error)
+{
+  glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(GMainLoop) main_loop = NULL;
+  SoupURI *metalink_uri = NULL;
+  gboolean ret = FALSE;
+
+  metalink_uri = soup_uri_new (metalink_url_string);
+
+  if (metalink_uri == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid URL '%s'", metalink_url_string);
+      goto out;
+    }
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+
+  if (fetcher == NULL)
+    goto out;
+
+  main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
+
+  {
+    glnx_unref_object OstreeMetalink *metalink = NULL;
+    GError *local_error = NULL;
+
+    metalink = _ostree_metalink_new (fetcher, "summary",
+                                     OSTREE_MAX_METADATA_SIZE,
+                                     metalink_uri);
+
+    _ostree_metalink_request_sync (metalink, main_loop,
+                                   NULL, out_summary, NULL,
+                                   cancellable, &local_error);
+
+    if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      {
+        g_clear_error (&local_error);
+        *out_summary = NULL;
+      }
+    else if (local_error != NULL)
+      {
+        g_propagate_error (error, local_error);
+        goto out;
+      }
+  }
+
+  {
+    glnx_unref_object OstreeMetalink *metalink = NULL;
+    GError *local_error = NULL;
+
+    metalink = _ostree_metalink_new (fetcher, "summary.sig",
+                                     OSTREE_MAX_METADATA_SIZE,
+                                     metalink_uri);
+
+    _ostree_metalink_request_sync (metalink, main_loop,
+                                   NULL, out_signatures, NULL,
+                                   cancellable, &local_error);
+
+    if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+      {
+        g_clear_error (&local_error);
+        *out_signatures = NULL;
+      }
+    else if (local_error != NULL)
+      {
+        g_propagate_error (error, local_error);
+        goto out;
+      }
+  }
+
+  ret = TRUE;
+
+out:
+  if (metalink_uri != NULL)
+    soup_uri_free (metalink_uri);
+
+  return ret;
+}
+
+/**
+ * ostree_repo_remote_fetch_summary:
+ * @self: Self
+ * @name: name of a remote
+ * @out_summary: (allow-none): return location for raw summary data, or %NULL
+ * @out_signatures: (allow-none): return location for raw summary signature
+ *                                data, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Tries to fetch the summary file and any GPG signatures on the summary file
+ * over HTTP, and returns the binary data in @out_summary and @out_signatures
+ * respectively.
+ *
+ * If no summary file exists on the remote server, @out_summary is set to
+ * @NULL.  Likewise if the summary file is not signed, @out_signatures is
+ * set to @NULL.  In either case the function still returns %TRUE.
+ *
+ * Parse the summary data into a #GVariant using g_variant_new_from_bytes()
+ * with #OSTREE_SUMMARY_GVARIANT_FORMAT as the format string.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_fetch_summary (OstreeRepo    *self,
+                                  const char    *name,
+                                  GBytes       **out_summary,
+                                  GBytes       **out_signatures,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  g_autofree char *metalink_url_string = NULL;
+  g_autoptr(GBytes) summary = NULL;
+  g_autoptr(GBytes) signatures = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (OSTREE_REPO (self), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!_ostree_repo_get_remote_option (self, name, "metalink", NULL,
+                                       &metalink_url_string, error))
+    goto out;
+
+  if (metalink_url_string == NULL)
+    {
+      if (!repo_remote_fetch_summary_url (self, name,
+                                          &summary,
+                                          &signatures,
+                                          cancellable,
+                                          error))
+        goto out;
+    }
+  else
+    {
+      if (!repo_remote_fetch_summary_metalink (self, name,
+                                               metalink_url_string,
+                                               &summary,
+                                               &signatures,
+                                               cancellable,
+                                               error))
+        goto out;
+    }
+
+  /* Verify any summary signatures. */
+  if (summary != NULL && signatures != NULL)
+    {
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(GVariant) signatures_variant = NULL;
+
+      signatures_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                     signatures, FALSE);
+      result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                      summary,
+                                                      signatures_variant,
+                                                      name,
+                                                      NULL, NULL,
+                                                      cancellable,
+                                                      error);
+      if (result == NULL)
+        goto out;
+
+      if (ostree_gpg_verify_result_count_valid (result) == 0)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "GPG signatures found, but none are in trusted keyring");
+          goto out;
+        }
+    }
+
+  if (out_summary != NULL)
+    *out_summary = g_steal_pointer (&summary);
+
+  if (out_signatures != NULL)
+    *out_signatures = g_steal_pointer (&signatures);
+
+  ret = TRUE;
+
+out:
   return ret;
 }
 
