@@ -32,10 +32,12 @@
 
 static char *opt_remote;
 static gboolean opt_disable_fsync;
+static int opt_depth = 0;
 
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+  { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
   { NULL }
 };
 
@@ -137,6 +139,8 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     if (opt_remote)
       g_variant_builder_add (&builder, "{s@v}", "override-remote-name",
                              g_variant_new_variant (g_variant_new_string (opt_remote)));
+    g_variant_builder_add (&builder, "{s@v}", "depth",
+                           g_variant_new_variant (g_variant_new_int32 (opt_depth)));
     
     if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
                                         g_variant_builder_end (&builder),

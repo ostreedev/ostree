@@ -37,6 +37,7 @@ testfiles = test-basic \
 	test-pull-metalink \
 	test-pull-summary-sigs \
 	test-pull-resume \
+	test-local-pull-depth \
 	test-gpg-signed-commit \
 	test-admin-upgrade-unconfigured \
 	test-admin-deploy-syslinux \
