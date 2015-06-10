@@ -648,8 +648,10 @@ ostree_metalink_request_finish (OstreeMetalink         *self,
   if (g_task_propagate_boolean ((GTask*)result, error))
     {
       g_assert_cmpint (request->current_url_index, <, request->urls->len);
-      *out_target_uri = request->urls->pdata[request->current_url_index];
-      *out_data = g_strdup (request->result);
+      if (out_target_uri != NULL)
+        *out_target_uri = request->urls->pdata[request->current_url_index];
+      if (out_data != NULL)
+        *out_data = g_strdup (request->result);
       return TRUE;
     }
   else
@@ -708,7 +710,9 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   data.out_data = out_data;
   data.loop = loop;
   data.error = error;
-  *fetching_sync_uri = _ostree_metalink_get_uri (self);
+
+  if (fetching_sync_uri != NULL)
+    *fetching_sync_uri = _ostree_metalink_get_uri (self);
 
   request->metalink = g_object_ref (self);
   request->urls = g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
