@@ -72,7 +72,7 @@ typedef struct
   char *verification_sha256;
   char *verification_sha512;
 
-  char *result;
+  GBytes *result;
 
   char *last_metalink_error;
   guint current_url_index;
@@ -431,48 +431,51 @@ on_fetched_url (GObject              *src,
                 gpointer              user_data)
 {
   GTask *task = user_data;
+  GCancellable *cancellable;
   OstreeMetalinkRequest *self = g_task_get_task_data (task);
   GError *local_error = NULL;
-  struct stat stbuf;
   int parent_dfd = _ostree_fetcher_get_dfd (self->metalink->fetcher);
   g_autoptr(GInputStream) instream = NULL;
-  g_autofree char *result = NULL;
-  GChecksum *checksum = NULL;
+  g_autoptr(GOutputStream) outstream = NULL;
+  g_autoptr(GBytes) bytes = NULL;
+  g_autofree char *path = NULL;
+  gssize n_bytes;
 
-  result = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)src, res, &local_error);
-  if (!result)
+  path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)src, res, &local_error);
+  if (!path)
     goto out;
 
-  if (!ot_openat_read_stream (parent_dfd, result, FALSE,
-                              &instream, NULL, &local_error))
-    goto out;
-  
-  if (fstat (g_file_descriptor_based_get_fd ((GFileDescriptorBased*)instream), &stbuf) != 0)
-    {
-      gs_set_error_from_errno (&local_error, errno);
-      goto out;
-    }
+  cancellable = g_task_get_cancellable (task);
 
-  if (stbuf.st_size != self->size)
+  if (!ot_openat_read_stream (parent_dfd, path, FALSE, &instream,
+                              cancellable, &local_error))
+    goto out;
+
+  outstream = g_memory_output_stream_new_resizable ();
+
+  n_bytes = g_output_stream_splice (outstream, instream,
+                                    G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                    G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                    cancellable, &local_error);
+
+  if (n_bytes < 0)
+    goto out;
+
+  bytes = g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (outstream));
+
+  if (n_bytes != self->size)
     {
       g_set_error (&local_error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Expected size is %" G_GUINT64_FORMAT " bytes but content is %" G_GUINT64_FORMAT " bytes",
-                   self->size, stbuf.st_size);
+                   "Expected size is %" G_GUINT64_FORMAT " bytes but content is %" G_GSSIZE_FORMAT " bytes",
+                   self->size, n_bytes);
       goto out;
     }
-  
+
   if (self->verification_sha512)
     {
-      const char *actual;
+      g_autofree char *actual = NULL;
 
-      checksum = g_checksum_new (G_CHECKSUM_SHA512);
-
-      if (!ot_gio_splice_update_checksum (NULL, instream, checksum,
-                                          g_task_get_cancellable (task),
-                                          &local_error))
-        goto out;
-      
-      actual = g_checksum_get_string (checksum);
+      actual = g_compute_checksum_for_bytes (G_CHECKSUM_SHA512, bytes);
 
       if (strcmp (self->verification_sha512, actual) != 0)
         {
@@ -484,16 +487,9 @@ on_fetched_url (GObject              *src,
     }
   else if (self->verification_sha256)
     {
-      const char *actual;
+      g_autofree char *actual = NULL;
 
-      checksum = g_checksum_new (G_CHECKSUM_SHA256);
-
-      if (!ot_gio_splice_update_checksum (NULL, instream, checksum,
-                                          g_task_get_cancellable (task),
-                                          &local_error))
-        goto out;
-
-      actual = g_checksum_get_string (checksum);
+      actual = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, bytes);
 
       if (strcmp (self->verification_sha256, actual) != 0)
         {
@@ -505,8 +501,6 @@ on_fetched_url (GObject              *src,
     }
 
  out:
-  if (checksum)
-    g_checksum_free (checksum);
   if (local_error)
     {
       g_free (self->last_metalink_error);
@@ -519,8 +513,7 @@ on_fetched_url (GObject              *src,
     }
   else
     {
-      self->result = result;
-      result = NULL; /* Transfer ownership */
+      self->result = g_bytes_ref (bytes);
       g_task_return_boolean (self->task, TRUE);
     }
 }
@@ -609,7 +602,7 @@ ostree_metalink_request_unref (gpointer data)
 {
   OstreeMetalinkRequest  *request = data;
   g_object_unref (request->metalink);
-  g_free (request->result);
+  g_clear_pointer (&request->result, g_bytes_unref);
   g_free (request->last_metalink_error);
   g_ptr_array_unref (request->urls);
   g_free (request);
@@ -626,7 +619,7 @@ static const GMarkupParser metalink_parser = {
 typedef struct
 {
   SoupURI               **out_target_uri;
-  char                  **out_data;
+  GBytes                **out_data;
   gboolean              success;
   GError                **error;
   GMainLoop             *loop;
@@ -636,7 +629,7 @@ static gboolean
 ostree_metalink_request_finish (OstreeMetalink         *self,
                                 GAsyncResult           *result,
                                 SoupURI               **out_target_uri,
-                                char                  **out_data,
+                                GBytes                **out_data,
                                 GError                **error)
 {
   OstreeMetalinkRequest *request;
@@ -651,7 +644,7 @@ ostree_metalink_request_finish (OstreeMetalink         *self,
       if (out_target_uri != NULL)
         *out_target_uri = request->urls->pdata[request->current_url_index];
       if (out_data != NULL)
-        *out_data = g_strdup (request->result);
+        *out_data = g_bytes_ref (request->result);
       return TRUE;
     }
   else
@@ -695,7 +688,7 @@ gboolean
 _ostree_metalink_request_sync (OstreeMetalink        *self,
                                GMainLoop             *loop,
                                SoupURI               **out_target_uri,
-                               char                  **out_data,
+                               GBytes                **out_data,
                                SoupURI               **fetching_sync_uri,
                                GCancellable          *cancellable,
                                GError                **error)

@@ -1709,10 +1709,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      g_autofree char *metalink_data = NULL;
+      g_autoptr(GBytes) summary_bytes = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
       SoupURI *target_uri = NULL;
-      gs_fd_close int fd = -1;
       
       if (!metalink_uri)
         {
@@ -1728,7 +1727,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (! _ostree_metalink_request_sync (metalink,
                                            pull_data->loop,
                                            &target_uri,
-                                           &metalink_data,
+                                           &summary_bytes,
                                            &pull_data->fetching_sync_uri,
                                            cancellable,
                                            error))
@@ -1740,16 +1739,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_set_path (pull_data->base_uri, repo_base);
       }
 
-      fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
-      if (fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      if (!ot_util_variant_map_fd (fd, 0, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
-                                   &pull_data->summary, error))
-        goto out;
+      pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                                     summary_bytes, FALSE);
     }
 
   if (!_ostree_repo_get_remote_list_option (self,
