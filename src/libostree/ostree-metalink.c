@@ -86,6 +86,10 @@ state_transition (OstreeMetalinkRequest  *self,
                   OstreeMetalinkState     new_state)
 {
   g_assert (self->state != new_state);
+
+  if (new_state == OSTREE_METALINK_STATE_PASSTHROUGH)
+    self->passthrough_previous = self->state;
+
   self->state = new_state;
 }
 
@@ -297,9 +301,9 @@ metalink_parser_end (GMarkupParseContext  *context,
       state_transition (self, OSTREE_METALINK_STATE_RESOURCES);
       break;
     case OSTREE_METALINK_STATE_PASSTHROUGH:
-      g_assert_cmpint (self->passthrough_depth, >, 0);
-      self->passthrough_depth--;
-      if (self->passthrough_depth == 0)
+      if (self->passthrough_depth > 0)
+        self->passthrough_depth--;
+      else
         state_transition (self, self->passthrough_previous);
       break;
     }
@@ -557,7 +561,10 @@ start_target_request_phase (OstreeMetalinkRequest      *self,
 
   if (!self->found_our_file_element)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+      /* XXX Use NOT_FOUND here so we can distinguish not finding the
+       *     requested file from other errors.  This is a bit of a hack
+       *     through; metalinks should have their own error enum. */
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "No <file name='%s'> found", self->metalink->requested_file);
       goto out;
     }
@@ -695,6 +702,7 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   FetchMetalinkSyncData data = { 0, };
   GTask *task = g_task_new (self, cancellable, on_metalink_fetched, &data);
   GBytes *out_contents = NULL;
+  gboolean ret = FALSE;
 
   data.out_target_uri = out_target_uri;
   data.out_data = out_data;
@@ -726,8 +734,10 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
 
   g_main_loop_run (data.loop);
 
+  ret = data.success;
+
  out:
-  return data.success;
+  return ret;
 }
 
 SoupURI *
