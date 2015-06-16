@@ -40,10 +40,7 @@ echo -n broken > ${summary_path}.bad
 echo '1..1'
 cd ${test_tmpdir}
 
-cat > ${test_tmpdir}/metalink-data/metalink.xml <<EOF
-<?xml version="1.0" encoding="utf-8"?>
-<metalink version="3.0" xmlns="http://www.metalinker.org/">
-  <files>
+cat > metalink-valid-summary.xml <<EOF
     <file name="summary">
       <size>$(stat -c '%s' ${summary_path})</size>
       <verification>
@@ -57,6 +54,13 @@ cat > ${test_tmpdir}/metalink-data/metalink.xml <<EOF
         <url protocol="http" type="http" location="US" preference="98" >$(cat httpd-address)/ostree/gnomerepo/summary</url>
       </resources>
     </file>
+EOF
+
+cat > ${test_tmpdir}/metalink-data/metalink.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<metalink version="3.0" xmlns="http://www.metalinker.org/">
+  <files>
+    $(cat metalink-valid-summary.xml)
   </files>
 </metalink>
 EOF
@@ -116,3 +120,40 @@ cd ${test_tmpdir}
 echo bacon > metalink-data/metalink.xml
 test_metalink_pull_error "Document must begin with an element"
 echo "ok metalink err malformed"
+
+cat > ${test_tmpdir}/metalink-data/metalink.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<metalink version="3.0" xmlns="http://www.metalinker.org/">
+  <deeply>
+    <nested>
+      <unknown>
+        <data>
+          hello world
+        </data>
+      </unknown>
+    </nested>
+  </deeply>
+  <files>
+    $(cat metalink-valid-summary.xml)
+  </files>
+  <deeply>
+    <nested>
+      <unknown>
+        <data>
+          hello world
+        </data>
+      </unknown>
+    </nested>
+  </deeply>
+</metalink>
+EOF
+
+cd ${test_tmpdir}
+rm repo -rf
+mkdir repo
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin metalink=$(cat metalink-httpd-address)/metalink.xml
+${CMD_PREFIX} ostree --repo=repo pull origin:main
+${CMD_PREFIX} ostree --repo=repo rev-parse origin:main
+${CMD_PREFIX} ostree --repo=repo fsck
+echo "ok pull via metalink with nested data"
