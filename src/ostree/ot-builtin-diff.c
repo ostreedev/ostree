@@ -131,7 +131,6 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
   g_autoptr(GPtrArray) added = NULL;
 
   context = g_option_context_new ("REV TARGETDIR - Compare directory TARGETDIR against revision REV");
-  g_option_context_add_main_entries (context, options, NULL);
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
