@@ -58,13 +58,29 @@ fi
 
 cd $prev_dir
 
+cd ${test_tmpdir}
+rm -rf repo
+mkdir repo
+${OSTREE} --repo=repo init --mode=archive-z2
+${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+echo "ok pull mirror without checking signed summary"
+
+cd ${test_tmpdir}
+rm -rf repo
+mkdir repo
+${OSTREE} --repo=repo init --mode=archive-z2
+${OSTREE} --repo=repo remote add --set=gpg-verify-summary=true origin $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} --repo=repo pull --mirror origin 2>/dev/null || touch expected-fail
+assert_has_file expected-fail
+echo "ok pull mirror without signed summary"
+
 ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
 
 cd ${test_tmpdir}
 rm -rf repo
 mkdir repo
 ${OSTREE} --repo=repo init --mode=archive-z2
-${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} --repo=repo remote add --set=gpg-verify-summary=true origin $(cat httpd-address)/ostree/gnomerepo
 ${OSTREE} --repo=repo pull --mirror origin
 assert_has_file repo/summary
 assert_has_file repo/summary.sig

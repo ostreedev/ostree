@@ -58,6 +58,7 @@ typedef struct {
   SoupURI       *fetching_sync_uri;
   
   gboolean          gpg_verify;
+  gboolean          gpg_verify_summary;
 
   GBytes           *summary_data;
   GBytes           *summary_data_sig;
@@ -1346,6 +1347,14 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
         delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
         summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
 
+
+        if (pull_data->gpg_verify_summary && !summary_csum)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+            goto out;
+          }
+
         if (summary_csum && memcmp (summary_csum, ret_csum, 32))
           {
             g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Invalid checksum for static delta %s", delta);
@@ -1619,6 +1628,57 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                                         progress, cancellable, error);
 }
 
+static GBytes *
+ostree_request_metalink_bytes (OtPullData    *pull_data,
+                               const char    *metalink_url_str,
+                               const char    *file,
+                               GCancellable  *cancellable,
+                               GError        **error)
+{
+  g_autofree char *metalink_data = NULL;
+  SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
+  SoupURI *target_uri = NULL;
+  gs_fd_close int fd = -1;
+  GBytes *bytes = NULL;
+  glnx_unref_object OstreeMetalink *metalink = NULL;
+
+  if (!metalink_uri)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid metalink URL: %s", metalink_url_str);
+      goto out;
+    }
+
+  metalink = _ostree_metalink_new (pull_data->fetcher, file, OSTREE_MAX_METADATA_SIZE, metalink_uri);
+  soup_uri_free (metalink_uri);
+
+  if (! _ostree_metalink_request_sync (metalink,
+                                       pull_data->loop,
+                                       &target_uri,
+                                       &metalink_data,
+                                       &pull_data->fetching_sync_uri,
+                                       cancellable,
+                                       error))
+    goto out;
+
+  {
+    g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
+    pull_data->base_uri = soup_uri_copy (target_uri);
+    soup_uri_set_path (pull_data->base_uri, repo_base);
+  }
+
+  fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
+  if (fd == -1)
+    {
+      gs_set_error_from_errno (error, errno);
+      goto out;
+    }
+
+  bytes = glnx_fd_readall_bytes (fd, cancellable, error);
+ out:
+  return bytes;
+}
+
 /* Documented in ostree-repo.c */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -1633,6 +1693,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gpointer key, value;
   gboolean tls_permissive = FALSE;
   OstreeFetcherConfigFlags fetcher_flags = 0;
+  g_autoptr(GBytes) bytes_summary = NULL;
   g_autofree char *remote_key = NULL;
   g_autofree char *path = NULL;
   g_autofree char *baseurl = NULL;
@@ -1640,7 +1701,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
   g_autofree char *remote_mode_str = NULL;
-  glnx_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   GKeyFile *remote_config = NULL;
@@ -1708,6 +1768,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
        * pulls.
        */
       pull_data->gpg_verify = FALSE;
+      pull_data->gpg_verify_summary = FALSE;
     }
   else
     {
@@ -1715,6 +1776,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
                                               &pull_data->gpg_verify, error))
+        goto out;
+
+      if (!ostree_repo_remote_get_gpg_verify_summary (self,
+                                                      remote_name_or_baseurl,
+                                                      &pull_data->gpg_verify_summary,
+                                                      error))
         goto out;
     }
 
@@ -1831,47 +1898,23 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      g_autofree char *metalink_data = NULL;
-      SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
-      SoupURI *target_uri = NULL;
-      gs_fd_close int fd = -1;
-      
-      if (!metalink_uri)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid metalink URL: %s", metalink_url_str);
-          goto out;
-        }
-      
-      metalink = _ostree_metalink_new (pull_data->fetcher, "summary",
-                                       OSTREE_MAX_METADATA_SIZE, metalink_uri);
-      soup_uri_free (metalink_uri);
+      g_autoptr(GBytes) bytes_summary = NULL;
+      g_autoptr(GBytes) bytes_summary_sig = NULL;
 
-      if (! _ostree_metalink_request_sync (metalink,
-                                           pull_data->loop,
-                                           &target_uri,
-                                           &metalink_data,
-                                           &pull_data->fetching_sync_uri,
-                                           cancellable,
-                                           error))
+      bytes_summary = ostree_request_metalink_bytes (pull_data, metalink_url_str, "summary", cancellable, error);
+      if (bytes_summary == NULL)
         goto out;
 
-      {
-        g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
-        pull_data->base_uri = soup_uri_copy (target_uri);
-        soup_uri_set_path (pull_data->base_uri, repo_base);
-      }
+      pull_data->summary_data = g_bytes_ref (bytes_summary);
+      pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
 
-      fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
-      if (fd == -1)
+      if (pull_data->gpg_verify_summary)
         {
-          gs_set_error_from_errno (error, errno);
-          goto out;
+          bytes_summary_sig = ostree_request_metalink_bytes (pull_data, metalink_url_str, "summary.sig", cancellable, error);
+          if (bytes_summary_sig == NULL)
+            goto out;
+          pull_data->summary_data_sig = g_bytes_ref (bytes_summary_sig);
         }
-
-      if (!ot_util_variant_map_fd (fd, 0, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
-                                   &pull_data->summary, error))
-        goto out;
     }
 
   if (!_ostree_repo_get_remote_list_option (self,
@@ -1909,99 +1952,118 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
+  {
+    SoupURI *uri = NULL;
+    g_autoptr(GBytes) bytes_sig = NULL;
+    g_autofree char *ret_contents = NULL;
+    gsize i, n;
+    g_autoptr(GVariant) refs = NULL;
+    g_autoptr(GVariant) deltas = NULL;
+    g_autoptr(GVariant) additional_metadata = NULL;
+      
+    if (!pull_data->summary)
+      {
+        uri = suburi_new (pull_data->base_uri, "summary", NULL);
+        if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                             &bytes_summary, cancellable, error))
+          goto out;
+        soup_uri_free (uri);
+     }
+
+    if (bytes_summary)
+      {
+        pull_data->summary_data = g_bytes_ref (bytes_summary);
+        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+        if (!pull_data->summary_data_sig)
+          {
+            uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
+            if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
+                                                 &bytes_sig, cancellable, error))
+              goto out;
+            soup_uri_free (uri);
+
+            if (bytes_sig)
+              pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
+          }
+      }
+
+    if (pull_data->gpg_verify_summary)
+      {
+        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+        g_autoptr(GVariant) sig_variant = NULL;
+
+        if (!bytes_sig)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+            goto out;
+          }
+
+        sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
+        result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                        bytes_summary,
+                                                        sig_variant,
+                                                        remote_name_or_baseurl,
+                                                        NULL,
+                                                        NULL,
+                                                        cancellable,
+                                                        error);
+        if (result == NULL)
+          goto out;
+
+        if (ostree_gpg_verify_result_count_valid (result) == 0)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG signatures found, but none are in trusted keyring");
+            goto out;
+          }
+      }
+
+    if (pull_data->summary)
+      {
+        refs = g_variant_get_child_value (pull_data->summary, 0);
+        n = g_variant_n_children (refs);
+        for (i = 0; i < n; i++)
+          {
+            const char *refname;
+            g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
+
+            g_variant_get_child (ref, 0, "&s", &refname);
+
+            if (!ostree_validate_rev (refname, error))
+              goto out;
+
+            g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+          }
+
+        additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
+        deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
+        n = deltas ? g_variant_n_children (deltas) : 0;
+        for (i = 0; i < n; i++)
+          {
+            const char *delta;
+            GVariant *csum_v = NULL;
+            guchar *csum_data = g_malloc (32);
+            g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
+
+            g_variant_get_child (ref, 0, "&s", &delta);
+            g_variant_get_child (ref, 1, "v", &csum_v);
+
+            if (!validate_variant_is_csum (csum_v, error))
+              goto out;
+
+            memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
+            g_hash_table_insert (pull_data->summary_deltas_checksums,
+                                 g_strdup (delta),
+                                 csum_data);
+          }
+      }
+  }
+
   if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
     {
-      SoupURI *uri = NULL;
-      g_autoptr(GBytes) bytes = NULL;
-      g_autoptr(GBytes) bytes_sig = NULL;
-      g_autofree char *ret_contents = NULL;
-      
-      uri = suburi_new (pull_data->base_uri, "summary", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
-                                           &bytes, cancellable, error))
-        goto out;
-      soup_uri_free (uri);
-
-      uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
-      if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
-                                           &bytes_sig, cancellable, error))
-        goto out;
-      soup_uri_free (uri);
-
-      if (bytes)
-        {
-          g_autoptr(GVariant) refs = NULL;
-          g_autoptr(GVariant) additional_metadata = NULL;
-          g_autoptr(GVariant) deltas = NULL;
-          gsize i, n;
-
-          pull_data->summary_data = g_bytes_ref (bytes);
-          if (bytes_sig)
-            pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
-          if (pull_data->gpg_verify && bytes_sig)
-            {
-              glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-              g_autoptr(GVariant) sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                                          bytes_sig,
-                                                                          FALSE);
-              result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                              bytes,
-                                                              sig_variant,
-                                                              NULL,
-                                                              NULL,
-                                                              NULL,
-                                                              cancellable,
-                                                              error);
-              if (result == NULL)
-                goto out;
-
-              if (ostree_gpg_verify_result_count_valid (result) == 0)
-                {
-                  g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "GPG signatures found, but none are in trusted keyring");
-                  goto out;
-                }
-            }
-
-          pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes, FALSE);
-          refs = g_variant_get_child_value (pull_data->summary, 0);
-          n = g_variant_n_children (refs);
-          for (i = 0; i < n; i++)
-            {
-              const char *refname;
-              g_autoptr(GVariant) ref = g_variant_get_child_value (refs, i);
-
-              g_variant_get_child (ref, 0, "&s", &refname);
-
-              if (!ostree_validate_rev (refname, error))
-                goto out;
-              
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
-            }
-
-          additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
-          deltas = g_variant_lookup_value (additional_metadata, OSTREE_SUMMARY_STATIC_DELTAS, G_VARIANT_TYPE ("a{sv}"));
-          n = deltas ? g_variant_n_children (deltas) : 0;
-          for (i = 0; i < n; i++)
-            {
-              const char *delta;
-              GVariant *csum_v = NULL;
-              guchar *csum_data = g_malloc (32);
-              g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
-
-              g_variant_get_child (ref, 0, "&s", &delta);
-              g_variant_get_child (ref, 1, "v", &csum_v);
-
-              if (!validate_variant_is_csum (csum_v, error))
-                goto out;
-
-              memcpy (csum_data, ostree_checksum_bytes_peek (csum_v), 32);
-              g_hash_table_insert (pull_data->summary_deltas_checksums,
-                                   g_strdup (delta),
-                                   csum_data);
-            }
-        }
-      else
+      if (!bytes_summary)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
