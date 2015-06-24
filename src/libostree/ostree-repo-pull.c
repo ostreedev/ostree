@@ -1246,35 +1246,6 @@ enqueue_one_object_request (OtPullData        *pull_data,
 }
 
 static gboolean
-repo_get_remote_option_inherit (OstreeRepo  *self,
-                                const char  *remote_name,
-                                const char  *option_name,
-                                char       **out_value,
-                                GError     **error)
-{
-  OstreeRepo *parent = ostree_repo_get_parent (self);
-  g_autofree char *value = NULL;
-  gboolean ret = FALSE;
-
-  if (!_ostree_repo_get_remote_option (self, remote_name, option_name, NULL, &value, error))
-    goto out;
-
-  if (value == NULL && parent != NULL)
-    {
-        if (!repo_get_remote_option_inherit (parent, remote_name, option_name, &value, error))
-          goto out;
-    }
-
-  /* Success here just means no error occurred during lookup,
-   * not necessarily that we found a value for the option name. */
-  ot_transfer_out_value (out_value, &value);
-  ret = TRUE;
-
- out:
-  return ret;
-}
-
-static gboolean
 load_remote_repo_config (OtPullData    *pull_data,
                          GKeyFile     **out_keyfile,
                          GCancellable  *cancellable,
@@ -1631,11 +1602,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  gboolean tls_permissive = FALSE;
-  OstreeFetcherConfigFlags fetcher_flags = 0;
   g_autofree char *remote_key = NULL;
   g_autofree char *path = NULL;
-  g_autofree char *baseurl = NULL;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
@@ -1701,103 +1669,22 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->start_time = g_get_monotonic_time ();
 
-  if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
-    {
-      baseurl = g_strdup (remote_name_or_baseurl);
-      /* For compatibility with pull-local, don't gpg verify local
-       * pulls.
-       */
-      pull_data->gpg_verify = FALSE;
-    }
-  else
-    {
-      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
+  if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
+    pull_data->remote_name = g_strdup (remote_name_or_baseurl);
 
-      if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
-                                              &pull_data->gpg_verify, error))
-        goto out;
-    }
+  if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
+                                          &pull_data->gpg_verify, error))
+    goto out;
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
-  if (!_ostree_repo_get_remote_boolean_option (self,
-                                               remote_name_or_baseurl, "tls-permissive",
-                                               FALSE, &tls_permissive, error))
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
+  if (pull_data->fetcher == NULL)
     goto out;
-  if (tls_permissive)
-    fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
   pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
-  pull_data->fetcher = _ostree_fetcher_new (pull_data->tmpdir_dfd, fetcher_flags);
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-
-  {
-    g_autofree char *tls_client_cert_path = NULL;
-    g_autofree char *tls_client_key_path = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-client-cert-path",
-                                         NULL, &tls_client_cert_path, error))
-      goto out;
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-client-key-path",
-                                         NULL, &tls_client_key_path, error))
-      goto out;
-
-    if ((tls_client_cert_path != NULL) != (tls_client_key_path != NULL))
-      {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "remote \"%s\" must specify both \"tls-client-cert-path\" and \"tls-client-key-path\"",
-                     remote_name_or_baseurl);
-        goto out;
-      }
-    else if (tls_client_cert_path)
-      {
-        g_autoptr(GTlsCertificate) client_cert = NULL;
-
-        g_assert (tls_client_key_path);
-
-        client_cert = g_tls_certificate_new_from_files (tls_client_cert_path,
-                                                        tls_client_key_path,
-                                                        error);
-        if (!client_cert)
-          goto out;
-
-        _ostree_fetcher_set_client_cert (pull_data->fetcher, client_cert);
-      }
-  }
-
-  {
-    g_autofree char *tls_ca_path = NULL;
-    g_autoptr(GTlsDatabase) db = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "tls-ca-path",
-                                         NULL, &tls_ca_path, error))
-      goto out;
-
-    if (tls_ca_path)
-      {
-        db = g_tls_file_database_new (tls_ca_path, error);
-        if (!db)
-          goto out;
-        
-        _ostree_fetcher_set_tls_database (pull_data->fetcher, db);
-      }
-  }
-
-  {
-    g_autofree char *http_proxy = NULL;
-
-    if (!_ostree_repo_get_remote_option (self,
-                                         remote_name_or_baseurl, "proxy",
-                                         NULL, &http_proxy, error))
-      goto out;
-
-    if (http_proxy)
-      _ostree_fetcher_set_proxy (pull_data->fetcher, http_proxy);
-  }
 
   if (!_ostree_repo_get_remote_option (self,
                                        remote_name_or_baseurl, "metalink",
@@ -1806,19 +1693,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (!metalink_url_str)
     {
-      if (baseurl == NULL)
-        {
-          if (!repo_get_remote_option_inherit (self, remote_name_or_baseurl, "url", &baseurl, error))
-            goto out;
-        }
+      g_autofree char *baseurl = NULL;
 
-      if (baseurl == NULL)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                       "No \"url\" option in remote \"%s\"",
-                       remote_name_or_baseurl);
-          goto out;
-        }
+      if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+        goto out;
 
       pull_data->base_uri = soup_uri_new (baseurl);
 
@@ -1831,10 +1709,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
-      g_autofree char *metalink_data = NULL;
+      g_autoptr(GBytes) summary_bytes = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
       SoupURI *target_uri = NULL;
-      gs_fd_close int fd = -1;
       
       if (!metalink_uri)
         {
@@ -1850,7 +1727,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (! _ostree_metalink_request_sync (metalink,
                                            pull_data->loop,
                                            &target_uri,
-                                           &metalink_data,
+                                           &summary_bytes,
                                            &pull_data->fetching_sync_uri,
                                            cancellable,
                                            error))
@@ -1862,16 +1739,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_set_path (pull_data->base_uri, repo_base);
       }
 
-      fd = openat (pull_data->tmpdir_dfd, metalink_data, O_RDONLY | O_CLOEXEC);
-      if (fd == -1)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-
-      if (!ot_util_variant_map_fd (fd, 0, OSTREE_SUMMARY_GVARIANT_FORMAT, FALSE,
-                                   &pull_data->summary, error))
-        goto out;
+      pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                                     summary_bytes, FALSE);
     }
 
   if (!_ostree_repo_get_remote_list_option (self,

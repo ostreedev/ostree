@@ -120,6 +120,13 @@ gboolean      ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                              GCancellable       *cancellable,
                                              GError            **error);
 
+gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
+                                                const char    *name,
+                                                GBytes       **out_summary,
+                                                GBytes       **out_signatures,
+                                                GCancellable  *cancellable,
+                                                GError       **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,
