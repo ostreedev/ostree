@@ -1804,6 +1804,7 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
   g_autoptr(GBytes) summary = NULL;
   g_autoptr(GBytes) signatures = NULL;
   gboolean ret = FALSE;
+  gboolean gpg_verify_summary;
 
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
@@ -1832,8 +1833,18 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
         goto out;
     }
 
+  if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
+    goto out;
+
+  if (gpg_verify_summary && signatures == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+      goto out;
+    }
+
   /* Verify any summary signatures. */
-  if (summary != NULL && signatures != NULL)
+  if (gpg_verify_summary && summary != NULL && signatures != NULL)
     {
       glnx_unref_object OstreeGpgVerifyResult *result = NULL;
       g_autoptr(GVariant) signatures_variant = NULL;
