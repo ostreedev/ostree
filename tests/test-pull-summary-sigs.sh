@@ -60,22 +60,46 @@ cd $prev_dir
 
 ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
 
+repo_reinit () {
+  cd ${test_tmpdir}
+  rm -rf repo
+  mkdir repo
+  ${OSTREE} --repo=repo init --mode=archive-z2
+  ${OSTREE} --repo=repo remote add --set=gpg-verify-summary=true origin $(cat httpd-address)/ostree/gnomerepo
+}
+
 cd ${test_tmpdir}
-rm -rf repo
-mkdir repo
-${OSTREE} --repo=repo init --mode=archive-z2
-${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+repo_reinit
 ${OSTREE} --repo=repo pull origin main
 echo "ok pull with signed summary"
+
+cd ${test_tmpdir}
+repo_reinit
+mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{,.good}
+echo invalid > ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
+if ${OSTREE} --repo=repo pull origin main 2>err.txt; then
+    assert_not_reached "Successful pull with invalid GPG sig"
+fi
+assert_file_has_content err.txt "no signatures found"
+mv ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig{.good,}
+echo "ok pull with invalid summary gpg signature fails"
+
+cd ${test_tmpdir}
+repo_reinit
+cp ${test_tmpdir}/ostree-srv/gnomerepo/summary{,.good}
+# Some leading garbage
+(echo invalid && cat ${test_tmpdir}/ostree-srv/gnomerepo/summary) > summary.bad.tmp && mv summary.bad.tmp ${test_tmpdir}/ostree-srv/gnomerepo/summary
+if ${OSTREE} --repo=repo pull origin main; then
+    assert_not_reached "Successful pull with invalid summary"
+fi
+mv ${test_tmpdir}/ostree-srv/gnomerepo/summary{.good,}
+echo "ok pull with invalid summary (leading garbage) fails"
 
 # Generate a delta
 ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate --empty main
 ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}
 
 cd ${test_tmpdir}
-rm -rf repo
-mkdir repo
-${OSTREE} --repo=repo init --mode=archive-z2
-${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+repo_reinit
 ${OSTREE} --repo=repo pull origin main
 echo "ok pull delta with signed summary"

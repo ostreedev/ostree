@@ -1318,7 +1318,10 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
         delta = g_strconcat (from_revision ? from_revision : "", from_revision ? "-" : "", to_revision, NULL);
         summary_csum = g_hash_table_lookup (pull_data->summary_deltas_checksums, delta);
 
-
+        /* At this point we've GPG verified the data, so in theory
+         * could trust that they provided the right data, but let's
+         * make this a hard error.
+         */
         if (pull_data->gpg_verify_summary && !summary_csum)
           {
             g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -1818,27 +1821,41 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_free (uri);
      }
 
+    if (!bytes_summary && pull_data->gpg_verify_summary)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "GPG verification enabled, but no summary found (use gpg-verify-summary=false in remote config to disable)");
+        goto out;
+      }
+
     if (bytes_summary)
       {
-        g_autoptr(GVariant) sig_variant = NULL;
-        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-        pull_data->summary_data = g_bytes_ref (bytes_summary);
-        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
-
         uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
         if (!fetch_uri_contents_membuf_sync (pull_data, uri, FALSE, TRUE,
                                              &bytes_sig, cancellable, error))
           goto out;
         soup_uri_free (uri);
+      }
 
-        if (bytes_sig)
-          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
-        else
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
-            goto out;
-          }
+    if (!bytes_sig && pull_data->gpg_verify_summary)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "GPG verification enabled, but no summary.sig found (use gpg-verify-summary=false in remote config to disable)");
+        goto out;
+      }
+
+    if (bytes_summary)
+      {
+        pull_data->summary_data = g_bytes_ref (bytes_summary);
+        pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+      }
+
+    if (bytes_summary && bytes_sig)
+      {
+        g_autoptr(GVariant) sig_variant = NULL;
+        glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+
+        pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
 
         sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
         result = _ostree_repo_gpg_verify_with_metadata (self,
