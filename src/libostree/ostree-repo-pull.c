@@ -1682,7 +1682,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->start_time = g_get_monotonic_time ();
 
-  if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
+  if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
     {
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
       /* For compatibility with pull-local, don't gpg verify local
