@@ -1684,7 +1684,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
     {
-      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
       /* For compatibility with pull-local, don't gpg verify local
        * pulls.
        */
@@ -1693,6 +1692,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
+      pull_data->remote_name = g_strdup (remote_name_or_baseurl);
       if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
                                               &pull_data->gpg_verify, error))
         goto out;
