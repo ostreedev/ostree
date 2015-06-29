@@ -70,8 +70,9 @@ rm -rf repo
 mkdir repo
 ${OSTREE} --repo=repo init --mode=archive-z2
 ${OSTREE} --repo=repo remote add --set=gpg-verify-summary=true origin $(cat httpd-address)/ostree/gnomerepo
-${OSTREE} --repo=repo pull --mirror origin 2>/dev/null || touch expected-fail
-assert_has_file expected-fail
+if ${OSTREE} --repo=repo pull --mirror origin 2>err.txt; then
+    assert_not_reached "Mirroring unexpectedly succeeded"
+fi
 echo "ok pull mirror without signed summary"
 
 ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u ${COMMIT_SIGN}

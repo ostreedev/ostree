@@ -39,8 +39,13 @@ echo "rev=${rev}"
 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
+parallel_cmd=parallel
+if parallel --help | grep -q -e --no-notice; then
+    parallel_cmd="${parallel_cmd} --no-notice"
+fi
+
 count=$(($(getconf _NPROCESSORS_ONLN) * 2))
-seq "${count}" | parallel --no-notice -n0 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+seq "${count}" | ${parallel_cmd} -n0 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
 
 ${CMD_PREFIX} ostree admin --sysroot=sysroot status > status.txt
 grep "testos ${rev}" status.txt | wc -l > status-matches.txt

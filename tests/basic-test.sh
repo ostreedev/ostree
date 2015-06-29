@@ -204,9 +204,10 @@ ${CMD_PREFIX} ostree --repo=shadow-repo checkout "${parent_rev_test2}" test2-che
 echo "ok checkout from shadow repo"
 
 cd ${test_tmpdir}
-rm -f expected-fail
-$OSTREE checkout test2 --subpath /enoent 2>/dev/null || touch expected-fail
-assert_has_file expected-fail
+if $OSTREE checkout test2 --subpath /enoent 2>err.txt; then
+    assert_not_reached "checking outnonexistent file unexpectedly succeeded!"
+fi
+assert_file_has_content err.txt 'No such file or directory'
 echo "ok subdir enoent"
 
 cd ${test_tmpdir}
