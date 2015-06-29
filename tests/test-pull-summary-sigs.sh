@@ -28,12 +28,12 @@ setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
 mkdir ${test_tmpdir}/ostree-srv/other-files
 cd ${test_tmpdir}/ostree-srv/other-files
 echo 'hello world another object' > hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b other -s "A commit" -m "Another Commit body"
+ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b other -s "A commit" -m "Another Commit body"
 
 mkdir ${test_tmpdir}/ostree-srv/yet-other-files
 cd ${test_tmpdir}/ostree-srv/yet-other-files
 echo 'hello world yet another object' > yet-another-hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b yet-another -s "A commit" -m "Another Commit body"
+ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b yet-another -s "A commit" -m "Another Commit body"
 
 ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 
