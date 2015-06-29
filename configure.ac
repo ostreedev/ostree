@@ -112,7 +112,14 @@ OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
 
+# check for gtk-doc
+m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK([1.15], [--flavour no-tmpl])
+],[
+enable_gtk_doc=no
+AM_CONDITIONAL([ENABLE_GTK_DOC], false)
+])
+
 AC_PATH_PROG([XSLTPROC], [xsltproc])
 
 AC_ARG_WITH(libarchive,
