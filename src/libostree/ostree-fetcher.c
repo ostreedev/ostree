@@ -201,10 +201,10 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
   self->max_outstanding = 3 * max_conns;
 
-  g_signal_connect (self->session, "request-started",
-                    G_CALLBACK (on_request_started), self);
-  g_signal_connect (self->session, "request-unqueued",
-                    G_CALLBACK (on_request_unqueued), self);
+  g_signal_connect_object (self->session, "request-started",
+                           G_CALLBACK (on_request_started), self, 0);
+  g_signal_connect_object (self->session, "request-unqueued",
+                           G_CALLBACK (on_request_unqueued), self, 0);
   
   self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
                                                   (GDestroyNotify)g_object_unref);
