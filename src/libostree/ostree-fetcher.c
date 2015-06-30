@@ -601,9 +601,8 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
           msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
           if (exists && stbuf.st_size > 0)
             soup_message_headers_set_range (msg->request_headers, stbuf.st_size, -1);
-          g_hash_table_insert (self->message_to_request,
-                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                               pending);
+          /* Transfer ownership */
+          g_hash_table_insert (self->message_to_request, msg, pending);
         }
       pending->out_tmpfile = tmpfile;
       tmpfile = NULL; /* Transfer ownership */
