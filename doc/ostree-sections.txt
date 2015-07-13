@@ -216,6 +216,7 @@ OstreeRepo
 OstreeRepoMode
 ostree_repo_mode_from_string
 ostree_repo_new
+ostree_repo_new_for_sysroot_path
 ostree_repo_new_default
 ostree_repo_open
 ostree_repo_set_disable_fsync

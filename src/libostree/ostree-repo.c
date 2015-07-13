@@ -83,7 +83,8 @@ typedef struct {
 enum {
   PROP_0,
 
-  PROP_PATH
+  PROP_PATH,
+  PROP_SYSROOT_PATH
 };
 
 enum {
@@ -520,6 +521,7 @@ ostree_repo_finalize (GObject *object)
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->config_file);
+  g_clear_object (&self->sysroot_dir);
 
   g_clear_object (&self->transaction_lock_path);
 
@@ -554,8 +556,10 @@ ostree_repo_set_property(GObject         *object,
   switch (prop_id)
     {
     case PROP_PATH:
-      /* Canonicalize */
-      self->repodir = g_file_new_for_path (gs_file_get_path_cached (g_value_get_object (value)));
+      self->repodir = g_value_dup_object (value);
+      break;
+    case PROP_SYSROOT_PATH:
+      self->sysroot_dir = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -575,6 +579,9 @@ ostree_repo_get_property(GObject         *object,
     {
     case PROP_PATH:
       g_value_set_object (value, self->repodir);
+      break;
+    case PROP_SYSROOT_PATH:
+      g_value_set_object (value, self->sysroot_dir);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -599,6 +606,10 @@ ostree_repo_constructed (GObject *object)
   self->state_dir = g_file_get_child (self->repodir, "state");
   self->config_file = g_file_get_child (self->repodir, "config");
 
+  /* Ensure the "sysroot-path" property is set. */
+  if (self->sysroot_dir == NULL)
+    self->sysroot_dir = g_object_ref (_ostree_get_default_sysroot_path ());
+
   G_OBJECT_CLASS (ostree_repo_parent_class)->constructed (object);
 }
 
@@ -615,6 +626,14 @@ ostree_repo_class_init (OstreeRepoClass *klass)
   g_object_class_install_property (object_class,
                                    PROP_PATH,
                                    g_param_spec_object ("path",
+                                                        "",
+                                                        "",
+                                                        G_TYPE_FILE,
+                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+  g_object_class_install_property (object_class,
+                                   PROP_SYSROOT_PATH,
+                                   g_param_spec_object ("sysroot-path",
                                                         "",
                                                         "",
                                                         G_TYPE_FILE,
@@ -683,9 +702,29 @@ ostree_repo_new (GFile *path)
 }
 
 static GFile *
-get_default_repo_path (void)
+get_default_repo_path (GFile *sysroot_path)
 {
-  return g_file_new_for_path ("/ostree/repo");
+  if (sysroot_path == NULL)
+    sysroot_path = _ostree_get_default_sysroot_path ();
+
+  return g_file_resolve_relative_path (sysroot_path, "ostree/repo");
+}
+
+/**
+ * ostree_repo_new_for_sysroot_path:
+ * @repo_path: Path to a repository
+ * @sysroot_path: Path to the system root
+ *
+ * Creates a new #OstreeRepo instance, taking the system root path explicitly
+ * instead of assuming "/".
+ *
+ * Returns: (transfer full): An accessor object for the OSTree repository located at @repo_path.
+ */
+OstreeRepo *
+ostree_repo_new_for_sysroot_path (GFile *repo_path,
+                                  GFile *sysroot_path)
+{
+  return g_object_new (OSTREE_TYPE_REPO, "path", repo_path, "sysroot-path", sysroot_path, NULL);
 }
 
 /**
@@ -714,7 +753,7 @@ ostree_repo_new_default (void)
       g_autoptr(GFile) repo_path = NULL;
 
       if (envvar == NULL || *envvar == '\0')
-        repo_path = get_default_repo_path ();
+        repo_path = get_default_repo_path (NULL);
       else
         repo_path = g_file_new_for_path (envvar);
 
@@ -731,7 +770,12 @@ ostree_repo_new_default (void)
 gboolean
 ostree_repo_is_system (OstreeRepo   *repo)
 {
-  g_autoptr(GFile) default_repo_path = get_default_repo_path ();
+  g_autoptr(GFile) default_repo_path = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (repo), FALSE);
+
+  default_repo_path = get_default_repo_path (repo->sysroot_dir);
+
   return g_file_equal (repo->repodir, default_repo_path);
 }
 
