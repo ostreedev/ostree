@@ -99,6 +99,8 @@ G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
 #define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
 
+#define SYSCONF_REMOTES SHORTENED_SYSCONFDIR "/ostree/remotes.d"
+
 typedef struct {
   volatile int ref_count;
   char *name;
@@ -927,6 +929,7 @@ impl_repo_remote_add (OstreeRepo     *self,
                       GError        **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
+  gboolean different_sysroot = FALSE;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (name != NULL, FALSE);
@@ -968,16 +971,39 @@ impl_repo_remote_add (OstreeRepo     *self,
   remote->group = g_strdup_printf ("remote \"%s\"", name);
   remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", name);
 
-  if (sysroot != NULL || ostree_repo_is_system (self))
+  /* The OstreeRepo maintains its own internal system root path,
+   * so we need to not only check if a "sysroot" argument was given
+   * but also whether it's actually different from OstreeRepo's.
+   *
+   * XXX Having API regret about the "sysroot" argument now.
+   */
+  if (sysroot != NULL)
+    different_sysroot = !g_file_equal (sysroot, self->sysroot_dir);
+
+  if (different_sysroot || ostree_repo_is_system (self))
     {
-      const char *sysconf_remotes = SYSCONFDIR "/ostree/remotes.d";
       g_autofree char *basename = g_strconcat (name, ".conf", NULL);
       g_autoptr(GFile) etc_ostree_remotes_d = NULL;
+      GError *local_error = NULL;
 
       if (sysroot == NULL)
-        etc_ostree_remotes_d = g_file_new_for_path (sysconf_remotes);
-      else
-        etc_ostree_remotes_d = g_file_resolve_relative_path (sysroot, sysconf_remotes + 1);
+        sysroot = self->sysroot_dir;
+
+      etc_ostree_remotes_d = g_file_resolve_relative_path (sysroot, SYSCONF_REMOTES);
+
+      if (!g_file_make_directory_with_parents (etc_ostree_remotes_d,
+                                               cancellable, &local_error))
+        {
+          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_EXISTS))
+            {
+              g_clear_error (&local_error);
+            }
+          else
+            {
+              g_propagate_error (error, local_error);
+              goto out;
+            }
+        }
 
       remote->file = g_file_get_child (etc_ostree_remotes_d, basename);
     }
@@ -2179,7 +2205,8 @@ append_remotes_d (OstreeRepo          *self,
   g_autoptr(GFile) etc_ostree_remotes_d = NULL;
   g_autoptr(GFileEnumerator) direnum = NULL;
 
-  etc_ostree_remotes_d = g_file_new_for_path (SYSCONFDIR "/ostree/remotes.d");
+  etc_ostree_remotes_d = g_file_resolve_relative_path (self->sysroot_dir, SYSCONF_REMOTES);
+
   if (!enumerate_directory_allow_noent (etc_ostree_remotes_d, OSTREE_GIO_FAST_QUERYINFO, 0,
                                         &direnum,
                                         cancellable, error))
