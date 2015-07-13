@@ -44,6 +44,9 @@ GType ostree_repo_get_type (void);
 
 OstreeRepo* ostree_repo_new (GFile *path);
 
+OstreeRepo* ostree_repo_new_for_sysroot_path (GFile *repo_path,
+                                              GFile *sysroot_path);
+
 OstreeRepo* ostree_repo_new_default (void);
 
 gboolean      ostree_repo_open   (OstreeRepo     *self,
