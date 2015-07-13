@@ -127,7 +127,7 @@ ostree_sysroot_constructed (GObject *object)
     self->path = g_object_ref (_ostree_get_default_sysroot_path ());
 
   repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
-  self->repo = ostree_repo_new (repo_path);
+  self->repo = ostree_repo_new_for_sysroot_path (repo_path, self->path);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->constructed (object);
 }
