@@ -22,6 +22,7 @@
 
 #include "otutil.h"
 
+#include "ostree-core-private.h"
 #include "ostree-sysroot-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
@@ -88,8 +89,7 @@ ostree_sysroot_set_property(GObject         *object,
   switch (prop_id)
     {
     case PROP_PATH:
-      /* Canonicalize */
-      self->path = g_file_new_for_path (gs_file_get_path_cached (g_value_get_object (value)));
+      self->path = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -122,7 +122,9 @@ ostree_sysroot_constructed (GObject *object)
   OstreeSysroot *self = OSTREE_SYSROOT (object);
   g_autoptr(GFile) repo_path = NULL;
 
-  g_assert (self->path != NULL);
+  /* Ensure the system root path is set. */
+  if (self->path == NULL)
+    self->path = g_object_ref (_ostree_get_default_sysroot_path ());
 
   repo_path = g_file_resolve_relative_path (self->path, "ostree/repo");
   self->repo = ostree_repo_new (repo_path);
@@ -158,7 +160,7 @@ ostree_sysroot_init (OstreeSysroot *self)
 
 /**
  * ostree_sysroot_new:
- * @path: Path to a system root directory
+ * @path: (allow-none): Path to a system root directory, or %NULL
  *
  * Returns: (transfer full): An accessor object for an system root located at @path
  */
@@ -176,8 +178,7 @@ ostree_sysroot_new (GFile *path)
 OstreeSysroot*
 ostree_sysroot_new_default (void)
 {
-  g_autoptr(GFile) rootfs = g_file_new_for_path ("/");
-  return ostree_sysroot_new (rootfs);
+  return ostree_sysroot_new (NULL);
 }
 
 /**
