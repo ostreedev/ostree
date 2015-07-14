@@ -1967,3 +1967,30 @@ _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
 
   return g_variant_dict_end (&metadata_dict);
 }
+
+/**
+ * _ostree_get_default_sysroot_path:
+ *
+ * Returns a #GFile for the default system root, which is usually the root
+ * directory ("/") unless overridden by the %OSTREE_SYSROOT environment
+ * variable.
+ *
+ * Returns: a #GFile for the default system root
+ */
+GFile *
+_ostree_get_default_sysroot_path (void)
+{
+  static gsize default_sysroot_path_initialized;
+  static GFile *default_sysroot_path;
+
+  if (g_once_init_enter (&default_sysroot_path_initialized))
+    {
+      const char *path = g_getenv ("OSTREE_SYSROOT");
+      if (path == NULL || *path == '\0')
+        path = "/";
+      default_sysroot_path = g_file_new_for_path (path);
+      g_once_init_leave (&default_sysroot_path_initialized, 1);
+    }
+
+  return default_sysroot_path;
+}
