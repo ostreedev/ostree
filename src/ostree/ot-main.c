@@ -33,7 +33,7 @@
 #include "otutil.h"
 
 static char *opt_repo;
-static char *opt_sysroot = "/";
+static char *opt_sysroot;
 static gboolean opt_verbose;
 static gboolean opt_version;
 static gboolean opt_print_current_dir;
@@ -323,19 +323,23 @@ ostree_admin_option_context_parse (GOptionContext *context,
   if (!ostree_option_context_parse (context, main_entries, argc, argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
+  if (opt_sysroot != NULL)
+    sysroot_path = g_file_new_for_path (opt_sysroot);
+
+  sysroot = ostree_sysroot_new (sysroot_path);
+
   if (flags & OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER)
     {
-      if ((opt_sysroot == NULL || strcmp (opt_sysroot, "/") == 0)
-          && getuid () != 0)
+      GFile *path = ostree_sysroot_get_path (sysroot);
+
+      /* If sysroot path is "/" then user must be root. */
+      if (!g_file_has_parent (path, NULL) && getuid () != 0)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED,
                        "You must be root to perform this command");
           goto out;
         }
     }
-
-  sysroot_path = g_file_new_for_path (opt_sysroot);
-  sysroot = ostree_sysroot_new (sysroot_path);
 
   if (opt_print_current_dir)
     {
