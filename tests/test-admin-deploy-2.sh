@@ -23,6 +23,7 @@ set -e
 
 echo "1..1"
 
+# Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
@@ -33,7 +34,7 @@ ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
-ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 echo "ok deploy command"
@@ -42,11 +43,11 @@ echo "ok deploy command"
 bootcsum1=${bootcsum}
 os_repository_new_commit
 ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot upgrade --os=testos
+ostree admin upgrade --os=testos
 bootcsum2=${bootcsum}
 os_repository_new_commit "1"
 bootcsum3=${bootcsum}
-ostree admin --sysroot=sysroot upgrade --os=testos
+ostree admin upgrade --os=testos
 
 rev=${newrev}
 newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
@@ -60,7 +61,7 @@ assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-r
 
 echo "ok deploy and GC /boot"
 
-ostree admin --sysroot=sysroot cleanup
+ostree admin cleanup
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 

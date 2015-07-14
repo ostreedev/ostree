@@ -24,6 +24,7 @@ set -e
 
 echo "1..1"
 
+# Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
@@ -31,32 +32,32 @@ echo "ok setup"
 echo "1..5"
 
 ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
 
-ostree admin --sysroot=sysroot instutil set-kargs FOO=BAR
-ostree admin --sysroot=sysroot instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE
+ostree admin instutil set-kargs FOO=BAR
+ostree admin instutil set-kargs FOO=BAZ FOO=BIF TESTARG=TESTVALUE
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAZ .*FOO=BIF'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
 echo "ok instutil set-kargs (basic)"
 
-ostree admin --sysroot=sysroot instutil set-kargs --merge FOO=BAR
+ostree admin instutil set-kargs --merge FOO=BAR
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAZ .*FOO=BIF .*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
 echo "ok instutil set-kargs --merge"
 
-ostree admin --sysroot=sysroot instutil set-kargs --merge --replace=FOO=XXX
+ostree admin instutil set-kargs --merge --replace=FOO=XXX
 assert_not_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=XXX'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
 echo "ok instutil set-kargs --replace"
 
-ostree admin --sysroot=sysroot instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
+ostree admin instutil set-kargs --merge --append=FOO=BAR --append=APPENDARG=VALAPPEND --append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=XXX.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'
 echo "ok instutil set-kargs --append"
 
-ostree admin --sysroot=sysroot instutil set-kargs --import-proc-cmdline
+ostree admin instutil set-kargs --import-proc-cmdline
 # Here we're asserting that the *host* system has a root= kernel
 # argument.  I think it's unlikely that anyone doesn't have one, but
 # if this is not true for you, please file a bug!
