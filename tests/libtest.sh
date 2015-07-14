@@ -255,8 +255,9 @@ EOF
 
     cd ${test_tmpdir}
     mkdir sysroot
-    ${CMD_PREFIX} ostree admin --sysroot=sysroot init-fs sysroot
-    ${CMD_PREFIX} ostree admin --sysroot=sysroot os-init testos
+    export OSTREE_SYSROOT=sysroot
+    ${CMD_PREFIX} ostree admin init-fs sysroot
+    ${CMD_PREFIX} ostree admin os-init testos
 
     case $bootmode in
         "syslinux")

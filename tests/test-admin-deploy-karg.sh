@@ -23,6 +23,7 @@ set -e
 
 echo "1..1"
 
+# Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
@@ -33,19 +34,19 @@ ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
-ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot deploy --karg=FOO=BAR --os=testos testos:testos/buildmaster/x86_64-runtime
-ostree admin --sysroot=sysroot deploy --karg=TESTARG=TESTVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg=FOO=BAR --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg=TESTARG=TESTVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-1.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
-ostree admin --sysroot=sysroot deploy --karg=ANOTHERARG=ANOTHERVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg=ANOTHERARG=ANOTHERVALUE --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*ANOTHERARG=ANOTHERVALUE'
 
 echo "ok deploy with --karg, but same config"
 
-ostree admin --sysroot=sysroot deploy --karg-proc-cmdline --os=testos testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy --karg-proc-cmdline --os=testos testos:testos/buildmaster/x86_64-runtime
 # Here we're asserting that the *host* system has a root= kernel
 # argument.  I think it's unlikely that anyone doesn't have one, but
 # if this is not true for you, please file a bug!
@@ -53,10 +54,10 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'option
 
 echo "ok deploy --karg-proc-cmdline"
 
-ostree admin --sysroot=sysroot status
-ostree admin --sysroot=sysroot undeploy 0
+ostree admin status
+ostree admin undeploy 0
 
-ostree admin --sysroot=sysroot deploy  --os=testos --karg-append=APPENDARG=VALAPPEND --karg-append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
+ostree admin deploy  --os=testos --karg-append=APPENDARG=VALAPPEND --karg-append=APPENDARG=2NDAPPEND testos:testos/buildmaster/x86_64-runtime
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*FOO=BAR'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*TESTARG=TESTVALUE'
 assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*APPENDARG=VALAPPEND .*APPENDARG=2NDAPPEND'

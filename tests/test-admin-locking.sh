@@ -23,6 +23,7 @@ set -e
 
 echo "1..1"
 
+# Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
@@ -36,7 +37,7 @@ rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmast
 export rev
 echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
-${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 parallel_cmd=parallel
@@ -45,9 +46,9 @@ if parallel --help | grep -q -e --no-notice; then
 fi
 
 count=$(($(getconf _NPROCESSORS_ONLN) * 2))
-seq "${count}" | ${parallel_cmd} -n0 ${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
+seq "${count}" | ${parallel_cmd} -n0 ${CMD_PREFIX} ostree admin deploy --retain --os=testos testos:testos/buildmaster/x86_64-runtime
 
-${CMD_PREFIX} ostree admin --sysroot=sysroot status > status.txt
+${CMD_PREFIX} ostree admin status > status.txt
 grep "testos ${rev}" status.txt | wc -l > status-matches.txt
 assert_file_has_content status-matches.txt $((${count} + 1))
 

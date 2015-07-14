@@ -23,6 +23,7 @@ set -e
 
 echo "1..1"
 
+# Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
 echo "ok setup"
@@ -34,7 +35,7 @@ rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmast
 export rev
 echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
-${CMD_PREFIX} ostree admin --sysroot=sysroot deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
 etc=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc
@@ -60,7 +61,7 @@ rm ${etc}/testdirectory -rf
 # Now deploy a new commit
 os_repository_new_commit
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo testos/buildmaster/x86_64-runtime
-${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+${CMD_PREFIX} ostree admin upgrade --os=testos
 newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 echo "newrev=${newrev}"
 newroot=sysroot/ostree/deploy/testos/deploy/${newrev}.0
@@ -99,7 +100,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmas
 cd ${test_tmpdir}
 
 # Upgrade, check that we have it
-${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+${CMD_PREFIX} ostree admin upgrade --os=testos
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_has_dir sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty
 
@@ -110,7 +111,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmas
 
 # Upgrade, check that we have the two new files
 cd ${test_tmpdir}
-${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+${CMD_PREFIX} ostree admin upgrade --os=testos
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/afile
 assert_has_file sysroot/ostree/deploy/testos/deploy/$rev.0/etc/initially-empty/bfile
@@ -123,7 +124,7 @@ cd ${test_tmpdir}
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/somenewdir
 echo "some content blah" > ${newconfpath}
-if ${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos 2>err.txt; then
+if ${CMD_PREFIX} ostree admin upgrade --os=testos 2>err.txt; then
     assert_not_reached "upgrade should have failed"
 fi
 assert_file_has_content err.txt "Modified config file newly defaults to directory"
@@ -136,7 +137,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit -b testos/buildmas
 cd ${test_tmpdir}
 newconfpath=sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
 touch ${newconfpath}
-${CMD_PREFIX} ostree admin --sysroot=sysroot upgrade --os=testos
+${CMD_PREFIX} ostree admin upgrade --os=testos
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/usr/etc/initially-empty
 assert_has_file sysroot/ostree/deploy/testos/deploy/${rev}.0/etc/initially-empty/mynewfile
