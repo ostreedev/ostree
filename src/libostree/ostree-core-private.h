@@ -143,4 +143,7 @@ GVariant *
 _ostree_detached_metadata_append_gpg_sig (GVariant   *existing_metadata,
                                           GBytes     *signature_bytes);
 
+GFile *
+_ostree_get_default_sysroot_path (void);
+
 G_END_DECLS
