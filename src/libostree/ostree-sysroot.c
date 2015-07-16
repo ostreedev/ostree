@@ -85,18 +85,11 @@ ostree_sysroot_set_property(GObject         *object,
                             GParamSpec      *pspec)
 {
   OstreeSysroot *self = OSTREE_SYSROOT (object);
-  GFile *file;
 
   switch (prop_id)
     {
     case PROP_PATH:
-      /* Canonicalize */
-      file = g_value_get_object (value);
-      if (file != NULL)
-        {
-          const char *path = gs_file_get_path_cached (file);
-          self->path = g_file_new_for_path (path);
-        }
+      self->path = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
