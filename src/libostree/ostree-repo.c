@@ -554,25 +554,14 @@ ostree_repo_set_property(GObject         *object,
 			   GParamSpec      *pspec)
 {
   OstreeRepo *self = OSTREE_REPO (object);
-  GFile *file;
-  const char *path;
 
   switch (prop_id)
     {
     case PROP_PATH:
-      /* Canonicalize */
-      file = g_value_get_object (value);
-      path = gs_file_get_path_cached (file);
-      self->repodir = g_file_new_for_path (path);
+      self->repodir = g_value_dup_object (value);
       break;
     case PROP_SYSROOT_PATH:
-      /* Canonicalize */
-      file = g_value_get_object (value);
-      if (file != NULL)
-        {
-          path = gs_file_get_path_cached (file);
-          self->sysroot_dir = g_file_new_for_path (path);
-        }
+      self->sysroot_dir = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
