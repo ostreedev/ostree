@@ -276,16 +276,18 @@ cd ${test_tmpdir}
 $OSTREE show test2
 echo "ok show with non-checksum"
 
-cd ${test_tmpdir}
+cd $test_tmpdir/checkout-test2
 checksum=$($OSTREE commit -b test4 -s "Third commit")
+cd ${test_tmpdir}
 $OSTREE show test4 > show-output
 assert_file_has_content show-output "Third commit"
 assert_file_has_content show-output "commit $checksum"
 echo "ok show full output"
 
-cd ${test_tmpdir}
+cd $test_tmpdir/checkout-test2
 checksum1=$($OSTREE commit -b test5 -s "First commit")
 checksum2=$($OSTREE commit -b test5 -s "Second commit")
+cd ${test_tmpdir}
 $OSTREE log test5 > log-output
 assert_file_has_content log-output "First commit"
 assert_file_has_content log-output "commit $checksum1"
@@ -293,9 +295,10 @@ assert_file_has_content log-output "Second commit"
 assert_file_has_content log-output "commit $checksum2"
 echo "ok log output"
 
-cd ${test_tmpdir}
+cd $test_tmpdir/checkout-test2
 checksum1=$($OSTREE commit -b test6 -s "First commit")
 checksum2=$($OSTREE commit -b test6 -s "Second commit")
+cd ${test_tmpdir}
 $OSTREE show test6 > show-output
 assert_file_has_content show-output "commit $checksum2"
 $OSTREE reset test6 $checksum1
@@ -310,7 +313,9 @@ touch checkout-test2/sometestfile
 $OSTREE commit -s sometest -b test2 checkout-test2
 echo "ok commit with directory filename"
 
+cd $test_tmpdir/checkout-test2
 $OSTREE commit -b test2 -s "Metadata string" --add-metadata-string=FOO=BAR --add-metadata-string=KITTENS=CUTE --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=test2
+cd ${test_tmpdir}
 $OSTREE show --print-metadata-key=FOO test2 > test2-meta
 assert_file_has_content test2-meta "BAR"
 $OSTREE show --print-metadata-key=KITTENS test2 > test2-meta
