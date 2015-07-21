@@ -194,6 +194,23 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
+  /* If /boot is on the same partition, use a bind mount to make it visible
+   * at /boot inside the deployment. */
+  snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint);
+  if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
+    {
+      snprintf (destpath, sizeof(destpath), "%s/boot", newroot);
+      if (lstat (destpath, &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
+        {
+          snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint);
+          if (mount (srcpath, destpath, NULL, MS_BIND, NULL) < 0)
+            {
+              perrorv ("failed to bind mount %s to %s", srcpath, destpath);
+              exit (EXIT_FAILURE);
+            }
+        }
+    }
+
   /* Set up any read-only bind mounts (notably /usr) */
   for (i = 0; readonly_bind_mounts[i] != NULL; i++)
     {
