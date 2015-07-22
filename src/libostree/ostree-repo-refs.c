@@ -622,7 +622,6 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
 
       ref_map = g_variant_get_child_value (summary, 0);
 
-      /* Ref map should already be sorted by ref name. */
       g_variant_iter_init (&iter, ref_map);
       while ((child = g_variant_iter_next_value (&iter)) != NULL)
         {
@@ -631,13 +630,13 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
           char tmp_checksum[65];
 
           g_variant_get_child (child, 0, "&s", &ref_name);
-          g_variant_get_child (child, 1, "(t@aya{sv})", NULL, &csum_v);
-
-          ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (csum_v),
-                                              tmp_checksum);
 
           if (ref_name != NULL)
             {
+              g_variant_get_child (child, 1, "(t@aya{sv})", NULL, &csum_v, NULL);
+
+              ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (csum_v),
+                                                  tmp_checksum);
               g_hash_table_insert (ret_all_refs,
                                    g_strdup (ref_name),
                                    g_strdup (tmp_checksum));

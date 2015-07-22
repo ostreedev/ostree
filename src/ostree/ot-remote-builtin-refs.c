@@ -57,11 +57,16 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
     {
       GHashTableIter hash_iter;
       gpointer key, value;
+      g_autoptr(GPtrArray) sorted_keys = g_ptr_array_new ();
+      guint i;
+
       g_hash_table_iter_init (&hash_iter, refs);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
+        g_ptr_array_add (sorted_keys, key);
+
+      for (i = 0; i < sorted_keys->len; i++)
         {
-          const char *ref = key;
-          g_print ("%s\n", ref);
+          g_print ("%s\n", (const char *) sorted_keys->pdata[i]);
         }
     }
 
