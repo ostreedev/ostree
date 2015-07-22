@@ -291,6 +291,12 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
+gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
+                                       const char       *remote_name,
+                                       GHashTable      **out_all_refs,
+                                       GCancellable     *cancellable,
+                                       GError          **error);
+
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
                                         const char    *sha256, 

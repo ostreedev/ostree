@@ -34,8 +34,8 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *remote_name;
-  g_autoptr(GBytes) summary_bytes = NULL;
   gboolean ret = FALSE;
+  g_autoptr(GHashTable) refs = NULL;
 
   context = g_option_context_new ("NAME - List remote refs");
 
@@ -51,39 +51,17 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
 
   remote_name = argv[1];
 
-  if (!ostree_repo_remote_fetch_summary (repo, remote_name,
-                                         &summary_bytes, NULL,
-                                         cancellable, error))
+  if (!ostree_repo_remote_list_refs (repo, remote_name, &refs, cancellable, error))
     goto out;
-
-  if (summary_bytes == NULL)
-    {
-      g_print ("Remote refs not available; server has no summary file\n");
-    }
   else
     {
-      g_autoptr(GVariant) summary = NULL;
-      g_autoptr(GVariant) ref_map = NULL;
-      GVariantIter iter;
-      GVariant *child;
-
-      summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
-                                          summary_bytes, FALSE);
-
-      ref_map = g_variant_get_child_value (summary, 0);
-
-      /* Ref map should already be sorted by ref name. */
-      g_variant_iter_init (&iter, ref_map);
-      while ((child = g_variant_iter_next_value (&iter)) != NULL)
+      GHashTableIter hash_iter;
+      gpointer key, value;
+      g_hash_table_iter_init (&hash_iter, refs);
+      while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
-          const char *ref_name = NULL;
-
-          g_variant_get_child (child, 0, "&s", &ref_name);
-
-          if (ref_name != NULL)
-            g_print ("%s\n", ref_name);
-
-          g_variant_unref (child);
+          const char *ref = key;
+          g_print ("%s\n", ref);
         }
     }
 

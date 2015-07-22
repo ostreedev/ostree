@@ -578,6 +578,82 @@ ostree_repo_list_refs (OstreeRepo       *self,
   return ret;
 }
 
+/**
+ * ostree_repo_remote_list_refs:
+ * @self: Repo
+ * @remote_name: Name of the remote.
+ * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ */
+gboolean
+ostree_repo_remote_list_refs (OstreeRepo       *self,
+                              const char       *remote_name,
+                              GHashTable      **out_all_refs,
+                              GCancellable     *cancellable,
+                              GError          **error)
+{
+  g_autoptr(GBytes) summary_bytes = NULL;
+  gboolean ret = FALSE;
+  g_autoptr(GHashTable) ret_all_refs = NULL;
+
+  if (!ostree_repo_remote_fetch_summary (self, remote_name,
+                                         &summary_bytes, NULL,
+                                         cancellable, error))
+    goto out;
+
+  if (summary_bytes == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Remote refs not available; server has no summary file\n");
+      goto out;
+    }
+  else
+    {
+      g_autoptr(GVariant) summary = NULL;
+      g_autoptr(GVariant) ref_map = NULL;
+      GVariantIter iter;
+      GVariant *child;
+      ret_all_refs = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+
+      summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                          summary_bytes, FALSE);
+
+      ref_map = g_variant_get_child_value (summary, 0);
+
+      /* Ref map should already be sorted by ref name. */
+      g_variant_iter_init (&iter, ref_map);
+      while ((child = g_variant_iter_next_value (&iter)) != NULL)
+        {
+          const char *ref_name = NULL;
+          g_autoptr(GVariant) csum_v = NULL;
+          char tmp_checksum[65];
+
+          g_variant_get_child (child, 0, "&s", &ref_name);
+          g_variant_get_child (child, 1, "(t@aya{sv})", NULL, &csum_v);
+
+          ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (csum_v),
+                                              tmp_checksum);
+
+          if (ref_name != NULL)
+            {
+              g_hash_table_insert (ret_all_refs,
+                                   g_strdup (ref_name),
+                                   g_strdup (tmp_checksum));
+            }
+
+          g_variant_unref (child);
+        }
+    }
+
+  ret = TRUE;
+  ot_transfer_out_value (out_all_refs, &ret_all_refs);
+
+ out:
+  return ret;
+}
+
 gboolean      
 _ostree_repo_write_ref (OstreeRepo    *self,
                         const char    *remote,
