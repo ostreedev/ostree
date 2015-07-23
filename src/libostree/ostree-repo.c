@@ -1671,6 +1671,69 @@ out:
 }
 
 static gboolean
+_ostree_preload_metadata_file (OstreeRepo    *self,
+                               OstreeFetcher *fetcher,
+                               SoupURI       *base_uri,
+                               const char    *filename,
+                               gboolean      is_metalink,
+                               GMainLoop     *main_loop,
+                               GBytes        **out_bytes,
+                               GCancellable  *cancellable,
+                               GError        **error)
+{
+  gboolean ret = FALSE;
+  if (is_metalink)
+    {
+      glnx_unref_object OstreeMetalink *metalink = NULL;
+      GError *local_error = NULL;
+
+      metalink = _ostree_metalink_new (fetcher, filename,
+                                       OSTREE_MAX_METADATA_SIZE,
+                                       base_uri);
+
+      _ostree_metalink_request_sync (metalink, main_loop,
+                                     NULL, out_bytes, NULL,
+                                     cancellable, &local_error);
+
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          *out_bytes = NULL;
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+    }
+  else
+    {
+      SoupURI *uri;
+      const char *base_path;
+      g_autofree char *path = NULL;
+
+      base_path = soup_uri_get_path (base_uri);
+      path = g_build_filename (base_path, filename, NULL);
+      uri = soup_uri_new_with_base (base_uri, path);
+
+      ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
+                                                   FALSE, TRUE,
+                                                   out_bytes,
+                                                   main_loop,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   cancellable, error);
+      soup_uri_free (uri);
+
+      if (!ret)
+        goto out;
+    }
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+static gboolean
 repo_remote_fetch_summary (OstreeRepo    *self,
                            const char    *name,
                            const char    *metalink_url_string,
@@ -1717,51 +1780,16 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 
   for (i = 0; i < G_N_ELEMENTS (filenames); i++)
     {
-      if (metalink_url_string)
-        {
-          glnx_unref_object OstreeMetalink *metalink = NULL;
-          GError *local_error = NULL;
-
-          metalink = _ostree_metalink_new (fetcher, filenames[i],
-                                           OSTREE_MAX_METADATA_SIZE,
-                                           base_uri);
-
-          _ostree_metalink_request_sync (metalink, main_loop,
-                                         NULL, outputs[i], NULL,
-                                         cancellable, &local_error);
-
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-            {
-              g_clear_error (&local_error);
-              *outputs[i] = NULL;
-            }
-          else if (local_error != NULL)
-            {
-              g_propagate_error (error, local_error);
-              goto out;
-            }
-        }
-      else
-        {
-          SoupURI *uri;
-          const char *base_path;
-          g_autofree char *path = NULL;
-
-          base_path = soup_uri_get_path (base_uri);
-          path = g_build_filename (base_path, filenames[i], NULL);
-          uri = soup_uri_new_with_base (base_uri, path);
-
-          ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
-                                                       FALSE, TRUE,
-                                                       outputs[i],
-                                                       main_loop,
-                                                       OSTREE_MAX_METADATA_SIZE,
-                                                       cancellable, error);
-          soup_uri_free (uri);
-
-          if (!ret)
-            goto out;
-        }
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          base_uri,
+                                          filenames[i],
+                                          metalink_url_string ? TRUE : FALSE,
+                                          main_loop,
+                                          outputs[i],
+                                          cancellable,
+                                          error))
+        goto out;
     }
 
   ret = TRUE;
