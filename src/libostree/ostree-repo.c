@@ -1734,6 +1734,190 @@ out:
 }
 
 static gboolean
+repo_remote_prefetch_commit (OstreeRepo    *self,
+                             const char    *name,
+                             const char    *checksum,
+                             const char    *metalink_url_string,
+                             GBytes       **out_commit,
+                             GBytes       **out_detached_metadata,
+                             GCancellable  *cancellable,
+                             GError       **error)
+{
+  glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(GMainLoop) main_loop = NULL;
+  gboolean ret = FALSE;
+  SoupURI *base_uri = NULL;
+  uint i;
+  char commit_metadata[_OSTREE_LOOSE_PATH_MAX];
+  char detached_metadata[_OSTREE_LOOSE_PATH_MAX];
+  const char *filenames[] = {commit_metadata, detached_metadata};
+  GBytes **outputs[] = {out_commit, out_detached_metadata};
+
+  /*FIXME: Do not hardcode OSTREE_REPO_MODE_ARCHIVE_Z2 */
+  _ostree_loose_path (commit_metadata, checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                      OSTREE_REPO_MODE_ARCHIVE_Z2);
+  _ostree_loose_path_with_suffix (detached_metadata, checksum, OSTREE_OBJECT_TYPE_COMMIT,
+                                  OSTREE_REPO_MODE_ARCHIVE_Z2, "meta");
+
+  main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+  if (fetcher == NULL)
+    goto out;
+
+  base_uri = soup_uri_new (metalink_url_string);
+
+  {
+    g_autofree char *url_string = NULL;
+    if (metalink_url_string)
+      url_string = g_strdup (metalink_url_string);
+    else
+      {
+        if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+          goto out;
+      }
+
+    base_uri = soup_uri_new (url_string);
+    if (base_uri == NULL)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Invalid URL '%s'", url_string);
+        goto out;
+      }
+  }
+
+  soup_uri_set_path (base_uri, "objects");
+
+  for (i = 0; i < G_N_ELEMENTS (filenames); i++)
+    {
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          base_uri,
+                                          filenames[i],
+                                          metalink_url_string ? TRUE : FALSE,
+                                          main_loop,
+                                          outputs[i],
+                                          cancellable,
+                                          error))
+        goto out;
+    }
+
+  ret = TRUE;
+
+ out:
+  if (base_uri != NULL)
+    soup_uri_free (base_uri);
+
+  return ret;
+}
+
+/**
+ * ostree_repo_prefetch_commit:
+ * @self: Self
+ * @name: name of a remote
+ * @checksum: checksum of the commit
+ * @out_commit: (allow-none): return location for raw summary data, or %NULL
+ * @out_detached_metadata: (allow-none): return location for raw detached metadata,
+ * or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Tries to fetch the commit file and the detached metadata, and
+ * returns the binary data in @out_commit and @out_detached_metadata
+ * respectively.
+ *
+ * If no summary file exists on the remote server, @out_commit is set to
+ * @NULL.  Likewise if the summary file is not signed, @out_detached_metadata is
+ * set to @NULL.  In either case the function still returns %TRUE.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_prefetch_commit (OstreeRepo    *self,
+                             const char    *name,
+                             const char    *checksum,
+                             GVariant      **out_commit,
+                             GVariant      **out_detached_metadata,
+                             GCancellable  *cancellable,
+                             GError        **error)
+{
+  g_autofree char *metalink_url_string = NULL;
+  g_autoptr(GBytes) commit_metadata = NULL;
+  g_autoptr(GBytes) detached_metadata = NULL;
+  gboolean ret = FALSE;
+  gboolean gpg_verify;
+  g_autoptr(GVariant) commit_v = NULL;
+  g_autoptr(GVariant) detached_metadata_v = NULL;
+
+  g_return_val_if_fail (OSTREE_REPO (self), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!_ostree_repo_get_remote_option (self, name, "metalink", NULL,
+                                       &metalink_url_string, error))
+    goto out;
+
+  if (!repo_remote_prefetch_commit (self,
+                                    name,
+                                    checksum,
+                                    metalink_url_string,
+                                    &commit_metadata,
+                                    &detached_metadata,
+                                    cancellable,
+                                    error))
+    goto out;
+
+  if (!ostree_repo_remote_get_gpg_verify (self, name, &gpg_verify, error))
+    goto out;
+
+  if (gpg_verify)
+    {
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+
+      if (detached_metadata == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
+          goto out;
+        }
+
+      detached_metadata_v = g_variant_new_from_bytes (G_VARIANT_TYPE ("a{sv}"), detached_metadata, FALSE);
+      result = _ostree_repo_gpg_verify_with_metadata (self,
+                                                      commit_metadata,
+                                                      detached_metadata_v,
+                                                      name,
+                                                      NULL,
+                                                      NULL,
+                                                      cancellable,
+                                                      error);
+        if (result == NULL)
+          goto out;
+
+        if (ostree_gpg_verify_result_count_valid (result) == 0)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "GPG signatures found, but none are in trusted keyring");
+            goto out;
+          }
+    }
+
+  if (out_commit != NULL)
+    {
+      commit_v = g_variant_new_from_bytes (OSTREE_COMMIT_GVARIANT_FORMAT,
+                                           commit_metadata,
+                                           FALSE);
+      *out_commit = g_steal_pointer (&commit_v);
+    }
+
+  if (out_detached_metadata != NULL)
+    *out_detached_metadata = g_steal_pointer (&detached_metadata_v);
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+static gboolean
 repo_remote_fetch_summary (OstreeRepo    *self,
                            const char    *name,
                            const char    *metalink_url_string,

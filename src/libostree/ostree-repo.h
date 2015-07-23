@@ -135,6 +135,14 @@ gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                                 GCancellable  *cancellable,
                                                 GError       **error);
 
+gboolean      ostree_repo_prefetch_commit (OstreeRepo    *self,
+                                           const char    *name,
+                                           const char    *checksum,
+                                           GVariant      **out_commit,
+                                           GVariant      **out_detached_metadata,
+                                           GCancellable  *cancellable,
+                                           GError        **error);
+
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 gboolean      ostree_repo_write_config (OstreeRepo *self,
