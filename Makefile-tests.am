@@ -30,6 +30,7 @@ testfiles = test-basic \
 	test-help \
 	test-libarchive \
 	test-pull-archive-z \
+	test-pull-commit-only \
 	test-pull-corruption \
 	test-pull-depth \
 	test-pull-mirror-summary \
