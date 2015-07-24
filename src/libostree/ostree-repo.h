@@ -693,10 +693,12 @@ gboolean ostree_repo_prune (OstreeRepo        *self,
  * OstreeRepoPullFlags:
  * @OSTREE_REPO_PULL_FLAGS_NONE: No special options for pull
  * @OSTREE_REPO_PULL_FLAGS_MIRROR: Write out refs suitable for mirrors
+ * @OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY: Fetch only the commit metadata
  */
 typedef enum {
   OSTREE_REPO_PULL_FLAGS_NONE,
-  OSTREE_REPO_PULL_FLAGS_MIRROR
+  OSTREE_REPO_PULL_FLAGS_MIRROR = (1 << 0),
+  OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY = (1 << 1)
 } OstreeRepoPullFlags;
 
 gboolean ostree_repo_pull (OstreeRepo             *self,
