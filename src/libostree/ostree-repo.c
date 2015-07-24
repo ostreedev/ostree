@@ -3674,6 +3674,9 @@ ostree_repo_read_commit (OstreeRepo   *self,
  * the @refs_to_fetch is %NULL, and the remote repository contains a
  * summary file, then all refs will be fetched.
  *
+ * If @flags contains %OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY, then only the
+ * metadata for the commits in @refs_to_fetch is pulled.
+ *
  * Warning: This API will iterate the thread default main context,
  * which is a bug, but kept for compatibility reasons.  If you want to
  * avoid this, use g_main_context_push_thread_default() to push a new

@@ -88,6 +88,7 @@ typedef struct {
   guint64           start_time;
 
   gboolean          is_mirror;
+  gboolean          is_commit_only;
 
   char         *dir;
   gboolean      commitpartial_exists;
@@ -1119,6 +1120,11 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
       enqueue_one_object_request (pull_data, tmp_checksum, objtype, do_fetch_detached, FALSE);
     }
+  else if (objtype == OSTREE_OBJECT_TYPE_COMMIT && pull_data->is_commit_only)
+    {
+      ret = TRUE;
+      goto out;
+    }
   else if (is_stored)
     {
       gboolean do_scan = pull_data->transaction_resuming || is_requested || pull_data->commitpartial_exists;
@@ -1654,6 +1660,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
+  pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
 
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_ref_thread_default ();
@@ -2160,7 +2167,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   /* iterate over commits fetched and delete any commitpartial files */
-  if (!dir_to_pull)
+  if (!dir_to_pull && !pull_data->is_commit_only)
     {
       g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
