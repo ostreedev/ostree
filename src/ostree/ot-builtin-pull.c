@@ -29,11 +29,13 @@
 
 static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
+static gboolean opt_commit_only;
 static gboolean opt_disable_static_deltas;
 static char* opt_subpath;
 static int opt_depth = 0;
  
  static GOptionEntry options[] = {
+   { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
@@ -90,6 +92,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_mirror)
     pullflags |= OSTREE_REPO_PULL_FLAGS_MIRROR;
+
+  if (opt_commit_only)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY;
 
   if (strchr (argv[1], ':') == NULL)
     {

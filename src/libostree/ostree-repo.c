@@ -1671,170 +1671,132 @@ out:
 }
 
 static gboolean
-repo_remote_fetch_summary_url (OstreeRepo    *self,
-                               const char    *name,
-                               GBytes       **out_summary,
-                               GBytes       **out_signatures,
+_ostree_preload_metadata_file (OstreeRepo    *self,
+                               OstreeFetcher *fetcher,
+                               SoupURI       *base_uri,
+                               const char    *filename,
+                               gboolean      is_metalink,
+                               GMainLoop     *main_loop,
+                               GBytes        **out_bytes,
                                GCancellable  *cancellable,
-                               GError       **error)
+                               GError        **error)
 {
-  glnx_unref_object OstreeFetcher *fetcher = NULL;
-  g_autoptr(GMainLoop) main_loop = NULL;
-  g_autofree char *url_string = NULL;
-  SoupURI *base_uri = NULL;
   gboolean ret = FALSE;
-
-  if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-    goto out;
-
-  base_uri = soup_uri_new (url_string);
-
-  if (base_uri == NULL)
+  if (is_metalink)
     {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid URL '%s'", url_string);
-      goto out;
+      glnx_unref_object OstreeMetalink *metalink = NULL;
+      GError *local_error = NULL;
+
+      metalink = _ostree_metalink_new (fetcher, filename,
+                                       OSTREE_MAX_METADATA_SIZE,
+                                       base_uri);
+
+      _ostree_metalink_request_sync (metalink, main_loop,
+                                     NULL, out_bytes, NULL,
+                                     cancellable, &local_error);
+
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          *out_bytes = NULL;
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+    }
+  else
+    {
+      SoupURI *uri;
+      const char *base_path;
+      g_autofree char *path = NULL;
+
+      base_path = soup_uri_get_path (base_uri);
+      path = g_build_filename (base_path, filename, NULL);
+      uri = soup_uri_new_with_base (base_uri, path);
+
+      ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
+                                                   FALSE, TRUE,
+                                                   out_bytes,
+                                                   main_loop,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   cancellable, error);
+      soup_uri_free (uri);
+
+      if (!ret)
+        goto out;
     }
 
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
-
-  if (fetcher == NULL)
-    goto out;
-
-  main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
-
-  {
-    SoupURI *uri;
-    const char *base_path;
-    g_autofree char *path = NULL;
-
-    base_path = soup_uri_get_path (base_uri);
-    path = g_build_filename (base_path, "summary", NULL);
-    uri = soup_uri_new_with_base (base_uri, path);
-
-    ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
-                                                 FALSE, TRUE,
-                                                 out_summary,
-                                                 main_loop,
-                                                 OSTREE_MAX_METADATA_SIZE,
-                                                 cancellable, error);
-    soup_uri_free (uri);
-
-    if (!ret)
-      goto out;
-  }
-
-  {
-    SoupURI *uri;
-    const char *base_path;
-    g_autofree char *path = NULL;
-
-    base_path = soup_uri_get_path (base_uri);
-    path = g_build_filename (base_path, "summary.sig", NULL);
-    uri = soup_uri_new_with_base (base_uri, path);
-
-    ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
-                                                 FALSE, TRUE,
-                                                 out_signatures,
-                                                 main_loop,
-                                                 OSTREE_MAX_METADATA_SIZE,
-                                                 cancellable, error);
-    soup_uri_free (uri);
-
-    if (!ret)
-      goto out;
-  }
-
+  ret = TRUE;
 out:
-  if (base_uri != NULL)
-    soup_uri_free (base_uri);
-
   return ret;
 }
 
 static gboolean
-repo_remote_fetch_summary_metalink (OstreeRepo    *self,
-                                    const char    *name,
-                                    const char    *metalink_url_string,
-                                    GBytes       **out_summary,
-                                    GBytes       **out_signatures,
-                                    GCancellable  *cancellable,
-                                    GError       **error)
+repo_remote_fetch_summary (OstreeRepo    *self,
+                           const char    *name,
+                           const char    *metalink_url_string,
+                           GBytes       **out_summary,
+                           GBytes       **out_signatures,
+                           GCancellable  *cancellable,
+                           GError       **error)
 {
   glnx_unref_object OstreeFetcher *fetcher = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
-  SoupURI *metalink_uri = NULL;
   gboolean ret = FALSE;
+  SoupURI *base_uri = NULL;
+  uint i;
 
-  metalink_uri = soup_uri_new (metalink_url_string);
-
-  if (metalink_uri == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Invalid URL '%s'", metalink_url_string);
-      goto out;
-    }
-
-  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
-
-  if (fetcher == NULL)
-    goto out;
+  const char *filenames[] = {"summary", "summary.sig"};
+  GBytes **outputs[] = {out_summary, out_signatures};
 
   main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
 
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+  if (fetcher == NULL)
+    goto out;
+
+  base_uri = soup_uri_new (metalink_url_string);
+
   {
-    glnx_unref_object OstreeMetalink *metalink = NULL;
-    GError *local_error = NULL;
-
-    metalink = _ostree_metalink_new (fetcher, "summary",
-                                     OSTREE_MAX_METADATA_SIZE,
-                                     metalink_uri);
-
-    _ostree_metalink_request_sync (metalink, main_loop,
-                                   NULL, out_summary, NULL,
-                                   cancellable, &local_error);
-
-    if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    g_autofree char *url_string = NULL;
+    if (metalink_url_string)
+      url_string = g_strdup (metalink_url_string);
+    else
       {
-        g_clear_error (&local_error);
-        *out_summary = NULL;
+        if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+          goto out;
       }
-    else if (local_error != NULL)
+
+    base_uri = soup_uri_new (url_string);
+    if (base_uri == NULL)
       {
-        g_propagate_error (error, local_error);
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Invalid URL '%s'", url_string);
         goto out;
       }
   }
 
-  {
-    glnx_unref_object OstreeMetalink *metalink = NULL;
-    GError *local_error = NULL;
-
-    metalink = _ostree_metalink_new (fetcher, "summary.sig",
-                                     OSTREE_MAX_METADATA_SIZE,
-                                     metalink_uri);
-
-    _ostree_metalink_request_sync (metalink, main_loop,
-                                   NULL, out_signatures, NULL,
-                                   cancellable, &local_error);
-
-    if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-      {
-        g_clear_error (&local_error);
-        *out_signatures = NULL;
-      }
-    else if (local_error != NULL)
-      {
-        g_propagate_error (error, local_error);
+  for (i = 0; i < G_N_ELEMENTS (filenames); i++)
+    {
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          base_uri,
+                                          filenames[i],
+                                          metalink_url_string ? TRUE : FALSE,
+                                          main_loop,
+                                          outputs[i],
+                                          cancellable,
+                                          error))
         goto out;
-      }
-  }
+    }
 
   ret = TRUE;
 
-out:
-  if (metalink_uri != NULL)
-    soup_uri_free (metalink_uri);
+ out:
+  if (base_uri != NULL)
+    soup_uri_free (base_uri);
 
   return ret;
 }
@@ -1883,25 +1845,14 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                        &metalink_url_string, error))
     goto out;
 
-  if (metalink_url_string == NULL)
-    {
-      if (!repo_remote_fetch_summary_url (self, name,
-                                          &summary,
-                                          &signatures,
-                                          cancellable,
-                                          error))
-        goto out;
-    }
-  else
-    {
-      if (!repo_remote_fetch_summary_metalink (self, name,
-                                               metalink_url_string,
-                                               &summary,
-                                               &signatures,
-                                               cancellable,
-                                               error))
-        goto out;
-    }
+  if (!repo_remote_fetch_summary (self,
+                                  name,
+                                  metalink_url_string,
+                                  &summary,
+                                  &signatures,
+                                  cancellable,
+                                  error))
+    goto out;
 
   if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
     goto out;
@@ -3722,6 +3673,9 @@ ostree_repo_read_commit (OstreeRepo   *self,
  * If @flags contains %OSTREE_REPO_PULL_FLAGS_MIRROR, and
  * the @refs_to_fetch is %NULL, and the remote repository contains a
  * summary file, then all refs will be fetched.
+ *
+ * If @flags contains %OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY, then only the
+ * metadata for the commits in @refs_to_fetch is pulled.
  *
  * Warning: This API will iterate the thread default main context,
  * which is a bug, but kept for compatibility reasons.  If you want to
