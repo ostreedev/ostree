@@ -55,7 +55,7 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
     goto out;
   else
     {
-      GList *ordered_keys = NULL;
+      g_autoptr(GList) ordered_keys = NULL;
       GList *iter = NULL;
 
       ordered_keys = g_hash_table_get_keys (refs);
