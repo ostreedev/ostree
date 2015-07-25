@@ -684,15 +684,10 @@ selinux_relabel_dir (OstreeSysroot                 *sysroot,
 static gboolean
 selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
                                OstreeSePolicy                *sepolicy,
-                               OstreeDeployment              *deployment,
+                               int                            os_deploy_dfd,
                                GCancellable                  *cancellable,
                                GError                       **error)
 {
-  const char *osdeploypath = glnx_strjoina ("ostree/deploy/", ostree_deployment_get_osname (deployment));
-  glnx_autofd int os_deploy_dfd = -1;
-  if (!glnx_opendirat (sysroot->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
-    return FALSE;
-
   /* This is a bit of a hack; we should change the code at some
    * point in the distant future to only create (and label) /var
    * when doing a deployment.
@@ -2529,11 +2524,25 @@ sysroot_finalize_deployment (OstreeSysroot     *self,
         return FALSE;
     }
 
+  const char *osdeploypath = glnx_strjoina ("ostree/deploy/", ostree_deployment_get_osname (deployment));
+  glnx_autofd int os_deploy_dfd = -1;
+  if (!glnx_opendirat (self->sysroot_fd, osdeploypath, TRUE, &os_deploy_dfd, error))
+    return FALSE;
+
+  /* Ensure that the new deployment does not have /etc/.updated or
+   * /var/.updated so that systemd ConditionNeedsUpdate=/etc|/var services run
+   * after rebooting.
+   */
+  if (!ot_ensure_unlinked_at (deployment_dfd, "etc/.updated", error))
+    return FALSE;
+  if (!ot_ensure_unlinked_at (os_deploy_dfd, "var/.updated", error))
+    return FALSE;
+
   g_autoptr(OstreeSePolicy) sepolicy = ostree_sepolicy_new_at (deployment_dfd, cancellable, error);
   if (!sepolicy)
     return FALSE;
 
-  if (!selinux_relabel_var_if_needed (self, sepolicy, deployment, cancellable, error))
+  if (!selinux_relabel_var_if_needed (self, sepolicy, os_deploy_dfd, cancellable, error))
     return FALSE;
 
   /* Rewrite the origin using the final merged selinux config, just to be
