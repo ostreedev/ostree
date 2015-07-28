@@ -1,132 +1,75 @@
-OSTree is a tool for managing bootable, immutable, versioned
-filesystem trees. While it takes over some of the roles of traditional
-"package managers" like dpkg and rpm, it is not a package system; nor
-is it a tool for managing full disk images. Instead, it sits between
-those levels, offering a blend of the advantages (and disadvantages)
-of both.
+OSTree
+======
 
-For more information, see:
+OSTree is a tool that combines a "git-like" model for committing and
+downloading bootable filesystem trees, along with a layer for
+deploying them and managing the bootloader configuration.
 
-https://live.gnome.org/Projects/OSTree
+Traditional package managers (dpkg/rpm) build filesystem trees on the
+client side.  In contrast, the primary focus of OSTree is on
+replicating trees composed on a server.
 
-Submitting patches
+**Features:**
+
+ - Atomic upgrades and rollback
+ - GPG signatures and "pinned TLS" support
+ - Support for parallel installing more than just 2 bootable roots
+ - Binary history on the server side
+ - Introspectable shared library API for build and deployment systems
+
+Projects using OSTree
+---------------------
+
+[rpm-ostree](https://github.com/projectatomic/rpm-ostree) is a tool
+that uses OSTree as a shared library, and supports committing RPMs
+into an OSTree repository, and deploying them on the client.
+
+[Project Atomic](http://www.projectatomic.io/) uses rpm-ostree
+to provide a minimal host for Docker formatted Linux containers.
+
+[xdg-app](https://github.com/alexlarsson/xdg-app) uses OSTree 
+for desktop application containers.
+
+[GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
+a custom build system designed for OSTree, using
+[OpenEmbedded](http://www.openembedded.org/wiki/Main_Page) in concert
+with a custom build system to do continuous delivery from hundreds of
+git repositories.
+
+Building
+--------
+
+Releases are available as GPG signed git tags, and most recent
+versions support extended validation using
+[git-evtag](https://github.com/cgwalters/git-evtag).
+
+However, in order to build from a git clone, you must update the
+submodules.  If you're packaging OSTree and want a tarball, I
+recommend using a "recursive git archive" script.  There are several
+available online; [this
+code](https://git.gnome.org/browse/ostree/tree/packaging/Makefile.dist-packaging#n11)
+in OSTree is an example.
+
+Once you have a git clone or recursive archive, building is the
+same as almost every autotools project:
+
+```
+env NOCONFIGURE=1 ./autogen.sh
+./configure --prefix=...
+make
+make install DESTDIR=/path/to/dest
+```
+
+More documentation
 ------------------
 
-You can:
+Some more information is available on the old wiki page:
+https://wiki.gnome.org/Projects/OSTree
 
- 1. Send mail to ostree-list@gnome.org, with the patch attached
- 1. Submit a pull request against https://github.com/GNOME/ostree
- 1. Attach them to https://bugzilla.gnome.org/
+The intent is for that wiki page content to be migrated into Markdown
+in this git repository.
 
-Please look at "git log" and match the commit log style.
-
-Running the test suite
-----------------------
-
-Currently, ostree uses https://wiki.gnome.org/GnomeGoals/InstalledTests
-To run just ostree's tests:
-
-    ./configure ... --enable-installed-tests
-    gnome-desktop-testing-runner -p 0 ostree/
-
-Also, there is a regular:
-
-    make check
-
-That runs a different set of tests.
-
-Coding style
+Contributing
 ------------
 
-Indentation is GNU.  Files should start with the appropriate mode lines.
-
-Use GCC `__attribute__((cleanup))` wherever possible.  If interacting
-with a third party library, try defining local cleanup macros.
-
-Use GError and GCancellable where appropriate.
-
-Prefer returning `gboolean` to signal success/failure, and have output
-values as parameters.
-
-Prefer linear control flow inside functions (aside from standard
-loops).  In other words, avoid "early exits" or use of `goto` besides
-`goto out;`.
-
-This is an example of an "early exit":
-
-    static gboolean
-    myfunc (...)
-    {
-        gboolean ret = FALSE;
-    
-        /* some code */
-    
-        /* some more code */
-    
-        if (condition)
-          return FALSE;
-    
-        /* some more code */
-    
-        ret = TRUE;
-      out:
-        return ret;
-    }
-
-If you must shortcut, use:
-
-    if (condition)
-      {
-        ret = TRUE;
-        goto out;
-      }
-
-A consequence of this restriction is that you are encouraged to avoid
-deep nesting of loops or conditionals.  Create internal static helper
-functions, particularly inside loops.  For example, rather than:
-
-    while (condition)
-      {
-        /* some code */
-        if (condition)
-          {
-             for (i = 0; i < somevalue; i++)
-               {
-                  if (condition)
-                    {
-                      /* deeply nested code */
-                    }
-    
-                    /* more nested code */
-               }
-          }
-      }
-
-Instead do this:
-    
-    static gboolean
-    helperfunc (..., GError **error)
-    {
-      if (condition)
-       {
-         /* deeply nested code */
-       }
-    
-      /* more nested code */
-    
-      return ret;
-    }
-    
-    while (condition)
-      {
-        /* some code */
-        if (!condition)
-          continue;
-    
-        for (i = 0; i < somevalue; i++)
-          {
-            if (!helperfunc (..., i, error))
-              goto out;
-          }
-      }
-    
+See [Contributing](CONTRIBUTING.md).
