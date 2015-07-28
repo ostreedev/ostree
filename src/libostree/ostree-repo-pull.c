@@ -2191,6 +2191,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   ret = TRUE;
  out:
+  ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
   g_main_context_unref (pull_data->main_context);
   if (update_timeout)
     g_source_destroy (update_timeout);
