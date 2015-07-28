@@ -523,7 +523,10 @@ try_content_bsdiff (OstreeRepo                       *repo,
 
   /* TODO: make this option configurable.  */
   if (g_bytes_get_size (tmp_to) + g_bytes_get_size (tmp_from) > (200 * (1 << 20)))
-    goto out;
+    {
+      ret = TRUE;
+      goto out;
+    }
 
   ret_bsdiff = g_new0 (ContentBsdiff, 1);
   ret_bsdiff->from_checksum = g_strdup (from);
