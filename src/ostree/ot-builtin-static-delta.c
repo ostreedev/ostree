@@ -29,6 +29,7 @@
 static char *opt_from_rev;
 static char *opt_to_rev;
 static char *opt_min_fallback_size;
+static char *opt_max_bsdiff_size;
 static char *opt_max_chunk_size;
 static gboolean opt_empty;
 static gboolean opt_disable_bsdiff;
@@ -55,6 +56,7 @@ static GOptionEntry generate_options[] = {
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "disable-bsdiff", 0, 0, G_OPTION_ARG_NONE, &opt_disable_bsdiff, "Disable use of bsdiff", NULL },
   { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
+  { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size, "Maximum size in megabytes to consider bsdiff compression for input files", NULL},
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
   { NULL }
 };
@@ -190,6 +192,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
       if (opt_min_fallback_size)
         g_variant_builder_add (parambuilder, "{sv}",
                                "min-fallback-size", g_variant_new_uint32 (g_ascii_strtoull (opt_min_fallback_size, NULL, 10)));
+      if (opt_max_bsdiff_size)
+        g_variant_builder_add (parambuilder, "{sv}",
+                               "max-bsdiff-size", g_variant_new_uint32 (g_ascii_strtoull (opt_max_bsdiff_size, NULL, 10)));
       if (opt_max_chunk_size)
         g_variant_builder_add (parambuilder, "{sv}",
                                "max-chunk-size", g_variant_new_uint32 (g_ascii_strtoull (opt_max_chunk_size, NULL, 10)));

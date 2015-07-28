@@ -53,6 +53,7 @@ typedef struct {
   GPtrArray *fallback_objects;
   guint64 loose_compressed_size;
   guint64 min_fallback_size_bytes;
+  guint64 max_bsdiff_size_bytes;
   guint64 max_chunk_size_bytes;
   guint64 rollsum_size;
   guint n_rollsum;
@@ -500,8 +501,9 @@ try_content_bsdiff (OstreeRepo                       *repo,
                     const char                       *from,
                     const char                       *to,
                     ContentBsdiff                    **out_bsdiff,
+                    guint64                          max_bsdiff_size_bytes,
                     GCancellable                     *cancellable,
-                    GError                          **error)
+                    GError                           **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GHashTable) from_bsdiff = NULL;
@@ -521,8 +523,7 @@ try_content_bsdiff (OstreeRepo                       *repo,
                                       cancellable, error))
     goto out;
 
-  /* TODO: make this option configurable.  */
-  if (g_bytes_get_size (tmp_to) + g_bytes_get_size (tmp_from) > (200 * (1 << 20)))
+  if (g_bytes_get_size (tmp_to) + g_bytes_get_size (tmp_from) > max_bsdiff_size_bytes)
     {
       ret = TRUE;
       goto out;
@@ -1008,7 +1009,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
       if (!(opts & DELTAOPT_FLAG_DISABLE_BSDIFF))
         {
           if (!try_content_bsdiff (repo, from_checksum, to_checksum,
-                                   &bsdiff, cancellable, error))
+                                   &bsdiff, builder->max_bsdiff_size_bytes,
+                                   cancellable, error))
             goto out;
 
           if (bsdiff)
@@ -1228,6 +1230,8 @@ get_fallback_headers (OstreeRepo               *self,
  * are known:
  *   - min-fallback-size: u: Minimume uncompressed size in megabytes to use fallback
  *   - max-chunk-size: u: Maximum size in megabytes of a delta part
+ *   - max-bsdiff-size: u: Maximum size in megabytes to consider bsdiff compression
+ *   for input files
  *   - compression: y: Compression type: 0=none, x=lzma, g=gzip
  *   - bsdiff-enabled: b: Enable bsdiff compression.  Default TRUE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
@@ -1246,6 +1250,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   OstreeStaticDeltaBuilder builder = { 0, };
   guint i;
   guint min_fallback_size;
+  guint max_bsdiff_size;
   guint max_chunk_size;
   GVariant *metadata_source;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
@@ -1268,6 +1273,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     min_fallback_size = 4;
   builder.min_fallback_size_bytes = ((guint64)min_fallback_size) * 1000 * 1000;
 
+  if (!g_variant_lookup (params, "max-bsdiff-size", "u", &max_bsdiff_size))
+    max_bsdiff_size = 128;
+  builder.max_bsdiff_size_bytes = ((guint64)max_bsdiff_size) * 1000 * 1000;
   if (!g_variant_lookup (params, "max-chunk-size", "u", &max_chunk_size))
     max_chunk_size = 32;
   builder.max_chunk_size_bytes = ((guint64)max_chunk_size) * 1000 * 1000;
