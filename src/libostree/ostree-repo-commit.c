@@ -1272,7 +1272,7 @@ ostree_repo_transaction_set_refspec (OstreeRepo *self,
  * be deleted.
  *
  * The change will not be written out immediately, but when the transaction
- * is completed with ostree_repo_complete_transaction(). If the transaction
+ * is completed with ostree_repo_commit_transaction(). If the transaction
  * is instead aborted with ostree_repo_abort_transaction(), no changes will
  * be made to the repository.
  */
