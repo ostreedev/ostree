@@ -78,17 +78,12 @@ main (int    argc,
   if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
     ostree_usage (commands, TRUE);
 
+  glnx_console_install_signal_handlers ();
   if (error != NULL)
     {
-      int is_tty = isatty (1);
-      const char *prefix = "";
-      const char *suffix = "";
-      if (is_tty)
-        {
-          prefix = "\x1b[31m\x1b[1m"; /* red, bold */
-          suffix = "\x1b[22m\x1b[0m"; /* bold off, color reset */
-        }
-      g_printerr ("%serror: %s%s\n", prefix, suffix, error->message);
+      glnx_console_set_color (GLNX_COLOR_RED, GLNX_COLOR_STYLE_BOLD, 0, 0);
+      g_printerr ("error: %s\n", error->message);
+      glnx_console_reset_color (FALSE);
       g_error_free (error);
     }
 

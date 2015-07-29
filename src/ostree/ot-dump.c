@@ -126,7 +126,9 @@ ot_dump_object (OstreeObjectType   objtype,
                 GVariant          *variant,
                 OstreeDumpFlags    flags)
 {
+  glnx_console_set_color (GLNX_COLOR_YELLOW, GLNX_COLOR_STYLE_REGULAR, 0, 0);
   g_print ("%s %s\n", ostree_object_type_to_string (objtype), checksum);
+  glnx_console_reset_color (FALSE);
 
   if (flags & OSTREE_DUMP_RAW)
     {

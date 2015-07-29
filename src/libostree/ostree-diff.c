@@ -444,14 +444,20 @@ ostree_diff_print (GFile          *a,
       OstreeDiffItem *diff = modified->pdata[i];
       print_diff_item ('M', a, diff->src);
     }
+
+  glnx_console_set_color (GLNX_COLOR_RED, GLNX_COLOR_STYLE_REGULAR, 0, 0);
   for (i = 0; i < removed->len; i++)
     {
       GFile *removed_file = removed->pdata[i];
       print_diff_item ('D', a, removed_file);
     }
+  glnx_console_reset_color (FALSE);
+
+  glnx_console_set_color (GLNX_COLOR_GREEN, GLNX_COLOR_STYLE_REGULAR, 0, 0);
   for (i = 0; i < added->len; i++)
     {
       GFile *added_f = added->pdata[i];
       print_diff_item ('A', b, added_f);
     }
+  glnx_console_reset_color (FALSE);
 }
