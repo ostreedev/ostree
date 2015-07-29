@@ -68,6 +68,10 @@ ostree --repo=repo commit -b test -s test --tree=dir=files
 newrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev}
 
+ostree --repo=repo static-delta generate --disable-bsdiff --from=${origrev} --to=${newrev} 2>&1 | grep "bsdiff=0 objects"
+ostree --repo=repo static-delta generate --max-bsdiff-size=0 --from=${origrev} --to=${newrev} 2>&1 | grep "bsdiff=0 objects"
+ostree --repo=repo static-delta generate --max-bsdiff-size=10000 --from=${origrev} --to=${newrev} 2>&1 | grep "bsdiff=[1-9]"
+
 ostree --repo=repo static-delta list | grep ${origrev}-${newrev} || exit 1
 
 if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --empty 2>>err.txt; then
