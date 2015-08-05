@@ -47,6 +47,9 @@ do_corrupt_pull_test() {
     fi
 }
 
+# If gjs is not installed, skip the test
+gjs --help >/dev/null 2>&1 || exit 77
+
 # FIXME - ignore errors here since gjs in RHEL7 has the final
 # unrooting bug
 gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true

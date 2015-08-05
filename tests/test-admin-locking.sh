@@ -40,6 +40,9 @@ echo "rev=${rev}"
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
+# If parallel is not installed, skip the test
+parallel --help >/dev/null 2>&1 || exit 77
+
 parallel_cmd=parallel
 if parallel --help | grep -q -e --no-notice; then
     parallel_cmd="${parallel_cmd} --no-notice"
