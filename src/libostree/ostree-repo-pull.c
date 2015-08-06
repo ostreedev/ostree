@@ -98,6 +98,9 @@ typedef struct {
 
   GError      **async_error;
   gboolean      caught_error;
+
+  GQueue scan_object_queue;
+  GSource *idle_src;
 } OtPullData;
 
 typedef struct {
@@ -117,17 +120,26 @@ typedef struct {
   char *expected_checksum;
 } FetchStaticDeltaData;
 
+typedef struct {
+  guchar csum[32];
+  OstreeObjectType objtype;
+  guint recursion_depth;
+} ScanObjectQueueData;
+
 static SoupURI *
 suburi_new (SoupURI   *base,
             const char *first,
             ...) G_GNUC_NULL_TERMINATED;
 
-static gboolean scan_one_metadata_object (OtPullData         *pull_data,
-                                          const char         *csum,
-                                          OstreeObjectType    objtype,
-                                          guint               recursion_depth,
-                                          GCancellable       *cancellable,
-                                          GError            **error);
+static void queue_scan_one_metadata_object (OtPullData         *pull_data,
+                                            const char         *csum,
+                                            OstreeObjectType    objtype,
+                                            guint               recursion_depth);
+
+static void queue_scan_one_metadata_object_c (OtPullData         *pull_data,
+                                              const guchar       *csum,
+                                              OstreeObjectType    objtype,
+                                              guint               recursion_depth);
 
 static gboolean scan_one_metadata_object_c (OtPullData         *pull_data,
                                             const guchar       *csum,
@@ -242,7 +254,8 @@ pull_termination_condition (OtPullData          *pull_data)
   gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0 &&
                                  pull_data->n_outstanding_content_write_requests == 0 &&
                                  pull_data->n_outstanding_deltapart_write_requests == 0 );
-  gboolean current_idle = current_fetch_idle && current_write_idle;
+  gboolean current_scan_idle = g_queue_is_empty (&pull_data->scan_object_queue);
+  gboolean current_idle = current_fetch_idle && current_write_idle && current_scan_idle;
 
   if (pull_data->caught_error)
     return TRUE;
@@ -280,6 +293,47 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
           g_error_free (error);
         }
     }
+}
+
+static gboolean
+idle_worker (gpointer user_data)
+{
+  OtPullData *pull_data = user_data;
+  ScanObjectQueueData *scan_data;
+  GError *error = NULL;
+
+  scan_data = g_queue_pop_head (&pull_data->scan_object_queue);
+  if (!scan_data)
+    {
+      g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
+      return G_SOURCE_REMOVE;
+    }
+
+  scan_one_metadata_object_c (pull_data,
+                              scan_data->csum,
+                              scan_data->objtype,
+                              scan_data->recursion_depth,
+                              pull_data->cancellable,
+                              &error);
+  check_outstanding_requests_handle_error (pull_data, error);
+
+  g_free (scan_data);
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+ensure_idle_queued (OtPullData *pull_data)
+{
+  GSource *idle_src;
+
+  if (pull_data->idle_src)
+    return;
+
+  idle_src = g_idle_source_new ();
+  g_source_set_callback (idle_src, idle_worker, pull_data, NULL);
+  g_source_attach (idle_src, pull_data->main_context);
+  g_source_unref (idle_src);
+  pull_data->idle_src = idle_src;
 }
 
 typedef struct {
@@ -454,16 +508,11 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       if (subdir_target && strcmp (subdir_target, dirname) != 0)
         continue;
-      
-      if (!scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_csum),
-                                       OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1,
-                                       cancellable, error))
-        goto out;
-      
-      if (!scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (meta_csum),
-                                       OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1,
-                                       cancellable, error))
-        goto out;
+
+      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_csum),
+                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
+      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (meta_csum),
+                                        OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
     }
 
   ret = TRUE;
@@ -696,9 +745,7 @@ on_metadata_written (GObject           *object,
       goto out;
     }
 
-  if (!scan_one_metadata_object_c (pull_data, csum, objtype, 0,
-                                   pull_data->cancellable, error))
-    goto out;
+  queue_scan_one_metadata_object_c (pull_data, csum, objtype, 0);
 
  out:
   pull_data->n_outstanding_metadata_write_requests--;
@@ -994,11 +1041,8 @@ scan_commit_object (OtPullData         *pull_data,
   have_parent = g_variant_n_children (parent_csum) > 0;
   if (have_parent && pull_data->maxdepth == -1)
     {
-      if (!scan_one_metadata_object_c (pull_data,
-                                       ostree_checksum_bytes_peek (parent_csum),
-                                       OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1,
-                                       cancellable, error))
-        goto out;
+      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (parent_csum),
+                                        OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
     }
   else if (have_parent && depth > 0)
     {
@@ -1022,48 +1066,49 @@ scan_commit_object (OtPullData         *pull_data,
         {
           g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
                                GINT_TO_POINTER (parent_depth));
-          if (!scan_one_metadata_object_c (pull_data,
-                                           ostree_checksum_bytes_peek (parent_csum),
-                                           OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1,
-                                           cancellable, error))
-            goto out;
+          queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (parent_csum),
+                                            OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
         }
     }
 
   g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
   g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
 
-  if (!scan_one_metadata_object_c (pull_data,
-                                   ostree_checksum_bytes_peek (tree_contents_csum),
-                                   OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1,
-                                   cancellable, error))
-    goto out;
-
-  if (!scan_one_metadata_object_c (pull_data,
-                                   ostree_checksum_bytes_peek (tree_meta_csum),
-                                   OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1,
-                                   cancellable, error))
-    goto out;
+  queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_contents_csum),
+                                    OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
+  queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_meta_csum),
+                                    OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
   
   ret = TRUE;
  out:
   return ret;
 }
 
-static gboolean
-scan_one_metadata_object (OtPullData         *pull_data,
-                          const char         *csum,
-                          OstreeObjectType    objtype,
-                          guint               recursion_depth,
-                          GCancellable       *cancellable,
-                          GError            **error)
+static void
+queue_scan_one_metadata_object (OtPullData         *pull_data,
+                                const char         *csum,
+                                OstreeObjectType    objtype,
+                                guint               recursion_depth)
 {
   guchar buf[32];
   ostree_checksum_inplace_to_bytes (csum, buf);
-  
-  return scan_one_metadata_object_c (pull_data, buf, objtype,
-                                     recursion_depth,
-                                     cancellable, error);
+  queue_scan_one_metadata_object_c (pull_data, buf, objtype, recursion_depth);
+}
+
+static void
+queue_scan_one_metadata_object_c (OtPullData         *pull_data,
+                                  const guchar         *csum,
+                                  OstreeObjectType    objtype,
+                                  guint               recursion_depth)
+{
+  ScanObjectQueueData *scan_data = g_new0 (ScanObjectQueueData, 1);
+
+  memcpy (scan_data->csum, csum, sizeof (scan_data->csum));
+  scan_data->objtype = objtype;
+  scan_data->recursion_depth = recursion_depth;
+
+  g_queue_push_tail (&pull_data->scan_object_queue, scan_data);
+  ensure_idle_queued (pull_data);
 }
 
 static gboolean
@@ -1675,6 +1720,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
   pull_data->dir = g_strdup (dir_to_pull);
+  g_queue_init (&pull_data->scan_object_queue);
 
   pull_data->start_time = g_get_monotonic_time ();
 
@@ -2021,9 +2067,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
-      if (!scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT,
-                                     0, pull_data->cancellable, error))
-        goto out;
+      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, 0);
     }
 
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
@@ -2050,9 +2094,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (!delta_superblock)
         {
           g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
-          if (!scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT,
-                                         0, pull_data->cancellable, error))
-            goto out;
+          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, 0);
         }
       else
         {
@@ -2077,6 +2119,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* Now await work completion */
   while (!pull_termination_condition (pull_data))
     g_main_context_iteration (pull_data->main_context, TRUE);
+
   if (pull_data->caught_error)
     goto out;
   
@@ -2203,6 +2246,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->summary_deltas_checksums, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
   return ret;
 }
