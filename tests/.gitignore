@@ -3,3 +3,11 @@ ostree-http-server
 run-apache
 tmpdir-lifecycle
 test-rollsum
+test-bsdiff
+test-checksum
+test-gpg-verify-result
+test-keyfile-utils
+test-mutable-tree
+test-ot-opt-utils
+test-ot-tool-util
+test-ot-unix-utils

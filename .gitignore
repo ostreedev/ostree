@@ -72,6 +72,8 @@ _build
 /test-xattrs.test
 test-varint
 test*.test
+*.trs
+*.log
 
 *.tar.xz
 *.src.rpm
