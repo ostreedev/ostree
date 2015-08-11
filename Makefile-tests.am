@@ -129,7 +129,7 @@ noinst_PROGRAMS += tests/test-rollsum
 
 TESTS = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
-	tests/test-gpg-verify-result tests/test-checksum
+	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma
 
 check_PROGRAMS =  $(TESTS)
 TESTS_ENVIRONMENT = \
@@ -167,6 +167,11 @@ tests_test_ot_opt_utils_LDADD = $(TESTS_LDADD)
 
 tests_test_ot_tool_util_CFLAGS = $(TESTS_CFLAGS)
 tests_test_ot_tool_util_LDADD = $(TESTS_LDADD)
+
+tests_test_lzma_SOURCES = src/libostree/ostree-lzma-common.c src/libostree/ostree-lzma-compressor.c \
+	src/libostree/ostree-lzma-decompressor.c tests/test-lzma.c
+tests_test_lzma_CFLAGS = $(TESTS_CFLAGS)
+tests_test_lzma_LDADD = $(TESTS_LDADD)
 
 tests_test_gpg_verify_result_SOURCES = \
 	src/libostree/ostree-gpg-verify-result-private.h \
