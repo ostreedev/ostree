@@ -45,6 +45,7 @@ helper_test_compress_decompress (const char *data, gssize data_size)
                                                      G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                                      NULL, &error);
     g_assert_cmpint (n_bytes_written, >, 0);
+    g_assert_no_error (error);
   }
 
   in_decompress = g_memory_input_stream_new_from_bytes (g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out_compress)));
@@ -56,6 +57,7 @@ helper_test_compress_decompress (const char *data, gssize data_size)
                                                      G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                                      NULL, &error);
     g_assert_cmpint (n_bytes_written, >, 0);
+    g_assert_no_error (error);
   }
 
   g_assert_cmpint (g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out_decompress)), ==, data_size);
