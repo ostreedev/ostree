@@ -87,7 +87,6 @@ gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
                                                 gboolean       add_nul,
                                                 gboolean       allow_noent,
                                                 GBytes         **out_contents,
-                                                GMainLoop      *loop,
                                                 guint64        max_size,
                                                 GCancellable   *cancellable,
                                                 GError         **error);

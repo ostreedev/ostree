@@ -1676,7 +1676,6 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
                                SoupURI       *base_uri,
                                const char    *filename,
                                gboolean      is_metalink,
-                               GMainLoop     *main_loop,
                                GBytes        **out_bytes,
                                GCancellable  *cancellable,
                                GError        **error)
@@ -1691,8 +1690,7 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
                                        OSTREE_MAX_METADATA_SIZE,
                                        base_uri);
 
-      _ostree_metalink_request_sync (metalink, main_loop,
-                                     NULL, out_bytes, NULL,
+      _ostree_metalink_request_sync (metalink, NULL, out_bytes, NULL,
                                      cancellable, &local_error);
 
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -1719,7 +1717,6 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
       ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
                                                    FALSE, TRUE,
                                                    out_bytes,
-                                                   main_loop,
                                                    OSTREE_MAX_METADATA_SIZE,
                                                    cancellable, error);
       soup_uri_free (uri);
@@ -1743,15 +1740,11 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            GError       **error)
 {
   glnx_unref_object OstreeFetcher *fetcher = NULL;
-  g_autoptr(GMainLoop) main_loop = NULL;
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
   uint i;
-
   const char *filenames[] = {"summary", "summary.sig"};
   GBytes **outputs[] = {out_summary, out_signatures};
-
-  main_loop = g_main_loop_new (g_main_context_get_thread_default (), FALSE);
 
   fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
   if (fetcher == NULL)
@@ -1785,7 +1778,6 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                                           base_uri,
                                           filenames[i],
                                           metalink_url_string ? TRUE : FALSE,
-                                          main_loop,
                                           outputs[i],
                                           cancellable,
                                           error))

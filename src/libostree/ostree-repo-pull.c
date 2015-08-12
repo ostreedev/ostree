@@ -45,7 +45,6 @@ typedef struct {
   OstreeRepo   *remote_repo_local;
 
   GMainContext    *main_context;
-  GMainLoop    *loop;
   GCancellable *cancellable;
   OstreeAsyncProgress *progress;
 
@@ -233,28 +232,9 @@ update_progress (gpointer user_data)
   return TRUE;
 }
 
-static void
-throw_async_error (OtPullData          *pull_data,
-                   GError              *error)
-{
-  if (error)
-    {
-      if (!pull_data->caught_error)
-        {
-          pull_data->caught_error = TRUE;
-          g_propagate_error (pull_data->async_error, error);
-          g_main_loop_quit (pull_data->loop);
-        }
-      else
-        {
-          g_error_free (error);
-        }
-    }
-}
-
-static void
-check_outstanding_requests_handle_error (OtPullData          *pull_data,
-                                         GError              *error)
+/* The core logic function for whether we should continue the main loop */
+static gboolean
+pull_termination_condition (OtPullData          *pull_data)
 {
   gboolean current_fetch_idle = (pull_data->n_outstanding_metadata_fetches == 0 &&
                                  pull_data->n_outstanding_content_fetches == 0 &&
@@ -264,30 +244,42 @@ check_outstanding_requests_handle_error (OtPullData          *pull_data,
                                  pull_data->n_outstanding_deltapart_write_requests == 0 );
   gboolean current_idle = current_fetch_idle && current_write_idle;
 
-  throw_async_error (pull_data, error);
+  if (pull_data->caught_error)
+    return TRUE;
 
   switch (pull_data->phase)
     {
     case OSTREE_PULL_PHASE_FETCHING_REFS:
       if (!pull_data->fetching_sync_uri)
-        g_main_loop_quit (pull_data->loop);
+        return TRUE;
       break;
     case OSTREE_PULL_PHASE_FETCHING_OBJECTS:
       if (current_idle && !pull_data->fetching_sync_uri)
         {
           g_debug ("pull: idle, exiting mainloop");
-          
-          g_main_loop_quit (pull_data->loop);
+          return TRUE;
         }
       break;
     }
+  return FALSE;
 }
 
-static gboolean
-idle_check_outstanding_requests (gpointer user_data)
+static void
+check_outstanding_requests_handle_error (OtPullData          *pull_data,
+                                         GError              *error)
 {
-  check_outstanding_requests_handle_error (user_data, NULL);
-  return FALSE;
+  if (error)
+    {
+      if (!pull_data->caught_error)
+        {
+          pull_data->caught_error = TRUE;
+          g_propagate_error (pull_data->async_error, error);
+        }
+      else
+        {
+          g_error_free (error);
+        }
+    }
 }
 
 typedef struct {
@@ -311,7 +303,6 @@ fetch_uri_contents_membuf_sync (OtPullData    *pull_data,
                                                add_nul,
                                                allow_noent,
                                                out_contents,
-                                               pull_data->loop,
                                                OSTREE_MAX_METADATA_SIZE,
                                                cancellable,
                                                error);
@@ -1638,7 +1629,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *dir_to_pull = NULL;
   char **refs_to_fetch = NULL;
   GSource *update_timeout = NULL;
-  GSource *idle_src;
   gboolean disable_static_deltas = FALSE;
 
   if (options)
@@ -1664,7 +1654,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->async_error = error;
   pull_data->main_context = g_main_context_ref_thread_default ();
-  pull_data->loop = g_main_loop_new (pull_data->main_context, FALSE);
   pull_data->flags = flags;
 
   pull_data->repo = self;
@@ -1757,7 +1746,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       soup_uri_free (metalink_uri);
 
       if (! _ostree_metalink_request_sync (metalink,
-                                           pull_data->loop,
                                            &target_uri,
                                            &summary_bytes,
                                            &pull_data->fetching_sync_uri,
@@ -2015,6 +2003,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
 
+  /* Now discard the previous fetcher, as it was bound to a temporary main context
+   * for synchronous requests.
+   */
+  g_clear_object (&pull_data->fetcher);
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
+  if (pull_data->fetcher == NULL)
+    goto out;
+
   if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->transaction_resuming,
                                         cancellable, error))
     goto out;
@@ -2069,22 +2065,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
-  idle_src = g_idle_source_new ();
-  g_source_set_callback (idle_src, idle_check_outstanding_requests, pull_data, NULL);
-  g_source_attach (idle_src, pull_data->main_context);
-  g_source_unref (idle_src);
-
   if (pull_data->progress)
     {
       update_timeout = g_timeout_source_new_seconds (1);
       g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
       g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
-      g_source_attach (update_timeout, g_main_loop_get_context (pull_data->loop));
+      g_source_attach (update_timeout, pull_data->main_context);
       g_source_unref (update_timeout);
     }
 
   /* Now await work completion */
-  g_main_loop_run (pull_data->loop);
+  while (!pull_termination_condition (pull_data))
+    g_main_context_iteration (pull_data->main_context, TRUE);
   if (pull_data->caught_error)
     goto out;
   
@@ -2195,8 +2187,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_main_context_unref (pull_data->main_context);
   if (update_timeout)
     g_source_destroy (update_timeout);
-  if (pull_data->loop)
-    g_main_loop_unref (pull_data->loop);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
   g_clear_object (&pull_data->remote_repo_local);
