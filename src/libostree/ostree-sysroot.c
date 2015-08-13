@@ -72,8 +72,7 @@ ostree_sysroot_finalize (GObject *object)
 
   glnx_release_lock_file (&self->lock);
 
-  if (self->sysroot_fd != -1)
-    (void) close (self->sysroot_fd);
+  (void) ostree_sysroot_unload (self);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->finalize (object);
 }
@@ -221,6 +220,24 @@ ostree_sysroot_get_fd (OstreeSysroot *self)
 {
   g_return_val_if_fail (self->sysroot_fd != -1, -1);
   return self->sysroot_fd;
+}
+
+/**
+ * ostree_sysroot_unload:
+ * @self: Sysroot
+ *
+ * Release any resources such as file descriptors referring to the
+ * root directory of this sysroot.  Normally, those resources are
+ * cleared by finalization, but in garbage collected languages that
+ * may not be predictable.
+ *
+ * This undoes the effect of `ostree_sysroot_load()`.
+ */
+void
+ostree_sysroot_unload (OstreeSysroot  *self)
+{
+  if (self->sysroot_fd != -1)
+    (void) close (self->sysroot_fd);
 }
 
 /**

@@ -45,6 +45,8 @@ gboolean ostree_sysroot_load (OstreeSysroot  *self,
                               GCancellable   *cancellable,
                               GError        **error);
 
+void ostree_sysroot_unload (OstreeSysroot  *self);
+
 gboolean ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
                                             GCancellable   *cancellable,
                                             GError        **error);
