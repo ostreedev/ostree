@@ -125,7 +125,7 @@ libreaddir_rand_la_LDFLAGS = -avoid-version
 endif
 
 # "make check" do not depend from --enable-installed-tests
-noinst_PROGRAMS += tests/test-rollsum
+noinst_PROGRAMS += tests/test-rollsum-cli
 
 TESTS = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
@@ -138,9 +138,9 @@ TESTS_ENVIRONMENT = \
 TESTS_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/libglnx
 TESTS_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
 
-tests_test_rollsum_SOURCES = src/libostree/ostree-rollsum.c tests/test-rollsum.c
-tests_test_rollsum_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
-tests_test_rollsum_LDADD = libbupsplit.la $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
+tests_test_rollsum_cli_SOURCES = src/libostree/ostree-rollsum.c tests/test-rollsum-cli.c
+tests_test_rollsum_cli_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
+tests_test_rollsum_cli_LDADD = libbupsplit.la $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 
 tests_test_mutable_tree_CFLAGS = $(TESTS_CFLAGS)
 tests_test_mutable_tree_LDADD = $(TESTS_LDADD)
