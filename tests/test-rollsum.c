@@ -120,7 +120,9 @@ test_rollsum (void)
   test_rollsum_helper (a, MAX_BUFFER_SIZE, b, MAX_BUFFER_SIZE, FALSE);
 
   /* All different.  */
-  for (i = 0; i < MAX_BUFFER_SIZE; i++)
+  a[0] = g_rand_int (rand);
+  b[0] = a[0] + 1;
+  for (i = 1; i < MAX_BUFFER_SIZE; i++)
     {
       a[i] = g_rand_int (rand);
       b[i] = g_rand_int (rand);
