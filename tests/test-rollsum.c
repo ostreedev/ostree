@@ -76,12 +76,11 @@ test_rollsum (void)
   int len;
   unsigned char *a = malloc (MAX_BUFFER_SIZE);
   unsigned char *b = malloc (MAX_BUFFER_SIZE);
-
-  srandom (1);
+  g_autoptr(GRand) rand = g_rand_new ();
 
   for (i = 0; i < MAX_BUFFER_SIZE; i++)
     {
-      a[i] = random ();
+      a[i] = g_rand_int (rand);
       b[i] = a[i];
     }
   test_rollsum_helper (a, MAX_BUFFER_SIZE, b, MAX_BUFFER_SIZE, TRUE);
@@ -115,7 +114,7 @@ test_rollsum (void)
   /* All different.  */
   for (i = 0; i < MAX_BUFFER_SIZE; i++)
     {
-      a[i] = random ();
+      a[i] = g_rand_int (rand);
       b[i] = a[i] + 1;
     }
   test_rollsum_helper (a, MAX_BUFFER_SIZE, b, MAX_BUFFER_SIZE, FALSE);
@@ -123,8 +122,8 @@ test_rollsum (void)
   /* All different.  */
   for (i = 0; i < MAX_BUFFER_SIZE; i++)
     {
-      a[i] = random ();
-      b[i] = random ();
+      a[i] = g_rand_int (rand);
+      b[i] = g_rand_int (rand);
     }
   test_rollsum_helper (a, MAX_BUFFER_SIZE, b, MAX_BUFFER_SIZE, FALSE);
 }
