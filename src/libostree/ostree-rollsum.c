@@ -162,7 +162,10 @@ _ostree_compute_rollsum_matches (GBytes                           *from,
                   g_variant_get (from_chunk, "(utt)", &fromcrc, &from_start, &from_offset);
 
                   g_assert (fromcrc == tocrc);
-                  g_assert (to_offset == from_offset);
+
+                  /* Same crc32 but different length, skip it.  */
+                  if (to_offset != from_offset)
+                    continue;
                   
                   /* Rsync uses a cryptographic checksum, but let's be
                    * very conservative here and just memcmp.
