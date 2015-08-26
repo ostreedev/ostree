@@ -50,6 +50,13 @@ assert_file_has_content other-copy/hello-world "hello world another object"
 ostree --repo=repo checkout -U yet-another yet-another-copy
 assert_file_has_content yet-another-copy/yet-another-hello-world "hello world yet another object"
 ostree --repo=repo fsck
+rev=$(ostree --repo=repo rev-parse main)
+find repo/objects -name '*.filez' | while read name; do
+    mode=$(stat -c '%a' "${name}")
+    if test "${mode}" = 600; then
+	assert_not_reached "Content object unreadable by others: ${mode}"
+    fi
+done
 echo "ok pull mirror summary"
 
 if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then

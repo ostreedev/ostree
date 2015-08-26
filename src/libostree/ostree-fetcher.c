@@ -502,7 +502,7 @@ on_request_sent (GObject        *object,
       else
         oflags |= O_TRUNC;
 
-      fd = openat (pending->self->tmpdir_dfd, pending->out_tmpfile, oflags, 0600);
+      fd = openat (pending->self->tmpdir_dfd, pending->out_tmpfile, oflags, 0666);
       if (fd == -1)
         {
           gs_set_error_from_errno (&local_error, errno);
