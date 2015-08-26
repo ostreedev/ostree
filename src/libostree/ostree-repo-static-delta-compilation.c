@@ -474,11 +474,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
                               cancellable, error))
     goto out;
 
-  if (g_file_info_get_file_type (ret_finfo) != G_FILE_TYPE_REGULAR)
-    {
-      ret = TRUE;
-      goto out;
-    }
+  g_assert (g_file_info_get_file_type (ret_finfo) == G_FILE_TYPE_REGULAR);
   
   out = g_unix_output_stream_new (fd, FALSE);
   if (g_output_stream_splice (out, istream, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
@@ -570,13 +566,6 @@ try_content_rollsum (OstreeRepo                       *repo,
   if (!get_unpacked_unlinked_content (repo, to, &tmp_to, &to_finfo,
                                       cancellable, error))
     goto out;
-
-  /* Only try to rollsum regular files obviously */ 
-  if (!(tmp_from && tmp_to))
-    {
-      ret = TRUE;
-      goto out;
-    }
 
   matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
 
