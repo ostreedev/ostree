@@ -76,20 +76,18 @@ build_content_sizenames_recurse (OstreeRepo                     *repo,
             {
               g_autoptr(GFileInfo) finfo = NULL;
 
-              csizenames = g_new0 (OstreeDeltaContentSizeNames, 1);
-              csizenames->checksum = g_strdup (checksum);
-              
-              /* Transfer ownership so things get cleaned up if we
-               * throw an exception below.
-               */
-              g_hash_table_replace (sizenames_map, csizenames->checksum, csizenames);
-
               if (!ostree_repo_load_file (repo, checksum,
                                           NULL, &finfo, NULL,
                                           cancellable, error))
                 goto out;
-              
+
+              if (g_file_info_get_file_type (finfo) != G_FILE_TYPE_REGULAR)
+                continue;
+
+              csizenames = g_new0 (OstreeDeltaContentSizeNames, 1);
+              csizenames->checksum = g_strdup (checksum);
               csizenames->size = g_file_info_get_size (finfo);
+              g_hash_table_replace (sizenames_map, csizenames->checksum, csizenames);
             }
 
           if (!csizenames->basenames)
