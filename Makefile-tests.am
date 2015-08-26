@@ -174,8 +174,8 @@ tests_test_ot_tool_util_LDADD = $(TESTS_LDADD)
 
 tests_test_lzma_SOURCES = src/libostree/ostree-lzma-common.c src/libostree/ostree-lzma-compressor.c \
 	src/libostree/ostree-lzma-decompressor.c tests/test-lzma.c
-tests_test_lzma_CFLAGS = $(TESTS_CFLAGS)
-tests_test_lzma_LDADD = $(TESTS_LDADD)
+tests_test_lzma_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_LZMA_CFLAGS)
+tests_test_lzma_LDADD = $(TESTS_LDADD) $(OT_DEP_LZMA_LIBS)
 
 tests_test_gpg_verify_result_SOURCES = \
 	src/libostree/ostree-gpg-verify-result-private.h \
