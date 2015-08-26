@@ -11,3 +11,4 @@ test-mutable-tree
 test-ot-opt-utils
 test-ot-tool-util
 test-ot-unix-utils
+test-rollsum-cli
