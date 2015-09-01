@@ -96,6 +96,7 @@ typedef struct {
   guint64       previous_bytes_sec;
   guint64       previous_total_downloaded;
 
+  GError       *cached_async_error;
   GError      **async_error;
   gboolean      caught_error;
 
@@ -1697,7 +1698,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
 
-  pull_data->async_error = error;
+  if (error)
+    pull_data->async_error = &pull_data->cached_async_error;
+  else
+    pull_data->async_error = NULL;
   pull_data->main_context = g_main_context_ref_thread_default ();
   pull_data->flags = flags;
 
@@ -2226,6 +2230,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   ret = TRUE;
  out:
+  /* This is pretty ugly - we have two error locations, because we
+   * have a mix of synchronous and async code.  Mixing them gets messy
+   * as we need to avoid overwriting errors.
+   */
+  if (pull_data->cached_async_error && error && !*error)
+    g_propagate_error (error, pull_data->cached_async_error);
+  else
+    g_clear_error (&pull_data->cached_async_error);
+    
   ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
   g_main_context_unref (pull_data->main_context);
   if (update_timeout)

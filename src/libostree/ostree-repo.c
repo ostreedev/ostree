@@ -1681,6 +1681,7 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
                                GError        **error)
 {
   gboolean ret = FALSE;
+
   if (is_metalink)
     {
       glnx_unref_object OstreeMetalink *metalink = NULL;
@@ -1740,11 +1741,15 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            GError       **error)
 {
   glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
   uint i;
   const char *filenames[] = {"summary", "summary.sig"};
   GBytes **outputs[] = {out_summary, out_signatures};
+
+  mainctx = g_main_context_new ();
+  g_main_context_push_thread_default (mainctx);
 
   fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
   if (fetcher == NULL)
@@ -1787,9 +1792,10 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   ret = TRUE;
 
  out:
+  if (mainctx)
+    g_main_context_pop_thread_default (mainctx);
   if (base_uri != NULL)
     soup_uri_free (base_uri);
-
   return ret;
 }
 
