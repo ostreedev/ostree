@@ -1932,7 +1932,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (!ostree_validate_rev (refname, error))
               goto out;
 
-            g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+            if (pull_data->is_mirror && !refs_to_fetch)
+              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
           }
 
         additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
