@@ -425,20 +425,18 @@ cleanup_ref_prefix (OstreeRepo         *repo,
 }
 
 static gboolean
-generate_deployment_refs_and_prune (OstreeSysroot       *self,
-                                    OstreeRepo          *repo,
-                                    int                  bootversion,
-                                    int                  subbootversion,
-                                    GPtrArray           *deployments,
-                                    GCancellable        *cancellable,
-                                    GError             **error)
+generate_deployment_refs (OstreeSysroot       *self,
+                          OstreeRepo          *repo,
+                          int                  bootversion,
+                          int                  subbootversion,
+                          GPtrArray           *deployments,
+                          GCancellable        *cancellable,
+                          GError             **error)
 {
   gboolean ret = FALSE;
   int cleanup_bootversion;
   int cleanup_subbootversion;
   guint i;
-  gint n_objects_total, n_objects_pruned;
-  guint64 freed_space;
 
   cleanup_bootversion = (bootversion == 0) ? 1 : 0;
   cleanup_subbootversion = (subbootversion == 0) ? 1 : 0;
@@ -471,10 +469,27 @@ generate_deployment_refs_and_prune (OstreeSysroot       *self,
         goto out;
     }
 
+  ret = TRUE;
+ out:
+  ostree_repo_abort_transaction (repo, cancellable, NULL);
+  return ret;
+}
+
+static gboolean
+prune_repo (OstreeRepo    *repo,
+            GCancellable  *cancellable,
+            GError       **error)
+{
+  gint n_objects_total;
+  gint n_objects_pruned;
+  guint64 freed_space;
+  gboolean ret = FALSE;
+
   if (!ostree_repo_prune (repo, OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY, 0,
                           &n_objects_total, &n_objects_pruned, &freed_space,
                           cancellable, error))
     goto out;
+
   if (freed_space > 0)
     {
       char *freed_space_str = g_format_size_full (freed_space, 0);
@@ -482,11 +497,11 @@ generate_deployment_refs_and_prune (OstreeSysroot       *self,
     }
 
   ret = TRUE;
- out:
-  ostree_repo_abort_transaction (repo, cancellable, NULL);
+
+out:
   return ret;
 }
-  
+
 /**
  * ostree_sysroot_cleanup:
  * @self: Sysroot
@@ -501,26 +516,77 @@ ostree_sysroot_cleanup (OstreeSysroot       *self,
                         GCancellable        *cancellable,
                         GError             **error)
 {
+  OstreeSysrootCleanupFlags flags;
+
+  /* Do everything. */
+  flags = OSTREE_SYSROOT_CLEANUP_ALL;
+
+  return _ostree_sysroot_piecemeal_cleanup (self, flags, cancellable, error);
+}
+
+/**
+ * ostree_sysroot_prepare_cleanup:
+ * @self: Sysroot
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_sysroot_cleanup() in that it cleans up incomplete deployments
+ * and old boot versions, but does NOT prune the repository.
+ */
+gboolean
+ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  OstreeSysrootCleanupFlags flags;
+
+  /* Do everything EXCEPT pruning the repository. */
+  flags = OSTREE_SYSROOT_CLEANUP_ALL & ~OSTREE_SYSROOT_CLEANUP_PRUNE_REPO;
+
+  return _ostree_sysroot_piecemeal_cleanup (self, flags, cancellable, error);
+}
+
+gboolean
+_ostree_sysroot_piecemeal_cleanup (OstreeSysroot              *self,
+                                   OstreeSysrootCleanupFlags   flags,
+                                   GCancellable               *cancellable,
+                                   GError                    **error)
+{
   gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
 
+  g_return_val_if_fail (OSTREE_IS_SYSROOT (self), FALSE);
   g_return_val_if_fail (self->loaded, FALSE);
 
-  if (!cleanup_other_bootversions (self, cancellable, error))
-    goto out;
+  if (flags & OSTREE_SYSROOT_CLEANUP_BOOTVERSIONS)
+    {
+      if (!cleanup_other_bootversions (self, cancellable, error))
+        goto out;
+    }
 
-  if (!cleanup_old_deployments (self, cancellable, error))
-    goto out;
+  if (flags & OSTREE_SYSROOT_CLEANUP_DEPLOYMENTS)
+    {
+      if (!cleanup_old_deployments (self, cancellable, error))
+        goto out;
+    }
 
   if (self->deployments->len > 0)
     {
       if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
         goto out;
 
-      if (!generate_deployment_refs_and_prune (self, repo, self->bootversion,
-                                               self->subbootversion, self->deployments,
-                                               cancellable, error))
+      if (!generate_deployment_refs (self, repo,
+                                     self->bootversion,
+                                     self->subbootversion,
+                                     self->deployments,
+                                     cancellable, error))
         goto out;
+
+      if (flags & OSTREE_SYSROOT_CLEANUP_PRUNE_REPO)
+        {
+          if (!prune_repo (repo, cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;

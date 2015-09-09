@@ -81,6 +81,10 @@ gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,
                                  GCancellable        *cancellable,
                                  GError             **error);
 
+gboolean ostree_sysroot_prepare_cleanup (OstreeSysroot  *self,
+                                         GCancellable   *cancellable,
+                                         GError        **error);
+
 gboolean ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                            OstreeDeployment      *deployment,
                                            GKeyFile              *new_origin,
