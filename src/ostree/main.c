@@ -34,6 +34,8 @@
 
 static OstreeCommand commands[] = {
   { "admin", ostree_builtin_admin },
+  { "archive-export", ostree_builtin_archive_export },
+  { "archive-import", ostree_builtin_archive_import },
   { "cat", ostree_builtin_cat },
   { "checkout", ostree_builtin_checkout },
   { "checksum", ostree_builtin_checksum },
