@@ -90,4 +90,16 @@ gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                            GCancellable      *cancellable,
                                            GError           **error);
 
+typedef enum {
+  OSTREE_SYSROOT_CLEANUP_BOOTVERSIONS = 1 << 0,
+  OSTREE_SYSROOT_CLEANUP_DEPLOYMENTS  = 1 << 1,
+  OSTREE_SYSROOT_CLEANUP_PRUNE_REPO   = 1 << 2,
+  OSTREE_SYSROOT_CLEANUP_ALL          = 0xffff
+} OstreeSysrootCleanupFlags;
+
+gboolean _ostree_sysroot_piecemeal_cleanup (OstreeSysroot *sysroot,
+                                            OstreeSysrootCleanupFlags flags,
+                                            GCancellable *cancellable,
+                                            GError **error);
+
 G_END_DECLS

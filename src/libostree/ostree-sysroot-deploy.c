@@ -489,6 +489,9 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!glnx_opendirat (sysroot->sysroot_fd, osdeploy_path, TRUE, &osdeploy_dfd, error))
     goto out;
 
+  if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
+    goto out;
+
   if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
                                      checkout_target_name, csum,
                                      cancellable, error))
