@@ -273,6 +273,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   n = g_variant_n_children (headers);
   for (i = 0; i < n; i++)
     {
+      guint32 version;
       guint64 size;
       guint64 usize;
       const guchar *csum;
@@ -285,7 +286,14 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       g_autoptr(GInputStream) in = NULL;
 
       header = g_variant_get_child_value (headers, i);
-      g_variant_get (header, "(@aytt@ay)", &csum_v, &size, &usize, &objects);
+      g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
+
+      if (version > OSTREE_DELTAPART_VERSION)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Delta part has too new version %u", version);
+          goto out;
+        }
 
       if (!_ostree_repo_static_delta_part_have_all_objects (self, objects, &have_all,
                                                             cancellable, error))
