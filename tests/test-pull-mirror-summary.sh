@@ -94,6 +94,18 @@ assert_has_file repo/summary
 assert_has_file repo/summary.sig
 echo "ok pull mirror with signed summary"
 
+truncate --size=1 ${test_tmpdir}/ostree-srv/gnomerepo/summary.sig
+
+cd ${test_tmpdir}
+rm -rf repo
+mkdir repo
+${OSTREE} --repo=repo init --mode=archive-z2
+${OSTREE} --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} --repo=repo pull --mirror origin
+assert_has_file repo/summary
+assert_has_file repo/summary.sig
+echo "ok pull mirror with invalid summary sig and no verification"
+
 # Uncomment when we support mirroring deltas
 #
 # ${OSTREE} --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate main
