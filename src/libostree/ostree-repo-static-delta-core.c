@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "otutil.h"
@@ -227,7 +228,10 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   g_autoptr(GFile) meta_file = g_file_get_child (dir, "superblock");
   g_autoptr(GVariant) meta = NULL;
   g_autoptr(GVariant) headers = NULL;
+  g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) fallback = NULL;
+  g_autofree char *to_checksum = NULL;
+  g_autofree char *from_checksum = NULL;
 
   if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
                             FALSE, &meta, error))
@@ -238,7 +242,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   /* Write the to-commit object */
   {
     g_autoptr(GVariant) to_csum_v = NULL;
-    g_autofree char *to_checksum = NULL;
+    g_autoptr(GVariant) from_csum_v = NULL;
     g_autoptr(GVariant) to_commit = NULL;
     gboolean have_to_commit;
 
@@ -246,6 +250,14 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     if (!ostree_validate_structureof_csum_v (to_csum_v, error))
       goto out;
     to_checksum = ostree_checksum_from_bytes_v (to_csum_v);
+
+    from_csum_v = g_variant_get_child_value (meta, 2);
+    if (g_variant_n_children (from_csum_v) > 0)
+      {
+        if (!ostree_validate_structureof_csum_v (from_csum_v, error))
+          goto out;
+        from_checksum = ostree_checksum_from_bytes_v (from_csum_v);
+      }
 
     if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
                                  &have_to_commit, cancellable, error))
@@ -270,6 +282,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     }
 
   headers = g_variant_get_child_value (meta, 6);
+  metadata = g_variant_get_child_value (meta, 0);
   n = g_variant_n_children (headers);
   for (i = 0; i < n; i++)
     {
@@ -278,12 +291,15 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       guint64 usize;
       const guchar *csum;
       gboolean have_all;
+      g_autoptr(GBytes) delta_data = NULL;
+      g_autoptr(GVariant) part_data = NULL;
       g_autoptr(GVariant) header = NULL;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
       g_autoptr(GFile) part_path = NULL;
       g_autoptr(GInputStream) raw_in = NULL;
       g_autoptr(GInputStream) in = NULL;
+      g_autofree char *deltapart_path = NULL;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
@@ -309,9 +325,17 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       if (!csum)
         goto out;
 
-      part_path = ot_gfile_resolve_path_printf (dir, "%u", i);
+      deltapart_path =
+        _ostree_get_relative_static_delta_part_path (from_checksum, to_checksum, i);
 
-      in = (GInputStream*)g_file_read (part_path, cancellable, error);
+      part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
+      if (part_data)
+        in = ot_variant_read (part_data);
+      else
+        {
+          part_path = ot_gfile_resolve_path_printf (dir, "%u", i);
+          in = (GInputStream*)g_file_read (part_path, cancellable, error);
+        }
       if (!in)
         goto out;
 
@@ -325,14 +349,19 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
         }
 
       {
-        GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
         g_autoptr(GBytes) bytes = NULL;
 
-        if (!mfile)
-          goto out;
+        if (part_data)
+          bytes = g_variant_get_data_as_bytes (part_data);
+        else
+          {
+            GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
+            if (!mfile)
+              goto out;
 
-        bytes = g_mapped_file_get_bytes (mfile);
-        g_mapped_file_unref (mfile);
+            bytes = g_mapped_file_get_bytes (mfile);
+            g_mapped_file_unref (mfile);
+          }
         
         if (!_ostree_static_delta_part_execute (self, objects, bytes,
                                                 cancellable, error))

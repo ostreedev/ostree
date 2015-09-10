@@ -1226,6 +1226,7 @@ get_fallback_headers (OstreeRepo               *self,
  *   for input files
  *   - compression: y: Compression type: 0=none, x=lzma, g=gzip
  *   - bsdiff-enabled: b: Enable bsdiff compression.  Default TRUE.
+ *   - inline-parts: b: Put part data in header, to get a single file delta.  Default FALSE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
  */
 gboolean
@@ -1244,7 +1245,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  GVariant *metadata_source;
+  GVariantBuilder metadata_builder;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
@@ -1257,6 +1258,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GFile) descriptor_dir = NULL;
   g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
+  gboolean inline_parts;
 
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -1286,6 +1288,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       delta_opts |= DELTAOPT_FLAG_VERBOSE;
   }
 
+  if (!g_variant_lookup (params, "inline-parts", "b", &inline_parts))
+    inline_parts = FALSE;
+
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
     goto out;
@@ -1294,6 +1299,20 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!generate_delta_lowlatency (self, from, to, delta_opts, &builder,
                                   cancellable, error))
     goto out;
+
+  g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
+  if (metadata != NULL)
+    {
+      GVariantIter iter;
+      GVariant *item;
+
+      g_variant_iter_init (&iter, metadata);
+      while ((item = g_variant_iter_next_value (&iter)))
+        {
+          g_variant_builder_add (&metadata_builder, "@{sv}", item);
+          g_variant_unref (item);
+        }
+    }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
   part_tempfiles = g_ptr_array_new_with_free_func (g_object_unref);
@@ -1359,10 +1378,16 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       delta_part = g_variant_new ("(y@ay)",
                                   compression_type_char,
                                   ot_gvariant_new_ay_bytes (g_memory_output_stream_steal_as_bytes (part_payload_out)));
+      g_variant_ref_sink (delta_part);
 
-      if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                                   &part_tempfile, &part_temp_outstream,
-                                   cancellable, error))
+      if (inline_parts)
+        {
+          g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
+          g_variant_builder_add (&metadata_builder, "{sv}", part_relpath, delta_part);
+        }
+      else if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+                                        &part_tempfile, &part_temp_outstream,
+                                        cancellable, error))
         goto out;
       part_in = ot_variant_read (delta_part);
       if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
@@ -1378,8 +1403,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                          (guint64) g_variant_get_size (delta_part),
                                          part_builder->uncompressed_size,
                                          ot_gvariant_new_ay_bytes (objtype_checksum_array));
+
       g_variant_builder_add_value (part_headers, g_variant_ref (delta_part_header));
-      g_ptr_array_add (part_tempfiles, g_object_ref (part_tempfile));
+      if (part_tempfile)
+        g_ptr_array_add (part_tempfiles, g_object_ref (part_tempfile));
       
       total_compressed_size += g_variant_get_size (delta_part);
       total_uncompressed_size += part_builder->uncompressed_size;
@@ -1400,7 +1427,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!gs_file_ensure_directory (descriptor_dir, TRUE, cancellable, error))
     goto out;
 
-  for (i = 0; i < builder.parts->len; i++)
+  for (i = 0; i < part_tempfiles->len; i++)
     {
       GFile *tempfile = part_tempfiles->pdata[i];
       g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
@@ -1408,13 +1435,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       if (!gs_file_rename (tempfile, part_path, cancellable, error))
         goto out;
-    }
-
-  if (metadata != NULL)
-    metadata_source = metadata;
-  else
-    {
-      metadata_source = ot_gvariant_new_empty_string_dict ();
     }
 
   if (!get_fallback_headers (self, &builder, &fallback_headers,
@@ -1432,7 +1452,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     delta_descriptor = g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
                                       "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
                                       "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
-                                      metadata_source,
+                                      g_variant_builder_end (&metadata_builder),
                                       GUINT64_TO_BE (g_date_time_to_unix (now)),
                                       from_csum_v,
                                       to_csum_v,
