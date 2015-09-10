@@ -1085,7 +1085,8 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                            NULL, &uncompressed_size,
                                            cancellable, error))
         goto out;
-      if (uncompressed_size > builder->min_fallback_size_bytes)
+      if (builder->min_fallback_size_bytes >= 0 &&
+          uncompressed_size > builder->min_fallback_size_bytes)
         fallback = TRUE;
   
       if (fallback)
@@ -1219,7 +1220,7 @@ get_fallback_headers (OstreeRepo               *self,
  *
  * The @params argument should be an a{sv}.  The following attributes
  * are known:
- *   - min-fallback-size: u: Minimume uncompressed size in megabytes to use fallback
+ *   - min-fallback-size: u: Minimume uncompressed size in megabytes to use fallback, 0 to disable fallbacks
  *   - max-chunk-size: u: Maximum size in megabytes of a delta part
  *   - max-bsdiff-size: u: Maximum size in megabytes to consider bsdiff compression
  *   for input files
