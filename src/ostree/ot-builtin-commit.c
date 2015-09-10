@@ -487,7 +487,9 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (!skip_commit)
     {
+      OstreeRepoMode mode = ostree_repo_get_mode (repo);
       gboolean update_summary;
+
       if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
                                      OSTREE_REPO_FILE (root),
                                      &commit_checksum, cancellable, error))
@@ -524,8 +526,15 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
 
+      /* Default to automatically (re)generating a summary file when
+       * committing to an ARCHIVE_Z2 repo, since these are often served
+       * over HTTP and some commands like "ostree remote refs" depend on
+       * fetching a remote repo's summary file over HTTP.  Basically all
+       * ARCHIVE_Z2 repos should keep an up-to-date summary file unless
+       * there's a specific reason not to. */
       if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
-                                                "commit-update-summary", FALSE,
+                                                "commit-update-summary",
+                                                (mode == OSTREE_REPO_MODE_ARCHIVE_Z2),
                                                 &update_summary, error))
         goto out;
 
