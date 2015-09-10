@@ -318,7 +318,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       if (!skip_validation)
         {
           g_autofree char *expected_checksum = ostree_checksum_from_bytes (csum);
-          if (!_ostree_static_delta_part_validate (self, part_path, i,
+          if (!_ostree_static_delta_part_validate (self, in, i,
                                                    expected_checksum,
                                                    cancellable, error))
             goto out;

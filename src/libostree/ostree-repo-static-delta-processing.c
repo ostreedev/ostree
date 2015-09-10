@@ -150,22 +150,17 @@ open_output_target (StaticDeltaExecutionState   *state,
 
 gboolean
 _ostree_static_delta_part_validate (OstreeRepo     *repo,
-                                    GFile          *part_path,
+                                    GInputStream   *in,
                                     guint           part_offset,
                                     const char     *expected_checksum,
                                     GCancellable   *cancellable,
                                     GError        **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GInputStream) tmp_in = NULL;
   g_autofree guchar *actual_checksum_bytes = NULL;
   g_autofree char *actual_checksum = NULL;
   
-  tmp_in = (GInputStream*)g_file_read (part_path, cancellable, error);
-  if (!tmp_in)
-    goto out;
-  
-  if (!ot_gio_checksum_stream (tmp_in, &actual_checksum_bytes,
+  if (!ot_gio_checksum_stream (in, &actual_checksum_bytes,
                                cancellable, error))
     goto out;
 

@@ -104,7 +104,7 @@ G_BEGIN_DECLS
 #define OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT "(a{sv}tayay" OSTREE_COMMIT_GVARIANT_STRING "aya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")"
 
 gboolean _ostree_static_delta_part_validate (OstreeRepo     *repo,
-                                             GFile          *part_path,
+                                             GInputStream   *in,
                                              guint           part_offset,
                                              const char     *expected_checksum,
                                              GCancellable   *cancellable,
