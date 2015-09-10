@@ -1893,14 +1893,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       {
         pull_data->summary_data = g_bytes_ref (bytes_summary);
         pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT, bytes_summary, FALSE);
+
+        if (bytes_sig)
+          pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
       }
 
-    if (bytes_summary && bytes_sig)
+    if (pull_data->gpg_verify_summary && bytes_summary && bytes_sig)
       {
         g_autoptr(GVariant) sig_variant = NULL;
         glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-
-        pull_data->summary_data_sig = g_bytes_ref (bytes_sig);
 
         sig_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT, bytes_sig, FALSE);
         result = _ostree_repo_gpg_verify_with_metadata (self,
