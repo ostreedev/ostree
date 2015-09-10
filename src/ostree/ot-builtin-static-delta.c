@@ -32,6 +32,7 @@ static char *opt_min_fallback_size;
 static char *opt_max_bsdiff_size;
 static char *opt_max_chunk_size;
 static gboolean opt_empty;
+static gboolean opt_inline;
 static gboolean opt_disable_bsdiff;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
@@ -53,6 +54,7 @@ static OstreeCommand static_delta_subcommands[] = {
 static GOptionEntry generate_options[] = {
   { "from", 0, 0, G_OPTION_ARG_STRING, &opt_from_rev, "Create delta from revision REV", "REV" },
   { "empty", 0, 0, G_OPTION_ARG_NONE, &opt_empty, "Create delta from scratch", NULL },
+  { "inline", 0, 0, G_OPTION_ARG_NONE, &opt_inline, "Inline delta parts into main delta", NULL },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "disable-bsdiff", 0, 0, G_OPTION_ARG_NONE, &opt_disable_bsdiff, "Disable use of bsdiff", NULL },
   { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
@@ -201,6 +203,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
       if (opt_disable_bsdiff)
         g_variant_builder_add (parambuilder, "{sv}",
                                "bsdiff-enabled", g_variant_new_boolean (FALSE));
+      if (opt_inline)
+        g_variant_builder_add (parambuilder, "{sv}",
+                               "inline-parts", g_variant_new_boolean (TRUE));
 
       g_variant_builder_add (parambuilder, "{sv}", "verbose", g_variant_new_boolean (TRUE));
 
