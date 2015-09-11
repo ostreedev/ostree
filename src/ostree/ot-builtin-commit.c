@@ -524,6 +524,11 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;
 
+      /* The default for this option is FALSE, even for archive-z2 repos,
+       * because ostree supports multiple processes committing to the same
+       * repo (but different refs) concurrently, and in fact gnome-continuous
+       * actually does this.  In that context it's best to update the summary
+       * explicitly instead of automatically here. */
       if (!ot_keyfile_get_boolean_with_default (ostree_repo_get_config (repo), "core",
                                                 "commit-update-summary", FALSE,
                                                 &update_summary, error))
