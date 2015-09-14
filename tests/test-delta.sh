@@ -24,7 +24,7 @@ set -e
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..2'
+echo '1..3'
 
 mkdir repo
 ostree --repo=repo init --mode=archive-z2
@@ -78,6 +78,45 @@ if ${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to
     assert_not_reached "static-delta generate --from=${origrev} --empty unexpectedly succeeded"
 fi
 
-mkdir repo2
-ostree --repo=repo2 init --mode=archive-z2
+echo 'ok generate'
+
+mkdir repo2 && ostree --repo=repo2 init --mode=archive-z2
+ostree --repo=repo2 pull-local repo ${newrev}
+ostree --repo=repo2 fsck
+ostree --repo=repo2 ls ${newrev} >/dev/null
+
+echo 'ok pull delta'
+
+rm repo2 -rf
+mkdir repo2 && ostree --repo=repo2 init --mode=bare-user
+mkdir deltadir
+
+get_assert_one_direntry_matching() {
+    local path=$1
+    local r=$2
+    local child=""
+    local bn
+    for p in ${path}/*; do
+	bn=$(basename $p)
+	if ! echo ${bn} | grep -q "$r"; then
+	    continue
+	fi
+	if test -z "${child}"; then
+	    child=${bn}
+	else
+	    assert_not_reached "Expected only one child matching ${r} in ${path}";
+	fi
+    done
+    if test -z "${child}"; then
+	assert_not_reached "Failed to find child matching ${r}"
+    fi
+    echo ${child}
+}
+
+deltaprefix=$(get_assert_one_direntry_matching repo/deltas '.')
+deltadir=$(get_assert_one_direntry_matching repo/deltas/${deltaprefix} '-')
 ostree --repo=repo2 pull-local repo ${origrev}
+ostree --repo=repo2 ls ${origrev} >/dev/null
+ostree --repo=repo2 static-delta apply-offline repo/deltas/${deltaprefix}/${deltadir}
+ostree --repo=repo2 fsck
+ostree --repo=repo2 ls ${newrev} >/dev/null
