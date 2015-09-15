@@ -119,7 +119,7 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
    * TODO: Add /ostree/transaction file, and only do this cleanup if
    * we find it.
    */
-  if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
+  if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
     {
       g_prefix_error (error, "Performing initial cleanup: ");
       goto out;
