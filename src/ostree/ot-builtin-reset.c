@@ -31,24 +31,6 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-static gchar *
-find_current_ref (OstreeRepo   *repo,
-                  const gchar  *ref,
-                  GCancellable *cancellable,
-                  GError      **error)
-{
-  g_autoptr(GHashTable) refs = NULL;
-  gchar *ret;
-
-  if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
-    return NULL;
-  ret = g_strdup (g_hash_table_lookup (refs, ref));
-  if (ret == NULL)
-    g_set_error (error, G_IO_ERROR, G_IO_ERROR, "The ref was not found: %s", ref);
-
-  return ret;
-}
-
 gboolean
 ostree_builtin_reset (int           argc,
                       char        **argv,
@@ -57,10 +39,10 @@ ostree_builtin_reset (int           argc,
 {
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;
+  g_autoptr(GHashTable) known_refs = NULL;
   gboolean ret = FALSE;
   const char *ref;
   const char *target = NULL;
-  g_autofree char *current = NULL;
   g_autofree char *checksum = NULL;
 
   context = g_option_context_new ("REF COMMIT - Reset a REF to a previous COMMIT");
@@ -79,11 +61,16 @@ ostree_builtin_reset (int           argc,
   ref = argv[1];
   target = argv[2];
 
-  if (!ostree_repo_resolve_rev (repo, target, FALSE, &checksum, error))
+  if (!ostree_repo_list_refs (repo, NULL, &known_refs, cancellable, error))
     goto out;
 
-  current = find_current_ref (repo, ref, cancellable, error);
-  if (current == NULL)
+  if (!g_hash_table_contains (known_refs, ref))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR, "Invalid ref '%s'", ref);
+      goto out;
+    }
+
+  if (!ostree_repo_resolve_rev (repo, target, FALSE, &checksum, error))
     goto out;
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
