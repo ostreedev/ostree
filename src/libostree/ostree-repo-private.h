@@ -21,7 +21,10 @@
 #pragma once
 
 #include "ostree-repo.h"
+
+#ifdef HAVE_LIBSOUP
 #include "ostree-fetcher.h"
+#endif
 
 G_BEGIN_DECLS
 
@@ -204,10 +207,12 @@ _ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
                                         char       **out_value,
                                         GError     **error);
 
+#ifdef HAVE_LIBSOUP
 OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
                                  GError     **error);
+#endif
 
 OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,

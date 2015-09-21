@@ -34,7 +34,10 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 #include "ostree-repo-static-delta-private.h"
+
+#ifdef HAVE_LIBSOUP
 #include "ostree-metalink.h"
+#endif
 
 #include <locale.h>
 #include <glib/gstdio.h>
@@ -394,6 +397,7 @@ out:
   return ret;
 }
 
+#ifdef HAVE_LIBSOUP
 OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
                                  const char  *remote_name,
@@ -494,6 +498,7 @@ out:
 
   return fetcher;
 }
+#endif
 
 static void
 ostree_repo_finalize (GObject *object)
@@ -1670,6 +1675,7 @@ out:
   return ret;
 }
 
+#ifdef HAVE_LIBSOUP
 static gboolean
 _ostree_preload_metadata_file (OstreeRepo    *self,
                                OstreeFetcher *fetcher,
@@ -1798,6 +1804,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
     soup_uri_free (base_uri);
   return ret;
 }
+#endif
 
 /**
  * ostree_repo_remote_fetch_summary:
@@ -1830,6 +1837,7 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                   GCancellable  *cancellable,
                                   GError       **error)
 {
+#ifdef HAVE_LIBSOUP
   g_autofree char *metalink_url_string = NULL;
   g_autoptr(GBytes) summary = NULL;
   g_autoptr(GBytes) signatures = NULL;
@@ -1898,6 +1906,11 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
 
 out:
   return ret;
+#else
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+  return FALSE;
+#endif
 }
 
 static gboolean
