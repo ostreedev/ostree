@@ -981,8 +981,6 @@ scan_commit_object (OtPullData         *pull_data,
   gboolean have_parent;
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) parent_csum = NULL;
-  g_autoptr(GVariant) tree_contents_csum = NULL;
-  g_autoptr(GVariant) tree_meta_csum = NULL;
   gpointer depthp;
   gint depth;
 
@@ -1072,14 +1070,20 @@ scan_commit_object (OtPullData         *pull_data,
         }
     }
 
-  g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
-  g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
+  if (!pull_data->is_commit_only)
+    {
+      g_autoptr(GVariant) tree_contents_csum = NULL;
+      g_autoptr(GVariant) tree_meta_csum = NULL;
 
-  queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_contents_csum),
-                                    OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
-  queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_meta_csum),
-                                    OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
-  
+      g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
+      g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
+
+      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_contents_csum),
+                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
+      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_meta_csum),
+                                        OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
+    }
+
   ret = TRUE;
  out:
   return ret;
@@ -1159,8 +1163,12 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
   else if (objtype == OSTREE_OBJECT_TYPE_COMMIT && pull_data->is_commit_only)
     {
-      ret = TRUE;
-      goto out;
+      if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
+                               pull_data->cancellable, error))
+        goto out;
+
+      g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
+      pull_data->n_scanned_metadata++;
     }
   else if (is_stored)
     {
