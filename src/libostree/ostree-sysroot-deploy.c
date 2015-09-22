@@ -1960,7 +1960,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
  * ostree_sysroot_deployment_set_mutable:
  * @self: Sysroot
  * @deployment: A deployment
- * @mutable: Whether or not deployment's files can be changed
+ * @is_mutable: Whether or not deployment's files can be changed
  * @error: Error
  *
  * By default, deployment directories are not mutable.  This function
@@ -1970,7 +1970,7 @@ ostree_sysroot_deployment_set_kargs (OstreeSysroot     *self,
 gboolean
 ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
                                        OstreeDeployment  *deployment,
-                                       gboolean           mutable,
+                                       gboolean           is_mutable,
                                        GCancellable      *cancellable,
                                        GError           **error)
 {
@@ -1984,7 +1984,7 @@ ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
   if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &fd, error))
     goto out;
 
-  if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, !mutable, cancellable, error))
+  if (!_ostree_linuxfs_fd_alter_immutable_flag (fd, !is_mutable, cancellable, error))
     goto out;
 
   ret = TRUE;
