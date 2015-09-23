@@ -58,30 +58,6 @@ typedef struct {
   GTask *task;
 } OstreeFetcherPendingURI;
 
-static int
-pending_task_compare (gconstpointer a,
-                      gconstpointer b,
-                      gpointer unused)
-{
-  gint priority_a = g_task_get_priority (G_TASK (a));
-  gint priority_b = g_task_get_priority (G_TASK (b));
-
-  return (priority_a == priority_b) ? 0 :
-         (priority_a < priority_b) ? -1 : 1;
-}
-
-static void
-pending_uri_free (OstreeFetcherPendingURI *pending)
-{
-  soup_uri_free (pending->uri);
-  g_clear_object (&pending->self);
-  g_clear_object (&pending->request);
-  g_clear_object (&pending->request_body);
-  g_free (pending->out_tmpfile);
-  g_clear_object (&pending->out_stream);
-  g_free (pending);
-}
-
 struct OstreeFetcher
 {
   GObject parent_instance;
@@ -101,12 +77,38 @@ struct OstreeFetcher
   guint total_requests;
 
   /* Queue for libsoup, see bgo#708591 */
-  gint outstanding;
   GQueue pending_queue;
+  GHashTable *outstanding;
   gint max_outstanding;
 };
 
 G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
+
+static int
+pending_task_compare (gconstpointer a,
+                      gconstpointer b,
+                      gpointer unused)
+{
+  gint priority_a = g_task_get_priority (G_TASK (a));
+  gint priority_b = g_task_get_priority (G_TASK (b));
+
+  return (priority_a == priority_b) ? 0 :
+         (priority_a < priority_b) ? -1 : 1;
+}
+
+static void
+pending_uri_free (OstreeFetcherPendingURI *pending)
+{
+  g_hash_table_remove (pending->self->outstanding, pending);
+
+  soup_uri_free (pending->uri);
+  g_clear_object (&pending->self);
+  g_clear_object (&pending->request);
+  g_clear_object (&pending->request_body);
+  g_free (pending->out_tmpfile);
+  g_clear_object (&pending->out_stream);
+  g_free (pending);
+}
 
 static void
 _ostree_fetcher_finalize (GObject *object)
@@ -123,6 +125,8 @@ _ostree_fetcher_finalize (GObject *object)
 
   while (!g_queue_is_empty (&self->pending_queue))
     g_object_unref (g_queue_pop_head (&self->pending_queue));
+
+  g_hash_table_destroy (self->outstanding);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -199,6 +203,8 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
                                                   (GDestroyNotify)g_object_unref);
   self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
+
+  self->outstanding = g_hash_table_new_full (NULL, NULL, NULL, NULL);
 }
 
 OstreeFetcher *
@@ -272,7 +278,7 @@ ostree_fetcher_process_pending_queue (OstreeFetcher *self)
 {
 
   while (g_queue_peek_head (&self->pending_queue) != NULL &&
-         self->outstanding < self->max_outstanding)
+         g_hash_table_size (self->outstanding) < self->max_outstanding)
     {
       GTask *task;
       OstreeFetcherPendingURI *pending;
@@ -283,7 +289,9 @@ ostree_fetcher_process_pending_queue (OstreeFetcher *self)
       pending = g_task_get_task_data (task);
       cancellable = g_task_get_cancellable (task);
 
-      self->outstanding++;
+      /* pending_uri_free() removes this. */
+      g_hash_table_add (self->outstanding, pending);
+
       soup_request_send_async (pending->request,
                                cancellable,
                                on_request_sent,
@@ -321,7 +329,6 @@ finish_stream (OstreeFetcherPendingURI *pending,
   /* Now that we've finished downloading, continue with other queued
    * requests.
    */
-  pending->self->outstanding--;
   ostree_fetcher_process_pending_queue (pending->self);
 
   if (stbuf.st_size < pending->content_length)
