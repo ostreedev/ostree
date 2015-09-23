@@ -103,7 +103,6 @@ struct OstreeFetcher
 
   GHashTable *sending_messages; /*  SoupMessage */
 
-  GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
   GHashTable *output_stream_set; /* set<GOutputStream> */
   
   guint64 total_downloaded;
@@ -128,7 +127,6 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_object (&self->client_cert);
 
   g_hash_table_destroy (self->sending_messages);
-  g_hash_table_destroy (self->message_to_request);
   g_hash_table_destroy (self->output_stream_set);
 
   g_queue_clear (&self->pending_queue);
@@ -162,7 +160,6 @@ on_request_unqueued (SoupSession  *session,
 {
   OstreeFetcher *self = user_data;
   g_hash_table_remove (self->sending_messages, msg);
-  g_hash_table_remove (self->message_to_request, msg);
 }
 
 static void
@@ -208,8 +205,6 @@ _ostree_fetcher_init (OstreeFetcher *self)
   
   self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
                                                   (GDestroyNotify)g_object_unref);
-  self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
-                                                    (GDestroyNotify)pending_uri_free);
   self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
 }
 
@@ -564,12 +559,6 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 
   if (is_stream)
     {
-      if (SOUP_IS_REQUEST_HTTP (pending->request))
-        {
-          g_hash_table_insert (self->message_to_request,
-                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                               pending);
-        }
       soup_request_send_async (pending->request, cancellable,
                                on_request_sent, pending);
     }
@@ -597,12 +586,10 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 
       if (SOUP_IS_REQUEST_HTTP (pending->request))
         {
-          SoupMessage *msg;
+          glnx_unref_object SoupMessage *msg = NULL;
           msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
           if (exists && stbuf.st_size > 0)
             soup_message_headers_set_range (msg->request_headers, stbuf.st_size, -1);
-          /* Transfer ownership */
-          g_hash_table_insert (self->message_to_request, msg, pending);
         }
       pending->out_tmpfile = tmpfile;
       tmpfile = NULL; /* Transfer ownership */
