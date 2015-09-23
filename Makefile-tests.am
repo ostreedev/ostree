@@ -49,6 +49,7 @@ testfiles = test-basic \
 	test-admin-deploy-uboot \
 	test-admin-instutil-set-kargs \
 	test-admin-upgrade-not-backwards \
+	test-admin-pull-deploy-commit \
 	test-admin-locking \
 	test-repo-checkout-subpath	\
 	test-reset-nonlinear \
