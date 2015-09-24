@@ -570,23 +570,20 @@ _ostree_sysroot_piecemeal_cleanup (OstreeSysroot              *self,
         goto out;
     }
 
-  if (self->deployments->len > 0)
+  if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
+    goto out;
+  
+  if (!generate_deployment_refs (self, repo,
+                                 self->bootversion,
+                                 self->subbootversion,
+                                 self->deployments,
+                                 cancellable, error))
+    goto out;
+  
+  if (flags & OSTREE_SYSROOT_CLEANUP_PRUNE_REPO)
     {
-      if (!ostree_sysroot_get_repo (self, &repo, cancellable, error))
-        goto out;
-
-      if (!generate_deployment_refs (self, repo,
-                                     self->bootversion,
-                                     self->subbootversion,
-                                     self->deployments,
-                                     cancellable, error))
-        goto out;
-
-      if (flags & OSTREE_SYSROOT_CLEANUP_PRUNE_REPO)
-        {
-          if (!prune_repo (repo, cancellable, error))
+      if (!prune_repo (repo, cancellable, error))
             goto out;
-        }
     }
 
   ret = TRUE;
