@@ -778,14 +778,24 @@ meta_fetch_on_complete (GObject           *object,
   temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
   if (!temp_path)
     {
-      if (!g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        goto out;
-      else if (fetch_data->is_detached_meta)
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
-          /* There isn't any detached metadata, just fetch the commit */
-          g_clear_error (&local_error);
-          if (!fetch_data->object_is_stored)
-            enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
+          if (fetch_data->is_detached_meta)
+            {
+              /* There isn't any detached metadata, just fetch the commit */
+              g_clear_error (&local_error);
+              if (!fetch_data->object_is_stored)
+                enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
+            }
+
+          /* When traversing parents, do not fail on a missing commit.
+           * We may be pulling from a partial repository that ends in
+           * a dangling parent reference. */
+          else if (objtype == OSTREE_OBJECT_TYPE_COMMIT &&
+                   pull_data->maxdepth != 0)
+            {
+              g_clear_error (&local_error);
+            }
         }
 
       goto out;
