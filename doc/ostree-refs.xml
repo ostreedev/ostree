@@ -69,7 +69,8 @@ Boston, MA 02111-1307, USA.
                 <term><option>--delete</option></term>
 
                 <listitem><para>
-                    Delete refs which match PREFIX, rather than listing them.
+                  Delete refs which match PREFIX, rather than listing them.  If you are trying to reclaim space,
+		  you will then need to <command>ostree prune</command> or <command>ostree admin cleanup</command>.
                 </para></listitem>
             </varlistentry>
         </variablelist>
