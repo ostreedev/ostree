@@ -47,6 +47,7 @@ struct OstreeSysrootUpgrader {
   GKeyFile *origin;
   char *origin_remote;
   char *origin_ref;
+  char *override_csum;
 
   char *new_revision;
 }; 
@@ -72,6 +73,7 @@ parse_refspec (OstreeSysrootUpgrader  *self,
   gboolean ret = FALSE;
   g_autofree char *origin_refspec = NULL;
   g_autofree char *unconfigured_state = NULL;
+  g_autofree char *csum = NULL;
 
   if ((self->flags & OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED) == 0)
     {
@@ -99,7 +101,12 @@ parse_refspec (OstreeSysrootUpgrader  *self,
                              &self->origin_ref,
                              error))
     goto out;
-  
+
+  csum = g_key_file_get_string (self->origin, "origin", "override-commit", NULL);
+  if (csum != NULL && !ostree_validate_checksum_string (csum, error))
+    goto out;
+  self->override_csum = g_steal_pointer (&csum);
+
   ret = TRUE;
  out:
   return ret;
@@ -180,6 +187,7 @@ ostree_sysroot_upgrader_finalize (GObject *object)
     g_key_file_unref (self->origin);
   g_free (self->origin_remote);
   g_free (self->origin_ref);
+  g_free (self->override_csum);
 
   G_OBJECT_CLASS (ostree_sysroot_upgrader_parent_class)->finalize (object);
 }
@@ -520,10 +528,15 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
 {
   gboolean ret = FALSE;
   glnx_unref_object OstreeRepo *repo = NULL;
-  char *refs_to_fetch[] = { self->origin_ref, NULL };
+  char *refs_to_fetch[] = { NULL, NULL };
   const char *from_revision = NULL;
   g_autofree char *new_revision = NULL;
   g_autofree char *origin_refspec = NULL;
+
+  if (self->override_csum != NULL)
+    refs_to_fetch[0] = self->override_csum;
+  else
+    refs_to_fetch[0] = self->origin_ref;
 
   if (!ostree_sysroot_get_repo (self->sysroot, &repo, cancellable, error))
     goto out;
@@ -547,9 +560,25 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
         ostree_async_progress_finish (progress);
     }
 
-  if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE, &self->new_revision,
-                                error))
-    goto out;
+  if (self->override_csum != NULL)
+    {
+      if (!ostree_repo_set_ref_immediate (repo,
+                                          self->origin_remote,
+                                          self->origin_ref,
+                                          self->override_csum,
+                                          cancellable,
+                                          error))
+        goto out;
+
+      self->new_revision = g_strdup (self->override_csum);
+    }
+  else
+    {
+      if (!ostree_repo_resolve_rev (repo, origin_refspec, FALSE,
+                                    &self->new_revision, error))
+        goto out;
+
+    }
 
   if (g_strcmp0 (from_revision, self->new_revision) == 0)
     {
