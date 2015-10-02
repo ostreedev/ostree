@@ -829,8 +829,10 @@ process_one_bsdiff (OstreeRepo                       *repo,
       op.cancellable = cancellable;
       op.error = error;
       stream.opaque = &op;
-      if (bsdiff (tmp_from_buf, tmp_from_len, tmp_to_buf, tmp_to_len, &stream) < 0)
+      if (bsdiff (tmp_from_buf, tmp_from_len, tmp_to_buf, tmp_to_len, &stream) < 0) {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "bsdiff generation failed");
         goto out;
+      }
 
       payload = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (out));
       payload_size = g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (out));
