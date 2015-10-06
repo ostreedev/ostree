@@ -52,7 +52,7 @@ _ostree_bootloader_uboot_query (OstreeBootloader *bootloader,
 {
   OstreeBootloaderUboot *self = OSTREE_BOOTLOADER_UBOOT (bootloader);
 
-  *out_is_active = g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_SYMBOLIC_LINK;
+  *out_is_active = g_file_query_file_type (self->config_path, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS, NULL) == G_FILE_TYPE_REGULAR;
   return TRUE;
 }
 
@@ -112,7 +112,6 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
   g_autofree char *new_config_contents = NULL;
   g_autoptr(GPtrArray) new_lines = NULL;
 
-  /* This should follow the symbolic link to the current bootversion. */
   config_contents = gs_file_load_contents_utf8 (self->config_path, cancellable, error);
   if (!config_contents)
     return FALSE;
@@ -177,6 +176,6 @@ _ostree_bootloader_uboot_new (OstreeSysroot *sysroot)
 {
   OstreeBootloaderUboot *self = g_object_new (OSTREE_TYPE_BOOTLOADER_UBOOT, NULL);
   self->sysroot = g_object_ref (sysroot);
-  self->config_path = g_file_resolve_relative_path (self->sysroot->path, "boot/uEnv.txt");
+  self->config_path = g_file_resolve_relative_path (self->sysroot->path, "boot/loader/uEnv.txt");
   return self;
 }
