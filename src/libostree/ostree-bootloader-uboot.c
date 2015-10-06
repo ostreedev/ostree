@@ -112,7 +112,6 @@ _ostree_bootloader_uboot_write_config (OstreeBootloader          *bootloader,
   g_autofree char *new_config_contents = NULL;
   g_autoptr(GPtrArray) new_lines = NULL;
 
-  /* This should follow the symbolic link to the current bootversion. */
   config_contents = gs_file_load_contents_utf8 (self->config_path, cancellable, error);
   if (!config_contents)
     return FALSE;
