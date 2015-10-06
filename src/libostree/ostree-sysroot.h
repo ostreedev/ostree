@@ -119,7 +119,7 @@ gboolean ostree_sysroot_deploy_tree (OstreeSysroot     *self,
 
 gboolean ostree_sysroot_deployment_set_mutable (OstreeSysroot     *self,
                                                 OstreeDeployment  *deployment,
-                                                gboolean           mutable,
+                                                gboolean           is_mutable,
                                                 GCancellable      *cancellable,
                                                 GError           **error);
 

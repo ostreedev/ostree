@@ -39,10 +39,8 @@ typedef enum {
 } OstreeFetcherState;
 
 typedef struct {
-  guint refcount;
   OstreeFetcher *self;
   SoupURI *uri;
-  int priority;
 
   OstreeFetcherState state;
 
@@ -57,38 +55,8 @@ typedef struct {
   guint64 current_size;
   guint64 content_length;
 
-  GCancellable *cancellable;
-  GSimpleAsyncResult *result;
+  GTask *task;
 } OstreeFetcherPendingURI;
-
-static int
-pending_uri_compare (gconstpointer a,
-                     gconstpointer b,
-                     gpointer unused)
-{
-  const OstreeFetcherPendingURI *pending_a = a;
-  const OstreeFetcherPendingURI *pending_b = b;
-
-  return (pending_a->priority == pending_b->priority) ? 0 :
-         (pending_a->priority < pending_b->priority) ? -1 : 1;
-}
-
-static void
-pending_uri_free (OstreeFetcherPendingURI *pending)
-{
-  g_assert (pending->refcount > 0);
-  pending->refcount--;
-  if (pending->refcount > 0)
-    return;
-
-  soup_uri_free (pending->uri);
-  g_clear_object (&pending->self);
-  g_clear_object (&pending->request);
-  g_clear_object (&pending->request_body);
-  g_clear_object (&pending->out_stream);
-  g_clear_object (&pending->cancellable);
-  g_free (pending);
-}
 
 struct OstreeFetcher
 {
@@ -103,19 +71,44 @@ struct OstreeFetcher
 
   GHashTable *sending_messages; /*  SoupMessage */
 
-  GHashTable *message_to_request; /* SoupMessage -> SoupRequest */
   GHashTable *output_stream_set; /* set<GOutputStream> */
   
   guint64 total_downloaded;
   guint total_requests;
 
   /* Queue for libsoup, see bgo#708591 */
-  gint outstanding;
   GQueue pending_queue;
+  GHashTable *outstanding;
   gint max_outstanding;
 };
 
 G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
+
+static int
+pending_task_compare (gconstpointer a,
+                      gconstpointer b,
+                      gpointer unused)
+{
+  gint priority_a = g_task_get_priority (G_TASK (a));
+  gint priority_b = g_task_get_priority (G_TASK (b));
+
+  return (priority_a == priority_b) ? 0 :
+         (priority_a < priority_b) ? -1 : 1;
+}
+
+static void
+pending_uri_free (OstreeFetcherPendingURI *pending)
+{
+  g_hash_table_remove (pending->self->outstanding, pending);
+
+  soup_uri_free (pending->uri);
+  g_clear_object (&pending->self);
+  g_clear_object (&pending->request);
+  g_clear_object (&pending->request_body);
+  g_free (pending->out_tmpfile);
+  g_clear_object (&pending->out_stream);
+  g_free (pending);
+}
 
 static void
 _ostree_fetcher_finalize (GObject *object)
@@ -128,10 +121,12 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_object (&self->client_cert);
 
   g_hash_table_destroy (self->sending_messages);
-  g_hash_table_destroy (self->message_to_request);
   g_hash_table_destroy (self->output_stream_set);
 
-  g_queue_clear (&self->pending_queue);
+  while (!g_queue_is_empty (&self->pending_queue))
+    g_object_unref (g_queue_pop_head (&self->pending_queue));
+
+  g_hash_table_destroy (self->outstanding);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
@@ -162,7 +157,6 @@ on_request_unqueued (SoupSession  *session,
 {
   OstreeFetcher *self = user_data;
   g_hash_table_remove (self->sending_messages, msg);
-  g_hash_table_remove (self->message_to_request, msg);
 }
 
 static void
@@ -208,9 +202,9 @@ _ostree_fetcher_init (OstreeFetcher *self)
   
   self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
                                                   (GDestroyNotify)g_object_unref);
-  self->message_to_request = g_hash_table_new_full (NULL, NULL, (GDestroyNotify)g_object_unref,
-                                                    (GDestroyNotify)pending_uri_free);
   self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
+
+  self->outstanding = g_hash_table_new_full (NULL, NULL, NULL, NULL);
 }
 
 OstreeFetcher *
@@ -284,13 +278,26 @@ ostree_fetcher_process_pending_queue (OstreeFetcher *self)
 {
 
   while (g_queue_peek_head (&self->pending_queue) != NULL &&
-         self->outstanding < self->max_outstanding)
+         g_hash_table_size (self->outstanding) < self->max_outstanding)
     {
-      OstreeFetcherPendingURI *next = g_queue_pop_head (&self->pending_queue);
+      GTask *task;
+      OstreeFetcherPendingURI *pending;
+      GCancellable *cancellable;
 
-      self->outstanding++;
-      soup_request_send_async (next->request, next->cancellable,
-                               on_request_sent, next);
+      task = g_queue_pop_head (&self->pending_queue);
+
+      pending = g_task_get_task_data (task);
+      cancellable = g_task_get_cancellable (task);
+
+      /* pending_uri_free() removes this. */
+      g_hash_table_add (self->outstanding, pending);
+
+      soup_request_send_async (pending->request,
+                               cancellable,
+                               on_request_sent,
+                               g_object_ref (task));
+
+      g_object_unref (task);
     }
 }
 
@@ -307,7 +314,7 @@ finish_stream (OstreeFetcherPendingURI *pending,
    */
   if (pending->out_stream)
     {
-      if (!g_output_stream_close (pending->out_stream, pending->cancellable, error))
+      if (!g_output_stream_close (pending->out_stream, cancellable, error))
         goto out;
       g_hash_table_remove (pending->self->output_stream_set, pending->out_stream);
     }
@@ -322,7 +329,6 @@ finish_stream (OstreeFetcherPendingURI *pending,
   /* Now that we've finished downloading, continue with other queued
    * requests.
    */
-  pending->self->outstanding--;
   ostree_fetcher_process_pending_queue (pending->self);
 
   if (stbuf.st_size < pending->content_length)
@@ -351,26 +357,32 @@ on_out_splice_complete (GObject        *object,
                         GAsyncResult   *result,
                         gpointer        user_data) 
 {
-  OstreeFetcherPendingURI *pending = user_data;
+  GTask *task = G_TASK (user_data);
+  OstreeFetcherPendingURI *pending;
+  GCancellable *cancellable;
   gssize bytes_written;
   GError *local_error = NULL;
-  GError **error = &local_error;
+
+  pending = g_task_get_task_data (task);
+  cancellable = g_task_get_cancellable (task);
 
   bytes_written = g_output_stream_splice_finish ((GOutputStream *)object,
                                                  result,
-                                                 error);
+                                                 &local_error);
   if (bytes_written < 0)
     goto out;
 
-  g_input_stream_read_bytes_async (pending->request_body, 8192, G_PRIORITY_DEFAULT,
-                                   pending->cancellable, on_stream_read, pending);
+  g_input_stream_read_bytes_async (pending->request_body,
+                                   8192, G_PRIORITY_DEFAULT,
+                                   cancellable,
+                                   on_stream_read,
+                                   g_object_ref (task));
 
  out:
   if (local_error)
-    {
-      g_simple_async_result_take_error (pending->result, local_error);
-      g_simple_async_result_complete (pending->result);
-    }
+    g_task_return_error (task, local_error);
+
+  g_object_unref (task);
 }
 
 static void
@@ -378,23 +390,28 @@ on_stream_read (GObject        *object,
                 GAsyncResult   *result,
                 gpointer        user_data) 
 {
-  OstreeFetcherPendingURI *pending = user_data;
+  GTask *task = G_TASK (user_data);
+  OstreeFetcherPendingURI *pending;
+  GCancellable *cancellable;
   g_autoptr(GBytes) bytes = NULL;
   gsize bytes_read;
   GError *local_error = NULL;
-  GError **error = &local_error;
 
-  bytes = g_input_stream_read_bytes_finish ((GInputStream*)object, result, error);
+  pending = g_task_get_task_data (task);
+  cancellable = g_task_get_cancellable (task);
+
+  bytes = g_input_stream_read_bytes_finish ((GInputStream*)object, result, &local_error);
   if (!bytes)
     goto out;
 
   bytes_read = g_bytes_get_size (bytes);
   if (bytes_read == 0)
     {
-      if (!finish_stream (pending, pending->cancellable, error))
+      if (!finish_stream (pending, cancellable, &local_error))
         goto out;
-      g_simple_async_result_complete (pending->result);
-      g_object_unref (pending->result);
+      g_task_return_pointer (task,
+                             g_strdup (pending->out_tmpfile),
+                             (GDestroyNotify) g_free);
     }
   else
     {
@@ -404,10 +421,9 @@ on_stream_read (GObject        *object,
               (bytes_read + pending->current_size) > pending->max_size)
             {
               g_autofree char *uristr = soup_uri_to_string (pending->uri, FALSE);
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
-                           uristr,
-                           pending->max_size);
+              local_error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
+                                         "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
+                                         uristr, pending->max_size);
               goto out;
             }
         }
@@ -423,19 +439,17 @@ on_stream_read (GObject        *object,
         g_output_stream_splice_async (pending->out_stream, membuf,
                                       G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
                                       G_PRIORITY_DEFAULT,
-                                      pending->cancellable,
+                                      cancellable,
                                       on_out_splice_complete,
-                                      pending);
+                                      g_object_ref (task));
       }
     }
 
  out:
   if (local_error)
-    {
-      g_simple_async_result_take_error (pending->result, local_error);
-      g_simple_async_result_complete (pending->result);
-      g_object_unref (pending->result);
-    }
+    g_task_return_error (task, local_error);
+
+  g_object_unref (task);
 }
 
 static void
@@ -443,9 +457,14 @@ on_request_sent (GObject        *object,
                  GAsyncResult   *result,
                  gpointer        user_data) 
 {
-  OstreeFetcherPendingURI *pending = user_data;
+  GTask *task = G_TASK (user_data);
+  OstreeFetcherPendingURI *pending;
+  GCancellable *cancellable;
   GError *local_error = NULL;
   glnx_unref_object SoupMessage *msg = NULL;
+
+  pending = g_task_get_task_data (task);
+  cancellable = g_task_get_cancellable (task);
 
   pending->state = OSTREE_FETCHER_STATE_COMPLETE;
   pending->request_body = soup_request_send_finish ((SoupRequest*) object,
@@ -462,9 +481,19 @@ on_request_sent (GObject        *object,
           // We already have the whole file, so just use it.
           pending->state = OSTREE_FETCHER_STATE_COMPLETE;
           (void) g_input_stream_close (pending->request_body, NULL, NULL);
-          g_simple_async_result_complete (pending->result);
-          g_object_unref (pending->result);
-          return;
+          if (pending->is_stream)
+            {
+              g_task_return_pointer (task,
+                                     g_object_ref (pending->request_body),
+                                     (GDestroyNotify) g_object_unref);
+            }
+          else
+            {
+              g_task_return_pointer (task,
+                                     g_strdup (pending->out_tmpfile),
+                                     (GDestroyNotify) g_free);
+            }
+          goto out;
         }
       else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
         {
@@ -478,9 +507,10 @@ on_request_sent (GObject        *object,
             default:
               code = G_IO_ERROR_FAILED;
             }
-          g_set_error (&local_error, G_IO_ERROR, code,
-                       "Server returned status %u: %s",
-                       msg->status_code, soup_status_get_phrase (msg->status_code));
+          local_error = g_error_new (G_IO_ERROR, code,
+                                     "Server returned status %u: %s",
+                                     msg->status_code,
+                                     soup_status_get_phrase (msg->status_code));
           goto out;
         }
     }
@@ -510,14 +540,17 @@ on_request_sent (GObject        *object,
         }
       pending->out_stream = g_unix_output_stream_new (fd, TRUE);
       g_hash_table_add (pending->self->output_stream_set, g_object_ref (pending->out_stream));
-      g_input_stream_read_bytes_async (pending->request_body, 8192, G_PRIORITY_DEFAULT,
-                                       pending->cancellable, on_stream_read, pending);
-      
+      g_input_stream_read_bytes_async (pending->request_body,
+                                       8192, G_PRIORITY_DEFAULT,
+                                       cancellable,
+                                       on_stream_read,
+                                       g_object_ref (task));
     }
   else
     {
-      g_simple_async_result_complete (pending->result);
-      g_object_unref (pending->result);
+      g_task_return_pointer (task,
+                             g_object_ref (pending->request_body),
+                             (GDestroyNotify) g_object_unref);
     }
   
  out:
@@ -525,13 +558,13 @@ on_request_sent (GObject        *object,
     {
       if (pending->request_body)
         (void) g_input_stream_close (pending->request_body, NULL, NULL);
-      g_simple_async_result_take_error (pending->result, local_error);
-      g_simple_async_result_complete (pending->result);
-      g_object_unref (pending->result);
+      g_task_return_error (task, local_error);
     }
+
+  g_object_unref (task);
 }
 
-static OstreeFetcherPendingURI *
+static void
 ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      SoupURI               *uri,
                                      gboolean               is_stream,
@@ -542,36 +575,30 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
                                      gpointer               user_data,
                                      gpointer               source_tag)
 {
+  GTask *task;
   OstreeFetcherPendingURI *pending = g_new0 (OstreeFetcherPendingURI, 1);
   GError *local_error = NULL;
 
-  pending->refcount = 1;
   pending->request = soup_requester_request_uri (self->requester, uri, &local_error);
 
   pending->self = g_object_ref (self);
   pending->uri = soup_uri_copy (uri);
-  pending->priority = priority;
   pending->max_size = max_size;
   pending->is_stream = is_stream;
-  pending->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
-  pending->result = g_simple_async_result_new ((GObject*) self,
-                                               callback,
-                                               user_data,
-                                               source_tag);
-  g_simple_async_result_set_op_res_gpointer (pending->result,
-                                             pending,
-                                             (GDestroyNotify) pending_uri_free);
+
+  task = g_task_new (self, cancellable, callback, user_data);
+  g_task_set_source_tag (task, source_tag);
+  g_task_set_task_data (task, pending, (GDestroyNotify) pending_uri_free);
+
+  /* We'll use the GTask priority for our own priority queue. */
+  g_task_set_priority (task, priority);
 
   if (is_stream)
     {
-      if (SOUP_IS_REQUEST_HTTP (pending->request))
-        {
-          g_hash_table_insert (self->message_to_request,
-                               soup_request_http_get_message ((SoupRequestHTTP*)pending->request),
-                               pending);
-        }
-      soup_request_send_async (pending->request, cancellable,
-                               on_request_sent, pending);
+      soup_request_send_async (pending->request,
+                               cancellable,
+                               on_request_sent,
+                               g_object_ref (task));
     }
   else
     {
@@ -591,23 +618,23 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
           else
             {
               gs_set_error_from_errno (&local_error, errno);
-              goto fail;
+              goto out;
             }
         }
 
       if (SOUP_IS_REQUEST_HTTP (pending->request))
         {
-          SoupMessage *msg;
+          glnx_unref_object SoupMessage *msg = NULL;
           msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
           if (exists && stbuf.st_size > 0)
             soup_message_headers_set_range (msg->request_headers, stbuf.st_size, -1);
-          /* Transfer ownership */
-          g_hash_table_insert (self->message_to_request, msg, pending);
         }
       pending->out_tmpfile = tmpfile;
       tmpfile = NULL; /* Transfer ownership */
 
-      g_queue_insert_sorted (&self->pending_queue, pending, pending_uri_compare, NULL);
+      g_queue_insert_sorted (&self->pending_queue,
+                             g_object_ref (task),
+                             pending_task_compare, NULL);
       ostree_fetcher_process_pending_queue (self);
     }
 
@@ -615,13 +642,8 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 
   self->total_requests++;
 
-  pending->refcount++;
-
-  return pending;
-
- fail:
-  pending_uri_free (pending);
-  return NULL;
+out:
+  g_object_unref (task);
 }
 
 void
@@ -643,17 +665,11 @@ _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
                                                 GAsyncResult          *result,
                                                 GError               **error)
 {
-  GSimpleAsyncResult *simple;
-  OstreeFetcherPendingURI *pending;
+  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
+  g_return_val_if_fail (g_async_result_is_tagged (result,
+                        _ostree_fetcher_request_uri_with_partial_async), NULL);
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, _ostree_fetcher_request_uri_with_partial_async), FALSE);
-
-  simple = G_SIMPLE_ASYNC_RESULT (result);
-  if (g_simple_async_result_propagate_error (simple, error))
-    return NULL;
-  pending = g_simple_async_result_get_op_res_gpointer (simple);
-
-  return g_strdup (pending->out_tmpfile);
+  return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
@@ -675,17 +691,11 @@ ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                   GAsyncResult          *result,
                                   GError               **error)
 {
-  GSimpleAsyncResult *simple;
-  OstreeFetcherPendingURI *pending;
+  g_return_val_if_fail (g_task_is_valid (result, self), NULL);
+  g_return_val_if_fail (g_async_result_is_tagged (result,
+                        ostree_fetcher_stream_uri_async), NULL);
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result, (GObject*)self, ostree_fetcher_stream_uri_async), FALSE);
-
-  simple = G_SIMPLE_ASYNC_RESULT (result);
-  if (g_simple_async_result_propagate_error (simple, error))
-    return NULL;
-  pending = g_simple_async_result_get_op_res_gpointer (simple);
-
-  return g_object_ref (pending->request_body);
+  return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 guint64
