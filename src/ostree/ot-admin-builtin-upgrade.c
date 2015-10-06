@@ -35,11 +35,13 @@
 static gboolean opt_reboot;
 static gboolean opt_allow_downgrade;
 static char *opt_osname;
+static char *opt_override_commit;
 
 static GOptionEntry options[] = {
   { "os", 0, 0, G_OPTION_ARG_STRING, &opt_osname, "Use a different operating system root than the current one", "OSNAME" },
   { "reboot", 'r', 0, G_OPTION_ARG_NONE, &opt_reboot, "Reboot after a successful upgrade", NULL },
   { "allow-downgrade", 0, 0, G_OPTION_ARG_NONE, &opt_allow_downgrade, "Permit deployment of chronologically older trees", NULL },
+  { "override-commit", 0, 0, G_OPTION_ARG_STRING, &opt_override_commit, "Deploy CHECKSUM instead of the latest tree", "CHECKSUM" },
   { NULL }
 };
 
@@ -52,6 +54,7 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   g_autoptr(GFile) deployment_path = NULL;
   g_autoptr(GFile) deployment_origin_path = NULL;
+  g_autoptr(GKeyFile) origin = NULL;
   GSConsole *console = NULL;
   gboolean in_status_line = FALSE;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
@@ -72,6 +75,35 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
                                                  cancellable, error);
   if (!upgrader)
     goto out;
+
+  origin = ostree_sysroot_upgrader_dup_origin (upgrader);
+  if (origin != NULL)
+    {
+      gboolean origin_changed = FALSE;
+
+      if (opt_override_commit != NULL)
+        {
+          /* Override the commit to pull and deploy. */
+          g_key_file_set_string (origin, "origin",
+                                 "override-commit",
+                                 opt_override_commit);
+          origin_changed = TRUE;
+        }
+      else
+        {
+          /* Strip any override-commit from the origin file so
+           * we always upgrade to the latest available commit. */
+          origin_changed = g_key_file_remove_key (origin, "origin",
+                                                  "override-commit", NULL);
+        }
+
+      if (origin_changed)
+        {
+          /* XXX GCancellable parameter is not used. */
+          if (!ostree_sysroot_upgrader_set_origin (upgrader, origin, NULL, error))
+            goto out;
+        }
+    }
 
   console = gs_console_get ();
   if (console)

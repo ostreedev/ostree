@@ -203,3 +203,18 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'consol
 validate_bootloader
 
 echo "ok upgrade with multiple kernel args"
+
+# Test upgrade with and without --override-commit
+# See https://github.com/GNOME/ostree/pull/147
+${CMD_PREFIX} ostree pull --repo=sysroot/ostree/repo --commit-metadata-only --depth=-1 testos:testos/buildmaster/x86_64-runtime
+head_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
+prev_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime^^^^)
+assert_not_streq ${head_rev} ${prev_rev}
+${CMD_PREFIX} ostree admin upgrade --os=testos --override-commit=${prev_rev} --allow-downgrade
+curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
+assert_streq ${curr_rev} ${prev_rev}
+${CMD_PREFIX} ostree admin upgrade --os=testos
+curr_rev=$(${CMD_PREFIX} ostree rev-parse --repo=sysroot/ostree/repo testos/buildmaster/x86_64-runtime)
+assert_streq ${curr_rev} ${head_rev}
+
+echo "ok upgrade with and without override-commit"
