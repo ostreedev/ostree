@@ -62,6 +62,7 @@ OstreeSysrootUpgrader *ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysr
                                                                       GError                    **error);
 
 GKeyFile *ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self);
+GKeyFile *ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self);
 gboolean ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFile *origin,
                                              GCancellable *cancellable, GError **error);
 

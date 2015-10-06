@@ -342,6 +342,33 @@ ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self)
 }
 
 /**
+ * ostree_sysroot_upgrader_dup_origin:
+ * @self: Sysroot
+ *
+ * Returns: (transfer full): A copy of the origin file, or %NULL if unknown
+ */
+GKeyFile *
+ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self)
+{
+  GKeyFile *copy = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_SYSROOT_UPGRADER (self), NULL);
+
+  if (self->origin != NULL)
+    {
+      g_autofree char *data = NULL;
+      gsize length = 0;
+
+      copy = g_key_file_new ();
+      data = g_key_file_to_data (self->origin, &length, NULL);
+      g_key_file_load_from_data (copy, data, length,
+                                 G_KEY_FILE_KEEP_COMMENTS, NULL);
+    }
+
+  return copy;
+}
+
+/**
  * ostree_sysroot_upgrader_set_origin:
  * @self: Sysroot
  * @origin: (allow-none): The new origin
