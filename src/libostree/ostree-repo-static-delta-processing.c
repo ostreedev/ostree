@@ -530,32 +530,35 @@ dispatch_bspatch (OstreeRepo                 *repo,
   if (!read_varuint64 (state, &length, error))
     goto out;
 
-  input_mfile = g_mapped_file_new_from_fd (state->read_source_fd, FALSE, error);
-  if (!input_mfile)
-    goto out;
+  if (!state->have_obj)
+    {
+      input_mfile = g_mapped_file_new_from_fd (state->read_source_fd, FALSE, error);
+      if (!input_mfile)
+        goto out;
 
-  buf = g_malloc0 (state->content_size);
+      buf = g_malloc0 (state->content_size);
 
-  opaque.state = state;
-  opaque.offset = offset;
-  opaque.length = length;
-  stream.read = bspatch_read;
-  stream.opaque = &opaque;
-  if (bspatch ((const guint8*)g_mapped_file_get_contents (input_mfile),
-               g_mapped_file_get_length (input_mfile),
-               buf,
-               state->content_size,
-               &stream) < 0)
-    goto out;
+      opaque.state = state;
+      opaque.offset = offset;
+      opaque.length = length;
+      stream.read = bspatch_read;
+      stream.opaque = &opaque;
+      if (bspatch ((const guint8*)g_mapped_file_get_contents (input_mfile),
+                   g_mapped_file_get_length (input_mfile),
+                   buf,
+                   state->content_size,
+                   &stream) < 0)
+        goto out;
 
-  if (!g_output_stream_write_all (state->content_out,
-                                  buf,
-                                  state->content_size,
-                                  &bytes_written,
-                                  cancellable, error))
-    goto out;
+      if (!g_output_stream_write_all (state->content_out,
+                                      buf,
+                                      state->content_size,
+                                      &bytes_written,
+                                      cancellable, error))
+        goto out;
 
-  g_assert (bytes_written == state->content_size);
+      g_assert (bytes_written == state->content_size);
+    }
 
   ret = TRUE;
  out:
