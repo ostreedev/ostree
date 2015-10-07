@@ -104,6 +104,13 @@ _ostree_lzma_decompressor_convert (GConverter *converter,
   OstreeLzmaDecompressor *self = OSTREE_LZMA_DECOMPRESSOR (converter);
   int res;
 
+  if (inbuf_size != 0 && outbuf_size == 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
+         "Output buffer too small");
+      return G_CONVERTER_ERROR;
+    }
+
   if (!self->initialized)
     {
       res = lzma_stream_decoder (&self->lstream, G_MAXUINT64, 0);

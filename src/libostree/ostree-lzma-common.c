@@ -62,6 +62,10 @@ _ostree_lzma_return (lzma_ret   res,
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
 			   "Data is corrupt");
       return G_CONVERTER_ERROR;
+    case LZMA_BUF_ERROR:
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_PARTIAL_INPUT,
+         "Input buffer too small");
+      return G_CONVERTER_ERROR;
     default:
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
 			   "Unrecognized LZMA error");

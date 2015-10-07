@@ -173,6 +173,13 @@ _ostree_lzma_compressor_convert (GConverter *converter,
   int res;
   lzma_action action; 
 
+  if (inbuf_size != 0 && outbuf_size == 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE,
+         "Output buffer too small");
+      return G_CONVERTER_ERROR;
+    }
+
   if (!self->initialized)
     {
       res = lzma_easy_encoder (&self->lstream, 8, LZMA_CHECK_CRC64);
