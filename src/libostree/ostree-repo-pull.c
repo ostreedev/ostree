@@ -1694,6 +1694,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **refs_to_fetch = NULL;
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
+  const char *force_from = NULL;
 
   if (options)
     {
@@ -1706,6 +1707,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
+      (void) g_variant_lookup (options, "force-from", "&s", &force_from);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2098,7 +2100,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       g_autofree char *from_revision = NULL;
-      const char *ref = key;
+      const char *ref = force_from ? force_from : key;
       const char *to_revision = value;
       GVariant *delta_superblock = NULL;
 

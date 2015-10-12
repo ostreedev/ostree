@@ -33,6 +33,7 @@ static gboolean opt_commit_only;
 static gboolean opt_disable_static_deltas;
 static char* opt_subpath;
 static int opt_depth = 0;
+static char* opt_force_from;
  
  static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
@@ -41,6 +42,7 @@ static int opt_depth = 0;
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
+   { "force-from", 0, 0, G_OPTION_ARG_STRING, &opt_force_from, "Force using a ref or commit as the base for pulling data", NULL},
    { NULL }
  };
 
@@ -147,9 +149,15 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
 
+    if (opt_force_from)
+       g_variant_builder_add (&builder, "{s@v}", "force-from",
+                             g_variant_new_variant (g_variant_new_string (opt_force_from)));
+
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
       goto out;
+    
+
   }
 
   if (progress)
