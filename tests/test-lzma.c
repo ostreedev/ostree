@@ -30,32 +30,38 @@
 #include <gio/gmemoryoutputstream.h>
 
 static void
-helper_test_compress_decompress (const char *data, gssize data_size)
+helper_test_compress_decompress (const guint8 *data, gssize data_size)
 {
   GError *error = NULL;
   g_autoptr(GOutputStream) out_compress = g_memory_output_stream_new_resizable ();
   g_autoptr(GOutputStream) out_decompress = NULL;
   g_autoptr(GInputStream) in_compress = g_memory_input_stream_new_from_data (data, data_size, NULL);
-  g_autoptr(GConverter) compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
   g_autoptr(GInputStream) in_decompress = NULL;
-  g_autoptr(GConverter) decompressor = NULL;
 
   {
-    gssize n_bytes_written = g_output_stream_splice (out_compress, in_compress,
-                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                                     NULL, &error);
+    gssize n_bytes_written;
+    g_autoptr(GInputStream) convin = NULL;
+    g_autoptr(GConverter) compressor = (GConverter*)_ostree_lzma_compressor_new (NULL);
+    convin = g_converter_input_stream_new ((GInputStream*) in_compress, compressor);
+    n_bytes_written = g_output_stream_splice (out_compress, convin,
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                              NULL, &error);
     g_assert_cmpint (n_bytes_written, >, 0);
     g_assert_no_error (error);
   }
 
-  in_decompress = g_memory_input_stream_new_from_bytes (g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out_compress)));
   out_decompress = g_memory_output_stream_new_resizable ();
 
-  decompressor = (GConverter*)_ostree_lzma_decompressor_new ();
   {
-    gssize n_bytes_written = g_output_stream_splice (out_decompress, in_decompress,
-                                                     G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
-                                                     NULL, &error);
+    gssize n_bytes_written;
+    g_autoptr(GInputStream) convin = NULL;
+  g_autoptr(GConverter) decompressor = (GConverter*)_ostree_lzma_decompressor_new ();
+
+    in_decompress = g_memory_input_stream_new_from_bytes (g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (out_compress)));
+    convin = g_converter_input_stream_new ((GInputStream*) in_decompress, decompressor);
+    n_bytes_written = g_output_stream_splice (out_decompress, convin,
+                                              G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET | G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                                              NULL, &error);
     g_assert_cmpint (n_bytes_written, >, 0);
     g_assert_no_error (error);
   }
@@ -69,16 +75,16 @@ helper_test_compress_decompress (const char *data, gssize data_size)
 }
 
 static void
-test_lzma_compress_decompress (void)
+test_lzma_random (void)
 {
   gssize i;
-#define BUFFER_SIZE (4096 + 1)
-  char buffer[BUFFER_SIZE];
+  const guint32 buffer_size = 4096 + 1;
+  guint8 buffer[buffer_size];
   srandom (1);
-  for (i = 0; i < BUFFER_SIZE; i++)
-    buffer[i] = random();
+  for (i = 0; i < buffer_size; i++)
+    buffer[i] = random ();
 
-  for (i = 2; i <= BUFFER_SIZE; i *= 2)
+  for (i = 2; i <= buffer_size; i *= 2)
     {
       helper_test_compress_decompress (buffer, i - 1);
       helper_test_compress_decompress (buffer, i);
@@ -86,10 +92,24 @@ test_lzma_compress_decompress (void)
     }
 }
 
+static void
+test_lzma_big_buffer (void)
+{
+  gssize i;
+  const guint32 buffer_size = 1 << 21;
+  g_autofree guint8 *buffer = g_new (guint8, buffer_size);
+
+  for (i = 0; i < buffer_size; i++)
+    buffer[i] = 'a';
+
+  helper_test_compress_decompress (buffer, buffer_size);
+}
+
 int main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
-  g_test_add_func ("/lzma/same-char-string", test_lzma_compress_decompress);
+  g_test_add_func ("/lzma/random-buffer", test_lzma_random);
+  g_test_add_func ("/lzma/big-buffer", test_lzma_big_buffer);
 
   return g_test_run();
 }
