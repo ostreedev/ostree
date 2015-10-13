@@ -33,6 +33,53 @@
 #define OSTREE_CONFIGMERGE_ID         "d3863baec13e4449ab0384684a8af3a7"
 #define OSTREE_DEPLOYMENT_COMPLETE_ID "dd440e3e549083b63d0efc7dc15255f1"
 
+/*
+ * Like symlinkat() but overwrites (atomically) an existing
+ * symlink.
+ */
+static gboolean
+symlink_at_replace (const char    *oldpath,
+                    int            parent_dfd,
+                    const char    *newpath,
+                    GCancellable  *cancellable,
+                    GError       **error)
+{
+  gboolean ret = FALSE;
+  int res;
+  /* Possibly in the future generate a temporary random name here,
+   * would need to move "generate a temporary name" code into
+   * libglnx or glib?
+   */
+  g_autofree char *temppath = g_strconcat (newpath, ".tmp", NULL);
+
+  /* Clean up any stale temporary links */ 
+  (void) unlinkat (parent_dfd, temppath, 0);
+
+  /* Create the temp link */ 
+  do
+    res = symlinkat (oldpath, parent_dfd, temppath);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (res == -1)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  /* Rename it into place */ 
+  do
+    res = renameat (parent_dfd, temppath, parent_dfd, newpath);
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (res == -1)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 static gboolean
 dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   const char    *src_name,
@@ -1046,21 +1093,92 @@ full_system_sync (OstreeSysroot     *self,
 }
 
 static gboolean
-swap_bootlinks (OstreeSysroot *self,
-                int            bootversion,
-                GPtrArray    *new_deployments,
-                GCancellable *cancellable,
-                GError      **error)
+create_new_bootlinks (OstreeSysroot *self,
+                      int            bootversion,
+                      GPtrArray     *new_deployments,
+                       GCancellable  *cancellable,
+                      GError       **error)
 {
   gboolean ret = FALSE;
   guint i;
   int old_subbootversion;
   int new_subbootversion;
-  g_autoptr(GFile) ostree_dir = g_file_get_child (self->path, "ostree");
-  g_autofree char *ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
-  g_autoptr(GFile) ostree_bootdir = g_file_resolve_relative_path (ostree_dir, ostree_bootdir_name);
+  glnx_fd_close int ostree_dfd = -1;
+  glnx_fd_close int ostree_subbootdir_dfd = -1;
+  g_autofree char *ostree_bootdir_name = NULL;
   g_autofree char *ostree_subbootdir_name = NULL;
-  g_autoptr(GFile) ostree_subbootdir = NULL;
+
+  if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
+    goto out;
+
+  ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
+
+  if (bootversion != self->bootversion)
+    {
+      if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &old_subbootversion,
+                                                        cancellable, error))
+        goto out;
+    }
+  else
+    old_subbootversion = self->subbootversion;
+
+  new_subbootversion = old_subbootversion == 0 ? 1 : 0;
+
+  /* Create the "subbootdir", which is a directory holding a symlink farm pointing to
+   * deployments per-osname.
+   */
+  ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
+  if (!glnx_shutil_rm_rf_at (ostree_dfd, ostree_subbootdir_name, cancellable, error))
+    goto out;
+  if (!glnx_shutil_mkdir_p_at (ostree_dfd, ostree_subbootdir_name, 0755, cancellable, error))
+    goto out;
+  if (!glnx_opendirat (ostree_dfd, ostree_subbootdir_name, FALSE, &ostree_subbootdir_dfd, error))
+    goto out;
+
+  for (i = 0; i < new_deployments->len; i++)
+    {
+      OstreeDeployment *deployment = new_deployments->pdata[i];
+      g_autofree char *bootlink_parent = g_strconcat (ostree_deployment_get_osname (deployment),
+                                                      "/",
+                                                      ostree_deployment_get_bootcsum (deployment),
+                                                      NULL);
+      g_autofree char *bootlink_pathname = g_strdup_printf ("%s/%d", bootlink_parent, ostree_deployment_get_bootserial (deployment));
+      g_autofree char *bootlink_target = g_strdup_printf ("../../../deploy/%s/deploy/%s.%d",
+                                                          ostree_deployment_get_osname (deployment),
+                                                          ostree_deployment_get_csum (deployment),
+                                                          ostree_deployment_get_deployserial (deployment));
+
+      if (!glnx_shutil_mkdir_p_at (ostree_subbootdir_dfd, bootlink_parent, 0755, cancellable, error))
+        goto out;
+
+      if (!symlink_at_replace (bootlink_target, ostree_subbootdir_dfd, bootlink_pathname,
+                               cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+swap_bootlinks (OstreeSysroot *self,
+                int            bootversion,
+                GPtrArray     *new_deployments,
+                GCancellable  *cancellable,
+                GError       **error)
+{
+  gboolean ret = FALSE;
+  int old_subbootversion, new_subbootversion;
+  glnx_fd_close int ostree_dfd = -1;
+  glnx_fd_close int ostree_subbootdir_dfd = -1;
+  g_autofree char *ostree_bootdir_name = NULL;
+  g_autofree char *ostree_subbootdir_name = NULL;
+
+  if (!glnx_opendirat (self->sysroot_fd, "ostree", TRUE, &ostree_dfd, error))
+    goto out;
+
+  ostree_bootdir_name = g_strdup_printf ("boot.%d", bootversion);
 
   if (bootversion != self->bootversion)
     {
@@ -1074,39 +1192,11 @@ swap_bootlinks (OstreeSysroot *self,
   new_subbootversion = old_subbootversion == 0 ? 1 : 0;
 
   ostree_subbootdir_name = g_strdup_printf ("boot.%d.%d", bootversion, new_subbootversion);
-  ostree_subbootdir = g_file_resolve_relative_path (ostree_dir, ostree_subbootdir_name);
 
-  if (!gs_shutil_rm_rf (ostree_subbootdir, cancellable, error))
+  if (!symlink_at_replace (ostree_subbootdir_name, ostree_dfd, ostree_bootdir_name,
+                           cancellable, error))
     goto out;
-
-  if (!ot_util_ensure_directory_and_fsync (ostree_subbootdir, cancellable, error))
-    goto out;
-
-  for (i = 0; i < new_deployments->len; i++)
-    {
-      OstreeDeployment *deployment = new_deployments->pdata[i];
-      g_autofree char *bootlink_pathname = g_strdup_printf ("%s/%s/%d",
-                                                         ostree_deployment_get_osname (deployment),
-                                                         ostree_deployment_get_bootcsum (deployment),
-                                                         ostree_deployment_get_bootserial (deployment));
-      g_autofree char *bootlink_target = g_strdup_printf ("../../../deploy/%s/deploy/%s.%d",
-                                                       ostree_deployment_get_osname (deployment),
-                                                       ostree_deployment_get_csum (deployment),
-                                                       ostree_deployment_get_deployserial (deployment));
-      g_autoptr(GFile) linkname = g_file_get_child (ostree_subbootdir, bootlink_pathname);
-      g_autoptr(GFile) linkname_parent = g_file_get_parent (linkname);
-
-      if (!ot_util_ensure_directory_and_fsync (linkname_parent, cancellable, error))
-        goto out;
-      
-      if (!g_file_make_symbolic_link (linkname, bootlink_target, cancellable, error))
-        goto out;
-    }
-
-  if (!ot_gfile_atomic_symlink_swap (ostree_bootdir, ostree_subbootdir_name,
-                                     cancellable, error))
-    goto out;
-
+  
   ret = TRUE;
  out:
   return ret;
@@ -1375,6 +1465,32 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
 }
 
 static gboolean
+prepare_new_bootloader_link (OstreeSysroot  *sysroot,
+                             int             current_bootversion,
+                             int             new_bootversion,
+                             GCancellable   *cancellable,
+                             GError        **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *new_target = NULL;
+
+  g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
+            (current_bootversion == 1 && new_bootversion == 0));
+
+  new_target = g_strdup_printf ("loader.%d", new_bootversion);
+
+  /* We shouldn't actually need to replace but it's easier to reuse
+     that code */
+  if (!symlink_at_replace (new_target, sysroot->sysroot_fd, "boot/loader.tmp",
+                           cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
 swap_bootloader (OstreeSysroot  *sysroot,
                  int             current_bootversion,
                  int             new_bootversion,
@@ -1382,18 +1498,42 @@ swap_bootloader (OstreeSysroot  *sysroot,
                  GError        **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) boot_loader_link = NULL;
-  g_autofree char *new_target = NULL;
+  glnx_fd_close int boot_dfd = -1;
+  int res;
 
   g_assert ((current_bootversion == 0 && new_bootversion == 1) ||
             (current_bootversion == 1 && new_bootversion == 0));
 
-  boot_loader_link = g_file_resolve_relative_path (sysroot->path, "boot/loader");
-  new_target = g_strdup_printf ("loader.%d", new_bootversion);
-
-  if (!ot_gfile_atomic_symlink_swap (boot_loader_link, new_target,
-                                     cancellable, error))
+  if (!glnx_opendirat (sysroot->sysroot_fd, "boot", TRUE, &boot_dfd, error))
     goto out;
+
+  /* The symlink was already written, and we used syncfs() to ensure
+   * its data is in place.  Renaming now should give us atomic semantics;
+   * see https://bugzilla.gnome.org/show_bug.cgi?id=755595
+   */
+  do
+    res = renameat (boot_dfd, "loader.tmp", boot_dfd, "loader");
+  while (G_UNLIKELY (res == -1 && errno == EINTR));
+  if (res == -1)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  /* Now we explicitly fsync this directory, even though it
+   * isn't required for atomicity, for two reasons:
+   *  - It should be very cheap as we're just syncing whatever
+   *    data was written since the last sync which was hopefully
+   *    less than a second ago.
+   *  - It should be sync'd before shutdown as that could crash
+   *    for whatever reason, and we wouldn't want to confuse the
+   *    admin by going back to the previous session.
+   */
+  if (fsync (boot_dfd) != 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
 
   ret = TRUE;
  out:
@@ -1565,6 +1705,14 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
   if (!requires_new_bootversion)
     {
+      if (!create_new_bootlinks (self, self->bootversion,
+                                 new_deployments,
+                                 cancellable, error))
+        {
+          g_prefix_error (error, "Creating new current bootlinks: ");
+          goto out;
+        }
+      
       if (!full_system_sync (self, cancellable, error))
         {
           g_prefix_error (error, "Full sync: ");
@@ -1633,11 +1781,18 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
             }
         }
 
-      /* Swap bootlinks for *new* version */
+      /* Create and swap bootlinks for *new* version */
+      if (!create_new_bootlinks (self, new_bootversion,
+                                 new_deployments,
+                                 cancellable, error))
+        {
+          g_prefix_error (error, "Creating new version bootlinks: ");
+          goto out;
+        }
       if (!swap_bootlinks (self, new_bootversion, new_deployments,
                            cancellable, error))
         {
-          g_prefix_error (error, "Generating new bootlinks: ");
+          g_prefix_error (error, "Swapping new version bootlinks: ");
           goto out;
         }
 
@@ -1655,6 +1810,13 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
               g_prefix_error (error, "Bootloader write config: ");
               goto out;
             }
+        }
+
+      if (!prepare_new_bootloader_link (self, self->bootversion, new_bootversion,
+                                        cancellable, error))
+        {
+          g_prefix_error (error, "Preparing final bootloader swap: ");
+          goto out;
         }
 
       if (!full_system_sync (self, cancellable, error))
