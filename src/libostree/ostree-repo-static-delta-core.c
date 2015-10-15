@@ -296,9 +296,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       g_autoptr(GVariant) header = NULL;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
-      g_autoptr(GFile) part_path = NULL;
-      g_autoptr(GInputStream) raw_in = NULL;
-      g_autoptr(GInputStream) in = NULL;
+      g_autoptr(GBytes) bytes = NULL;
       g_autofree char *deltapart_path = NULL;
 
       header = g_variant_get_child_value (headers, i);
@@ -330,17 +328,24 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
       part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
       if (part_data)
-        in = ot_variant_read (part_data);
+        {
+          bytes = g_variant_get_data_as_bytes (part_data);
+        }
       else
         {
-          part_path = ot_gfile_resolve_path_printf (dir, "%u", i);
-          in = (GInputStream*)g_file_read (part_path, cancellable, error);
+          g_autoptr(GFile) part_path = ot_gfile_resolve_path_printf (dir, "%u", i);
+          GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
+          if (!mfile)
+            goto out;
+
+          bytes = g_mapped_file_get_bytes (mfile);
+          g_mapped_file_unref (mfile);
         }
-      if (!in)
-        goto out;
 
       if (!skip_validation)
         {
+          g_autoptr(GInputStream) in = g_memory_input_stream_new_from_bytes (bytes);
+
           g_autofree char *expected_checksum = ostree_checksum_from_bytes (csum);
           if (!_ostree_static_delta_part_validate (self, in, i,
                                                    expected_checksum,
@@ -348,28 +353,12 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
             goto out;
         }
 
-      {
-        g_autoptr(GBytes) bytes = NULL;
-
-        if (part_data)
-          bytes = g_variant_get_data_as_bytes (part_data);
-        else
-          {
-            GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
-            if (!mfile)
-              goto out;
-
-            bytes = g_mapped_file_get_bytes (mfile);
-            g_mapped_file_unref (mfile);
-          }
-        
-        if (!_ostree_static_delta_part_execute (self, objects, bytes,
-                                                cancellable, error))
-          {
-            g_prefix_error (error, "executing delta part %i: ", i);
-            goto out;
-          }
-      }
+      if (!_ostree_static_delta_part_execute (self, objects, bytes,
+                                              cancellable, error))
+        {
+          g_prefix_error (error, "executing delta part %i: ", i);
+          goto out;
+        }
     }
 
   ret = TRUE;
