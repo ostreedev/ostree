@@ -55,7 +55,7 @@ typedef struct {
   GError        **async_error;
 
   OstreeObjectType output_objtype;
-  OstreeRepoTrustedContentBareCommit barecommitstate;
+  OstreeRepoContentBareCommit barecommitstate;
   guint64          content_size;
   GOutputStream   *content_out;
   char             checksum[65];
