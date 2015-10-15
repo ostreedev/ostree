@@ -245,6 +245,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     g_autoptr(GVariant) from_csum_v = NULL;
     g_autoptr(GVariant) to_commit = NULL;
     gboolean have_to_commit;
+    gboolean have_from_commit;
 
     to_csum_v = g_variant_get_child_value (meta, 3);
     if (!ostree_validate_structureof_csum_v (to_csum_v, error))
@@ -257,6 +258,17 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
         if (!ostree_validate_structureof_csum_v (from_csum_v, error))
           goto out;
         from_checksum = ostree_checksum_from_bytes_v (from_csum_v);
+
+        if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, from_checksum,
+                                     &have_from_commit, cancellable, error))
+          goto out;
+
+        if (!have_from_commit)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Commit %s, which is the delta source, is not in repository", from_checksum);
+            goto out;
+          }
       }
 
     if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
