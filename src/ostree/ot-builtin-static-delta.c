@@ -256,7 +256,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
     goto out;
 
-  if (!ostree_repo_static_delta_execute_offline (repo, path, TRUE, cancellable, error))
+  if (!ostree_repo_static_delta_execute_offline (repo, path, FALSE, cancellable, error))
     goto out;
 
   if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
