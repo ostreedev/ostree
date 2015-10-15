@@ -113,6 +113,28 @@ cd ${test_tmpdir}
 rm main-files -rf
 ostree --repo=ostree-srv/gnomerepo checkout main main-files
 cd main-files
+echo "more added files for static deltas" > added-file2
+ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -s 'inline static delta test'
+cd ..
+rm main-files -rf
+# Generate new delta that we'll use
+ostree --repo=ostree-srv/gnomerepo static-delta generate --inline main
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo fsck
+
+rm checkout-origin-main -rf
+$OSTREE checkout origin:main checkout-origin-main
+cd checkout-origin-main
+assert_file_has_content added-file2 "more added files for static deltas"
+
+echo "ok inline static delta"
+
+cd ${test_tmpdir}
+rm main-files -rf
+ostree --repo=ostree-srv/gnomerepo checkout main main-files
+cd main-files
 # Make a file larger than 16M for testing
 dd if=/dev/zero of=test-bigfile count=1 seek=42678
 echo "further modified file for static deltas" > baz/cow
