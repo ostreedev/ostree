@@ -365,7 +365,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
             goto out;
         }
 
-      if (!_ostree_static_delta_part_execute (self, objects, bytes,
+      if (!_ostree_static_delta_part_execute (self, objects, bytes, skip_validation,
                                               cancellable, error))
         {
           g_prefix_error (error, "executing delta part %i: ", i);
