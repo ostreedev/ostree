@@ -1228,6 +1228,7 @@ get_fallback_headers (OstreeRepo               *self,
  *   - bsdiff-enabled: b: Enable bsdiff compression.  Default TRUE.
  *   - inline-parts: b: Put part data in header, to get a single file delta.  Default FALSE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
+ *   - filename: ay: Save delta superblock to this filename, and parts in the same directory.  Default saves to repository.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1253,12 +1254,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GPtrArray) part_tempfiles = NULL;
   g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
+  char *opt_filename;
   g_autofree char *descriptor_relpath = NULL;
   g_autoptr(GFile) descriptor_path = NULL;
   g_autoptr(GFile) descriptor_dir = NULL;
   g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
   gboolean inline_parts;
+  g_autoptr(GFile) tmp_dir = NULL;
 
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
@@ -1291,6 +1294,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!g_variant_lookup (params, "inline-parts", "b", &inline_parts))
     inline_parts = FALSE;
 
+  if (!g_variant_lookup (params, "filename", "^ay", &opt_filename))
+    opt_filename = NULL;
+
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
     goto out;
@@ -1312,6 +1318,16 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
           g_variant_builder_add (&metadata_builder, "@{sv}", item);
           g_variant_unref (item);
         }
+    }
+
+  if (opt_filename)
+    {
+      g_autoptr(GFile) f = g_file_new_for_path (opt_filename);
+      tmp_dir = g_file_get_parent (f);
+    }
+  else
+    {
+      tmp_dir = g_object_ref (self->tmp_dir);
     }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
@@ -1385,7 +1401,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
           g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
           g_variant_builder_add (&metadata_builder, "{sv}", part_relpath, delta_part);
         }
-      else if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
+      else if (!gs_file_open_in_tmpdir (tmp_dir, 0644,
                                         &part_tempfile, &part_temp_outstream,
                                         cancellable, error))
         goto out;
@@ -1420,8 +1436,16 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
         }
     }
 
-  descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
-  descriptor_path = g_file_resolve_relative_path (self->repodir, descriptor_relpath);
+  if (opt_filename)
+    {
+      descriptor_path = g_file_new_for_path (opt_filename);
+    }
+  else
+    {
+      descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
+      descriptor_path = g_file_resolve_relative_path (self->repodir, descriptor_relpath);
+    }
+
   descriptor_dir = g_file_get_parent (descriptor_path);
 
   if (!gs_file_ensure_directory (descriptor_dir, TRUE, cancellable, error))
@@ -1430,8 +1454,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   for (i = 0; i < part_tempfiles->len; i++)
     {
       GFile *tempfile = part_tempfiles->pdata[i];
-      g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
-      g_autoptr(GFile) part_path = g_file_resolve_relative_path (self->repodir, part_relpath);
+      g_autofree char *partstr = g_strdup_printf ("%u", i);
+      g_autoptr(GFile) part_path = g_file_resolve_relative_path (descriptor_dir, partstr);
 
       if (!gs_file_rename (tempfile, part_path, cancellable, error))
         goto out;
