@@ -206,7 +206,7 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
 /**
  * ostree_repo_static_delta_execute_offline:
  * @self: Repo
- * @dir: Path to a directory containing static delta data
+ * @dir_or_file: Path to a directory containing static delta data, or directly to the superblock
  * @skip_validation: If %TRUE, assume data integrity
  * @cancellable: Cancellable
  * @error: Error
@@ -218,20 +218,35 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
  */
 gboolean
 ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
-                                          GFile                         *dir,
+                                          GFile                         *dir_or_file,
                                           gboolean                       skip_validation,
                                           GCancellable                  *cancellable,
                                           GError                      **error)
 {
   gboolean ret = FALSE;
   guint i, n;
-  g_autoptr(GFile) meta_file = g_file_get_child (dir, "superblock");
+  g_autoptr(GFile) meta_file = NULL;
+  g_autoptr(GFile) dir = NULL;
   g_autoptr(GVariant) meta = NULL;
   g_autoptr(GVariant) headers = NULL;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) fallback = NULL;
   g_autofree char *to_checksum = NULL;
   g_autofree char *from_checksum = NULL;
+  GFileType file_type;
+
+
+  file_type = g_file_query_file_type (dir_or_file, 0, cancellable);
+  if (file_type == G_FILE_TYPE_DIRECTORY)
+    {
+      dir = g_object_ref (dir_or_file);
+      meta_file = g_file_get_child (dir, "superblock");
+    }
+  else
+    {
+      meta_file = g_object_ref (dir_or_file);
+      dir = g_file_get_parent (meta_file);
+    }
 
   if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
                             FALSE, &meta, error))
