@@ -594,7 +594,7 @@ gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             GError                      **error);
 
 gboolean ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
-                                                   GFile                         *dir,
+                                                   GFile                         *dir_or_file,
                                                    gboolean                       skip_validation,
                                                    GCancellable                  *cancellable,
                                                    GError                      **error);
