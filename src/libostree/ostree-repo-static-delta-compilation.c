@@ -1085,7 +1085,7 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
                                            NULL, &uncompressed_size,
                                            cancellable, error))
         goto out;
-      if (builder->min_fallback_size_bytes >= 0 &&
+      if (builder->min_fallback_size_bytes > 0 &&
           uncompressed_size > builder->min_fallback_size_bytes)
         fallback = TRUE;
   
