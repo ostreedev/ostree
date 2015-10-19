@@ -254,6 +254,8 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
 
+  metadata = g_variant_get_child_value (meta, 0);
+
   /* Write the to-commit object */
   {
     g_autoptr(GVariant) to_csum_v = NULL;
@@ -292,6 +294,17 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     
     if (!have_to_commit)
       {
+        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_checksum, to_checksum, "detached");
+        g_autoptr(GVariant) detached_data = NULL;
+
+        detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+        if (detached_data && !ostree_repo_write_commit_detached_metadata (self,
+                                                                          to_checksum,
+                                                                          detached_data,
+                                                                          cancellable,
+                                                                          error))
+          goto out;
+
         to_commit = g_variant_get_child_value (meta, 4);
         if (!ostree_repo_write_metadata (self, OSTREE_OBJECT_TYPE_COMMIT,
                                          to_checksum, to_commit, NULL,
@@ -309,7 +322,6 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     }
 
   headers = g_variant_get_child_value (meta, 6);
-  metadata = g_variant_get_child_value (meta, 0);
   n = g_variant_n_children (headers);
   for (i = 0; i < n; i++)
     {

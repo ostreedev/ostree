@@ -1229,6 +1229,7 @@ get_fallback_headers (OstreeRepo               *self,
  *   - inline-parts: b: Put part data in header, to get a single file delta.  Default FALSE.
  *   - verbose: b: Print diagnostic messages.  Default FALSE.
  *   - filename: ay: Save delta superblock to this filename, and parts in the same directory.  Default saves to repository.
+ *   - include-detached: b: Include detached metadata for commit.  Default FALSE.
  */
 gboolean
 ostree_repo_static_delta_generate (OstreeRepo                   *self,
@@ -1261,8 +1262,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
   gboolean inline_parts;
+  gboolean include_detached;
   g_autoptr(GFile) tmp_dir = NULL;
-
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
@@ -1296,6 +1297,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (!g_variant_lookup (params, "filename", "^ay", &opt_filename))
     opt_filename = NULL;
+
+  if (!g_variant_lookup (params, "include-detached", "b", &include_detached))
+      include_detached = FALSE;
 
   if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, to,
                                  &to_commit, error))
@@ -1464,6 +1468,20 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!get_fallback_headers (self, &builder, &fallback_headers,
                              cancellable, error))
     goto out;
+
+  if (include_detached)
+    {
+      g_autoptr(GVariant) detached = NULL;
+      g_autofree char *detached_key = NULL;
+      if (!ostree_repo_read_commit_detached_metadata (self, to, &detached, cancellable, error))
+        goto out;
+
+      if (detached)
+        {
+          detached_key = _ostree_get_relative_static_delta_path (from, to, "detached");
+          g_variant_builder_add (&metadata_builder, "{sv}", detached_key, detached);
+        }
+    }
 
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {
