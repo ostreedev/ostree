@@ -977,7 +977,8 @@ static_deltapart_fetch_on_complete (GObject           *object,
     _ostree_static_delta_part_execute_async (pull_data->repo,
                                              fetch_data->objects,
                                              delta_data,
-                                             TRUE,
+                                             /* Trust checksums if summary was gpg signed */
+                                             pull_data->gpg_verify_summary && pull_data->summary_data_sig,
                                              pull_data->cancellable,
                                              on_static_delta_written,
                                              fetch_data);
@@ -1629,7 +1630,8 @@ process_one_static_delta (OtPullData   *pull_data,
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
                                                    delta_data,
-                                                   TRUE,
+                                                   /* Trust checksums if summary was gpg signed */
+                                                   pull_data->gpg_verify_summary && pull_data->summary_data_sig,
                                                    pull_data->cancellable,
                                                    on_static_delta_written,
                                                    fetch_data);
