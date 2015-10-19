@@ -1260,9 +1260,9 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GFile) descriptor_dir = NULL;
   g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
+  g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
   g_autoptr(GFile) tmp_dir = NULL;
-
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
@@ -1464,6 +1464,15 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!get_fallback_headers (self, &builder, &fallback_headers,
                              cancellable, error))
     goto out;
+
+  if (!ostree_repo_read_commit_detached_metadata (self, to, &detached, cancellable, error))
+    goto out;
+
+  if (detached)
+    {
+      g_autofree char *detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
+      g_variant_builder_add (&metadata_builder, "{sv}", detached_key, detached);
+    }
 
   /* Generate OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   {

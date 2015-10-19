@@ -1532,7 +1532,19 @@ process_one_static_delta (OtPullData   *pull_data,
     
     if (!have_to_commit)
       {
-        FetchObjectData *fetch_data = g_new0 (FetchObjectData, 1);
+        FetchObjectData *fetch_data;
+        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
+        g_autoptr(GVariant) detached_data = NULL;
+
+        detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+        if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
+                                                                          to_revision,
+                                                                          detached_data,
+                                                                          cancellable,
+                                                                          error))
+          goto out;
+
+        fetch_data = g_new0 (FetchObjectData, 1);
         fetch_data->pull_data = pull_data;
         fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
         fetch_data->is_detached_meta = FALSE;
