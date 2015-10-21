@@ -54,7 +54,7 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
 /**
  * ostree_repo_list_static_delta_names:
  * @self: Repo
- * @out_deltas: (out) (element-type utf8): String name of deltas (checksum-checksum.delta)
+ * @out_deltas: (out) (element-type utf8) (transfer container): String name of deltas (checksum-checksum.delta)
  * @cancellable: Cancellable
  * @error: Error
  *
