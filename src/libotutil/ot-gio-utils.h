@@ -85,11 +85,6 @@ gboolean ot_gfile_ensure_unlinked (GFile         *path,
                                    GCancellable  *cancellable,
                                    GError       **error);
 
-gboolean ot_gfile_atomic_symlink_swap (GFile          *path,
-                                       const char     *target,
-                                       GCancellable   *cancellable,
-                                       GError        **error);
-
 gboolean ot_util_ensure_directory_and_fsync (GFile         *dir,
                                              GCancellable  *cancellable,
                                              GError       **error);
