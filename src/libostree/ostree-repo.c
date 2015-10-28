@@ -3202,6 +3202,30 @@ ostree_repo_delete_object (OstreeRepo           *self,
       goto out;
     }
 
+  /* If the repository is configured to use tombstone commits, create one when deleting a commit.  */
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+    {
+      gboolean tombstone_commits = FALSE;
+      GKeyFile *readonly_config = ostree_repo_get_config (self);
+      if (!ot_keyfile_get_boolean_with_default (readonly_config, "core", "tombstone-commits", FALSE,
+                                                &tombstone_commits, error))
+        goto out;
+
+      if (tombstone_commits)
+        {
+          g_autoptr(GVariantBuilder) builder = NULL;
+          builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+          g_variant_builder_add (builder, "{sv}", "commit", g_variant_new_bytestring (sha256));
+          if (!ostree_repo_write_metadata_trusted (self,
+                                                   OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+                                                   sha256,
+                                                   g_variant_builder_end (builder),
+                                                   cancellable,
+                                                   error))
+            goto out;
+        }
+    }
+
   ret = TRUE;
  out:
   return ret;
