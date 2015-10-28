@@ -1082,7 +1082,7 @@ ostree_object_name_serialize (const char *checksum,
                               OstreeObjectType objtype)
 {
   g_assert (objtype >= OSTREE_OBJECT_TYPE_FILE
-            && objtype <= OSTREE_OBJECT_TYPE_COMMIT);
+            && objtype <= OSTREE_OBJECT_TYPE_LAST);
   return g_variant_new ("(su)", checksum, (guint32)objtype);
 }
 
