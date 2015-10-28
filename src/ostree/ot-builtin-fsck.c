@@ -30,8 +30,10 @@
 
 static gboolean opt_quiet;
 static gboolean opt_delete;
+static gboolean opt_add_tombstones;
 
 static GOptionEntry options[] = {
+  { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
   { NULL }
@@ -246,7 +248,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   guint n_partial = 0;
   g_autoptr(GHashTable) objects = NULL;
   g_autoptr(GHashTable) commits = NULL;
-
+  g_autoptr(GPtrArray) tombstones = NULL;
   context = g_option_context_new ("- Check the repository for consistency");
 
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
@@ -263,6 +265,9 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
                                    (GDestroyNotify)g_variant_unref, NULL);
   
   g_hash_table_iter_init (&hash_iter, objects);
+
+  if (opt_add_tombstones)
+    tombstones = g_ptr_array_new_with_free_func (g_free);
 
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
@@ -281,6 +286,9 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
           if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
             {
               n_partial++;
+
+              if (opt_add_tombstones)
+                g_ptr_array_add (tombstones, g_strdup (checksum));
             }
           else
             g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
@@ -297,7 +305,33 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
                                             cancellable, error))
     goto out;
 
-  if (n_partial > 0)
+  if (opt_add_tombstones)
+    {
+      guint i;
+      if (tombstones->len)
+        {
+          gboolean tombstone_commits = FALSE;
+          GKeyFile *readonly_config = ostree_repo_get_config (repo);
+          if (!ot_keyfile_get_boolean_with_default (readonly_config, "core", "tombstone-commits", FALSE,
+                                                    &tombstone_commits, error))
+            goto out;
+
+          if (!tombstone_commits)
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "add-tombstones specified and tombstone commits not enabled in the config file.  Please ensure that core.tombstone-commits is set\n");
+              goto out;
+            }
+        }
+      for (i = 0; i < tombstones->len; i++)
+        {
+          const char *checksum = tombstones->pdata[i];
+          g_print ("Adding tombstone for commit %s\n", checksum);
+          if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable, error))
+            goto out;
+        }
+    }
+  else if (n_partial > 0)
     {
       g_print ("%u partial commits not verified\n", n_partial);
     }
