@@ -58,6 +58,7 @@ typedef struct {
   
   gboolean          gpg_verify;
   gboolean          gpg_verify_summary;
+  gboolean          has_tombstone_commits;
 
   GBytes           *summary_data;
   GBytes           *summary_data_sig;
@@ -795,11 +796,22 @@ meta_fetch_on_complete (GObject           *object,
                    pull_data->maxdepth != 0)
             {
               g_clear_error (&local_error);
+              /* If the remote repo supports tombstone commits, check if the commit was intentionally
+                 deleted.  */
+              if (pull_data->has_tombstone_commits)
+                {
+                  enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
+                                              FALSE, FALSE);
+                }
             }
         }
 
       goto out;
     }
+
+  /* Tombstone commits are always empty, so skip all processing here */
+  if (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT)
+    goto out;
 
   fd = openat (pull_data->tmpdir_dfd, temp_path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
@@ -1854,7 +1866,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
       if (!ostree_repo_mode_from_string (remote_mode_str, &pull_data->remote_mode, error))
         goto out;
-    
+
+      if (!ot_keyfile_get_boolean_with_default (remote_config, "core", "tombstone-commits", FALSE,
+                                                &pull_data->has_tombstone_commits, error))
+        goto out;
+
       if (pull_data->remote_mode != OSTREE_REPO_MODE_ARCHIVE_Z2)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
