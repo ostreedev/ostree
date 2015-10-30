@@ -77,6 +77,16 @@ ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GErr
   child = g_file_get_child (dir, "tmp");
   if (!gs_file_ensure_directory_mode (child, 01777, cancellable, error))
     goto out;
+  /* FIXME - we should be using an API that explicitly ignores umask;
+   */
+  {
+    const char *path = gs_file_get_path_cached (child);
+    if (chmod (path, 01777) == -1)
+      {
+        gs_set_prefix_error_from_errno (error, errno, "chmod");
+        goto out;
+      }
+  }
   g_clear_object (&child);
 
   if (!ostree_sysroot_ensure_initialized (target_sysroot, cancellable, error))
