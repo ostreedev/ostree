@@ -54,9 +54,18 @@ assert_file_has_content commitcount "^1$"
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 
+${CMD_PREFIX} ostree --repo=repo fsck --add-tombstones
+find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
+assert_file_has_content repo/config "tombstone-commits=true"
+assert_file_has_content tombstonecommitcount "^1$"
+
 # pull once again and use tombstone commits
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
-${CMD_PREFIX} ostree config --repo=repo set core.tombstone-commits true
+
+${CMD_PREFIX} ostree --repo=repo fsck --add-tombstones
+find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
+assert_file_has_content tombstonecommitcount "^0$"
+
 ${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
