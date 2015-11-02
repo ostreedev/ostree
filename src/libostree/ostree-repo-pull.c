@@ -809,6 +809,7 @@ meta_fetch_on_complete (GObject           *object,
       goto out;
     }
 
+  /* Tombstone commits are always empty, so skip all processing here */
   if (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT)
     goto out;
 
