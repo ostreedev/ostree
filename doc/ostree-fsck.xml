@@ -82,7 +82,7 @@ Boston, MA 02111-1307, USA.
             <varlistentry>
                 <term><option>--add-tombstones</option></term>
                 <listitem><para>
-                   Add tombstones commit for referenced but missing commits.
+                   Add tombstone commit for referenced but missing commits.
                 </para></listitem>
             </varlistentry>
         </variablelist>

@@ -310,17 +310,17 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       guint i;
       if (tombstones->len)
         {
+          GError *temp_error = NULL;
           gboolean tombstone_commits = FALSE;
-          GKeyFile *readonly_config = ostree_repo_get_config (repo);
-          if (!ot_keyfile_get_boolean_with_default (readonly_config, "core", "tombstone-commits", FALSE,
-                                                    &tombstone_commits, error))
-            goto out;
-
+          GKeyFile *config = ostree_repo_get_config (repo);
+          tombstone_commits = g_key_file_get_boolean (config, "core", "tombstone-commits", &temp_error);
+          /* tombstone_commits is FALSE either if it is not found or it is really set to FALSE in the config file.  */
           if (!tombstone_commits)
             {
-              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                   "add-tombstones specified and tombstone commits not enabled in the config file.  Please ensure that core.tombstone-commits is set\n");
-              goto out;
+              g_clear_error (&temp_error);
+              g_key_file_set_boolean (config, "core", "tombstone-commits", TRUE);
+              if (!ostree_repo_write_config (repo, config, error))
+                goto out;
             }
         }
       for (i = 0; i < tombstones->len; i++)
