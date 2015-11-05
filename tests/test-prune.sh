@@ -42,15 +42,15 @@ done
 
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
 
-${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=1 -v
+${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=2 -v
 find repo | grep \.commit$ | wc -l > commitcount
-assert_file_has_content commitcount "^2$"
+assert_file_has_content commitcount "^3$"
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 
-${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
+${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=1 -v
 find repo | grep \.commit$ | wc -l > commitcount
-assert_file_has_content commitcount "^1$"
+assert_file_has_content commitcount "^2$"
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
 
@@ -76,5 +76,10 @@ assert_not_file_has_content tombstonecommitcount "^0$"
 ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
 find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
 assert_file_has_content tombstonecommitcount "^0$"
+
+COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo log test | grep ^commit | cut -f 2 -d' ' | tail -n 1)
+${CMD_PREFIX} ostree --repo=repo prune --delete-commit=$COMMIT_TO_DELETE
+find repo/objects -name '*.tombstone-commit' | wc -l > tombstonecommitcount
+assert_file_has_content tombstonecommitcount "^1$"
 
 echo "ok prune"
