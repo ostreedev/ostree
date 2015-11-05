@@ -82,6 +82,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--delete-commit</option>=COMMIT</term>
+
+                <listitem><para>
+                    Specify a COMMIT to delete.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--depth</option>=DEPTH</term>
 
                 <listitem><para>
