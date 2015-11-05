@@ -25,15 +25,18 @@
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
+#include "otutil.h"
 
 static gboolean opt_no_prune;
 static gint opt_depth = -1;
 static gboolean opt_refs_only;
+static char *opt_delete_commit;
 
 static GOptionEntry options[] = {
   { "no-prune", 0, 0, G_OPTION_ARG_NONE, &opt_no_prune, "Only display unreachable objects; don't delete", NULL },
   { "refs-only", 0, 0, G_OPTION_ARG_NONE, &opt_refs_only, "Only compute reachability via refs", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Only traverse DEPTH parents for each commit (default: -1=infinite)", "DEPTH" },
+  { "delete-commit", 0, 0, G_OPTION_ARG_STRING, &opt_delete_commit, "Specify a commit to delete", "COMMIT" },
   { NULL }
 };
 
@@ -56,6 +59,41 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
 
   if (!opt_no_prune && !ostree_ensure_repo_writable (repo, error))
     goto out;
+
+  if (opt_delete_commit)
+    {
+      g_autoptr(GHashTable) refs = NULL;
+      GHashTableIter hashiter;
+      gpointer hashkey, hashvalue;
+
+      if (opt_no_prune)
+        {
+          ot_util_usage_error (context, "Cannot specify both --delete-commit and --no-prune", error);
+          goto out;
+        }
+
+      if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
+        goto out;
+
+      g_hash_table_iter_init (&hashiter, refs);
+      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+        {
+          const char *ref = hashkey;
+          const char *commit = hashvalue;
+          if (g_strcmp0 (commit, opt_delete_commit) == 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Commit '%s' is referenced by '%s'", opt_delete_commit, ref);
+              goto out;
+            }
+        }
+
+      if (!ot_enable_tombstone_commits (repo, error))
+        goto out;
+
+      if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, opt_delete_commit, cancellable, error))
+        goto out;
+    }
 
   if (opt_refs_only)
     pruneflags |= OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY;

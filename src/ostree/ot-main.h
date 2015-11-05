@@ -63,3 +63,5 @@ gboolean ostree_admin_option_context_parse (GOptionContext *context,
 gboolean ostree_ensure_repo_writable (OstreeRepo *repo, GError **error);
 
 void ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result);
+
+gboolean ot_enable_tombstone_commits (OstreeRepo *repo, GError **error);

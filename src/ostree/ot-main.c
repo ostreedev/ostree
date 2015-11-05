@@ -419,3 +419,24 @@ ostree_print_gpg_verify_result (OstreeGpgVerifyResult *result)
   g_print ("%s", buffer->str);
   g_string_free (buffer, TRUE);
 }
+
+gboolean
+ot_enable_tombstone_commits (OstreeRepo *repo, GError **error)
+{
+  gboolean ret = FALSE;
+  gboolean tombstone_commits = FALSE;
+  GKeyFile *config = ostree_repo_get_config (repo);
+
+  tombstone_commits = g_key_file_get_boolean (config, "core", "tombstone-commits", NULL);
+  /* tombstone_commits is FALSE either if it is not found or it is really set to FALSE in the config file.  */
+  if (!tombstone_commits)
+    {
+      g_key_file_set_boolean (config, "core", "tombstone-commits", TRUE);
+      if (!ostree_repo_write_config (repo, config, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
