@@ -48,6 +48,8 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-dump.c \
 	src/ostree/ot-editor.c \
 	src/ostree/ot-editor.h \
+	src/ostree/parse-datetime.h \
+	src/ostree/parse-datetime.c \
 	$(NULL)
 
 # Admin subcommand
@@ -82,6 +84,9 @@ ostree_SOURCES += \
 	src/ostree/ot-remote-builtin-show-url.c \
         src/ostree/ot-remote-builtin-refs.c \
 	$(NULL)
+
+src/ostree/parse-datetime.c: src/ostree/parse-datetime.y
+	$(YACC) $< -o $@
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree \
 	$(NULL)
