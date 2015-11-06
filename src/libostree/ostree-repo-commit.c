@@ -103,6 +103,7 @@ write_file_metadata_to_xattr (int fd,
   if (G_UNLIKELY (res == -1))
     {
       gs_set_error_from_errno (error, errno);
+      g_prefix_error (error, "Unable to set xattr: ");
       return FALSE;
     }
 
