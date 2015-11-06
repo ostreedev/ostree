@@ -242,8 +242,8 @@ ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
   guint signature_index;
   gboolean ret = FALSE;
 
-  g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), NULL);
-  g_return_val_if_fail (key_id != NULL, NULL);
+  g_return_val_if_fail (OSTREE_IS_GPG_VERIFY_RESULT (result), FALSE);
+  g_return_val_if_fail (key_id != NULL, FALSE);
 
   /* signature->fpr is always upper-case. */
   key_id_upper = g_ascii_strup (key_id, -1);
