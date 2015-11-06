@@ -90,6 +90,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--keep-younger-than</option>=DATE</term>
+
+                <listitem><para>
+                    All commits older than DATE will be pruned.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--depth</option>=DEPTH</term>
 
                 <listitem><para>
