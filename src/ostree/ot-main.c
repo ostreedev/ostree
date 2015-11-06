@@ -190,6 +190,7 @@ ostree_run (int    argc,
             {
               g_set_error (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
                            "Unknown command '%s'", command_name);
+              ostree_usage (commands, TRUE);
             }
         }
 

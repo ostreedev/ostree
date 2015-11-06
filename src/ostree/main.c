@@ -75,8 +75,6 @@ main (int    argc,
   g_set_prgname (argv[0]);
 
   ret = ostree_run (argc, argv, commands, &error);
-  if (g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
-    ostree_usage (commands, TRUE);
 
   if (error != NULL)
     {
