@@ -425,10 +425,12 @@ Boston, MA 02111-1307, USA.
         <title>GPG verification</title>
 
         <para>
-            OSTree supports signing commits with GPG.  The
-            set of trusted keys is stored as keyring files in
-            <filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any key in
-            any keyring in that directory may be used to sign commits.
+            OSTree supports signing commits with GPG.  The set of
+            trusted public keys is stored as keyring files in
+            <filename>/usr/share/ostree/trusted.gpg.d</filename>.  Any
+            public key in a keyring file in that directory will be
+            trusted by the client.  No private keys should be present
+            in this directory.
         </para>
     </refsect1>
 
