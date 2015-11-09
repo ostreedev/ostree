@@ -1255,7 +1255,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autoptr(GPtrArray) part_tempfiles = NULL;
   g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
-  char *opt_filename;
+  const char *opt_filename;
   g_autofree char *descriptor_relpath = NULL;
   g_autoptr(GFile) descriptor_path = NULL;
   g_autoptr(GFile) descriptor_dir = NULL;
@@ -1295,7 +1295,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   if (!g_variant_lookup (params, "inline-parts", "b", &inline_parts))
     inline_parts = FALSE;
 
-  if (!g_variant_lookup (params, "filename", "^ay", &opt_filename))
+  if (!g_variant_lookup (params, "filename", "^&ay", &opt_filename))
     opt_filename = NULL;
 
   if (!g_variant_lookup (params, "include-detached", "b", &include_detached))
