@@ -69,8 +69,6 @@ struct OstreeFetcher
   SoupSession *session;
   SoupRequester *requester;
 
-  GHashTable *sending_messages; /*  SoupMessage */
-
   GHashTable *output_stream_set; /* set<GOutputStream> */
   
   guint64 total_downloaded;
@@ -120,7 +118,6 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_object (&self->session);
   g_clear_object (&self->client_cert);
 
-  g_hash_table_destroy (self->sending_messages);
   g_hash_table_destroy (self->output_stream_set);
 
   while (!g_queue_is_empty (&self->pending_queue))
@@ -137,26 +134,6 @@ _ostree_fetcher_class_init (OstreeFetcherClass *klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->finalize = _ostree_fetcher_finalize;
-}
-
-static void
-on_request_started (SoupSession  *session,
-                    SoupMessage  *msg,
-                    SoupSocket   *socket,
-                    gpointer      user_data)
-{
-  OstreeFetcher *self = user_data;
-  
-  g_hash_table_insert (self->sending_messages, msg, g_object_ref (msg));
-}
-
-static void
-on_request_unqueued (SoupSession  *session,
-                     SoupMessage  *msg,
-                     gpointer      user_data)
-{
-  OstreeFetcher *self = user_data;
-  g_hash_table_remove (self->sending_messages, msg);
 }
 
 static void
@@ -195,13 +172,6 @@ _ostree_fetcher_init (OstreeFetcher *self)
 
   self->max_outstanding = 3 * max_conns;
 
-  g_signal_connect_object (self->session, "request-started",
-                           G_CALLBACK (on_request_started), self, 0);
-  g_signal_connect_object (self->session, "request-unqueued",
-                           G_CALLBACK (on_request_unqueued), self, 0);
-  
-  self->sending_messages = g_hash_table_new_full (NULL, NULL, NULL,
-                                                  (GDestroyNotify)g_object_unref);
   self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
 
   self->outstanding = g_hash_table_new_full (NULL, NULL, NULL, NULL);
