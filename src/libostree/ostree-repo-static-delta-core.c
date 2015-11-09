@@ -294,7 +294,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
     
     if (!have_to_commit)
       {
-        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_checksum, to_checksum, "detached");
+        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_checksum, to_checksum, "commitmeta");
         g_autoptr(GVariant) detached_data = NULL;
 
         detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));

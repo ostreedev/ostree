@@ -1478,7 +1478,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
       if (detached)
         {
-          detached_key = _ostree_get_relative_static_delta_path (from, to, "detached");
+          detached_key = _ostree_get_relative_static_delta_path (from, to, "commitmeta");
           g_variant_builder_add (&metadata_builder, "{sv}", detached_key, detached);
         }
     }

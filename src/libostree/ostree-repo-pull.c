@@ -1521,7 +1521,7 @@ process_one_static_delta (OtPullData   *pull_data,
     if (!have_to_commit)
       {
         FetchObjectData *fetch_data;
-        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "detached");
+        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
         g_autoptr(GVariant) detached_data = NULL;
 
         detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
