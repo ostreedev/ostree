@@ -31,14 +31,14 @@ echo "1..2"
 setup_test_repository "archive-z2"
 
 cd ${test_tmpdir}
-ostree --repo=repo checkout test2 test2-checkout1
+${CMD_PREFIX} ostree --repo=repo checkout test2 test2-checkout1
 setfattr -n user.ostree-test -v testvalue test2-checkout1/firstfile
 setfattr -n user.test0 -v moo test2-checkout1/firstfile
-ostree --repo=repo commit -b test2 -s xattrs --tree=dir=test2-checkout1
+${CMD_PREFIX} ostree --repo=repo commit -b test2 -s xattrs --tree=dir=test2-checkout1
 rm test2-checkout1 -rf
 echo "ok commit with xattrs"
 
-ostree --repo=repo checkout test2 test2-checkout2
+${CMD_PREFIX} ostree --repo=repo checkout test2 test2-checkout2
 getfattr -m . test2-checkout2/firstfile > attrs
 assert_file_has_content attrs '^user.ostree-test'
 assert_file_has_content attrs '^user.test0'

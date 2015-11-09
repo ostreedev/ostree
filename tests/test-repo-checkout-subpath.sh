@@ -29,6 +29,6 @@ echo '1..2'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 
-ostree --repo=repo checkout -U --subpath=/ test2 checkedout
+${CMD_PREFIX} ostree --repo=repo checkout -U --subpath=/ test2 checkedout
 
-ostree --repo=repo checkout -U --subpath=/firstfile test2 checkedout2
+${CMD_PREFIX} ostree --repo=repo checkout -U --subpath=/firstfile test2 checkedout2

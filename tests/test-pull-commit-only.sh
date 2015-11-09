@@ -30,10 +30,10 @@ mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
 
-ostree --repo=repo pull --commit-metadata-only origin main
+${CMD_PREFIX} ostree --repo=repo pull --commit-metadata-only origin main
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
-ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo fsck
 
 find repo/objects -name '*.file.*' | wc -l > commitcount
 assert_file_has_content commitcount "^0$"

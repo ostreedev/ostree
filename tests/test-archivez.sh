@@ -32,7 +32,7 @@ cd ${test_tmpdir}
 mkdir repo2
 ${CMD_PREFIX} ostree --repo=repo2 init
 ${CMD_PREFIX} ostree --repo=repo2 remote add --set=gpg-verify=false aremote file://$(pwd)/repo test2
-ostree --repo=repo2 pull aremote
-ostree --repo=repo2 rev-parse aremote/test2
-ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 pull aremote
+${CMD_PREFIX} ostree --repo=repo2 rev-parse aremote/test2
+${CMD_PREFIX} ostree --repo=repo2 fsck
 echo "ok pull with from file:/// uri"
