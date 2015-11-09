@@ -452,6 +452,17 @@ gboolean      ostree_repo_write_commit (OstreeRepo      *self,
                                         GCancellable    *cancellable,
                                         GError         **error);
 
+gboolean      ostree_repo_write_commit_with_time (OstreeRepo      *self,
+                                                  const char      *parent,
+                                                  const char      *subject,
+                                                  const char      *body,
+                                                  GVariant        *metadata,
+                                                  OstreeRepoFile  *root,
+                                                  guint64         time,
+                                                  char           **out_commit,
+                                                  GCancellable    *cancellable,
+                                                  GError         **error);
+
 gboolean      ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                                          const char      *checksum,
                                                          GVariant       **out_metadata,
