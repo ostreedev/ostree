@@ -1590,6 +1590,9 @@ process_one_static_delta (OtPullData   *pull_data,
 
           delta_data = g_variant_get_data_as_bytes (part_data);
 
+          /* For inline parts we are relying on per-commit GPG, so this isn't strictly necessary for security.
+           * See https://github.com/GNOME/ostree/pull/139
+           */
           actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, delta_data);
           if (strcmp (actual_checksum, expected_checksum) != 0)
             {
