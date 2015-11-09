@@ -54,6 +54,7 @@ testfiles = test-basic \
 	test-admin-deploy-clean \
 	test-repo-checkout-subpath	\
 	test-reset-nonlinear \
+	test-archive-export \
 	test-oldstyle-partial \
 	test-setuid \
 	test-delta \

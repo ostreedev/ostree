@@ -22,6 +22,9 @@ bin_PROGRAMS += ostree
 ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-admin.c \
 	src/ostree/ot-builtins.h \
+	src/ostree/ot-builtin-archive-export.c \
+	src/libostree/ostree-libarchive-input-stream.c \
+	src/ostree/ot-builtin-archive-import.c \
 	src/ostree/ot-builtin-cat.c \
 	src/ostree/ot-builtin-config.c \
 	src/ostree/ot-builtin-checkout.c \

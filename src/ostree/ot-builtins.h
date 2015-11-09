@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 #define BUILTINPROTO(name) gboolean ostree_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
 
 BUILTINPROTO(admin);
+BUILTINPROTO(archive_export);
+BUILTINPROTO(archive_import);
 BUILTINPROTO(cat);
 BUILTINPROTO(config);
 BUILTINPROTO(checkout);
