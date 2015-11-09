@@ -26,12 +26,12 @@ setup_os_repository "archive-z2" "syslinux"
 
 echo "1..1"
 
-ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
-ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-ostree admin undeploy 0
-ostree --repo=sysroot/ostree/repo refs > refs.txt
+${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+${CMD_PREFIX} ostree admin undeploy 0
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo refs > refs.txt
 assert_not_file_has_content refs.txt '^ostree/'
 
 echo "ok deploy + undeploy repo prune"
