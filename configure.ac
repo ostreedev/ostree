@@ -43,6 +43,8 @@ AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from gli
 
 PKG_PROG_PKG_CONFIG
 
+AM_PATH_GLIB_2_0
+
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 

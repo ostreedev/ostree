@@ -33,12 +33,37 @@ lib_LTLIBRARIES += libostree-1.la
 libostreeincludedir = $(includedir)/ostree-1
 libostreeinclude_HEADERS = $(libostree_public_headers)
 
+ENUM_TYPES = \
+	src/libostree/ostree-fetcher.h \
+	$(NULL)
+
+src/libostree/ostree-enumtypes.h: src/libostree/ostree-enumtypes.h.template $(ENUM_TYPES)
+	$(AM_V_GEN) $(GLIB_MKENUMS) \
+	--template src/libostree/ostree-enumtypes.h.template \
+	$(ENUM_TYPES) > $@
+
+src/libostree/ostree-enumtypes.c: src/libostree/ostree-enumtypes.c.template $(ENUM_TYPES)
+	$(AM_V_GEN) $(GLIB_MKENUMS) \
+	--template src/libostree/ostree-enumtypes.c.template \
+	--fhead "#include \"ostree-enumtypes.h\"" \
+	$(ENUM_TYPES) > $@
+
+ENUM_GENERATED = \
+	src/libostree/ostree-enumtypes.h \
+	src/libostree/ostree-enumtypes.c \
+	$(NULL)
+
+BUILT_SOURCES += $(ENUM_GENERATED)
+
+CLEANFILES += $(BUILT_SOURCES)
+
 libbupsplit_la_SOURCES = \
 	src/libostree/bupsplit.h \
 	src/libostree/bupsplit.c \
 	$(NULL)
 
 libostree_1_la_SOURCES = \
+	$(ENUM_GENERATED) \
 	src/libostree/ostree-async-progress.c \
 	src/libostree/ostree-cmdprivate.h \
 	src/libostree/ostree-cmdprivate.c \

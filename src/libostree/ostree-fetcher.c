@@ -29,6 +29,7 @@
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 #include "ostree-tls-cert-interaction.h"
 #endif
+#include "ostree-enumtypes.h"
 #include "ostree.h"
 #include "otutil.h"
 
@@ -62,6 +63,7 @@ struct OstreeFetcher
 {
   GObject parent_instance;
 
+  OstreeFetcherConfigFlags config_flags;
   int tmpdir_dfd;
 
   GTlsCertificate *client_cert;
@@ -77,6 +79,11 @@ struct OstreeFetcher
   GQueue pending_queue;
   GHashTable *outstanding;
   gint max_outstanding;
+};
+
+enum {
+  PROP_0,
+  PROP_CONFIG_FLAGS
 };
 
 G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
@@ -108,6 +115,44 @@ pending_uri_free (OstreeFetcherPendingURI *pending)
 }
 
 static void
+_ostree_fetcher_set_property (GObject      *object,
+                              guint         prop_id,
+                              const GValue *value,
+                              GParamSpec   *pspec)
+{
+  OstreeFetcher *self = OSTREE_FETCHER (object);
+
+  switch (prop_id)
+    {
+      case PROP_CONFIG_FLAGS:
+        self->config_flags = g_value_get_flags (value);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        break;
+    }
+}
+
+static void
+_ostree_fetcher_get_property (GObject    *object,
+                              guint       prop_id,
+                              GValue     *value,
+                              GParamSpec *pspec)
+{
+  OstreeFetcher *self = OSTREE_FETCHER (object);
+
+  switch (prop_id)
+    {
+      case PROP_CONFIG_FLAGS:
+        g_value_set_flags (value, self->config_flags);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        break;
+    }
+}
+
+static void
 _ostree_fetcher_finalize (GObject *object)
 {
   OstreeFetcher *self;
@@ -132,7 +177,20 @@ _ostree_fetcher_class_init (OstreeFetcherClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+  gobject_class->set_property = _ostree_fetcher_set_property;
+  gobject_class->get_property = _ostree_fetcher_get_property;
   gobject_class->finalize = _ostree_fetcher_finalize;
+
+  g_object_class_install_property (gobject_class,
+                                   PROP_CONFIG_FLAGS,
+                                   g_param_spec_flags ("config-flags",
+                                                       "",
+                                                       "",
+                                                       OSTREE_TYPE_FETCHER_CONFIG_FLAGS,
+                                                       OSTREE_FETCHER_FLAGS_NONE,
+                                                       G_PARAM_READWRITE |
+                                                       G_PARAM_CONSTRUCT_ONLY |
+                                                       G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -159,6 +217,9 @@ _ostree_fetcher_init (OstreeFetcher *self)
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
     soup_session_add_feature (self->session, (SoupSessionFeature*)soup_logger_new (SOUP_LOGGER_LOG_BODY, 500));
 
+  if ((self->config_flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
+    g_object_set (self->session, SOUP_SESSION_SSL_STRICT, FALSE, NULL);
+
   self->requester = (SoupRequester *)soup_session_get_feature (self->session, SOUP_TYPE_REQUESTER);
   g_object_get (self->session, "max-conns-per-host", &max_conns, NULL);
   if (max_conns <= 8)
@@ -180,12 +241,12 @@ OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
                     OstreeFetcherConfigFlags  flags)
 {
-  OstreeFetcher *self = (OstreeFetcher*)g_object_new (OSTREE_TYPE_FETCHER, NULL);
+  OstreeFetcher *self;
+
+  self = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
 
   self->tmpdir_dfd = tmpdir_dfd;
-  if ((flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
-    g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
- 
+
   return self;
 }
 
