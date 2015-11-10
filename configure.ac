@@ -47,6 +47,8 @@ AS_IF([test "$YACC" = :], [AC_MSG_ERROR([bison not found but required])])
 
 PKG_PROG_PKG_CONFIG
 
+AM_PATH_GLIB_2_0
+
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
