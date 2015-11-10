@@ -977,6 +977,8 @@ static_deltapart_fetch_on_complete (GObject           *object,
     _ostree_static_delta_part_execute_async (pull_data->repo,
                                              fetch_data->objects,
                                              delta_data,
+                                             /* Trust checksums if summary was gpg signed */
+                                             pull_data->gpg_verify_summary && pull_data->summary_data_sig,
                                              pull_data->cancellable,
                                              on_static_delta_written,
                                              fetch_data);
@@ -1489,11 +1491,13 @@ process_one_static_delta (OtPullData   *pull_data,
                           GError      **error)
 {
   gboolean ret = FALSE;
+  g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) headers = NULL;
   g_autoptr(GVariant) fallback_objects = NULL;
   guint i, n;
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
+  metadata = g_variant_get_child_value (delta_superblock, 0);
   headers = g_variant_get_child_value (delta_superblock, 6);
   fallback_objects = g_variant_get_child_value (delta_superblock, 7);
 
@@ -1528,7 +1532,19 @@ process_one_static_delta (OtPullData   *pull_data,
     
     if (!have_to_commit)
       {
-        FetchObjectData *fetch_data = g_new0 (FetchObjectData, 1);
+        FetchObjectData *fetch_data;
+        g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
+        g_autoptr(GVariant) detached_data = NULL;
+
+        detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+        if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
+                                                                          to_revision,
+                                                                          detached_data,
+                                                                          cancellable,
+                                                                          error))
+          goto out;
+
+        fetch_data = g_new0 (FetchObjectData, 1);
         fetch_data->pull_data = pull_data;
         fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
         fetch_data->is_detached_meta = FALSE;
@@ -1557,6 +1573,8 @@ process_one_static_delta (OtPullData   *pull_data,
       FetchStaticDeltaData *fetch_data;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
+      g_autoptr(GVariant) part_data = NULL;
+      g_autoptr(GBytes) delta_data = NULL;
       guint64 size, usize;
       guint32 version;
 
@@ -1573,6 +1591,29 @@ process_one_static_delta (OtPullData   *pull_data,
       csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
         goto out;
+
+      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
+
+      part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE ("(yay)"));
+      if (part_data)
+        {
+          g_autofree char *actual_checksum = NULL;
+          g_autofree char *expected_checksum = ostree_checksum_from_bytes_v (csum_v);
+
+          delta_data = g_variant_get_data_as_bytes (part_data);
+
+          /* For inline parts we are relying on per-commit GPG, so this isn't strictly necessary for security.
+           * See https://github.com/GNOME/ostree/pull/139
+           */
+          actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, delta_data);
+          if (strcmp (actual_checksum, expected_checksum) != 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Corrupted static delta part; checksum expected='%s' actual='%s'",
+                           expected_checksum, actual_checksum);
+              goto out;
+            }
+        }
 
       pull_data->total_deltapart_size += size;
 
@@ -1596,16 +1637,29 @@ process_one_static_delta (OtPullData   *pull_data,
       fetch_data->objects = g_variant_ref (objects);
       fetch_data->expected_checksum = ostree_checksum_from_bytes_v (csum_v);
 
-      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
-
-      target_uri = suburi_new (pull_data->base_uri, deltapart_path, NULL);
-      _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
-                                                      OSTREE_FETCHER_DEFAULT_PRIORITY,
-                                                      pull_data->cancellable,
-                                                      static_deltapart_fetch_on_complete,
-                                                      fetch_data);
-      pull_data->n_outstanding_deltapart_fetches++;
-      soup_uri_free (target_uri);
+      if (delta_data != NULL)
+        {
+          _ostree_static_delta_part_execute_async (pull_data->repo,
+                                                   fetch_data->objects,
+                                                   delta_data,
+                                                   /* Trust checksums if summary was gpg signed */
+                                                   pull_data->gpg_verify_summary && pull_data->summary_data_sig,
+                                                   pull_data->cancellable,
+                                                   on_static_delta_written,
+                                                   fetch_data);
+          pull_data->n_outstanding_deltapart_write_requests++;
+        }
+      else
+        {
+          target_uri = suburi_new (pull_data->base_uri, deltapart_path, NULL);
+          _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
+                                                          OSTREE_FETCHER_DEFAULT_PRIORITY,
+                                                          pull_data->cancellable,
+                                                          static_deltapart_fetch_on_complete,
+                                                          fetch_data);
+          pull_data->n_outstanding_deltapart_fetches++;
+          soup_uri_free (target_uri);
+        }
     }
 
   ret = TRUE;

@@ -113,18 +113,21 @@ gboolean _ostree_static_delta_part_validate (OstreeRepo     *repo,
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                             GVariant        *header,
                                             GBytes          *partdata,
+                                            gboolean         trusted,
                                             GCancellable    *cancellable,
                                             GError         **error);
 
 gboolean _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
                                                 GVariant        *header,
                                                 GVariant        *part,
+                                                gboolean         trusted,
                                                 GCancellable    *cancellable,
                                                 GError         **error);
 
 void _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
                                               GVariant        *header,
                                               GBytes          *partdata,
+                                              gboolean         trusted,
                                               GCancellable    *cancellable,
                                               GAsyncReadyCallback  callback,
                                               gpointer         user_data);

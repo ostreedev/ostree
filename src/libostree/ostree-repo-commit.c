@@ -447,10 +447,105 @@ fallocate_stream (GFileDescriptorBased      *stream,
 }
 
 gboolean
+_ostree_repo_open_untrusted_content_bare (OstreeRepo          *self,
+                                          const char          *expected_checksum,
+                                          guint64              content_len,
+                                          OstreeRepoContentBareCommit *out_state,
+                                          GOutputStream      **out_stream,
+                                          gboolean            *out_have_object,
+                                          GCancellable        *cancellable,
+                                          GError             **error)
+{
+  /* The trusted codepath is fine here */
+  return _ostree_repo_open_trusted_content_bare (self,
+                                                 expected_checksum,
+                                                 content_len,
+                                                 out_state,
+                                                 out_stream,
+                                                 out_have_object,
+                                                 cancellable,
+                                                 error);
+}
+
+gboolean
+_ostree_repo_commit_untrusted_content_bare (OstreeRepo          *self,
+                                            const char          *expected_checksum,
+                                            OstreeRepoContentBareCommit *state,
+                                            guint32              uid,
+                                            guint32              gid,
+                                            guint32              mode,
+                                            GVariant            *xattrs,
+                                            GCancellable        *cancellable,
+                                            GError             **error)
+{
+  gboolean ret = FALSE;
+
+  if (state->fd != -1)
+    {
+      GMappedFile *mapped;
+      g_autoptr(GBytes) bytes = NULL;
+      g_autoptr(GInputStream) raw_in = NULL;
+      g_autoptr(GInputStream) in = NULL;
+      g_autoptr(GFileInfo) file_info = NULL;
+      g_autofree guchar *actual_csum = NULL;
+      g_autofree char *actual_checksum = NULL;
+      int fd;
+
+      fd = openat (self->tmp_dir_fd, state->temp_filename, O_RDONLY);
+      if (fd == -1)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
+
+      mapped = g_mapped_file_new_from_fd (fd, FALSE, error);
+
+      close (fd);
+      if (mapped == NULL)
+        goto out;
+
+      bytes = g_mapped_file_get_bytes (mapped);
+      g_mapped_file_unref (mapped);
+
+      raw_in = g_memory_input_stream_new_from_bytes (bytes);
+
+      file_info = _ostree_header_gfile_info_new (mode, uid, gid);
+
+      if (!ostree_raw_file_to_content_stream (raw_in, file_info, xattrs, &in, NULL, cancellable, error))
+        goto out;
+
+      if (!ot_gio_checksum_stream (in, &actual_csum, cancellable, error))
+        goto out;
+
+      actual_checksum = ostree_checksum_from_bytes (actual_csum);
+
+      if (strcmp (actual_checksum, expected_checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Corrupted object %s (actual checksum is %s)",
+                       expected_checksum, actual_checksum);
+          goto out;
+        }
+
+      if (!commit_loose_object_trusted (self, expected_checksum, OSTREE_OBJECT_TYPE_FILE,
+                                        state->temp_filename,
+                                        FALSE, uid, gid, mode,
+                                        xattrs, state->fd,
+                                        cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  g_free (state->temp_filename);
+  return ret;
+}
+
+gboolean
 _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
                                         const char          *checksum,
                                         guint64              content_len,
-                                        OstreeRepoTrustedContentBareCommit *out_state,
+                                        OstreeRepoContentBareCommit *out_state,
                                         GOutputStream      **out_stream,
                                         gboolean            *out_have_object,
                                         GCancellable        *cancellable,
@@ -495,7 +590,7 @@ _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
-                                          OstreeRepoTrustedContentBareCommit *state,
+                                          OstreeRepoContentBareCommit *state,
                                           guint32              uid,
                                           guint32              gid,
                                           guint32              mode,

@@ -245,13 +245,13 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
 typedef struct {
   int fd;
   char *temp_filename;
-} OstreeRepoTrustedContentBareCommit;
+} OstreeRepoContentBareCommit;
 
 gboolean
 _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
                                         const char          *checksum,
                                         guint64              content_len,
-                                        OstreeRepoTrustedContentBareCommit *out_state,
+                                        OstreeRepoContentBareCommit *out_state,
                                         GOutputStream      **out_stream,
                                         gboolean            *out_have_object,
                                         GCancellable        *cancellable,
@@ -260,13 +260,35 @@ _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
 gboolean
 _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
                                           const char          *checksum,
-                                          OstreeRepoTrustedContentBareCommit *state,
+                                          OstreeRepoContentBareCommit *state,
                                           guint32              uid,
                                           guint32              gid,
                                           guint32              mode,
                                           GVariant            *xattrs,
                                           GCancellable        *cancellable,
                                           GError             **error);
+
+gboolean
+_ostree_repo_open_untrusted_content_bare (OstreeRepo          *self,
+                                          const char          *expected_checksum,
+                                          guint64              content_len,
+                                          OstreeRepoContentBareCommit *out_state,
+                                          GOutputStream      **out_stream,
+                                          gboolean            *out_have_object,
+                                          GCancellable        *cancellable,
+                                          GError             **error);
+
+gboolean
+_ostree_repo_commit_untrusted_content_bare (OstreeRepo          *self,
+                                            const char          *expected_checksum,
+                                            OstreeRepoContentBareCommit *state,
+                                            guint32              uid,
+                                            guint32              gid,
+                                            guint32              mode,
+                                            GVariant            *xattrs,
+                                            GCancellable        *cancellable,
+                                            GError             **error);
+
 
 gboolean
 _ostree_repo_read_bare_fd (OstreeRepo           *self,
