@@ -72,7 +72,6 @@ struct OstreeFetcher
   GHashTable *output_stream_set; /* set<GOutputStream> */
   
   guint64 total_downloaded;
-  guint total_requests;
 
   /* Queue for libsoup, see bgo#708591 */
   GQueue pending_queue;
@@ -609,8 +608,6 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
     }
 
   g_assert_no_error (local_error);
-
-  self->total_requests++;
 
 out:
   g_object_unref (task);
