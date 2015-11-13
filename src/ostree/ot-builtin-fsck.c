@@ -275,21 +275,41 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       const char *checksum;
       OstreeObjectType objtype;
       OstreeRepoCommitState commitstate = 0;
+      g_autoptr(GVariant) commit = NULL;
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          if (!ostree_repo_load_commit (repo, checksum, NULL, &commitstate, error))
+          if (!ostree_repo_load_commit (repo, checksum, &commit, &commitstate, error))
             goto out;
 
-          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
+          if (opt_add_tombstones)
             {
-              n_partial++;
-
-              if (opt_add_tombstones)
-                g_ptr_array_add (tombstones, g_strdup (checksum));
+              GError *local_error = NULL;
+              const char *parent = ostree_commit_get_parent (commit);
+              if (parent)
+                {
+                  g_autoptr(GVariant) parent_commit = NULL;
+                  if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, parent,
+                                                 &parent_commit, &local_error))
+                    {
+                      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+                        {
+                          g_ptr_array_add (tombstones, g_strdup (checksum));
+                          g_clear_error (&local_error);
+                        }
+                      else
+                        {
+                          g_propagate_error (error, local_error);
+                          goto out;
+                        }
+                    }
+                }
             }
+
+          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
+            n_partial++;
           else
             g_hash_table_insert (commits, g_variant_ref (serialized_key), serialized_key);
         }
@@ -310,18 +330,8 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
       guint i;
       if (tombstones->len)
         {
-          GError *temp_error = NULL;
-          gboolean tombstone_commits = FALSE;
-          GKeyFile *config = ostree_repo_get_config (repo);
-          tombstone_commits = g_key_file_get_boolean (config, "core", "tombstone-commits", &temp_error);
-          /* tombstone_commits is FALSE either if it is not found or it is really set to FALSE in the config file.  */
-          if (!tombstone_commits)
-            {
-              g_clear_error (&temp_error);
-              g_key_file_set_boolean (config, "core", "tombstone-commits", TRUE);
-              if (!ostree_repo_write_config (repo, config, error))
-                goto out;
-            }
+          if (!ot_enable_tombstone_commits (repo, error))
+            goto out;
         }
       for (i = 0; i < tombstones->len; i++)
         {

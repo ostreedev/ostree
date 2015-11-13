@@ -1120,6 +1120,12 @@ sc_copyright_check:
 	halt='out of date copyright in $(texi); update it'		\
 	  $(_sc_search_regexp)
 
+sc_missing_cmd_prefix:
+	@prohibit='^ostree '						\
+	halt='found missing ${CMD_PREFIX}'				\
+	in_vc_files='$tests/.*\.sh$$'					\
+	  $(_sc_search_regexp)
+
 # If tests/help-version exists and seems to be new enough, assume that its
 # use of init.sh and path_prepend_ is correct, and ensure that every other
 # use of init.sh is identical.

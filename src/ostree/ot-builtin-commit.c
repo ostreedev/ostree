@@ -28,6 +28,7 @@
 #include "ostree.h"
 #include "otutil.h"
 #include "ot-tool-util.h"
+#include "parse-datetime.h"
 
 static char *opt_subject;
 static char *opt_body;
@@ -47,6 +48,7 @@ static char **opt_key_ids;
 static char *opt_gpg_homedir;
 static gboolean opt_generate_sizes;
 static gboolean opt_disable_fsync;
+static char *opt_timestamp;
 
 static gboolean
 parse_fsync_cb (const char  *option_name,
@@ -84,6 +86,7 @@ static GOptionEntry options[] = {
   { "generate-sizes", 0, 0, G_OPTION_ARG_NONE, &opt_generate_sizes, "Generate size information along with commit metadata", NULL },
   { "disable-fsync", 0, G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
+  { "timestamp", 0, 0, G_OPTION_ARG_STRING, &opt_timestamp, "Override the timestamp of the commit", "TIMESTAMP" },
   { NULL }
 };
 
@@ -488,9 +491,29 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   if (!skip_commit)
     {
       gboolean update_summary;
-      if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
-                                     OSTREE_REPO_FILE (root),
-                                     &commit_checksum, cancellable, error))
+      guint64 timestamp;
+      if (!opt_timestamp)
+        {
+          GDateTime *now = g_date_time_new_now_utc ();
+          timestamp = g_date_time_to_unix (now);
+          g_date_time_unref (now);
+        }
+      else
+        {
+          struct timespec ts;
+          if (!parse_datetime (&ts, opt_timestamp, NULL))
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Could not parse '%s'", opt_timestamp);
+              goto out;
+            }
+          timestamp = ts.tv_sec;
+        }
+
+      if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, opt_body, metadata,
+                                               OSTREE_REPO_FILE (root),
+                                               timestamp,
+                                               &commit_checksum, cancellable, error))
         goto out;
 
       if (detached_metadata)

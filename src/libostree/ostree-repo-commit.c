@@ -103,6 +103,7 @@ write_file_metadata_to_xattr (int fd,
   if (G_UNLIKELY (res == -1))
     {
       gs_set_error_from_errno (error, errno);
+      g_prefix_error (error, "Unable to set xattr: ");
       return FALSE;
     }
 
@@ -1968,11 +1969,55 @@ ostree_repo_write_commit (OstreeRepo      *self,
                           GError         **error)
 {
   gboolean ret = FALSE;
+  GDateTime *now = NULL;
+
+  now = g_date_time_new_now_utc ();
+  ret = ostree_repo_write_commit_with_time (self,
+                                          parent,
+                                          subject,
+                                          body,
+                                          metadata,
+                                          root,
+                                          GUINT64_TO_BE (g_date_time_to_unix (now)),
+                                          out_commit,
+                                          cancellable,
+                                          error);
+  g_date_time_unref (now);
+  return ret;
+}
+
+/**
+ * ostree_repo_write_commit_with_time:
+ * @self: Repo
+ * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
+ * @subject: Subject
+ * @body: (allow-none): Body
+ * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
+ * @root: The tree to point the commit to
+ * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Write a commit metadata object, referencing @root_contents_checksum
+ * and @root_metadata_checksum.
+ */
+gboolean
+ostree_repo_write_commit_with_time (OstreeRepo      *self,
+                                    const char      *parent,
+                                    const char      *subject,
+                                    const char      *body,
+                                    GVariant        *metadata,
+                                    OstreeRepoFile  *root,
+                                    guint64          time,
+                                    char           **out_commit,
+                                    GCancellable    *cancellable,
+                                    GError         **error)
+{
+  gboolean ret = FALSE;
   g_autofree char *ret_commit = NULL;
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
   g_autofree guchar *commit_csum = NULL;
-  GDateTime *now = NULL;
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
   g_return_val_if_fail (subject != NULL, FALSE);
@@ -1982,13 +2027,12 @@ ostree_repo_write_commit (OstreeRepo      *self,
                                    cancellable, error))
     goto out;
 
-  now = g_date_time_new_now_utc ();
   commit = g_variant_new ("(@a{sv}@ay@a(say)sst@ay@ay)",
                           new_metadata ? new_metadata : create_empty_gvariant_dict (),
                           parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
                           g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0),
                           subject, body ? body : "",
-                          GUINT64_TO_BE (g_date_time_to_unix (now)),
+                          GUINT64_TO_BE (time),
                           ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_contents_checksum (repo_root)),
                           ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_metadata_checksum (repo_root)));
   g_variant_ref_sink (commit);
@@ -2002,8 +2046,6 @@ ostree_repo_write_commit (OstreeRepo      *self,
   ret = TRUE;
   ot_transfer_out_value(out_commit, &ret_commit);
  out:
-  if (now)
-    g_date_time_unref (now);
   return ret;
 }
 

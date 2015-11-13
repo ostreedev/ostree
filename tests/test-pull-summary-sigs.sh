@@ -28,28 +28,28 @@ setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
 mkdir ${test_tmpdir}/ostree-srv/other-files
 cd ${test_tmpdir}/ostree-srv/other-files
 echo 'hello world another object' > hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b other -s "A commit" -m "Another Commit body"
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b other -s "A commit" -m "Another Commit body"
 
 mkdir ${test_tmpdir}/ostree-srv/yet-other-files
 cd ${test_tmpdir}/ostree-srv/yet-other-files
 echo 'hello world yet another object' > yet-another-hello-world
-ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b yet-another -s "A commit" -m "Another Commit body"
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit ${COMMIT_SIGN} -b yet-another -s "A commit" -m "Another Commit body"
 
-ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 
 prev_dir=`pwd`
 cd ${test_tmpdir}
-ostree --repo=repo init --mode=archive-z2
-ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
-ostree --repo=repo pull --mirror origin
+${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=repo pull --mirror origin
 assert_has_file repo/summary
-ostree --repo=repo checkout -U main main-copy
+${CMD_PREFIX} ostree --repo=repo checkout -U main main-copy
 assert_file_has_content main-copy/baz/cow "moo"
-ostree --repo=repo checkout -U other other-copy
+${CMD_PREFIX} ostree --repo=repo checkout -U other other-copy
 assert_file_has_content other-copy/hello-world "hello world another object"
-ostree --repo=repo checkout -U yet-another yet-another-copy
+${CMD_PREFIX} ostree --repo=repo checkout -U yet-another yet-another-copy
 assert_file_has_content yet-another-copy/yet-another-hello-world "hello world yet another object"
-ostree --repo=repo fsck
+${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull mirror summary"
 
 if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then

@@ -27,11 +27,11 @@ setup_fake_remote_repo1 "archive-z2"
 cd ${test_tmpdir}
 mkdir metalink-data
 cd metalink-data
-ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/metalink-httpd-port
+${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/metalink-httpd-port
 metalink_port=$(cat ${test_tmpdir}/metalink-httpd-port)
 echo "http://127.0.0.1:${metalink_port}" > ${test_tmpdir}/metalink-httpd-address
 
-ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u
 
 summary_path=${test_tmpdir}/ostree-srv/gnomerepo/summary
 
