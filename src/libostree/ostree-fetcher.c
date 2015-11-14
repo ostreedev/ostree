@@ -1055,10 +1055,6 @@ fetch_uri_sync_on_complete (GObject        *object,
   data->done = TRUE;
 }
 
-/* Synchronously request a URI - will iterate the thread-default main
- * context for historical reasons.  If you don't want that, push a
- * temporary one.
- */
 gboolean
 _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
                                        SoupURI        *uri,
@@ -1082,7 +1078,8 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  mainctx = g_main_context_ref_thread_default ();
+  mainctx = g_main_context_new ();
+  g_main_context_push_thread_default (mainctx);
 
   data.done = FALSE;
   data.error = error;
@@ -1127,6 +1124,8 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   ret = TRUE;
   *out_contents = g_memory_output_stream_steal_as_bytes (buf);
  out:
+  if (mainctx)
+    g_main_context_pop_thread_default (mainctx);
   g_clear_object (&(data.result_stream));
   return ret;
 }
