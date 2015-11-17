@@ -501,6 +501,8 @@ scan_dirtree_object (OtPullData   *pull_data,
     {
       g_autoptr(GVariant) tree_csum = NULL;
       g_autoptr(GVariant) meta_csum = NULL;
+      const guchar *tree_csum_bytes;
+      const guchar *meta_csum_bytes;
 
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
@@ -511,9 +513,17 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (subdir_target && strcmp (subdir_target, dirname) != 0)
         continue;
 
-      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_csum),
+      tree_csum_bytes = ostree_checksum_bytes_peek_validate (tree_csum, error);
+      if (tree_csum_bytes == NULL)
+        goto out;
+
+      meta_csum_bytes = ostree_checksum_bytes_peek_validate (meta_csum, error);
+      if (meta_csum_bytes == NULL)
+        goto out;
+
+      queue_scan_one_metadata_object_c (pull_data, tree_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
-      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (meta_csum),
+      queue_scan_one_metadata_object_c (pull_data, meta_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
     }
 
@@ -1002,9 +1012,9 @@ scan_commit_object (OtPullData         *pull_data,
                     GError            **error)
 {
   gboolean ret = FALSE;
-  gboolean have_parent;
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) parent_csum = NULL;
+  const guchar *parent_csum_bytes = NULL;
   gpointer depthp;
   gint depth;
 
@@ -1061,19 +1071,25 @@ scan_commit_object (OtPullData         *pull_data,
 
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   g_variant_get_child (commit, 1, "@ay", &parent_csum);
-  have_parent = g_variant_n_children (parent_csum) > 0;
-  if (have_parent && pull_data->maxdepth == -1)
+  if (g_variant_n_children (parent_csum) > 0)
     {
-      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (parent_csum),
+      parent_csum_bytes = ostree_checksum_bytes_peek_validate (parent_csum, error);
+      if (parent_csum_bytes == NULL)
+        goto out;
+    }
+
+  if (parent_csum_bytes != NULL && pull_data->maxdepth == -1)
+    {
+      queue_scan_one_metadata_object_c (pull_data, parent_csum_bytes,
                                         OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
     }
-  else if (have_parent && depth > 0)
+  else if (parent_csum_bytes != NULL && depth > 0)
     {
       char parent_checksum[65];
       gpointer parent_depthp;
       int parent_depth;
 
-      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (parent_csum), parent_checksum);
+      ostree_checksum_inplace_from_bytes (parent_csum_bytes, parent_checksum);
   
       if (g_hash_table_lookup_extended (pull_data->commit_to_depth, parent_checksum,
                                         NULL, &parent_depthp))
@@ -1089,7 +1105,7 @@ scan_commit_object (OtPullData         *pull_data,
         {
           g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
                                GINT_TO_POINTER (parent_depth));
-          queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (parent_csum),
+          queue_scan_one_metadata_object_c (pull_data, parent_csum_bytes,
                                             OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
         }
     }
@@ -1098,13 +1114,24 @@ scan_commit_object (OtPullData         *pull_data,
     {
       g_autoptr(GVariant) tree_contents_csum = NULL;
       g_autoptr(GVariant) tree_meta_csum = NULL;
+      const guchar *tree_contents_csum_bytes;
+      const guchar *tree_meta_csum_bytes;
 
       g_variant_get_child (commit, 6, "@ay", &tree_contents_csum);
       g_variant_get_child (commit, 7, "@ay", &tree_meta_csum);
 
-      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_contents_csum),
+      tree_contents_csum_bytes = ostree_checksum_bytes_peek_validate (tree_contents_csum, error);
+      if (tree_contents_csum_bytes == NULL)
+        goto out;
+
+      tree_meta_csum_bytes = ostree_checksum_bytes_peek_validate (tree_meta_csum, error);
+      if (tree_meta_csum_bytes == NULL)
+        goto out;
+
+      queue_scan_one_metadata_object_c (pull_data, tree_contents_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
-      queue_scan_one_metadata_object_c (pull_data, ostree_checksum_bytes_peek (tree_meta_csum),
+
+      queue_scan_one_metadata_object_c (pull_data, tree_meta_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
     }
 
