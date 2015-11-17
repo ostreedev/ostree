@@ -869,9 +869,14 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   c = g_variant_n_children (files_variant);
   if (n < c)
     {
+      const guchar *csum_bytes;
+
       g_variant_get_child (files_variant, n, "(&s@ay)", &name, &content_csum_v);
-      ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (content_csum_v),
-                                          tmp_checksum);
+      csum_bytes = ostree_checksum_bytes_peek_validate (content_csum_v, error);
+      if (csum_bytes == NULL)
+        goto out;
+
+      ostree_checksum_inplace_from_bytes (csum_bytes, tmp_checksum);
 
       if (!ostree_repo_load_file (self->repo, tmp_checksum, NULL, &ret_info, NULL,
                                   cancellable, error))
@@ -885,10 +890,15 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
 
       if (n < c)
         {
+          const guchar *csum_bytes;
+
           g_variant_get_child (dirs_variant, n, "(&s@ay@ay)",
                                &name, NULL, &meta_csum_v);
-          ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (meta_csum_v),
-                                              tmp_checksum);
+          csum_bytes = ostree_checksum_bytes_peek_validate (meta_csum_v, error);
+          if (csum_bytes == NULL)
+            goto out;
+
+          ostree_checksum_inplace_from_bytes (csum_bytes, tmp_checksum);
 
           if (!query_child_info_dir (self->repo, tmp_checksum,
                                      matcher, flags, &ret_info,

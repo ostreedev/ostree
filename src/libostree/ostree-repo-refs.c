@@ -633,10 +633,15 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
 
           if (ref_name != NULL)
             {
-              g_variant_get_child (child, 1, "(t@aya{sv})", NULL, &csum_v, NULL);
+              const guchar *csum_bytes;
 
-              ostree_checksum_inplace_from_bytes (ostree_checksum_bytes_peek (csum_v),
-                                                  tmp_checksum);
+              g_variant_get_child (child, 1, "(t@aya{sv})", NULL, &csum_v, NULL);
+              csum_bytes = ostree_checksum_bytes_peek_validate (csum_v, error);
+              if (csum_bytes == NULL)
+                goto out;
+
+              ostree_checksum_inplace_from_bytes (csum_bytes, tmp_checksum);
+
               g_hash_table_insert (ret_all_refs,
                                    g_strdup (ref_name),
                                    g_strdup (tmp_checksum));
