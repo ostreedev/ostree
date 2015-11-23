@@ -225,8 +225,7 @@ do_get (OtTrivialHttpd    *self,
       
       if (msg->method == SOUP_METHOD_GET)
         {
-          GMappedFile *mapping;
-          SoupBuffer *buffer;
+          g_autoptr(GMappedFile) mapping = NULL;
           gsize buffer_length, file_size;
           SoupRange *ranges;
           int ranges_length;
@@ -270,12 +269,17 @@ do_get (OtTrivialHttpd    *self,
                 }
               soup_message_headers_free_ranges (msg->request_headers, ranges);
             }
-          buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
-                                               buffer_length,
-                                               mapping, (GDestroyNotify)g_mapped_file_unref);
-          if (buffer->length > 0)
-            soup_message_body_append_buffer (msg->response_body, buffer);
-          soup_buffer_free (buffer);
+          if (buffer_length > 0)
+            {
+              SoupBuffer *buffer;
+
+              buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
+                                                   buffer_length,
+                                                   g_mapped_file_ref (mapping),
+                                                   (GDestroyNotify)g_mapped_file_unref);
+              soup_message_body_append_buffer (msg->response_body, buffer);
+              soup_buffer_free (buffer);
+            }
         }
       else /* msg->method == SOUP_METHOD_HEAD */
         {
