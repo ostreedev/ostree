@@ -273,7 +273,8 @@ do_get (OtTrivialHttpd    *self,
           buffer = soup_buffer_new_with_owner (g_mapped_file_get_contents (mapping),
                                                buffer_length,
                                                mapping, (GDestroyNotify)g_mapped_file_unref);
-          soup_message_body_append_buffer (msg->response_body, buffer);
+          if (buffer->length > 0)
+            soup_message_body_append_buffer (msg->response_body, buffer);
           soup_buffer_free (buffer);
         }
       else /* msg->method == SOUP_METHOD_HEAD */

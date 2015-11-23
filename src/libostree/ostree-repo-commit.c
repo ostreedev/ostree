@@ -2140,30 +2140,28 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
       normalized_size = g_variant_get_size (normalized);
     }
 
-  if (normalized_size == 0)
-    {
-      GError *local_error = NULL;
-
-      (void) g_file_delete (metadata_path, cancellable, &local_error);
-
-      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&local_error);
-        }
-      else if (local_error != NULL)
-        {
-          g_propagate_error (error, local_error);
-          g_prefix_error (error, "Unable to delete detached metadata: ");
-          goto out;
-        }
-    }
-  else
+  if (normalized_size > 0)
     {
       if (!g_file_replace_contents (metadata_path,
                                     g_variant_get_data (normalized),
                                     g_variant_get_size (normalized),
                                     NULL, FALSE, 0, NULL,
                                     cancellable, error))
+        {
+          g_prefix_error (error, "Unable to write detached metadata: ");
+          goto out;
+        }
+    }
+  else
+    {
+      g_autoptr(GFileOutputStream) output_stream = NULL;
+
+      /* Don't write to the stream, leave the file empty. */
+      output_stream = g_file_replace (metadata_path,
+                                      NULL, FALSE,
+                                      G_FILE_CREATE_NONE,
+                                      cancellable, error);
+      if (output_stream == NULL)
         {
           g_prefix_error (error, "Unable to write detached metadata: ");
           goto out;
