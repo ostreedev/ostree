@@ -85,6 +85,10 @@ ostree_SOURCES += \
         src/ostree/ot-remote-builtin-refs.c \
 	$(NULL)
 
+src/ostree/parse-datetime.c: src/ostree/parse-datetime.y
+	$(YACC) $< -o $@
+
+
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree \
 	$(NULL)
 ostree_bin_shared_ldadd = libglnx.la libbsdiff.la libotutil.la libostree-kernel-args.la libostree-1.la
