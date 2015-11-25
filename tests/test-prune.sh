@@ -93,4 +93,16 @@ ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="2015-10-29 12:43:29 
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
 
+
+${CMD_PREFIX} ostree prune --repo=repo --refs-only --depth=0 -v
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 25 1985"
+${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 21 2015"
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^3$"
+${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago"
+find repo/objects -name '*.commit' | wc -l > commitcount
+assert_file_has_content commitcount "^1$"
+
 echo "ok prune"
