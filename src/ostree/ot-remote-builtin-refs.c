@@ -63,7 +63,7 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
 
       for (iter = ordered_keys; iter; iter = iter->next)
         {
-          g_print ("%s\n", (const char *) iter->data);
+          g_print ("%s:%s\n", remote_name, (const char *) iter->data);
         }
     }
 
