@@ -1978,7 +1978,7 @@ ostree_repo_write_commit (OstreeRepo      *self,
                                           body,
                                           metadata,
                                           root,
-                                          GUINT64_TO_BE (g_date_time_to_unix (now)),
+                                          g_date_time_to_unix (now),
                                           out_commit,
                                           cancellable,
                                           error);
