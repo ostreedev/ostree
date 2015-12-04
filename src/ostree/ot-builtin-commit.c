@@ -497,6 +497,11 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
           GDateTime *now = g_date_time_new_now_utc ();
           timestamp = g_date_time_to_unix (now);
           g_date_time_unref (now);
+
+          if (!ostree_repo_write_commit (repo, parent, opt_subject, opt_body, metadata,
+                                         OSTREE_REPO_FILE (root),
+                                         &commit_checksum, cancellable, error))
+            goto out;
         }
       else
         {
@@ -508,13 +513,13 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
               goto out;
             }
           timestamp = ts.tv_sec;
-        }
 
-      if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, opt_body, metadata,
-                                               OSTREE_REPO_FILE (root),
-                                               timestamp,
-                                               &commit_checksum, cancellable, error))
-        goto out;
+          if (!ostree_repo_write_commit_with_time (repo, parent, opt_subject, opt_body, metadata,
+                                                   OSTREE_REPO_FILE (root),
+                                                   timestamp,
+                                                   &commit_checksum, cancellable, error))
+            goto out;
+        }
 
       if (detached_metadata)
         {

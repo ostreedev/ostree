@@ -24,6 +24,8 @@
 
 #include "config.h"
 
+#include <err.h>
+
 #include "ot-dump.h"
 #include "otutil.h"
 #include "ot-admin-functions.h"
@@ -47,14 +49,19 @@ ot_dump_variant (GVariant *variant)
 }
 
 static gchar *
-format_timestamp (guint64 timestamp)
+format_timestamp (guint64  timestamp,
+                  GError **error)
 {
   GDateTime *dt;
   gchar *str;
 
   dt = g_date_time_new_from_unix_utc (timestamp);
   if (dt == NULL)
-    return NULL;
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                   "Invalid timestamp: %" G_GUINT64_FORMAT, timestamp);
+      return NULL;
+    }
 
   str = g_date_time_format (dt, "%Y-%m-%d %H:%M:%S +0000");
   g_date_time_unref (dt);
@@ -94,15 +101,17 @@ dump_commit (GVariant            *variant,
   guint64 timestamp;
   g_autofree char *str = NULL;
   g_autofree char *version = NULL;
+  g_autoptr(GError) local_error = NULL;
 
   /* See OSTREE_COMMIT_GVARIANT_FORMAT */
   g_variant_get (variant, "(a{sv}aya(say)&s&stayay)", NULL, NULL, NULL,
                  &subject, &body, &timestamp, NULL, NULL);
 
   timestamp = GUINT64_FROM_BE (timestamp);
-  str = format_timestamp (timestamp);
-  if (str)
-    g_print ("Date:  %s\n", str);
+  str = format_timestamp (timestamp, &local_error);
+  if (!str)
+    errx (1, "Failed to read commit: %s", local_error->message);
+  g_print ("Date:  %s\n", str);
 
   if ((version = ot_admin_checksum_version (variant)))
     {
