@@ -89,7 +89,7 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GError            **error)
 {
   gpgme_ctx_t gpg_ctx = NULL;
-  gpgme_error_t gpg_error = NULL;
+  gpgme_error_t gpg_error = 0;
   gpgme_data_t data_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
   g_autofree char *tmp_dir = NULL;
