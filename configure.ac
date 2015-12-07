@@ -42,6 +42,9 @@ AM_CONDITIONAL(BUILDOPT_INSTALL_TESTS, test x$enable_installed_tests = xyes)
 
 AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from glibc])])
 
+AC_CHECK_PROGS(YACC, 'bison -y', :)
+AS_IF([test "$YACC" = :], [AC_MSG_ERROR([bison not found but required])])
+
 PKG_PROG_PKG_CONFIG
 
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
