@@ -514,6 +514,7 @@ ostree_repo_finalize (GObject *object)
   if (self->commit_stagedir_fd != -1)
     (void) close (self->commit_stagedir_fd);
   g_free (self->commit_stagedir_name);
+  glnx_release_lock_file (&self->commit_stagedir_lock);
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
@@ -674,6 +675,7 @@ static void
 ostree_repo_init (OstreeRepo *self)
 {
   static gsize gpgme_initialized;
+  GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
 
   if (g_once_init_enter (&gpgme_initialized))
     {
@@ -694,6 +696,7 @@ ostree_repo_init (OstreeRepo *self)
   self->commit_stagedir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
+  self->commit_stagedir_lock = empty_lockfile;
 }
 
 /**

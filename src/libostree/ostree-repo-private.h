@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ostree-repo.h"
+#include "libglnx.h"
 
 #ifdef HAVE_LIBSOUP
 #include "ostree-fetcher.h"
@@ -43,6 +44,7 @@ struct OstreeRepo {
   char *boot_id;
   int commit_stagedir_fd;
   char *commit_stagedir_name;
+  GLnxLockFile commit_stagedir_lock;
 
   GFile *repodir;
   int    repo_dir_fd;

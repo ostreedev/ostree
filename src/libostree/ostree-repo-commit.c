@@ -1161,47 +1161,28 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gboolean ret_transaction_resume = FALSE;
-  struct stat stbuf;
+  g_autofree char *stagedir_boot_id_prefix = NULL;
+  g_autofree char *stagedir_name = NULL;
+  glnx_fd_close int stagedir_fd = -1;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
-
-  /* We used to create a `transaction` symbolic link, but it's now
-   * obsoleted by the per-commit .commitpartial files.  We no longer
-   * create it, but let's still read it if it exists, as well as
-   * unlink it when we're done.
-   */
-  if (fstatat (self->repo_dir_fd, "transaction", &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
-    {
-      if (errno == ENOENT)
-        ret_transaction_resume = FALSE;
-      else
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-    }
-  else 
-    ret_transaction_resume = TRUE;
 
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
 
-  self->commit_stagedir_name = g_strconcat ("tmpobjects-", self->boot_id, NULL);
-  if (mkdirat (self->tmp_dir_fd, self->commit_stagedir_name, 0777) == -1)
-    {
-      int errsv = errno;
-      if (G_UNLIKELY (errsv != EEXIST))
-        {
-          gs_set_error_from_errno (error, errsv);
-          goto out;
-        }
-    }
+  stagedir_boot_id_prefix = g_strconcat ("staging-", self->boot_id, "-", NULL);
 
-  if (!gs_opendirat (self->tmp_dir_fd, self->commit_stagedir_name, FALSE,
-                     &self->commit_stagedir_fd, error))
+  if (!_ostree_repo_allocate_tmpdir (self->tmp_dir_fd,
+                                     stagedir_boot_id_prefix,
+                                     &self->commit_stagedir_name,
+                                     &self->commit_stagedir_fd,
+                                     &self->commit_stagedir_lock,
+                                     &ret_transaction_resume,
+                                     cancellable, error))
     goto out;
-  
+
   ret = TRUE;
   if (out_transaction_resume)
     *out_transaction_resume = ret_transaction_resume;
@@ -1485,6 +1466,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
     {
       (void) close (self->commit_stagedir_fd);
       self->commit_stagedir_fd = -1;
+
+      glnx_release_lock_file (&self->commit_stagedir_lock);
     }
 
   g_clear_pointer (&self->commit_stagedir_name, g_free);
@@ -1519,11 +1502,13 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
     g_hash_table_remove_all (self->loose_object_devino_hash);
 
   g_clear_pointer (&self->txn_refs, g_hash_table_destroy);
-  
+
   if (self->commit_stagedir_fd != -1)
     {
       (void) close (self->commit_stagedir_fd);
       self->commit_stagedir_fd = -1;
+
+      glnx_release_lock_file (&self->commit_stagedir_lock);
     }
   g_clear_pointer (&self->commit_stagedir_name, g_free);
 
