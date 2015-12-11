@@ -419,7 +419,9 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   if (tls_permissive)
     fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
 
-  fetcher = _ostree_fetcher_new (self->tmp_dir_fd, fetcher_flags);
+  fetcher = _ostree_fetcher_new (self->tmp_dir_fd, fetcher_flags, NULL, error);
+  if (fetcher == NULL)
+    goto out;
 
   {
     g_autofree char *tls_client_cert_path = NULL;

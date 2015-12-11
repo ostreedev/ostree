@@ -646,6 +646,7 @@ content_fetch_on_complete (GObject        *object,
                            GAsyncResult   *result,
                            gpointer        user_data) 
 {
+  OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   GError *local_error = NULL;
@@ -660,7 +661,7 @@ content_fetch_on_complete (GObject        *object,
   const char *checksum;
   OstreeObjectType objtype;
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
@@ -680,7 +681,7 @@ content_fetch_on_complete (GObject        *object,
       if (!have_object)
         {
           if (!_ostree_repo_commit_loose_final (pull_data->repo, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                                pull_data->tmpdir_dfd, temp_path,
+                                                _ostree_fetcher_get_dfd (fetcher), temp_path,
                                                 cancellable, error))
             goto out;
         }
@@ -689,13 +690,14 @@ content_fetch_on_complete (GObject        *object,
   else
     {
       /* Non-mirroring path */
-      
-      if (!ostree_content_file_parse_at (TRUE, pull_data->tmpdir_dfd, temp_path, FALSE,
+
+      if (!ostree_content_file_parse_at (TRUE, _ostree_fetcher_get_dfd (fetcher),
+                                         temp_path, FALSE,
                                          &file_in, &file_info, &xattrs,
                                          cancellable, error))
         {
           /* If it appears corrupted, delete it */
-          (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
+          (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
           goto out;
         }
 
@@ -703,8 +705,8 @@ content_fetch_on_complete (GObject        *object,
        * a reference to the fd.  If we fail to write later, then
        * the temp space will be cleaned up.
        */
-      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
-      
+      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
+
       if (!ostree_raw_file_to_content_stream (file_in, file_info, xattrs,
                                               &object_input, &length,
                                               cancellable, error))
@@ -772,6 +774,7 @@ meta_fetch_on_complete (GObject           *object,
                         GAsyncResult      *result,
                         gpointer           user_data)
 {
+  OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchObjectData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   g_autoptr(GVariant) metadata = NULL;
@@ -786,7 +789,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", ostree_object_to_string (checksum, objtype),
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -823,7 +826,7 @@ meta_fetch_on_complete (GObject           *object,
   if (objtype == OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT)
     goto out;
 
-  fd = openat (pull_data->tmpdir_dfd, temp_path, O_RDONLY | O_CLOEXEC);
+  fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     {
       gs_set_error_from_errno (error, errno);
@@ -837,7 +840,7 @@ meta_fetch_on_complete (GObject           *object,
         goto out;
 
       /* Now delete it, see comment in corresponding content fetch path */
-      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
+      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
 
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
                                                        pull_data->cancellable, error))
@@ -852,7 +855,7 @@ meta_fetch_on_complete (GObject           *object,
                                    FALSE, &metadata, error))
         goto out;
 
-      (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0);
+      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
 
       /* Write the commitpartial file now while we're still fetching data */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -926,6 +929,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
                                     GAsyncResult      *result,
                                     gpointer           user_data)
 {
+  OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
   g_autoptr(GVariant) metadata = NULL;
@@ -939,11 +943,11 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish ((OstreeFetcher*)object, result, error);
+  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
-  fd = openat (pull_data->tmpdir_dfd, temp_path, O_RDONLY | O_CLOEXEC);
+  fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     {
       gs_set_error_from_errno (error, errno);
@@ -982,7 +986,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
      * or error, the file will be gone.  This is particularly
      * important if say we hit e.g. ENOSPC.
      */
-    (void) unlinkat (pull_data->tmpdir_dfd, temp_path, 0); 
+    (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
 
     _ostree_static_delta_part_execute_async (pull_data->repo,
                                              fetch_data->objects,

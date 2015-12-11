@@ -30,6 +30,7 @@
 #include "ostree-tls-cert-interaction.h"
 #endif
 #include "ostree.h"
+#include "ostree-repo-private.h"
 #include "otutil.h"
 
 typedef enum {
@@ -63,6 +64,9 @@ struct OstreeFetcher
   GObject parent_instance;
 
   int tmpdir_dfd;
+  char *tmpdir_name;
+  GLnxLockFile tmpdir_lock;
+  int base_tmpdir_dfd;
 
   GTlsCertificate *client_cert;
 
@@ -114,6 +118,17 @@ _ostree_fetcher_finalize (GObject *object)
 
   self = OSTREE_FETCHER (object);
 
+  if (self->tmpdir_dfd != -1)
+    close (self->tmpdir_dfd);
+
+  /* Note: We don't remove the tmpdir here, because that would cause
+     us to not reuse it on resume. This happens because we use two
+     fetchers for each pull, so finalizing the first one would remove
+     all the files to be resumed from the previous second one */
+
+  g_free (self->tmpdir_name);
+  glnx_release_lock_file (&self->tmpdir_lock);
+
   g_clear_object (&self->session);
   g_clear_object (&self->client_cert);
 
@@ -140,6 +155,7 @@ _ostree_fetcher_init (OstreeFetcher *self)
 {
   gint max_conns;
   const char *http_proxy;
+  GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
 
   g_queue_init (&self->pending_queue);
   self->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
@@ -174,18 +190,33 @@ _ostree_fetcher_init (OstreeFetcher *self)
   self->output_stream_set = g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify)g_object_unref);
 
   self->outstanding = g_hash_table_new_full (NULL, NULL, NULL, NULL);
+
+  self->tmpdir_dfd = -1;
+  self->tmpdir_lock = empty_lockfile;
+
 }
 
 OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
-                    OstreeFetcherConfigFlags  flags)
+                     OstreeFetcherConfigFlags flags,
+                     GCancellable            *cancellable,
+                     GError                 **error)
 {
   OstreeFetcher *self = (OstreeFetcher*)g_object_new (OSTREE_TYPE_FETCHER, NULL);
 
-  self->tmpdir_dfd = tmpdir_dfd;
+  if (!_ostree_repo_allocate_tmpdir (tmpdir_dfd,
+                                     "fetcher-",
+                                     &self->tmpdir_name,
+                                     &self->tmpdir_dfd,
+                                     &self->tmpdir_lock,
+                                     NULL,
+                                     cancellable, error))
+    return NULL;
+
+  self->base_tmpdir_dfd = tmpdir_dfd;
   if ((flags & OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE) > 0)
     g_object_set ((GObject*)self->session, "ssl-strict", FALSE, NULL);
- 
+
   return self;
 }
 
