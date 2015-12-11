@@ -91,6 +91,16 @@ struct OstreeRepo {
 };
 
 gboolean
+_ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
+                              const char   *tmpdir_prefix,
+                              char        **tmpdir_name_out,
+                              int          *tmpdir_fd_out,
+                              GLnxLockFile *file_lock_out,
+                              gboolean *    reusing_dir_out,
+                              GCancellable *cancellable,
+                              GError      **error);
+
+gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
                                      GCancellable   *cancellable,
