@@ -1202,7 +1202,9 @@ rename_pending_loose_objects (OstreeRepo        *self,
   while (TRUE)
     {
       struct dirent *dent;
+      gboolean renamed_some_object = FALSE;
       g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
+      char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
       if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
@@ -1220,20 +1222,19 @@ rename_pending_loose_objects (OstreeRepo        *self,
                                         &child_dfd_iter, error))
         return FALSE;
 
+      loose_objpath[0] = dent->d_name[0];
+      loose_objpath[1] = dent->d_name[1];
+      loose_objpath[2] = '/';
+
       /* Iterate over inner checksum dir */
       while (TRUE)
         {
           struct dirent *child_dent;
-          char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
           if (!glnx_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
             return FALSE;
           if (child_dent == NULL)
             break;
-
-          loose_objpath[0] = dent->d_name[0];
-          loose_objpath[1] = dent->d_name[1];
-          loose_objpath[2] = '/';
 
           g_strlcpy (loose_objpath + 3, child_dent->d_name, sizeof (loose_objpath)-3);
 
@@ -1244,8 +1245,33 @@ rename_pending_loose_objects (OstreeRepo        *self,
           if (G_UNLIKELY (renameat (child_dfd_iter.fd, loose_objpath + 3,
                                     self->objects_dir_fd, loose_objpath) < 0))
             return glnx_throw_errno (error);
+
+          renamed_some_object = TRUE;
+        }
+
+      if (renamed_some_object)
+        {
+          /* Ensure that in the case of a power cut all the directory metadata that
+             we want has reached the disk. In particular, we want this before we
+             update the refs to point to these objects. */
+          glnx_fd_close int target_dir_fd = -1;
+
+          loose_objpath[2] = 0;
+
+          if (!glnx_opendirat (self->objects_dir_fd,
+                               loose_objpath, FALSE,
+                               &target_dir_fd,
+                               error))
+            return FALSE;
+
+          if (fsync (target_dir_fd) == -1)
+            return glnx_throw_errno_prefix (error, "fsync");
         }
     }
+
+  /* In case we created any loose object subdirs, make sure they are on disk */
+  if (fsync (self->objects_dir_fd) == -1)
+    return glnx_throw_errno_prefix (error, "fsync");
 
   if (!glnx_shutil_rm_rf_at (self->tmp_dir_fd, self->commit_stagedir_name,
                              cancellable, error))
