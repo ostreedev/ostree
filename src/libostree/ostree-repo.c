@@ -444,6 +444,7 @@ ostree_repo_finalize (GObject *object)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
   g_free (self->remotes_config_dir);
+  glnx_release_lock_file (&self->transaction_repo_lock);
 
   if (self->loose_object_devino_hash)
     g_hash_table_destroy (self->loose_object_devino_hash);
@@ -619,6 +620,7 @@ ostree_repo_init (OstreeRepo *self)
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
   self->commit_stagedir_lock = empty_lockfile;
+  self->transaction_repo_lock = empty_lockfile;
 }
 
 /**
@@ -4778,4 +4780,40 @@ _ostree_repo_memory_cache_ref_destroy (OstreeRepoMemoryCacheRef *state)
     g_clear_pointer (&repo->dirmeta_cache, (GDestroyNotify) g_hash_table_unref);
   g_mutex_unlock (lock);
   g_object_unref (repo);
+}
+
+gboolean
+_ostree_repo_lock_shared (OstreeRepo        *self,
+                          gboolean           non_blocking,
+                          GLnxLockFile      *lockfile,
+                          GError           **error)
+{
+  int lock_op = LOCK_SH;
+
+  if (non_blocking)
+    lock_op |= LOCK_NB;
+
+  if (!glnx_make_lock_file (self->repo_dir_fd, ".lock", lock_op,
+                            lockfile, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+gboolean
+_ostree_repo_lock_exclusive (OstreeRepo        *self,
+                             gboolean           non_blocking,
+                             GLnxLockFile      *lockfile,
+                             GError           **error)
+{
+  int lock_op = LOCK_EX;
+
+  if (non_blocking)
+    lock_op |= LOCK_NB;
+
+  if (!glnx_make_lock_file (self->repo_dir_fd, ".lock", lock_op,
+                            lockfile, error))
+    return FALSE;
+
+  return TRUE;
 }

@@ -1108,6 +1108,10 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
+  if (!_ostree_repo_lock_shared (self, FALSE,
+                                 &self->transaction_repo_lock, error))
+    return FALSE;
+
   memset (&self->txn_stats, 0, sizeof (OstreeRepoTransactionStats));
 
   self->in_transaction = TRUE;
@@ -1143,9 +1147,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
       struct dirent *dent;
       gboolean renamed_some_object = FALSE;
       g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
-      struct stat stbuf;
       char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
-      int res;
 
       if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         return FALSE;
@@ -1472,6 +1474,8 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   if (!ot_ensure_unlinked_at (self->repo_dir_fd, "transaction", 0))
     return FALSE;
 
+  glnx_release_lock_file (&self->transaction_repo_lock);
+
   if (out_stats)
     *out_stats = self->txn_stats;
 
@@ -1503,6 +1507,8 @@ ostree_repo_abort_transaction (OstreeRepo     *self,
       glnx_release_lock_file (&self->commit_stagedir_lock);
     }
   g_clear_pointer (&self->commit_stagedir_name, g_free);
+
+  glnx_release_lock_file (&self->transaction_repo_lock);
 
   self->in_transaction = FALSE;
 

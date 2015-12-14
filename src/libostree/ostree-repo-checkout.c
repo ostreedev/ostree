@@ -838,15 +838,21 @@ checkout_tree_at (OstreeRepo                        *self,
                                    cancellable, error);
     }
 
+  /* Load the checksums */
+  g_assert_cmpint (g_file_info_get_file_type (source_info), ==, G_FILE_TYPE_DIRECTORY);
+  const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
+  const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
+
   /* Cache any directory metadata we read during this operation;
    * see commit b7afe91e21143d7abb0adde440683a52712aa246
    */
   g_auto(OstreeRepoMemoryCacheRef) memcache_ref;
   _ostree_repo_memory_cache_ref_init (&memcache_ref, self);
 
-  g_assert_cmpint (g_file_info_get_file_type (source_info), ==, G_FILE_TYPE_DIRECTORY);
-  const char *dirtree_checksum = ostree_repo_file_tree_get_contents_checksum (source);
-  const char *dirmeta_checksum = ostree_repo_file_tree_get_metadata_checksum (source);
+ /* And grab the repo checkout lock */
+  g_auto(GLnxLockFile) repo_lock = GLNX_LOCK_FILE_INIT;
+  if (!_ostree_repo_lock_shared (self, FALSE, &repo_lock, error))
+    return FALSE;
   return checkout_tree_at_recurse (self, options, &state, destination_parent_fd,
                                    destination_name,
                                    dirtree_checksum, dirmeta_checksum,
@@ -1078,6 +1084,10 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
                          GError           **error)
 {
   g_autoptr(GHashTable) to_clean_dirs = NULL;
+  g_auto(GLnxLockFile) repo_lock = GLNX_LOCK_FILE_INIT;
+
+  if (!_ostree_repo_lock_exclusive (self, FALSE, &repo_lock, error))
+    return FALSE;
 
   g_mutex_lock (&self->cache_lock);
   to_clean_dirs = self->updated_uncompressed_dirs;
