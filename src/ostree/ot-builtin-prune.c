@@ -29,6 +29,7 @@
 #include "parse-datetime.h"
 
 static gboolean opt_no_prune;
+static gboolean opt_static_deltas_only;
 static gint opt_depth = -1;
 static gboolean opt_refs_only;
 static char *opt_delete_commit;
@@ -40,6 +41,7 @@ static GOptionEntry options[] = {
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Only traverse DEPTH parents for each commit (default: -1=infinite)", "DEPTH" },
   { "delete-commit", 0, 0, G_OPTION_ARG_STRING, &opt_delete_commit, "Specify a commit to delete", "COMMIT" },
   { "keep-younger-than", 0, 0, G_OPTION_ARG_STRING, &opt_keep_younger_than, "Prune all commits older than the specified date", "DATE" },
+  { "static-deltas-only", 0, 0, G_OPTION_ARG_NONE, &opt_static_deltas_only, "Change the behavior of delete-commit and keep-younger-than to prune only static deltas" },
   { NULL }
 };
 
@@ -124,8 +126,16 @@ prune_commits_keep_younger_than_date (OstreeRepo *repo, const char *date, GCance
       commit_timestamp = ostree_commit_get_timestamp (commit);
       if (commit_timestamp < ts.tv_sec)
         {
-          if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable, error))
-            goto out;
+          if (opt_static_deltas_only)
+            {
+              if(!ostree_repo_prune_static_deltas (repo, checksum, cancellable, error))
+                goto out;
+            }
+          else
+            {
+              if (!ostree_repo_delete_object (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum, cancellable, error))
+                goto out;
+            }
         }
     }
 
@@ -162,8 +172,13 @@ ostree_builtin_prune (int argc, char **argv, GCancellable *cancellable, GError *
           ot_util_usage_error (context, "Cannot specify both --delete-commit and --no-prune", error);
           goto out;
         }
-      if (!delete_commit (repo, opt_delete_commit, cancellable, error))
-        goto out;
+        if (opt_static_deltas_only)
+          {
+            if(!ostree_repo_prune_static_deltas (repo, opt_delete_commit, cancellable, error))
+              goto out;
+          }
+        else if (!delete_commit (repo, opt_delete_commit, cancellable, error))
+          goto out;
     }
   if (opt_keep_younger_than)
     {
