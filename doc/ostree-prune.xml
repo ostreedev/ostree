@@ -104,6 +104,15 @@ Boston, MA 02111-1307, USA.
                     Only traverse DEPTH (integer) parents for each commit (default: -1=infinite).
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--static-deltas-only</option>=DEPTH</term>
+
+                <listitem><para>
+                  Change the behaviour of --keep-younger-than and --delete-commit to prune only
+                  the static deltas files.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
