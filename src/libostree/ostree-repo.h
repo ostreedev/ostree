@@ -691,6 +691,11 @@ typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
 } OstreeRepoPruneFlags;
 
+gboolean
+ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
+                                 GCancellable      *cancellable,
+                                 GError           **error);
+
 gboolean ostree_repo_prune (OstreeRepo        *self,
                             OstreeRepoPruneFlags   flags,
                             gint               depth,

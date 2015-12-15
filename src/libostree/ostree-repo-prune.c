@@ -112,6 +112,68 @@ maybe_prune_loose_object (OtPruneData        *data,
   return ret;
 }
 
+/* Prune static deltas, if COMMIT is specified then delete static delta files only
+   related to that commit; otherwise any static delta of non existing commits are deleted.  */
+gboolean
+ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
+                                 GCancellable      *cancellable,
+                                 GError           **error)
+{
+  gboolean ret = FALSE;
+  g_autoptr(GPtrArray) deltas = NULL;
+  guint i;
+
+  if (!ostree_repo_list_static_delta_names (self, &deltas,
+                                            cancellable, error))
+    goto out;
+
+  for (i = 0; i < deltas->len; i++)
+    {
+      const char *deltaname = deltas->pdata[i];
+      const char *dash = strchr (deltaname, '-');
+      const char *to = NULL;
+      gboolean have_commit;
+      g_autofree char *from = NULL;
+      g_autofree char *deltadir = NULL;
+
+      if (!dash)
+        {
+          to = deltaname;
+        }
+      else
+        {
+          from = g_strndup (deltaname, dash - deltaname);
+          to = dash + 1;
+        }
+
+      if (commit)
+        {
+          if (g_strcmp0 (from, commit) && g_strcmp0 (to, commit))
+            continue;
+        }
+      else
+        {
+          if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT,
+                                       to, &have_commit,
+                                       cancellable, error))
+            goto out;
+
+          if (have_commit)
+            continue;
+        }
+
+      deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
+
+      if (!gs_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
+                               cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 /**
  * ostree_repo_prune:
  * @self: Repo
@@ -220,47 +282,8 @@ ostree_repo_prune (OstreeRepo        *self,
         goto out;
     }
 
-  { g_autoptr(GPtrArray) deltas = NULL;
-    guint i;
-
-    if (!ostree_repo_list_static_delta_names (self, &deltas,
-                                              cancellable, error))
-      goto out;
-
-    for (i = 0; i < deltas->len; i++)
-      {
-        const char *deltaname = deltas->pdata[i];
-        const char *dash = strchr (deltaname, '-');
-        const char *to = NULL;
-        gboolean have_commit;
-        g_autofree char *from = NULL;
-        g_autofree char *deltadir = NULL;
-
-        if (!dash)
-          {
-            to = deltaname;
-          }
-        else
-          {
-            from = g_strndup (deltaname, dash - deltaname);
-            to = dash + 1;
-          }
-
-        if (!ostree_repo_has_object (self, OSTREE_OBJECT_TYPE_COMMIT,
-                                     to, &have_commit,
-                                     cancellable, error))
-          goto out;
-
-        if (have_commit)
-          continue;
-
-        deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
-
-        if (!gs_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
-                                 cancellable, error))
-          goto out;
-      }
-  }
+  if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
+    goto out;
 
   ret = TRUE;
   *out_objects_total = (data.n_reachable_meta + data.n_unreachable_meta +
