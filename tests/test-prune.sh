@@ -105,4 +105,24 @@ ${CMD_PREFIX} ostree --repo=repo prune --keep-younger-than="1 week ago"
 find repo/objects -name '*.commit' | wc -l > commitcount
 assert_file_has_content commitcount "^1$"
 
+${CMD_PREFIX} ostree --repo=repo pull --depth=-1 origin test
+${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="November 05 1955"
+${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 25 1985"
+${CMD_PREFIX} ostree --repo=repo commit --branch=test -m test -s test tree --timestamp="October 21 2015"
+
+${CMD_PREFIX} ostree --repo=repo static-delta generate test^
+${CMD_PREFIX} ostree --repo=repo static-delta generate test
+${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
+assert_file_has_content deltascount "^2$"
+COMMIT_TO_DELETE=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
+${CMD_PREFIX} ostree --repo=repo prune --static-deltas-only --delete-commit=$COMMIT_TO_DELETE
+${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
+assert_file_has_content deltascount "^1$"
+${CMD_PREFIX} ostree --repo=repo static-delta generate test
+${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
+assert_file_has_content deltascount "^2$"
+${CMD_PREFIX} ostree --repo=repo prune --static-deltas-only --keep-younger-than="October 20 2015"
+${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
+assert_file_has_content deltascount "^1$"
+
 echo "ok prune"
