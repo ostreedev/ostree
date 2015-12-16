@@ -153,3 +153,102 @@ ot_dump_object (OstreeObjectType   objtype,
       break;
   }
 }
+
+static void
+dump_summary_ref (const char   *ref_name,
+                  guint64       commit_size,
+                  GVariant     *csum_v,
+                  GVariantIter *metadata)
+{
+  const guchar *csum_bytes;
+  GError *csum_error = NULL;
+  g_autofree char *size = NULL;
+  GVariant *value;
+  char *key;
+
+  g_print ("* %s\n", ref_name);
+
+  size = g_format_size (commit_size);
+  g_print ("    Latest Commit (%s):\n", size);
+
+  csum_bytes = ostree_checksum_bytes_peek_validate (csum_v, &csum_error);
+  if (csum_error == NULL)
+    {
+      char csum[65];
+
+      ostree_checksum_inplace_from_bytes (csum_bytes, csum);
+      g_print ("      %s\n", csum);
+    }
+  else
+    {
+      g_print ("      %s\n", csum_error->message);
+      g_clear_error (&csum_error);
+    }
+
+  while (g_variant_iter_loop (metadata, "{sv}", &key, &value))
+    {
+      g_autofree char *string = g_variant_print (value, FALSE);
+      g_print ("    %s: %s\n", key, string);
+    }
+}
+
+void
+ot_dump_summary_bytes (GBytes          *summary_bytes,
+                       OstreeDumpFlags  flags)
+{
+  g_autoptr(GVariant) summary = NULL;
+  g_autoptr(GVariant) refs = NULL;
+  g_autoptr(GVariant) exts = NULL;
+  GVariantIter iter;
+  GVariant *value;
+  char *key;
+
+  g_return_if_fail (summary_bytes != NULL);
+
+  summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
+                                      summary_bytes, FALSE);
+
+  if (flags & OSTREE_DUMP_RAW)
+    {
+      ot_dump_variant (summary);
+      return;
+    }
+
+  refs = g_variant_get_child_value (summary, 0);
+  exts = g_variant_get_child_value (summary, 1);
+
+  g_variant_iter_init (&iter, refs);
+
+  while ((value = g_variant_iter_next_value (&iter)) != NULL)
+    {
+      const char *ref_name = NULL;
+
+      g_variant_get_child (value, 0, "&s", &ref_name);
+
+      if (ref_name != NULL)
+        {
+          g_autoptr(GVariant) csum_v = NULL;
+          g_autoptr(GVariantIter) metadata = NULL;
+          guint64 commit_size;
+
+          g_variant_get_child (value, 1, "(t@aya{sv})",
+                               &commit_size, &csum_v, &metadata);
+
+          dump_summary_ref (ref_name, commit_size, csum_v, metadata);
+
+          g_print ("\n");
+        }
+
+      g_variant_unref (value);
+    }
+
+  g_variant_iter_init (&iter, exts);
+
+  /* XXX Should we print something more human-friendly for
+   *     known extension names like 'ostree.static-deltas'? */
+  while (g_variant_iter_loop (&iter, "{sv}", &key, &value))
+    {
+      g_autofree char *string = g_variant_print (value, FALSE);
+      g_print ("%s: %s\n", key, string);
+    }
+}

@@ -38,6 +38,7 @@ static OstreeRemoteCommand remote_subcommands[] = {
   { "list", ot_remote_builtin_list },
   { "gpg-import", ot_remote_builtin_gpg_import },
   { "refs", ot_remote_builtin_refs },
+  { "summary", ot_remote_builtin_summary },
   { NULL, NULL }
 };
 
