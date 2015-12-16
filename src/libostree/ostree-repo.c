@@ -4674,6 +4674,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
     {
       gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
       struct dirent *dent;
+      struct stat stbuf;
       glnx_fd_close int existing_tmpdir_fd = -1;
       g_autoptr(GError) local_error = NULL;
       g_autofree char *lock_name = NULL;
@@ -4691,6 +4692,17 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       if (dent->d_type != DT_UNKNOWN &&
           dent->d_type != DT_DIR)
         continue;
+
+      if (fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
+        {
+          if (stbuf.st_uid != getuid ())
+            continue;
+        }
+      else
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
 
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, FALSE,
                            &existing_tmpdir_fd, &local_error))
