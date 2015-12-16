@@ -2356,6 +2356,31 @@ ostree_repo_open (OstreeRepo    *self,
   if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
     goto out;
 
+  /* Make sure the tmp directory has full write permissions + the sticky
+   * bit (01777) so normal users of a system repo can still write temporary
+   * files in the repo.  Note, failure here is not fatal since most likely
+   * the permissions are already set correctly. */
+  if (fstat (self->tmp_dir_fd, &stbuf) == 0)
+    {
+      mode_t tmp_mode = S_IRWXU | S_IRWXG | S_IRWXO | S_ISVTX;
+      if (stbuf.st_mode != tmp_mode)
+        {
+          if (fchmod (self->tmp_dir_fd, tmp_mode) != 0)
+            {
+              /* Ignore permission errors.  This is expected
+               * if a normal user is acting on a system repo. */
+              if (errno != EPERM)
+                {
+                  perror ("ostree: Unable to set tmp directory permission");
+                }
+            }
+        }
+    }
+  else
+    {
+      perror ("ostree: Unable to get tmp directory status");
+    }
+
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
       if (!gs_file_ensure_directory (self->uncompressed_objects_dir, TRUE, cancellable, error))
