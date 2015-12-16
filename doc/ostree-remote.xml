@@ -66,6 +66,9 @@ Boston, MA 02111-1307, USA.
             <cmdsynopsis>
                 <command>ostree remote refs</command> <arg choice="req">NAME</arg>
             </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote summary</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg>
+            </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
@@ -152,6 +155,20 @@ Boston, MA 02111-1307, USA.
                 </para><para>
                     This option may not be used in combination with
                     <option>--keyring</option>.
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+
+    <refsect1>
+        <title>'Summary' Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--raw</option></term>
+
+                <listitem><para>
+                    Show raw variant data
                 </para></listitem>
             </varlistentry>
         </variablelist>
