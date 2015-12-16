@@ -1879,17 +1879,13 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
   if (gpg_verify_summary && summary != NULL && signatures != NULL)
     {
       glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-      g_autoptr(GVariant) signatures_variant = NULL;
 
-      signatures_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
-                                                     signatures, FALSE);
-      result = _ostree_repo_gpg_verify_with_metadata (self,
-                                                      summary,
-                                                      signatures_variant,
-                                                      name,
-                                                      NULL, NULL,
-                                                      cancellable,
-                                                      error);
+      result = ostree_repo_verify_summary (self,
+                                           name,
+                                           summary,
+                                           signatures,
+                                           cancellable,
+                                           error);
       if (result == NULL)
         goto out;
 
@@ -4487,6 +4483,47 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                               extra_keyring,
                                               cancellable,
                                               error);
+}
+
+/**
+ * ostree_repo_verify_summary:
+ * @self: Repo
+ * @remote_name: Name of remote
+ * @summary: Summary data as a #GBytes
+ * @signatures: Summary signatures as a #GBytes
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Verify @signatures for @summary data using GPG keys in the keyring for
+ * @remote_name, and return an #OstreeGpgVerifyResult.
+ *
+ * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ */
+OstreeGpgVerifyResult *
+ostree_repo_verify_summary (OstreeRepo    *self,
+                            const char    *remote_name,
+                            GBytes        *summary,
+                            GBytes        *signatures,
+                            GCancellable  *cancellable,
+                            GError       **error)
+{
+  g_autoptr(GVariant) signatures_variant = NULL;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (remote_name != NULL, NULL);
+  g_return_val_if_fail (summary != NULL, NULL);
+  g_return_val_if_fail (signatures != NULL, NULL);
+
+  signatures_variant = g_variant_new_from_bytes (OSTREE_SUMMARY_SIG_GVARIANT_FORMAT,
+                                                 signatures, FALSE);
+
+  return _ostree_repo_gpg_verify_with_metadata (self,
+                                                summary,
+                                                signatures_variant,
+                                                remote_name,
+                                                NULL, NULL,
+                                                cancellable,
+                                                error);
 }
 
 /**

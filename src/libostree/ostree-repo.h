@@ -782,6 +782,13 @@ OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        GCancellable  *cancellable,
                                                        GError       **error);
 
+OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
+                                                    const char    *remote_name,
+                                                    GBytes        *summary,
+                                                    GBytes        *signatures,
+                                                    GCancellable  *cancellable,
+                                                    GError       **error);
+
 gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GVariant       *additional_metadata,
                                          GCancellable   *cancellable,
