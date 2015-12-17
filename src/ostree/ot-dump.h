@@ -37,3 +37,6 @@ void   ot_dump_object     (OstreeObjectType   objtype,
                            const char        *checksum,
                            GVariant          *variant,
                            OstreeDumpFlags    flags);
+
+void   ot_dump_summary_bytes  (GBytes          *summary_bytes,
+                               OstreeDumpFlags  flags);
