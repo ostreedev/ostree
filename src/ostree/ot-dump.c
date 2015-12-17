@@ -194,7 +194,6 @@ dump_summary_ref (const char   *ref_name,
 
 void
 ot_dump_summary_bytes (GBytes          *summary_bytes,
-                       GBytes          *signature_bytes,
                        OstreeDumpFlags  flags)
 {
   g_autoptr(GVariant) summary = NULL;

@@ -39,5 +39,4 @@ void   ot_dump_object     (OstreeObjectType   objtype,
                            OstreeDumpFlags    flags);
 
 void   ot_dump_summary_bytes  (GBytes          *summary_bytes,
-                               GBytes          *signature_bytes,
                                OstreeDumpFlags  flags);

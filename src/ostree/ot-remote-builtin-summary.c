@@ -75,7 +75,7 @@ ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GEr
       goto out;
     }
 
-  ot_dump_summary_bytes (summary_bytes, signature_bytes, flags);
+  ot_dump_summary_bytes (summary_bytes, flags);
 
   if (!ostree_repo_remote_get_gpg_verify_summary (repo, remote_name,
                                                   &gpg_verify_summary,
