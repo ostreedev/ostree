@@ -112,8 +112,18 @@ maybe_prune_loose_object (OtPruneData        *data,
   return ret;
 }
 
-/* Prune static deltas, if COMMIT is specified then delete static delta files only
-   related to that commit; otherwise any static delta of non existing commits are deleted.  */
+/**
+ * ostree_repo_prune_static_deltas:
+ * @self: Repo
+ * @commit: (allow-none): ASCII SHA256 checksum for commit, or %NULL for each
+ * non existing commit
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Prune static deltas, if COMMIT is specified then delete static delta files only
+ * targeting that commit; otherwise any static delta of non existing commits are
+ * deleted.
+ */
 gboolean
 ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
                                  GCancellable      *cancellable,
@@ -148,7 +158,7 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
 
       if (commit)
         {
-          if (g_strcmp0 (from, commit) && g_strcmp0 (to, commit))
+          if (g_strcmp0 (to, commit))
             continue;
         }
       else
