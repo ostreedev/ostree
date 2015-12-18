@@ -48,6 +48,10 @@ typedef struct {
   GMainLoop *main_loop;
 
   int tmpdir_dfd;
+  char *tmpdir_name;
+  GLnxLockFile tmpdir_lock;
+  int base_tmpdir_dfd;
+
   int max_outstanding;
 
   /* Queue for libsoup, see bgo#708591 */
@@ -100,10 +104,6 @@ struct OstreeFetcher
 
   OstreeFetcherConfigFlags config_flags;
 
-  char *tmpdir_name;
-  GLnxLockFile tmpdir_lock;
-  int base_tmpdir_dfd;
-
   GThread *session_thread;
   ThreadClosure *thread_closure;
 };
@@ -141,6 +141,14 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
       if (thread_closure->tmpdir_dfd != -1)
         close (thread_closure->tmpdir_dfd);
+
+      /* Note: We don't remove the tmpdir here, because that would cause
+         us to not reuse it on resume. This happens because we use two
+         fetchers for each pull, so finalizing the first one would remove
+         all the files to be resumed from the previous second one */
+
+      g_free (thread_closure->tmpdir_name);
+      glnx_release_lock_file (&thread_closure->tmpdir_lock);
 
       while (!g_queue_is_empty (&thread_closure->pending_queue))
         g_object_unref (g_queue_pop_head (&thread_closure->pending_queue));
@@ -363,6 +371,26 @@ session_thread_request_uri (ThreadClosure *thread_closure,
       struct stat stbuf;
       gboolean exists;
 
+      /* The tmp directory is lazily created for each fetcher instance,
+       * since it may require superuser permissions and some instances
+       * only need _ostree_fetcher_request_uri_to_membuf() which keeps
+       * everything in memory buffers. */
+      if (thread_closure->tmpdir_name == NULL)
+        {
+          if (!_ostree_repo_allocate_tmpdir (thread_closure->base_tmpdir_dfd,
+                                             "fetcher-",
+                                             &thread_closure->tmpdir_name,
+                                             &thread_closure->tmpdir_dfd,
+                                             &thread_closure->tmpdir_lock,
+                                             NULL,
+                                             cancellable,
+                                             &local_error))
+            {
+              g_task_return_error (task, local_error);
+              return;
+            }
+        }
+
       tmpfile = g_compute_checksum_for_string (G_CHECKSUM_SHA256, uristring, strlen (uristring));
 
       if (fstatat (thread_closure->tmpdir_dfd, tmpfile, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
@@ -484,14 +512,6 @@ _ostree_fetcher_finalize (GObject *object)
   g_clear_pointer (&self->session_thread, g_thread_unref);
   g_clear_pointer (&self->thread_closure, thread_closure_unref);
 
-  /* Note: We don't remove the tmpdir here, because that would cause
-     us to not reuse it on resume. This happens because we use two
-     fetchers for each pull, so finalizing the first one would remove
-     all the files to be resumed from the previous second one */
-
-  g_free (self->tmpdir_name);
-  glnx_release_lock_file (&self->tmpdir_lock);
-
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
 }
 
@@ -500,6 +520,7 @@ _ostree_fetcher_constructed (GObject *object)
 {
   OstreeFetcher *self = OSTREE_FETCHER (object);
   g_autoptr(GMainContext) main_context = NULL;
+  GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
   const char *http_proxy;
 
   main_context = g_main_context_new ();
@@ -509,6 +530,7 @@ _ostree_fetcher_constructed (GObject *object)
   self->thread_closure->main_context = g_main_context_ref (main_context);
   self->thread_closure->main_loop = g_main_loop_new (main_context, FALSE);
   self->thread_closure->tmpdir_dfd = -1;
+  self->thread_closure->tmpdir_lock = empty_lockfile;
 
   self->thread_closure->outstanding = g_hash_table_new (NULL, NULL);
   self->thread_closure->output_stream_set = g_hash_table_new_full (NULL, NULL,
@@ -568,31 +590,17 @@ _ostree_fetcher_class_init (OstreeFetcherClass *klass)
 static void
 _ostree_fetcher_init (OstreeFetcher *self)
 {
-  GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
-
-  self->tmpdir_lock = empty_lockfile;
 }
 
 OstreeFetcher *
 _ostree_fetcher_new (int                      tmpdir_dfd,
-                     OstreeFetcherConfigFlags flags,
-                     GCancellable            *cancellable,
-                     GError                 **error)
+                     OstreeFetcherConfigFlags flags)
 {
   OstreeFetcher *self;
 
   self = g_object_new (OSTREE_TYPE_FETCHER, "config-flags", flags, NULL);
 
-  if (!_ostree_repo_allocate_tmpdir (tmpdir_dfd,
-                                     "fetcher-",
-                                     &self->tmpdir_name,
-                                     &self->thread_closure->tmpdir_dfd,
-                                     &self->tmpdir_lock,
-                                     NULL,
-                                     cancellable, error))
-    return NULL;
-
-  self->base_tmpdir_dfd = tmpdir_dfd;
+  self->thread_closure->base_tmpdir_dfd = tmpdir_dfd;
 
   return self;
 }
