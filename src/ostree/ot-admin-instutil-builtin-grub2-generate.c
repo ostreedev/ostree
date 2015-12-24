@@ -52,6 +52,9 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
                                           &sysroot, cancellable, error))
     goto out;
 
+  if (!ostree_sysroot_load (sysroot, cancellable, error))
+    goto out;
+
   if (argc >= 2)
     {
       bootversion = (guint) g_ascii_strtoull (argv[1], NULL, 10);
@@ -71,9 +74,6 @@ ot_admin_instutil_builtin_grub2_generate (int argc, char **argv, GCancellable *c
         bootversion = ostree_sysroot_get_bootversion (sysroot);
       g_assert (bootversion == 0 || bootversion == 1);
     }
-
-  if (!ostree_sysroot_load (sysroot, cancellable, error))
-    goto out;
 
   if (!ostree_cmd__private__()->ostree_generate_grub2_config (sysroot, bootversion, 1, cancellable, error))
     goto out;
