@@ -428,6 +428,14 @@ gboolean      ostree_repo_write_directory_to_mtree (OstreeRepo                 *
                                                     GCancellable               *cancellable,
                                                     GError                    **error);
 
+gboolean      ostree_repo_write_dfd_to_mtree (OstreeRepo                 *self,
+                                              int                         dfd,
+                                              const char                 *path,
+                                              OstreeMutableTree          *mtree,
+                                              OstreeRepoCommitModifier   *modifier,
+                                              GCancellable               *cancellable,
+                                              GError                    **error);
+
 gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *self,
                                                   GFile                        *archive,
                                                   OstreeMutableTree            *mtree,
