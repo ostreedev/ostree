@@ -2823,28 +2823,21 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
                                       GError                   **error)
 {
   gboolean ret = FALSE;
-  GPtrArray *path = NULL;
+  g_autoptr(GPtrArray) path = NULL;
 
-  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
-    {
-      self->generate_sizes = TRUE;
-    }
-
-  path = g_ptr_array_new ();
+  /* Short cut local files */
   if (g_file_is_native (dir))
     {
-      gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
-
-      if (!gs_dirfd_iterator_init_at (AT_FDCWD, gs_file_get_path_cached (dir), FALSE,
-                                      &dfd_iter, error))
-        goto out;
-
-      if (!write_dfd_iter_to_mtree_internal (self, &dfd_iter, mtree, modifier, path,
-                                             cancellable, error))
+      if (!ostree_repo_write_dfd_to_mtree (self, AT_FDCWD, gs_file_get_path_cached (dir),
+                                           mtree, modifier, cancellable, error))
         goto out;
     }
   else
     {
+      if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+        self->generate_sizes = TRUE;
+      
+      path = g_ptr_array_new ();
       if (!write_directory_to_mtree_internal (self, dir, mtree, modifier, path,
                                               cancellable, error))
         goto out;
@@ -2852,8 +2845,51 @@ ostree_repo_write_directory_to_mtree (OstreeRepo                *self,
 
   ret = TRUE;
  out:
-  if (path)
-    g_ptr_array_free (path, TRUE);
+  return ret;
+}
+
+/**
+ * ostree_repo_write_dfd_to_mtree:
+ * @self: Repo
+ * @dfd: Directory file descriptor
+ * @path: Path
+ * @mtree: Overlay directory contents into this tree
+ * @modifier: (allow-none): Optional modifier
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Store as objects all contents of the directory referred to by @dfd
+ * and @path all children into the repository @self, overlaying the
+ * resulting filesystem hierarchy into @mtree.
+ */
+gboolean
+ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
+                                int                        dfd,
+                                const char                *path,
+                                OstreeMutableTree         *mtree,
+                                OstreeRepoCommitModifier  *modifier,
+                                GCancellable              *cancellable,
+                                GError                   **error)
+{
+  gboolean ret = FALSE;
+  g_autoptr(GPtrArray) pathbuilder = NULL;
+  gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
+
+  if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
+    self->generate_sizes = TRUE;
+
+  pathbuilder = g_ptr_array_new ();
+
+  if (!gs_dirfd_iterator_init_at (dfd, path, FALSE,
+                                  &dfd_iter, error))
+    goto out;
+
+  if (!write_dfd_iter_to_mtree_internal (self, &dfd_iter, mtree, modifier, pathbuilder,
+                                         cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
   return ret;
 }
 
