@@ -36,6 +36,22 @@
 #include <sys/xattr.h>
 #include <glib/gprintf.h>
 
+struct OstreeRepoCommitModifier {
+  volatile gint refcount;
+
+  OstreeRepoCommitModifierFlags flags;
+  OstreeRepoCommitFilter filter;
+  gpointer user_data;
+  GDestroyNotify destroy_notify;
+
+  OstreeRepoCommitModifierXattrCallback xattr_callback;
+  GDestroyNotify xattr_destroy;
+  gpointer xattr_user_data;
+
+  OstreeSePolicy *sepolicy;
+  GHashTable *devino_cache;
+};
+
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
@@ -936,28 +952,6 @@ write_object (OstreeRepo         *self,
   return ret;
 }
 
-typedef struct {
-  dev_t dev;
-  ino_t ino;
-} OstreeDevIno;
-
-static guint
-devino_hash (gconstpointer a)
-{
-  OstreeDevIno *a_i = (gpointer)a;
-  return (guint) (a_i->dev + a_i->ino);
-}
-
-static int
-devino_equal (gconstpointer   a,
-              gconstpointer   b)
-{
-  OstreeDevIno *a_i = (gpointer)a;
-  OstreeDevIno *b_i = (gpointer)b;
-  return a_i->dev == b_i->dev
-    && a_i->ino == b_i->ino;
-}
-
 static gboolean
 scan_one_loose_devino (OstreeRepo                     *self,
                        int                             object_dir_fd,
@@ -998,7 +992,6 @@ scan_one_loose_devino (OstreeRepo                     *self,
           OstreeDevIno *key;
           struct dirent *child_dent;
           const char *dot;
-          GString *checksum;
           gboolean skip;
           const char *name;
 
@@ -1039,14 +1032,14 @@ scan_one_loose_devino (OstreeRepo                     *self,
               goto out;
             }
 
-          checksum = g_string_new (dent->d_name);
-          g_string_append_len (checksum, name, 62);
-          
           key = g_new (OstreeDevIno, 1);
           key->dev = stbuf.st_dev;
           key->ino = stbuf.st_ino;
+          memcpy (key->checksum, dent->d_name, 2);
+          memcpy (key->checksum + 2, name, 62);
+          key->checksum[sizeof(key->checksum)-1] = '\0';
           
-          g_hash_table_replace (devino_cache, key, g_string_free (checksum, FALSE));
+          g_hash_table_add (devino_cache, key);
         }
     }
 
@@ -1087,17 +1080,27 @@ scan_loose_devino (OstreeRepo                     *self,
 
 static const char *
 devino_cache_lookup (OstreeRepo           *self,
+                     OstreeRepoCommitModifier *modifier,
                      guint32               device,
                      guint32               inode)
 {
-  OstreeDevIno dev_ino;
+  OstreeDevIno dev_ino_key;
+  OstreeDevIno *dev_ino_val;
+  GHashTable *cache;
 
-  if (!self->loose_object_devino_hash)
+  if (self->loose_object_devino_hash)
+    cache = self->loose_object_devino_hash;
+  else if (modifier && modifier->devino_cache)
+    cache = modifier->devino_cache;
+  else
     return NULL;
 
-  dev_ino.dev = device;
-  dev_ino.ino = inode;
-  return g_hash_table_lookup (self->loose_object_devino_hash, &dev_ino);
+  dev_ino_key.dev = device;
+  dev_ino_key.ino = inode;
+  dev_ino_val = g_hash_table_lookup (cache, &dev_ino_key);
+  if (!dev_ino_val)
+    return NULL;
+  return dev_ino_val->checksum;
 }
 
 /**
@@ -1127,7 +1130,7 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
   g_return_val_if_fail (self->in_transaction == TRUE, FALSE);
 
   if (!self->loose_object_devino_hash)
-    self->loose_object_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, g_free);
+    self->loose_object_devino_hash = (GHashTable*)ostree_repo_devino_cache_new ();
   g_hash_table_remove_all (self->loose_object_devino_hash);
   if (!scan_loose_devino (self, self->loose_object_devino_hash, cancellable, error))
     goto out;
@@ -2231,21 +2234,6 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   return serialized_tree;
 }
 
-struct OstreeRepoCommitModifier {
-  volatile gint refcount;
-
-  OstreeRepoCommitModifierFlags flags;
-  OstreeRepoCommitFilter filter;
-  gpointer user_data;
-  GDestroyNotify destroy_notify;
-
-  OstreeRepoCommitModifierXattrCallback xattr_callback;
-  GDestroyNotify xattr_destroy;
-  gpointer xattr_user_data;
-
-  OstreeSePolicy *sepolicy;
-};
-
 OstreeRepoCommitFilterResult
 _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
                                     OstreeRepoCommitModifier *modifier,
@@ -2503,7 +2491,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
       g_autofree guchar *child_file_csum = NULL;
       g_autofree char *tmp_checksum = NULL;
 
-      loose_checksum = devino_cache_lookup (self,
+      loose_checksum = devino_cache_lookup (self, modifier,
                                             g_file_info_get_attribute_uint32 (child_info, "unix::device"),
                                             g_file_info_get_attribute_uint64 (child_info, "unix::inode"));
 
@@ -2757,7 +2745,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
           goto out;
         }
 
-      loose_checksum = devino_cache_lookup (self, stbuf.st_dev, stbuf.st_ino);
+      loose_checksum = devino_cache_lookup (self, modifier, stbuf.st_dev, stbuf.st_ino);
       if (loose_checksum)
         {
           if (!ostree_mutable_tree_replace_file (mtree, dent->d_name, loose_checksum,
@@ -3030,6 +3018,7 @@ ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier)
     modifier->xattr_destroy (modifier->xattr_user_data);
 
   g_clear_object (&modifier->sepolicy);
+  g_clear_pointer (&modifier->devino_cache, (GDestroyNotify)g_hash_table_unref);
 
   g_free (modifier);
   return;
@@ -3079,6 +3068,46 @@ ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              
   g_clear_object (&modifier->sepolicy);
   modifier->sepolicy = sepolicy ? g_object_ref (sepolicy) : NULL;
 }
+
+/**
+ * ostree_repo_commit_modifier_set_devino_cache:
+ * @modifier: Modifier
+ * @cache: A hash table caching device,inode to checksums
+ *
+ * See the documentation for
+ * `ostree_repo_devino_cache_new()`.  This function can
+ * then be used for later calls to
+ * `ostree_repo_write_directory_to_mtree()` to optimize commits.
+ *
+ * Note if your process has multiple writers, you should use separate
+ * `OSTreeRepo` instances if you want to also use this API.
+ *
+ * This function will add a reference to @cache without copying - you
+ * should avoid further mutation of the cache.
+ */
+void
+ostree_repo_commit_modifier_set_devino_cache (OstreeRepoCommitModifier              *modifier,
+                                              OstreeRepoDevInoCache                 *cache)
+{
+  modifier->devino_cache = g_hash_table_ref ((GHashTable*)cache);
+}
+
+OstreeRepoDevInoCache *
+ostree_repo_devino_cache_ref (OstreeRepoDevInoCache *cache)
+{
+  g_hash_table_ref ((GHashTable*)cache);
+  return cache;
+}
+
+void
+ostree_repo_devino_cache_unref (OstreeRepoDevInoCache *cache)
+{
+  g_hash_table_unref ((GHashTable*)cache);
+}
+
+G_DEFINE_BOXED_TYPE(OstreeRepoDevInoCache, ostree_repo_devino_cache,
+                    ostree_repo_devino_cache_ref,
+                    ostree_repo_devino_cache_unref);
 
 G_DEFINE_BOXED_TYPE(OstreeRepoCommitModifier, ostree_repo_commit_modifier,
                     ostree_repo_commit_modifier_ref,
