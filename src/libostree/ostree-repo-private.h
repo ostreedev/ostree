@@ -92,6 +92,12 @@ struct OstreeRepo {
   OstreeRepo *parent_repo;
 };
 
+typedef struct {
+  dev_t dev;
+  ino_t ino;
+  char checksum[65];
+} OstreeDevIno;
+
 gboolean
 _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
                               const char   *tmpdir_prefix,

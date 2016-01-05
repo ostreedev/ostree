@@ -429,8 +429,28 @@ checkout_one_file_at (OstreeRepo                        *repo,
                                            TRUE, &did_hardlink,
                                            cancellable, error))
                 goto out;
-              if (did_hardlink)
-                break;
+
+              if (did_hardlink && options->devino_to_csum_cache)
+                {
+                  struct stat stbuf;
+                  OstreeDevIno *key;
+                  
+                  if (TEMP_FAILURE_RETRY (fstatat (destination_dfd, destination_name, &stbuf, AT_SYMLINK_NOFOLLOW)) != 0)
+                    {
+                      glnx_set_error_from_errno (error);
+                      goto out;
+                    }
+                  
+                  key = g_new (OstreeDevIno, 1);
+                  key->dev = stbuf.st_dev;
+                  key->ino = stbuf.st_ino;
+                  memcpy (key->checksum, checksum, 65);
+                  
+                  g_hash_table_add ((GHashTable*)options->devino_to_csum_cache, key);
+                  break;
+                } else if (did_hardlink) {
+                  break;
+                }
             }
           current_repo = current_repo->parent_repo;
         }
@@ -832,6 +852,42 @@ ostree_repo_checkout_tree_at (OstreeRepo                         *self,
   ret = TRUE;
  out:
   return ret;
+}
+
+static guint
+devino_hash (gconstpointer a)
+{
+  OstreeDevIno *a_i = (gpointer)a;
+  return (guint) (a_i->dev + a_i->ino);
+}
+
+static int
+devino_equal (gconstpointer   a,
+              gconstpointer   b)
+{
+  OstreeDevIno *a_i = (gpointer)a;
+  OstreeDevIno *b_i = (gpointer)b;
+  return a_i->dev == b_i->dev
+    && a_i->ino == b_i->ino;
+}
+
+/**
+ * ostree_repo_devino_cache_new:
+ * 
+ * OSTree has support for pairing ostree_repo_checkout_tree_at() using
+ * hardlinks in combination with a later
+ * ostree_repo_write_directory_to_mtree() using a (normally modified)
+ * directory.  In order for OSTree to optimally detect just the new
+ * files, use this function and fill in the `devino_to_csum_cache`
+ * member of `OstreeRepoCheckoutOptions`, then call
+ * ostree_repo_commit_set_devino_cache().
+ *
+ * Returns: (transfer full): Newly allocated cache
+ */
+OstreeRepoDevInoCache *
+ostree_repo_devino_cache_new (void)
+{
+  return (OstreeRepoDevInoCache*) g_hash_table_new_full (devino_hash, devino_equal, g_free, NULL);
 }
 
 /**

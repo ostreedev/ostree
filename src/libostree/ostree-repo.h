@@ -418,6 +418,9 @@ void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier   
 void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              *modifier,
                                                OstreeSePolicy                        *sepolicy);
 
+void ostree_repo_commit_modifier_set_devino_cache (OstreeRepoCommitModifier              *modifier,
+                                                   OstreeRepoDevInoCache                 *cache);
+
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
@@ -531,9 +534,16 @@ typedef struct {
 
   const char *subpath;
 
+  OstreeRepoDevInoCache *devino_to_csum_cache;
+
   guint unused_uints[6];
-  gpointer unused_ptrs[8];
+  gpointer unused_ptrs[7];
 } OstreeRepoCheckoutOptions;
+
+GType ostree_repo_devino_cache_get_type (void);
+OstreeRepoDevInoCache *ostree_repo_devino_cache_new (void);
+OstreeRepoDevInoCache * ostree_repo_devino_cache_ref (OstreeRepoDevInoCache *cache);
+void ostree_repo_devino_cache_unref (OstreeRepoDevInoCache *cache);
 
 gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
                                        OstreeRepoCheckoutOptions          *options,
