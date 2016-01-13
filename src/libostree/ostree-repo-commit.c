@@ -1144,7 +1144,8 @@ ostree_repo_scan_hardlinks (OstreeRepo    *self,
  * ostree_repo_prepare_transaction:
  * @self: An #OstreeRepo
  * @out_transaction_resume: (allow-none) (out): Whether this transaction
- * is resuming from a previous one.
+ * is resuming from a previous one.  This is a legacy state, now OSTree
+ * pulls use per-commit `state/.commitpartial` files.
  * @cancellable: Cancellable
  * @error: Error
  *

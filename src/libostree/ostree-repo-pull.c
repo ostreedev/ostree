@@ -48,7 +48,7 @@ typedef struct {
   GCancellable *cancellable;
   OstreeAsyncProgress *progress;
 
-  gboolean      transaction_resuming;
+  gboolean      legacy_transaction_resuming;
   enum {
     OSTREE_PULL_PHASE_FETCHING_REFS,
     OSTREE_PULL_PHASE_FETCHING_OBJECTS
@@ -1227,7 +1227,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
   else if (is_stored)
     {
-      gboolean do_scan = pull_data->transaction_resuming || is_requested || pull_data->commitpartial_exists;
+      gboolean do_scan = pull_data->legacy_transaction_resuming || is_requested || pull_data->commitpartial_exists;
 
       /* For commits, always refetch detached metadata. */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -2182,11 +2182,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->fetcher == NULL)
     goto out;
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->transaction_resuming,
+  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->legacy_transaction_resuming,
                                         cancellable, error))
     goto out;
 
-  g_debug ("resuming transaction: %s", pull_data->transaction_resuming ? "true" : " false");
+  if (pull_data->legacy_transaction_resuming)
+    g_debug ("resuming legacy transaction");
 
   g_hash_table_iter_init (&hash_iter, commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
