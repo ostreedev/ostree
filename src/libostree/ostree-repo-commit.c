@@ -1161,7 +1161,6 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gboolean ret_transaction_resume = FALSE;
-  g_autofree char *stagedir_boot_id_prefix = NULL;
   g_autofree char *stagedir_name = NULL;
   glnx_fd_close int stagedir_fd = -1;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
@@ -1172,10 +1171,8 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 
   self->in_transaction = TRUE;
 
-  stagedir_boot_id_prefix = g_strconcat ("staging-", self->boot_id, "-", NULL);
-
   if (!_ostree_repo_allocate_tmpdir (self->tmp_dir_fd,
-                                     stagedir_boot_id_prefix,
+                                     self->stagedir_prefix,
                                      &self->commit_stagedir_name,
                                      &self->commit_stagedir_fd,
                                      &self->commit_stagedir_lock,
@@ -1281,44 +1278,86 @@ cleanup_tmpdir (OstreeRepo        *self,
                 GError           **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) enumerator = NULL;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   guint64 curtime_secs;
-
-  enumerator = g_file_enumerate_children (self->tmp_dir, "standard::name,time::modified",
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          cancellable,
-                                          error);
-  if (!enumerator)
-    goto out;
 
   curtime_secs = g_get_real_time () / 1000000;
 
+  if (!glnx_dirfd_iterator_init_at (self->tmp_dir_fd, ".", TRUE, &dfd_iter, error))
+    goto out;
+
   while (TRUE)
     {
-      GFileInfo *file_info;
-      GFile *path;
-      guint64 mtime;
       guint64 delta;
+      struct dirent *dent;
+      struct stat stbuf;
+      g_auto(GLnxLockFile) lockfile = GLNX_LOCK_FILE_INIT;
+      gboolean did_lock;
 
-      if (!gs_file_enumerator_iterate (enumerator, &file_info, &path,
-                                       cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
         goto out;
-      if (file_info == NULL)
+
+      if (dent == NULL)
         break;
 
-      mtime = g_file_info_get_attribute_uint64 (file_info, "time::modified");
-      if (mtime > curtime_secs)
-        continue;
-      /* Only delete files older than a day.  To do better, we would
-       * need to coordinate between multiple processes in a reliable
-       * fashion.  See
-       * https://bugzilla.gnome.org/show_bug.cgi?id=709115
-       */
-      delta = curtime_secs - mtime;
-      if (delta > 60*60*24)
+      if (TEMP_FAILURE_RETRY (fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW)) < 0)
         {
-          if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (path), cancellable, error))
+          if (errno == ENOENT) /* Did another cleanup win? */
+            continue;
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+
+      /* First, if it's a directory which needs locking, but it's
+       * busy, skip it.
+       */
+      if (_ostree_repo_is_locked_tmpdir (dent->d_name))
+        {
+          if (!_ostree_repo_try_lock_tmpdir (dfd_iter.fd, dent->d_name,
+                                             &lockfile, &did_lock, error))
             goto out;
+          if (!did_lock)
+            continue;
+        }
+
+      /* If however this is the staging directory for the *current*
+       * boot, then don't delete it now - we may end up reusing it, as
+       * is the point.
+       */
+      if (g_str_has_prefix (dent->d_name, self->stagedir_prefix))
+        continue;
+      else if (g_str_has_prefix (dent->d_name, OSTREE_REPO_TMPDIR_STAGING))
+        {
+          /* But, crucially we can now clean up staging directories
+           * from *other* boots
+           */
+          if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
+            goto out;
+        }
+      /* FIXME - move OSTREE_REPO_TMPDIR_FETCHER underneath the
+       * staging/boot-id scheme as well, since all of the "did it get
+       * fsync'd" concerns apply to that as well.  Then we can skip
+       * this special case.
+       */
+      else if (g_str_has_prefix (dent->d_name, OSTREE_REPO_TMPDIR_FETCHER))
+        continue;
+      else
+        {
+          /* Now we do time-based cleanup.  Ignore it if it's somehow
+           * in the future...
+           */
+          if (stbuf.st_mtime > curtime_secs)
+            continue;
+
+          /* Now, we arbitrarily delete files/directories older than a
+           * day, since that's what we were doing before we had locking.
+           */
+          delta = curtime_secs - stbuf.st_mtime;
+          if (delta > 60*60*24)
+            {
+              if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
+                goto out;
+            }
         }
     }
 

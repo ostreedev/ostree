@@ -48,7 +48,7 @@ typedef enum {
 struct OstreeRepo {
   GObject parent;
 
-  char *boot_id;
+  char *stagedir_prefix;
   int commit_stagedir_fd;
   char *commit_stagedir_name;
   GLnxLockFile commit_stagedir_lock;
@@ -108,6 +108,9 @@ typedef struct {
   char checksum[65];
 } OstreeDevIno;
 
+#define OSTREE_REPO_TMPDIR_STAGING "staging-"
+#define OSTREE_REPO_TMPDIR_FETCHER "fetcher-"
+
 gboolean
 _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
                               const char   *tmpdir_prefix,
@@ -117,6 +120,16 @@ _ostree_repo_allocate_tmpdir (int           tmpdir_dfd,
                               gboolean *    reusing_dir_out,
                               GCancellable *cancellable,
                               GError      **error);
+
+gboolean
+_ostree_repo_is_locked_tmpdir (const char *filename);
+
+gboolean
+_ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,
+                              const char    *tmpdir_name,
+                              GLnxLockFile  *file_lock_out,
+                              gboolean      *out_did_lock,
+                              GError       **error);
 
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,

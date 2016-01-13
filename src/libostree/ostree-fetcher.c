@@ -383,7 +383,7 @@ session_thread_request_uri (ThreadClosure *thread_closure,
       if (thread_closure->tmpdir_name == NULL)
         {
           if (!_ostree_repo_allocate_tmpdir (thread_closure->base_tmpdir_dfd,
-                                             "fetcher-",
+                                             OSTREE_REPO_TMPDIR_FETCHER,
                                              &thread_closure->tmpdir_name,
                                              &thread_closure->tmpdir_dfd,
                                              &thread_closure->tmpdir_lock,

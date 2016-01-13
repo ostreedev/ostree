@@ -617,7 +617,7 @@ ostree_repo_finalize (GObject *object)
 
   g_clear_object (&self->parent_repo);
 
-  g_free (self->boot_id);
+  g_free (self->stagedir_prefix);
   g_clear_object (&self->repodir);
   if (self->repo_dir_fd != -1)
     (void) close (self->repo_dir_fd);
@@ -2428,22 +2428,26 @@ ostree_repo_open (OstreeRepo    *self,
   if (self->inited)
     return TRUE;
 
-  /* We use a per-boot identifier to keep track of which file contents
-   * possibly haven't been sync'd to disk.
+  /* We use a directory of the form `staging-${BOOT_ID}-${RANDOM}`
+   * where if the ${BOOT_ID} doesn't match, we know file contents
+   * possibly haven't been sync'd to disk and need to be discarded.
    */
   { const char *env_bootid = getenv ("OSTREE_BOOTID");
+    g_autofree char *boot_id = NULL;
 
     if (env_bootid != NULL)
-      self->boot_id = g_strdup (env_bootid);
+      boot_id = g_strdup (env_bootid);
     else
       {
         if (!g_file_get_contents ("/proc/sys/kernel/random/boot_id",
-                                  &self->boot_id,
+                                  &boot_id,
                                   NULL,
                                   error))
           goto out;
-        g_strdelimit (self->boot_id, "\n", '\0');
+        g_strdelimit (boot_id, "\n", '\0');
       }
+
+    self->stagedir_prefix = g_strconcat (OSTREE_REPO_TMPDIR_STAGING, boot_id, "-", NULL);
   }
 
   if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->repodir), TRUE,
@@ -5003,6 +5007,50 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   return ret;
 }
 
+gboolean
+_ostree_repo_is_locked_tmpdir (const char *filename)
+{
+  return g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_STAGING) ||
+    g_str_has_prefix (filename, OSTREE_REPO_TMPDIR_FETCHER);
+}
+
+gboolean
+_ostree_repo_try_lock_tmpdir (int            tmpdir_dfd,
+                              const char    *tmpdir_name,
+                              GLnxLockFile  *file_lock_out,
+                              gboolean      *out_did_lock,
+                              GError       **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *lock_name = g_strconcat (tmpdir_name, "-lock", NULL);
+  gboolean did_lock = FALSE;
+  g_autoptr(GError) local_error = NULL;
+
+  /* We put the lock outside the dir, so we can hold the lock
+   * until the directory is fully removed */
+  if (!glnx_make_lock_file (tmpdir_dfd, lock_name, LOCK_EX | LOCK_NB,
+                            file_lock_out, &local_error))
+    {
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
+        {
+          did_lock = FALSE;
+        }
+      else
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          goto out;
+        }
+    }
+  else
+    {
+      did_lock = TRUE;
+    }
+
+  ret = TRUE;
+  *out_did_lock = did_lock;
+ out:
+  return ret;
+}
 
 /* This allocates and locks a subdir of the repo tmp dir, using an existing
  * one with the same prefix if it is not in use already. */
@@ -5016,14 +5064,18 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
                               GCancellable *cancellable,
                               GError **error)
 {
+  gboolean ret = FALSE;
   gboolean reusing_dir = FALSE;
+  gboolean did_lock;
   g_autofree char *tmpdir_name = NULL;
   glnx_fd_close int tmpdir_fd = -1;
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
+  g_return_val_if_fail (_ostree_repo_is_locked_tmpdir (tmpdir_prefix), FALSE);
+
   /* Look for existing tmpdir (with same prefix) to reuse */
   if (!glnx_dirfd_iterator_init_at (tmpdir_dfd, ".", FALSE, &dfd_iter, error))
-    return FALSE;
+    goto out;
 
   while (tmpdir_name == NULL)
     {
@@ -5031,10 +5083,9 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       struct dirent *dent;
       glnx_fd_close int existing_tmpdir_fd = -1;
       g_autoptr(GError) local_error = NULL;
-      g_autofree char *lock_name = NULL;
 
       if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
-        return FALSE;
+        goto out;
 
       if (dent == NULL)
         break;
@@ -5055,25 +5106,18 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
           else
             {
               g_propagate_error (error, g_steal_pointer (&local_error));
-              return FALSE;
+              goto out;
             }
         }
-
-      lock_name = g_strconcat (dent->d_name, "-lock", NULL);
 
       /* We put the lock outside the dir, so we can hold the lock
        * until the directory is fully removed */
-      if (!glnx_make_lock_file (dfd_iter.fd, lock_name, LOCK_EX | LOCK_NB,
-                                file_lock_out, &local_error))
-        {
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
-            continue;
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&local_error));
-              return FALSE;
-            }
-        }
+      if (!_ostree_repo_try_lock_tmpdir (dfd_iter.fd, dent->d_name,
+                                         file_lock_out, &did_lock,
+                                         error))
+        goto out;
+      if (!did_lock)
+        continue;
 
       /* Touch the reused directory so that we don't accidentally
        *   remove it due to being old when cleaning up the tmpdir
@@ -5091,32 +5135,24 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
       g_autofree char *tmpdir_name_template = g_strconcat (tmpdir_prefix, "XXXXXX", NULL);
       glnx_fd_close int new_tmpdir_fd = -1;
       g_autoptr(GError) local_error = NULL;
-      g_autofree char *lock_name = NULL;
 
       /* No existing tmpdir found, create a new */
 
       if (!glnx_mkdtempat (tmpdir_dfd, tmpdir_name_template, 0777, error))
-        return FALSE;
+        goto out;
 
       if (!glnx_opendirat (tmpdir_dfd, tmpdir_name_template, FALSE,
                            &new_tmpdir_fd, error))
-        return FALSE;
-
-      lock_name = g_strconcat (tmpdir_name_template, "-lock", NULL);
+        goto out;
 
       /* Note, at this point we can race with another process that picks up this
        * new directory. If that happens we need to retry, making a new directory. */
-      if (!glnx_make_lock_file (tmpdir_dfd, lock_name, LOCK_EX | LOCK_NB,
-                                file_lock_out, &local_error))
-        {
-          if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_WOULD_BLOCK))
-            continue;
-          else
-            {
-              g_propagate_error (error, g_steal_pointer (&local_error));
-              return FALSE;
-            }
-        }
+      if (!_ostree_repo_try_lock_tmpdir (tmpdir_dfd, tmpdir_name_template,
+                                         file_lock_out, &did_lock,
+                                         error))
+        goto out;
+      if (!did_lock)
+        continue;
 
       tmpdir_name = g_steal_pointer (&tmpdir_name_template);
       tmpdir_fd = glnx_steal_fd (&new_tmpdir_fd);
@@ -5131,5 +5167,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
   if (reusing_dir_out)
     *reusing_dir_out = reusing_dir;
 
-  return TRUE;
+  ret = TRUE;
+ out:
+  return ret;
 }
