@@ -540,10 +540,20 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
     goto out;
 
-  if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
-                                     checkout_target_name, csum,
-                                     cancellable, error))
-    goto out;
+ /* We end up using syncfs for the entire filesystem, so turn off
+   * OstreeRepo level fsync.
+   */
+  { gboolean fsync_was_disabled = ostree_repo_get_disable_fsync (repo);
+    gboolean t;
+
+    ostree_repo_set_disable_fsync (repo, TRUE);
+    t = ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
+                                      checkout_target_name, csum,
+                                      cancellable, error);
+    ostree_repo_set_disable_fsync (repo, fsync_was_disabled);
+    if (!t)
+      goto out;
+  }
 
   if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
     goto out;

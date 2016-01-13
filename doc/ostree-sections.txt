@@ -220,6 +220,7 @@ ostree_repo_new_for_sysroot_path
 ostree_repo_new_default
 ostree_repo_open
 ostree_repo_set_disable_fsync
+ostree_repo_get_disable_fsync
 ostree_repo_is_system
 ostree_repo_is_writable
 ostree_repo_create
