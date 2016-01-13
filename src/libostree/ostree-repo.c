@@ -2384,6 +2384,19 @@ ostree_repo_set_disable_fsync (OstreeRepo    *self,
   self->disable_fsync = disable_fsync;
 }
 
+/**
+ * ostree_repo_get_disable_fsync:
+ * @self: An #OstreeRepo
+ *
+ * For more information see ostree_repo_set_disable_fsync().
+ *
+ * Returns: Whether or not fsync() is enabled for this repo.
+ */
+gboolean
+ostree_repo_get_disable_fsync (OstreeRepo    *self)
+{
+  return self->disable_fsync;
+}
 
 /* Replace the contents of a file, honoring the repository's fsync
  * policy.
