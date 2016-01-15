@@ -194,9 +194,9 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       if (!ostree_repo_resolve_rev (repo, target, FALSE, &rev_b, error))
         goto out;
 
-      if (!ostree_repo_traverse_commit (repo, rev_a, -1, &reachable_a, cancellable, error))
+      if (!ostree_repo_traverse_commit (repo, rev_a, 0, &reachable_a, cancellable, error))
         goto out;
-      if (!ostree_repo_traverse_commit (repo, rev_b, -1, &reachable_b, cancellable, error))
+      if (!ostree_repo_traverse_commit (repo, rev_b, 0, &reachable_b, cancellable, error))
         goto out;
 
       a_size = g_hash_table_size (reachable_a);
