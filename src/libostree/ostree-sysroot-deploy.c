@@ -528,6 +528,11 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   glnx_fd_close int osdeploy_dfd = -1;
   int ret_fd;
 
+  /* We end up using syncfs for the entire filesystem, so turn off
+   * OstreeRepo level fsync.
+   */
+  checkout_opts.disable_fsync = TRUE;
+
   osdeploy_path = g_strconcat ("ostree/deploy/", ostree_deployment_get_osname (deployment), "/deploy", NULL);
   checkout_target_name = g_strdup_printf ("%s.%d", csum, ostree_deployment_get_deployserial (deployment));
 
@@ -540,20 +545,10 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
     goto out;
 
- /* We end up using syncfs for the entire filesystem, so turn off
-   * OstreeRepo level fsync.
-   */
-  { gboolean fsync_was_disabled = ostree_repo_get_disable_fsync (repo);
-    gboolean checkout_success;
-
-    ostree_repo_set_disable_fsync (repo, TRUE);
-    checkout_success = ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
-                                                     checkout_target_name, csum,
-                                                     cancellable, error);
-    ostree_repo_set_disable_fsync (repo, fsync_was_disabled);
-    if (!checkout_success)
-      goto out;
-  }
+  if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
+                                     checkout_target_name, csum,
+                                     cancellable, error))
+    goto out;
 
   if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
     goto out;

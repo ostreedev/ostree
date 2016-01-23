@@ -103,8 +103,15 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 }
 
 static gboolean
+fsync_is_enabled (OstreeRepo   *self,
+                  OstreeRepoCheckoutOptions *options)
+{
+  return !(self->disable_fsync || options->disable_fsync);
+}
+
+static gboolean
 write_regular_file_content (OstreeRepo            *self,
-                            OstreeRepoCheckoutMode mode,
+                            OstreeRepoCheckoutOptions *options,
                             GOutputStream         *output,
                             GFileInfo             *file_info,
                             GVariant              *xattrs,
@@ -113,6 +120,7 @@ write_regular_file_content (OstreeRepo            *self,
                             GError               **error)
 {
   gboolean ret = FALSE;
+  const OstreeRepoCheckoutMode mode = options->mode;
   int fd;
   int res;
 
@@ -154,12 +162,12 @@ write_regular_file_content (OstreeRepo            *self,
         }
     }
           
-  if (!self->disable_fsync)
+  if (fsync_is_enabled (self, options))
     {
       if (fsync (fd) == -1)
         {
           gs_set_error_from_errno (error, errno);
-      goto out;
+          goto out;
         }
     }
           
@@ -238,7 +246,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
       temp_out = g_unix_output_stream_new (fd, TRUE);
       fd = -1; /* Transfer ownership */
 
-      if (!write_regular_file_content (self, options->mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (self, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -298,7 +306,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                       cancellable, error))
         goto out;
 
-      if (!write_regular_file_content (repo, options->mode, temp_out, file_info, xattrs, input,
+      if (!write_regular_file_content (repo, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
     }
@@ -726,17 +734,13 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
-  /* Finally, fsync to ensure all entries are on disk.  Ultimately
-   * this should be configurable for the case where we're constructing
-   * buildroots.
-   */
-  if (!self->disable_fsync)
+  if (fsync_is_enabled (self, options))
     {
-    if (fsync (destination_dfd) == -1)
-      {
-        gs_set_error_from_errno (error, errno);
-        goto out;
-      }
+      if (fsync (destination_dfd) == -1)
+        {
+          gs_set_error_from_errno (error, errno);
+          goto out;
+        }
     }
 
   ret = TRUE;

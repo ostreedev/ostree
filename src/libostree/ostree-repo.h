@@ -532,7 +532,8 @@ typedef struct {
   OstreeRepoCheckoutOverwriteMode overwrite_mode;
   
   guint enable_uncompressed_cache : 1;
-  guint unused : 31;
+  guint disable_fsync : 1;
+  guint reserved : 30;
 
   const char *subpath;
 
