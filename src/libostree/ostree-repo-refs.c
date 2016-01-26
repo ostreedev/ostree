@@ -551,6 +551,8 @@ ostree_repo_list_refs (OstreeRepo       *self,
       remote_enumerator = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
                                                      0,
                                                      cancellable, error);
+      if (!remote_enumerator)
+        goto out;
 
       while (TRUE)
         {
