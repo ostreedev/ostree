@@ -518,8 +518,6 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
-  g_clear_object (&self->local_heads_dir);
-  g_clear_object (&self->remote_heads_dir);
   g_clear_object (&self->objects_dir);
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
@@ -605,8 +603,6 @@ ostree_repo_constructed (GObject *object)
   g_assert (self->repodir != NULL);
 
   self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
-  self->local_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/heads");
-  self->remote_heads_dir = g_file_resolve_relative_path (self->repodir, "refs/remotes");
 
   self->objects_dir = g_file_get_child (self->repodir, "objects");
   self->deltas_dir = g_file_get_child (self->repodir, "deltas");
