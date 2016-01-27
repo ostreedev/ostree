@@ -232,7 +232,7 @@ AM_CONDITIONAL(BUILDOPT_STATIC_DELTAS, test x$enable_static_deltas = xyes)
 
 AC_CONFIG_FILES([
 Makefile
-doc/Makefile
+apidoc/Makefile
 src/libostree/ostree-1.pc
 ])
 AC_OUTPUT
@@ -248,7 +248,8 @@ echo "
     SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                $enable_static_deltas
-    documentation:                                $enable_gtk_doc
+    man pages (xsltproc):                         $XSLTPROC
+    api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
     mkinitcpio:                                   $with_mkinitcpio"

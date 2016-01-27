@@ -32,7 +32,7 @@ DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc --disable-maintainer-mode
 SUBDIRS += .
 
 if ENABLE_GTK_DOC
-SUBDIRS += doc
+SUBDIRS += apidoc
 endif
 
 EXTRA_DIST += autogen.sh COPYING README.md
