@@ -2208,14 +2208,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                     &from_revision, error))
         goto out;
 
-#ifdef BUILDOPT_STATIC_DELTAS
       if (!disable_static_deltas && (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
                                                      &delta_superblock, cancellable, error))
             goto out;
         }
-#endif
           
       if (!delta_superblock)
         {
