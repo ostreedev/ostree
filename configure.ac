@@ -127,6 +127,7 @@ AM_CONDITIONAL([ENABLE_GTK_DOC], false)
 ])
 
 AC_PATH_PROG([XSLTPROC], [xsltproc])
+AM_CONDITIONAL([ENABLE_XSLTPROC], test -n "${XSLTPROC}")
 
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),

@@ -70,6 +70,7 @@ include Makefile-ostree.am
 include Makefile-switchroot.am
 include Makefile-tests.am
 include Makefile-boot.am
+include Makefile-man.am
 
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
