@@ -388,8 +388,6 @@ rm -f ${grub_cfg}.new
       if (!g_file_copy (self->config_path_efi, config_path_efi_old,
                         G_FILE_COPY_OVERWRITE, cancellable, NULL, NULL, error))
         goto out;
-      if (!ot_gfile_ensure_unlinked (config_path_efi_old, cancellable, error))
-        goto out;
 
       /* NOTE: NON-ATOMIC REPLACEMENT; WE can't do anything else on FAT;
        * see https://bugzilla.gnome.org/show_bug.cgi?id=724246
