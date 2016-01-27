@@ -235,15 +235,6 @@ AS_IF([test "x$found_introspection" = xyes], [
 ], [have_gjs=no])
 AM_CONDITIONAL(BUILDOPT_GJS, test x$have_gjs = xyes)
 
-AC_ARG_ENABLE(static_deltas,
-              AS_HELP_STRING([--enable-static-deltas],
-                             [Enable static delta code (default: yes)]),,
-              [enable_static_deltas=yes])
-AS_IF([test x$enable_static_deltas = xyes], [
-    AC_DEFINE([BUILDOPT_STATIC_DELTAS], 1, [Define if static deltas are enabled])
-])
-AM_CONDITIONAL(BUILDOPT_STATIC_DELTAS, test x$enable_static_deltas = xyes)
-
 AC_CONFIG_FILES([
 Makefile
 apidoc/Makefile
@@ -261,7 +252,7 @@ echo "
     libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
-    static deltas:                                $enable_static_deltas
+    static deltas:                                yes (always enabled now)
     man pages (xsltproc):                         $enable_man
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
