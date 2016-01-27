@@ -155,6 +155,8 @@ assert_not_streq ${rev} ${newrev}
 assert_file_has_content sysroot/ostree/deploy/testos/deploy/${newrev}.0/etc/os-release 'NAME=TestOS'
 ${CMD_PREFIX} ostree admin status
 validate_bootloader
+${CMD_PREFIX} ostree --repo=sysroot/ostree/repo refs testos:testos > reftest.txt
+assert_file_has_content reftest.txt testos:buildmaster/x86_64-runtime
 
 echo "ok upgrade"
 

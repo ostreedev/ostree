@@ -50,8 +50,6 @@ struct OstreeRepo {
   int    repo_dir_fd;
   GFile *tmp_dir;
   int    tmp_dir_fd;
-  GFile *local_heads_dir;
-  GFile *remote_heads_dir;
   GFile *objects_dir;
   GFile *state_dir;
   int objects_dir_fd;

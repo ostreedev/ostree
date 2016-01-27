@@ -25,19 +25,19 @@
 
 static gboolean
 add_ref_to_set (const char       *remote,
-                GFile            *base,
-                GFile            *child,
+                int               base_fd,
+                const char       *path,
                 GHashTable       *refs,
                 GCancellable     *cancellable,
                 GError          **error)
 {
   gboolean ret = FALSE;
   char *contents;
-  char *relpath;
   gsize len;
   GString *refname;
 
-  if (!g_file_load_contents (child, cancellable, &contents, &len, NULL, error))
+  contents = glnx_file_get_contents_utf8_at (base_fd, path, &len, cancellable, error);
+  if (!contents)
     goto out;
 
   g_strchomp (contents);
@@ -48,9 +48,7 @@ add_ref_to_set (const char       *remote,
       g_string_append (refname, remote);
       g_string_append_c (refname, ':');
     }
-  relpath = g_file_get_relative_path (base, child);
-  g_string_append (refname, relpath);
-  g_free (relpath);
+  g_string_append (refname, path);
           
   g_hash_table_insert (refs, g_string_free (refname, FALSE), contents);
 
@@ -117,43 +115,68 @@ write_checksum_file_at (OstreeRepo   *self,
 }
 
 static gboolean
+openat_ignore_enoent (int dfd,
+                      const char *path,
+                      int *out_fd,
+                      GError **error)
+{
+  gboolean ret = FALSE;
+  int target_fd = -1;
+  
+  target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
+  if (target_fd < 0)
+    {
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  *out_fd = target_fd;
+ out:
+  return ret;
+}
+
+static gboolean
 find_ref_in_remotes (OstreeRepo         *self,
                      const char         *rev,
-                     GFile             **out_file,
+                     int                *out_fd,
                      GError            **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
-  g_autoptr(GFile) ret_file = NULL;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  glnx_fd_close int ret_fd = -1;
 
-  dir_enum = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                        NULL, error);
-  if (!dir_enum)
+  if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
     goto out;
 
   while (TRUE)
     {
-      GFileInfo *file_info;
-      GFile *child;
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                       NULL, error))
+      struct dirent *dent = NULL;
+      glnx_fd_close int remote_dfd = -1;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, NULL, error))
         goto out;
-      if (file_info == NULL)
+      if (dent == NULL)
         break;
-      if (g_file_info_get_file_type (file_info) != G_FILE_TYPE_DIRECTORY)
+
+      if (dent->d_type != DT_DIR)
         continue;
 
-      g_clear_object (&ret_file);
-      ret_file = g_file_resolve_relative_path (child, rev);
-      if (!g_file_query_exists (ret_file, NULL))
-        g_clear_object (&ret_file);
-      else
+      if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
+        goto out;
+
+      if (!openat_ignore_enoent (remote_dfd, rev, &ret_fd, error))
+        goto out;
+
+      if (ret_fd != -1)
         break;
     }
 
   ret = TRUE;
-  ot_transfer_out_value (out_file, &ret_file);
+  *out_fd = ret_fd; ret_fd = -1;
  out:
   return ret;
 }
@@ -210,9 +233,8 @@ resolve_refspec (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   __attribute__((unused)) GCancellable *cancellable = NULL;
-  GError *temp_error = NULL;
   g_autofree char *ret_rev = NULL;
-  g_autoptr(GFile) child = NULL;
+  glnx_fd_close int target_fd = -1;
   
   g_return_val_if_fail (ref != NULL, FALSE);
 
@@ -223,40 +245,42 @@ resolve_refspec (OstreeRepo     *self,
     }
   else if (remote != NULL)
     {
-      child = ot_gfile_resolve_path_printf (self->remote_heads_dir, "%s/%s",
-                                            remote, ref);
-      if (!g_file_query_exists (child, NULL))
-        g_clear_object (&child);
+      const char *remote_ref = glnx_strjoina ("refs/remotes/", remote, "/", ref);
+
+      if (!openat_ignore_enoent (self->repo_dir_fd, remote_ref, &target_fd, error))
+        goto out;
     }
   else
     {
-      child = g_file_resolve_relative_path (self->local_heads_dir, ref);
+      const char *local_ref = glnx_strjoina ("refs/heads/", ref);
 
-      if (!g_file_query_exists (child, NULL))
+      if (!openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
+        goto out;
+
+      if (target_fd == -1)
         {
-          g_clear_object (&child);
+          local_ref = glnx_strjoina ("refs/remotes/", ref);
 
-          child = g_file_resolve_relative_path (self->remote_heads_dir, ref);
+          if (!openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
+            goto out;
 
-          if (!g_file_query_exists (child, NULL))
+          if (target_fd == -1)
             {
-              g_clear_object (&child);
-              
-              if (!find_ref_in_remotes (self, ref, &child, error))
+              if (!find_ref_in_remotes (self, ref, &target_fd, error))
                 goto out;
             }
         }
     }
 
-  if (child)
+  if (target_fd != -1)
     {
-      if ((ret_rev = gs_file_load_contents_utf8 (child, NULL, &temp_error)) == NULL)
+      ret_rev = glnx_fd_readall_utf8 (target_fd, NULL, NULL, error);
+      if (!ret_rev)
         {
-          g_propagate_error (error, temp_error);
-          g_prefix_error (error, "Couldn't open ref '%s': ", gs_file_get_path_cached (child));
+          g_prefix_error (error, "Couldn't open ref '%s': ", ref);
           goto out;
         }
-
+          
       g_strchomp (ret_rev);
       if (!ostree_validate_checksum_string (ret_rev, error))
         goto out;
@@ -433,43 +457,50 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
 static gboolean
 enumerate_refs_recurse (OstreeRepo    *repo,
                         const char    *remote,
-                        GFile         *base,
-                        GFile         *dir,
+                        int            base_dfd,
+                        GString       *base_path,
+                        int            child_dfd,
+                        const char    *path,
                         GHashTable    *refs,
                         GCancellable  *cancellable,
                         GError       **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFileEnumerator) enumerator = NULL;
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  enumerator = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO,
-                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                          cancellable, error);
-  if (!enumerator)
+  if (!glnx_dirfd_iterator_init_at (child_dfd, path, FALSE, &dfd_iter, error))
     goto out;
 
   while (TRUE)
     {
-      GFileInfo *file_info = NULL;
-      GFile *child = NULL;
+      guint len = base_path->len;
+      struct dirent *dent = NULL;
 
-      if (!gs_file_enumerator_iterate (enumerator, &file_info, &child,
-                                       NULL, error))
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         goto out;
-      if (file_info == NULL)
+      if (dent == NULL)
         break;
 
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+      g_string_append (base_path, dent->d_name);
+
+      if (dent->d_type == DT_DIR)
         {
-          if (!enumerate_refs_recurse (repo, remote, base, child, refs, cancellable, error))
+          g_string_append_c (base_path, '/');
+
+          if (!enumerate_refs_recurse (repo, remote, base_dfd, base_path,
+                                       dfd_iter.fd, dent->d_name,
+                                       refs, cancellable, error))
             goto out;
+          
         }
-      else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
+      else if (dent->d_type == DT_REG)
         {
-          if (!add_ref_to_set (remote, base, child, refs,
+          if (!add_ref_to_set (remote, base_dfd, base_path->str, refs,
                                cancellable, error))
             goto out;
         }
+
+      g_string_truncate (base_path, len);
     }
 
   ret = TRUE;
@@ -505,35 +536,55 @@ ostree_repo_list_refs (OstreeRepo       *self,
 
   if (refspec_prefix)
     {
-      g_autoptr(GFile) dir = NULL;
-      g_autoptr(GFile) child = NULL;
-      g_autoptr(GFileInfo) info = NULL;
+      struct stat stbuf;
+      const char *prefix_path;
+      const char *path;
 
       if (!ostree_parse_refspec (refspec_prefix, &remote, &ref_prefix, error))
         goto out;
 
       if (remote)
-        dir = g_file_get_child (self->remote_heads_dir, remote);
-      else
-        dir = g_object_ref (self->local_heads_dir);
-
-      child = g_file_resolve_relative_path (dir, ref_prefix);
-      if (!ot_gfile_query_info_allow_noent (child, OSTREE_GIO_FAST_QUERYINFO, 0,
-                                            &info, cancellable, error))
-        goto out;
-
-      if (info)
         {
-          if (g_file_info_get_file_type (info) == G_FILE_TYPE_DIRECTORY)
+          prefix_path = glnx_strjoina ("refs/remotes/", remote, "/");
+          path = glnx_strjoina (prefix_path, ref_prefix);
+        }
+      else
+        {
+          prefix_path = "refs/heads/";
+          path = glnx_strjoina (prefix_path, ref_prefix);
+        }
+
+      if (fstatat (self->repo_dir_fd, path, &stbuf, 0) < 0)
+        {
+          if (errno != ENOENT)
             {
-              if (!enumerate_refs_recurse (self, remote, child, child,
-                                           ret_all_refs,
-                                           cancellable, error))
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+        }
+      else
+        {
+          if (S_ISDIR (stbuf.st_mode))
+            {
+              glnx_fd_close int base_fd = -1;
+              g_autoptr(GString) base_path = g_string_new ("");
+
+              if (!glnx_opendirat (self->repo_dir_fd, path, TRUE, &base_fd, error))
+                goto out;
+
+              if (!enumerate_refs_recurse (self, remote, base_fd, base_path,
+                                           base_fd, ".",
+                                           ret_all_refs, cancellable, error))
                 goto out;
             }
           else
             {
-              if (!add_ref_to_set (remote, dir, child, ret_all_refs,
+              glnx_fd_close int prefix_dfd = -1;
+              
+              if (!glnx_opendirat (self->repo_dir_fd, prefix_path, TRUE, &prefix_dfd, error))
+                goto out;
+
+              if (!add_ref_to_set (remote, prefix_dfd, ref_prefix, ret_all_refs,
                                    cancellable, error))
                 goto out;
             }
@@ -541,33 +592,41 @@ ostree_repo_list_refs (OstreeRepo       *self,
     }
   else
     {
-      g_autoptr(GFileEnumerator) remote_enumerator = NULL;
-
-      if (!enumerate_refs_recurse (self, NULL, self->local_heads_dir, self->local_heads_dir,
-                                   ret_all_refs,
-                                   cancellable, error))
+      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+      g_autoptr(GString) base_path = g_string_new ("");
+      glnx_fd_close int refs_heads_dfd = -1;
+              
+      if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE, &refs_heads_dfd, error))
         goto out;
 
-      remote_enumerator = g_file_enumerate_children (self->remote_heads_dir, OSTREE_GIO_FAST_QUERYINFO,
-                                                     0,
-                                                     cancellable, error);
-      if (!remote_enumerator)
+      if (!enumerate_refs_recurse (self, NULL, refs_heads_dfd, base_path,
+                                   refs_heads_dfd, ".",
+                                   ret_all_refs, cancellable, error))
+        goto out;
+
+      g_string_truncate (base_path, 0);
+
+      if (!glnx_dirfd_iterator_init_at (self->repo_dir_fd, "refs/remotes", TRUE, &dfd_iter, error))
         goto out;
 
       while (TRUE)
         {
-          GFileInfo *info;
-          GFile *child;
-          const char *name;
+          struct dirent *dent;
+          glnx_fd_close int remote_dfd = -1;
 
-          if (!gs_file_enumerator_iterate (remote_enumerator, &info, &child,
-                                           cancellable, error))
+          if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
             goto out;
-          if (!info)
+          if (!dent)
             break;
 
-          name = g_file_info_get_name (info);
-          if (!enumerate_refs_recurse (self, name, child, child,
+          if (dent->d_type != DT_DIR)
+            continue;
+
+          if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
+            goto out;
+          
+          if (!enumerate_refs_recurse (self, dent->d_name, remote_dfd, base_path,
+                                       remote_dfd, ".",
                                        ret_all_refs,
                                        cancellable, error))
             goto out;
