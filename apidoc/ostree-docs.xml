@@ -7,15 +7,9 @@
 ]>
 <book id="index">
 	<bookinfo>
-		<title>OSTree Manual</title>
+		<title>OSTree API references</title>
 		<releaseinfo>for OSTree &version;</releaseinfo>
 	</bookinfo>
-
-	<xi:include href="overview.xml"/>
-	<xi:include href="repo.xml"/>
-	<xi:include href="deployment.xml"/>
-	<xi:include href="atomic-upgrades.xml"/>
-	<xi:include href="adapting-existing.xml"/>
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>

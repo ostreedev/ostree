@@ -1,0 +1,10 @@
+site_name: My Docs
+pages:
+  - Home: 'index.md'
+  - Contributing: 'CONTRIBUTING.md'
+  - Manual:
+      - Introduction: 'manual/introduction.md'
+      - Repository: 'manual/repo.md'
+      - Deployments: 'manual/deployment.md'
+      - Atomic Upgrades: 'manual/atomic-upgrades.md'
+      - Adapting Existing Systems: 'manual/adapting-existing.md'
