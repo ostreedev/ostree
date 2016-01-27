@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-set -e
+set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
@@ -49,7 +49,6 @@ os_repository_new_commit "1"
 bootcsum3=${bootcsum}
 ${CMD_PREFIX} ostree admin upgrade --os=testos
 
-rev=${newrev}
 newrev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 assert_not_streq ${rev} ${newrev}
 assert_not_streq ${bootcsum1} ${bootcsum2}

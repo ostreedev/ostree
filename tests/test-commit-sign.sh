@@ -17,9 +17,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-set -e
+set -euo pipefail
 
-if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
+if ! ostree --version | grep -q -e '\+gpgme'; then
     exit 77
 fi
 

@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-set -e
+set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
@@ -55,4 +55,4 @@ gjs --help >/dev/null 2>&1 || exit 77
 gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
 assert_file_has_content corrupted-status.txt 'Changed byte'
 do_corrupt_pull_test
-echo "ok corruption $iteration"
+echo "ok corruption"

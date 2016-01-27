@@ -19,7 +19,7 @@
 
 # See https://github.com/GNOME/ostree/pull/145
 
-set -e
+set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 

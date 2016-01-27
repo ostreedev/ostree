@@ -33,11 +33,11 @@ cp -a ${SRCDIR}/gpghome ${test_tmpdir}
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
-if test -n "${OT_TESTS_DEBUG}"; then
+if test -n "${OT_TESTS_DEBUG:-}"; then
     set -x
 fi
 
-if test -n "$OT_TESTS_VALGRIND"; then
+if test -n "${OT_TESTS_VALGRIND:-}"; then
     CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
 else
     CMD_PREFIX="env LD_PRELOAD=${SRCDIR}/libreaddir-rand.so"
@@ -139,8 +139,8 @@ setup_test_repository () {
 
 setup_fake_remote_repo1() {
     mode=$1
-    commit_opts=$2
-    args=$3
+    commit_opts=${2:-}
+    args=${3:-}
     shift
     oldpwd=`pwd`
     mkdir ostree-srv
@@ -272,7 +272,7 @@ EOF
     mkdir ${test_tmpdir}/httpd
     cd httpd
     ln -s ${test_tmpdir} ostree
-    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port $args
+    ${CMD_PREFIX} ostree trivial-httpd --autoexit --daemonize -p ${test_tmpdir}/httpd-port
     port=$(cat ${test_tmpdir}/httpd-port)
     echo "http://127.0.0.1:${port}" > ${test_tmpdir}/httpd-address
     cd ${oldpwd} 
@@ -280,15 +280,9 @@ EOF
 
 os_repository_new_commit ()
 {
-    boot_checksum_iteration=$1
-    content_iteration=$2
+    boot_checksum_iteration=${1:-0}
+    content_iteration=${2:-0}
     echo "BOOT ITERATION: $boot_checksum_iteration"
-    if test -z "$boot_checksum_iteration"; then
-	boot_checksum_iteration=0
-    fi
-    if test -z "$content_iteration"; then
-	content_iteration=0
-    fi
     cd ${test_tmpdir}/osdata
     rm boot/*
     echo "new: a kernel ${boot_checksum_iteration}" > boot/vmlinuz-3.6.0

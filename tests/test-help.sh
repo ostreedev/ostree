@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-set -e
+set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
@@ -45,7 +45,7 @@ test_recursive() {
         if [ $? = 0 ] ; then
 	    echo 1>&2 "missing subcommand but 0 exit status"; exit 1
         fi
-        set -e
+        set -euo pipefail
         # error message and usage goes to standard error
         assert_file_has_content err "[Uu]sage"
         assert_file_has_content err "$cmd"
