@@ -476,7 +476,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
         total_size += size;
         total_usize += usize;
         g_print ("Part%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
-                 i, (guint)(g_variant_get_size (objects) / 33), size, usize);
+                 i, (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN), size, usize);
       }
   }
 
