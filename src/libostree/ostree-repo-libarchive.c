@@ -24,6 +24,7 @@
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-repo-file.h"
 #include "ostree-mutable-tree.h"
 
 #ifdef HAVE_LIBARCHIVE
@@ -349,6 +350,255 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
  out:
   if (a)
     (void)archive_read_close (a);
+  return ret;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with libarchive support");
+  return FALSE;
+#endif
+}
+
+#ifdef HAVE_LIBARCHIVE
+
+static gboolean
+file_to_archive_entry_common (GFile         *root,
+                              OstreeRepoArchiveOptions *opts,
+                              GFile         *path,
+                              GFileInfo  *file_info,
+                              struct archive_entry *entry,
+                              GError            **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *pathstr = g_file_get_relative_path (root, path);
+  g_autoptr(GVariant) xattrs = NULL;
+  time_t ts = (time_t) opts->timestamp_secs;
+
+  if (pathstr && !pathstr[0])
+    {
+      g_free (pathstr);
+      pathstr = g_strdup (".");
+    }
+
+  archive_entry_update_pathname_utf8 (entry, pathstr);
+  archive_entry_set_ctime (entry, ts, 0);
+  archive_entry_set_mtime (entry, ts, 0);
+  archive_entry_set_atime (entry, ts, 0);
+  archive_entry_set_uid (entry, g_file_info_get_attribute_uint32 (file_info, "unix::uid"));
+  archive_entry_set_gid (entry, g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
+  archive_entry_set_mode (entry, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));
+
+  if (!ostree_repo_file_get_xattrs ((OstreeRepoFile*)path, &xattrs, NULL, error))
+    goto out;
+
+  if (!opts->disable_xattrs)
+    {
+      int i, n;
+      
+      n = g_variant_n_children (xattrs);
+      for (i = 0; i < n; i++)
+        {
+          const guint8* name;
+          g_autoptr(GVariant) value = NULL;
+          const guint8* value_data;
+          gsize value_len;
+
+          g_variant_get_child (xattrs, i, "(^&ay@ay)", &name, &value);
+          value_data = g_variant_get_fixed_array (value, &value_len, 1);
+
+          archive_entry_xattr_add_entry (entry, (char*)name,
+                                         (char*) value_data, value_len);
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+static gboolean
+write_header_free_entry (struct archive *a,
+                         struct archive_entry **entryp,
+                         GError **error)
+{
+  struct archive_entry *entry = *entryp;
+  gboolean ret = FALSE;
+
+  if (archive_write_header (a, entry) != ARCHIVE_OK)
+    {
+      propagate_libarchive_error (error, a);
+      goto out;
+    }
+
+  ret = TRUE;
+ out:
+  archive_entry_free (entry);
+  *entryp = NULL;
+  return ret;
+}
+
+static gboolean
+write_directory_to_libarchive_recurse (OstreeRepo               *self,
+                                       OstreeRepoArchiveOptions *opts,
+                                       GFile                    *root,
+                                       GFile                    *dir,
+                                       struct archive           *a,
+                                       GCancellable             *cancellable,
+                                       GError                  **error)
+{
+  gboolean ret = FALSE;
+  g_autoptr(GFileInfo) dir_info = NULL;
+  g_autoptr(GFileEnumerator) dir_enum = NULL;
+  struct archive_entry *entry;
+
+  dir_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
+                                G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                cancellable, error);
+  if (!dir_info)
+    goto out;
+
+  entry = archive_entry_new2 (a);
+  if (!file_to_archive_entry_common (root, opts, dir, dir_info, entry, error))
+    goto out;
+  if (!write_header_free_entry (a, &entry, error))
+    goto out;
+
+  dir_enum = g_file_enumerate_children (dir, OSTREE_GIO_FAST_QUERYINFO, 
+                                        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                        cancellable, error);
+  if (!dir_enum)
+    goto out;
+
+  while (TRUE)
+    {
+      GFileInfo *file_info;
+      GFile *path;
+
+      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &path,
+                                       cancellable, error))
+        goto out;
+      if (file_info == NULL)
+        break;
+
+      /* First, handle directories recursively */
+      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
+        {
+          if (!write_directory_to_libarchive_recurse (self, opts, root, path, a,
+                                                      cancellable, error))
+            goto out;
+
+          /* Go to the next entry */
+          continue;
+        }
+
+      /* Past here, should be a regular file or a symlink */
+
+      entry = archive_entry_new2 (a);
+      if (!file_to_archive_entry_common (root, opts, path, file_info, entry, error))
+        goto out;
+
+      switch (g_file_info_get_file_type (file_info))
+        {
+        case G_FILE_TYPE_SYMBOLIC_LINK:
+          {
+            archive_entry_set_symlink (entry, g_file_info_get_symlink_target (file_info));
+            if (!write_header_free_entry (a, &entry, error))
+              goto out;
+          }
+          break;
+        case G_FILE_TYPE_REGULAR:
+          {
+            guint8 buf[8192];
+            g_autoptr(GInputStream) file_in = NULL;
+            g_autoptr(GFileInfo) file_info = NULL;
+            const char *checksum;
+
+            checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)path);
+
+            if (!ostree_repo_load_file (self, checksum, &file_in, &file_info, NULL,
+                                        cancellable, error))
+              goto out;
+
+            archive_entry_set_size (entry, g_file_info_get_size (file_info));
+
+            if (archive_write_header (a, entry) != ARCHIVE_OK)
+              {
+                propagate_libarchive_error (error, a);
+                goto out;
+              }
+
+            while (TRUE)
+              {
+                gssize bytes_read = g_input_stream_read (file_in, buf, sizeof (buf),
+                                                         cancellable, error);
+                if (bytes_read < 0)
+                  goto out;
+                if (bytes_read == 0)
+                  break;
+
+                { ssize_t r = archive_write_data (a, buf, bytes_read);
+                  if (r != bytes_read)
+                    {
+                      propagate_libarchive_error (error, a);
+                      g_prefix_error (error, "Failed to write %" G_GUINT64_FORMAT " bytes (code %" G_GUINT64_FORMAT"): ", bytes_read, r);
+                      goto out;
+                    }
+                }
+              }
+
+            if (archive_write_finish_entry (a) != ARCHIVE_OK)
+              {
+                propagate_libarchive_error (error, a);
+                goto out;
+              }
+
+            archive_entry_free (entry);
+            entry = NULL;
+          }
+          break;
+        default:
+          g_assert_not_reached ();
+        }
+    }
+
+  ret = TRUE;
+ out:
+  if (entry)
+    archive_entry_free (entry);
+  return ret;
+}
+#endif
+
+/**
+ * ostree_repo_write_tree_to_archive:
+ * @self: An #OstreeRepo
+ * @opts: Options controlling conversion
+ * @root: An #OstreeRepoFile for the base directory
+ * @archive: A `struct archive`, but specified as void to avoid a dependency on the libarchive headers
+ * @modifier: (allow-none): Optional commit modifier
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ */
+gboolean
+ostree_repo_write_tree_to_archive (OstreeRepo                *self,
+                                   OstreeRepoArchiveOptions *opts,
+                                   OstreeRepoFile            *root,
+                                   void                      *archive,
+                                   GCancellable             *cancellable,
+                                   GError                  **error)
+{
+#ifdef HAVE_LIBARCHIVE
+  gboolean ret = FALSE;
+  struct archive *a = archive;
+
+  if (!write_directory_to_libarchive_recurse (self, opts, (GFile*)root, (GFile*)root,
+                                              a, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

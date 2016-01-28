@@ -28,6 +28,7 @@ ostree_SOURCES = src/ostree/main.c \
 	src/ostree/ot-builtin-checksum.c \
 	src/ostree/ot-builtin-commit.c \
 	src/ostree/ot-builtin-diff.c \
+	src/ostree/ot-builtin-export.c \
 	src/ostree/ot-builtin-fsck.c \
 	src/ostree/ot-builtin-gpg-sign.c \
 	src/ostree/ot-builtin-init.c \
