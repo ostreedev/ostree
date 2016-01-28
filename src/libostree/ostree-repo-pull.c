@@ -123,7 +123,7 @@ typedef struct {
 } FetchStaticDeltaData;
 
 typedef struct {
-  guchar csum[32];
+  guchar csum[OSTREE_SHA256_DIGEST_LEN];
   OstreeObjectType objtype;
   guint recursion_depth;
 } ScanObjectQueueData;
@@ -1150,7 +1150,7 @@ queue_scan_one_metadata_object (OtPullData         *pull_data,
                                 OstreeObjectType    objtype,
                                 guint               recursion_depth)
 {
-  guchar buf[32];
+  guchar buf[OSTREE_SHA256_DIGEST_LEN];
   ostree_checksum_inplace_to_bytes (csum, buf);
   queue_scan_one_metadata_object_c (pull_data, buf, objtype, recursion_depth);
 }
@@ -2067,7 +2067,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           {
             const char *delta;
             GVariant *csum_v = NULL;
-            guchar *csum_data = g_malloc (32);
+            guchar *csum_data = g_malloc (OSTREE_SHA256_DIGEST_LEN);
             g_autoptr(GVariant) ref = g_variant_get_child_value (deltas, i);
 
             g_variant_get_child (ref, 0, "&s", &delta);

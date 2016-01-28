@@ -50,6 +50,8 @@ G_BEGIN_DECLS
  */
 #define OSTREE_MAX_RECURSION (256)
 
+#define OSTREE_SHA256_DIGEST_LEN (32)
+
 /**
  * OstreeObjectType:
  * @OSTREE_OBJECT_TYPE_FILE: Content; regular file, symbolic link
