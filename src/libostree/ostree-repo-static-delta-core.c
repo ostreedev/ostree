@@ -22,6 +22,7 @@
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-cmdprivate.h"
 #include "ostree-repo-static-delta-private.h"
 #include "otutil.h"
 
@@ -399,6 +400,98 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
           goto out;
         }
     }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+_ostree_repo_static_delta_dump (OstreeRepo                    *self,
+                                const char                    *delta_id,
+                                GCancellable                  *cancellable,
+                                GError                      **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *from = NULL; 
+  g_autofree char *to = NULL;
+  g_autofree char *superblock_path = NULL;
+  glnx_fd_close int superblock_fd = -1;
+  g_autoptr(GVariant) delta_superblock = NULL;
+  guint64 total_size = 0, total_usize = 0;
+  guint64 total_fallback_size = 0, total_fallback_usize = 0;
+  guint i;
+
+  _ostree_parse_delta_name (delta_id, &from, &to);
+  superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
+
+  if (!ot_util_variant_map_at (self->repo_dir_fd, superblock_path,
+                               (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                               TRUE, &delta_superblock, error))
+    goto out;
+
+  g_print ("Delta: %s\n", delta_id);
+  { guint64 ts;
+    g_variant_get_child (delta_superblock, 1, "t", &ts);
+    g_print ("Timestamp: %" G_GUINT64_FORMAT "\n", GUINT64_FROM_BE (ts));
+  }
+  { g_autoptr(GVariant) recurse = NULL;
+    g_variant_get_child (delta_superblock, 5, "@ay", &recurse);
+    g_print ("Number of parents: %u\n", (guint)(g_variant_get_size (recurse) / (OSTREE_SHA256_DIGEST_LEN * 2)));
+  }
+  { g_autoptr(GVariant) fallback = NULL;
+    guint n_fallback;
+
+    g_variant_get_child (delta_superblock, 7, "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT, &fallback);
+    n_fallback = g_variant_n_children (fallback);
+
+    g_print ("Number of fallback entries: %u\n", n_fallback);
+
+    for (i = 0; i < n_fallback; i++)
+      {
+        guint64 size, usize;
+        g_variant_get_child (fallback, i, "(y@aytt)", NULL, NULL, &size, &usize);
+        total_fallback_size += size;
+        total_fallback_usize += usize;
+      }
+    { g_autofree char *sizestr = g_format_size (total_fallback_size);
+      g_autofree char *usizestr = g_format_size (total_fallback_usize);
+      g_print ("Total Fallback Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_size, sizestr);
+      g_print ("Total Fallback Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", total_fallback_usize, usizestr);
+    }
+  }
+  { g_autoptr(GVariant) meta_entries = NULL;
+    guint n_parts;
+
+    g_variant_get_child (delta_superblock, 6, "@a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT, &meta_entries);
+    n_parts = g_variant_n_children (meta_entries);
+    g_print ("Number of parts: %u\n", n_parts);
+
+    for (i = 0; i < n_parts; i++)
+      {
+        guint32 version;
+        guint64 size, usize;
+        g_autoptr(GVariant) objects = NULL;
+        g_variant_get_child (meta_entries, i, "(u@aytt@ay)", &version, NULL, &size, &usize, &objects);
+        total_size += size;
+        total_usize += usize;
+        g_print ("Part%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
+                 i, (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN), size, usize);
+      }
+  }
+
+  { g_autofree char *sizestr = g_format_size (total_size);
+    g_autofree char *usizestr = g_format_size (total_usize);
+    g_print ("Total Part Size: %" G_GUINT64_FORMAT " (%s)\n", total_size, sizestr);
+    g_print ("Total Part Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", total_usize, usizestr);
+  }
+  { guint64 overall_size = total_size + total_fallback_size;
+    guint64 overall_usize = total_usize + total_fallback_usize;
+    g_autofree char *sizestr = g_format_size (overall_size);
+    g_autofree char *usizestr = g_format_size (overall_usize);
+    g_print ("Total Size: %" G_GUINT64_FORMAT " (%s)\n", overall_size, sizestr);
+    g_print ("Total Uncompressed Size: %" G_GUINT64_FORMAT " (%s)\n", overall_usize, usizestr);
+  }
 
   ret = TRUE;
  out:

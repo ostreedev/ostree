@@ -23,6 +23,7 @@
 #include "ostree-cmdprivate.h"
 #include "ostree-repo-private.h"
 #include "ostree-core-private.h"
+#include "ostree-repo-static-delta-private.h"
 #include "ostree-sysroot.h"
 #include "ostree-bootloader-grub2.h"
 
@@ -44,7 +45,8 @@ const OstreeCmdPrivateVTable *
 ostree_cmd__private__ (void)
 {
   static OstreeCmdPrivateVTable table = {
-    impl_ostree_generate_grub2_config
+    impl_ostree_generate_grub2_config,
+    _ostree_repo_static_delta_dump
   };
 
   return &table;
