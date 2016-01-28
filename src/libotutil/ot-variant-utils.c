@@ -154,6 +154,28 @@ ot_util_variant_map (GFile              *src,
   return ret;
 }
 
+gboolean
+ot_util_variant_map_at (int dfd,
+                        const char *path,
+                        const GVariantType *type,
+                        gboolean trusted,
+                        GVariant **out_variant,
+                        GError  **error)
+{
+  glnx_fd_close int fd = -1;
+  g_autoptr(GVariant) ret_variant = NULL;
+
+  fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
+  if (fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      g_prefix_error (error, "Opening %s: ", path);
+      return FALSE;
+    }
+
+  return ot_util_variant_map_fd (fd, 0, type, trusted, out_variant, error);
+}
+
 typedef struct {
   gpointer addr;
   gsize len;
