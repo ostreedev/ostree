@@ -111,10 +111,6 @@ expand_content_files= \
 # e.g. GTKDOC_LIBS=$(top_builddir)/gtk/$(gtktargetlib)
 GTKDOC_LIBS=
 
-# Hacks around gtk-doc brokenness for out of tree builds
-ostree-sections.txt: $(srcdir)/ostree-sections.txt
-	cp $< $@
-
 version.xml:
 	echo -n $(VERSION) > "$@"
 
