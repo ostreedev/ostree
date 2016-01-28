@@ -1069,7 +1069,7 @@ int
 ostree_cmp_checksum_bytes (const guchar *a,
                            const guchar *b)
 {
-  return memcmp (a, b, 32);
+  return memcmp (a, b, OSTREE_SHA256_DIGEST_LEN);
 }
 
 /**
@@ -1151,7 +1151,7 @@ ostree_checksum_inplace_to_bytes (const char *checksum,
   guint i;
   guint j;
 
-  for (i = 0, j = 0; i < 32; i += 1, j += 2)
+  for (i = 0, j = 0; i < OSTREE_SHA256_DIGEST_LEN; i += 1, j += 2)
     {
       gint big, little;
 
@@ -1177,7 +1177,7 @@ ostree_checksum_inplace_to_bytes (const char *checksum,
 guchar *
 ostree_checksum_to_bytes (const char *checksum)
 {
-  guchar *ret = g_malloc (32);
+  guchar *ret = g_malloc (OSTREE_SHA256_DIGEST_LEN);
   ostree_checksum_inplace_to_bytes (checksum, ret);
   return ret;
 }
@@ -1191,9 +1191,9 @@ ostree_checksum_to_bytes (const char *checksum)
 GVariant *
 ostree_checksum_to_bytes_v (const char *checksum)
 {
-  guchar result[32];
+  guchar result[OSTREE_SHA256_DIGEST_LEN];
   ostree_checksum_inplace_to_bytes (checksum, result);
-  return ot_gvariant_new_bytearray ((guchar*)result, 32);
+  return ot_gvariant_new_bytearray ((guchar*)result, OSTREE_SHA256_DIGEST_LEN);
 }
 
 /**
@@ -1210,7 +1210,7 @@ ostree_checksum_inplace_from_bytes (const guchar *csum,
   static const gchar hexchars[] = "0123456789abcdef";
   guint i, j;
 
-  for (i = 0, j = 0; i < 32; i++, j += 2)
+  for (i = 0, j = 0; i < OSTREE_SHA256_DIGEST_LEN; i++, j += 2)
     {
       guchar byte = csum[i];
       buf[j] = hexchars[byte >> 4];
@@ -1242,7 +1242,7 @@ ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
    * a lot easier to reuse GLib's base64 encoder and postprocess it
    * to replace the '/' with '_'.
    */
-  outlen = g_base64_encode_step (csum, 32, FALSE, tmpbuf, &state, &save);
+  outlen = g_base64_encode_step (csum, OSTREE_SHA256_DIGEST_LEN, FALSE, tmpbuf, &state, &save);
   outlen += g_base64_encode_close (FALSE, tmpbuf+outlen, &state, &save);
   g_assert (outlen == 44);
 
@@ -1299,7 +1299,7 @@ ostree_checksum_bytes_peek (GVariant *bytes)
   gsize n_elts;
   const guchar *ret;
   ret = g_variant_get_fixed_array (bytes, &n_elts, 1);
-  if (G_UNLIKELY (n_elts != 32))
+  if (G_UNLIKELY (n_elts != OSTREE_SHA256_DIGEST_LEN))
     return NULL;
   return ret;
 }
@@ -1434,20 +1434,20 @@ _ostree_get_relative_static_delta_path (const char *from,
                                         const char *to,
                                         const char *target)
 {
-  guint8 csum_to[32];
+  guint8 csum_to[OSTREE_SHA256_DIGEST_LEN];
   char to_b64[44];
-  guint8 csum_to_copy[32];
+  guint8 csum_to_copy[OSTREE_SHA256_DIGEST_LEN];
   GString *ret = g_string_new ("deltas/");
 
   ostree_checksum_inplace_to_bytes (to, csum_to);
   ostree_checksum_b64_inplace_from_bytes (csum_to, to_b64);
   ostree_checksum_b64_inplace_to_bytes (to_b64, csum_to_copy);
 
-  g_assert (memcmp (csum_to, csum_to_copy, 32) == 0);
+  g_assert (memcmp (csum_to, csum_to_copy, OSTREE_SHA256_DIGEST_LEN) == 0);
 
   if (from != NULL)
     {
-      guint8 csum_from[32];
+      guint8 csum_from[OSTREE_SHA256_DIGEST_LEN];
       char from_b64[44];
 
       ostree_checksum_inplace_to_bytes (from, csum_from);

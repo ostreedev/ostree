@@ -228,7 +228,7 @@ objtype_checksum_array_new (GPtrArray *objects)
       GVariant *serialized_key = objects->pdata[i];
       OstreeObjectType objtype;
       const char *checksum;
-      guint8 csum[32];
+      guint8 csum[OSTREE_SHA256_DIGEST_LEN];
       guint8 objtype_v;
         
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
@@ -678,7 +678,7 @@ process_one_rollsum (OstreeRepo                       *repo,
 
   { gsize mode_offset, xattr_offset, from_csum_offset;
     gboolean reading_payload = TRUE;
-    guchar source_csum[32];
+    guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
     guint i;
 
     write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
@@ -799,7 +799,7 @@ process_one_bsdiff (OstreeRepo                       *repo,
   g_ptr_array_add (current_part->objects, ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_FILE));
 
   { gsize mode_offset, xattr_offset;
-    guchar source_csum[32];
+    guchar source_csum[OSTREE_SHA256_DIGEST_LEN];
 
     write_content_mode_xattrs (repo, current_part, content_finfo, content_xattrs,
                                &mode_offset, &xattr_offset);
@@ -1411,7 +1411,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                        cancellable, error))
         goto out;
 
-      checksum_bytes = g_bytes_new (part_checksum, 32);
+      checksum_bytes = g_bytes_new (part_checksum, OSTREE_SHA256_DIGEST_LEN);
       objtype_checksum_array = objtype_checksum_array_new (part_builder->objects);
       delta_part_header = g_variant_new ("(u@aytt@ay)",
                                          OSTREE_DELTAPART_VERSION,

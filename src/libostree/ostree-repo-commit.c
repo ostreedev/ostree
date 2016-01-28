@@ -412,12 +412,12 @@ add_size_index_to_metadata (OstreeRepo        *self,
 
       for (i = 0; i < sorted_keys->len; i++)
         {
-          guint8 csum[32];
+          guint8 csum[OSTREE_SHA256_DIGEST_LEN];
           const char *e_checksum = sorted_keys->pdata[i];
           GString *buffer = g_string_new (NULL);
 
           ostree_checksum_inplace_to_bytes (e_checksum, csum);
-          g_string_append_len (buffer, (char*)csum, 32);
+          g_string_append_len (buffer, (char*)csum, sizeof (csum));
 
           e_size = g_hash_table_lookup (self->object_sizes, e_checksum);
           _ostree_write_varuint64 (buffer, e_size->archived);
