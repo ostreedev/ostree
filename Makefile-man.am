@@ -26,7 +26,7 @@ man5_MANS = $(addprefix man/,$(man5_files))
 
 EXTRA_DIST += $(man1_MANS) $(man5_MANS)
 
-if ENABLE_XSLTPROC
+if ENABLE_MAN
 
 XSLT_STYLESHEET = http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
 
@@ -51,4 +51,4 @@ CLEANFILES += \
 	$(man5_MANS) \
 	$(NULL)
 
-endif # ENABLE_GTK_DOC
+endif

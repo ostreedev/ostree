@@ -126,8 +126,22 @@ enable_gtk_doc=no
 AM_CONDITIONAL([ENABLE_GTK_DOC], false)
 ])
 
-AC_PATH_PROG([XSLTPROC], [xsltproc])
-AM_CONDITIONAL([ENABLE_XSLTPROC], test -n "${XSLTPROC}")
+AC_ARG_ENABLE(man,
+              [AS_HELP_STRING([--enable-man],
+                              [generate man pages [default=auto]])],,
+              enable_man=maybe)
+
+AS_IF([test "$enable_man" != no], [
+  AC_PATH_PROG([XSLTPROC], [xsltproc])
+  AS_IF([test -z "$XSLTPROC"], [
+    AS_IF([test "$enable_man" = yes], [
+      AC_MSG_ERROR([xsltproc is required for --enable-man])
+    ])
+    enable_man=no
+  ])
+  enable_man=yes
+])
+AM_CONDITIONAL(ENABLE_MAN, test "$enable_man" != no)
 
 AC_ARG_WITH(libarchive,
 	    AS_HELP_STRING([--without-libarchive], [Do not use libarchive]),
@@ -248,7 +262,7 @@ echo "
     SELinux:                                      $with_selinux
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                $enable_static_deltas
-    man pages (xsltproc):                         $XSLTPROC
+    man pages (xsltproc):                         $enable_man
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
