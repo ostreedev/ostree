@@ -20,10 +20,12 @@ BuildRequires: pkgconfig(e2p)
 # Extras
 BuildRequires: pkgconfig(libarchive)
 BuildRequires: pkgconfig(libselinux)
+BuildRequires: libcap-devel
 BuildRequires: gpgme-devel
 BuildRequires: pkgconfig(systemd)
 BuildRequires: /usr/bin/g-ir-scanner
 BuildRequires: dracut
+BuildRequires:  bison
 
 # Runtime requirements
 Requires: dracut
