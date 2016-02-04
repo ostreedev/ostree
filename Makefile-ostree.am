@@ -89,6 +89,8 @@ ostree_SOURCES += \
 src/ostree/parse-datetime.c: src/ostree/parse-datetime.y Makefile
 	$(AM_V_GEN) $(YACC) $< -o $@
 
+EXTRA_DIST += src/ostree/parse-datetime.y
+CLEANFILES += src/ostree/parse-datetime.c
 
 ostree_bin_shared_cflags = $(AM_CFLAGS) -I$(srcdir)/src/libotutil -I$(srcdir)/src/libostree -I$(srcdir)/src/ostree \
 	$(NULL)
