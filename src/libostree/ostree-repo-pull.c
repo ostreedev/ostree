@@ -935,8 +935,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   g_autoptr(GVariant) metadata = NULL;
   g_autofree char *temp_path = NULL;
   g_autoptr(GInputStream) in = NULL;
-  g_autofree char *actual_checksum = NULL;
-  g_autofree guint8 *csum = NULL;
+  g_autoptr(GVariant) part = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
   gs_fd_close int fd = -1;
@@ -950,54 +949,33 @@ static_deltapart_fetch_on_complete (GObject           *object,
   fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
+
+  /* From here on, if we fail to apply the delta, we'll re-fetch it */
+  if (unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
   in = g_unix_input_stream_new (fd, FALSE);
 
-  /* TODO - consider making async */
-  if (!ot_gio_checksum_stream (in, &csum, pull_data->cancellable, error))
+  /* TODO - make async */
+  if (!_ostree_static_delta_part_open (in, NULL, 0, fetch_data->expected_checksum,
+                                       &part, pull_data->cancellable, error))
     goto out;
 
-  actual_checksum = ostree_checksum_from_bytes (csum);
-
-  if (strcmp (actual_checksum, fetch_data->expected_checksum) != 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "Corrupted static delta part; checksum expected='%s' actual='%s'",
-                   fetch_data->expected_checksum, actual_checksum);
-      goto out;
-    }
-
-  /* Might as well close the fd here */
-  (void) g_input_stream_close (in, NULL, NULL);
-
-  {
-    GMappedFile *mfile = NULL;
-    g_autoptr(GBytes) delta_data = NULL;
-
-    mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
-    if (!mfile)
-      goto out;
-    delta_data = g_mapped_file_get_bytes (mfile);
-    g_mapped_file_unref (mfile);
-
-    /* Unlink now while we're holding an open fd, so that on success
-     * or error, the file will be gone.  This is particularly
-     * important if say we hit e.g. ENOSPC.
-     */
-    (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
-
-    _ostree_static_delta_part_execute_async (pull_data->repo,
-                                             fetch_data->objects,
-                                             delta_data,
-                                             /* Trust checksums if summary was gpg signed */
-                                             pull_data->gpg_verify_summary && pull_data->summary_data_sig,
-                                             pull_data->cancellable,
-                                             on_static_delta_written,
-                                             fetch_data);
-    pull_data->n_outstanding_deltapart_write_requests++;
-  }
+  _ostree_static_delta_part_execute_async (pull_data->repo,
+                                           fetch_data->objects,
+                                           part,
+                                           /* Trust checksums if summary was gpg signed */
+                                           pull_data->gpg_verify_summary && pull_data->summary_data_sig,
+                                           pull_data->cancellable,
+                                           on_static_delta_written,
+                                           fetch_data);
+  pull_data->n_outstanding_deltapart_write_requests++;
 
  out:
   g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
@@ -1604,10 +1582,10 @@ process_one_static_delta (OtPullData   *pull_data,
       FetchStaticDeltaData *fetch_data;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
-      g_autoptr(GVariant) part_data = NULL;
-      g_autoptr(GBytes) delta_data = NULL;
+      g_autoptr(GBytes) inline_part_bytes = NULL;
       guint64 size, usize;
       guint32 version;
+      const gboolean trusted = pull_data->gpg_verify_summary && pull_data->summary_data_sig;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
@@ -1622,31 +1600,6 @@ process_one_static_delta (OtPullData   *pull_data,
       csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
         goto out;
-
-      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
-
-      part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE ("(yay)"));
-      if (part_data)
-        {
-          g_autofree char *actual_checksum = NULL;
-          g_autofree char *expected_checksum = ostree_checksum_from_bytes_v (csum_v);
-
-          delta_data = g_variant_get_data_as_bytes (part_data);
-
-          /* For inline parts we are relying on per-commit GPG, so this isn't strictly necessary for security.
-           * See https://github.com/GNOME/ostree/pull/139
-           */
-          actual_checksum = g_compute_checksum_for_bytes (G_CHECKSUM_SHA256, delta_data);
-          if (strcmp (actual_checksum, expected_checksum) != 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Corrupted static delta part; checksum expected='%s' actual='%s'",
-                           expected_checksum, actual_checksum);
-              goto out;
-            }
-        }
-
-      pull_data->total_deltapart_size += size;
 
       if (!_ostree_repo_static_delta_part_have_all_objects (pull_data->repo,
                                                             objects,
@@ -1663,18 +1616,38 @@ process_one_static_delta (OtPullData   *pull_data,
           continue;
         }
 
+      deltapart_path = _ostree_get_relative_static_delta_part_path (from_revision, to_revision, i);
+
+      { g_autoptr(GVariant) part_datav =
+          g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE ("(yay)"));
+
+        if (part_datav)
+          inline_part_bytes = g_variant_get_data_as_bytes (part_datav);
+      }
+
+      pull_data->total_deltapart_size += size;
+
       fetch_data = g_new0 (FetchStaticDeltaData, 1);
       fetch_data->pull_data = pull_data;
       fetch_data->objects = g_variant_ref (objects);
       fetch_data->expected_checksum = ostree_checksum_from_bytes_v (csum_v);
 
-      if (delta_data != NULL)
+      if (inline_part_bytes != NULL)
         {
+          g_autoptr(GInputStream) memin = g_memory_input_stream_new_from_bytes (inline_part_bytes);
+          g_autoptr(GVariant) inline_delta_part = NULL;
+
+          /* For inline parts we are relying on per-commit GPG, so don't bother checksumming. */
+          if (!_ostree_static_delta_part_open (memin, inline_part_bytes,
+                                               OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
+                                               NULL, &inline_delta_part,
+                                               cancellable, error))
+            goto out;
+                                               
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
-                                                   delta_data,
-                                                   /* Trust checksums if summary was gpg signed */
-                                                   pull_data->gpg_verify_summary && pull_data->summary_data_sig,
+                                                   inline_delta_part,
+                                                   trusted,
                                                    pull_data->cancellable,
                                                    on_static_delta_written,
                                                    fetch_data);
