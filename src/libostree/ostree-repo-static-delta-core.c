@@ -432,6 +432,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
         }
 
       if (!_ostree_static_delta_part_execute (self, objects, part, skip_validation,
+                                              FALSE, NULL,
                                               cancellable, error))
         {
           g_prefix_error (error, "Executing delta part %i: ", i);
@@ -578,6 +579,89 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
   return ret;
 }
 
+/*
+ * Displaying static delta parts
+ */
+
+static gboolean
+show_one_part (OstreeRepo                    *self,
+               const char                    *from,
+               const char                    *to,
+               GVariant                      *meta_entries,
+               guint                          i,
+               guint64                       *total_size_ref,
+               guint64                       *total_usize_ref,
+               GCancellable                  *cancellable,
+               GError                      **error)
+{
+  gboolean ret = FALSE;
+  guint32 version;
+  guint64 size, usize;
+  g_autoptr(GVariant) objects = NULL;
+  g_autoptr(GInputStream) part_in = NULL;
+  g_autoptr(GVariant) part = NULL;
+  g_autofree char *part_path = _ostree_get_relative_static_delta_part_path (from, to, i);
+  gint part_fd = -1;
+
+  g_variant_get_child (meta_entries, i, "(u@aytt@ay)", &version, NULL, &size, &usize, &objects);
+  *total_size_ref += size;
+  *total_usize_ref += usize;
+  g_print ("PartMeta%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
+           i, (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN), size, usize);
+
+  part_fd = openat (self->repo_dir_fd, part_path, O_RDONLY | O_CLOEXEC);
+  if (part_fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  part_in = g_unix_input_stream_new (part_fd, FALSE);
+  
+  if (!_ostree_static_delta_part_open (part_in, NULL, 
+                                       OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM,
+                                       NULL,
+                                       &part,
+                                       cancellable, error))
+    goto out;
+
+  { g_autoptr(GVariant) modes = NULL;
+    g_autoptr(GVariant) xattrs = NULL;
+    g_autoptr(GVariant) blob = NULL;
+    g_autoptr(GVariant) ops = NULL;
+    OstreeDeltaExecuteStats stats = { { 0, }, };
+
+    g_variant_get (part, "(@a(uuu)@aa(ayay)@ay@ay)",
+                   &modes, &xattrs, &blob, &ops);
+
+    g_print ("PartPayload%u: nmodes=%" G_GUINT64_FORMAT
+             " nxattrs=%" G_GUINT64_FORMAT
+             " blobsize=%" G_GUINT64_FORMAT
+             " opsize=%" G_GUINT64_FORMAT
+             "\n",
+             i,
+             g_variant_n_children (modes),
+             g_variant_n_children (xattrs),
+             g_variant_n_children (blob),
+             g_variant_n_children (ops));
+
+    if (!_ostree_static_delta_part_execute (self, objects,
+                                            part, TRUE, TRUE,
+                                            &stats, cancellable, error))
+      goto out;
+
+    { const guint *n_ops = stats.n_ops_executed;
+      g_print ("PartPayloadOps%u: openspliceclose=%u open=%u write=%u setread=%u "
+               "unsetread=%u close=%u bspatch=%u\n",
+               i, n_ops[0], n_ops[1], n_ops[2], n_ops[3], n_ops[4], n_ops[5], n_ops[6]);
+    }
+  }
+    
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 const char                    *delta_id,
@@ -641,14 +725,10 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
     for (i = 0; i < n_parts; i++)
       {
-        guint32 version;
-        guint64 size, usize;
-        g_autoptr(GVariant) objects = NULL;
-        g_variant_get_child (meta_entries, i, "(u@aytt@ay)", &version, NULL, &size, &usize, &objects);
-        total_size += size;
-        total_usize += usize;
-        g_print ("Part%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
-                 i, (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN), size, usize);
+        if (!show_one_part (self, from, to, meta_entries, i,
+                            &total_size, &total_usize,
+                            cancellable, error))
+          goto out;
       }
   }
 
