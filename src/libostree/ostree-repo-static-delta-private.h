@@ -103,35 +103,36 @@ G_BEGIN_DECLS
  */ 
 #define OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT "(a{sv}tayay" OSTREE_COMMIT_GVARIANT_STRING "aya" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT "a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")"
 
+typedef enum {
+  OSTREE_STATIC_DELTA_OPEN_FLAGS_NONE = 0,
+  OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM = (1 << 0),
+  OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED = (1 << 1)
+} OstreeStaticDeltaOpenFlags;
+
+gboolean
+_ostree_static_delta_part_open (GInputStream   *part_in,
+                                GBytes         *inline_part_bytes,
+                                OstreeStaticDeltaOpenFlags flags,
+                                const char     *expected_checksum,
+                                GVariant    **out_part,
+                                GCancellable *cancellable,
+                                GError      **error);
+
 gboolean _ostree_static_delta_dump (OstreeRepo     *repo,
                                     const char *delta_id,
                                     GCancellable   *cancellable,
                                     GError        **error);
 
-gboolean _ostree_static_delta_part_validate (OstreeRepo     *repo,
-                                             GInputStream   *in,
-                                             guint           part_offset,
-                                             const char     *expected_checksum,
-                                             GCancellable   *cancellable,
-                                             GError        **error);
-
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                             GVariant        *header,
-                                            GBytes          *partdata,
+                                            GVariant        *part_payload,
                                             gboolean         trusted,
                                             GCancellable    *cancellable,
                                             GError         **error);
 
-gboolean _ostree_static_delta_part_execute_raw (OstreeRepo      *repo,
-                                                GVariant        *header,
-                                                GVariant        *part,
-                                                gboolean         trusted,
-                                                GCancellable    *cancellable,
-                                                GError         **error);
-
 void _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
                                               GVariant        *header,
-                                              GBytes          *partdata,
+                                              GVariant        *part_payload,
                                               gboolean         trusted,
                                               GCancellable    *cancellable,
                                               GAsyncReadyCallback  callback,

@@ -20,9 +20,14 @@
 
 #include "config.h"
 
+#include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
+#include <gio/gfiledescriptorbased.h>
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
+#include "ostree-lzma-decompressor.h"
 #include "ostree-cmdprivate.h"
+#include "ostree-checksum-input-stream.h"
 #include "ostree-repo-static-delta-private.h"
 #include "otutil.h"
 
@@ -226,31 +231,45 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
 {
   gboolean ret = FALSE;
   guint i, n;
-  g_autoptr(GFile) meta_file = NULL;
-  g_autoptr(GFile) dir = NULL;
+  const char *dir_or_file_path = NULL;
+  glnx_fd_close int meta_fd = -1;
+  glnx_fd_close int dfd = -1;
   g_autoptr(GVariant) meta = NULL;
   g_autoptr(GVariant) headers = NULL;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) fallback = NULL;
   g_autofree char *to_checksum = NULL;
   g_autofree char *from_checksum = NULL;
-  GFileType file_type;
 
+  dir_or_file_path = gs_file_get_path_cached (dir_or_file);
 
-  file_type = g_file_query_file_type (dir_or_file, 0, cancellable);
-  if (file_type == G_FILE_TYPE_DIRECTORY)
+  /* First, try opening it as a directory */
+  dfd = glnx_opendirat_with_errno (AT_FDCWD, dir_or_file_path, TRUE);
+  if (dfd < 0)
     {
-      dir = g_object_ref (dir_or_file);
-      meta_file = g_file_get_child (dir, "superblock");
-    }
-  else
-    {
-      meta_file = g_object_ref (dir_or_file);
-      dir = g_file_get_parent (meta_file);
+      if (errno != ENOTDIR)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+      else
+        {
+          g_autofree char *dir = dirname (g_strdup (dir_or_file_path));
+
+          if (!glnx_opendirat (AT_FDCWD, dir, TRUE, &dfd, error))
+            goto out;
+        }
     }
 
-  if (!ot_util_variant_map (meta_file, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
-                            FALSE, &meta, error))
+  meta_fd = openat (dfd, "superblock", O_RDONLY | O_CLOEXEC);
+  if (meta_fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+  
+  if (!ot_util_variant_map_fd (meta_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT),
+                               FALSE, &meta, error))
     goto out;
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
@@ -330,14 +349,18 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       guint64 size;
       guint64 usize;
       const guchar *csum;
+      char checksum[65];
       gboolean have_all;
+      g_autoptr(GInputStream) part_in = NULL;
       g_autoptr(GBytes) delta_data = NULL;
-      g_autoptr(GVariant) part_data = NULL;
+      g_autoptr(GVariant) inline_part_data = NULL;
       g_autoptr(GVariant) header = NULL;
       g_autoptr(GVariant) csum_v = NULL;
       g_autoptr(GVariant) objects = NULL;
-      g_autoptr(GBytes) bytes = NULL;
+      g_autoptr(GVariant) part = NULL;
       g_autofree char *deltapart_path = NULL;
+      OstreeStaticDeltaOpenFlags delta_open_flags = 
+        skip_validation ? OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM : 0;
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
@@ -362,46 +385,195 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       csum = ostree_checksum_bytes_peek_validate (csum_v, error);
       if (!csum)
         goto out;
+      ostree_checksum_inplace_from_bytes (csum, checksum);
 
       deltapart_path =
         _ostree_get_relative_static_delta_part_path (from_checksum, to_checksum, i);
 
-      part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
-      if (part_data)
+      inline_part_data = g_variant_lookup_value (metadata, deltapart_path, G_VARIANT_TYPE("(yay)"));
+      if (inline_part_data)
         {
-          bytes = g_variant_get_data_as_bytes (part_data);
+          g_autoptr(GBytes) inline_part_bytes = g_variant_get_data_as_bytes (inline_part_data);
+          part_in = g_memory_input_stream_new_from_bytes (inline_part_bytes);
+
+          /* For inline parts, we don't checksum, because it's
+           * included with the metadata, so we're not trying to
+           * protect against MITM or such.  Non-security related
+           * checksums should be done at the underlying storage layer.
+           */
+          delta_open_flags |= OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM;
+
+          if (!_ostree_static_delta_part_open (part_in, inline_part_bytes, 
+                                               delta_open_flags,
+                                               NULL,
+                                               &part,
+                                               cancellable, error))
+            goto out;
         }
       else
         {
-          g_autoptr(GFile) part_path = ot_gfile_resolve_path_printf (dir, "%u", i);
-          GMappedFile *mfile = gs_file_map_noatime (part_path, cancellable, error);
-          if (!mfile)
-            goto out;
+          g_autofree char *relpath = g_strdup_printf ("%u", i); /* TODO avoid malloc here */
+          glnx_fd_close int part_fd = openat (dfd, relpath, O_RDONLY | O_CLOEXEC);
+          if (part_fd < 0)
+            {
+              glnx_set_error_from_errno (error);
+              g_prefix_error (error, "Opening deltapart '%s': ", deltapart_path);
+              goto out;
+            }
 
-          bytes = g_mapped_file_get_bytes (mfile);
-          g_mapped_file_unref (mfile);
+          part_in = g_unix_input_stream_new (part_fd, FALSE);
+
+          if (!_ostree_static_delta_part_open (part_in, NULL, 
+                                               delta_open_flags,
+                                               checksum,
+                                               &part,
+                                               cancellable, error))
+            goto out;
         }
 
-      if (!skip_validation)
-        {
-          g_autoptr(GInputStream) in = g_memory_input_stream_new_from_bytes (bytes);
-
-          g_autofree char *expected_checksum = ostree_checksum_from_bytes (csum);
-          if (!_ostree_static_delta_part_validate (self, in, i,
-                                                   expected_checksum,
-                                                   cancellable, error))
-            goto out;
-        }
-
-      if (!_ostree_static_delta_part_execute (self, objects, bytes, skip_validation,
+      if (!_ostree_static_delta_part_execute (self, objects, part, skip_validation,
                                               cancellable, error))
         {
-          g_prefix_error (error, "executing delta part %i: ", i);
+          g_prefix_error (error, "Executing delta part %i: ", i);
           goto out;
         }
     }
 
   ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+_ostree_static_delta_part_open (GInputStream   *part_in,
+                                GBytes         *inline_part_bytes,
+                                OstreeStaticDeltaOpenFlags flags,
+                                const char     *expected_checksum,
+                                GVariant    **out_part,
+                                GCancellable *cancellable,
+                                GError      **error)
+{
+  gboolean ret = FALSE;
+  const gboolean trusted = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED) > 0;
+  const gboolean skip_checksum = (flags & OSTREE_STATIC_DELTA_OPEN_FLAGS_SKIP_CHECKSUM) > 0;
+  gsize bytes_read;
+  guint8 comptype;
+  g_autoptr(GChecksum) checksum = NULL;
+  g_autoptr(GInputStream) checksum_in = NULL;
+  g_autoptr(GVariant) ret_part = NULL;
+  GInputStream *source_in;
+
+  /* We either take a fd or a GBytes reference */
+  g_return_val_if_fail (G_IS_FILE_DESCRIPTOR_BASED (part_in) || inline_part_bytes != NULL, FALSE);
+  g_return_val_if_fail (skip_checksum || expected_checksum != NULL, FALSE);
+
+  if (!skip_checksum)
+    {
+      checksum = g_checksum_new (G_CHECKSUM_SHA256);
+      checksum_in = (GInputStream*)ostree_checksum_input_stream_new (part_in, checksum);
+      source_in = checksum_in;
+    }
+  else
+    {
+      source_in = part_in;
+    }
+
+  { guint8 buf[1];
+    /* First byte is compression type */
+    if (!g_input_stream_read_all (source_in, buf, sizeof(buf), &bytes_read,
+                                  cancellable, error))
+      {
+        g_prefix_error (error, "Reading initial compression flag byte: ");
+      goto out;
+      }
+    comptype = buf[0];
+  }
+
+  switch (comptype)
+    {
+    case 0:
+      if (!inline_part_bytes)
+        {
+          int part_fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)part_in);
+
+          /* No compression, no checksums - a fast path */
+          if (!ot_util_variant_map_fd (part_fd, 1, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                       trusted, &ret_part, error))
+            goto out;
+        }
+      else
+        {
+          g_autoptr(GBytes) content_bytes = g_bytes_new_from_bytes (inline_part_bytes, 1,
+                                                                    g_bytes_get_size (inline_part_bytes) - 1);
+          ret_part = g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                               content_bytes, trusted);
+        }
+
+      if (!skip_checksum)
+        g_checksum_update (checksum, g_variant_get_data (ret_part),
+                           g_variant_get_size (ret_part));
+      
+      break;
+    case 'x':
+      {
+        g_autofree char *tmppath = g_strdup ("/var/tmp/ostree-delta-XXXXXX");
+        g_autoptr(GConverter) decomp = (GConverter*) _ostree_lzma_decompressor_new ();
+        g_autoptr(GInputStream) convin = g_converter_input_stream_new (source_in, decomp);
+        g_autoptr(GOutputStream) unpacked_out = NULL;
+        glnx_fd_close int unpacked_fd = -1;
+        gssize n_bytes_written;
+
+        unpacked_fd = g_mkstemp_full (tmppath, O_RDWR | O_CLOEXEC, 0640);
+        if (unpacked_fd < 0)
+          {
+            glnx_set_error_from_errno (error);
+            goto out;
+          }
+        
+        /* Now make it autocleanup on process exit - in the future, we
+         * should consider caching unpacked deltas as well.
+         */
+        if (unlink (tmppath) < 0)
+          {
+            glnx_set_error_from_errno (error);
+            goto out;
+          }
+        
+        unpacked_out = g_unix_output_stream_new (unpacked_fd, FALSE);
+
+        n_bytes_written = g_output_stream_splice (unpacked_out, convin,
+                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE |
+                                                  G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                                                  cancellable, error);
+        if (n_bytes_written < 0)
+          goto out;
+
+        if (!ot_util_variant_map_fd (unpacked_fd, 0, G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
+                                     trusted, &ret_part, error))
+          goto out;
+      }
+      break;
+    default:
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid compression type '%u'", comptype);
+      goto out;
+    }
+
+  if (checksum)
+    {
+      const char *actual_checksum = g_checksum_get_string (checksum);
+      g_assert (expected_checksum != NULL);
+      if (strcmp (actual_checksum, expected_checksum) != 0)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Checksum mismatch in static delta part; expected=%s actual=%s",
+                       expected_checksum, actual_checksum);
+          goto out;
+        }
+    }
+        
+  ret = TRUE;
+  *out_part = g_steal_pointer (&ret_part);
  out:
   return ret;
 }
