@@ -109,6 +109,17 @@ typedef enum {
   OSTREE_STATIC_DELTA_OPEN_FLAGS_VARIANT_TRUSTED = (1 << 1)
 } OstreeStaticDeltaOpenFlags;
 
+typedef enum {
+  OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE = 'S',
+  OSTREE_STATIC_DELTA_OP_OPEN = 'o',
+  OSTREE_STATIC_DELTA_OP_WRITE = 'w',
+  OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE = 'r',
+  OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE = 'R',
+  OSTREE_STATIC_DELTA_OP_CLOSE = 'c',
+  OSTREE_STATIC_DELTA_OP_BSPATCH = 'B'
+} OstreeStaticDeltaOpCode;
+#define OSTREE_STATIC_DELTA_N_OPS 7
+
 gboolean
 _ostree_static_delta_part_open (GInputStream   *part_in,
                                 GBytes         *inline_part_bytes,
@@ -123,10 +134,16 @@ gboolean _ostree_static_delta_dump (OstreeRepo     *repo,
                                     GCancellable   *cancellable,
                                     GError        **error);
 
+typedef struct {
+  guint n_ops_executed[OSTREE_STATIC_DELTA_N_OPS];
+} OstreeDeltaExecuteStats;
+
 gboolean _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                             GVariant        *header,
                                             GVariant        *part_payload,
                                             gboolean         trusted,
+                                            gboolean         stats_only,
+                                            OstreeDeltaExecuteStats *stats,
                                             GCancellable    *cancellable,
                                             GError         **error);
 
@@ -141,16 +158,6 @@ void _ostree_static_delta_part_execute_async (OstreeRepo      *repo,
 gboolean _ostree_static_delta_part_execute_finish (OstreeRepo      *repo,
                                                    GAsyncResult    *result,
                                                    GError         **error); 
-
-typedef enum {
-  OSTREE_STATIC_DELTA_OP_OPEN_SPLICE_AND_CLOSE = 'S',
-  OSTREE_STATIC_DELTA_OP_OPEN = 'o',
-  OSTREE_STATIC_DELTA_OP_WRITE = 'w',
-  OSTREE_STATIC_DELTA_OP_SET_READ_SOURCE = 'r',
-  OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE = 'R',
-  OSTREE_STATIC_DELTA_OP_CLOSE = 'c',
-  OSTREE_STATIC_DELTA_OP_BSPATCH = 'B'
-} OstreeStaticDeltaOpCode;
 
 gboolean
 _ostree_static_delta_parse_checksum_array (GVariant      *array,
