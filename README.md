@@ -1,31 +1,48 @@
 OSTree
 ======
 
+New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
+
+-----
+
 OSTree is a tool that combines a "git-like" model for committing and
 downloading bootable filesystem trees, along with a layer for
 deploying them and managing the bootloader configuration.
 
-Traditional package managers (dpkg/rpm) build filesystem trees on the
-client side.  In contrast, the primary focus of OSTree is on
-replicating trees composed on a server.
+OSTree is like git in that it checksums individual files and has a
+content-addressed-object store.  It's unlike git in that it "checks
+out" the files via hardlinks, and they should thus be immutable.
+Therefore, another way to think of OSTree is that it's just a more
+polished version of
+[Linux VServer hardlinks](http://linux-vserver.org/index.php?title=util-vserver:Vhashify&oldid=2285).
 
 **Features:**
 
- - Atomic upgrades and rollback
- - GPG signatures and "pinned TLS" support
+ - Atomic upgrades and rollback for the system
+ - Replicating content incrementally over HTTP via GPG signatures and "pinned TLS" support
  - Support for parallel installing more than just 2 bootable roots
- - Binary history on the server side
+ - Binary history on the server side (and client)
  - Introspectable shared library API for build and deployment systems
+
+This last point is important - you should think of the OSTree command
+line as effectively a "demo" for the shared library.  The intent is that
+package managers, system upgrade tools, container build tools and the like
+use OSTree as a "deduplicating hardlink store".
 
 Projects using OSTree
 ---------------------
 
 [rpm-ostree](https://github.com/projectatomic/rpm-ostree) is a tool
 that uses OSTree as a shared library, and supports committing RPMs
-into an OSTree repository, and deploying them on the client.
+into an OSTree repository, and deploying them on the client.  This is
+appropriate for "fixed purpose" systems.  There is in progress work
+for more sophisticated hybrid models, deeply integrating the RPM
+packaging with OSTree.
 
-[Project Atomic](http://www.projectatomic.io/) uses rpm-ostree
-to provide a minimal host for Docker formatted Linux containers.
+[Project Atomic](http://www.projectatomic.io/) uses rpm-ostree to
+provide a minimal host for Docker formatted Linux containers.
+Replicating a base immutable OS, then using Docker for applications
+meshes together two different tools with different tradeoffs.
 
 [xdg-app](https://github.com/alexlarsson/xdg-app) uses OSTree 
 for desktop application containers.
@@ -63,11 +80,10 @@ make install DESTDIR=/path/to/dest
 More documentation
 ------------------
 
+New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
+
 Some more information is available on the old wiki page:
 https://wiki.gnome.org/Projects/OSTree
-
-The intent is for that wiki page content to be migrated into Markdown
-in this git repository.
 
 Contributing
 ------------
