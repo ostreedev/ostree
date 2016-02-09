@@ -277,7 +277,12 @@ static void
 session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
                                        gpointer data)
 {
-  GTlsInteraction *interaction = data;
+  GTlsCertificate *cert = data;
+  glnx_unref_object OstreeTlsCertInteraction *interaction = NULL;
+
+  /* The GTlsInteraction instance must be created in the
+   * session thread so it uses the correct GMainContext. */
+  interaction = _ostree_tls_cert_interaction_new (cert);
 
   g_object_set (thread_closure->session,
                 SOUP_SESSION_TLS_INTERACTION,
@@ -645,7 +650,7 @@ _ostree_fetcher_set_client_cert (OstreeFetcher   *self,
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
   session_thread_idle_add (self->thread_closure,
                            session_thread_set_tls_interaction_cb,
-                           _ostree_tls_cert_interaction_new (cert),
+                           g_object_ref (cert),
                            (GDestroyNotify) g_object_unref);
 #else
   g_warning ("This version of OSTree is compiled without client side certificate support");
