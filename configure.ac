@@ -117,6 +117,8 @@ AS_IF([ test x$have_gpgme = xno ], [
 OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
 
 LIBARCHIVE_DEPENDENCY="libarchive >= 2.8.0"
+# What's in RHEL7.2.
+FUSE_DEPENDENCY="fuse >= 2.9.2"
 
 # check for gtk-doc
 m4_ifdef([GTK_DOC_CHECK], [
@@ -194,6 +196,16 @@ AS_IF([ test x$with_selinux != xno ], [
 if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
 AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
 
+# Enabled by default because I think people should use it.
+AC_ARG_ENABLE(rofiles-fuse,
+              [AS_HELP_STRING([--enable-rofiles-fuse],
+                              [generate rofiles-fuse helper [default=yes]])],,
+              enable_rofiles_fuse=yes)
+AS_IF([ test $enable_rofiles_fuse != xno ], [
+    PKG_CHECK_MODULES(BUILDOPT_FUSE, $FUSE_DEPENDENCY)
+], [enable_rofiles_fuse=no])
+AM_CONDITIONAL(BUILDOPT_FUSE, test x$enable_rofiles_fuse = xyes)
+
 AC_ARG_WITH(dracut,
             AS_HELP_STRING([--with-dracut],
                            [Install dracut module (default: no)]),,
@@ -248,6 +260,7 @@ echo "
 
 
     introspection:                                $found_introspection
+    rofiles-fuse:                                 $enable_rofiles_fuse
     libsoup (retrieve remote HTTP repositories):  $with_soup
     libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux

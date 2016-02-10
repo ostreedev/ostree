@@ -61,6 +61,11 @@ testfiles = test-basic \
 	test-auto-summary \
 	test-prune \
 	$(NULL)
+
+if BUILDOPT_FUSE
+testfiles += test-rofiles-fuse
+endif
+
 insttest_SCRIPTS = $(addprefix tests/,$(testfiles:=.sh))
 
 # This one uses corrupt-repo-ref.js

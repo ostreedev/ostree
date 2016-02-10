@@ -68,6 +68,7 @@ include Makefile-otutil.am
 include Makefile-libostree.am
 include Makefile-ostree.am
 include Makefile-switchroot.am
+include src/rofiles-fuse/Makefile-inc.am
 include Makefile-tests.am
 include Makefile-boot.am
 include Makefile-man.am

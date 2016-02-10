@@ -1,0 +1,104 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2016 Colin Walters <walters@verbum.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>rofiles-fuse</title>
+        <productname>rofiles-fuse</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>rofiles-fuse</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>rofiles-fuse</refname>
+        <refpurpose>Use FUSE to create a view where directories are writable, files are immutable</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+      <cmdsynopsis>
+        <command>rofiles-fuse SRCDIR MNTPOINT</command>
+      </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+	  Creating a checkout from an OSTree repository by default
+	  uses hard links, which means an in-place mutation to any
+	  file corrupts the repository and all checkouts.  This can be
+	  problematic if one wishes to run arbitrary programs against
+	  such a checkout.  For example, RPM <literal>%post</literal>
+	  scripts or equivalent.
+	</para>
+
+	<para>
+	  In the case where one wants to create a tree commit derived
+	  from other content, using <command>rofiles-fuse</command> in
+	  concert with <command>ostree commit
+	  --link-checkout-speedup</command> (or the underlying API)
+	  can ensure that only new files are checksummed.
+	</para>
+	  
+    </refsect1>
+
+    <refsect1>
+        <title>Example: Update an OSTree commit</title>
+	<programlisting>
+# Initialize a checkout and mount
+$ ostree --repo=repo checkout somebranch branch-checkout
+$ mkdir mnt
+$ rofiles-fuse branch-checkout mnt
+
+# Now, arbitrary changes to mnt/ are reflected in branch-checkout
+$ echo somenewcontent > mnt/anewfile
+$ mkdir mnt/anewdir
+$ rm mnt/someoriginalcontent -rf
+
+# Commit and cleanup
+$ fusermount -u mnt
+$ ostree --repo=repo commit --link-checkout-speedup -b somebranch -s 'Commit new content' --tree=dir=branch-checkout
+$ rm mnt branch-checkout -rf
+	</programlisting>
+    </refsect1>
+
+    <refsect1>
+        <title>See Also</title>
+        <para>
+            <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+        </para>
+    </refsect1>
+</refentry>
