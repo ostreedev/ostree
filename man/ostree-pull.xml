@@ -111,14 +111,37 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Downloads all content corresponding to the provided branch or commit from the given remote.
+	  This command can retrieve just a specific commit, or go all
+	  the way to performing a full mirror of the remote
+	  repository.  If no <literal>BRANCH</literal> is specified,
+	  all branches are retrieved.
         </para>
+
+	<para>
+	  A special syntax in the <literal>@</literal> character allows
+	  specifying a specific commit to retrieve from a branch.  This
+	</para>
+
     </refsect1>
 
     <refsect1>
         <title>Example</title>
 
-        <para><command>$ ostree pull remote_name</command></para>
+        <para><command>$ ostree --repo=repo pull --depth=-1 --mirror remote_name</command></para>
+
+	<para>Perform a complete mirror of the remote.  (This is
+	likely most useful if your repository is also
+	<literal>archive-z2</literal> mode)</para>
+
+        <para><command>$ ostree --repo=repo pull remote_name exampleos/x86_64/standard</command></para>
+
+	<para>Fetch the most recent commit to <literal>exampleos/x86_64/standard</literal>.</para>
+
+        <para><command>$ ostree --repo=repo pull remote_name exampleos/x86_64/standard@98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4</command></para>
+
+	<para>Download the specific commit starting with
+	<literal>98ea6e</literal> as if it was the latest commit for
+	<literal>exampleos/x86_64/standard</literal>.</para>
     </refsect1>
 
 </refentry>

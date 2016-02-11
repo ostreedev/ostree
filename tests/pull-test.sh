@@ -73,6 +73,21 @@ assert_file_has_content main-meta "HANCOCK"
 echo "ok pull detached metadata"
 
 cd ${test_tmpdir}
+mkdir parentpullrepo
+${CMD_PREFIX} ostree --repo=parentpullrepo init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=parentpullrepo remote add --set=gpg-verify=false origin file://$(pwd)/ostree-srv/gnomerepo
+parent_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main^)
+rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
+${CMD_PREFIX} ostree --repo=parentpullrepo pull origin main@${parent_rev}
+${CMD_PREFIX} ostree --repo=parentpullrepo rev-parse origin:main > main.txt
+assert_file_has_content main.txt ${parent_rev}
+${CMD_PREFIX} ostree --repo=parentpullrepo fsck
+${CMD_PREFIX} ostree --repo=parentpullrepo pull origin main
+${CMD_PREFIX} ostree --repo=parentpullrepo rev-parse origin:main > main.txt
+assert_file_has_content main.txt ${rev}
+echo "ok pull specific commit"
+
+cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck

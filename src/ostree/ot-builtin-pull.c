@@ -34,7 +34,7 @@ static gboolean opt_disable_static_deltas;
 static char* opt_subpath;
 static int opt_depth = 0;
  
- static GOptionEntry options[] = {
+static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
@@ -70,6 +70,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   OstreeRepoPullFlags pullflags = 0;
   GSConsole *console = NULL;
   g_autoptr(GPtrArray) refs_to_fetch = NULL;
+  g_autoptr(GPtrArray) override_commit_ids = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gulong signal_handler_id = 0;
 
@@ -102,9 +103,36 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
       if (argc > 2)
         {
           int i;
-          refs_to_fetch = g_ptr_array_new ();
+          refs_to_fetch = g_ptr_array_new_with_free_func (g_free);
+
           for (i = 2; i < argc; i++)
-            g_ptr_array_add (refs_to_fetch, argv[i]);
+            {
+              const char *at = strrchr (argv[i], '@');
+
+              if (at)
+                {
+                  guint j;
+                  const char *override_commit_id = at + 1;
+
+                  if (!ostree_validate_checksum_string (override_commit_id, error))
+                    goto out;
+
+                  if (!override_commit_ids)
+                    override_commit_ids = g_ptr_array_new_with_free_func (g_free);
+
+                  /* Backfill */
+                  for (j = 2; j < i; i++)
+                    g_ptr_array_add (override_commit_ids, g_strdup (""));
+
+                  g_ptr_array_add (override_commit_ids, g_strdup (override_commit_id));
+                  g_ptr_array_add (refs_to_fetch, g_strndup (argv[i], at - argv[i]));
+                }
+              else
+                {
+                  g_ptr_array_add (refs_to_fetch, g_strdup (argv[i]));
+                }
+            }
+
           g_ptr_array_add (refs_to_fetch, NULL);
         }
     }
@@ -146,6 +174,10 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
    
     g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
+
+    if (override_commit_ids)
+      g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",
+                             g_variant_new_variant (g_variant_new_strv ((const char*const*)override_commit_ids->pdata, override_commit_ids->len)));
 
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
