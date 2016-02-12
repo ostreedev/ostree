@@ -29,10 +29,12 @@
 
 static gboolean opt_stats;
 static gboolean opt_fs_diff;
+static gboolean opt_no_xattrs;
 
 static GOptionEntry options[] = {
   { "stats", 0, 0, G_OPTION_ARG_NONE, &opt_stats, "Print various statistics", NULL },
   { "fs-diff", 0, 0, G_OPTION_ARG_NONE, &opt_fs_diff, "Print filesystem diff", NULL },
+  { "no-xattrs", 0, 0, G_OPTION_ARG_NONE, &opt_no_xattrs, "Skip output of extended attributes", NULL },
   { NULL }
 };
 
@@ -162,6 +164,11 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_fs_diff)
     {
+      OstreeDiffFlags diff_flags = OSTREE_DIFF_FLAGS_NONE; 
+
+      if (opt_no_xattrs)
+        diff_flags |= OSTREE_DIFF_FLAGS_IGNORE_XATTRS;
+      
       if (!parse_file_or_commit (repo, src, &srcf, cancellable, error))
         goto out;
       if (!parse_file_or_commit (repo, target, &targetf, cancellable, error))
@@ -171,7 +178,7 @@ ostree_builtin_diff (int argc, char **argv, GCancellable *cancellable, GError **
       removed = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       added = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
       
-      if (!ostree_diff_dirs (OSTREE_DIFF_FLAGS_NONE, srcf, targetf, modified, removed, added, cancellable, error))
+      if (!ostree_diff_dirs (diff_flags, srcf, targetf, modified, removed, added, cancellable, error))
         goto out;
 
       ostree_diff_print (srcf, targetf, modified, removed, added);

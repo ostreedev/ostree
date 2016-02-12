@@ -27,6 +27,7 @@ testfiles = test-basic \
 	test-remote-add \
 	test-remote-gpg-import \
         test-commit-sign \
+        test-export \
 	test-help \
 	test-libarchive \
 	test-pull-archive-z \

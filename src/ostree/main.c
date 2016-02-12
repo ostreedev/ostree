@@ -40,6 +40,7 @@ static OstreeCommand commands[] = {
   { "commit", ostree_builtin_commit },
   { "config", ostree_builtin_config },
   { "diff", ostree_builtin_diff },
+  { "export", ostree_builtin_export },
   { "fsck", ostree_builtin_fsck },
   { "gpg-sign", ostree_builtin_gpg_sign },
   { "init", ostree_builtin_init },
