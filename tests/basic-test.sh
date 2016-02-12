@@ -420,9 +420,3 @@ cd ..
 if ! cmp timestamp-{orig,new}.txt; then
     assert_not_reached "failed to update mtime on repo"
 fi
-
-cd ${test_tmpdir}
-mkdir tartest
-${CMD_PREFIX} ostree --repo=repo export test2 > test2.tar
-(cd tartest && tar xf ../test2.tar)
-$(CMD_PREFIX} ostree --repo=repo diff test2 tartest

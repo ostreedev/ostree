@@ -74,7 +74,7 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (argc <= 1)
     {
-      ot_util_usage_error (context, "An COMMIT argument is required", error);
+      ot_util_usage_error (context, "A COMMIT argument is required", error);
       goto out;
     }
   rev = argv[1];

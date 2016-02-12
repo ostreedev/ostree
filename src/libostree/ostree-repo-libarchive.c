@@ -448,7 +448,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
   gboolean ret = FALSE;
   g_autoptr(GFileInfo) dir_info = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
-  struct archive_entry *entry;
+  struct archive_entry *entry = NULL;
 
   dir_info = g_file_query_info (dir, OSTREE_GIO_FAST_QUERYINFO,
                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
@@ -574,7 +574,6 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  * @opts: Options controlling conversion
  * @root: An #OstreeRepoFile for the base directory
  * @archive: A `struct archive`, but specified as void to avoid a dependency on the libarchive headers
- * @modifier: (allow-none): Optional commit modifier
  * @cancellable: Cancellable
  * @error: Error
  *
