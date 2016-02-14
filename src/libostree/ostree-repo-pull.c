@@ -1762,6 +1762,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
   char **refs_to_fetch = NULL;
+  char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
 
@@ -1776,9 +1777,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
+      (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
+  if (refs_to_fetch && override_commit_ids)
+    g_return_val_if_fail (g_strv_length (refs_to_fetch) == g_strv_length (override_commit_ids), FALSE);
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
@@ -2069,8 +2073,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     } 
   else if (refs_to_fetch != NULL)
     {
-      char **strviter;
-      for (strviter = refs_to_fetch; *strviter; strviter++)
+      char **strviter = refs_to_fetch;
+      char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
+
+      while (*strviter)
         {
           const char *branch = *strviter;
 
@@ -2081,8 +2087,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
           else
             {
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+              char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
+              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
             }
+          
+          strviter++;
+          if (commitid_strviter)
+            commitid_strviter++;
         }
     }
   else
@@ -2109,28 +2120,36 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *branch = key;
+      const char *override_commitid = value;
       char *contents = NULL;
 
-      if (pull_data->summary)
+      /* Support specifying "" for an override commitid */
+      if (override_commitid && *override_commitid)
         {
-          gsize commit_size = 0;
-          guint64 *malloced_size;
-
-          if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
-            goto out;
-
-          malloced_size = g_new0 (guint64, 1);
-          *malloced_size = commit_size;
-          g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (contents), malloced_size);
+          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
         }
-      else
+      else    
         {
-          if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
-            goto out;
+          if (pull_data->summary)
+            {
+              gsize commit_size = 0;
+              guint64 *malloced_size;
+
+              if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
+                goto out;
+
+              malloced_size = g_new0 (guint64, 1);
+              *malloced_size = commit_size;
+              g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (contents), malloced_size);
+            }
+          else
+            {
+              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
+                goto out;
+            }
+          /* Transfer ownership of contents */
+          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
         }
-      
-      /* Transfer ownership of contents */
-      g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
     }
 
   /* Create the state directory here - it's new with the commitpartial code,
