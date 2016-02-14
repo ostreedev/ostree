@@ -36,6 +36,7 @@ static gboolean opt_allow_noent;
 static gboolean opt_disable_cache;
 static char *opt_subpath;
 static gboolean opt_union;
+static gboolean opt_whiteouts;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
 static gboolean opt_disable_fsync;
@@ -61,6 +62,7 @@ static GOptionEntry options[] = {
   { "disable-cache", 0, 0, G_OPTION_ARG_NONE, &opt_disable_cache, "Do not update or use the internal repository uncompressed object cache", NULL },
   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Checkout sub-directory PATH", "PATH" },
   { "union", 0, 0, G_OPTION_ARG_NONE, &opt_union, "Keep existing directories, overwrite existing files", NULL },
+  { "whiteouts", 0, 0, G_OPTION_ARG_NONE, &opt_whiteouts, "Process 'whiteout' (Docker style) entries", NULL },
   { "allow-noent", 0, 0, G_OPTION_ARG_NONE, &opt_allow_noent, "Do nothing if specified path does not exist", NULL },
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
@@ -83,7 +85,7 @@ process_one_checkout (OstreeRepo           *repo,
    * `ostree_repo_checkout_tree_at` until such time as we have a more
    * convenient infrastructure for testing C APIs with data.
    */
-  if (opt_disable_cache)
+  if (opt_disable_cache || opt_whiteouts)
     {
       OstreeRepoCheckoutOptions options = { 0, };
       
@@ -91,9 +93,10 @@ process_one_checkout (OstreeRepo           *repo,
         options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
       if (opt_union)
         options.overwrite_mode = OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES;
+      if (opt_whiteouts)
+        options.process_whiteouts = TRUE;
       if (subpath)
         options.subpath = subpath;
-
 
       if (!ostree_repo_checkout_tree_at (repo, &options,
                                          AT_FDCWD, destination,

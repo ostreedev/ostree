@@ -32,6 +32,8 @@
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 
+#define WHITEOUT_PREFIX ".wh."
+
 static gboolean
 checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                         const char      *loose_path,
@@ -396,20 +398,46 @@ checkout_one_file_at (OstreeRepo                        *repo,
   const char *checksum;
   gboolean is_symlink;
   gboolean can_cache;
-  gboolean did_hardlink = FALSE;
+  gboolean need_copy = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GInputStream) input = NULL;
   g_autoptr(GVariant) xattrs = NULL;
+  gboolean is_whiteout;
 
   is_symlink = g_file_info_get_file_type (source_info) == G_FILE_TYPE_SYMBOLIC_LINK;
 
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
 
-  /* Try to do a hardlink first, if it's a regular file.  This also
-   * traverses all parent repos.
+  is_whiteout = !is_symlink && options->process_whiteouts &&
+    g_str_has_prefix (destination_name, WHITEOUT_PREFIX);
+
+  /* First, see if it's a Docker whiteout,
+   * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
    */
-  if (!is_symlink)
+  if (is_whiteout)
     {
+      const char *name = destination_name + (sizeof (WHITEOUT_PREFIX) - 1);
+
+      if (!name[0])
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Invalid empty whiteout '%s'", name);
+          goto out;
+        }
+
+      g_assert (name[0] != '/'); /* Sanity */
+
+      if (!glnx_shutil_rm_rf_at (destination_dfd, name, cancellable, error))
+        goto out;
+
+      need_copy = FALSE;
+    }
+  else if (!is_symlink)
+    {
+      gboolean did_hardlink;
+      /* Try to do a hardlink first, if it's a regular file.  This also
+       * traverses all parent repos.
+       */
       OstreeRepo *current_repo = repo;
 
       while (current_repo)
@@ -462,6 +490,8 @@ checkout_one_file_at (OstreeRepo                        *repo,
             }
           current_repo = current_repo->parent_repo;
         }
+
+      need_copy = !did_hardlink;
     }
 
   can_cache = (options->enable_uncompressed_cache
@@ -471,11 +501,14 @@ checkout_one_file_at (OstreeRepo                        *repo,
    * it now, stick it in the cache, and then hardlink to that.
    */
   if (can_cache
+      && !is_whiteout
       && !is_symlink
-      && !did_hardlink
+      && !need_copy
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
+      gboolean did_hardlink;
+      
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, NULL,
                                   cancellable, error))
         goto out;
@@ -526,10 +559,12 @@ checkout_one_file_at (OstreeRepo                        *repo,
           g_prefix_error (error, "Using new cached uncompressed hardlink of %s to %s: ", checksum, destination_name);
           goto out;
         }
+
+      need_copy = !did_hardlink;
     }
 
   /* Fall back to copy if we couldn't hardlink */
-  if (!did_hardlink)
+  if (need_copy)
     {
       if (!ostree_repo_load_file (repo, checksum, &input, NULL, &xattrs,
                                   cancellable, error))
