@@ -557,7 +557,8 @@ typedef struct {
   
   guint enable_uncompressed_cache : 1;
   guint disable_fsync : 1;
-  guint reserved : 30;
+  guint process_whiteouts : 1;
+  guint reserved : 29;
 
   const char *subpath;
 
