@@ -3784,6 +3784,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
  *   * flags (i): An instance of #OstreeRepoPullFlags
  *   * refs: (as): Array of string refs
  *   * depth: (i): How far in the history to traverse; default is 0, -1 means infinite
+ *   * override-commit-ids: (as): Array of specific commit IDs to fetch for refs
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
