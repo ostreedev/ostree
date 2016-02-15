@@ -398,7 +398,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   const char *checksum;
   gboolean is_symlink;
   gboolean can_cache;
-  gboolean need_copy = FALSE;
+  gboolean need_copy = TRUE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GInputStream) input = NULL;
   g_autoptr(GVariant) xattrs = NULL;
@@ -434,7 +434,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
     }
   else if (!is_symlink)
     {
-      gboolean did_hardlink;
+      gboolean did_hardlink = FALSE;
       /* Try to do a hardlink first, if it's a regular file.  This also
        * traverses all parent repos.
        */
@@ -503,7 +503,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
   if (can_cache
       && !is_whiteout
       && !is_symlink
-      && !need_copy
+      && need_copy
       && repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
     {
