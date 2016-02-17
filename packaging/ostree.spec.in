@@ -19,6 +19,7 @@ BuildRequires: pkgconfig(libgsystem)
 BuildRequires: pkgconfig(e2p)
 # Extras
 BuildRequires: pkgconfig(libarchive)
+BuildRequires: pkgconfig(fuse)
 BuildRequires: pkgconfig(libselinux)
 BuildRequires: libcap-devel
 BuildRequires: gpgme-devel
@@ -54,6 +55,14 @@ Requires: grub2
 
 %description grub2
 GRUB2 integration for OSTree
+
+%package fuse
+Summary: FUSE utilities for OSTree
+Group: Development/Libraries
+Requires: fuse
+
+%description fuse
+%{summary}
 
 %prep
 %setup -q -n ostree-%{version}
@@ -108,3 +117,6 @@ rm -rf $RPM_BUILD_ROOT
 %files grub2
 %{_sysconfdir}/grub.d/*ostree
 %{_libexecdir}/ostree/grub2*
+
+%files fuse
+%{_bindir}/rofiles-fuse
