@@ -299,7 +299,7 @@ callback_truncate (const char *path, off_t size)
   path = ENSURE_RELPATH (path);
   VERIFY_WRITE(path);
 
-  fd = openat (basefd, path, O_RDWR | O_CREAT);
+  fd = openat (basefd, path, O_WRONLY);
   if (fd == -1)
     return -errno;
 
