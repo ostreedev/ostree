@@ -441,22 +441,6 @@ gboolean      ostree_repo_write_dfd_to_mtree (OstreeRepo                 *self,
                                               GCancellable               *cancellable,
                                               GError                    **error);
 
-/**
- * OstreeRepoWriteArchiveOptions:
- *
- * An extensible options structure controlling archive creation.  Ensure that
- * you have entirely zeroed the structure, then set just the desired
- * options.  This is used by ostree_repo_write_tree_to_archive().
- */
-typedef struct {
-  guint disable_xattrs : 1;
-  guint reserved : 31;
-
-  guint64 timestamp_secs;
-
-  guint unused_uint[8];
-  gpointer unused_ptrs[8];
-} OstreeRepoArchiveOptions;
 
 gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *self,
                                                   GFile                        *archive,
@@ -466,12 +450,29 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GCancellable                 *cancellable,
                                                   GError                      **error);
 
-gboolean ostree_repo_write_tree_to_archive (OstreeRepo                *self,
-                                            OstreeRepoArchiveOptions  *opts,
-                                            OstreeRepoFile            *root,
-                                            void                      *archive,  /* Really struct archive * */
-                                            GCancellable             *cancellable,
-                                            GError                  **error);
+/**
+ * OstreeRepoExportArchiveOptions:
+ *
+ * An extensible options structure controlling archive creation.  Ensure that
+ * you have entirely zeroed the structure, then set just the desired
+ * options.  This is used by ostree_repo_export_tree_to_archive().
+ */
+typedef struct {
+  guint disable_xattrs : 1;
+  guint reserved : 31;
+
+  guint64 timestamp_secs;
+
+  guint unused_uint[8];
+  gpointer unused_ptrs[8];
+} OstreeRepoExportArchiveOptions;
+
+gboolean ostree_repo_export_tree_to_archive (OstreeRepo                *self,
+                                             OstreeRepoExportArchiveOptions  *opts,
+                                             OstreeRepoFile            *root,
+                                             void                      *archive,  /* Really struct archive * */
+                                             GCancellable             *cancellable,
+                                             GError                  **error);
 
 gboolean      ostree_repo_write_mtree (OstreeRepo         *self,
                                        OstreeMutableTree  *mtree,
