@@ -362,7 +362,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 
 static gboolean
 file_to_archive_entry_common (GFile         *root,
-                              OstreeRepoArchiveOptions *opts,
+                              OstreeRepoExportArchiveOptions *opts,
                               GFile         *path,
                               GFileInfo  *file_info,
                               struct archive_entry *entry,
@@ -438,7 +438,7 @@ write_header_free_entry (struct archive *a,
 
 static gboolean
 write_directory_to_libarchive_recurse (OstreeRepo               *self,
-                                       OstreeRepoArchiveOptions *opts,
+                                       OstreeRepoExportArchiveOptions *opts,
                                        GFile                    *root,
                                        GFile                    *dir,
                                        struct archive           *a,
@@ -569,7 +569,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
 #endif
 
 /**
- * ostree_repo_write_tree_to_archive:
+ * ostree_repo_export_tree_to_archive:
  * @self: An #OstreeRepo
  * @opts: Options controlling conversion
  * @root: An #OstreeRepoFile for the base directory
@@ -581,12 +581,12 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_write_tree_to_archive (OstreeRepo                *self,
-                                   OstreeRepoArchiveOptions *opts,
-                                   OstreeRepoFile            *root,
-                                   void                      *archive,
-                                   GCancellable             *cancellable,
-                                   GError                  **error)
+ostree_repo_export_tree_to_archive (OstreeRepo                *self,
+                                    OstreeRepoExportArchiveOptions *opts,
+                                    OstreeRepoFile            *root,
+                                    void                      *archive,
+                                    GCancellable             *cancellable,
+                                    GError                  **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
