@@ -138,7 +138,11 @@ noinst_PROGRAMS += tests/test-rollsum-cli
 
 TESTS = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
-	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum
+	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum 
+
+if USE_LIBARCHIVE
+TESTS += tests/test-libarchive-import
+endif
 
 check_PROGRAMS =  $(TESTS)
 TESTS_ENVIRONMENT = \
@@ -171,6 +175,10 @@ tests_test_bsdiff_LDADD = libbsdiff.la $(TESTS_LDADD)
 tests_test_checksum_SOURCES = src/libostree/ostree-core.c tests/test-checksum.c
 tests_test_checksum_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
 tests_test_checksum_LDADD = $(TESTS_LDADD)
+
+tests_test_libarchive_import_SOURCES = tests/test-libarchive-import.c
+tests_test_libarchive_import_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
+tests_test_libarchive_import_LDADD = $(TESTS_LDADD)
 
 tests_test_keyfile_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_keyfile_utils_LDADD = $(TESTS_LDADD)

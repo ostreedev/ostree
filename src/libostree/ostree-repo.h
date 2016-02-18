@@ -451,6 +451,29 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GError                      **error);
 
 /**
+ * OstreeRepoImportArchiveOptions:
+ *
+ * An extensible options structure controlling archive import.  Ensure that
+ * you have entirely zeroed the structure, then set just the desired
+ * options.  This is used by ostree_repo_import_archive_to_mtree().
+ */
+typedef struct {
+  guint ignore_unsupported_content : 1;
+  guint autocreate_parents : 1;
+  guint reserved : 30;
+
+  guint unused_uint[8];
+  gpointer unused_ptrs[8];
+} OstreeRepoImportArchiveOptions;
+
+gboolean      ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
+                                                   OstreeRepoImportArchiveOptions  *opts,
+                                                   void                         *archive, /* Really struct archive * */
+                                                   OstreeMutableTree            *mtree,
+                                                   OstreeRepoCommitModifier     *modifier,
+                                                   GCancellable                 *cancellable,
+                                                   GError                      **error);
+/**
  * OstreeRepoExportArchiveOptions:
  *
  * An extensible options structure controlling archive creation.  Ensure that
