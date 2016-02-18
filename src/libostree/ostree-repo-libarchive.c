@@ -78,6 +78,7 @@ file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
 
 static gboolean
 import_libarchive_entry_file (OstreeRepo           *self,
+                              OstreeRepoImportArchiveOptions  *opts,
                               struct archive       *a,
                               struct archive_entry *entry,
                               GFileInfo            *file_info,
@@ -93,8 +94,27 @@ import_libarchive_entry_file (OstreeRepo           *self,
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
 
-  if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
-    archive_stream = _ostree_libarchive_input_stream_new (a);
+  switch (g_file_info_get_file_type (file_info))
+    {
+    case G_FILE_TYPE_REGULAR:
+      archive_stream = _ostree_libarchive_input_stream_new (a);
+      break;
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+      break;
+    default:
+      if (opts->ignore_unsupported_content)
+        {
+          ret = TRUE;
+          goto out;
+        }
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unable to import non-regular/non-symlink file '%s'",
+                       archive_entry_pathname (entry));
+          goto out;
+        }
+    }
   
   if (!ostree_raw_file_to_content_stream (archive_stream, file_info, NULL,
                                           &file_object_input, &length, cancellable, error))
@@ -111,6 +131,7 @@ import_libarchive_entry_file (OstreeRepo           *self,
 
 static gboolean
 write_libarchive_entry_to_mtree (OstreeRepo           *self,
+                                 OstreeRepoImportArchiveOptions  *opts,
                                  OstreeMutableTree    *root,
                                  struct archive       *a,
                                  struct archive_entry *entry,
@@ -249,16 +270,19 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
               goto out;
             }
 
-          if (!import_libarchive_entry_file (self, a, entry, file_info, &tmp_csum,
+          if (!import_libarchive_entry_file (self, opts, a, entry, file_info, &tmp_csum,
                                              cancellable, error))
             goto out;
-          
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
-          if (!ostree_mutable_tree_replace_file (parent, basename,
-                                                 tmp_checksum,
-                                                 error))
-            goto out;
+
+          if (tmp_csum)
+            { 
+              g_free (tmp_checksum);
+              tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
+              if (!ostree_mutable_tree_replace_file (parent, basename,
+                                                     tmp_checksum,
+                                                     error))
+                goto out;
+            }
         }
     }
 
@@ -267,6 +291,71 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
   return ret;
 }
 #endif
+
+/**
+ * ostree_repo_import_archive_to_mtree:
+ * @self: An #OstreeRepo
+ * @opts: Options structure, ensure this is zeroed, then set specific variables
+ * @archive: Really this is "struct archive*"
+ * @mtree: The #OstreeMutableTree to write to
+ * @modifier: (allow-none): Optional commit modifier
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ */
+gboolean
+ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
+                                     OstreeRepoImportArchiveOptions  *opts,
+                                     void                         *archive,
+                                     OstreeMutableTree            *mtree,
+                                     OstreeRepoCommitModifier     *modifier,
+                                     GCancellable                 *cancellable,
+                                     GError                      **error)
+{
+  gboolean ret = FALSE;
+  struct archive *a = archive;
+  struct archive_entry *entry;
+  g_autofree guchar *tmp_csum = NULL;
+  int r;
+
+  while (TRUE)
+    {
+      r = archive_read_next_header (a, &entry);
+      if (r == ARCHIVE_EOF)
+        break;
+      else if (r != ARCHIVE_OK)
+        {
+          propagate_libarchive_error (error, a);
+          goto out;
+        }
+
+      /* TODO - refactor this to only create the metadata on demand
+       * (i.e. if there is a missing parent dir)
+       */
+      if (opts->autocreate_parents && !tmp_csum)
+        {
+          g_autoptr(GFileInfo) tmp_dir_info = g_file_info_new ();
+          
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", archive_entry_uid (entry));
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
+          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
+          
+          if (!_ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
+            goto out;
+        }
+
+      if (!write_libarchive_entry_to_mtree (self, opts, mtree, a,
+                                            entry, modifier, tmp_csum,
+                                            cancellable, error))
+        goto out;
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
                           
 /**
  * ostree_repo_write_archive_to_mtree:
@@ -293,10 +382,8 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = NULL;
-  struct archive_entry *entry;
-  int r;
   g_autoptr(GFileInfo) tmp_dir_info = NULL;
-  g_autofree guchar *tmp_csum = NULL;
+  OstreeRepoImportArchiveOptions opts = { 0, };
 
   a = archive_read_new ();
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
@@ -311,35 +398,11 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
       goto out;
     }
 
-  while (TRUE)
-    {
-      r = archive_read_next_header (a, &entry);
-      if (r == ARCHIVE_EOF)
-        break;
-      else if (r != ARCHIVE_OK)
-        {
-          propagate_libarchive_error (error, a);
-          goto out;
-        }
+  opts.autocreate_parents = !!autocreate_parents;
 
-      if (autocreate_parents && !tmp_csum)
-        {
-          tmp_dir_info = g_file_info_new ();
-          
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", archive_entry_uid (entry));
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
-          
-          if (!_ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
-            goto out;
-        }
+  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
+    goto out;
 
-      if (!write_libarchive_entry_to_mtree (self, mtree, a,
-                                            entry, modifier,
-                                            autocreate_parents ? tmp_csum : NULL,
-                                            cancellable, error))
-        goto out;
-    }
   if (archive_read_close (a) != ARCHIVE_OK)
     {
       propagate_libarchive_error (error, a);
