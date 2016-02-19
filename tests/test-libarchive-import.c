@@ -39,15 +39,14 @@ static void
 test_data_init (TestData *td)
 {
   GError *error = NULL;
-  char *tmp_name;
   struct archive *a = archive_write_new ();
   struct archive_entry *ae;
 
-  td->tmpd = g_mkdtemp (g_strdup ("/tmp/test-libarchive-import-XXXXXX"));
+  td->tmpd = g_mkdtemp (g_strdup ("/var/tmp/test-libarchive-import-XXXXXX"));
   g_assert_cmpint (0, ==, chdir (td->tmpd));
 
-  td->fd = g_file_open_tmp ("tarball-XXXXXX", &tmp_name, &error);
-  (void) unlink (tmp_name);
+  td->fd = openat (AT_FDCWD, "foo.tar.gz", O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0644);
+  (void) unlink ("foo.tar.gz");
 
   g_assert_no_error (error);
   g_assert (td->fd >= 0);
@@ -183,7 +182,8 @@ test_libarchive_ignore_device_file (gconstpointer data)
 
 int main (int argc, char **argv)
 {
-  TestData td;
+  TestData td = {NULL,};
+  int r;
 
   test_data_init (&td);
 
@@ -192,5 +192,9 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/libarchive/error-device-file", &td, test_libarchive_error_device_file);
   g_test_add_data_func ("/libarchive/ignore-device-file", &td, test_libarchive_ignore_device_file);
 
-  return g_test_run();
+  r = g_test_run();
+
+  if (td.tmpd)
+    (void) glnx_shutil_rm_rf_at (AT_FDCWD, td.tmpd, NULL, NULL);
+  return r;
 }
