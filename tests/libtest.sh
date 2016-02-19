@@ -22,6 +22,10 @@ test_tmpdir=$(pwd)
 
 export G_DEBUG=fatal-warnings
 
+# Don't flag deployments as immutable so that test harnesses can
+# easily clean up.
+export OSTREE_SYSROOT_DEBUG=mutable-deployments
+
 export TEST_GPG_KEYID_1="472CDAFA"
 export TEST_GPG_KEYID_2="CA950D41"
 export TEST_GPG_KEYID_3="DF444D67"

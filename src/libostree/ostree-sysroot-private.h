@@ -27,6 +27,13 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+
+  /* Don't flag deployments as immutable. */
+  OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS = 1 << 0
+
+} OstreeSysrootDebugFlags;
+
 struct OstreeSysroot {
   GObject parent;
 
@@ -46,6 +53,7 @@ struct OstreeSysroot {
   /* Only access through ostree_sysroot_get_repo() */
   OstreeRepo *repo;
 
+  OstreeSysrootDebugFlags debug_flags;
 };
 
 #define OSTREE_SYSROOT_LOCKFILE "ostree/lock"

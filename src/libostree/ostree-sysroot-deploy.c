@@ -2035,9 +2035,12 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
                                       cancellable, error))
     goto out;
 
-  if (!ostree_sysroot_deployment_set_mutable (self, new_deployment, FALSE,
-                                              cancellable, error))
-    goto out;
+  if (!(self->debug_flags & OSTREE_SYSROOT_DEBUG_MUTABLE_DEPLOYMENTS))
+    {
+      if (!ostree_sysroot_deployment_set_mutable (self, new_deployment, FALSE,
+                                                  cancellable, error))
+        goto out;
+    }
 
   { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
 
