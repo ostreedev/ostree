@@ -107,12 +107,24 @@ rm main-files -rf
 # Generate delta that we'll use
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
 prev_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main^)
+new_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
 ostree --repo=ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >out.txt
+assert_file_has_content out.txt 'Delta update: 0/1 parts'
+rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
+assert_streq "${prev_rev}" "${rev}"
+${CMD_PREFIX} ostree --repo=repo fsck
+
+cd ${test_tmpdir}
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
 ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main
+rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
+assert_streq "${new_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
 
 cd ${test_tmpdir}
@@ -139,6 +151,8 @@ if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>e
 fi
 assert_file_has_content err.txt "deltas required, but none found"
 ${CMD_PREFIX} ostree --repo=repo fsck
+
+echo "ok delta required but don't exist"
 
 cd ${test_tmpdir}
 rm main-files -rf
