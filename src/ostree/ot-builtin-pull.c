@@ -30,6 +30,7 @@
 static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
 static gboolean opt_commit_only;
+static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static char* opt_subpath;
@@ -42,6 +43,7 @@ static GOptionEntry options[] = {
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
+   { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { NULL }
  };
@@ -60,6 +62,39 @@ gpg_verify_result_cb (OstreeRepo *repo,
   ostree_print_gpg_verify_result (result);
 
   gs_console_begin_status_line (console, "", NULL, NULL);
+}
+
+static gboolean printed_console_progress;
+
+static void
+dry_run_console_progress_changed (OstreeAsyncProgress *progress,
+                                  gpointer             user_data)
+{
+  guint fetched_delta_parts, total_delta_parts;
+  guint64 total_delta_part_size, total_delta_part_usize;
+  GString *buf;
+
+  g_assert (!printed_console_progress);
+  printed_console_progress = TRUE;
+
+  fetched_delta_parts = ostree_async_progress_get_uint (progress, "fetched-delta-parts");
+  total_delta_parts = ostree_async_progress_get_uint (progress, "total-delta-parts");
+  total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
+  total_delta_part_usize = ostree_async_progress_get_uint64 (progress, "total-delta-part-usize");
+
+  buf = g_string_new ("");
+
+  { g_autofree char *formatted_size =
+      g_format_size (total_delta_part_size);
+    g_autofree char *formatted_usize =
+      g_format_size (total_delta_part_usize);
+
+    g_string_append_printf (buf, "Delta update: %u/%u parts, %s to transfer, %s uncompressed",
+                            fetched_delta_parts, total_delta_parts,
+                            formatted_size, formatted_usize);
+  }
+  g_print ("%s\n", buf->str);
+  g_string_free (buf, TRUE);
 }
 
 gboolean
@@ -98,6 +133,13 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_commit_only)
     pullflags |= OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY;
+
+  if (opt_dry_run && !opt_require_static_deltas)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "--dry-run requires --require-static-deltas");
+      goto out;
+    }
 
   if (strchr (argv[1], ':') == NULL)
     {
@@ -149,11 +191,21 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
       g_ptr_array_add (refs_to_fetch, NULL);
     }
 
-  console = gs_console_get ();
-  if (console)
+  if (!opt_dry_run)
     {
-      gs_console_begin_status_line (console, "", NULL, NULL);
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
+      console = gs_console_get ();
+      if (console)
+        {
+          gs_console_begin_status_line (console, "", NULL, NULL);
+          progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
+          signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
+                                                G_CALLBACK (gpg_verify_result_cb),
+                                                console);
+        }
+    }
+  else
+    {
+      progress = ostree_async_progress_new_and_connect (dry_run_console_progress_changed, console);
       signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
                                             G_CALLBACK (gpg_verify_result_cb),
                                             console);
@@ -180,6 +232,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     g_variant_builder_add (&builder, "{s@v}", "require-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_require_static_deltas)));
 
+    g_variant_builder_add (&builder, "{s@v}", "dry-run",
+                           g_variant_new_variant (g_variant_new_boolean (opt_dry_run)));
+
     if (override_commit_ids)
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",
                              g_variant_new_variant (g_variant_new_strv ((const char*const*)override_commit_ids->pdata, override_commit_ids->len)));
@@ -191,6 +246,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (progress)
     ostree_async_progress_finish (progress);
+
+  if (opt_dry_run)
+    g_assert (printed_console_progress);
 
   ret = TRUE;
  out:

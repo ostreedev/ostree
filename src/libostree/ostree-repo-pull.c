@@ -48,6 +48,8 @@ typedef struct {
   GCancellable *cancellable;
   OstreeAsyncProgress *progress;
 
+  gboolean      dry_run;
+  gboolean      dry_run_emitted_progress;
   gboolean      legacy_transaction_resuming;
   enum {
     OSTREE_PULL_PHASE_FETCHING_REFS,
@@ -78,6 +80,7 @@ typedef struct {
   guint             n_outstanding_deltapart_write_requests;
   guint             n_total_deltaparts;
   guint64           total_deltapart_size;
+  guint64           total_deltapart_usize;
   gint              n_requested_metadata;
   gint              n_requested_content;
   guint             n_fetched_deltaparts;
@@ -227,6 +230,8 @@ update_progress (gpointer user_data)
                                   pull_data->n_total_deltaparts);
   ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-size",
                                     pull_data->total_deltapart_size);
+  ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-usize",
+                                    pull_data->total_deltapart_usize);
   ostree_async_progress_set_uint (pull_data->progress, "total-delta-superblocks",
                                   pull_data->static_delta_superblocks->len);
 
@@ -242,6 +247,9 @@ update_progress (gpointer user_data)
     }
   else
     ostree_async_progress_set_status (pull_data->progress, NULL);
+
+  if (pull_data->dry_run)
+    pull_data->dry_run_emitted_progress = TRUE;
 
   return TRUE;
 }
@@ -261,6 +269,9 @@ pull_termination_condition (OtPullData          *pull_data)
 
   if (pull_data->caught_error)
     return TRUE;
+
+  if (pull_data->dry_run)
+    return pull_data->dry_run_emitted_progress;
 
   switch (pull_data->phase)
     {
@@ -1451,10 +1462,17 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
   if (!ostree_validate_structureof_csum_v (csum_v, error))
     goto out;
 
+  pull_data->total_deltapart_size += compressed_size;
+  pull_data->total_deltapart_usize += uncompressed_size;
+
+  if (pull_data->dry_run)
+    {
+      ret = TRUE;
+      goto out;
+    }
+
   objtype = (OstreeObjectType)objtype_y;
   checksum = ostree_checksum_from_bytes_v (csum_v);
-
-  pull_data->total_deltapart_size += compressed_size;
 
   if (!ostree_repo_has_object (pull_data->repo, objtype, checksum,
                                &is_stored,
@@ -1524,6 +1542,7 @@ process_one_static_delta (OtPullData   *pull_data,
     }
 
   /* Write the to-commit object */
+  if (!pull_data->dry_run)
   {
     g_autoptr(GVariant) to_csum_v = NULL;
     g_autofree char *to_checksum = NULL;
@@ -1626,7 +1645,11 @@ process_one_static_delta (OtPullData   *pull_data,
       }
 
       pull_data->total_deltapart_size += size;
+      pull_data->total_deltapart_usize += usize;
 
+      if (pull_data->dry_run)
+        continue;
+      
       fetch_data = g_new0 (FetchStaticDeltaData, 1);
       fetch_data->pull_data = pull_data;
       fetch_data->objects = g_variant_ref (objects);
@@ -1780,6 +1803,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
       (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
+      (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -1790,6 +1814,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
 
   g_return_val_if_fail (!(disable_static_deltas && require_static_deltas), FALSE);
+  /* We only do dry runs with static deltas, because we don't really have any
+   * in-advance information for bare fetches.
+   */
+  g_return_val_if_fail (!pull_data->dry_run || require_static_deltas, FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
@@ -2243,7 +2271,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->progress)
     {
-      update_timeout = g_timeout_source_new_seconds (1);
+      update_timeout = g_timeout_source_new_seconds (pull_data->dry_run ? 0 : 1);
       g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
       g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
       g_source_attach (update_timeout, pull_data->main_context);
@@ -2256,6 +2284,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (pull_data->caught_error)
     goto out;
+
+  if (pull_data->dry_run)
+    {
+      ret = TRUE;
+      goto out;
+    }
   
   g_assert_cmpint (pull_data->n_outstanding_metadata_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_metadata_write_requests, ==, 0);
