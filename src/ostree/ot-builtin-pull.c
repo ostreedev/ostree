@@ -31,6 +31,7 @@ static gboolean opt_disable_fsync;
 static gboolean opt_mirror;
 static gboolean opt_commit_only;
 static gboolean opt_disable_static_deltas;
+static gboolean opt_require_static_deltas;
 static char* opt_subpath;
 static int opt_depth = 0;
  
@@ -38,6 +39,7 @@ static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
+   { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
@@ -174,6 +176,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
    
     g_variant_builder_add (&builder, "{s@v}", "disable-static-deltas",
                            g_variant_new_variant (g_variant_new_boolean (opt_disable_static_deltas)));
+
+    g_variant_builder_add (&builder, "{s@v}", "require-static-deltas",
+                           g_variant_new_variant (g_variant_new_boolean (opt_require_static_deltas)));
 
     if (override_commit_ids)
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",

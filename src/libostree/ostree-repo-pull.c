@@ -1765,6 +1765,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
+  gboolean require_static_deltas = FALSE;
 
   if (options)
     {
@@ -1777,6 +1778,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
+      (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
     }
 
@@ -1786,6 +1788,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
+
+  g_return_val_if_fail (!(disable_static_deltas && require_static_deltas), FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
@@ -1966,6 +1970,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       {
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                      "GPG verification enabled, but no summary found (use gpg-verify-summary=false in remote config to disable)");
+        goto out;
+      }
+
+    if (!bytes_summary && require_static_deltas)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Fetch configured to require static deltas, but no summary found");
         goto out;
       }
 
@@ -2209,6 +2220,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           
       if (!delta_superblock)
         {
+          if (require_static_deltas)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Static deltas required, but none found for %s to %s",
+                           from_revision, to_revision);
+              goto out;
+            }
           g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
           queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, 0);
         }
