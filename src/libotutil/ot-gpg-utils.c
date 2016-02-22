@@ -31,6 +31,7 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
                              GError        **error)
 {
   GIOErrorEnum errcode;
+  char errbuf[1024];
 
   /* XXX This list is incomplete.  Add cases as needed. */
 
@@ -42,9 +43,11 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
 
       /* special case - abort on out-of-memory */
       case GPG_ERR_ENOMEM:
+        (void) gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
+        errbuf[sizeof(errbuf)-1] = '\0';
         g_error ("%s: %s",
                  gpgme_strsource (gpg_error),
-                 gpgme_strerror (gpg_error));
+                 errbuf);
 
       case GPG_ERR_INV_VALUE:
         errcode = G_IO_ERROR_INVALID_ARGUMENT;
@@ -55,9 +58,11 @@ ot_gpgme_error_to_gio_error (gpgme_error_t   gpg_error,
         break;
     }
 
+  (void) gpg_strerror_r (gpg_error, errbuf, sizeof (errbuf));
+  errbuf[sizeof(errbuf)-1] = '\0';
   g_set_error (error, G_IO_ERROR, errcode, "%s: %s",
                gpgme_strsource (gpg_error),
-               gpgme_strerror (gpg_error));
+               errbuf);
 }
 
 gboolean
