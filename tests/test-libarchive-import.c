@@ -32,6 +32,7 @@
 typedef struct {
   OstreeRepo *repo;
   int fd;
+  int fd_empty;
   char *tmpd;
 } TestData;
 
@@ -88,6 +89,19 @@ test_data_init (TestData *td)
   g_assert_cmpint (ARCHIVE_OK, ==, archive_write_close (a));
   g_assert_cmpint (ARCHIVE_OK, ==, archive_write_free (a));
 
+  td->fd_empty = openat (AT_FDCWD, "empty.tar.gz", O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0644);
+  g_assert (td->fd_empty >= 0);
+  (void) unlink ("empty.tar.gz");
+
+  a = archive_write_new ();
+  g_assert (a);
+
+  g_assert_cmpint (0, ==, archive_write_set_format_pax (a));
+  g_assert_cmpint (0, ==, archive_write_add_filter_gzip (a));
+  g_assert_cmpint (0, ==, archive_write_open_fd (a, td->fd_empty));
+  g_assert_cmpint (ARCHIVE_OK, ==, archive_write_close (a));
+  g_assert_cmpint (ARCHIVE_OK, ==, archive_write_free (a));
+
   { g_autoptr(GFile) repopath = g_file_new_for_path ("repo");
     td->repo = ostree_repo_new (repopath);
 
@@ -107,6 +121,46 @@ spawn_cmdline (const char *cmd, GError **error)
   if (!g_spawn_check_exit_status (estatus, error))
     return FALSE;
   return TRUE;
+}
+
+static void
+test_libarchive_noautocreate_empty (gconstpointer data)
+{
+  TestData *td = (void*)data;
+  GError *error = NULL;
+  struct archive *a = archive_read_new ();
+  OstreeRepoImportArchiveOptions opts = { 0, };
+  glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
+
+  g_assert_cmpint (0, ==, lseek (td->fd_empty, 0, SEEK_SET));
+  g_assert_cmpint (0, ==, archive_read_support_format_all (a));
+  g_assert_cmpint (0, ==, archive_read_support_filter_all (a));
+  g_assert_cmpint (0, ==, archive_read_open_fd (a, td->fd_empty, 8192));
+
+  (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ostree_mutable_tree_get_metadata_checksum (mtree) == NULL);
+}
+
+static void
+test_libarchive_autocreate_empty (gconstpointer data)
+{
+  TestData *td = (void*)data;
+  GError *error = NULL;
+  struct archive *a = archive_read_new ();
+  OstreeRepoImportArchiveOptions opts = { 0, };
+  glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
+
+  opts.autocreate_parents = 1;
+
+  g_assert_cmpint (0, ==, lseek (td->fd_empty, 0, SEEK_SET));
+  g_assert_cmpint (0, ==, archive_read_support_format_all (a));
+  g_assert_cmpint (0, ==, archive_read_support_filter_all (a));
+  g_assert_cmpint (0, ==, archive_read_open_fd (a, td->fd_empty, 8192));
+
+  (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
+  g_assert_no_error (error);
+  g_assert (ostree_mutable_tree_get_metadata_checksum (mtree) != NULL);
 }
 
 static void
@@ -189,6 +243,8 @@ int main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
+  g_test_add_data_func ("/libarchive/noautocreate-empty", &td, test_libarchive_noautocreate_empty);
+  g_test_add_data_func ("/libarchive/autocreate-empty", &td, test_libarchive_autocreate_empty);
   g_test_add_data_func ("/libarchive/error-device-file", &td, test_libarchive_error_device_file);
   g_test_add_data_func ("/libarchive/ignore-device-file", &td, test_libarchive_ignore_device_file);
 

@@ -292,6 +292,23 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
 }
 #endif
 
+static gboolean
+create_empty_dir_with_uidgid (OstreeRepo   *self,
+                              guint32       uid,
+                              guint32       gid,
+                              guint8      **out_csum,
+                              GCancellable *cancellable,
+                              GError      **error)
+{
+  g_autoptr(GFileInfo) tmp_dir_info = g_file_info_new ();
+          
+  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
+  
+  return _ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, out_csum, cancellable, error);
+}
+
 /**
  * ostree_repo_import_archive_to_mtree:
  * @self: An #OstreeRepo
@@ -320,6 +337,7 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
   g_autofree guchar *tmp_csum = NULL;
   int r;
 
+
   while (TRUE)
     {
       r = archive_read_next_header (a, &entry);
@@ -336,13 +354,13 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
        */
       if (opts->autocreate_parents && !tmp_csum)
         {
-          g_autoptr(GFileInfo) tmp_dir_info = g_file_info_new ();
-          
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", archive_entry_uid (entry));
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", archive_entry_gid (entry));
-          g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
-          
-          if (!_ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, &tmp_csum, cancellable, error))
+          /* Here, we auto-pick the first uid/gid we find in the
+           * archive.  Realistically this is probably always going to
+           * be root, but eh, at least we try to match.
+           */
+          if (!create_empty_dir_with_uidgid (self, archive_entry_uid (entry),
+                                             archive_entry_gid (entry),
+                                             &tmp_csum, cancellable, error))
             goto out;
         }
 
@@ -350,6 +368,26 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
                                             entry, modifier, tmp_csum,
                                             cancellable, error))
         goto out;
+    }
+
+  /* If we didn't import anything at all, and autocreation of parents
+   * is enabled, automatically create a root directory.  This is
+   * useful primarily when importing Docker image layers, which can
+   * just be metadata.
+   */
+  if (!ostree_mutable_tree_get_metadata_checksum (mtree) && opts->autocreate_parents)
+    {
+      char tmp_checksum[65];
+
+      if (!tmp_csum)
+        {
+          /* We didn't have any archive entries to match, so pick uid 0, gid 0. */
+          if (!create_empty_dir_with_uidgid (self, 0, 0, &tmp_csum, cancellable, error))
+            goto out;
+        }
+      
+      ostree_checksum_inplace_from_bytes (tmp_csum, tmp_checksum);
+      ostree_mutable_tree_set_metadata_checksum (mtree, tmp_checksum);
     }
 
   ret = TRUE;
