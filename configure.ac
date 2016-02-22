@@ -106,13 +106,13 @@ AM_CONDITIONAL(BUILDOPT_INTROSPECTION, test "x$found_introspection" = xyes)
 
 LIBGPGME_DEPENDENCY="1.1.8"
 
-PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme >= $LIBGPGME_DEPENDENCY, have_gpgme=yes, [
-    m4_ifdef([AM_PATH_GPGME], [
-       AM_PATH_GPGME($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
+PKG_CHECK_MODULES(OT_DEP_GPGME, gpgme-pthread >= $LIBGPGME_DEPENDENCY, have_gpgme=yes, [
+    m4_ifdef([AM_PATH_GPGME_PTHREAD], [
+       AM_PATH_GPGME_PTHREAD($LIBGPGME_DEPENDENCY, have_gpgme=yes, have_gpgme=no)
     ],[ have_gpgme=no ])
 ])
 AS_IF([ test x$have_gpgme = xno ], [
-   AC_MSG_ERROR([Need GPGME version $LIBGPGME_DEPENDENCY or later])
+   AC_MSG_ERROR([Need GPGME_PTHREAD version $LIBGPGME_DEPENDENCY or later])
 ])
 OSTREE_FEATURES="$OSTREE_FEATURES +gpgme"
 
