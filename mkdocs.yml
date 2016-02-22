@@ -8,3 +8,4 @@ pages:
       - Deployments: 'manual/deployment.md'
       - Atomic Upgrades: 'manual/atomic-upgrades.md'
       - Adapting Existing Systems: 'manual/adapting-existing.md'
+      - Formats: 'manual/formats.md'
