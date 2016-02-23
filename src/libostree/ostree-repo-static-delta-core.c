@@ -640,10 +640,10 @@ show_one_part (OstreeRepo                    *self,
              " opsize=%" G_GUINT64_FORMAT
              "\n",
              i,
-             g_variant_n_children (modes),
-             g_variant_n_children (xattrs),
-             g_variant_n_children (blob),
-             g_variant_n_children (ops));
+             (guint64)g_variant_n_children (modes),
+             (guint64)g_variant_n_children (xattrs),
+             (guint64)g_variant_n_children (blob),
+             (guint64)g_variant_n_children (ops));
 
     if (!_ostree_static_delta_part_execute (self, objects,
                                             part, TRUE, TRUE,
