@@ -640,7 +640,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
                   if (r != bytes_read)
                     {
                       propagate_libarchive_error (error, a);
-                      g_prefix_error (error, "Failed to write %" G_GUINT64_FORMAT " bytes (code %" G_GUINT64_FORMAT"): ", (guint64)bytes_read, r);
+                      g_prefix_error (error, "Failed to write %" G_GUINT64_FORMAT " bytes (code %" G_GUINT64_FORMAT"): ", (guint64)bytes_read, (guint64)r);
                       goto out;
                     }
                 }

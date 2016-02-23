@@ -4604,8 +4604,8 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         gs_free char *from = NULL;
         gs_free char *to = NULL;
         gs_free guchar *csum = NULL;
-        gs_free char *superblock;
-        gs_fd_close int superblock_file_fd;
+        gs_free char *superblock = NULL;
+        gs_fd_close int superblock_file_fd = -1;
         g_autoptr(GInputStream) in_stream = NULL;
 
         _ostree_parse_delta_name (delta_names->pdata[i], &from, &to);
