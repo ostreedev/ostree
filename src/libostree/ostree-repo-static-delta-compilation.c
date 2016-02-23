@@ -1306,6 +1306,10 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                   cancellable, error))
     goto out;
 
+  /* NOTE: Add user-supplied metadata first.  This is used by at least
+   * xdg-app as a way to provide MIME content sniffing, since the
+   * metadata appears first in the file.
+   */
   g_variant_builder_init (&metadata_builder, G_VARIANT_TYPE ("a{sv}"));
   if (metadata != NULL)
     {
@@ -1319,6 +1323,21 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
           g_variant_unref (item);
         }
     }
+
+  { guint8 endianness_char;
+    switch (G_BYTE_ORDER)
+      {
+      case G_LITTLE_ENDIAN:
+        endianness_char = 'l';
+        break;
+      case G_BIG_ENDIAN:
+        endianness_char = 'B';
+        break;
+      default:
+        g_assert_not_reached ();
+      }
+    g_variant_builder_add (&metadata_builder, "{sv}", "ostree.endianness", g_variant_new_byte (endianness_char));
+  }
 
   if (opt_filename)
     {

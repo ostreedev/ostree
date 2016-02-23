@@ -114,6 +114,11 @@ fi
 
 echo 'ok generate'
 
+${CMD_PREFIX} ostree --repo=repo static-delta show ${origrev}-${newrev} > show.txt
+assert_file_has_content show.txt 'Endianness: \(little\|big\)'
+
+echo 'ok show'
+
 mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck

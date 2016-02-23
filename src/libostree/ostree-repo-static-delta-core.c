@@ -674,6 +674,8 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
   g_autofree char *superblock_path = NULL;
   glnx_fd_close int superblock_fd = -1;
   g_autoptr(GVariant) delta_superblock = NULL;
+  g_autoptr(GVariant) delta_meta = NULL;
+  g_autoptr(GVariantDict) delta_metadict = NULL;
   guint64 total_size = 0, total_usize = 0;
   guint64 total_fallback_size = 0, total_fallback_usize = 0;
   guint i;
@@ -686,7 +688,33 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                TRUE, &delta_superblock, error))
     goto out;
 
+  delta_meta = g_variant_get_child_value (delta_superblock, 0);
+  delta_metadict = g_variant_dict_new (delta_meta);
+
   g_print ("Delta: %s\n", delta_id);
+  { guint8 endianness_char;
+    const char *endianness_description;
+
+    if (g_variant_dict_lookup (delta_metadict, "ostree.endianness", "y", &endianness_char))
+      {
+        switch (endianness_char)
+          {
+          case 'l':
+            endianness_description = "little";
+            break;
+          case 'B':
+            endianness_description = "big";
+            break;
+          default:
+            endianness_description = "invalid";
+            break;
+          }
+      }
+    else
+      endianness_description = "unknown";
+    
+    g_print ("Endianness: %s\n", endianness_description);
+  }
   { guint64 ts;
     g_variant_get_child (delta_superblock, 1, "t", &ts);
     g_print ("Timestamp: %" G_GUINT64_FORMAT "\n", GUINT64_FROM_BE (ts));
