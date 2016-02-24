@@ -46,7 +46,10 @@ static GHashTable *created_devino_hash = NULL;
 static inline const char *
 ENSURE_RELPATH (const char *path)
 {
-  return path + strspn (path, "/");
+  path = path + strspn (path, "/");
+  if (*path == 0)
+    return ".";
+  return path;
 }
 
 typedef struct {
