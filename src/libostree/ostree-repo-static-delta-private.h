@@ -46,10 +46,10 @@ G_BEGIN_DECLS
 /**
  * OSTREE_STATIC_DELTA_META_ENTRY_FORMAT:
  *
- *   u: version
+ *   u: version     (non-canonical endian)
  *   ay checksum
- *   guint64 size:   Total size of delta (sum of parts)
- *   guint64 usize:   Uncompressed size of resulting objects on disk
+ *   guint64 size:   Total size of delta (sum of parts) (non-canonical endian)
+ *   guint64 usize:   Uncompressed size of resulting objects on disk (non-canonical endian)
  *   ARRAY[(guint8 objtype, csum object)]
  *
  * The checksum is of the delta payload, and each entry in the array
@@ -64,8 +64,8 @@ G_BEGIN_DECLS
  *
  * y: objtype
  * ay: checksum
- * t: compressed size
- * t: uncompressed size
+ * t: compressed size (non-canonical endian)
+ * t: uncompressed size (non-canonical endian)
  *
  * Object to fetch invididually; includes compressed/uncompressed size.
  */
@@ -79,7 +79,7 @@ G_BEGIN_DECLS
  *
  * delta-descriptor:
  *   metadata: a{sv}
- *   t: timestamp
+ *   t: timestamp (big endian)
  *   from: ay checksum
  *   to: ay checksum
  *   commit: new commit object
@@ -195,5 +195,39 @@ _ostree_repo_static_delta_dump (OstreeRepo                 *repo,
                                 const char                 *delta_id,
                                 GCancellable               *cancellable,
                                 GError                    **error);
+
+/* Used for static deltas which due to a historical mistake are
+ * inconsistent endian.
+ *
+ * https://bugzilla.gnome.org/show_bug.cgi?id=762515
+ */
+static inline guint32
+maybe_swap_endian_u32 (gboolean swap,
+                       guint32 v)
+{
+  if (!swap)
+    return v;
+  return GUINT32_SWAP_LE_BE (v);
+}
+
+static inline guint64
+maybe_swap_endian_u64 (gboolean swap,
+                       guint64 v)
+{
+  if (!swap)
+    return v;
+  return GUINT64_SWAP_LE_BE (v);
+}
+
+typedef enum {
+  OSTREE_DELTA_ENDIAN_BIG,
+  OSTREE_DELTA_ENDIAN_LITTLE,
+  OSTREE_DELTA_ENDIAN_UNKNOWN,
+  OSTREE_DELTA_ENDIAN_INVALID
+} OstreeDeltaEndianness;
+
+OstreeDeltaEndianness _ostree_delta_get_endianness (GVariant *superblock);
+
+gboolean _ostree_delta_needs_byteswap (GVariant *superblock);
 
 G_END_DECLS

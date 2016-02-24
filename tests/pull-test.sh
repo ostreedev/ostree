@@ -113,8 +113,8 @@ ostree --repo=ostree-srv/gnomerepo summary -u
 cd ${test_tmpdir}
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
-${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >out.txt
-assert_file_has_content out.txt 'Delta update: 0/1 parts'
+${CMD_PREFIX} ostree --repo=repo pull --dry-run --require-static-deltas origin main >dry-run-pull.txt
+assert_file_has_content dry-run-pull.txt 'Delta update: 0/1 parts'
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_streq "${prev_rev}" "${rev}"
 ${CMD_PREFIX} ostree --repo=repo fsck
@@ -141,6 +141,21 @@ assert_file_has_content baz/cow "modified file for static deltas"
 assert_not_has_file baz/saucer
 
 echo "ok static delta"
+
+cd ${test_tmpdir}
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate --swap-endianness main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+
+repo_init
+${CMD_PREFIX} ostree --repo=repo pull origin main@${prev_rev}
+${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas --dry-run origin main >byteswapped-dry-run-pull.txt
+${CMD_PREFIX} ostree --repo=repo fsck
+
+if ! diff -u dry-run-pull.txt byteswapped-dry-run-pull.txt; then
+    assert_not_reached "byteswapped delta differs in size"
+fi
+
+echo "ok pull byteswapped delta"
 
 cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/deltas -rf

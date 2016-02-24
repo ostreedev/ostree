@@ -585,6 +585,7 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
 
 static gboolean
 show_one_part (OstreeRepo                    *self,
+               gboolean                       swap_endian,
                const char                    *from,
                const char                    *to,
                GVariant                      *meta_entries,
@@ -604,6 +605,8 @@ show_one_part (OstreeRepo                    *self,
   gint part_fd = -1;
 
   g_variant_get_child (meta_entries, i, "(u@aytt@ay)", &version, NULL, &size, &usize, &objects);
+  size = maybe_swap_endian_u64 (swap_endian, size);
+  usize = maybe_swap_endian_u64 (swap_endian, usize);
   *total_size_ref += size;
   *total_usize_ref += usize;
   g_print ("PartMeta%u: nobjects=%u size=%" G_GUINT64_FORMAT " usize=%" G_GUINT64_FORMAT "\n",
@@ -662,6 +665,45 @@ show_one_part (OstreeRepo                    *self,
   return ret;
 }
 
+OstreeDeltaEndianness
+_ostree_delta_get_endianness (GVariant *superblock)
+{
+  guint8 endianness_char;
+  g_autoptr(GVariant) delta_meta = NULL;
+  g_autoptr(GVariantDict) delta_metadict = NULL;
+
+  delta_meta = g_variant_get_child_value (superblock, 0);
+  delta_metadict = g_variant_dict_new (delta_meta);
+
+  if (g_variant_dict_lookup (delta_metadict, "ostree.endianness", "y", &endianness_char))
+    {
+      switch (endianness_char)
+        {
+        case 'l':
+          return OSTREE_DELTA_ENDIAN_LITTLE;
+        case 'B':
+          return OSTREE_DELTA_ENDIAN_BIG;
+        default:
+          return OSTREE_DELTA_ENDIAN_INVALID;
+        }
+    }
+  return OSTREE_DELTA_ENDIAN_UNKNOWN;
+}
+
+gboolean
+_ostree_delta_needs_byteswap (GVariant *superblock)
+{
+  switch (_ostree_delta_get_endianness (superblock))
+    {
+    case OSTREE_DELTA_ENDIAN_BIG:
+      return G_BYTE_ORDER == G_LITTLE_ENDIAN;
+    case OSTREE_DELTA_ENDIAN_LITTLE:
+      return G_BYTE_ORDER == G_BIG_ENDIAN;
+    default:
+      return FALSE;
+    }
+}
+
 gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 const char                    *delta_id,
@@ -674,11 +716,11 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
   g_autofree char *superblock_path = NULL;
   glnx_fd_close int superblock_fd = -1;
   g_autoptr(GVariant) delta_superblock = NULL;
-  g_autoptr(GVariant) delta_meta = NULL;
-  g_autoptr(GVariantDict) delta_metadict = NULL;
   guint64 total_size = 0, total_usize = 0;
   guint64 total_fallback_size = 0, total_fallback_usize = 0;
   guint i;
+  OstreeDeltaEndianness endianness;
+  gboolean swap_endian = FALSE;
 
   _ostree_parse_delta_name (delta_id, &from, &to);
   superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
@@ -688,30 +730,34 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                TRUE, &delta_superblock, error))
     goto out;
 
-  delta_meta = g_variant_get_child_value (delta_superblock, 0);
-  delta_metadict = g_variant_dict_new (delta_meta);
+  g_print ("%s\n", g_variant_print (delta_superblock, 1));
 
   g_print ("Delta: %s\n", delta_id);
-  { guint8 endianness_char;
-    const char *endianness_description;
+  { const char *endianness_description;
 
-    if (g_variant_dict_lookup (delta_metadict, "ostree.endianness", "y", &endianness_char))
+    endianness = _ostree_delta_get_endianness (delta_superblock);
+
+    switch (endianness)
       {
-        switch (endianness_char)
-          {
-          case 'l':
-            endianness_description = "little";
-            break;
-          case 'B':
-            endianness_description = "big";
-            break;
-          default:
-            endianness_description = "invalid";
-            break;
-          }
+      case OSTREE_DELTA_ENDIAN_BIG:
+        endianness_description = "big";
+        if (G_BYTE_ORDER == G_LITTLE_ENDIAN)
+          swap_endian = TRUE;
+        break;
+      case OSTREE_DELTA_ENDIAN_LITTLE:
+        endianness_description = "little";
+        if (G_BYTE_ORDER == G_BIG_ENDIAN)
+          swap_endian = TRUE;
+        break;
+      case OSTREE_DELTA_ENDIAN_UNKNOWN:
+        endianness_description = "unknown";
+        break;
+      case OSTREE_DELTA_ENDIAN_INVALID:
+        endianness_description = "invalid";
+        break;
+      default:
+        g_assert_not_reached ();
       }
-    else
-      endianness_description = "unknown";
     
     g_print ("Endianness: %s\n", endianness_description);
   }
@@ -735,6 +781,8 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
       {
         guint64 size, usize;
         g_variant_get_child (fallback, i, "(y@aytt)", NULL, NULL, &size, &usize);
+        size = maybe_swap_endian_u64 (swap_endian, size);
+        usize = maybe_swap_endian_u64 (swap_endian, usize);
         total_fallback_size += size;
         total_fallback_usize += usize;
       }
@@ -753,7 +801,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
     for (i = 0; i < n_parts; i++)
       {
-        if (!show_one_part (self, from, to, meta_entries, i,
+        if (!show_one_part (self, swap_endian, from, to, meta_entries, i,
                             &total_size, &total_usize,
                             cancellable, error))
           goto out;

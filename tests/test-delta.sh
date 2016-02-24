@@ -119,6 +119,15 @@ assert_file_has_content show.txt 'Endianness: \(little\|big\)'
 
 echo 'ok show'
 
+${CMD_PREFIX} ostree --repo=repo static-delta generate --swap-endianness --from=${origrev} --to=${newrev}
+${CMD_PREFIX} ostree --repo=repo static-delta show ${origrev}-${newrev} > show-swapped.txt
+totalsize_orig=$(grep 'Total Size:' show.txt)
+totalsize_swapped=$(grep 'Total Size:' show-swapped.txt)
+assert_not_streq "${totalsize_orig}" ""
+assert_streq "${totalsize_orig}" "${totalsize_swapped}"
+
+echo 'ok generate + show endian swapped'
+
 mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck
