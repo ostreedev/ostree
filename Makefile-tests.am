@@ -85,6 +85,8 @@ insttest_DATA = tests/archive-test.sh \
 	tests/test-basic-user.sh \
 	tests/test-local-pull.sh \
 	tests/corrupt-repo-ref.js \
+	tests/pre-endian-deltas-repo-big.tar.xz \
+	tests/pre-endian-deltas-repo-little.tar.xz \
 	$(NULL)
 
 insttest_SCRIPTS += \

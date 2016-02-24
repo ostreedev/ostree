@@ -128,6 +128,27 @@ assert_streq "${totalsize_orig}" "${totalsize_swapped}"
 
 echo 'ok generate + show endian swapped'
 
+tar xf ${SRCDIR}/pre-endian-deltas-repo-big.tar.xz
+mv pre-endian-deltas-repo{,-big}
+tar xf ${SRCDIR}/pre-endian-deltas-repo-little.tar.xz
+mv pre-endian-deltas-repo{,-little}
+legacy_origrev=$(${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big rev-parse main^)
+legacy_newrev=$(${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big rev-parse main)
+${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big static-delta show ${legacy_origrev}-${legacy_newrev} > show-legacy-big.txt
+totalsize_legacy_big=$(grep 'Total Size:' show-legacy-big.txt)
+${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big static-delta show ${legacy_origrev}-${legacy_newrev} > show-legacy-little.txt
+totalsize_legacy_little=$(grep 'Total Size:' show-legacy-little.txt)
+for f in show-legacy-{big,little}.txt; do
+    if grep 'Endianness:.*heuristic' $f; then
+	found_heuristic=yes
+	break
+    fi
+done
+assert_streq "${found_heuristic}" "yes"
+assert_streq "${totalsize_legacy_big}" "${totalsize_legacy_little}"
+
+echo 'ok heuristic endian detection'
+
 mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
 ${CMD_PREFIX} ostree --repo=repo2 fsck

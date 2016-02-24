@@ -670,14 +670,21 @@ show_one_part (OstreeRepo                    *self,
 }
 
 OstreeDeltaEndianness
-_ostree_delta_get_endianness (GVariant *superblock)
+_ostree_delta_get_endianness (GVariant *superblock,
+                              gboolean *out_was_heuristic)
 {
   guint8 endianness_char;
   g_autoptr(GVariant) delta_meta = NULL;
   g_autoptr(GVariantDict) delta_metadict = NULL;
+  guint64 total_size = 0;
+  guint64 total_usize = 0;
+  guint total_objects = 0;
 
   delta_meta = g_variant_get_child_value (superblock, 0);
   delta_metadict = g_variant_dict_new (delta_meta);
+
+  if (out_was_heuristic)
+    *out_was_heuristic = FALSE;
 
   if (g_variant_dict_lookup (delta_metadict, "ostree.endianness", "y", &endianness_char))
     {
@@ -691,13 +698,58 @@ _ostree_delta_get_endianness (GVariant *superblock)
           return OSTREE_DELTA_ENDIAN_INVALID;
         }
     }
-  return OSTREE_DELTA_ENDIAN_UNKNOWN;
+
+  if (out_was_heuristic)
+    *out_was_heuristic = TRUE;
+
+  { g_autoptr(GVariant) meta_entries = NULL;
+    guint n_parts;
+    guint i;
+
+    g_variant_get_child (superblock, 6, "@a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT, &meta_entries);
+    n_parts = g_variant_n_children (meta_entries);
+
+    for (i = 0; i < n_parts; i++)
+      {
+        g_autoptr(GVariant) objects = NULL;
+        guint64 size, usize;
+        guint n_objects;
+
+        g_variant_get_child (meta_entries, i, "(u@aytt@ay)", NULL, NULL, &size, &usize, &objects);
+        n_objects = (guint)(g_variant_get_size (objects) / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN);
+
+        total_objects += n_objects;
+        total_size += size;
+        total_usize += usize;
+      }
+
+    /* If the average object size is greater than 4GiB, let's assume
+     * we're dealing with opposite endianness.  I'm fairly confident
+     * no one is going to be shipping peta- or exa- byte size ostree
+     * deltas, period.  Past the gigabyte scale you really want
+     * bittorrent or something.
+     */
+    if ((total_size / total_objects) > G_MAXUINT32)
+      {
+        switch (G_BYTE_ORDER)
+          {
+          case G_BIG_ENDIAN:
+            return OSTREE_DELTA_ENDIAN_LITTLE;
+          case G_LITTLE_ENDIAN:
+            return OSTREE_DELTA_ENDIAN_BIG;
+          default:
+            g_assert_not_reached ();
+          }
+      }
+
+    return G_BYTE_ORDER;
+  }
 }
 
 gboolean
 _ostree_delta_needs_byteswap (GVariant *superblock)
 {
-  switch (_ostree_delta_get_endianness (superblock))
+  switch (_ostree_delta_get_endianness (superblock, NULL))
     {
     case OSTREE_DELTA_ENDIAN_BIG:
       return G_BYTE_ORDER == G_LITTLE_ENDIAN;
@@ -738,23 +790,27 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
   g_print ("Delta: %s\n", delta_id);
   { const char *endianness_description;
+    gboolean was_heuristic;
 
-    endianness = _ostree_delta_get_endianness (delta_superblock);
+    endianness = _ostree_delta_get_endianness (delta_superblock, &was_heuristic);
 
     switch (endianness)
       {
       case OSTREE_DELTA_ENDIAN_BIG:
-        endianness_description = "big";
+        if (was_heuristic)
+          endianness_description = "big (heuristic)";
+        else
+          endianness_description = "big";
         if (G_BYTE_ORDER == G_LITTLE_ENDIAN)
           swap_endian = TRUE;
         break;
       case OSTREE_DELTA_ENDIAN_LITTLE:
-        endianness_description = "little";
+        if (was_heuristic)
+          endianness_description = "little (heuristic)";
+        else
+          endianness_description = "little";
         if (G_BYTE_ORDER == G_BIG_ENDIAN)
           swap_endian = TRUE;
-        break;
-      case OSTREE_DELTA_ENDIAN_UNKNOWN:
-        endianness_description = "unknown";
         break;
       case OSTREE_DELTA_ENDIAN_INVALID:
         endianness_description = "invalid";

@@ -222,11 +222,10 @@ maybe_swap_endian_u64 (gboolean swap,
 typedef enum {
   OSTREE_DELTA_ENDIAN_BIG,
   OSTREE_DELTA_ENDIAN_LITTLE,
-  OSTREE_DELTA_ENDIAN_UNKNOWN,
   OSTREE_DELTA_ENDIAN_INVALID
 } OstreeDeltaEndianness;
 
-OstreeDeltaEndianness _ostree_delta_get_endianness (GVariant *superblock);
+OstreeDeltaEndianness _ostree_delta_get_endianness (GVariant *superblock, gboolean *out_was_heuristic);
 
 gboolean _ostree_delta_needs_byteswap (GVariant *superblock);
 
