@@ -1443,6 +1443,7 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
 
 static gboolean
 process_one_static_delta_fallback (OtPullData   *pull_data,
+                                   gboolean      delta_byteswap,
                                    GVariant     *fallback_object,
                                    GCancellable *cancellable,
                                    GError      **error)
@@ -1461,6 +1462,9 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
     goto out;
   if (!ostree_validate_structureof_csum_v (csum_v, error))
     goto out;
+
+  compressed_size = maybe_swap_endian_u64 (delta_byteswap, compressed_size);
+  uncompressed_size = maybe_swap_endian_u64 (delta_byteswap, uncompressed_size);
 
   pull_data->total_deltapart_size += compressed_size;
   pull_data->total_deltapart_usize += uncompressed_size;
@@ -1518,10 +1522,13 @@ process_one_static_delta (OtPullData   *pull_data,
                           GError      **error)
 {
   gboolean ret = FALSE;
+  gboolean delta_byteswap;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) headers = NULL;
   g_autoptr(GVariant) fallback_objects = NULL;
   guint i, n;
+
+  delta_byteswap = _ostree_delta_needs_byteswap (delta_superblock);
 
   /* Parsing OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT */
   metadata = g_variant_get_child_value (delta_superblock, 0);
@@ -1535,7 +1542,7 @@ process_one_static_delta (OtPullData   *pull_data,
       g_autoptr(GVariant) fallback_object =
         g_variant_get_child_value (fallback_objects, i);
 
-      if (!process_one_static_delta_fallback (pull_data,
+      if (!process_one_static_delta_fallback (pull_data, delta_byteswap,
                                               fallback_object,
                                               cancellable, error))
         goto out;
@@ -1608,6 +1615,10 @@ process_one_static_delta (OtPullData   *pull_data,
 
       header = g_variant_get_child_value (headers, i);
       g_variant_get (header, "(u@aytt@ay)", &version, &csum_v, &size, &usize, &objects);
+
+      version = maybe_swap_endian_u32 (delta_byteswap, version);
+      size = maybe_swap_endian_u64 (delta_byteswap, size);
+      usize = maybe_swap_endian_u64 (delta_byteswap, usize);
 
       if (version > OSTREE_DELTAPART_VERSION)
         {
