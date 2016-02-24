@@ -240,6 +240,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
   g_autoptr(GVariant) fallback = NULL;
   g_autofree char *to_checksum = NULL;
   g_autofree char *from_checksum = NULL;
+  g_autofree char *basename = NULL;
 
   dir_or_file_path = gs_file_get_path_cached (dir_or_file);
 
@@ -255,13 +256,16 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       else
         {
           g_autofree char *dir = dirname (g_strdup (dir_or_file_path));
+          basename = g_path_get_basename (dir_or_file_path);
 
           if (!glnx_opendirat (AT_FDCWD, dir, TRUE, &dfd, error))
             goto out;
         }
     }
+  else
+    basename = g_strdup ("superblock");
 
-  meta_fd = openat (dfd, "superblock", O_RDONLY | O_CLOEXEC);
+  meta_fd = openat (dfd, basename, O_RDONLY | O_CLOEXEC);
   if (meta_fd < 0)
     {
       glnx_set_error_from_errno (error);
