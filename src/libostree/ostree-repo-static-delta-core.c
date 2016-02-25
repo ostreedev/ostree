@@ -705,6 +705,7 @@ _ostree_delta_get_endianness (GVariant *superblock,
   { g_autoptr(GVariant) meta_entries = NULL;
     guint n_parts;
     guint i;
+    gboolean is_byteswapped = FALSE;
 
     g_variant_get_child (superblock, 6, "@a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT, &meta_entries);
     n_parts = g_variant_n_children (meta_entries);
@@ -721,15 +722,36 @@ _ostree_delta_get_endianness (GVariant *superblock,
         total_objects += n_objects;
         total_size += size;
         total_usize += usize;
+
+        if (size > usize)
+          {
+            double ratio = ((double)size)/((double)usize);
+
+            /* This should really never happen where compressing things makes it more than 50% bigger.
+             */ 
+            if (ratio > 1.2)
+              {
+                is_byteswapped = TRUE;
+                break;
+              }
+          }
       }
 
-    /* If the average object size is greater than 4GiB, let's assume
-     * we're dealing with opposite endianness.  I'm fairly confident
-     * no one is going to be shipping peta- or exa- byte size ostree
-     * deltas, period.  Past the gigabyte scale you really want
-     * bittorrent or something.
-     */
-    if ((total_size / total_objects) > G_MAXUINT32)
+    if (!is_byteswapped)
+      {
+        /* If the average object size is greater than 4GiB, let's assume
+         * we're dealing with opposite endianness.  I'm fairly confident
+         * no one is going to be shipping peta- or exa- byte size ostree
+         * deltas, period.  Past the gigabyte scale you really want
+         * bittorrent or something.
+         */
+        if ((total_size / total_objects) > G_MAXUINT32)
+          {
+            is_byteswapped = TRUE;
+          }
+      }
+
+    if (is_byteswapped)
       {
         switch (G_BYTE_ORDER)
           {
