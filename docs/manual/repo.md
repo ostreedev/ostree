@@ -88,3 +88,30 @@ the parent of a given commit.  For example,
 `exampleos/buildmaster/x86_64-runtime^` refers to the previous build,
 and `exampleos/buildmaster/x86_64-runtime^^` refers to the one before
 that.
+
+## The summary file
+
+A later addition to OSTree is the concept of a "summary" file, created
+via the `ostree summary -u` command.  This was introduced for a few
+reasons.  A primary use case is to be a target a
+(Metalink)[https://en.wikipedia.org/wiki/Metalink], which requires a
+single file with a known checksum as a target.
+
+The summary file primarily contains two mappings:
+
+ - A mapping of the refs and their checksums, equivalent to fetching
+   the ref file individually
+ - A list of all static deltas, along with their metadata checksums
+
+This currently means that it grows linearly with both items.  On the
+other hand, using the summary file, a client can enumerate branches.
+
+Further, the summary file is fetched over e.g. pinned TLS, this
+creates a strong end-to-end verification of the commit or static delta.
+
+The summary file can also be GPG signed (detached), and currently this
+is the only way provide GPG signatures (transitively) on deltas.
+
+If a repository administrator creates a summary file, they must
+thereafter run `ostree summary -u` to update it whenever a commit is
+made or a static delta is generated.
