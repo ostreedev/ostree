@@ -24,6 +24,8 @@ echo "1..5"
 . $(dirname $0)/libtest.sh
 setup_test_repository "bare-user"
 
+fusermount --version >/dev/null 2>&1 || exit 77
+
 mkdir mnt
 
 $OSTREE checkout test2 checkout-test2
