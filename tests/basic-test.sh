@@ -239,15 +239,6 @@ fi
 echo "ok prune in archive-z2 deleted everything"
 
 cd ${test_tmpdir}
-$OSTREE commit -b test3 -s "Another commit" --tree=ref=test2
-${CMD_PREFIX} ostree --repo=repo refs > reflist
-assert_file_has_content reflist '^test3$'
-${CMD_PREFIX} ostree --repo=repo refs --delete test3
-${CMD_PREFIX} ostree --repo=repo refs > reflist
-assert_not_file_has_content reflist '^test3$'
-echo "ok reflist --delete"
-
-cd ${test_tmpdir}
 rm -rf test2-checkout
 $OSTREE checkout test2 test2-checkout
 (cd test2-checkout && $OSTREE commit --link-checkout-speedup -b test2 -s "tmp")
