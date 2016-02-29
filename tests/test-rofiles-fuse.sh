@@ -64,11 +64,6 @@ assert_not_has_dir checkout-test2/baz/another
 
 echo "ok deletion"
 
-ostree --repo=repo commit -b test2 -s fromfuse --link-checkout-speedup --tree=dir=checkout-test2
+${CMD_PREFIX} ostree --repo=repo commit -b test2 -s fromfuse --link-checkout-speedup --tree=dir=checkout-test2
 
 echo "ok commit"
-
-
-
-
-

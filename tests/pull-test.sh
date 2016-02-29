@@ -108,7 +108,7 @@ rm main-files -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
 prev_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main^)
 new_rev=$(ostree --repo=ostree-srv/gnomerepo rev-parse main)
-ostree --repo=ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
 repo_init
@@ -159,7 +159,7 @@ echo "ok pull byteswapped delta"
 
 cd ${test_tmpdir}
 rm ostree-srv/gnomerepo/deltas -rf
-ostree --repo=ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 repo_init
 if ${CMD_PREFIX} ostree --repo=repo pull --require-static-deltas origin main 2>err.txt; then
     assert_not_reached "--require-static-deltas unexpectedly succeeded"
@@ -179,7 +179,7 @@ cd ..
 rm main-files -rf
 # Generate new delta that we'll use
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate --inline main
-ostree --repo=ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo pull origin main
@@ -203,7 +203,7 @@ ${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main -
 cd ..
 rm main-files -rf
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
-ostree --repo=ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=repo pull origin main

@@ -41,14 +41,6 @@ echo "ok shortened checksum"
 (cd repo && ${CMD_PREFIX} ostree rev-parse test2)
 echo "ok repo-in-cwd"
 
-$OSTREE refs > reflist
-assert_file_has_content reflist '^test2$'
-rm reflist
-
-$OSTREE refs --delete 2>/dev/null && (echo 1>&2 "refs --delete (without prefix) unexpectedly succeeded!"; exit 1)
-
-echo "ok refs"
-
 cd checkout-test2
 assert_has_file firstfile
 assert_has_file baz/cow

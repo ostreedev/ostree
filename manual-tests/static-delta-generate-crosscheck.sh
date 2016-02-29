@@ -59,4 +59,3 @@ set -x
 validate_delta_options
 validate_delta_options --inline
 validate_delta_options --disable-bsdiff
-

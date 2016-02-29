@@ -24,10 +24,8 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <stdio.h>
-#include <strings.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/xattr.h>
@@ -227,7 +225,7 @@ callback_symlink (const char *from, const char *to)
     {
       fprintf (stderr, "Failed to find newly created symlink '%s': %s\n",
 	       to, g_strerror (errno));
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   return 0;
 }
@@ -545,7 +543,7 @@ rofs_parse_opt (void *data, const char *arg, int key,
 	  if (basefd == -1)
 	    {
 	      perror ("openat");
-	      exit (1);
+	      exit (EXIT_FAILURE);
 	    }
 	  return 0;
 	}
@@ -557,10 +555,10 @@ rofs_parse_opt (void *data, const char *arg, int key,
       return 1;
     case KEY_HELP:
       usage (outargs->argv[0]);
-      exit (0);
+      exit (EXIT_SUCCESS);
     default:
       fprintf (stderr, "see `%s -h' for usage\n", outargs->argv[0]);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   return 1;
 }
@@ -584,13 +582,13 @@ main (int argc, char *argv[])
     {
       fprintf (stderr, "Invalid arguments\n");
       fprintf (stderr, "see `%s -h' for usage\n", argv[0]);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
   if (basefd == -1)
     {
       fprintf (stderr, "Missing basepath\n");
       fprintf (stderr, "see `%s -h' for usage\n", argv[0]);
-      exit (1);
+      exit (EXIT_FAILURE);
     }
 
   created_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, NULL); 

@@ -33,7 +33,7 @@ cd ${test_tmpdir}
 ${OSTREE} 'export' test2-noxattrs -o test2.tar
 mkdir t
 (cd t && tar xf ../test2.tar)
-ostree --repo=repo diff --no-xattrs test2-noxattrs ./t > diff.txt
+${CMD_PREFIX} ostree --repo=repo diff --no-xattrs test2-noxattrs ./t > diff.txt
 assert_file_empty diff.txt
 rm test2.tar diff.txt t -rf
 
@@ -42,9 +42,8 @@ echo 'ok export gnutar diff (no xattrs)'
 cd ${test_tmpdir}
 ${OSTREE} 'export' test2 -o test2.tar
 ${OSTREE} commit -b test2-from-tar -s 'Import from tar' --tree=tar=test2.tar
-ostree --repo=repo diff test2 test2-from-tar
+${CMD_PREFIX} ostree --repo=repo diff test2 test2-from-tar
 assert_file_empty diff.txt
 rm test2.tar diff.txt t -rf
 
 echo 'ok export import'
-
