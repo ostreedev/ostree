@@ -57,7 +57,7 @@ Boston, MA 02111-1307, USA.
     <refsect1>
         <title>Description</title>
         <para>
-            Lists all refs available on the host.  If pecified, PREFIX assigns the refspec prefix; default prefix is null, which lists all refs.
+            Lists all refs available on the host.  If specified, PREFIX assigns the refspec prefix; default prefix is null, which lists all refs.
         </para>
     </refsect1>
 

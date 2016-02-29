@@ -33,39 +33,18 @@ static GOptionEntry options[] = {
   { NULL }
 };
 
-gboolean
-ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **error)
+static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellable *cancellable, GError **error)
 {
-  gboolean ret = FALSE;
-  GOptionContext *context;
-  glnx_unref_object OstreeRepo *repo = NULL;
-  const char *refspec_prefix = NULL;
   g_autoptr(GHashTable) refs = NULL;
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
-
-  context = g_option_context_new ("[PREFIX] - List refs");
-
-  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
-    goto out;
-
-  if (argc >= 2)
-    refspec_prefix = argv[1];
-
-  /* Require a prefix when deleting to help avoid accidents. */
-  if (opt_delete && refspec_prefix == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "PREFIX is required when deleting refs");
-      goto out;
-    }
-
-  if (!ostree_repo_list_refs (repo, refspec_prefix, &refs,
-                              cancellable, error))
-    goto out;
+  gboolean ret = FALSE;
 
   if (!opt_delete)
     {
+      if (!ostree_repo_list_refs (repo, refspec_prefix, &refs, cancellable, error))
+        goto out;
+
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
@@ -75,6 +54,10 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
     }
   else
     {
+      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                      cancellable, error))
+        goto out;
+
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
@@ -89,6 +72,41 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
                                               cancellable, error))
             goto out;
         }
+    }
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
+ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+  glnx_unref_object OstreeRepo *repo = NULL;
+  int i;
+
+  context = g_option_context_new ("[PREFIX] - List refs");
+
+  if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+    goto out;
+
+  if (argc >= 2)
+    {
+      for (i = 1; i < argc; i++)
+        if (!do_ref (repo, argv[i], cancellable, error))
+          goto out;
+    }
+  else
+    {
+      /* Require a prefix when deleting to help avoid accidents. */
+      if (opt_delete)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "At least one PREFIX is required when deleting refs");
+          goto out;
+        }
+      ret = do_ref (repo, NULL, cancellable, error);
     }
 
   ret = TRUE;
