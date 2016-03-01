@@ -23,6 +23,7 @@
 #pragma once
 
 #include <gio/gio.h>
+#include <ostree-types.h>
 
 G_BEGIN_DECLS
 
@@ -164,63 +165,86 @@ typedef enum {
   OSTREE_REPO_MODE_BARE_USER
 } OstreeRepoMode;
 
-const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
+const _OSTREE_PUBLIC
+GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_checksum_string (const char *sha256,
                                           GError    **error);
 
+_OSTREE_PUBLIC
 guchar *ostree_checksum_to_bytes (const char *checksum);
+_OSTREE_PUBLIC
 GVariant *ostree_checksum_to_bytes_v (const char *checksum);
+_OSTREE_PUBLIC
 void ostree_checksum_b64_inplace_to_bytes (const char *checksum,
                                            guint8     *buf);
 
+_OSTREE_PUBLIC
 char * ostree_checksum_from_bytes (const guchar *csum);
+_OSTREE_PUBLIC
 char * ostree_checksum_from_bytes_v (GVariant *csum_v);
 
+_OSTREE_PUBLIC
 void ostree_checksum_inplace_from_bytes (const guchar *csum,
                                          char         *buf);
+_OSTREE_PUBLIC
 void ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
                                              char         *buf);
 
+_OSTREE_PUBLIC
 void ostree_checksum_inplace_to_bytes (const char *checksum,
                                        guchar     *buf);
 
+_OSTREE_PUBLIC
 const guchar *ostree_checksum_bytes_peek (GVariant *bytes);
 
+_OSTREE_PUBLIC
 const guchar *ostree_checksum_bytes_peek_validate (GVariant *bytes, GError **error);
 
+_OSTREE_PUBLIC
 int ostree_cmp_checksum_bytes (const guchar *a, const guchar *b);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_rev (const char *rev, GError **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_parse_refspec (const char *refspec,
                                char      **out_remote,
                                char      **out_ref,
                                GError    **error);
 
+_OSTREE_PUBLIC
 void ostree_checksum_update_meta (GChecksum *checksum, GFileInfo *file_info, GVariant  *xattrs);
 
+_OSTREE_PUBLIC
 const char * ostree_object_type_to_string (OstreeObjectType objtype);
 
+_OSTREE_PUBLIC
 OstreeObjectType ostree_object_type_from_string (const char *str);
 
+_OSTREE_PUBLIC
 guint ostree_hash_object_name (gconstpointer a);
 
+_OSTREE_PUBLIC
 GVariant *ostree_object_name_serialize (const char *checksum,
                                         OstreeObjectType objtype);
 
+_OSTREE_PUBLIC
 void ostree_object_name_deserialize (GVariant         *variant,
                                      const char      **out_checksum,
                                      OstreeObjectType *out_objtype);
 
+_OSTREE_PUBLIC
 char * ostree_object_to_string (const char *checksum,
                                 OstreeObjectType objtype);
 
+_OSTREE_PUBLIC
 void ostree_object_from_string (const char *str,
                                 gchar     **out_checksum,
                                 OstreeObjectType *out_objtype);
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,
                              guint64                 input_length,
@@ -231,6 +255,7 @@ ostree_content_stream_parse (gboolean                compressed,
                              GCancellable           *cancellable,
                              GError                **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_content_file_parse (gboolean                compressed,
                                     GFile                  *content_path,
                                     gboolean                trusted,
@@ -240,6 +265,7 @@ gboolean ostree_content_file_parse (gboolean                compressed,
                                     GCancellable           *cancellable,
                                     GError                **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_content_file_parse_at (gboolean                compressed,
                                        int                     parent_dfd,
                                        const char             *path,
@@ -250,6 +276,7 @@ gboolean ostree_content_file_parse_at (gboolean                compressed,
                                        GCancellable           *cancellable,
                                        GError                **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GFileInfo          *file_info,
                                             GVariant           *xattrs,
@@ -258,6 +285,7 @@ gboolean ostree_raw_file_to_content_stream (GInputStream       *input,
                                             GCancellable       *cancellable,
                                             GError            **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GVariant         *xattrs,
                                           GInputStream     *in,
@@ -266,12 +294,14 @@ gboolean ostree_checksum_file_from_input (GFileInfo        *file_info,
                                           GCancellable     *cancellable,
                                           GError          **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_checksum_file (GFile             *f,
                                OstreeObjectType   objtype,
                                guchar           **out_csum,
                                GCancellable      *cancellable,
                                GError           **error);
 
+_OSTREE_PUBLIC
 void ostree_checksum_file_async (GFile                 *f,
                                  OstreeObjectType       objtype,
                                  int                    io_priority,
@@ -279,38 +309,49 @@ void ostree_checksum_file_async (GFile                 *f,
                                  GAsyncReadyCallback    callback,
                                  gpointer               user_data);
 
+_OSTREE_PUBLIC
 gboolean ostree_checksum_file_async_finish (GFile          *f,
                                             GAsyncResult   *result,
                                             guchar        **out_csum,
                                             GError        **error);
 
+_OSTREE_PUBLIC
 GVariant *ostree_create_directory_metadata (GFileInfo *dir_info,
                                             GVariant  *xattrs);
 
 /* VALIDATION */
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_objtype (guchar    objtype,
                                               GError   **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_csum_v (GVariant  *checksum,
                                              GError   **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_checksum_string (const char *checksum,
                                                       GError   **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_file_mode (guint32            mode,
                                                 GError           **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_commit (GVariant      *commit,
                                              GError       **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_dirtree (GVariant      *dirtree,
                                               GError       **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
                                               GError       **error);
 
+_OSTREE_PUBLIC
 gchar *  ostree_commit_get_parent            (GVariant  *commit_variant);
+_OSTREE_PUBLIC
 guint64  ostree_commit_get_timestamp         (GVariant  *commit_variant);
 
 G_END_DECLS

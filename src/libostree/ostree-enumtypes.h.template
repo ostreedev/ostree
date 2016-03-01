@@ -33,6 +33,7 @@ G_BEGIN_DECLS
 
 /*** BEGIN enumeration-production ***/
 #define @ENUMPREFIX@_TYPE_@ENUMSHORT@ (@enum_name@_get_type ())
+_OSTREE_PUBLIC
 GType @enum_name@_get_type (void) G_GNUC_CONST;
 
 /*** END enumeration-production ***/

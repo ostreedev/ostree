@@ -24,6 +24,10 @@
 
 #include <gio/gio.h>
 
+#ifndef _OSTREE_PUBLIC
+#define _OSTREE_PUBLIC extern
+#endif
+
 G_BEGIN_DECLS
 
 typedef struct OstreeRepo OstreeRepo;

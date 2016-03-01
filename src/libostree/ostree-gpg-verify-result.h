@@ -82,21 +82,27 @@ typedef enum {
   OSTREE_GPG_SIGNATURE_ATTR_USER_EMAIL
 } OstreeGpgSignatureAttr;
 
+_OSTREE_PUBLIC
 GType ostree_gpg_verify_result_get_type (void);
 
+_OSTREE_PUBLIC
 guint ostree_gpg_verify_result_count_all (OstreeGpgVerifyResult *result);
 
+_OSTREE_PUBLIC
 guint ostree_gpg_verify_result_count_valid (OstreeGpgVerifyResult *result);
 
+_OSTREE_PUBLIC
 gboolean ostree_gpg_verify_result_lookup (OstreeGpgVerifyResult *result,
                                           const gchar *key_id,
                                           guint *out_signature_index);
 
+_OSTREE_PUBLIC
 GVariant * ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
                                          guint signature_index,
                                          OstreeGpgSignatureAttr *attrs,
                                          guint n_attrs);
 
+_OSTREE_PUBLIC
 GVariant * ostree_gpg_verify_result_get_all (OstreeGpgVerifyResult *result,
                                              guint signature_index);
 
@@ -113,12 +119,14 @@ typedef enum {
   OSTREE_GPG_SIGNATURE_FORMAT_DEFAULT = 0
 } OstreeGpgSignatureFormatFlags;
 
+_OSTREE_PUBLIC
 void ostree_gpg_verify_result_describe (OstreeGpgVerifyResult *result,
                                         guint signature_index,
                                         GString *output_buffer,
                                         const gchar *line_prefix,
                                         OstreeGpgSignatureFormatFlags flags);
 
+_OSTREE_PUBLIC
 void ostree_gpg_verify_result_describe_variant (GVariant *variant,
                                                 GString *output_buffer,
                                                 const gchar *line_prefix,

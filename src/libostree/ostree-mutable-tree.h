@@ -45,50 +45,62 @@ struct OstreeMutableTreeClass
   GObjectClass parent_class;
 };
 
+_OSTREE_PUBLIC
 GType   ostree_mutable_tree_get_type (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 OstreeMutableTree *ostree_mutable_tree_new (void);
 
+_OSTREE_PUBLIC
 void ostree_mutable_tree_set_metadata_checksum (OstreeMutableTree *self,
                                                 const char        *checksum);
 
+_OSTREE_PUBLIC
 const char *ostree_mutable_tree_get_metadata_checksum (OstreeMutableTree *self);
 
+_OSTREE_PUBLIC
 void ostree_mutable_tree_set_contents_checksum (OstreeMutableTree *self,
                                                 const char        *checksum);
 
+_OSTREE_PUBLIC
 const char *ostree_mutable_tree_get_contents_checksum (OstreeMutableTree *self);
 
+_OSTREE_PUBLIC
 gboolean ostree_mutable_tree_replace_file (OstreeMutableTree *self,
                                            const char        *name,
                                            const char        *checksum,
                                            GError           **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
                                          const char        *name,
                                          OstreeMutableTree **out_subdir,
                                          GError           **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_mutable_tree_lookup (OstreeMutableTree   *self,
                                      const char          *name,
                                      char               **out_file_checksum,
                                      OstreeMutableTree  **out_subdir,
                                      GError             **error);
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
                                         GPtrArray          *split_path,
                                         const char         *metadata_checksum,
                                         OstreeMutableTree **out_parent,
                                         GError            **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_mutable_tree_walk (OstreeMutableTree   *self,
                                    GPtrArray           *split_path,
                                    guint                start,
                                    OstreeMutableTree  **out_subdir,
                                    GError             **error);
 
+_OSTREE_PUBLIC
 GHashTable * ostree_mutable_tree_get_subdirs (OstreeMutableTree *self);
+_OSTREE_PUBLIC
 GHashTable * ostree_mutable_tree_get_files (OstreeMutableTree *self);
 
 G_END_DECLS

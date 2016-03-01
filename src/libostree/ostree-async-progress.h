@@ -41,29 +41,39 @@ struct OstreeAsyncProgressClass
   void (*changed) (OstreeAsyncProgress *self, gpointer user_data);
 };
 
+_OSTREE_PUBLIC
 GType   ostree_async_progress_get_type (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 OstreeAsyncProgress *ostree_async_progress_new (void);
 
+_OSTREE_PUBLIC
 OstreeAsyncProgress *ostree_async_progress_new_and_connect (void (*changed) (OstreeAsyncProgress *self, gpointer user_data), gpointer user_data);
 
+_OSTREE_PUBLIC
 char *ostree_async_progress_get_status (OstreeAsyncProgress       *self);
 
+_OSTREE_PUBLIC
 guint ostree_async_progress_get_uint (OstreeAsyncProgress       *self,
                                       const char                *key);
+_OSTREE_PUBLIC
 guint64 ostree_async_progress_get_uint64 (OstreeAsyncProgress       *self,
                                           const char                *key);
 
+_OSTREE_PUBLIC
 void ostree_async_progress_set_status (OstreeAsyncProgress       *self,
                                        const char                *status);
 
+_OSTREE_PUBLIC
 void ostree_async_progress_set_uint (OstreeAsyncProgress       *self,
                                      const char                *key,
                                      guint                      value);
+_OSTREE_PUBLIC
 void ostree_async_progress_set_uint64 (OstreeAsyncProgress       *self,
                                        const char                *key,
                                        guint64                    value);
 
+_OSTREE_PUBLIC
 void ostree_async_progress_finish (OstreeAsyncProgress *self);
 
 G_END_DECLS

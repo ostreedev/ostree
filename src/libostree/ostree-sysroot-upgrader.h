@@ -42,32 +42,42 @@ typedef enum {
   OSTREE_SYSROOT_UPGRADER_FLAGS_IGNORE_UNCONFIGURED = (1 << 1),
 } OstreeSysrootUpgraderFlags;
 
+_OSTREE_PUBLIC
 GType ostree_sysroot_upgrader_get_type (void);
 
+_OSTREE_PUBLIC
 GType ostree_sysroot_upgrader_flags_get_type (void);
 
+_OSTREE_PUBLIC
 OstreeSysrootUpgrader *ostree_sysroot_upgrader_new (OstreeSysroot *sysroot,
                                                     GCancellable  *cancellable,
                                                     GError       **error);
 
+_OSTREE_PUBLIC
 OstreeSysrootUpgrader *ostree_sysroot_upgrader_new_for_os (OstreeSysroot *sysroot,
                                                            const char    *osname,
                                                            GCancellable  *cancellable,
                                                            GError       **error);
 
+_OSTREE_PUBLIC
 OstreeSysrootUpgrader *ostree_sysroot_upgrader_new_for_os_with_flags (OstreeSysroot              *sysroot,
                                                                       const char                 *osname,
                                                                       OstreeSysrootUpgraderFlags  flags,
                                                                       GCancellable               *cancellable,
                                                                       GError                    **error);
 
+_OSTREE_PUBLIC
 GKeyFile *ostree_sysroot_upgrader_get_origin (OstreeSysrootUpgrader *self);
+_OSTREE_PUBLIC
 GKeyFile *ostree_sysroot_upgrader_dup_origin (OstreeSysrootUpgrader *self);
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_set_origin (OstreeSysrootUpgrader *self, GKeyFile *origin,
                                              GCancellable *cancellable, GError **error);
 
+_OSTREE_PUBLIC
 char *ostree_sysroot_upgrader_get_origin_description (OstreeSysrootUpgrader *self);
 
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_check_timestamps (OstreeRepo     *repo,
                                                    const char     *from_rev,
                                                    const char     *to_rev,
@@ -78,6 +88,7 @@ typedef enum {
   OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER = (1 << 0)
 } OstreeSysrootUpgraderPullFlags;
 
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                                        OstreeRepoPullFlags     flags,
                                        OstreeSysrootUpgraderPullFlags     upgrader_flags,
@@ -86,6 +97,7 @@ gboolean ostree_sysroot_upgrader_pull (OstreeSysrootUpgrader  *self,
                                        GCancellable           *cancellable,
                                        GError                **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
                                       const char                   *dir_to_pull,
                                       OstreeRepoPullFlags     flags,
@@ -95,6 +107,7 @@ gboolean ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
                                       GCancellable           *cancellable,
                                       GError                **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_upgrader_deploy (OstreeSysrootUpgrader  *self,
                                          GCancellable           *cancellable,
                                          GError                **error);

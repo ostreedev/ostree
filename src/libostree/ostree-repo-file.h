@@ -40,38 +40,52 @@ struct _OstreeRepoFileClass
   GObjectClass parent_class;
 };
 
+_OSTREE_PUBLIC
 GType   ostree_repo_file_get_type (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_file_ensure_resolved (OstreeRepoFile  *self,
                                             GError         **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_file_get_xattrs (OstreeRepoFile  *self,
                                       GVariant       **out_xattrs,
                                       GCancellable    *cancellable,
                                       GError         **error);
 
+_OSTREE_PUBLIC
 OstreeRepo * ostree_repo_file_get_repo (OstreeRepoFile  *self);
+_OSTREE_PUBLIC
 OstreeRepoFile * ostree_repo_file_get_root (OstreeRepoFile  *self);
 
+_OSTREE_PUBLIC
 void ostree_repo_file_make_empty_tree (OstreeRepoFile  *self);
 
+_OSTREE_PUBLIC
 void ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                           const char     *checksum,
                                           GVariant       *metadata);
 
+_OSTREE_PUBLIC
 const char *ostree_repo_file_tree_get_contents_checksum (OstreeRepoFile  *self);
+_OSTREE_PUBLIC
 const char *ostree_repo_file_tree_get_metadata_checksum (OstreeRepoFile  *self);
 
+_OSTREE_PUBLIC
 GVariant *ostree_repo_file_tree_get_contents (OstreeRepoFile *self);
+_OSTREE_PUBLIC
 GVariant *ostree_repo_file_tree_get_metadata (OstreeRepoFile *self);
 
+_OSTREE_PUBLIC
 const char * ostree_repo_file_get_checksum (OstreeRepoFile  *self);
 
+_OSTREE_PUBLIC
 int     ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                             const char      *name,
                                             gboolean        *is_dir,
                                             GVariant       **out_container);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
                                              int              n,
                                              const char      *attributes,

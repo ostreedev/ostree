@@ -47,11 +47,15 @@ struct _OstreeDiffItem
   char *target_checksum;
 };
 
+_OSTREE_PUBLIC
 OstreeDiffItem *ostree_diff_item_ref (OstreeDiffItem *diffitem);
+_OSTREE_PUBLIC
 void ostree_diff_item_unref (OstreeDiffItem *diffitem);
 
+_OSTREE_PUBLIC
 GType ostree_diff_item_get_type (void);
 
+_OSTREE_PUBLIC
 gboolean ostree_diff_dirs (OstreeDiffFlags flags,
                            GFile          *a,
                            GFile          *b,
@@ -61,6 +65,7 @@ gboolean ostree_diff_dirs (OstreeDiffFlags flags,
                            GCancellable   *cancellable,
                            GError        **error);
 
+_OSTREE_PUBLIC
 void ostree_diff_print (GFile          *a,
                         GFile          *b,
                         GPtrArray      *modified,

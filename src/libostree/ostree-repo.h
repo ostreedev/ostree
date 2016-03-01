@@ -36,46 +36,62 @@ G_BEGIN_DECLS
 #define OSTREE_IS_REPO(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_REPO))
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_mode_from_string (const char      *mode,
                                        OstreeRepoMode  *out_mode,
                                        GError         **error);
 
+_OSTREE_PUBLIC
 GType ostree_repo_get_type (void);
 
+_OSTREE_PUBLIC
 OstreeRepo* ostree_repo_new (GFile *path);
 
+_OSTREE_PUBLIC
 OstreeRepo* ostree_repo_new_for_sysroot_path (GFile *repo_path,
                                               GFile *sysroot_path);
 
+_OSTREE_PUBLIC
 OstreeRepo* ostree_repo_new_default (void);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_open   (OstreeRepo     *self,
                                   GCancellable   *cancellable,
                                   GError        **error);
 
+_OSTREE_PUBLIC
 void          ostree_repo_set_disable_fsync (OstreeRepo    *self,
                                              gboolean       disable_fsync);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_get_disable_fsync (OstreeRepo    *self);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_is_system (OstreeRepo   *repo);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_is_writable (OstreeRepo  *self,
                                        GError     **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_create (OstreeRepo     *self,
                                   OstreeRepoMode  mode,
                                   GCancellable   *cancellable,
                                   GError        **error);
 
+_OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
+_OSTREE_PUBLIC
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
+_OSTREE_PUBLIC
 GKeyFile *    ostree_repo_get_config (OstreeRepo *self);
 
+_OSTREE_PUBLIC
 GKeyFile *    ostree_repo_copy_config (OstreeRepo *self);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_add (OstreeRepo     *self,
                                       const char     *name,
                                       const char     *url,
@@ -83,6 +99,7 @@ gboolean      ostree_repo_remote_add (OstreeRepo     *self,
                                       GCancellable   *cancellable,
                                       GError        **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
                                          const char     *name,
                                          GCancellable   *cancellable,
@@ -95,6 +112,7 @@ typedef enum {
   OSTREE_REPO_REMOTE_CHANGE_DELETE_IF_EXISTS
 } OstreeRepoRemoteChange;
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_change (OstreeRepo     *self,
                                          GFile          *sysroot,
                                          OstreeRepoRemoteChange changeop,
@@ -104,24 +122,29 @@ gboolean      ostree_repo_remote_change (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+_OSTREE_PUBLIC
 char **       ostree_repo_remote_list    (OstreeRepo *self,
                                           guint      *out_n_remotes);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_get_url (OstreeRepo   *self,
                                           const char   *name,
                                           char        **out_url,
                                           GError      **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
                                                  const char  *name,
                                                  gboolean    *out_gpg_verify,
                                                  GError     **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                                          const char  *name,
                                                          gboolean    *out_gpg_verify_summary,
                                                          GError     **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                              const char         *name,
                                              GInputStream       *source_stream,
@@ -130,6 +153,7 @@ gboolean      ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                              GCancellable       *cancellable,
                                              GError            **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                                 const char    *name,
                                                 GBytes       **out_summary,
@@ -137,8 +161,10 @@ gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                                 GCancellable  *cancellable,
                                                 GError       **error);
 
+_OSTREE_PUBLIC
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_config (OstreeRepo *self,
                                         GKeyFile   *new_config,
                                         GError    **error);
@@ -174,35 +200,43 @@ struct _OstreeRepoTransactionStats {
   guint64 padding4;
 };
 
+_OSTREE_PUBLIC
 GType ostree_repo_transaction_stats_get_type (void);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_scan_hardlinks      (OstreeRepo     *self,
                                                GCancellable   *cancellable,
                                                GError        **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_prepare_transaction (OstreeRepo     *self,
                                                gboolean       *out_transaction_resume,
                                                GCancellable   *cancellable,
                                                GError        **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_commit_transaction (OstreeRepo                  *self,
                                               OstreeRepoTransactionStats  *out_stats,
                                               GCancellable                *cancellable,
                                               GError                     **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_abort_transaction (OstreeRepo     *self,
                                              GCancellable   *cancellable,
                                              GError        **error);
 
+_OSTREE_PUBLIC
 void          ostree_repo_transaction_set_refspec (OstreeRepo *self,
                                                    const char *refspec,
                                                    const char *checksum);
 
+_OSTREE_PUBLIC
 void          ostree_repo_transaction_set_ref     (OstreeRepo *self,
                                                    const char *remote,
                                                    const char *ref,
                                                    const char *checksum);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
                                              const char *remote,
                                              const char *ref,
@@ -210,6 +244,7 @@ gboolean      ostree_repo_set_ref_immediate (OstreeRepo *self,
                                              GCancellable  *cancellable,
                                              GError       **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       OstreeObjectType      objtype,
                                       const char           *checksum,
@@ -217,6 +252,7 @@ gboolean      ostree_repo_has_object (OstreeRepo           *self,
                                       GCancellable         *cancellable,
                                       GError              **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_metadata (OstreeRepo        *self,
                                           OstreeObjectType   objtype,
                                           const char        *expected_checksum,
@@ -225,6 +261,7 @@ gboolean      ostree_repo_write_metadata (OstreeRepo        *self,
                                           GCancellable      *cancellable,
                                           GError           **error);
 
+_OSTREE_PUBLIC
 void          ostree_repo_write_metadata_async (OstreeRepo              *self,
                                                 OstreeObjectType         objtype,
                                                 const char              *expected_checksum,
@@ -233,11 +270,13 @@ void          ostree_repo_write_metadata_async (OstreeRepo              *self,
                                                 GAsyncReadyCallback      callback,
                                                 gpointer                 user_data);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_metadata_finish (OstreeRepo        *self,
                                                  GAsyncResult      *result,
                                                  guchar           **out_csum,
                                                  GError           **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_content (OstreeRepo       *self,
                                          const char       *expected_checksum,
                                          GInputStream     *object_input,
@@ -246,6 +285,7 @@ gboolean      ostree_repo_write_content (OstreeRepo       *self,
                                          GCancellable     *cancellable,
                                          GError          **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_metadata_trusted (OstreeRepo        *self,
                                                   OstreeObjectType   objtype,
                                                   const char        *checksum,
@@ -253,6 +293,7 @@ gboolean      ostree_repo_write_metadata_trusted (OstreeRepo        *self,
                                                   GCancellable      *cancellable,
                                                   GError           **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self,
                                                          OstreeObjectType   objtype,
                                                          const char        *checksum,
@@ -261,6 +302,7 @@ gboolean      ostree_repo_write_metadata_stream_trusted (OstreeRepo        *self
                                                          GCancellable      *cancellable,
                                                          GError           **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_content_trusted (OstreeRepo       *self,
                                                  const char       *checksum,
                                                  GInputStream     *object_input,
@@ -268,6 +310,7 @@ gboolean      ostree_repo_write_content_trusted (OstreeRepo       *self,
                                                  GCancellable     *cancellable,
                                                  GError          **error);
 
+_OSTREE_PUBLIC
 void          ostree_repo_write_content_async (OstreeRepo              *self,
                                                const char              *expected_checksum,
                                                GInputStream            *object,
@@ -276,35 +319,41 @@ void          ostree_repo_write_content_async (OstreeRepo              *self,
                                                GAsyncReadyCallback      callback,
                                                gpointer                 user_data);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_content_finish (OstreeRepo        *self,
                                                 GAsyncResult      *result,
                                                 guchar           **out_csum,
                                                 GError           **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        const char  *refspec,
                                        gboolean     allow_noent,
                                        char       **out_rev,
                                        GError     **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      const char       *refspec_prefix,
                                      GHashTable      **out_all_refs,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
                                        const char       *remote_name,
                                        GHashTable      **out_all_refs,
                                        GCancellable     *cancellable,
                                        GError          **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
                                         OstreeObjectType objtype,
                                         const char    *sha256, 
                                         GVariant     **out_variant,
                                         GError       **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant_if_exists (OstreeRepo  *self,
                                                   OstreeObjectType objtype,
                                                   const char    *sha256, 
@@ -315,12 +364,14 @@ typedef enum {
   OSTREE_REPO_COMMIT_STATE_PARTIAL = (1 << 0),
 } OstreeRepoCommitState;
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_load_commit (OstreeRepo            *self,
                                        const char            *checksum, 
                                        GVariant             **out_commit,
                                        OstreeRepoCommitState *out_state,
                                        GError               **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_load_file (OstreeRepo         *self,
                                 const char         *checksum,
                                 GInputStream      **out_input,
@@ -329,6 +380,7 @@ gboolean ostree_repo_load_file (OstreeRepo         *self,
                                 GCancellable       *cancellable,
                                 GError            **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
                                          OstreeObjectType    objtype,
                                          const char         *checksum,
@@ -337,6 +389,7 @@ gboolean ostree_repo_load_object_stream (OstreeRepo         *self,
                                          GCancellable       *cancellable,
                                          GError            **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      OstreeObjectType      objtype,
                                                      const char           *sha256, 
@@ -344,6 +397,7 @@ gboolean      ostree_repo_query_object_storage_size (OstreeRepo           *self,
                                                      GCancellable         *cancellable,
                                                      GError              **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_import_object_from (OstreeRepo           *self,
                                               OstreeRepo           *source,
                                               OstreeObjectType      objtype,
@@ -351,6 +405,7 @@ gboolean      ostree_repo_import_object_from (OstreeRepo           *self,
                                               GCancellable         *cancellable,
                                               GError              **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_delete_object (OstreeRepo           *self,
                                          OstreeObjectType      objtype,
                                          const char           *sha256, 
@@ -400,11 +455,13 @@ typedef enum {
  */
 typedef struct OstreeRepoCommitModifier OstreeRepoCommitModifier;
 
+_OSTREE_PUBLIC
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
                                                            OstreeRepoCommitFilter         commit_filter,
                                                            gpointer                       user_data,
                                                            GDestroyNotify                 destroy_notify);
 
+_OSTREE_PUBLIC
 GType ostree_repo_commit_modifier_get_type (void);
 
 typedef GVariant *(*OstreeRepoCommitModifierXattrCallback) (OstreeRepo     *repo,
@@ -412,20 +469,26 @@ typedef GVariant *(*OstreeRepoCommitModifierXattrCallback) (OstreeRepo     *repo
                                                             GFileInfo      *file_info,
                                                             gpointer        user_data);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_modifier_set_xattr_callback (OstreeRepoCommitModifier              *modifier,
                                                      OstreeRepoCommitModifierXattrCallback  callback,
                                                      GDestroyNotify                         destroy,
                                                      gpointer                               user_data);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_modifier_set_sepolicy (OstreeRepoCommitModifier              *modifier,
                                                OstreeSePolicy                        *sepolicy);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_modifier_set_devino_cache (OstreeRepoCommitModifier              *modifier,
                                                    OstreeRepoDevInoCache                 *cache);
 
+_OSTREE_PUBLIC
 OstreeRepoCommitModifier *ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier);
+_OSTREE_PUBLIC
 void ostree_repo_commit_modifier_unref (OstreeRepoCommitModifier *modifier);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_directory_to_mtree (OstreeRepo                 *self,
                                                     GFile                      *dir,
                                                     OstreeMutableTree          *mtree,
@@ -433,6 +496,7 @@ gboolean      ostree_repo_write_directory_to_mtree (OstreeRepo                 *
                                                     GCancellable               *cancellable,
                                                     GError                    **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_dfd_to_mtree (OstreeRepo                 *self,
                                               int                         dfd,
                                               const char                 *path,
@@ -442,6 +506,7 @@ gboolean      ostree_repo_write_dfd_to_mtree (OstreeRepo                 *self,
                                               GError                    **error);
 
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *self,
                                                   GFile                        *archive,
                                                   OstreeMutableTree            *mtree,
@@ -466,6 +531,7 @@ typedef struct {
   gpointer unused_ptrs[8];
 } OstreeRepoImportArchiveOptions;
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
                                                    OstreeRepoImportArchiveOptions  *opts,
                                                    void                         *archive, /* Really struct archive * */
@@ -490,6 +556,7 @@ typedef struct {
   gpointer unused_ptrs[8];
 } OstreeRepoExportArchiveOptions;
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_export_tree_to_archive (OstreeRepo                *self,
                                              OstreeRepoExportArchiveOptions  *opts,
                                              OstreeRepoFile            *root,
@@ -497,12 +564,14 @@ gboolean ostree_repo_export_tree_to_archive (OstreeRepo                *self,
                                              GCancellable             *cancellable,
                                              GError                  **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_mtree (OstreeRepo         *self,
                                        OstreeMutableTree  *mtree,
                                        GFile             **out_file,
                                        GCancellable       *cancellable,
                                        GError            **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_commit (OstreeRepo      *self,
                                         const char      *parent,
                                         const char      *subject,
@@ -513,6 +582,7 @@ gboolean      ostree_repo_write_commit (OstreeRepo      *self,
                                         GCancellable    *cancellable,
                                         GError         **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_commit_with_time (OstreeRepo      *self,
                                                   const char      *parent,
                                                   const char      *subject,
@@ -524,12 +594,14 @@ gboolean      ostree_repo_write_commit_with_time (OstreeRepo      *self,
                                                   GCancellable    *cancellable,
                                                   GError         **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                                          const char      *checksum,
                                                          GVariant       **out_metadata,
                                                          GCancellable    *cancellable,
                                                          GError         **error);
 
+_OSTREE_PUBLIC
 gboolean      ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                                           const char      *checksum,
                                                           GVariant        *metadata,
@@ -556,7 +628,7 @@ typedef enum {
   OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1
 } OstreeRepoCheckoutOverwriteMode;
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
                            OstreeRepoCheckoutOverwriteMode    overwrite_mode,
@@ -592,11 +664,16 @@ typedef struct {
   gpointer unused_ptrs[7];
 } OstreeRepoCheckoutOptions;
 
+_OSTREE_PUBLIC
 GType ostree_repo_devino_cache_get_type (void);
+_OSTREE_PUBLIC
 OstreeRepoDevInoCache *ostree_repo_devino_cache_new (void);
+_OSTREE_PUBLIC
 OstreeRepoDevInoCache * ostree_repo_devino_cache_ref (OstreeRepoDevInoCache *cache);
+_OSTREE_PUBLIC
 void ostree_repo_devino_cache_unref (OstreeRepoDevInoCache *cache);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
                                        OstreeRepoCheckoutOptions          *options,
                                        int                                 destination_dfd,
@@ -605,10 +682,12 @@ gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
                                        GCancellable                       *cancellable,
                                        GError                            **error);
 
+_OSTREE_PUBLIC
 gboolean       ostree_repo_checkout_gc (OstreeRepo        *self,
                                         GCancellable      *cancellable,
                                         GError           **error);
 
+_OSTREE_PUBLIC
 gboolean       ostree_repo_read_commit (OstreeRepo    *self,
                                         const char    *ref,
                                         GFile        **out_root,
@@ -636,18 +715,21 @@ typedef enum {
  */
 #define OSTREE_REPO_LIST_OBJECTS_VARIANT_TYPE (G_VARIANT_TYPE ("(bas)")
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_list_objects (OstreeRepo                  *self,
                                    OstreeRepoListObjectsFlags   flags,
                                    GHashTable                 **out_objects,
                                    GCancellable                *cancellable,
                                    GError                     **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_list_commit_objects_starting_with ( OstreeRepo                  *self,
                                                          const char                  *start,
                                                          GHashTable                 **out_commits,
                                                          GCancellable                *cancellable,
                                                          GError                     **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                                               GPtrArray                  **out_deltas,
                                               GCancellable                *cancellable,
@@ -665,6 +747,7 @@ typedef enum {
   OSTREE_STATIC_DELTA_GENERATE_OPT_MAJOR
 } OstreeStaticDeltaGenerateOpt;
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             OstreeStaticDeltaGenerateOpt  opt,
                                             const char                   *from,
@@ -674,14 +757,17 @@ gboolean ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                             GCancellable                 *cancellable,
                                             GError                      **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
                                                    GFile                         *dir_or_file,
                                                    gboolean                       skip_validation,
                                                    GCancellable                  *cancellable,
                                                    GError                      **error);
 
+_OSTREE_PUBLIC
 GHashTable *ostree_repo_traverse_new_reachable (void);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       const char         *commit_checksum,
                                       int                 maxdepth,
@@ -689,6 +775,7 @@ gboolean ostree_repo_traverse_commit (OstreeRepo         *repo,
                                       GCancellable       *cancellable,
                                       GError            **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
                                             const char         *commit_checksum,
                                             int                 maxdepth,
@@ -708,14 +795,14 @@ typedef enum {
   OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE = (1 << 0)
 } OstreeRepoCommitTraverseFlags;
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter    *iter,
                                               OstreeRepo                      *repo,
                                               GVariant                        *commit,
                                               OstreeRepoCommitTraverseFlags    flags,
                                               GError                         **error);
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter    *iter,
                                                OstreeRepo                      *repo,
                                                GVariant                        *dirtree,
@@ -729,22 +816,26 @@ typedef enum {
   OSTREE_REPO_COMMIT_ITER_RESULT_DIR
 } OstreeRepoCommitIterResult;
 
+_OSTREE_PUBLIC
 OstreeRepoCommitIterResult ostree_repo_commit_traverse_iter_next (OstreeRepoCommitTraverseIter *iter,
                                                                   GCancellable       *cancellable,
                                                                   GError            **error);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_traverse_iter_get_file (OstreeRepoCommitTraverseIter *iter,
                                                 char                        **out_name,
                                                 char                        **out_checksum);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_traverse_iter_get_dir (OstreeRepoCommitTraverseIter *iter,
                                                char                        **out_name,
                                                char                        **out_content_checksum,
                                                char                        **out_meta_checksum);
 
-void
+_OSTREE_PUBLIC void
 ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter);
 
+_OSTREE_PUBLIC
 void ostree_repo_commit_traverse_iter_cleanup (void *p);
 
 #define ostree_cleanup_repo_commit_traverse_iter __attribute__ ((cleanup(ostree_repo_commit_traverse_iter_cleanup)))
@@ -761,11 +852,12 @@ typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
 } OstreeRepoPruneFlags;
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
                                  GCancellable      *cancellable,
                                  GError           **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_prune (OstreeRepo        *self,
                             OstreeRepoPruneFlags   flags,
                             gint               depth,
@@ -787,6 +879,7 @@ typedef enum {
   OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY = (1 << 1)
 } OstreeRepoPullFlags;
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_pull (OstreeRepo             *self,
                            const char             *remote_name,
                            char                  **refs_to_fetch,
@@ -795,7 +888,7 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            GCancellable           *cancellable,
                            GError                **error);
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_pull_one_dir (OstreeRepo               *self,
                           const char               *remote_name,
                           const char               *dir_to_pull,
@@ -805,6 +898,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                           GCancellable             *cancellable,
                           GError                  **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         const char             *remote_name,
                                         GVariant               *options,
@@ -812,9 +906,11 @@ gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
                                         GCancellable           *cancellable,
                                         GError                **error);
 
+_OSTREE_PUBLIC
 void ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,
                                                         gpointer             user_data);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_sign_commit (OstreeRepo     *self,
                                   const gchar    *commit_checksum,
                                   const gchar    *key_id,
@@ -822,6 +918,7 @@ gboolean ostree_repo_sign_commit (OstreeRepo     *self,
                                   GCancellable   *cancellable,
                                   GError        **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_sign_delta (OstreeRepo     *self,
                                  const gchar    *from_commit,
                                  const gchar    *to_commit,
@@ -830,19 +927,21 @@ gboolean ostree_repo_sign_delta (OstreeRepo     *self,
                                  GCancellable   *cancellable,
                                  GError        **error);
 
-gboolean
+_OSTREE_PUBLIC gboolean
 ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        const gchar    **key_id,
                                        const gchar    *homedir,
                                        GCancellable   *cancellable,
                                        GError        **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_append_gpg_signature (OstreeRepo     *self,
                                            const gchar    *commit_checksum,
                                            GBytes         *signature_bytes,
                                            GCancellable   *cancellable,
                                            GError        **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_verify_commit (OstreeRepo   *self,
                                     const gchar  *commit_checksum,
                                     GFile        *keyringdir,
@@ -850,6 +949,7 @@ gboolean ostree_repo_verify_commit (OstreeRepo   *self,
                                     GCancellable *cancellable,
                                     GError      **error);
 
+_OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        const gchar   *commit_checksum,
                                                        GFile         *keyringdir,
@@ -857,6 +957,7 @@ OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        GCancellable  *cancellable,
                                                        GError       **error);
 
+_OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
                                                     const char    *remote_name,
                                                     GBytes        *summary,
@@ -864,6 +965,7 @@ OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
                                                     GCancellable  *cancellable,
                                                     GError       **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GVariant       *additional_metadata,
                                          GCancellable   *cancellable,

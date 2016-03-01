@@ -30,16 +30,21 @@ G_BEGIN_DECLS
 #define OSTREE_IS_SEPOLICY(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE ((obj), OSTREE_TYPE_SEPOLICY))
 
+_OSTREE_PUBLIC
 GType ostree_sepolicy_get_type (void);
 
+_OSTREE_PUBLIC
 OstreeSePolicy* ostree_sepolicy_new (GFile         *path,
                                      GCancellable  *cancellable,
                                      GError       **error);
 
+_OSTREE_PUBLIC
 GFile * ostree_sepolicy_get_path (OstreeSePolicy  *self);
 
+_OSTREE_PUBLIC
 const char *ostree_sepolicy_get_name (OstreeSePolicy *self);
 
+_OSTREE_PUBLIC
 gboolean ostree_sepolicy_get_label (OstreeSePolicy    *self,
                                     const char       *relpath,
                                     guint32           unix_mode,
@@ -53,6 +58,7 @@ typedef enum {
   OSTREE_SEPOLICY_RESTORECON_FLAGS_KEEP_EXISTING = (1 << 1)
 } OstreeSePolicyRestoreconFlags;
 
+_OSTREE_PUBLIC
 gboolean ostree_sepolicy_restorecon (OstreeSePolicy   *self,
                                      const char       *path,
                                      GFileInfo        *info,
@@ -62,11 +68,13 @@ gboolean ostree_sepolicy_restorecon (OstreeSePolicy   *self,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_sepolicy_setfscreatecon (OstreeSePolicy   *self,
                                          const char       *path,
                                          guint32           mode,
                                          GError          **error);
 
+_OSTREE_PUBLIC
 void ostree_sepolicy_fscreatecon_cleanup (void **unused);
 
 #define ostree_cleanup_sepolicy_fscreatecon __attribute__ ((cleanup(ostree_sepolicy_fscreatecon_cleanup)))

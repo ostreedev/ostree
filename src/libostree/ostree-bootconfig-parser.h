@@ -30,38 +30,47 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeBootconfigParser OstreeBootconfigParser;
 
+_OSTREE_PUBLIC
 GType ostree_bootconfig_parser_get_type (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 OstreeBootconfigParser * ostree_bootconfig_parser_new (void);
 
+_OSTREE_PUBLIC
 OstreeBootconfigParser * ostree_bootconfig_parser_clone (OstreeBootconfigParser *self);
 
+_OSTREE_PUBLIC
 gboolean ostree_bootconfig_parser_parse (OstreeBootconfigParser  *self,
                                          GFile           *path,
                                          GCancellable    *cancellable,
                                          GError         **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_bootconfig_parser_parse_at (OstreeBootconfigParser  *self,
                                             int                      dfd,
                                             const char              *path,
                                             GCancellable    *cancellable,
                                             GError         **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_bootconfig_parser_write (OstreeBootconfigParser   *self,
                                          GFile            *output,
                                          GCancellable     *cancellable,
                                          GError          **error);
 
+_OSTREE_PUBLIC
 gboolean ostree_bootconfig_parser_write_at (OstreeBootconfigParser   *self,
                                             int                       dfd,
                                             const char               *path,
                                             GCancellable             *cancellable,
                                             GError                  **error);
 
+_OSTREE_PUBLIC
 void ostree_bootconfig_parser_set (OstreeBootconfigParser  *self,
                                    const char      *key,
                                    const char      *value);
 
+_OSTREE_PUBLIC
 const char *ostree_bootconfig_parser_get (OstreeBootconfigParser  *self,
                                           const char      *key);
 

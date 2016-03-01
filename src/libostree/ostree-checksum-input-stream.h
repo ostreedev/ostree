@@ -57,8 +57,10 @@ struct _OstreeChecksumInputStreamClass
   void (*_g_reserved5) (void);
 };
 
+_OSTREE_PUBLIC
 GType          ostree_checksum_input_stream_get_type     (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 OstreeChecksumInputStream * ostree_checksum_input_stream_new          (GInputStream   *stream,
                                                                        GChecksum      *checksum);
 

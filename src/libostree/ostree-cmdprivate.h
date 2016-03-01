@@ -29,7 +29,8 @@ typedef struct {
   gboolean (* ostree_static_delta_dump) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
 } OstreeCmdPrivateVTable;
 
-const OstreeCmdPrivateVTable *
+/* Note this not really "public", we just export the symbol, but not the header */
+_OSTREE_PUBLIC const OstreeCmdPrivateVTable *
 ostree_cmd__private__ (void);
 
 G_END_DECLS

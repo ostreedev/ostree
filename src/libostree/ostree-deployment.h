@@ -30,11 +30,15 @@ G_BEGIN_DECLS
 
 typedef struct _OstreeDeployment OstreeDeployment;
 
+_OSTREE_PUBLIC
 GType ostree_deployment_get_type (void) G_GNUC_CONST;
 
+_OSTREE_PUBLIC
 guint ostree_deployment_hash (gconstpointer v);
+_OSTREE_PUBLIC
 gboolean ostree_deployment_equal (gconstpointer ap, gconstpointer bp);
 
+_OSTREE_PUBLIC
 OstreeDeployment * ostree_deployment_new (int    index,
                                   const char  *osname,
                                   const char  *csum,
@@ -42,22 +46,36 @@ OstreeDeployment * ostree_deployment_new (int    index,
                                   const char  *bootcsum,
                                   int    bootserial);
 
+_OSTREE_PUBLIC
 int ostree_deployment_get_index (OstreeDeployment *self);
+_OSTREE_PUBLIC
 const char *ostree_deployment_get_osname (OstreeDeployment *self);
+_OSTREE_PUBLIC
 int ostree_deployment_get_deployserial (OstreeDeployment *self);
+_OSTREE_PUBLIC
 const char *ostree_deployment_get_csum (OstreeDeployment *self);
+_OSTREE_PUBLIC
 const char *ostree_deployment_get_bootcsum (OstreeDeployment *self);
+_OSTREE_PUBLIC
 int ostree_deployment_get_bootserial (OstreeDeployment *self);
+_OSTREE_PUBLIC
 OstreeBootconfigParser *ostree_deployment_get_bootconfig (OstreeDeployment *self);
+_OSTREE_PUBLIC
 GKeyFile *ostree_deployment_get_origin (OstreeDeployment *self);
 
+_OSTREE_PUBLIC
 void ostree_deployment_set_index (OstreeDeployment *self, int index);
+_OSTREE_PUBLIC
 void ostree_deployment_set_bootserial (OstreeDeployment *self, int index);
+_OSTREE_PUBLIC
 void ostree_deployment_set_bootconfig (OstreeDeployment *self, OstreeBootconfigParser *bootconfig);
+_OSTREE_PUBLIC
 void ostree_deployment_set_origin (OstreeDeployment *self, GKeyFile *origin);
 
+_OSTREE_PUBLIC
 OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 
+_OSTREE_PUBLIC
 char *ostree_deployment_get_origin_relpath (OstreeDeployment *self);
 
 G_END_DECLS
