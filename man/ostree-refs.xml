@@ -66,6 +66,16 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
+                <term><option>--list</option></term>
+
+                <listitem><para> For historical reasons, <literal>refs</literal>
+                without this option will strip the specified prefix
+                from the output.  Normally, one wants to see the full
+                ref, so providing this option ensures the refs are
+                printed in full, rather than
+                truncated. </para></listitem>
+            </varlistentry>
+            <varlistentry>
                 <term><option>--delete</option></term>
 
                 <listitem><para>

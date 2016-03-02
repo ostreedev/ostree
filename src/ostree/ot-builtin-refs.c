@@ -27,9 +27,11 @@
 #include "ostree.h"
 
 static gboolean opt_delete;
+static gboolean opt_list;
 
 static GOptionEntry options[] = {
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Delete refs which match PREFIX, rather than listing them", NULL },
+  { "list", 0, 0, G_OPTION_ARG_NONE, &opt_list, "Do not remove the prefix from the refs", NULL },
   { NULL }
 };
 
@@ -40,11 +42,17 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
 
+  if (opt_delete || opt_list)
+    {
+      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
+                                      cancellable, error))
+        goto out;
+    }
+  else if (!ostree_repo_list_refs (repo, refspec_prefix, &refs, cancellable, error))
+    goto out;
+
   if (!opt_delete)
     {
-      if (!ostree_repo_list_refs (repo, refspec_prefix, &refs, cancellable, error))
-        goto out;
-
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
@@ -54,10 +62,6 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
     }
   else
     {
-      if (!ostree_repo_list_refs_ext (repo, refspec_prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
-                                      cancellable, error))
-        goto out;
-
       g_hash_table_iter_init (&hashiter, refs);
       while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
         {
