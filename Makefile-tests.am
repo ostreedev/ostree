@@ -61,6 +61,7 @@ testfiles = test-basic \
 	test-xattrs \
 	test-auto-summary \
 	test-prune \
+	test-refs \
 	$(NULL)
 
 if BUILDOPT_FUSE

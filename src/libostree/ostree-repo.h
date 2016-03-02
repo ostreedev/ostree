@@ -342,6 +342,22 @@ gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      GCancellable     *cancellable,
                                      GError          **error);
 
+/**
+ * OstreeRepoListRefsExtFlags:
+ * @OSTREE_REPO_LIST_REFS_EXT_NONE: No flags.
+ */
+typedef enum {
+  OSTREE_REPO_LIST_REFS_EXT_NONE = 0,
+} OstreeRepoListRefsExtFlags;
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_list_refs_ext (OstreeRepo                 *self,
+                                         const char                 *refspec_prefix,
+                                         GHashTable                 **out_all_refs,
+                                         OstreeRepoListRefsExtFlags flags,
+                                         GCancellable               *cancellable,
+                                         GError                     **error);
+
 _OSTREE_PUBLIC
 gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
                                        const char       *remote_name,

@@ -508,24 +508,13 @@ enumerate_refs_recurse (OstreeRepo    *repo,
   return ret;
 }
 
-/**
- * ostree_repo_list_refs:
- * @self: Repo
- * @refspec_prefix: (allow-none): Only list refs which match this prefix
- * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
- * @cancellable: Cancellable
- * @error: Error
- *
- * If @refspec_prefix is %NULL, list all local and remote refspecs,
- * with their current values in @out_all_refs.  Otherwise, only list
- * refspecs which have @refspec_prefix as a prefix.
- */
-gboolean
-ostree_repo_list_refs (OstreeRepo       *self,
-                       const char       *refspec_prefix,
-                       GHashTable      **out_all_refs,
-                       GCancellable     *cancellable,
-                       GError          **error)
+static gboolean
+_ostree_repo_list_refs_internal (OstreeRepo       *self,
+                                 gboolean         cut_prefix,
+                                 const char       *refspec_prefix,
+                                 GHashTable      **out_all_refs,
+                                 GCancellable     *cancellable,
+                                 GError          **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GHashTable) ret_all_refs = NULL;
@@ -568,12 +557,14 @@ ostree_repo_list_refs (OstreeRepo       *self,
             {
               glnx_fd_close int base_fd = -1;
               g_autoptr(GString) base_path = g_string_new ("");
+              if (!cut_prefix)
+                g_string_printf (base_path, "%s/", ref_prefix);
 
-              if (!glnx_opendirat (self->repo_dir_fd, path, TRUE, &base_fd, error))
+              if (!glnx_opendirat (self->repo_dir_fd, cut_prefix ? path : prefix_path, TRUE, &base_fd, error))
                 goto out;
 
               if (!enumerate_refs_recurse (self, remote, base_fd, base_path,
-                                           base_fd, ".",
+                                           base_fd, cut_prefix ? "." : ref_prefix,
                                            ret_all_refs, cancellable, error))
                 goto out;
             }
@@ -637,6 +628,54 @@ ostree_repo_list_refs (OstreeRepo       *self,
   ot_transfer_out_value (out_all_refs, &ret_all_refs);
  out:
   return ret;
+}
+
+/**
+ * ostree_repo_list_refs:
+ * @self: Repo
+ * @refspec_prefix: (allow-none): Only list refs which match this prefix
+ * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * If @refspec_prefix is %NULL, list all local and remote refspecs,
+ * with their current values in @out_all_refs.  Otherwise, only list
+ * refspecs which have @refspec_prefix as a prefix.
+ */
+gboolean
+ostree_repo_list_refs (OstreeRepo       *self,
+                       const char       *refspec_prefix,
+                       GHashTable      **out_all_refs,
+                       GCancellable     *cancellable,
+                       GError          **error)
+{
+  return _ostree_repo_list_refs_internal (self, TRUE, refspec_prefix, out_all_refs, cancellable, error);
+}
+
+/**
+ * ostree_repo_list_refs_ext:
+ * @self: Repo
+ * @refspec_prefix: (allow-none): Only list refs which match this prefix
+ * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @flags: Options controlling listing behavior
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * If @refspec_prefix is %NULL, list all local and remote refspecs,
+ * with their current values in @out_all_refs.  Otherwise, only list
+ * refspecs which have @refspec_prefix as a prefix.  Differently from
+ * ostree_repo_list_refs(), the prefix will not be removed from the ref
+ * name.
+ */
+gboolean
+ostree_repo_list_refs_ext (OstreeRepo                 *self,
+                           const char                 *refspec_prefix,
+                           GHashTable                 **out_all_refs,
+                           OstreeRepoListRefsExtFlags flags,
+                           GCancellable               *cancellable,
+                           GError                     **error)
+{
+  return _ostree_repo_list_refs_internal (self, FALSE, refspec_prefix, out_all_refs, cancellable, error);
 }
 
 /**

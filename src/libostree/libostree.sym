@@ -181,6 +181,7 @@ global:
         ostree_repo_list_commit_objects_starting_with;
         ostree_repo_list_objects;
         ostree_repo_list_refs;
+        ostree_repo_list_refs_ext;
         ostree_repo_list_static_delta_names;
         ostree_repo_load_commit;
         ostree_repo_load_file;
