@@ -21,6 +21,7 @@
 #pragma once
 
 #include <gio/gio.h>
+#include <ostree-types.h>
 
 G_BEGIN_DECLS
 
