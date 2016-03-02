@@ -311,3 +311,8 @@ global:
 local:
        *;
 };
+
+LIBOSTREE_2016.4 {
+global:
+        ostree_repo_get_dfd;
+} LIBOSTREE_2016.3;

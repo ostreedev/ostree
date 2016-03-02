@@ -83,6 +83,9 @@ _OSTREE_PUBLIC
 GFile *       ostree_repo_get_path (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
+int           ostree_repo_get_dfd (OstreeRepo  *self);
+
+_OSTREE_PUBLIC
 OstreeRepoMode ostree_repo_get_mode (OstreeRepo  *self);
 
 _OSTREE_PUBLIC

@@ -2423,6 +2423,24 @@ ostree_repo_get_path (OstreeRepo  *self)
   return self->repodir;
 }
 
+/**
+ * ostree_repo_get_dfd:
+ * @self: Repo
+ *
+ * In some cases it's useful for applications to access the repository
+ * directly; for example, writing content into `repo/tmp` ensures it's
+ * on the same filesystem.  Another case is detecting the mtime on the
+ * repository (to see whether a ref was written).
+ *
+ * Returns: File descriptor for repository root - owned by @self
+ */
+int
+ostree_repo_get_dfd (OstreeRepo  *self)
+{
+  g_return_val_if_fail (self->repo_dir_fd != -1, -1);
+  return self->repo_dir_fd;
+}
+
 OstreeRepoMode
 ostree_repo_get_mode (OstreeRepo  *self)
 {
