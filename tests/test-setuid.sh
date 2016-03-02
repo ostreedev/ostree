@@ -36,3 +36,5 @@ chmod a+x test2-checkout/abinary
 rm -rf test2-checkout
 $OSTREE checkout test2 test2-checkout
 test -u test2-checkout/abinary
+
+echo "ok"

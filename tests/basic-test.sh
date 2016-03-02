@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..48"
+echo "1..49"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"

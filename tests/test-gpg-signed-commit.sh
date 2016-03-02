@@ -26,6 +26,8 @@ fi
 
 . $(dirname $0)/libtest.sh
 
+echo "1..1"
+
 setup_test_repository "archive-z2"
 
 export OSTREE_GPG_SIGN="${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME}"
@@ -74,3 +76,5 @@ assert_file_has_content test2-delete 'Signatures deleted: 2'
 if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
+
+echo "ok"

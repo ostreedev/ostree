@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-echo "1..10"
+echo "1..16"
 
 function validate_bootloader() {
     (cd ${test_tmpdir};

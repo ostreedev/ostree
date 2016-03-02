@@ -23,9 +23,9 @@ if ! ostree --version | grep -q -e '\+libarchive'; then
     exit 77
 fi
 
-echo "1..7"
-
 . $(dirname $0)/libtest.sh
+
+echo "1..7"
 
 setup_test_repository "bare"
 cd ${test_tmpdir}

@@ -18,9 +18,34 @@
 # Boston, MA 02111-1307, USA.
 
 SRCDIR=$(dirname $0)
+_cleanup_tmpdir () {
+    if test -n "${LIBTEST_SKIP_CLEANUP:-}"; then
+	echo "Skipping cleanup of ${test_tmpdir}"
+    else if test -f ${test_tmpdir}/.test; then
+        rm ${test_tmpdir} -rf
+    fi
+    fi
+}
+
+# If we're running as a local test (i.e. through `make check`), then
+# UNINSTALLEDTESTS=1. Otherwise (i.e. as an installed test), it's undefined, in
+# which case we're already in a tmpdir.
+if test -n "${UNINSTALLEDTESTS:-}"; then
+   test_tmpdir=$(mktemp -d /var/tmp/test.XXXXXX)
+   touch ${test_tmpdir}/.test
+   trap _cleanup_tmpdir EXIT
+   cd ${test_tmpdir}
+   export PATH=${G_TEST_BUILDDIR}:${PATH}
+fi
+
 test_tmpdir=$(pwd)
 
 export G_DEBUG=fatal-warnings
+
+# Also, unbreak `tar` inside `make check`...Automake will inject
+# TAR_OPTIONS: --owner=0 --group=0 --numeric-owner presumably so that
+# tarballs are predictable, except we don't want this in our tests.
+unset TAR_OPTIONS
 
 # Don't flag deployments as immutable so that test harnesses can
 # easily clean up.
@@ -33,6 +58,7 @@ export TEST_GPG_KEYID_3="DF444D67"
 # GPG when creating signatures demands a writable
 # homedir in order to create lockfiles.  Work around
 # this by copying locally.
+echo "Copying gpghome to ${test_tmpdir}"
 cp -a ${SRCDIR}/gpghome ${test_tmpdir}
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted

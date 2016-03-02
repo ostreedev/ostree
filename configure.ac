@@ -1,11 +1,11 @@
 AC_PREREQ([2.63])
 AC_INIT([ostree], [2016.3], [walters@verbum.org])
 AC_CONFIG_HEADER([config.h])
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([1.13 -Wno-portability foreign no-define tar-ustar no-dist-gzip dist-xz
-                  color-tests parallel-tests subdir-objects])
+                  color-tests subdir-objects])
 AM_MAINTAINER_MODE([enable])
 AM_SILENT_RULES([yes])
 AC_USE_SYSTEM_EXTENSIONS
@@ -34,11 +34,7 @@ LT_INIT([disable-static])
 OSTREE_FEATURES=""
 AC_SUBST([OSTREE_FEATURES])
 
-AC_ARG_ENABLE(installed_tests,
-              AS_HELP_STRING([--enable-installed-tests],
-                             [Install test programs (default: no)]),,
-              [enable_installed_tests=no])
-AM_CONDITIONAL(BUILDOPT_INSTALL_TESTS, test x$enable_installed_tests = xyes)
+GLIB_TESTS
 
 AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from glibc])])
 

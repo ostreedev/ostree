@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo '1..3'
+echo '1..13'
 
 setup_test_repository "bare"
 $OSTREE remote add origin http://example.com/ostree/gnome

@@ -23,12 +23,13 @@ set -euo pipefail
 . $(dirname $0)/libtest.sh
 
 setup_test_repository "bare"
-echo "ok setup"
 
-echo '1..2'
+echo '1..1'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 
 ${CMD_PREFIX} ostree --repo=repo checkout -U --subpath=/ test2 checkedout
 
 ${CMD_PREFIX} ostree --repo=repo checkout -U --subpath=/firstfile test2 checkedout2
+
+echo "ok"

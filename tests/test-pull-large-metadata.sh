@@ -39,3 +39,5 @@ if ${CMD_PREFIX} ostree --repo=repo pull origin main 2>pulllog.txt 1>&2; then
     assert_not_reached "pull unexpectedly succeeded!"
 fi
 assert_file_has_content pulllog.txt "exceeded maximum"
+
+echo "ok"

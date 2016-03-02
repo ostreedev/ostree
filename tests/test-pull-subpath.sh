@@ -25,8 +25,6 @@ setup_fake_remote_repo1 "archive-z2"
 
 echo '1..1'
 
-echo "SUBDIR TEST"
-
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig
 
@@ -49,3 +47,5 @@ assert_has_file repo/state/${rev}.commitpartial
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 assert_not_has_file repo/state/${rev}.commitpartial
 ${CMD_PREFIX} ostree --repo=repo fsck
+
+echo "ok"

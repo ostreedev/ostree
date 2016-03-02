@@ -21,12 +21,14 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..1"
-
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
-echo "ok setup"
+# If parallel is not installed, skip the test
+if ! parallel --help >/dev/null 2>&1; then
+    echo "1..0 # SKIP no /usr/bin/parallel"
+    exit 0
+fi    
 
 echo "1..1"
 
@@ -39,9 +41,6 @@ echo "rev=${rev}"
 # This initial deployment gets kicked off with some kernel arguments 
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
-
-# If parallel is not installed, skip the test
-parallel --help >/dev/null 2>&1 || exit 77
 
 parallel_cmd=parallel
 if parallel --help | grep -q -e --no-notice; then

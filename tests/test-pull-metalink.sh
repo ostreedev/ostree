@@ -23,6 +23,8 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
+echo '1..9'
+
 # And another web server acting as the metalink server
 cd ${test_tmpdir}
 mkdir metalink-data
@@ -37,7 +39,6 @@ summary_path=${test_tmpdir}/ostree-srv/gnomerepo/summary
 
 echo -n broken > ${summary_path}.bad
 
-echo '1..1'
 cd ${test_tmpdir}
 
 cat > metalink-valid-summary.xml <<EOF

@@ -35,3 +35,5 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main --subpath /baz
 ${CMD_PREFIX} ostree fsck --repo=repo >fsck.out
 assert_file_has_content fsck.out 'Verifying content integrity of 0 commit objects'
 assert_file_has_content fsck.out '1 partial commits not verified'
+
+echo "ok"
