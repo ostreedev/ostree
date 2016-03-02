@@ -401,7 +401,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
 
   prefix = g_strdup_printf ("ostree/%d/%d", bootversion, subbootversion);
 
-  if (!ostree_repo_list_refs (repo, prefix, &refs, cancellable, error))
+  if (!ostree_repo_list_refs_ext (repo, prefix, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE, cancellable, error))
     goto out;
 
   if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
@@ -410,8 +410,7 @@ cleanup_ref_prefix (OstreeRepo         *repo,
   g_hash_table_iter_init (&hashiter, refs);
   while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
     {
-      const char *suffix = hashkey;
-      g_autofree char *ref = g_strconcat (prefix, "/", suffix, NULL);
+      const char *ref = hashkey;
       ostree_repo_transaction_set_refspec (repo, ref, NULL);
     }
 
