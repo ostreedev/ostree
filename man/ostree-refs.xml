@@ -66,6 +66,13 @@ Boston, MA 02111-1307, USA.
 
         <variablelist>
             <varlistentry>
+                <term><option>--list</option></term>
+
+                <listitem><para>
+                  If a refspec is specified, do not remove it from the output.
+                </para></listitem>
+            </varlistentry>
+            <varlistentry>
                 <term><option>--delete</option></term>
 
                 <listitem><para>
