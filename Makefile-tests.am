@@ -19,8 +19,11 @@
 
 include $(top_srcdir)/buildutil/glib-tap.mk
 
-# We should probably consider flipping the default
-TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1
+# We should probably consider flipping the default for DEBUG.  Also,
+# include the builddir in $PATH so we find our just-built ostree
+# binary.
+TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
+	PATH=$$(cd $(top_builddir) && pwd):$${PATH}
 
 test_scripts = \
 	tests/test-basic.sh \
