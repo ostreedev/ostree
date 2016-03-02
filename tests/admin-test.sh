@@ -27,11 +27,14 @@ function validate_bootloader() {
      fi)
 }
 
+orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)
 export rev
 # This initial deployment gets kicked off with some kernel arguments 
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
+new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
+assert_not_streq "${orig_mtime}" "${new_mtime}"
 ${CMD_PREFIX} ostree admin status | tee status.txt
 validate_bootloader
 
@@ -56,7 +59,10 @@ ${CMD_PREFIX} ostree admin status
 
 echo "ok layout"
 
+orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree admin deploy --os=testos testos:testos/buildmaster/x86_64-runtime
+new_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
+assert_not_streq "${orig_mtime}" "${new_mtime}"
 # Need a new bootversion, sine we now have two deployments
 assert_has_dir sysroot/boot/loader.0
 assert_not_has_dir sysroot/boot/loader.1
