@@ -18,27 +18,21 @@
 # Boston, MA 02111-1307, USA.
 
 SRCDIR=$(dirname $0)
-_cleanup_tmpdir () {
-    if test -n "${LIBTEST_SKIP_CLEANUP:-}"; then
-	echo "Skipping cleanup of ${test_tmpdir}"
-    else if test -f ${test_tmpdir}/.test; then
-        rm ${test_tmpdir} -rf
-    fi
-    fi
+
+assert_not_reached () {
+    echo $@ 1>&2; exit 1
 }
 
-# If we're running as a local test (i.e. through `make check`), then
-# UNINSTALLEDTESTS=1. Otherwise (i.e. as an installed test), it's undefined, in
-# which case we're already in a tmpdir.
-if test -n "${UNINSTALLEDTESTS:-}"; then
-   test_tmpdir=$(mktemp -d /var/tmp/test.XXXXXX)
-   touch ${test_tmpdir}/.test
-   trap _cleanup_tmpdir EXIT
-   cd ${test_tmpdir}
-   export PATH=${G_TEST_BUILDDIR}:${PATH}
-fi
-
 test_tmpdir=$(pwd)
+
+# Extra sanity checks
+if test -d .git; then
+    assert_not_reached "Found .git, not in a tempdir?"
+fi
+echo "in ${test_tmpdir}"
+if ! echo ${test_tmpdir} | grep -E -q '^/(var/)?tmp'; then
+    assert_not_reached "Not in /tmp or /var/tmp"
+fi
 
 export G_DEBUG=fatal-warnings
 
@@ -72,10 +66,6 @@ if test -n "${OT_TESTS_VALGRIND:-}"; then
 else
     CMD_PREFIX="env LD_PRELOAD=${SRCDIR}/libreaddir-rand.so"
 fi
-
-assert_not_reached () {
-    echo $@ 1>&2; exit 1
-}
 
 assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
