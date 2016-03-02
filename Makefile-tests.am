@@ -121,7 +121,8 @@ libreaddir_rand_la_LDFLAGS = -avoid-version
 
 test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
-	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum
+	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
+	tests/test-basic-c
 
 # An interactive tool
 noinst_PROGRAMS += tests/test-rollsum-cli
@@ -130,8 +131,16 @@ if USE_LIBARCHIVE
 test_programs += tests/test-libarchive-import
 endif
 
-TESTS_CFLAGS = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/libglnx
-TESTS_LDADD = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
+common_tests_cflags = $(ostree_bin_shared_cflags) $(OT_INTERNAL_GIO_UNIX_CFLAGS) -I$(srcdir)/libglnx
+common_tests_ldadd = $(ostree_bin_shared_ldadd) $(OT_INTERNAL_GIO_UNIX_LIBS)
+
+noinst_LTLIBRARIES += libostreetest.la
+libostreetest_la_SOURCES = tests/libostreetest.c
+libostreetest_la_CFLAGS = $(common_tests_cflags) -I $(srcdir)/tests
+libostreetest_la_LIBADD = $(common_tests_ldadd)
+
+TESTS_CFLAGS = $(common_tests_cflags)
+TESTS_LDADD = $(common_tests_ldadd) libostreetest.la
 
 tests_test_rollsum_cli_SOURCES = src/libostree/ostree-rollsum.c tests/test-rollsum-cli.c
 tests_test_rollsum_cli_CFLAGS = $(TESTS_CFLAGS) $(OT_DEP_ZLIB_CFLAGS)
@@ -143,6 +152,9 @@ tests_test_rollsum_LDADD = libbupsplit.la $(TESTS_LDADD) $(OT_DEP_ZLIB_LIBS)
 
 tests_test_mutable_tree_CFLAGS = $(TESTS_CFLAGS)
 tests_test_mutable_tree_LDADD = $(TESTS_LDADD)
+
+tests_test_basic_c_CFLAGS = $(TESTS_CFLAGS)
+tests_test_basic_c_LDADD = $(TESTS_LDADD)
 
 tests_test_ot_unix_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_ot_unix_utils_LDADD = $(TESTS_LDADD)
