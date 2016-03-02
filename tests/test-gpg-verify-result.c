@@ -66,7 +66,7 @@ test_fixture_setup (TestFixture *fixture,
    * taken into account, which contains additional data like revocation
    * certificates for certain test cases. */
 
-  homedir = g_test_build_filename (G_TEST_DIST, "gpg-verify-data", NULL);
+  homedir = g_test_build_filename (G_TEST_DIST, "tests/gpg-verify-data", NULL);
   g_setenv ("GNUPGHOME", homedir, TRUE);
 
   result = g_initable_new (OSTREE_TYPE_GPG_VERIFY_RESULT,

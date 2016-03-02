@@ -19,11 +19,8 @@
 
 set -euo pipefail
 
-echo "1..1"
-
 . $(dirname $0)/libtest.sh
 
 setup_test_repository "bare"
-echo "ok setup"
 
 . $(dirname $0)/basic-test.sh

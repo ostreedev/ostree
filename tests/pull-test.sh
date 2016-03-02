@@ -35,6 +35,8 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
+echo "1..11"
+
 # Try both syntaxes
 repo_init
 ${CMD_PREFIX} ostree --repo=repo pull origin main

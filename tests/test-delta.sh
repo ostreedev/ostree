@@ -24,7 +24,7 @@ set -euo pipefail
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..3'
+echo '1..7'
 
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2

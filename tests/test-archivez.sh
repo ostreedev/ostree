@@ -24,7 +24,6 @@ set -euo pipefail
 echo '1..11'
 
 setup_test_repository "archive-z2"
-echo "ok setup"
 
 . ${SRCDIR}/archive-test.sh
 

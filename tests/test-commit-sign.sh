@@ -20,10 +20,13 @@
 set -euo pipefail
 
 if ! ostree --version | grep -q -e '\+gpgme'; then
-    exit 77
+    echo "1..0 #SKIP no gpg support compiled in"
+    exit 0
 fi
 
 . $(dirname $0)/libtest.sh
+
+echo "1..1"
 
 keyid="472CDAFA"
 oldpwd=`pwd`
@@ -122,10 +125,12 @@ assert_file_has_content show 'Found 1 signature'
 
 # Delete the signature from the commit so the detached metadata is empty,
 # then pull and verify the signature is also deleted on the client side.
-${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${SRCDIR}/gpghome --delete main $keyid
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo gpg-sign --gpg-homedir=${test_tmpdir}/gpghome --delete main $keyid
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 if ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
 
 rm -rf repo gnomerepo-files
+
+echo "ok"

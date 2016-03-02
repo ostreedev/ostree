@@ -19,7 +19,7 @@ include Makefile-decls.am
 
 shortened_sysconfdir = $$(echo "$(sysconfdir)" | sed -e 's|^$(prefix)||' -e 's|^/||')
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
+ACLOCAL_AMFLAGS = -I buildutil ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
 	-DSHORTENED_SYSCONFDIR=\"$(shortened_sysconfdir)\" \
@@ -100,12 +100,3 @@ release-tarball-embedded:
 	$(embed_dependency) embedded-dependencies/libsoup; \
 	mv ostree-embeddeps-$${GITVERSION}.tar{.tmp,}; \
 	gzip -f ostree-embeddeps-$${GITVERSION}.tar 
-
-check-local:
-	@echo "  *** NOTE ***"
-	@echo "  *** NOTE ***"
-	@echo " \"make check\" only runs a subset of OSTree's tests."
-	@echo " The other tests use: use https://live.gnome.org/GnomeGoals/InstalledTests"
-	@echo " To run them, ostree must be configured with --enable-installed-tests and installed"
-	@echo "  *** NOTE ***"
-	@echo "  *** NOTE ***"

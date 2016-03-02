@@ -21,10 +21,13 @@
 set -euo pipefail
 
 if ! ostree --version | grep -q -e '\+gpgme'; then
-    exit 77
+    echo "1..0 #SKIP no gpgme support compiled in"
+    exit 0
 fi
 
 . $(dirname $0)/libtest.sh
+
+echo "1..1"
 
 setup_test_repository "archive-z2"
 
@@ -74,3 +77,5 @@ assert_file_has_content test2-delete 'Signatures deleted: 2'
 if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
+
+echo "ok"

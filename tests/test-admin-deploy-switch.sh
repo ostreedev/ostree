@@ -21,14 +21,10 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..1"
-
 # Exports OSTREE_SYSROOT so --sysroot not needed.
 setup_os_repository "archive-z2" "syslinux"
 
-echo "ok setup"
-
-echo "1..3"
+echo "1..4"
 
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo remote add --set=gpg-verify=false testos file://$(pwd)/testos-repo
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull testos testos/buildmaster/x86_64-runtime

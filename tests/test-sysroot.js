@@ -34,7 +34,7 @@ function assertNotEquals(a, b) {
 }
 
 function libtestExec(shellCode) {
-    let testdatadir = GLib.getenv("TESTDATADIR");
+    let testdatadir = GLib.getenv("G_TEST_SRCDIR");
     let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
     let proc = GSystem.Subprocess.new_simple_argv(['bash', '-c',
 						   '. ' + GLib.shell_quote(libtestPath) + '; ' + shellCode],

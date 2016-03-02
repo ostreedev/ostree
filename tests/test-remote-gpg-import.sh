@@ -26,6 +26,8 @@ unset OSTREE_GPG_HOME
 
 setup_fake_remote_repo1 "archive-z2"
 
+echo "1..1"
+
 cd ${test_tmpdir}
 mkdir repo
 ${OSTREE} init
@@ -140,3 +142,5 @@ if ${OSTREE} pull R2:main >/dev/null 2>&1; then
     assert_not_reached "(key3/R2) GPG verification unexpectedly succeeded"
 fi
 ${OSTREE} pull R3:main >/dev/null
+
+echo "ok"
