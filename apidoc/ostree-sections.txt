@@ -381,6 +381,7 @@ ostree_sysroot_new
 ostree_sysroot_new_default
 ostree_sysroot_get_path
 ostree_sysroot_load
+ostree_sysroot_load_if_changed
 ostree_sysroot_lock
 ostree_sysroot_try_lock
 ostree_sysroot_lock_async

@@ -52,6 +52,12 @@ gboolean ostree_sysroot_load (OstreeSysroot  *self,
                               GError        **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_load_if_changed (OstreeSysroot  *self,
+                                         gboolean       *out_changed,
+                                         GCancellable   *cancellable,
+                                         GError        **error);
+
+_OSTREE_PUBLIC
 void ostree_sysroot_unload (OstreeSysroot  *self);
 
 _OSTREE_PUBLIC

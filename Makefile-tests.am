@@ -122,7 +122,7 @@ libreaddir_rand_la_LDFLAGS = -avoid-version
 test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
 	tests/test-gpg-verify-result tests/test-checksum tests/test-lzma tests/test-rollsum \
-	tests/test-basic-c
+	tests/test-basic-c tests/test-sysroot-c
 
 # An interactive tool
 noinst_PROGRAMS += tests/test-rollsum-cli
@@ -155,6 +155,9 @@ tests_test_mutable_tree_LDADD = $(TESTS_LDADD)
 
 tests_test_basic_c_CFLAGS = $(TESTS_CFLAGS)
 tests_test_basic_c_LDADD = $(TESTS_LDADD)
+
+tests_test_sysroot_c_CFLAGS = $(TESTS_CFLAGS)
+tests_test_sysroot_c_LDADD = $(TESTS_LDADD)
 
 tests_test_ot_unix_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_ot_unix_utils_LDADD = $(TESTS_LDADD)

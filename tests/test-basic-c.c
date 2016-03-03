@@ -30,21 +30,22 @@
 static void
 test_repo_is_not_system (gconstpointer data)
 {
-  OtTest *self = (void*)data;
-  g_assert (!ostree_repo_is_system (self->repo));
+  OstreeRepo *repo = (void*)data;
+  g_assert (!ostree_repo_is_system (repo));
 }
 
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
-  OtTest selfd = {NULL,};
+  glnx_unref_object OstreeRepo *repo = NULL;
 
   g_test_init (&argc, &argv, NULL);
 
-  if (!ot_test_setup_repo (&selfd, NULL, &error))
+  repo = ot_test_setup_repo (NULL, &error); 
+  if (!repo)
     goto out;
   
-  g_test_add_data_func ("/repo-not-system", &selfd, test_repo_is_not_system);
+  g_test_add_data_func ("/repo-not-system", repo, test_repo_is_not_system);
 
   return g_test_run();
  out:

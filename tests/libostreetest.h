@@ -27,13 +27,11 @@
 
 G_BEGIN_DECLS
 
-typedef struct {
-  OstreeRepo *repo;
-  GSubprocess *shell;
-} OtTest;
 
-gboolean ot_test_setup_repo (OtTest *self,
-                             GCancellable *cancellable,
-                             GError **error);
+OstreeRepo *ot_test_setup_repo (GCancellable *cancellable,
+                                GError **error);
+
+OstreeSysroot *ot_test_setup_sysroot (GCancellable *cancellable,
+                                      GError **error);
 
 G_END_DECLS

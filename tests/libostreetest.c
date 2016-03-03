@@ -60,23 +60,45 @@ run_libtest (const char *cmd, GError **error)
   return ret;
 }
 
-gboolean
-ot_test_setup_repo (OtTest *self,
-                    GCancellable *cancellable,
+OstreeRepo *
+ot_test_setup_repo (GCancellable *cancellable,
                     GError **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
+  glnx_unref_object OstreeRepo* ret_repo = NULL;
 
   if (!run_libtest ("setup_test_repository", error))
     goto out;
 
-  self->repo = ostree_repo_new (repo_path);
+  ret_repo = ostree_repo_new (repo_path);
 
-  if (!ostree_repo_open (self->repo, cancellable, error))
+  if (!ostree_repo_open (ret_repo, cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
-  return ret;
+  if (ret)
+    return g_steal_pointer (&ret_repo);
+  return NULL;
+}
+
+OstreeSysroot *
+ot_test_setup_sysroot (GCancellable *cancellable,
+                       GError **error)
+{
+  gboolean ret = FALSE;
+  g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
+  glnx_unref_object OstreeSysroot *ret_sysroot = NULL;
+
+  if (!run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
+    goto out;
+
+  ret_sysroot = ostree_sysroot_new (sysroot_path);
+
+  ret = TRUE;
+ out:
+  if (ret)
+    return g_steal_pointer (&ret_sysroot);
+  return NULL;
 }

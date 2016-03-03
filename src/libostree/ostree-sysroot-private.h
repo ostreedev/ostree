@@ -49,6 +49,7 @@ struct OstreeSysroot {
   int bootversion;
   int subbootversion;
   OstreeDeployment *booted_deployment;
+  struct timespec loaded_ts;
 
   /* Only access through ostree_sysroot_get_repo() */
   OstreeRepo *repo;

@@ -317,4 +317,5 @@ global:
         ostree_repo_get_dfd;
         ostree_repo_list_refs_ext;
         ostree_sysroot_init_osname;
+        ostree_sysroot_load_if_changed;
 } LIBOSTREE_2016.3;

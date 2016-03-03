@@ -794,17 +794,22 @@ ostree_sysroot_load (OstreeSysroot  *self,
                      GCancellable   *cancellable,
                      GError        **error)
 {
+  return ostree_sysroot_load_if_changed (self, NULL, cancellable, error);
+}
+
+gboolean
+ostree_sysroot_load_if_changed (OstreeSysroot  *self,
+                                gboolean       *out_changed,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
   gboolean ret = FALSE;
   guint i;
   int bootversion = 0;
   int subbootversion = 0;
+  struct stat stbuf;
   g_autoptr(GPtrArray) boot_loader_configs = NULL;
   g_autoptr(GPtrArray) deployments = NULL;
-
-  g_clear_pointer (&self->deployments, g_ptr_array_unref);
-  g_clear_pointer (&self->booted_deployment, g_object_unref);
-  self->bootversion = -1;
-  self->subbootversion = -1;
 
   if (!ensure_sysroot_fd (self, error))
     goto out;
@@ -815,6 +820,28 @@ ostree_sysroot_load (OstreeSysroot  *self,
   if (!_ostree_sysroot_read_current_subbootversion (self, bootversion, &subbootversion,
                                                     cancellable, error))
     goto out;
+
+  if (fstatat (self->sysroot_fd, "ostree/deploy", &stbuf, 0) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (out_changed)
+    {
+      if (self->loaded_ts.tv_sec == stbuf.st_mtim.tv_sec &&
+          self->loaded_ts.tv_nsec == stbuf.st_mtim.tv_nsec)
+        {
+          *out_changed = FALSE;
+          ret = TRUE;
+          goto out;
+        }
+    }
+
+  g_clear_pointer (&self->deployments, g_ptr_array_unref);
+  g_clear_pointer (&self->booted_deployment, g_object_unref);
+  self->bootversion = -1;
+  self->subbootversion = -1;
 
   if (!_ostree_sysroot_read_boot_loader_configs (self, bootversion, &boot_loader_configs,
                                                  cancellable, error))
@@ -847,8 +874,11 @@ ostree_sysroot_load (OstreeSysroot  *self,
   self->deployments = deployments;
   deployments = NULL; /* Transfer ownership */
   self->loaded = TRUE;
+  self->loaded_ts = stbuf.st_mtim;
 
   ret = TRUE;
+  if (out_changed)
+    *out_changed = TRUE;
  out:
   return ret;
 }
