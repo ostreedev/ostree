@@ -98,6 +98,12 @@ _OSTREE_PUBLIC
 void ostree_sysroot_unlock (OstreeSysroot  *self);
 
 _OSTREE_PUBLIC
+gboolean ostree_sysroot_init_osname (OstreeSysroot       *self,
+                                     const char          *osname,
+                                     GCancellable        *cancellable,
+                                     GError             **error);
+
+_OSTREE_PUBLIC
 gboolean ostree_sysroot_cleanup (OstreeSysroot       *self,
                                  GCancellable        *cancellable,
                                  GError             **error);

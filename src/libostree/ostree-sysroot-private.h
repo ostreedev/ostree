@@ -98,6 +98,9 @@ gboolean _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
                                            GCancellable      *cancellable,
                                            GError           **error);
 
+gboolean _ostree_sysroot_bump_mtime (OstreeSysroot *sysroot,
+                                     GError       **error);
+
 typedef enum {
   OSTREE_SYSROOT_CLEANUP_BOOTVERSIONS = 1 << 0,
   OSTREE_SYSROOT_CLEANUP_DEPLOYMENTS  = 1 << 1,

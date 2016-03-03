@@ -1855,12 +1855,8 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
                                 requires_new_bootversion ? "yes" : "no",
                                 new_deployments->len - self->deployments->len);
 
-  /* Allow other systems to monitor for changes */
-  if (utimensat (self->sysroot_fd, "ostree/deploy", NULL, 0) < 0)
-    {
-      glnx_set_prefix_error_from_errno (error, "%s", "futimens");
-      goto out;
-    }
+  if (!_ostree_sysroot_bump_mtime (self, error))
+    goto out;
 
   /* Now reload from disk */
   if (!ostree_sysroot_load (self, cancellable, error))
