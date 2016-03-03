@@ -19,6 +19,11 @@
 
 set -euo pipefail
 
+# If gjs is not installed, skip the test
+if ! gjs --help >/dev/null 2>&1; then
+    echo "1..0 # SKIP no gjs"
+fi
+
 . $(dirname $0)/libtest.sh
 
 setup_fake_remote_repo1 "archive-z2"
@@ -46,9 +51,6 @@ do_corrupt_pull_test() {
         assert_not_reached "pull with correct data failed!"
     fi
 }
-
-# If gjs is not installed, skip the test
-gjs --help >/dev/null 2>&1 || exit 77
 
 # FIXME - ignore errors here since gjs in RHEL7 has the final
 # unrooting bug

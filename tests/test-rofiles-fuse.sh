@@ -19,12 +19,14 @@
 
 set -euo pipefail
 
-echo "1..5"
+if ! fusermount --version >/dev/null 2>&1; then
+    echo "1..0 # SKIP no fusermount"
+fi
 
 . $(dirname $0)/libtest.sh
 setup_test_repository "bare-user"
 
-fusermount --version >/dev/null 2>&1 || exit 77
+echo "1..5"
 
 mkdir mnt
 
