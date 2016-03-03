@@ -40,8 +40,6 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
   const char *osname = NULL;
-  g_autoptr(GFile) deploy_dir = NULL;
-  g_autoptr(GFile) dir = NULL;
 
   context = g_option_context_new ("OSNAME - Initialize empty state for given operating system");
 
@@ -61,48 +59,10 @@ ot_admin_builtin_os_init (int argc, char **argv, GCancellable *cancellable, GErr
 
   osname = argv[1];
 
-  deploy_dir = ot_gfile_get_child_build_path (ostree_sysroot_get_path (sysroot), "ostree", "deploy", osname, NULL);
-
-  /* Ensure core subdirectories of /var exist, since we need them for
-   * dracut generation, and the host will want them too.
-   */
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (deploy_dir, "var", "tmp", NULL);
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-  if (chmod (gs_file_get_path_cached (dir), 01777) < 0)
-    {
-      gs_set_error_from_errno (error, errno);
-      goto out;
-    }
-
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (deploy_dir, "var", "lib", NULL);
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
+  if (!ostree_sysroot_init_osname (sysroot, osname, cancellable, error))
     goto out;
 
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (deploy_dir, "var", "run", NULL);
-  if (!g_file_test (gs_file_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
-    {
-      if (symlink ("../run", gs_file_get_path_cached (dir)) < 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-
-  dir = ot_gfile_get_child_build_path (deploy_dir, "var", "lock", NULL);
-  if (!g_file_test (gs_file_get_path_cached (dir), G_FILE_TEST_IS_SYMLINK))
-    {
-      if (symlink ("../run/lock", gs_file_get_path_cached (dir)) < 0)
-        {
-          gs_set_error_from_errno (error, errno);
-          goto out;
-        }
-    }
-
-  g_print ("%s initialized as OSTree root\n", gs_file_get_path_cached (deploy_dir));
+  g_print ("ostree/deploy/%s initialized as OSTree root\n", osname);
 
   ret = TRUE;
  out:

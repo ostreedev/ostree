@@ -229,6 +229,19 @@ ostree_sysroot_get_fd (OstreeSysroot *self)
   return self->sysroot_fd;
 }
 
+gboolean
+_ostree_sysroot_bump_mtime (OstreeSysroot *self,
+                            GError       **error)
+{
+  /* Allow other systems to monitor for changes */
+  if (utimensat (self->sysroot_fd, "ostree/deploy", NULL, 0) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "%s", "futimens");
+      return FALSE;
+    }
+  return TRUE; 
+}
+
 /**
  * ostree_sysroot_unload:
  * @self: Sysroot
@@ -1335,6 +1348,86 @@ ostree_sysroot_lock_finish (OstreeSysroot         *self,
 {
   g_return_val_if_fail (g_task_is_valid (result, self), FALSE);
   return g_task_propagate_boolean ((GTask*)result, error);
+}
+
+/**
+ * ostree_sysroot_init_osname:
+ * @self: Sysroot
+ * @osname: Name group of operating system checkouts
+ * @cancellable: Cancellable
+ * @error: Error
+ * 
+ * Initialize the directory structure for an "osname", which is a
+ * group of operating system deployments, with a shared `/var`.  One
+ * is required for generating a deployment.
+ */
+gboolean
+ostree_sysroot_init_osname (OstreeSysroot       *self,
+                            const char          *osname,
+                            GCancellable        *cancellable,
+                            GError             **error)
+{
+  gboolean ret = FALSE;
+  const char *deploydir = glnx_strjoina ("ostree/deploy/", osname);
+  glnx_fd_close int dfd = -1;
+
+  if (!ensure_sysroot_fd (self, error))
+    goto out;
+
+  if (mkdirat (self->sysroot_fd, deploydir, 0777) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Creating %s", deploydir);
+      goto out;
+    }
+
+  if (!glnx_opendirat (self->sysroot_fd, deploydir, TRUE, &dfd, error))
+    goto out;
+
+  if (mkdirat (dfd, "var", 0777) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Creating %s", "var");
+      goto out;
+    }
+
+  /* This is a bit of a legacy hack...but we have to keep it around
+   * now.  We're ensuring core subdirectories of /var exist.
+   */
+  if (mkdirat (dfd, "var/tmp", 0777) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/tmp");
+      goto out;
+    }
+
+  if (fchmodat (dfd, "var/tmp", 01777, 0) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Fchmod %s", "var/tmp");
+      goto out;
+    }
+
+  if (mkdirat (dfd, "var/lib", 0777) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/tmp");
+      goto out;
+    }
+
+  if (symlinkat ("../run", dfd, "var/run") < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Symlinking %s", "var/run");
+      goto out;
+    }
+
+  if (symlinkat ("../run/lock", dfd, "var/lock") < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Symlinking %s", "var/lock");
+      goto out;
+    }
+
+  if (!_ostree_sysroot_bump_mtime (self, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
 }
 
 /**
