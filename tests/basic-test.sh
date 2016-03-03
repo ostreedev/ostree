@@ -425,6 +425,8 @@ if test "$(id -u)" != "0"; then
     assert_has_file expected-fail
     assert_file_has_content error-message "Permission denied"
     echo "ok unwritable repo was caught"
+else
+    echo "ok # SKIP not run when root"
 fi
 
 cd ${test_tmpdir}

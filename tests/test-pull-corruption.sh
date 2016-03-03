@@ -22,6 +22,7 @@ set -euo pipefail
 # If gjs is not installed, skip the test
 if ! gjs --help >/dev/null 2>&1; then
     echo "1..0 # SKIP no gjs"
+    exit 0
 fi
 
 . $(dirname $0)/libtest.sh
