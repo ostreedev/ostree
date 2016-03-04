@@ -67,6 +67,7 @@ test_scripts = \
 	tests/test-auto-summary.sh \
 	tests/test-prune.sh \
 	tests/test-refs.sh \
+	tests/test-demo-buildsystem.sh \
 	$(NULL)
 
 if BUILDOPT_FUSE
