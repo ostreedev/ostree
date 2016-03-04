@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..49"
+echo "1..50"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -434,10 +434,12 @@ rm -rf test2-checkout
 mkdir -p test2-checkout
 cd test2-checkout
 touch blah
-stat --printf="%Z\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-orig.txt
+stat --printf="%.Y\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-orig.txt
 $OSTREE commit -b test2 -s "Should bump the mtime"
-stat --printf="%Z\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-new.txt
+stat --printf="%.Y\n" ${test_tmpdir}/repo > ${test_tmpdir}/timestamp-new.txt
 cd ..
-if ! cmp timestamp-{orig,new}.txt; then
+if cmp timestamp-{orig,new}.txt; then
     assert_not_reached "failed to update mtime on repo"
 fi
+
+echo "ok mtime updated"
