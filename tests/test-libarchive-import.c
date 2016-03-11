@@ -193,6 +193,15 @@ test_libarchive_ignore_device_file (gconstpointer data)
   glnx_unref_object GFile *root = NULL;
   g_autofree char *commit_checksum = NULL;
 
+  if (setxattr (td->tmpd, "user.test-xattr-support", "yes", 4, 0) != 0)
+    {
+      int saved_errno = errno;
+      g_autofree gchar *message = g_strdup_printf ("unable to setxattr on \"%s\": %s", td->tmpd, g_strerror (saved_errno));
+
+      g_test_skip (message);
+      goto out;
+    }
+
   g_assert_cmpint (0, ==, lseek (td->fd, 0, SEEK_SET));
   g_assert_cmpint (0, ==, archive_read_support_format_all (a));
   g_assert_cmpint (0, ==, archive_read_support_filter_all (a));
