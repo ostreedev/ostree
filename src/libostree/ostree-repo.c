@@ -1750,9 +1750,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
-  uint i;
-  const char *filenames[] = {"summary", "summary.sig"};
-  GBytes **outputs[] = {out_summary, out_signatures};
+  gboolean from_cache = FALSE;
 
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
@@ -1782,20 +1780,42 @@ repo_remote_fetch_summary (OstreeRepo    *self,
       }
   }
 
-  for (i = 0; i < G_N_ELEMENTS (filenames); i++)
+  if (!_ostree_preload_metadata_file (self,
+                                      fetcher,
+                                      base_uri,
+                                      "summary.sig",
+                                      metalink_url_string ? TRUE : FALSE,
+                                      out_signatures,
+                                      cancellable,
+                                      error))
+    goto out;
+
+  if (*out_signatures)
+    {
+      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        name,
+                                                        *out_signatures,
+                                                        out_summary,
+                                                        cancellable,
+                                                        error))
+        goto out;
+    }
+
+  if (*out_summary)
+    from_cache = TRUE;
     {
       if (!_ostree_preload_metadata_file (self,
                                           fetcher,
                                           base_uri,
-                                          filenames[i],
+                                          "summary",
                                           metalink_url_string ? TRUE : FALSE,
-                                          outputs[i],
+                                          out_summary,
                                           cancellable,
                                           error))
         goto out;
     }
 
-  if (*out_summary && *out_signatures)
+  if (!from_cache && *out_summary && *out_signatures)
     {
       if (!_ostree_repo_cache_summary (self,
                                        name,
