@@ -112,6 +112,23 @@ maybe_prune_loose_object (OtPruneData        *data,
   return ret;
 }
 
+static gboolean
+_ostree_repo_prune_tmp (OstreeRepo *self,
+                        GCancellable *cancellable,
+                        GError **error)
+{
+  gboolean ret = FALSE;
+
+  if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, "tmp/summaries", cancellable, error))
+    goto out;
+
+  ret = TRUE;
+
+ out:
+  return ret;
+}
+
+
 /**
  * ostree_repo_prune_static_deltas:
  * @self: Repo
@@ -293,6 +310,9 @@ ostree_repo_prune (OstreeRepo        *self,
     }
 
   if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
+    goto out;
+
+  if (!_ostree_repo_prune_tmp (self, cancellable, error))
     goto out;
 
   ret = TRUE;
