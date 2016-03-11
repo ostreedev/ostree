@@ -205,3 +205,29 @@ ot_ensure_unlinked_at (int dfd,
     }
   return TRUE;
 }
+
+gboolean
+ot_openat_ignore_enoent (int dfd,
+                         const char *path,
+                         int *out_fd,
+                         GCancellable *cancellable __attribute__((unused)),
+                         GError **error)
+{
+  gboolean ret = FALSE;
+  int target_fd = -1;
+
+  target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
+  if (target_fd < 0)
+    {
+      if (errno != ENOENT)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+  *out_fd = target_fd;
+ out:
+  return ret;
+}

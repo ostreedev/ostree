@@ -22,6 +22,7 @@
 
 #include "ostree-repo-private.h"
 #include "otutil.h"
+#include "ot-fs-utils.h"
 
 static gboolean
 add_ref_to_set (const char       *remote,
@@ -115,31 +116,6 @@ write_checksum_file_at (OstreeRepo   *self,
 }
 
 static gboolean
-openat_ignore_enoent (int dfd,
-                      const char *path,
-                      int *out_fd,
-                      GError **error)
-{
-  gboolean ret = FALSE;
-  int target_fd = -1;
-  
-  target_fd = openat (dfd, path, O_CLOEXEC | O_RDONLY);
-  if (target_fd < 0)
-    {
-      if (errno != ENOENT)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-    }
-
-  ret = TRUE;
-  *out_fd = target_fd;
- out:
-  return ret;
-}
-
-static gboolean
 find_ref_in_remotes (OstreeRepo         *self,
                      const char         *rev,
                      int                *out_fd,
@@ -168,7 +144,7 @@ find_ref_in_remotes (OstreeRepo         *self,
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
         goto out;
 
-      if (!openat_ignore_enoent (remote_dfd, rev, &ret_fd, error))
+      if (!ot_openat_ignore_enoent (remote_dfd, rev, &ret_fd, NULL, error))
         goto out;
 
       if (ret_fd != -1)
@@ -247,21 +223,21 @@ resolve_refspec (OstreeRepo     *self,
     {
       const char *remote_ref = glnx_strjoina ("refs/remotes/", remote, "/", ref);
 
-      if (!openat_ignore_enoent (self->repo_dir_fd, remote_ref, &target_fd, error))
+      if (!ot_openat_ignore_enoent (self->repo_dir_fd, remote_ref, &target_fd, NULL, error))
         goto out;
     }
   else
     {
       const char *local_ref = glnx_strjoina ("refs/heads/", ref);
 
-      if (!openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
+      if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, NULL, error))
         goto out;
 
       if (target_fd == -1)
         {
           local_ref = glnx_strjoina ("refs/remotes/", ref);
 
-          if (!openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
+          if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, NULL, error))
             goto out;
 
           if (target_fd == -1)
