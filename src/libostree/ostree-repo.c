@@ -1795,6 +1795,17 @@ repo_remote_fetch_summary (OstreeRepo    *self,
         goto out;
     }
 
+  if (*out_summary && *out_signatures)
+    {
+      if (!_ostree_repo_cache_summary (self,
+                                       name,
+                                       *out_summary,
+                                       *out_signatures,
+                                       cancellable,
+                                       error))
+        goto out;
+    }
+
   ret = TRUE;
 
  out:
