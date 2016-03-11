@@ -33,6 +33,8 @@ G_BEGIN_DECLS
 
 #define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
 
+#define _OSTREE_SUMMARY_CACHE_PATH "tmp/cache/summaries"
+
 /**
  * OstreeRepo:
  *
@@ -316,5 +318,23 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 gboolean
 _ostree_repo_update_mtime (OstreeRepo        *self,
                            GError           **error);
-                           
+
+/* Load the summary from the cache if the provided .sig file is the same as the
+   cached version.  */
+gboolean
+_ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
+                                             const char        *remote,
+                                             GBytes            *summary_sig,
+                                             GBytes            **summary,
+                                             GCancellable      *cancellable,
+                                             GError           **error);
+
+gboolean
+_ostree_repo_cache_summary (OstreeRepo        *self,
+                            const char        *remote,
+                            GBytes            *summary,
+                            GBytes            *summary_sig,
+                            GCancellable      *cancellable,
+                            GError           **error);
+
 G_END_DECLS
