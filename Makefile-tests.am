@@ -179,8 +179,8 @@ tests_test_checksum_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
 tests_test_checksum_LDADD = $(TESTS_LDADD)
 
 tests_test_libarchive_import_SOURCES = tests/test-libarchive-import.c
-tests_test_libarchive_import_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags)
-tests_test_libarchive_import_LDADD = $(TESTS_LDADD)
+tests_test_libarchive_import_CFLAGS = $(TESTS_CFLAGS) $(libglnx_cflags) $(OT_DEP_LIBARCHIVE_CFLAGS)
+tests_test_libarchive_import_LDADD = $(TESTS_LDADD) $(OT_DEP_LIBARCHIVE_LIBS)
 
 tests_test_keyfile_utils_CFLAGS = $(TESTS_CFLAGS)
 tests_test_keyfile_utils_LDADD = $(TESTS_LDADD)
