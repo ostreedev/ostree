@@ -33,6 +33,8 @@ G_BEGIN_DECLS
 
 #define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
 
+#define _OSTREE_SUMMARY_CACHE_PATH "tmp/cache/summaries"
+
 /**
  * OstreeRepo:
  *

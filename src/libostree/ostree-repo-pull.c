@@ -1777,7 +1777,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
                                              GError           **error)
 {
   gboolean ret = FALSE;
-  g_autofree char *summary_cache_sig_file = g_strdup_printf ("tmp/summaries/%s.sig", remote);
+  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote, ".sig");
 
   glnx_fd_close int prev_fd = -1;
   g_autoptr(GBytes) old_sig_contents = NULL;
@@ -1797,7 +1797,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
 
   if (g_bytes_compare (old_sig_contents, summary_sig) == 0)
     {
-      g_autofree char *summary_cache_file = g_strdup_printf ("tmp/summaries/%s", remote);
+      const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote);
       glnx_fd_close int summary_fd = -1;
       GBytes *summary_data;
 
@@ -1836,10 +1836,10 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
                             GError           **error)
 {
   gboolean ret = FALSE;
-  g_autofree char *summary_cache_file = g_strdup_printf ("tmp/summaries/%s", remote);
-  g_autofree char *summary_cache_sig_file = g_strdup_printf ("tmp/summaries/%s.sig", remote);
+  const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote);
+  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote, ".sig");
 
-  if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "tmp/summaries", 0775, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, _OSTREE_SUMMARY_CACHE_PATH, 0775, cancellable, error))
     goto out;
 
   if (!glnx_file_replace_contents_at (self->repo_dir_fd,
