@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..5"
+echo "1..6"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
@@ -73,7 +73,24 @@ repo_reinit () {
 cd ${test_tmpdir}
 repo_reinit
 ${OSTREE} --repo=repo pull origin main
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+
+rm repo/tmp/cache/summaries/origin
+${OSTREE} --repo=repo pull origin main
+assert_has_file repo/tmp/cache/summaries/origin
+
 echo "ok pull with signed summary"
+
+touch repo/tmp/cache/summaries/foo
+touch repo/tmp/cache/summaries/foo.sig
+${OSTREE} --repo=repo prune
+assert_not_has_file repo/tmp/cache/summaries/foo
+assert_not_has_file repo/tmp/cache/summaries/foo.sig
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
+echo "ok prune summary cache"
+
 
 cd ${test_tmpdir}
 repo_reinit

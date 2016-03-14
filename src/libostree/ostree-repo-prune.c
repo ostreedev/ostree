@@ -112,6 +112,62 @@ maybe_prune_loose_object (OtPruneData        *data,
   return ret;
 }
 
+static gboolean
+_ostree_repo_prune_tmp (OstreeRepo *self,
+                        GCancellable *cancellable,
+                        GError **error)
+{
+  gboolean ret = FALSE;
+  gchar remote[NAME_MAX + 1];
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  glnx_fd_close int fd = -1;
+
+  fd = glnx_opendirat_with_errno (self->repo_dir_fd, _OSTREE_SUMMARY_CACHE_PATH, FALSE);
+  if (fd < 0)
+    {
+      if (errno == ENOENT)
+        ret = TRUE;
+      else
+        glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  if (!glnx_dirfd_iterator_init_take_fd (dup (fd), &dfd_iter, error))
+    goto out;
+
+  while (TRUE)
+    {
+      char *suffix;
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+        goto out;
+
+      if (dent == NULL)
+        break;
+
+      g_strlcpy (remote, dent->d_name, sizeof (remote));
+      suffix = g_strstr_len (remote, -1, ".sig");
+      if (suffix)
+        suffix[0] = '\0';
+
+      if (!g_hash_table_contains (self->remotes, remote))
+        {
+          if (unlinkat (fd, dent->d_name, 0) < 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+        }
+    }
+
+  ret = TRUE;
+
+ out:
+  return ret;
+}
+
+
 /**
  * ostree_repo_prune_static_deltas:
  * @self: Repo
@@ -293,6 +349,9 @@ ostree_repo_prune (OstreeRepo        *self,
     }
 
   if (!ostree_repo_prune_static_deltas (self, NULL, cancellable, error))
+    goto out;
+
+  if (!_ostree_repo_prune_tmp (self, cancellable, error))
     goto out;
 
   ret = TRUE;

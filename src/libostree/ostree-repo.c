@@ -34,6 +34,7 @@
 #include "ostree-repo-file-enumerator.h"
 #include "ostree-gpg-verifier.h"
 #include "ostree-repo-static-delta-private.h"
+#include "ot-fs-utils.h"
 
 #ifdef HAVE_LIBSOUP
 #include "ostree-metalink.h"
@@ -1749,9 +1750,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
-  uint i;
-  const char *filenames[] = {"summary", "summary.sig"};
-  GBytes **outputs[] = {out_summary, out_signatures};
+  gboolean from_cache = FALSE;
 
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
@@ -1781,16 +1780,49 @@ repo_remote_fetch_summary (OstreeRepo    *self,
       }
   }
 
-  for (i = 0; i < G_N_ELEMENTS (filenames); i++)
+  if (!_ostree_preload_metadata_file (self,
+                                      fetcher,
+                                      base_uri,
+                                      "summary.sig",
+                                      metalink_url_string ? TRUE : FALSE,
+                                      out_signatures,
+                                      cancellable,
+                                      error))
+    goto out;
+
+  if (*out_signatures)
+    {
+      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        name,
+                                                        *out_signatures,
+                                                        out_summary,
+                                                        cancellable,
+                                                        error))
+        goto out;
+    }
+
+  if (*out_summary)
+    from_cache = TRUE;
     {
       if (!_ostree_preload_metadata_file (self,
                                           fetcher,
                                           base_uri,
-                                          filenames[i],
+                                          "summary",
                                           metalink_url_string ? TRUE : FALSE,
-                                          outputs[i],
+                                          out_summary,
                                           cancellable,
                                           error))
+        goto out;
+    }
+
+  if (!from_cache && *out_summary && *out_signatures)
+    {
+      if (!_ostree_repo_cache_summary (self,
+                                       name,
+                                       *out_summary,
+                                       *out_signatures,
+                                       cancellable,
+                                       error))
         goto out;
     }
 
@@ -2592,32 +2624,6 @@ list_loose_objects (OstreeRepo                     *self,
 }
 
 static gboolean
-openat_allow_noent (int                 dfd,
-                    const char         *path,
-                    int                *fd,
-                    GCancellable       *cancellable,
-                    GError            **error)
-{
-  GError *temp_error = NULL;
-
-  if (!gs_file_openat_noatime (dfd, path, fd,
-                               cancellable, &temp_error))
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          *fd = -1;
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          return FALSE;
-        }
-    }
-  return TRUE;
-}
-
-static gboolean
 load_metadata_internal (OstreeRepo       *self,
                         OstreeObjectType  objtype,
                         const char       *sha256,
@@ -2638,14 +2644,14 @@ load_metadata_internal (OstreeRepo       *self,
 
   _ostree_loose_path (loose_path_buf, sha256, objtype, self->mode);
 
-  if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
-                           cancellable, error))
+ if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
+                               error))
     goto out;
 
   if (fd < 0 && self->commit_stagedir_fd != -1)
     {
-      if (!openat_allow_noent (self->commit_stagedir_fd, loose_path_buf, &fd,
-                               cancellable, error))
+      if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
+                                    error))
         goto out;
     }
 
@@ -2839,8 +2845,8 @@ ostree_repo_load_file (OstreeRepo         *self,
       struct stat stbuf;
       g_autoptr(GInputStream) tmp_stream = NULL;
 
-      if (!openat_allow_noent (self->objects_dir_fd, loose_path_buf, &fd,
-                               cancellable, error))
+      if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
+                                    error))
         goto out;
 
       if (fd != -1)
