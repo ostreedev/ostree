@@ -1782,7 +1782,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   glnx_fd_close int prev_fd = -1;
   g_autoptr(GBytes) old_sig_contents = NULL;
 
-  if (!ot_openat_ignore_enoent (self->repo_dir_fd, summary_cache_sig_file, &prev_fd, cancellable, error))
+  if (!ot_openat_ignore_enoent (self->repo_dir_fd, summary_cache_sig_file, &prev_fd, error))
     goto out;
 
   if (prev_fd < 0)

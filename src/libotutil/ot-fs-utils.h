@@ -64,7 +64,6 @@ gboolean ot_ensure_unlinked_at (int dfd,
 gboolean ot_openat_ignore_enoent (int dfd,
                                   const char *path,
                                   int *out_fd,
-                                  GCancellable *cancellable,
                                   GError **error);
 
 G_END_DECLS

@@ -210,7 +210,6 @@ gboolean
 ot_openat_ignore_enoent (int dfd,
                          const char *path,
                          int *out_fd,
-                         GCancellable *cancellable __attribute__((unused)),
                          GError **error)
 {
   gboolean ret = FALSE;

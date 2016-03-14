@@ -2645,13 +2645,13 @@ load_metadata_internal (OstreeRepo       *self,
   _ostree_loose_path (loose_path_buf, sha256, objtype, self->mode);
 
  if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
-                               cancellable, error))
+                               error))
     goto out;
 
   if (fd < 0 && self->commit_stagedir_fd != -1)
     {
       if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
-                                    cancellable, error))
+                                    error))
         goto out;
     }
 
@@ -2846,7 +2846,7 @@ ostree_repo_load_file (OstreeRepo         *self,
       g_autoptr(GInputStream) tmp_stream = NULL;
 
       if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, &fd,
-                                    cancellable, error))
+                                    error))
         goto out;
 
       if (fd != -1)

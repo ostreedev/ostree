@@ -144,7 +144,7 @@ find_ref_in_remotes (OstreeRepo         *self,
       if (!glnx_opendirat (dfd_iter.fd, dent->d_name, TRUE, &remote_dfd, error))
         goto out;
 
-      if (!ot_openat_ignore_enoent (remote_dfd, rev, &ret_fd, NULL, error))
+      if (!ot_openat_ignore_enoent (remote_dfd, rev, &ret_fd, error))
         goto out;
 
       if (ret_fd != -1)
@@ -223,21 +223,21 @@ resolve_refspec (OstreeRepo     *self,
     {
       const char *remote_ref = glnx_strjoina ("refs/remotes/", remote, "/", ref);
 
-      if (!ot_openat_ignore_enoent (self->repo_dir_fd, remote_ref, &target_fd, NULL, error))
+      if (!ot_openat_ignore_enoent (self->repo_dir_fd, remote_ref, &target_fd, error))
         goto out;
     }
   else
     {
       const char *local_ref = glnx_strjoina ("refs/heads/", ref);
 
-      if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, NULL, error))
+      if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
         goto out;
 
       if (target_fd == -1)
         {
           local_ref = glnx_strjoina ("refs/remotes/", ref);
 
-          if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, NULL, error))
+          if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
             goto out;
 
           if (target_fd == -1)
