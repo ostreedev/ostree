@@ -73,18 +73,22 @@ repo_reinit () {
 cd ${test_tmpdir}
 repo_reinit
 ${OSTREE} --repo=repo pull origin main
-assert_has_file repo/tmp/summaries/origin
-assert_has_file repo/tmp/summaries/origin.sig
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
 
-rm repo/tmp/summaries/origin
+rm repo/tmp/cache/summaries/origin
 ${OSTREE} --repo=repo pull origin main
-assert_has_file repo/tmp/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin
 
 echo "ok pull with signed summary"
 
+touch repo/tmp/cache/summaries/foo
+touch repo/tmp/cache/summaries/foo.sig
 ${OSTREE} --repo=repo prune
-assert_not_has_file repo/tmp/summaries/origin
-assert_not_has_file repo/tmp/summaries/origin.sig
+assert_not_has_file repo/tmp/cache/summaries/foo
+assert_not_has_file repo/tmp/cache/summaries/foo.sig
+assert_has_file repo/tmp/cache/summaries/origin
+assert_has_file repo/tmp/cache/summaries/origin.sig
 echo "ok prune summary cache"
 
 
