@@ -1803,6 +1803,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 
   if (*out_summary)
     from_cache = TRUE;
+  else
     {
       if (!_ostree_preload_metadata_file (self,
                                           fetcher,
