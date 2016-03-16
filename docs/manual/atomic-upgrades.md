@@ -15,7 +15,7 @@ exactly one ref, which is stored in the `.origin` file for the
 deployment.  The command `ostree admin upgrade`
 implements this.
 
-o begin a simple upgrade, OSTree fetches the contents of the ref from
+To begin a simple upgrade, OSTree fetches the contents of the ref from
 the remote server.  Suppose we're tracking a ref named
 `exampleos/buildmaster/x86_64-runtime`.  OSTree fetches the URL
 `http://$example.com/repo/refs/exampleos/buildmaster/x86_64-runtime`,
@@ -56,11 +56,10 @@ checking it back out of the repo into a deployment.
 
 Given a commit to deploy, OSTree first allocates a directory for
 it.  This is of the form `/boot/loader/entries/ostree-$osname-$checksum.$serial.conf`.
-he $serial is normally 0, but if a
+The `$serial` is normally 0, but if a
 given commit is deployed more than once, it will be incremented.
 his is supported because the previous deployment may have
-configuration in `/etc`
-hat we do not want to use or overwrite.
+configuration in `/etc` that we do not want to use or overwrite.
 
 Now that we have a deployment directory, a 3-way merge is
 performed between the (by default) currently booted deployment's
@@ -74,7 +73,7 @@ hardlink farm; the running system is untouched, and the bootloader
 configuration is untouched.  We want to add this deployment o the
 "deployment list".
 
-To support a more general case, OSTree supports atomic ransitioning
+To support a more general case, OSTree supports atomic transitioning
 between arbitrary sets of deployments, with the restriction that the
 currently booted deployment must always be in the new set.  In the
 normal case, we have exactly one deployment, which is the booted one,

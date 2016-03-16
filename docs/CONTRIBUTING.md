@@ -3,17 +3,18 @@ Submitting patches
 
 You can:
 
- 1. Send mail to ostree-list@gnome.org, with the patch attached
- 1. Submit a pull request against https://github.com/GNOME/ostree
- 1. Attach them to https://bugzilla.gnome.org/
+ 1. Send mail to <ostree-list@gnome.org>, with the patch attached
+ 1. Submit a pull request against <https://github.com/GNOME/ostree>
+ 1. Attach them to <https://bugzilla.gnome.org/>
 
-Please look at "git log" and match the commit log style.
+Please look at `git log` and match the commit log style.
 
 Running the test suite
 ----------------------
 
-Currently, ostree uses https://wiki.gnome.org/GnomeGoals/InstalledTests
-To run just ostree's tests:
+Currently, OSTree uses <https://wiki.gnome.org/GnomeGoals/InstalledTests>
+
+To run just OSTree's tests:
 
     ./configure ... --enable-installed-tests
     gnome-desktop-testing-runner -p 0 ostree/
@@ -47,16 +48,16 @@ This is an example of an "early exit":
     myfunc (...)
     {
         gboolean ret = FALSE;
-    
+
         /* some code */
-    
+
         /* some more code */
-    
+
         if (condition)
           return FALSE;
-    
+
         /* some more code */
-    
+
         ret = TRUE;
       out:
         return ret;
@@ -85,14 +86,14 @@ functions, particularly inside loops.  For example, rather than:
                     {
                       /* deeply nested code */
                     }
-    
+
                     /* more nested code */
                }
           }
       }
 
 Instead do this:
-    
+
     static gboolean
     helperfunc (..., GError **error)
     {
@@ -100,22 +101,21 @@ Instead do this:
        {
          /* deeply nested code */
        }
-    
+
       /* more nested code */
-    
+
       return ret;
     }
-    
+
     while (condition)
       {
         /* some code */
         if (!condition)
           continue;
-    
+
         for (i = 0; i < somevalue; i++)
           {
             if (!helperfunc (..., i, error))
               goto out;
           }
       }
-    

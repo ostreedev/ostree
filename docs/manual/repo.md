@@ -54,12 +54,12 @@ modes: `bare`, `bare-user`, and `archive-z2`.  A bare repository is
 one where content files are just stored as regular files; it's
 designed to be the source of a "hardlink farm", where each operating
 system checkout is merely links into it.  If you want to store files
-owned by e.g. root in this mode, you must run OSTree as root.  
+owned by e.g. root in this mode, you must run OSTree as root.
 
 The `bare-user` is a later addition that is like `bare` in that files
 are unpacked, but it can (and should generally) be created as
 non-root.  In this mode, extended metadata such as owner uid, gid, and
-extended attributes are stored but not actually applied.  
+extended attributes are stored but not actually applied.
 The `bare-user` mode is useful for build systems that run as non-root
 but want to generate root-owned content, as well as non-root container
 systems.

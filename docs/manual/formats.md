@@ -67,7 +67,7 @@ or an unprivileged container.
 
 ## Static deltas
 
-OSTree itself was originally focused on a continous delivery model, where
+OSTree itself was originally focused on a continuous delivery model, where
 client systems are expected to update regularly.  However, many OS vendors
 would like to supply content that's updated e.g. once a month or less often.
 
@@ -82,7 +82,7 @@ object.  Static deltas also support `from NULL`, where the client can
 more efficiently download a commit object from scratch.
 
 Effectively, we're spending server-side storage (and one-time compute
-cost), and gaining efficiency in client network bandwith.
+cost), and gaining efficiency in client network bandwidth.
 
 ## Static delta repository layout
 
@@ -99,7 +99,7 @@ management easier for filesystem tools
 
 A delta is named `$(mbase64 $from)-$(mbase64 $to)`, for example
 `GpTyZaVut2jXFPWnO4LJiKEdRTvOw_mFUCtIKW1NIX0-L8f+VVDkEBKNc1Ncd+mDUrSVR4EyybQGCkuKtkDnTwk`,
-which in sha256 format is
+which in SHA256 format is
 `1a94f265a56eb768d714f5a73b82c988a11d453bcec3f985502b48296d4d217d-2fc7fe5550e410128d73535c77e98352b495478132c9b4060a4b8ab640e74f09`.
 
 Finally, the actual content can be found in
@@ -136,7 +136,7 @@ The superblock contains:
  - delta generation timestamp
  - the new commit object
  - An array of recursive deltas to apply
- - An array of per-part metadata, including total object sizes (compressed and uncompressed), 
+ - An array of per-part metadata, including total object sizes (compressed and uncompressed),
  - An array of fallback objects
 
 Let's define a delta part, then return to discuss details:
@@ -160,14 +160,14 @@ a per-file delta algorithm called
 [bsdiff](https://github.com/mendsley/bsdiff) that most notably works
 well on executable code.
 
-The current delta compiler scans for files with maching basenamesin
+The current delta compiler scans for files with matching basenames in
 each commit that have a similar size, and attempts a bsdiff between
 them.  (It would make sense later to have a build system provide a
 hint for this - for example, files within a same package).
 
 A generated bsdiff is included in the payload blob, and applying it is
 an instruction.
- 
+
 ## Fallback objects
 
 It's possible for there to be large-ish files which might be resistant

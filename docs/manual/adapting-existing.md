@@ -140,7 +140,7 @@ Now, because we are merely installing new packages and not
 removing anything, we can make the major optimization of reusing
 our existing filesystem tree, and merely
 *layering* the composed filesystem tree of
-these new packages on top.  A command like this: 
+these new packages on top.  A command like this:
 
 ```
 ostree commit -b osname/releasename/description

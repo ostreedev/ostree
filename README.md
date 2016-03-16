@@ -44,7 +44,7 @@ provide a minimal host for Docker formatted Linux containers.
 Replicating a base immutable OS, then using Docker for applications
 meshes together two different tools with different tradeoffs.
 
-[xdg-app](https://github.com/alexlarsson/xdg-app) uses OSTree 
+[xdg-app](https://github.com/alexlarsson/xdg-app) uses OSTree
 for desktop application containers.
 
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
@@ -83,7 +83,7 @@ More documentation
 New! See the docs online at [Read The Docs (OSTree)](https://ostree.readthedocs.org/en/latest/ )
 
 Some more information is available on the old wiki page:
-https://wiki.gnome.org/Projects/OSTree
+<https://wiki.gnome.org/Projects/OSTree>
 
 Contributing
 ------------

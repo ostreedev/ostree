@@ -13,7 +13,7 @@ OSTree is designed to boot directly into exactly one deployment
 at a time; each deployment is intended to be a target for
 `chroot()` or equivalent.
 
-### "osname": Group of deployments that share /var</title>
+### "osname": Group of deployments that share /var
 
 Each deployment is grouped in exactly one "osname".  From above, you
 can see that an osname is physically represented in the
