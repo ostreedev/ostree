@@ -159,10 +159,11 @@ checksum).
 
 ## Migrating content between repositories
 
-Now that we have content in our `bare-user` repository, we need to
-move it into the `archive-z2` one for export, which will involve zlib
-compression of new objects.  We likely want to generate static deltas
-after that as well.
+Now that we have content in our `build-repo` repository (in
+`bare-user` mode), we need to move the `exampleos/x86_64/standard`
+branch content into the repository just named `repo` (in `archive-z2`
+mode) for export, which will involve zlib compression of new objects.
+We likely want to generate static deltas after that as well.
 
 Let's copy the content:
 
