@@ -122,17 +122,22 @@ ostree --repo=build-repo commit -b exampleos/x86_64/bash --tree=tar=bash-4.2-bin
 ostree --repo=build-repo commit -b exampleos/x86_64/systemd --tree=tar=systemd-224-bin.tar.gz
 ```
 
-Set things up so that whenever a package changes, you commit a new branch as
-above.
+Set things up so that whenever a package changes, you redo the
+`commit` with the new package version - conceptually, the branch
+tracks the individual package versions over time, and defaults to
+"latest".  This isn't required - one could also include the version in
+the branch name, and have metadata outside to determine "latest" (or
+the desired version).
 
 Now, to construct our final tree:
 
 ```
 rm exampleos-build -rf
 for package in bash systemd; do
-  ostree checkout -U --union exampleos/x86_64/bash exampleos-build
+  ostree checkout -U --union exampleos/x86_64/${package} exampleos-build
 done
-# Set up a "rofiles-fuse" mount point:
+# Set up a "rofiles-fuse" mount point; this ensures that any processes
+# we run for post-processing of the tree don't corrupt the hardlinks.
 mkdir -p mnt
 rofiles-fuse exampleos-build mnt
 # Now run global "triggers", generate cache files:
@@ -147,6 +152,10 @@ architectural change is that we're using `--link-checkout-speedup`.
 This is a way to tell OSTree that our checkout is made via hardlinks,
 and to scan the repository in order to build up a reverse `(device,
 inode) -> checksum` mapping.
+
+In order for this mapping to be accurate, we needed the `rofiles-fuse`
+to ensure that any changed files had new inodes (and hence a new
+checksum).
 
 ## Migrating content between repositories
 
