@@ -134,7 +134,7 @@ Now, to construct our final tree:
 ```
 rm exampleos-build -rf
 for package in bash systemd; do
-  ostree checkout -U --union exampleos/x86_64/${package} exampleos-build
+  ostree --repo=build-repo checkout -U --union exampleos/x86_64/${package} exampleos-build
 done
 # Set up a "rofiles-fuse" mount point; this ensures that any processes
 # we run for post-processing of the tree don't corrupt the hardlinks.
@@ -144,7 +144,7 @@ rofiles-fuse exampleos-build mnt
 ldconfig -r mnt
   (Insert other programs here)
 fusermount -u mnt
-ostree commit -b exampleos/x86_64/standard --link-checkout-speedup exampleos-build
+ostree --repo=build-repo commit -b exampleos/x86_64/standard --link-checkout-speedup exampleos-build
 ```
 
 There are a number of interesting things going on here.  The major
