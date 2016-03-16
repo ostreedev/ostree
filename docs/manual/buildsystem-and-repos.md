@@ -47,7 +47,7 @@ Images, ISOs, etc.
 Now obviously in this document, we're going to talk about the
 situation where `$imagesystem` is OSTree.  The general idea with
 OSTree is that wherever you might store a series of tarballs for
-applications or OS images, OSTree likely going to be better.  For
+applications or OS images, OSTree is likely going to be better.  For
 example, it supports GPG signatures, binary deltas, writing bootloader
 configuration, etc.
 
