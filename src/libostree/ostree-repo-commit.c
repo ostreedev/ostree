@@ -219,7 +219,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
 
       if (xattrs != NULL)
         {
-          if (!gs_dfd_and_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
+          if (!glnx_dfd_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
                                                xattrs, cancellable, error))
             goto out;
         }
@@ -251,7 +251,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
 
           if (xattrs)
             {
-              if (!gs_fd_set_all_xattrs (fd, xattrs, cancellable, error))
+              if (!glnx_fd_set_all_xattrs (fd, xattrs, cancellable, error))
                 goto out;
             }
         }
@@ -2322,20 +2322,21 @@ get_modified_xattrs (OstreeRepo                       *self,
     {
       if (path)
         {
-          if (!gs_file_get_all_xattrs (path, &ret_xattrs, cancellable, error))
+          if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (path),
+                                             &ret_xattrs, cancellable, error))
             goto out;
         }
       else if (dfd_subpath == NULL)
         {
           g_assert (dfd != -1);
-          if (!gs_fd_get_all_xattrs (dfd, &ret_xattrs,
+          if (!glnx_fd_get_all_xattrs (dfd, &ret_xattrs,
                                      cancellable, error))
             goto out;
         }
       else
         {
           g_assert (dfd != -1);
-          if (!gs_dfd_and_name_get_all_xattrs (dfd, dfd_subpath, &ret_xattrs,
+          if (!glnx_dfd_name_get_all_xattrs (dfd, dfd_subpath, &ret_xattrs,
                                                cancellable, error))
             goto out;
         }

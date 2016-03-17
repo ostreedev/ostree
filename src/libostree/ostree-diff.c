@@ -48,7 +48,8 @@ get_file_checksum (OstreeDiffFlags  flags,
 
       if (!(flags & OSTREE_DIFF_FLAGS_IGNORE_XATTRS))
         {
-          if (!gs_file_get_all_xattrs (f, &xattrs, cancellable, error))
+          if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f),
+                                             &xattrs, cancellable, error))
             goto out;
         }
 

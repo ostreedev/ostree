@@ -97,10 +97,10 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
    * right.  This will allow other users access if they have ACLs, but
    * oh well.
    */ 
-  if (!gs_dfd_and_name_get_all_xattrs (src_parent_dfd, src_name,
+  if (!glnx_dfd_name_get_all_xattrs (src_parent_dfd, src_name,
                                        &xattrs, cancellable, error))
     goto out;
-  if (!gs_fd_set_all_xattrs (dest_dfd, xattrs,
+  if (!glnx_fd_set_all_xattrs (dest_dfd, xattrs,
                              cancellable, error))
     goto out;
 

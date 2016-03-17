@@ -766,7 +766,8 @@ ostree_checksum_file (GFile            *f,
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!gs_file_get_all_xattrs (f, &xattrs, cancellable, error))
+      if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (f),
+                                         &xattrs, cancellable, error))
         goto out;
     }
 
