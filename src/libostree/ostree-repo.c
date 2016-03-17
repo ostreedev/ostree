@@ -2884,7 +2884,7 @@ ostree_repo_load_file (OstreeRepo         *self,
               guint32 mode;
               g_autoptr(GVariant) metadata = NULL;
               g_autoptr(GBytes) bytes = NULL;
-              gs_fd_close int fd = -1;
+              glnx_fd_close int fd = -1;
 
               bytes = ot_lgetxattrat (self->objects_dir_fd, loose_path_buf,
                                       "user.ostreemeta", error);
@@ -2943,7 +2943,7 @@ ostree_repo_load_file (OstreeRepo         *self,
               if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_REGULAR
                   && (out_input || out_xattrs))
                 {
-                  gs_fd_close int fd = -1;
+                  glnx_fd_close int fd = -1;
 
                   if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
                                                cancellable, error))
@@ -4630,7 +4630,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         gs_free char *to = NULL;
         gs_free guchar *csum = NULL;
         gs_free char *superblock = NULL;
-        gs_fd_close int superblock_file_fd = -1;
+        glnx_fd_close int superblock_file_fd = -1;
         g_autoptr(GInputStream) in_stream = NULL;
 
         _ostree_parse_delta_name (delta_names->pdata[i], &from, &to);
