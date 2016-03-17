@@ -503,7 +503,8 @@ ostree_repo_traverse_commit (OstreeRepo      *repo,
     goto out;
 
   ret = TRUE;
-  gs_transfer_out_value (out_reachable, &ret_reachable);
+  if (out_reachable)
+    *out_reachable = g_steal_pointer (&ret_reachable);
  out:
   return ret;
 }

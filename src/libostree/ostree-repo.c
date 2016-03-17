@@ -2105,7 +2105,8 @@ enumerate_directory_allow_noent (GFile               *dirpath,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_direnum, &ret_direnum);
+  if (out_direnum)
+    *out_direnum = g_steal_pointer (&ret_direnum);
  out:
   return ret;
 }
@@ -2763,7 +2764,8 @@ query_info_for_bare_content_object (OstreeRepo      *self,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_info, &ret_info);
+  if (out_info)
+    *out_info = g_steal_pointer (&ret_info);
  out:
   return ret;
 }
@@ -4078,7 +4080,8 @@ sign_data (OstreeRepo     *self,
   ret_signature = g_mapped_file_get_bytes (signature_file);
   
   ret = TRUE;
-  gs_transfer_out_value (out_signature, &ret_signature);
+  if (out_signature)
+    *out_signature = g_steal_pointer (&ret_signature);
 out:
   if (commit_buffer)
     gpgme_data_release (commit_buffer);
