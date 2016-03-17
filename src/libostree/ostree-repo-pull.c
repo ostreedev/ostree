@@ -1399,8 +1399,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   if (delta_superblock_data)
     {
       {
-        gs_free gchar *delta = NULL;
-        gs_free guchar *ret_csum = NULL;
+        g_autofree gchar *delta = NULL;
+        g_autofree guchar *ret_csum = NULL;
         guchar *summary_csum;
         g_autoptr (GInputStream) summary_is = NULL;
 
