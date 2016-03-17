@@ -74,6 +74,8 @@ maybe_prune_loose_object (OtPruneData        *data,
 
   if (!g_hash_table_lookup_extended (data->reachable, key, NULL, NULL))
     {
+      g_debug ("Pruning unneeded object %s.%s", checksum,
+               ostree_object_type_to_string (objtype));
       if (!(flags & OSTREE_REPO_PRUNE_FLAGS_NO_PRUNE))
         {
           guint64 storage_size = 0;
@@ -101,6 +103,8 @@ maybe_prune_loose_object (OtPruneData        *data,
     }
   else
     {
+      g_debug ("Keeping needed object %s.%s", checksum,
+               ostree_object_type_to_string (objtype));
       if (OSTREE_OBJECT_TYPE_IS_META (objtype))
         data->n_reachable_meta++;
       else
@@ -234,6 +238,7 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
             continue;
         }
 
+      g_debug ("Trying to prune static delta %s", deltaname);
       deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
 
       if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
@@ -310,6 +315,7 @@ ostree_repo_prune (OstreeRepo        *self,
                                         error))
             goto out;
 
+          g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
                                                   cancellable, &local_error))
             {
@@ -352,6 +358,7 @@ ostree_repo_prune (OstreeRepo        *self,
                                         error))
             goto out;
 
+          g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
                                                   cancellable, &local_error))
             {
