@@ -65,7 +65,7 @@ _ostree_kernel_args_new (void)
 }
 
 void
-_ostree_kernel_args_free (OstreeKernelArgs *kargs)
+_ostree_kernel_arg_autofree (OstreeKernelArgs *kargs)
 {
   if (!kargs)
     return;
@@ -77,7 +77,7 @@ _ostree_kernel_args_free (OstreeKernelArgs *kargs)
 void
 _ostree_kernel_args_cleanup (void *loc)
 {
-  _ostree_kernel_args_free (*((OstreeKernelArgs**)loc));
+  _ostree_kernel_arg_autofree (*((OstreeKernelArgs**)loc));
 }
 
 void

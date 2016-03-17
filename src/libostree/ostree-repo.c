@@ -4626,10 +4626,10 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     g_variant_dict_init (&deltas_builder, NULL);
     for (i = 0; i < delta_names->len; i++)
       {
-        gs_free char *from = NULL;
-        gs_free char *to = NULL;
-        gs_free guchar *csum = NULL;
-        gs_free char *superblock = NULL;
+        g_autofree char *from = NULL;
+        g_autofree char *to = NULL;
+        g_autofree guchar *csum = NULL;
+        g_autofree char *superblock = NULL;
         glnx_fd_close int superblock_file_fd = -1;
         g_autoptr(GInputStream) in_stream = NULL;
 

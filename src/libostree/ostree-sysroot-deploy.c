@@ -941,8 +941,8 @@ get_kernel_from_tree (int             deployment_dfd,
   g_auto(GLnxDirFdIterator) dfditer = { 0, };
   g_autofree char *ret_kernel_name = NULL;
   g_autofree char *ret_initramfs_name = NULL;
-  gs_free char *kernel_checksum = NULL;
-  gs_free char *initramfs_checksum = NULL;
+  g_autofree char *kernel_checksum = NULL;
+  g_autofree char *initramfs_checksum = NULL;
 
   ret_boot_dfd = glnx_opendirat_with_errno (deployment_dfd, "usr/lib/ostree-boot", TRUE);
   if (ret_boot_dfd == -1)
