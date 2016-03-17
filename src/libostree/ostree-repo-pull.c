@@ -1437,7 +1437,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
     }
   
   ret = TRUE;
-  gs_transfer_out_value (out_delta_superblock, &ret_delta_superblock);
+  if (out_delta_superblock)
+    *out_delta_superblock = g_steal_pointer (&ret_delta_superblock);
  out:
   return ret;
 }

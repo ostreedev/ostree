@@ -873,7 +873,8 @@ merge_configuration (OstreeSysroot         *sysroot,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_sepolicy, &sepolicy);
+  if (out_sepolicy)
+    *out_sepolicy = g_steal_pointer (&sepolicy);
  out:
   return ret;
 }

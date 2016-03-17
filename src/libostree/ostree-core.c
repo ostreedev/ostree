@@ -155,7 +155,8 @@ ostree_parse_refspec (const char   *refspec,
 
   ret = TRUE;
 
-  gs_transfer_out_value (out_remote, &remote);
+  if (out_remote)
+    *out_remote = g_steal_pointer (&remote);
   if (out_ref != NULL)
     *out_ref = g_match_info_fetch (match, 2);
  out:
@@ -951,7 +952,8 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_name, &tmpname);
+  if (out_name)
+    *out_name = g_steal_pointer (&tmpname);
  out:
   return ret;
 }

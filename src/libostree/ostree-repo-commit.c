@@ -597,7 +597,8 @@ _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
       out_state->temp_filename = temp_filename;
       temp_filename = NULL;
       out_state->fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)ret_stream);
-      gs_transfer_out_value (out_stream, &ret_stream);
+      if (out_stream)
+        *out_stream = g_steal_pointer (&ret_stream);
     }
   *out_have_object = have_obj;
  out:
@@ -2372,7 +2373,8 @@ get_modified_xattrs (OstreeRepo                       *self,
     }
   
   ret = TRUE;
-  gs_transfer_out_value (out_xattrs, &ret_xattrs);
+  if (out_xattrs)
+    *out_xattrs = g_steal_pointer (&ret_xattrs);
  out:
   return ret;
 }
@@ -2967,7 +2969,8 @@ ostree_repo_write_mtree (OstreeRepo           *self,
     }
 
   ret = TRUE;
-  ot_transfer_out_value (out_file, &ret_file);
+  if (out_file)
+    *out_file = g_steal_pointer (&ret_file);
  out:
   return ret;
 }

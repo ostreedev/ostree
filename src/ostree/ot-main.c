@@ -294,7 +294,8 @@ ostree_option_context_parse (GOptionContext *context,
         }
     }
 
-  gs_transfer_out_value (out_repo, &repo);
+  if (out_repo)
+    *out_repo = g_steal_pointer (&repo);
 
   success = TRUE;
 
@@ -375,7 +376,8 @@ ostree_admin_option_context_parse (GOptionContext *context,
         goto out;
     }
 
-  gs_transfer_out_value (out_sysroot, &sysroot);
+  if (out_sysroot)
+    *out_sysroot = g_steal_pointer (&sysroot);
 
   success = TRUE;
 

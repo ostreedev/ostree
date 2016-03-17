@@ -498,7 +498,8 @@ _ostree_sysroot_read_boot_loader_configs (OstreeSysroot *self,
   g_ptr_array_sort (ret_loader_configs, compare_loader_configs_for_sorting);
 
  done:
-  gs_transfer_out_value (out_loader_configs, &ret_loader_configs);
+  if (out_loader_configs)
+    *out_loader_configs = g_steal_pointer (&ret_loader_configs);
   ret = TRUE;
  out:
   return ret;
@@ -593,7 +594,8 @@ parse_origin (OstreeSysroot   *self,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_origin, &ret_origin);
+  if (out_origin)
+    *out_origin = g_steal_pointer (&ret_origin);
  out:
   if (error)
     g_prefix_error (error, "Parsing %s: ", origin_path);
@@ -703,7 +705,8 @@ parse_deployment (OstreeSysroot       *self,
     ostree_deployment_set_origin (ret_deployment, origin);
 
   ret = TRUE;
-  gs_transfer_out_value (out_deployment, &ret_deployment);
+  if (out_deployment)
+    *out_deployment = g_steal_pointer (&ret_deployment);
  out:
   if (origin)
     g_key_file_unref (origin);
@@ -1048,7 +1051,8 @@ _ostree_sysroot_query_bootloader (OstreeSysroot     *sysroot,
     g_clear_object (&ret_loader);
 
   ret = TRUE;
-  gs_transfer_out_value (out_bootloader, &ret_loader);
+  if (out_bootloader)
+    *out_bootloader = g_steal_pointer (&ret_loader);
  out:
   return ret;
 }

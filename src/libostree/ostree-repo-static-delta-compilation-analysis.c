@@ -181,7 +181,8 @@ build_content_sizenames_filtered (OstreeRepo              *repo,
   g_ptr_array_sort (ret_sizenames, compare_sizenames);
 
   ret = TRUE;
-  gs_transfer_out_value (out_sizenames, &ret_sizenames);
+  if (out_sizenames)
+    *out_sizenames = g_steal_pointer (&ret_sizenames);
  out:
   return ret;
 }
@@ -296,7 +297,8 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_modified_regfile_content, &ret_modified_regfile_content);
+  if (out_modified_regfile_content)
+    *out_modified_regfile_content = g_steal_pointer (&ret_modified_regfile_content);
  out:
   return ret;
 }

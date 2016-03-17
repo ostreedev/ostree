@@ -450,7 +450,8 @@ ostree_sepolicy_restorecon (OstreeSePolicy    *self,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_new_label, &label);
+  if (out_new_label)
+    *out_new_label = g_steal_pointer (&label);
  out:
   return ret;
 #else
