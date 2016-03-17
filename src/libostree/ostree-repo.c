@@ -2951,7 +2951,7 @@ ostree_repo_load_file (OstreeRepo         *self,
 
                   if (out_xattrs)
                     {
-                      if (!gs_fd_get_all_xattrs (fd, &ret_xattrs,
+                      if (!glnx_fd_get_all_xattrs (fd, &ret_xattrs,
                                                  cancellable, error))
                         goto out;
                     }
@@ -2965,7 +2965,7 @@ ostree_repo_load_file (OstreeRepo         *self,
               else if (g_file_info_get_file_type (ret_file_info) == G_FILE_TYPE_SYMBOLIC_LINK
                        && out_xattrs)
                 {
-                  if (!gs_dfd_and_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
+                  if (!glnx_dfd_name_get_all_xattrs (self->objects_dir_fd, loose_path_buf,
                                                        &ret_xattrs,
                                                        cancellable, error))
                     goto out;
