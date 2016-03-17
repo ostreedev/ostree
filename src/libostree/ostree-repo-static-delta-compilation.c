@@ -456,7 +456,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
 {
   gboolean ret = FALSE;
   g_autofree char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
-  gs_fd_close int fd = -1;
+  glnx_fd_close int fd = -1;
   g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
   g_autoptr(GFileInfo) ret_finfo = NULL;

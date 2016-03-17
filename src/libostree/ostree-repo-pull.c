@@ -795,7 +795,7 @@ meta_fetch_on_complete (GObject           *object,
   OstreeObjectType objtype;
   GError *local_error = NULL;
   GError **error = &local_error;
-  gs_fd_close int fd = -1;
+  glnx_fd_close int fd = -1;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_debug ("fetch of %s%s complete", ostree_object_to_string (checksum, objtype),
@@ -950,7 +950,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   g_autoptr(GVariant) part = NULL;
   GError *local_error = NULL;
   GError **error = &local_error;
-  gs_fd_close int fd = -1;
+  glnx_fd_close int fd = -1;
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
