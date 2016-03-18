@@ -62,8 +62,7 @@ ot_editor_prompt (OstreeRepo *repo,
                   GCancellable *cancellable,
                   GError **error)
 {
-  glnx_unref_object GSSubprocessContext *ctx = NULL;
-  glnx_unref_object GSSubprocess *proc = NULL;
+  glnx_unref_object GSubprocess *proc = NULL;
   g_autoptr(GFile) file = NULL;
   g_autoptr(GFileIOStream) io = NULL;
   GOutputStream *output;
@@ -92,16 +91,11 @@ ot_editor_prompt (OstreeRepo *repo,
     g_autofree char *quoted_file = g_shell_quote (gs_file_get_path_cached (file));
     args = g_strconcat (editor, " ", quoted_file, NULL);
   }
-  ctx = gs_subprocess_context_newv ("/bin/sh", "-c", args, NULL);
-  gs_subprocess_context_set_stdin_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
-  gs_subprocess_context_set_stdout_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
-  gs_subprocess_context_set_stderr_disposition (ctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
 
-  proc = gs_subprocess_new (ctx, cancellable, error);
-  if (proc == NULL)
-    goto out;
+  proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDIN_INHERIT, error, 
+                           "/bin/sh", "-c", args, NULL);
 
-  if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
+  if (!g_subprocess_wait_check (proc, cancellable, error))
     {
       g_prefix_error (error, "There was a problem with the editor '%s'", editor);
       goto out;

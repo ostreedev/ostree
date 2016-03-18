@@ -155,3 +155,20 @@ ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
   g_main_context_unref (state.mainctx);
   return ret;
 }
+
+gboolean
+ot_admin_execve_reboot (OstreeSysroot *sysroot, GError **error)
+{
+  g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
+      
+  if (g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
+    {
+      if (execl ("systemctl", "systemctl", "reboot", NULL) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}

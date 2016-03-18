@@ -162,16 +162,11 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   if (!ostree_repo_commit_transaction (repo, NULL, cancellable, error))
     goto out;
   
-  {
-    g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
-      
-    if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
-      {
-        gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                       cancellable, error,
-                                       "systemctl", "reboot", NULL);
-      }
-  }
+  if (opt_reboot)
+    {
+      if (!ot_admin_execve_reboot (sysroot, error))
+        goto out;
+    }
 
   ret = TRUE;
  out:

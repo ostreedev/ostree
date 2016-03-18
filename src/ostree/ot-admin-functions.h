@@ -45,5 +45,8 @@ gboolean
 ot_admin_sysroot_lock (OstreeSysroot  *sysroot,
                        GError        **error);
 
+gboolean
+ot_admin_execve_reboot (OstreeSysroot *sysroot,
+                        GError **error);
 
 G_END_DECLS
