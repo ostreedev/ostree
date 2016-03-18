@@ -450,11 +450,14 @@ merge_etc_changes (GFile          *orig_etc,
                                 removed->len,
                                 added->len);
 
-  if (!gs_file_open_dir_fd (orig_etc, &orig_etc_fd, cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (orig_etc), TRUE,
+                       &orig_etc_fd, error))
     goto out;
-  if (!gs_file_open_dir_fd (modified_etc, &modified_etc_fd, cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (modified_etc), TRUE,
+                       &modified_etc_fd, error))
     goto out;
-  if (!gs_file_open_dir_fd (new_etc, &new_etc_fd, cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (new_etc), TRUE,
+                       &new_etc_fd, error))
     goto out;
 
   for (i = 0; i < removed->len; i++)

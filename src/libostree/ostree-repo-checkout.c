@@ -655,9 +655,8 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
-  if (!gs_file_open_dir_fd_at (destination_parent_fd, destination_name,
-                               &destination_dfd,
-                               cancellable, error))
+  if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
+                       &destination_dfd, error))
     goto out;
 
   /* Set the xattrs now, so any derived labeling works */

@@ -2271,14 +2271,15 @@ ostree_repo_open (OstreeRepo    *self,
     goto out;
   g_strdelimit (self->boot_id, "\n", '\0');
 
-  if (!gs_file_open_dir_fd (self->repodir, &self->repo_dir_fd, cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->repodir), TRUE,
+                       &self->repo_dir_fd, error))
     {
       g_prefix_error (error, "%s: ", gs_file_get_path_cached (self->repodir));
       goto out;
     }
 
-  if (!gs_file_open_dir_fd_at (self->repo_dir_fd, "objects",
-                               &self->objects_dir_fd, cancellable, error))
+  if (!glnx_opendirat (self->repo_dir_fd, "objects", TRUE,
+                       &self->objects_dir_fd, error))
     {
       g_prefix_error (error, "Opening objects/ directory: ");
       goto out;
@@ -2387,16 +2388,16 @@ ostree_repo_open (OstreeRepo    *self,
         goto out;
     }
 
-  if (!gs_file_open_dir_fd (self->tmp_dir, &self->tmp_dir_fd, cancellable, error))
+  if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     goto out;
 
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
       if (!gs_file_ensure_directory (self->uncompressed_objects_dir, TRUE, cancellable, error))
         goto out;
-      if (!gs_file_open_dir_fd (self->uncompressed_objects_dir,
-                                &self->uncompressed_objects_dir_fd,
-                                cancellable, error))
+      if (!glnx_opendirat (self->repo_dir_fd, "uncompressed-objects-cache", TRUE,
+                           &self->uncompressed_objects_dir_fd,
+                           error))
         goto out;
     }
 
