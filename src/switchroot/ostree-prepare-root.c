@@ -111,7 +111,6 @@ touch_run_ostree (void)
 int
 main(int argc, char *argv[])
 {
-  const char *readonly_bind_mounts[] = { "/usr", NULL };
   const char *root_mountpoint = NULL;
   char *ostree_target = NULL;
   char *deploy_path = NULL;
@@ -211,21 +210,55 @@ main(int argc, char *argv[])
         }
     }
 
-  /* Set up any read-only bind mounts (notably /usr) */
-  for (i = 0; readonly_bind_mounts[i] != NULL; i++)
+  /* Here we do a dance to chdir to the newroot so that we can have
+   * the potential overlayfs mount points not look ugly.  However...I
+   * think we could do this a lot earlier and make all of the mounts
+   * here just be relative.
+   */
+  orig_cwd_dfd = openat (AT_FDCWD, ".", O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
+  if (orig_cwd_dfd)
     {
-      snprintf (destpath, sizeof(destpath), "%s%s", newroot, readonly_bind_mounts[i]);
-      if (mount (destpath, destpath, NULL, MS_BIND, NULL) < 0)
+      perrorv ("failed to open .");
+      exit (EXIT_FAILURE);
+    }
+
+  if (chdir (newroot) < 0)
+    {
+      perrorv ("failed to chdir to newroot");
+      exit (EXIT_FAILURE);
+    }
+
+  /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
+  if (lstat (".usr-ovl-work", &stbuf) == 0)
+    {
+      const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper/upper,workdir=.usr-ovl-work";
+      if (mount ("overlay", "/usr", "overlay", 0, usr_ovl_options) < 0)
 	{
-	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
-	  exit (EXIT_FAILURE);
-	}
-      if (mount (destpath, destpath, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
-	{
-	  perrorv ("failed to bind mount (class:readonly) %s", destpath);
+	  perrorv ("failed to mount /usr overlayfs");
 	  exit (EXIT_FAILURE);
 	}
     }
+  else
+    {
+      /* Otherwise, a read-only bind mount for /usr */
+      if (mount ("usr", "usr", NULL, MS_BIND, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:readonly) /usr");
+	  exit (EXIT_FAILURE);
+	}
+      if (mount ("usr", "usr", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
+	{
+	  perrorv ("failed to bind mount (class:readonly) /usr");
+	  exit (EXIT_FAILURE);
+	}
+    }
+
+  if (fchdir (orig_cwd_dfd) < 0)
+    {
+      perrorv ("failed to chdir to orig root");
+      exit (EXIT_FAILURE);
+    }
+  (void) close (orig_cwd_dfd);
 
   touch_run_ostree ();
 

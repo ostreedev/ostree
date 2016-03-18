@@ -318,4 +318,7 @@ global:
         ostree_repo_list_refs_ext;
         ostree_sysroot_init_osname;
         ostree_sysroot_load_if_changed;
+        ostree_sysroot_deployment_unlock;
+        ostree_deployment_get_unlocked;
+        ostree_deployment_unlocked_state_to_string;
 } LIBOSTREE_2016.3;

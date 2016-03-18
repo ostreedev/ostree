@@ -89,6 +89,9 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
   glnx_unref_object OstreeRepo *repo = NULL;
   OstreeDeployment *booted_deployment = NULL;
   g_autoptr(GPtrArray) deployments = NULL;
+  const int is_tty = isatty (1);
+  const char *red_bold_prefix = is_tty ? "\x1b[31m\x1b[1m" : "";
+  const char *red_bold_suffix = is_tty ? "\x1b[22m\x1b[0m" : "";
   guint i;
 
   context = g_option_context_new ("List deployments");
@@ -118,11 +121,14 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
           OstreeDeployment *deployment = deployments->pdata[i];
           GKeyFile *origin;
           const char *ref = ostree_deployment_get_csum (deployment);
+          OstreeDeploymentUnlockedState unlocked = ostree_deployment_get_unlocked (deployment);
           g_autofree char *version = version_of_commit (repo, ref);
           glnx_unref_object OstreeGpgVerifyResult *result = NULL;
           GString *output_buffer;
           guint jj, n_signatures;
           GError *local_error = NULL;
+
+          origin = ostree_deployment_get_origin (deployment);
 
           g_print ("%c %s %s.%d\n",
                    deployment == booted_deployment ? '*' : ' ',
@@ -131,7 +137,15 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
                    ostree_deployment_get_deployserial (deployment));
           if (version)
             g_print ("    Version: %s\n", version);
-          origin = ostree_deployment_get_origin (deployment);
+          switch (unlocked)
+            {
+            case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
+              break;
+            default:
+              g_print ("    %sUnlocked: %s%s\n", red_bold_prefix,
+                       ostree_deployment_unlocked_state_to_string (unlocked),
+                       red_bold_suffix);
+            }
           if (!origin)
             g_print ("    origin: none\n");
           else

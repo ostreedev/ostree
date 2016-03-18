@@ -23,20 +23,6 @@
 #include "ostree-deployment-private.h"
 #include "libglnx.h"
 
-struct _OstreeDeployment
-{
-  GObject       parent_instance;
-
-  int index;  /* Global offset */
-  char *osname;  /* osname */
-  char *csum;  /* OSTree checksum of tree */
-  int deployserial;  /* How many times this particular csum appears in deployment list */
-  char *bootcsum;  /* Checksum of kernel+initramfs */
-  int bootserial; /* An integer assigned to this tree per its ${bootcsum} */
-  OstreeBootconfigParser *bootconfig; /* Bootloader configuration */
-  GKeyFile *origin; /* How to construct an upgraded version of this tree */
-};
-
 typedef GObjectClass OstreeDeploymentClass;
 
 G_DEFINE_TYPE (OstreeDeployment, ostree_deployment, G_TYPE_OBJECT)
@@ -258,6 +244,7 @@ ostree_deployment_new (int    index,
   self->deployserial = deployserial;
   self->bootcsum = g_strdup (bootcsum);
   self->bootserial = bootserial;
+  self->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_NONE;
   return self;
 }
 
@@ -278,4 +265,25 @@ ostree_deployment_get_origin_relpath (OstreeDeployment *self)
                           ostree_deployment_get_osname (self),
                           ostree_deployment_get_csum (self),
                           ostree_deployment_get_deployserial (self));
+}
+
+const char *
+ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlockedState state)
+{
+  switch (state)
+    {
+    case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
+      return "none";
+    case OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX:
+      return "hotfix";
+    case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
+      return "development";
+    }
+  g_assert_not_reached ();
+}
+
+OstreeDeploymentUnlockedState
+ostree_deployment_get_unlocked (OstreeDeployment *self)
+{
+  return self->unlocked;
 }

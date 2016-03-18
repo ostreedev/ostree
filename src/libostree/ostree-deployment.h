@@ -78,4 +78,16 @@ OstreeDeployment *ostree_deployment_clone (OstreeDeployment *self);
 _OSTREE_PUBLIC
 char *ostree_deployment_get_origin_relpath (OstreeDeployment *self);
 
+typedef enum {
+  OSTREE_DEPLOYMENT_UNLOCKED_NONE,
+  OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT,
+  OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX
+} OstreeDeploymentUnlockedState;
+
+_OSTREE_PUBLIC
+const char *ostree_deployment_unlocked_state_to_string (OstreeDeploymentUnlockedState state);
+
+_OSTREE_PUBLIC
+OstreeDeploymentUnlockedState ostree_deployment_get_unlocked (OstreeDeployment *self);
+
 G_END_DECLS
