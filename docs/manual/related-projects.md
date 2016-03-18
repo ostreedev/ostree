@@ -15,7 +15,7 @@ manager designs as well.  This page is not intended to be an
 exhaustive list of such projects, but we will try to keep it up to
 date, and relatively agnostic.
 
-Broadly speaking, projects into this area fall into two camps; either
+Broadly speaking, projects in this area fall into two camps; either
 a tool to snapshot systems on the client side (dpkg/rpm + BTRFS/LVM),
 or a tool to compose on a server and replicate (ChromiumOS, Clear
 Linux).  OSTree is flexible enough to do both. 
@@ -154,7 +154,7 @@ OSTree.  NixOS and OSTree both support the idea of independent "roots"
 that are bootable.
 
 In NixOS, the entire system is based on checksums of package inputs
-(build dependencies) See [Nix store](http://nixos.org/nix/). A both
+(build dependencies) - see [Nix store](http://nixos.org/nix/manual/#chap-package-management/). A both
 positive and negative of the Nix model is that a change in the build
 dependencies (e.g. being built with a newer gcc), requires a cascading
 rebuild of everything.
