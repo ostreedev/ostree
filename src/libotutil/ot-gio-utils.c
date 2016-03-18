@@ -362,8 +362,8 @@ ot_gfile_replace_contents_fsync (GFile          *path,
 
   parent = g_file_get_parent (path);
 
-  if (!gs_file_open_dir_fd (parent, &parent_dfd,
-                            cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (parent), TRUE,
+                       &parent_dfd, error))
     goto out;
 
   if (!ot_file_replace_contents_at (parent_dfd, target_basename,
@@ -426,7 +426,8 @@ ot_util_fsync_directory (GFile         *dir,
   gboolean ret = FALSE;
   int dfd = -1;
 
-  if (!gs_file_open_dir_fd (dir, &dfd, cancellable, error))
+  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (dir), TRUE,
+                       &dfd, error))
     goto out;
 
   if (fsync (dfd) != 0)
