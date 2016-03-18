@@ -65,10 +65,9 @@ _ostree_repo_ensure_loose_objdir_at (int             dfd,
   loose_prefix[2] = '\0';
   if (mkdirat (dfd, loose_prefix, 0777) == -1)
     {
-      int errsv = errno;
-      if (G_UNLIKELY (errsv != EEXIST))
+      if (G_UNLIKELY (errno != EEXIST))
         {
-          gs_set_error_from_errno (error, errsv);
+          glnx_set_error_from_errno (error);
           return FALSE;
         }
     }
@@ -118,7 +117,7 @@ write_file_metadata_to_xattr (int fd,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       g_prefix_error (error, "Unable to set xattr: ");
       return FALSE;
     }
@@ -155,7 +154,7 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
     {
       if (errno != EEXIST)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           g_prefix_error (error, "Storing file '%s': ", temp_filename);
           goto out;
         }
@@ -195,7 +194,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                                 self->target_owner_gid,
                                 AT_SYMLINK_NOFOLLOW) == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -213,7 +212,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
                                 uid, gid,
                                 AT_SYMLINK_NOFOLLOW) == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -236,7 +235,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           while (G_UNLIKELY (res == -1 && errno == EINTR));
           if (G_UNLIKELY (res == -1))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
 
@@ -245,7 +244,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           while (G_UNLIKELY (res == -1 && errno == EINTR));
           if (G_UNLIKELY (res == -1))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
 
@@ -272,7 +271,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
               while (G_UNLIKELY (res == -1 && errno == EINTR));
               if (G_UNLIKELY (res == -1))
                 {
-                  gs_set_error_from_errno (error, errno);
+                  glnx_set_error_from_errno (error);
                   goto out;
                 }
             }
@@ -294,7 +293,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
           while (G_UNLIKELY (res == -1 && errno == EINTR));
           if (G_UNLIKELY (res == -1))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
@@ -306,7 +305,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
         {
           if (fsync (fd) == -1)
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
@@ -453,7 +452,9 @@ fallocate_stream (GFileDescriptorBased      *stream,
       int r = posix_fallocate (fd, 0, size);
       if (r != 0)
         {
-          gs_set_error_from_errno (error, r);
+          /* posix_fallocate is a weird deviation from errno standards */
+          errno = r;
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -511,7 +512,7 @@ _ostree_repo_commit_untrusted_content_bare (OstreeRepo          *self,
       fd = openat (self->tmp_dir_fd, state->temp_filename, O_RDONLY);
       if (fd == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -844,7 +845,7 @@ write_object (OstreeRepo         *self,
 
       if (fstatat (self->tmp_dir_fd, temp_filename, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -1225,7 +1226,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -1265,7 +1266,7 @@ rename_pending_loose_objects (OstreeRepo        *self,
           if (G_UNLIKELY (renameat (child_dfd_iter.fd, loose_objpath + 3,
                                     self->objects_dir_fd, loose_objpath) < 0))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
@@ -1449,7 +1450,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
 
   if (syncfs (self->tmp_dir_fd) < 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -2689,7 +2690,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
 
   if (fstat (src_dfd_iter->fd, &dir_stbuf) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -2745,7 +2746,7 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
 
       if (fstatat (src_dfd_iter->fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 

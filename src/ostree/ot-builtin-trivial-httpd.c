@@ -427,10 +427,9 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
        */
       if (prctl (PR_SET_PDEATHSIG, SIGTERM) != 0)
         {
-          int errsv = errno;
-          if (errsv != ENOSYS)
+          if (errno != ENOSYS)
             {
-              gs_set_error_from_errno (error, errsv);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
