@@ -467,7 +467,7 @@ merge_etc_changes (GFile          *orig_etc,
       g_assert (path);
       target_file = g_file_resolve_relative_path (new_etc, path);
 
-      if (!gs_shutil_rm_rf (target_file, cancellable, error))
+      if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (target_file), cancellable, error))
         goto out;
     }
 
@@ -1759,7 +1759,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
 
       new_loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
                                                              new_bootversion);
-      if (!gs_shutil_rm_rf (new_loader_entries_dir, cancellable, error))
+      if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (new_loader_entries_dir), cancellable, error))
         goto out;
       if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
         goto out;
