@@ -1272,8 +1272,8 @@ rename_pending_loose_objects (OstreeRepo        *self,
         }
     }
 
-  if (!gs_shutil_rm_rf_at (self->tmp_dir_fd, self->commit_stagedir_name,
-                           cancellable, error))
+  if (!glnx_shutil_rm_rf_at (self->tmp_dir_fd, self->commit_stagedir_name,
+                             cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -1323,7 +1323,7 @@ cleanup_tmpdir (OstreeRepo        *self,
       delta = curtime_secs - mtime;
       if (delta > 60*60*24)
         {
-          if (!gs_shutil_rm_rf (path, cancellable, error))
+          if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (path), cancellable, error))
             goto out;
         }
     }

@@ -113,8 +113,8 @@ ot_admin_builtin_deploy (int argc, char **argv, GCancellable *cancellable, GErro
   merge_deployment = ostree_sysroot_get_merge_deployment (sysroot, opt_osname);
 
   /* Here we perform cleanup of any leftover data from previous
-   * partial failures.  This avoids having to call gs_shutil_rm_rf()
-   * at random points throughout the process.
+   * partial failures.  This avoids having to call
+   * glnx_shutil_rm_rf_at() at random points throughout the process.
    *
    * TODO: Add /ostree/transaction file, and only do this cleanup if
    * we find it.

@@ -236,7 +236,7 @@ ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
 
       deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
 
-      if (!gs_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
+      if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
                                cancellable, error))
         goto out;
     }
