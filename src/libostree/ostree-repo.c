@@ -1818,13 +1818,23 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 
   if (!from_cache && *out_summary && *out_signatures)
     {
+      g_autoptr(GError) temp_error = NULL;
+
       if (!_ostree_repo_cache_summary (self,
                                        name,
                                        *out_summary,
                                        *out_signatures,
                                        cancellable,
-                                       error))
-        goto out;
+                                       &temp_error))
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
+            g_debug ("No permissions to save summary cache");
+          else
+            {
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              goto out;
+            }
+        }
     }
 
   ret = TRUE;
