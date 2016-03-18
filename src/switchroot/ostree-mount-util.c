@@ -26,6 +26,10 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <sys/mount.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/statvfs.h>
 
 #include "ostree-mount-util.h"
 
@@ -48,3 +52,18 @@ perrorv (const char *format, ...)
 
   return 0;
 }
+
+int
+path_is_on_readonly_fs (char *path)
+{
+  struct statvfs stvfsbuf;
+
+  if (statvfs (path, &stvfsbuf) == -1)
+    {
+      perrorv ("statvfs(%s): ", path);
+      exit (EXIT_FAILURE);
+    }
+
+  return (stvfsbuf.f_flag & ST_RDONLY) != 0;
+}
+

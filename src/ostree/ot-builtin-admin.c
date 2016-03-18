@@ -47,6 +47,7 @@ static OstreeAdminCommand admin_subcommands[] = {
   { "status", ot_admin_builtin_status },
   { "switch", ot_admin_builtin_switch },
   { "undeploy", ot_admin_builtin_undeploy },
+  { "unlock", ot_admin_builtin_unlock }, 
   { "upgrade", ot_admin_builtin_upgrade },
   { NULL, NULL }
 };

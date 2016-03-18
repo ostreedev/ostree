@@ -24,6 +24,21 @@
 
 G_BEGIN_DECLS
 
+struct _OstreeDeployment
+{
+  GObject       parent_instance;
+
+  int index;  /* Global offset */
+  char *osname;  /* osname */
+  char *csum;  /* OSTree checksum of tree */
+  int deployserial;  /* How many times this particular csum appears in deployment list */
+  char *bootcsum;  /* Checksum of kernel+initramfs */
+  int bootserial; /* An integer assigned to this tree per its ${bootcsum} */
+  OstreeBootconfigParser *bootconfig; /* Bootloader configuration */
+  GKeyFile *origin; /* How to construct an upgraded version of this tree */
+  OstreeDeploymentUnlockedState unlocked;  /* The unlocked state */
+};
+
 void _ostree_deployment_set_bootcsum (OstreeDeployment *self, const char *bootcsum);
 
 G_END_DECLS

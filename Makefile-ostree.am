@@ -66,6 +66,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-status.c \
 	src/ostree/ot-admin-builtin-switch.c \
 	src/ostree/ot-admin-builtin-upgrade.c \
+	src/ostree/ot-admin-builtin-unlock.c \
 	src/ostree/ot-admin-builtins.h \
 	src/ostree/ot-admin-instutil-builtin-selinux-ensure-labeled.c \
 	src/ostree/ot-admin-instutil-builtin-set-kargs.c \

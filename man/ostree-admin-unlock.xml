@@ -1,0 +1,88 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2016 Colin Walters <walters@verbum.org>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree admin unlock</title>
+        <productname>OSTree</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Colin</firstname>
+                <surname>Walters</surname>
+                <email>walters@verbum.org</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree admin unlock</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-admin-unlock</refname>
+        <refpurpose>Prepare the current deployment for hotfix or development</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+            <cmdsynopsis>
+                <command>ostree admin unlock</command> <arg choice="opt" rep="repeat">OPTIONS</arg>
+            </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+	  Remove the read-only bind mount on <literal>/usr</literal>
+	  and replace it with a writable overlay filesystem.  This
+	  default invocation of "unlock" is intended for
+	  development/testing purposes.  All changes in the overlay
+	  are lost on reboot.  However, this command also supports
+	  "hotfixes", see below.
+        </para>
+    </refsect1>
+
+    <refsect1>
+        <title>Options</title>
+
+        <variablelist>
+            <varlistentry>
+                <term><option>--hotfix</option></term>
+
+                <listitem><para>If this option is provided, the
+                current deployment will be cloned as a rollback
+                target.  This option is intended for things like
+                emergency security updates to userspace components
+                such as <literal>sshd</literal>.  The semantics here
+		differ from the default "development" unlock mode
+		in that reboots will retain any changes (which is what
+		you likely want for security hotfixes).
+                </para></listitem>
+            </varlistentry>
+        </variablelist>
+    </refsect1>
+</refentry>

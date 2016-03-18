@@ -37,20 +37,6 @@
 
 #include "ostree-mount-util.h"
 
-static int
-path_is_on_readonly_fs (char *path)
-{
-  struct statvfs stvfsbuf;
-
-  if (statvfs (path, &stvfsbuf) == -1)
-    {
-      perrorv ("statvfs(%s): ", path);
-      exit (EXIT_FAILURE);
-    }
-
-  return (stvfsbuf.f_flag & ST_RDONLY) != 0;
-}
-
 /* Having a writeable /var is necessary for full system functioning.
  * If /var isn't writeable, we mount tmpfs over it. While this is
  * somewhat outside of ostree's scope, having all /var twiddling

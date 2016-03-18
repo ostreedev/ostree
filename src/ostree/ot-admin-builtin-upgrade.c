@@ -97,6 +97,9 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
                                                   "override-commit", NULL);
         }
 
+      /* Should we consider requiring --discard-hotfix here? */
+      origin_changed |= g_key_file_remove_key (origin, "origin", "unlocked", NULL);
+
       if (origin_changed)
         {
           /* XXX GCancellable parameter is not used. */

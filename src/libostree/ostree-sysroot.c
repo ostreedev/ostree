@@ -24,6 +24,7 @@
 
 #include "ostree-core-private.h"
 #include "ostree-sysroot-private.h"
+#include "ostree-deployment-private.h"
 #include "ostree-bootloader-uboot.h"
 #include "ostree-bootloader-syslinux.h"
 #include "ostree-bootloader-grub2.h"
@@ -646,6 +647,16 @@ parse_bootlink (const char    *bootlink,
   return ret;
 }
 
+static char *
+get_unlocked_development_path (OstreeDeployment *deployment)
+{
+  return g_strdup_printf ("%s%s.%d/%s",
+                          _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_DIR,
+                          ostree_deployment_get_csum (deployment),
+                          ostree_deployment_get_deployserial (deployment),
+                          _OSTREE_SYSROOT_DEPLOYMENT_RUNSTATE_FLAG_DEVELOPMENT);
+}
+
 static gboolean
 parse_deployment (OstreeSysroot       *self,
                   const char          *boot_link,
@@ -667,6 +678,8 @@ parse_deployment (OstreeSysroot       *self,
   g_autofree char *treebootserial_target = NULL;
   g_autofree char *deploy_dir = NULL;
   GKeyFile *origin = NULL;
+  g_autofree char *unlocked_development_path = NULL;
+  struct stat stbuf;
 
   if (!ensure_sysroot_fd (self, error))
     goto out;
@@ -703,6 +716,24 @@ parse_deployment (OstreeSysroot       *self,
                                           bootcsum, treebootserial);
   if (origin)
     ostree_deployment_set_origin (ret_deployment, origin);
+
+  ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_NONE;
+  unlocked_development_path = get_unlocked_development_path (ret_deployment);
+  if (lstat (unlocked_development_path, &stbuf) == 0)
+    ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT;
+  else
+    {
+      g_autofree char *existing_unlocked_state =
+        g_key_file_get_string (origin, "origin", "unlocked", NULL);
+
+      if (g_strcmp0 (existing_unlocked_state, "hotfix") == 0)
+        {
+          ret_deployment->unlocked = OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX;
+        }
+      /* TODO: warn on unknown unlock types? */
+    }
+
+  g_debug ("Deployment %s.%d unlocked=%d", treecsum, deployserial, ret_deployment->unlocked);
 
   ret = TRUE;
   if (out_deployment)
@@ -1481,6 +1512,10 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
  *
  * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN is
  * specified, then all current deployments will be kept.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT is
+ * specified, then instead of prepending, the new deployment will be
+ * added right after the booted or merge deployment, instead of first.
  */
 gboolean
 ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
@@ -1497,6 +1532,8 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   g_autoptr(GPtrArray) deployments = NULL;
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
+  const gboolean make_default = !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
+  gboolean added_new = FALSE;
 
   deployments = ostree_sysroot_get_deployments (sysroot);
   booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
@@ -1504,23 +1541,44 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   if (osname == NULL && booted_deployment)
     osname = ostree_deployment_get_osname (booted_deployment);
 
-  g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+  if (make_default)
+    {
+      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      added_new = TRUE;
+    }
 
   for (i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
+      const gboolean is_merge_or_booted = 
+        ostree_deployment_equal (deployment, booted_deployment) ||
+        ostree_deployment_equal (deployment, merge_deployment);
       
       /* Keep deployments with different osnames, as well as the
        * booted and merge deployments
        */
       if (retain ||
-          (osname != NULL &&
-           strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
-          ostree_deployment_equal (deployment, booted_deployment) ||
-          ostree_deployment_equal (deployment, merge_deployment))
+          (osname != NULL && strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
+          is_merge_or_booted)
         {
           g_ptr_array_add (new_deployments, g_object_ref (deployment));
         }
+
+      if (!added_new)
+        {
+          g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+          added_new = TRUE;
+        }
+    }
+
+  /* In this non-default case , an improvement in the future would be
+   * to put the new deployment right after the current default in the
+   * order.
+   */
+  if (!added_new)
+    {
+      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      added_new = TRUE;
     }
 
   if (!ostree_sysroot_write_deployments (sysroot, new_deployments, cancellable, error))
@@ -1533,3 +1591,263 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
  out:
   return ret;
 }
+
+static gboolean
+clone_deployment (OstreeSysroot  *sysroot,
+                  OstreeDeployment *target_deployment,
+                  OstreeDeployment *merge_deployment,
+                  GCancellable *cancellable,
+                  GError **error)
+{
+  gboolean ret = FALSE;
+  __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+  glnx_unref_object OstreeDeployment *new_deployment = NULL;
+
+  /* Ensure we have a clean slate */
+  if (!ostree_sysroot_prepare_cleanup (sysroot, cancellable, error))
+    {
+      g_prefix_error (error, "Performing initial cleanup: ");
+      goto out;
+    }
+
+  kargs = _ostree_kernel_args_new ();
+
+  { OstreeBootconfigParser *bootconfig = ostree_deployment_get_bootconfig (merge_deployment);
+    g_auto(GStrv) previous_args = g_strsplit (ostree_bootconfig_parser_get (bootconfig, "options"), " ", -1);
+    
+    _ostree_kernel_args_append_argv (kargs, previous_args);
+  }
+
+  {
+    g_auto(GStrv) kargs_strv = _ostree_kernel_args_to_strv (kargs);
+
+    if (!ostree_sysroot_deploy_tree (sysroot,
+                                     ostree_deployment_get_osname (target_deployment),
+                                     ostree_deployment_get_csum (target_deployment),
+                                     ostree_deployment_get_origin (target_deployment),
+                                     merge_deployment,
+                                     kargs_strv,
+                                     &new_deployment,
+                                     cancellable, error))
+      goto out;
+  }
+
+  /* Hotfixes push the deployment as rollback target, so it shouldn't
+   * be the default.
+   */
+  if (!ostree_sysroot_simple_write_deployment (sysroot, ostree_deployment_get_osname (target_deployment),
+                                               new_deployment, merge_deployment,
+                                               OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT,
+                                               cancellable, error))
+    goto out;
+  
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+/**
+ * ostree_sysroot_deployment_unlock:
+ * @self: Sysroot
+ * @deployment: Deployment
+ * @unlocked_state: Transition to this unlocked state
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Configure the target deployment @deployment such that it
+ * is writable.  There are multiple modes, essentially differing
+ * in whether or not any changes persist across reboot.
+ *
+ * The `OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX` state is persistent
+ * across reboots.
+ */
+gboolean
+ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
+                                  OstreeDeployment  *deployment,
+                                  OstreeDeploymentUnlockedState unlocked_state,
+                                  GCancellable      *cancellable,
+                                  GError           **error)
+{
+  gboolean ret = FALSE;
+  OstreeDeploymentUnlockedState current_unlocked =
+    ostree_deployment_get_unlocked (deployment); 
+  glnx_unref_object OstreeDeployment *deployment_clone =
+    ostree_deployment_clone (deployment);
+  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
+  GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
+  const char hotfix_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
+  const char *ovl_options = NULL;
+  g_autofree char *deployment_path = NULL;
+  glnx_fd_close int deployment_dfd = -1;
+  pid_t mount_child;
+
+  /* This function cannot re-lock */
+  g_return_val_if_fail (unlocked_state != OSTREE_DEPLOYMENT_UNLOCKED_NONE, FALSE);
+
+  if (current_unlocked != OSTREE_DEPLOYMENT_UNLOCKED_NONE)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Deployment is already in unlocked state: %s",
+                   ostree_deployment_unlocked_state_to_string (current_unlocked));
+      goto out;
+    }
+
+  merge_deployment = ostree_sysroot_get_merge_deployment (self, ostree_deployment_get_osname (deployment));
+  if (!merge_deployment)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "No previous deployment to duplicate");
+      goto out;
+    }
+
+  /* For hotfixes, we push a rollback target */
+  if (unlocked_state == OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX)
+    {
+      if (!clone_deployment (self, deployment, merge_deployment, cancellable, error))
+        goto out;
+    }
+
+  /* Crack it open */
+  if (!ostree_sysroot_deployment_set_mutable (self, deployment, TRUE,
+                                              cancellable, error))
+    goto out;
+
+  deployment_path = ostree_sysroot_get_deployment_dirpath (self, deployment);
+
+  if (!glnx_opendirat (self->sysroot_fd, deployment_path, TRUE, &deployment_dfd, error))
+    goto out;
+
+  switch (unlocked_state)
+    {
+    case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
+      g_assert_not_reached ();
+      break;
+    case OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX:
+      {
+        /* Create the overlayfs directories in the deployment root
+         * directly for hotfixes.  The ostree-prepare-root.c helper
+         * is also set up to detect and mount these.
+         */
+        if (!glnx_shutil_mkdir_p_at (deployment_dfd, ".usr-ovl-upper", 0755, cancellable, error))
+          goto out;
+        if (!glnx_shutil_mkdir_p_at (deployment_dfd, ".usr-ovl-work", 0755, cancellable, error))
+          goto out;
+        ovl_options = hotfix_ovl_options;
+      }
+      break;
+    case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
+      {
+        /* We're just doing transient development/hacking?  Okay,
+         * stick the overlayfs bits in /var/tmp.
+         */
+        char *development_ovldir = strdupa ("/var/tmp/ostree-unlock-ovl.XXXXXX");
+        const char *development_ovl_upper;
+        const char *development_ovl_work;
+
+        if (!glnx_mkdtempat (AT_FDCWD, development_ovldir, 0700, error))
+          goto out;
+
+        development_ovl_upper = glnx_strjoina (development_ovldir, "/upper");
+        if (!glnx_shutil_mkdir_p_at (AT_FDCWD, development_ovl_upper, 0755, cancellable, error))
+          goto out;
+        development_ovl_work = glnx_strjoina (development_ovldir, "/work");
+        if (!glnx_shutil_mkdir_p_at (AT_FDCWD, development_ovl_work, 0755, cancellable, error))
+          goto out;
+        ovl_options = glnx_strjoina ("lowerdir=usr,upperdir=", development_ovl_upper,
+                                     ",workdir=", development_ovl_work);
+      }
+    }
+
+  g_assert (ovl_options != NULL);
+
+  /* Here we run `mount()` in a fork()ed child because we need to use
+   * `chdir()` in order to have the mount path options to overlayfs not
+   * look ugly.
+   *
+   * We can't `chdir()` inside a shared library since there may be
+   * threads, etc.
+   */
+  {
+    /* Make a copy of the fd that's *not* FD_CLOEXEC so that we pass
+     * it to the child.
+     */
+    glnx_fd_close int child_deployment_dfd = dup (deployment_dfd);
+
+    if (child_deployment_dfd < 0)
+      {
+        glnx_set_error_from_errno (error);
+        goto out;
+      }
+
+    mount_child = fork ();
+    if (mount_child < 0)
+      {
+        glnx_set_prefix_error_from_errno (error, "%s", "fork");
+        goto out;
+      }
+    else if (mount_child == 0)
+      {
+        /* Child process.  Do NOT use any GLib API here. */
+        if (fchdir (child_deployment_dfd) < 0)
+          exit (EXIT_FAILURE);
+        (void) close (child_deployment_dfd);
+        if (mount ("overlay", "/usr", "overlay", 0, ovl_options) < 0)
+          exit (EXIT_FAILURE);
+        exit (EXIT_SUCCESS);
+      }
+    else
+      {
+        /* Parent */
+        int estatus;
+
+        if (TEMP_FAILURE_RETRY (waitpid (mount_child, &estatus, 0)) < 0)
+          {
+            glnx_set_prefix_error_from_errno (error, "%s", "waitpid() on mount helper");
+            goto out;
+          }
+        if (!g_spawn_check_exit_status (estatus, error))
+          {
+            g_prefix_error (error, "overlayfs mount helper: "); 
+            goto out;
+          }
+      }
+  }
+
+  /* Now, write out the flag saying what we did */
+  switch (unlocked_state)
+    {
+    case OSTREE_DEPLOYMENT_UNLOCKED_NONE:
+      g_assert_not_reached ();
+      break;
+    case OSTREE_DEPLOYMENT_UNLOCKED_HOTFIX:
+      g_key_file_set_string (origin_clone, "origin", "unlocked",
+                             ostree_deployment_unlocked_state_to_string (unlocked_state));
+      if (!ostree_sysroot_write_origin_file (self, deployment, origin_clone,
+                                             cancellable, error))
+        goto out;
+      break;
+    case OSTREE_DEPLOYMENT_UNLOCKED_DEVELOPMENT:
+      {
+        g_autofree char *devpath = get_unlocked_development_path (deployment);
+        g_autofree char *devpath_parent = dirname (g_strdup (devpath));
+
+        if (!glnx_shutil_mkdir_p_at (AT_FDCWD, devpath_parent, 0755, cancellable, error))
+          goto out;
+        
+        if (!g_file_set_contents (devpath, "", 0, error))
+          goto out;
+      }
+    }
+
+  /* For hotfixes we already pushed a rollback which will bump the
+   * mtime, but we need to bump it again so that clients get the state
+   * change for this deployment.  For development we need to do this
+   * regardless.
+   */
+  if (!_ostree_sysroot_bump_mtime (self, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
