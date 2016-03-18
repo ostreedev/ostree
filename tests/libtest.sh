@@ -25,13 +25,14 @@ assert_not_reached () {
 
 test_tmpdir=$(pwd)
 
-# Extra sanity checks
-if test -d .git; then
-    assert_not_reached "Found .git, not in a tempdir?"
-fi
-echo "in ${test_tmpdir}"
-if ! echo ${test_tmpdir} | grep -E -q '^/(var/)?tmp'; then
-    assert_not_reached "Not in /tmp or /var/tmp"
+# Sanity check that we're in a tmpdir that has
+# just .testtmp (created by tap-driver for `make check`,
+# or nothing at all (as ginstest-runner does)
+if ! test -f .testtmp; then
+    files=$(ls)
+    if test -n "${files}"; then
+	assert_not_reached "test tmpdir=${test_tmpdir} is not empty; run this test via \`make check TESTS=\`, not directly"
+    fi
 fi
 
 export G_DEBUG=fatal-warnings
