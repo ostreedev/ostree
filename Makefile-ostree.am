@@ -58,6 +58,7 @@ ostree_SOURCES += \
 	src/ostree/ot-admin-builtin-init-fs.c \
 	src/ostree/ot-admin-builtin-diff.c \
 	src/ostree/ot-admin-builtin-deploy.c \
+	src/ostree/ot-admin-builtin-dup.c \
 	src/ostree/ot-admin-builtin-undeploy.c \
 	src/ostree/ot-admin-builtin-instutil.c \
 	src/ostree/ot-admin-builtin-cleanup.c \

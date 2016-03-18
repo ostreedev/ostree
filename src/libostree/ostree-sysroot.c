@@ -1481,6 +1481,10 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
  *
  * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN is
  * specified, then all current deployments will be kept.
+ *
+ * If %OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT is
+ * specified, then instead of prepending, the new deployment will be
+ * added right after the booted or merge deployment, instead of first.
  */
 gboolean
 ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
@@ -1497,6 +1501,8 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   g_autoptr(GPtrArray) deployments = NULL;
   g_autoptr(GPtrArray) new_deployments = g_ptr_array_new_with_free_func (g_object_unref);
   gboolean retain = (flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_RETAIN) > 0;
+  const gboolean make_default = !((flags & OSTREE_SYSROOT_SIMPLE_WRITE_DEPLOYMENT_FLAGS_NOT_DEFAULT) > 0);
+  gboolean added_new = FALSE;
 
   deployments = ostree_sysroot_get_deployments (sysroot);
   booted_deployment = ostree_sysroot_get_booted_deployment (sysroot);
@@ -1504,23 +1510,44 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
   if (osname == NULL && booted_deployment)
     osname = ostree_deployment_get_osname (booted_deployment);
 
-  g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+  if (make_default)
+    {
+      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      added_new = TRUE;
+    }
 
   for (i = 0; i < deployments->len; i++)
     {
       OstreeDeployment *deployment = deployments->pdata[i];
+      const gboolean is_merge_or_booted = 
+        ostree_deployment_equal (deployment, booted_deployment) ||
+        ostree_deployment_equal (deployment, merge_deployment);
       
       /* Keep deployments with different osnames, as well as the
        * booted and merge deployments
        */
       if (retain ||
-          (osname != NULL &&
-           strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
-          ostree_deployment_equal (deployment, booted_deployment) ||
-          ostree_deployment_equal (deployment, merge_deployment))
+          (osname != NULL && strcmp (ostree_deployment_get_osname (deployment), osname) != 0) ||
+          is_merge_or_booted)
         {
           g_ptr_array_add (new_deployments, g_object_ref (deployment));
         }
+
+      if (!added_new)
+        {
+          g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+          added_new = TRUE;
+        }
+    }
+
+  /* In this non-default case , an improvement in the future would be
+   * to put the new deployment right after the current default in the
+   * order.
+   */
+  if (!added_new)
+    {
+      g_ptr_array_add (new_deployments, g_object_ref (new_deployment));
+      added_new = TRUE;
     }
 
   if (!ostree_sysroot_write_deployments (sysroot, new_deployments, cancellable, error))
