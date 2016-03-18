@@ -841,7 +841,7 @@ meta_fetch_on_complete (GObject           *object,
   fd = openat (_ostree_fetcher_get_dfd (fetcher), temp_path, O_RDONLY | O_CLOEXEC);
   if (fd == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 

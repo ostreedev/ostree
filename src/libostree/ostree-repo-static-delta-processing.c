@@ -754,7 +754,7 @@ dispatch_write (OstreeRepo                 *repo,
         {
           if (lseek (state->read_source_fd, content_offset, SEEK_SET) == -1)
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
           while (content_size > 0)
@@ -767,7 +767,7 @@ dispatch_write (OstreeRepo                 *repo,
               while (G_UNLIKELY (bytes_read == -1 && errno == EINTR));
               if (bytes_read == -1)
                 {
-                  gs_set_error_from_errno (error, errno);
+                  glnx_set_error_from_errno (error);
                   goto out;
                 }
               if (G_UNLIKELY (bytes_read == 0))

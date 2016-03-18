@@ -204,7 +204,7 @@ ot_util_variant_map_fd (int                    fd,
 
   if (fstat (fd, &stbuf) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -212,7 +212,7 @@ ot_util_variant_map_fd (int                    fd,
   map = mmap (NULL, len, PROT_READ, MAP_PRIVATE, fd, start);
   if (!map)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 

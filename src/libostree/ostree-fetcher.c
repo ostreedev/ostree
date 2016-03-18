@@ -406,7 +406,7 @@ session_thread_request_uri (ThreadClosure *thread_closure,
             exists = FALSE;
           else
             {
-              gs_set_error_from_errno (&local_error, errno);
+              glnx_set_error_from_errno (&local_error);
               g_task_return_error (task, local_error);
               return;
             }
@@ -706,7 +706,7 @@ finish_stream (OstreeFetcherPendingURI *pending,
                pending->out_tmpfile,
                &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -922,7 +922,7 @@ on_request_sent (GObject        *object,
                    pending->out_tmpfile, oflags, 0666);
       if (fd == -1)
         {
-          gs_set_error_from_errno (&local_error, errno);
+          glnx_set_error_from_errno (&local_error);
           goto out;
         }
       pending->out_stream = g_unix_output_stream_new (fd, TRUE);

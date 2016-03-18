@@ -106,17 +106,17 @@ dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
 
   if (fstat (src_dfd, &src_stbuf) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
   if (fchown (dest_dfd, src_stbuf.st_uid, src_stbuf.st_gid) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
   if (fchmod (dest_dfd, src_stbuf.st_mode) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -144,7 +144,7 @@ copy_dir_recurse (int              src_parent_dfd,
   /* Create with mode 0700, we'll fchmod/fchown later */
   if (mkdirat (dest_parent_dfd, name, 0700) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -158,7 +158,7 @@ copy_dir_recurse (int              src_parent_dfd,
   srcd = fdopendir (src_dfd);
   if (!srcd)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -174,7 +174,7 @@ copy_dir_recurse (int              src_parent_dfd,
       if (fstatat (src_dfd, name, &child_stbuf,
                    AT_SYMLINK_NOFOLLOW) != 0)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -256,7 +256,7 @@ ensure_directory_from_template (int                 orig_etc_fd,
         }
       else
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           g_prefix_error (error, "mkdirat: ");
           goto out;
         }
@@ -306,7 +306,7 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       g_prefix_error (error, "Failed to read modified config file '%s': ", path);
       goto out;
     }
@@ -324,7 +324,7 @@ copy_modified_config_file (int                 orig_etc_fd,
       dest_parent_dfd = dup (new_etc_fd);
       if (dest_parent_dfd == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -337,7 +337,7 @@ copy_modified_config_file (int                 orig_etc_fd,
         ;
       else
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -363,7 +363,7 @@ copy_modified_config_file (int                 orig_etc_fd,
     {
       if (unlinkat (new_etc_fd, path, 0) < 0)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -1361,7 +1361,7 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     {
       if (errno != ENOENT)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
       else

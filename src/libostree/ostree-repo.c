@@ -2288,12 +2288,12 @@ ostree_repo_open (OstreeRepo    *self,
   if (!self->writable)
     {
       /* This is returned through ostree_repo_is_writable(). */
-      gs_set_error_from_errno (&self->writable_error, errno);
+      glnx_set_error_from_errno (&self->writable_error);
     }
 
   if (fstat (self->objects_dir_fd, &stbuf) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -2525,7 +2525,7 @@ list_loose_objects_at (OstreeRepo             *self,
   d = fdopendir (dfd);
   if (!d)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -2619,7 +2619,7 @@ list_loose_objects (OstreeRepo                     *self,
             continue;
           else
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
@@ -2750,7 +2750,7 @@ query_info_for_bare_content_object (OstreeRepo      *self,
           ret = TRUE;
           goto out;
         }
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -3100,7 +3100,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1 && errno != ENOENT)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -3114,7 +3114,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1 && errno != ENOENT)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -3232,7 +3232,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
         {
           if (G_UNLIKELY (errno != ENOENT))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
         }
@@ -3243,7 +3243,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -3379,7 +3379,7 @@ import_one_object_link (OstreeRepo    *self,
           ret = TRUE;
         }
       else
-        gs_set_error_from_errno (error, errno);
+        glnx_set_error_from_errno (error);
       
       goto out;
     }
@@ -3483,7 +3483,7 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -4651,7 +4651,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
         superblock_file_fd = openat (self->repo_dir_fd, superblock, O_RDONLY | O_CLOEXEC);
         if (superblock_file_fd == -1)
           {
-            gs_set_error_from_errno (error, errno);
+            glnx_set_error_from_errno (error);
             goto out;
           }
 
@@ -4694,7 +4694,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     {
       if (errno != ENOENT)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }

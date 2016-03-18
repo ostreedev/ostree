@@ -73,7 +73,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -91,7 +91,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
     {
       if (errno != EEXIST)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           g_prefix_error (error, "Storing file '%s': ", temp_filename);
           goto out;
         }
@@ -144,7 +144,7 @@ write_regular_file_content (OstreeRepo            *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -153,7 +153,7 @@ write_regular_file_content (OstreeRepo            *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
               
@@ -168,7 +168,7 @@ write_regular_file_content (OstreeRepo            *self,
     {
       if (fsync (fd) == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -203,7 +203,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (res == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
 
@@ -214,7 +214,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
                                     g_file_info_get_attribute_uint32 (file_info, "unix::gid"),
                                     AT_SYMLINK_NOFOLLOW) == -1))
             {
-              gs_set_error_from_errno (error, errno);
+              glnx_set_error_from_errno (error);
               goto out;
             }
 
@@ -242,7 +242,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
       while (G_UNLIKELY (fd == -1 && errno == EINTR));
       if (fd == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
       temp_out = g_unix_output_stream_new (fd, TRUE);
@@ -318,7 +318,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
   if (G_UNLIKELY (renameat (destination_dfd, temp_filename,
                             destination_dfd, destination_name) == -1))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -373,7 +373,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
   else
     {
       g_prefix_error (error, "Hardlinking %s to %s: ", loose_path, destination_name);
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -650,7 +650,7 @@ checkout_tree_at (OstreeRepo                        *self,
         did_exist = TRUE;
       else
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -734,7 +734,7 @@ checkout_tree_at (OstreeRepo                        *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -748,7 +748,7 @@ checkout_tree_at (OstreeRepo                        *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -764,7 +764,7 @@ checkout_tree_at (OstreeRepo                        *self,
       while (G_UNLIKELY (res == -1 && errno == EINTR));
       if (G_UNLIKELY (res == -1))
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -773,7 +773,7 @@ checkout_tree_at (OstreeRepo                        *self,
     {
       if (fsync (destination_dfd) == -1)
         {
-          gs_set_error_from_errno (error, errno);
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }

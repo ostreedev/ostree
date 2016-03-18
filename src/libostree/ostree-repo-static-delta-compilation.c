@@ -465,7 +465,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
   fd = g_mkstemp (tmpname);
   if (fd == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
   /* Doesn't need a name */

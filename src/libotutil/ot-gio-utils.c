@@ -309,7 +309,9 @@ ot_file_replace_contents_at (int             dfd,
       int r = posix_fallocate (fd, 0, g_bytes_get_size (contents));
       if (r != 0)
         {
-          gs_set_error_from_errno (error, r);
+          /* posix_fallocate is a weird deviation from errno standards */
+          errno = r;
+          glnx_set_error_from_errno (error);
           goto out;
         }
     }
@@ -320,7 +322,7 @@ ot_file_replace_contents_at (int             dfd,
 
   if (datasync && fdatasync (fd) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -329,7 +331,7 @@ ot_file_replace_contents_at (int             dfd,
 
   if (renameat (dfd, tmpname, dfd, path) == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -429,7 +431,7 @@ ot_util_fsync_directory (GFile         *dir,
 
   if (fsync (dfd) != 0)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 

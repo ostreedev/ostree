@@ -45,7 +45,7 @@ ot_gopendirat (int             dfd,
   int ret = ot_opendirat (dfd, path, follow);
   if (ret == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       return FALSE;
     }
   *out_fd = ret;
@@ -71,7 +71,7 @@ ot_lgetxattrat (int            dfd,
   while (G_UNLIKELY (bytes_read < 0 && errno == EINTR));
   if (G_UNLIKELY (bytes_read < 0))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
@@ -81,7 +81,7 @@ ot_lgetxattrat (int            dfd,
   while (G_UNLIKELY (real_size < 0 && errno == EINTR));
   if (G_UNLIKELY (real_size < 0))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       g_free (buf);
       goto out;
     }
@@ -111,7 +111,7 @@ ot_lsetxattrat (int            dfd,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       return FALSE;
     }
 
@@ -134,7 +134,7 @@ ot_readlinkat_gfile_info (int             dfd,
   while (G_UNLIKELY (len == -1 && errno == EINTR));
   if (len == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
   targetbuf[len] = '\0';
@@ -180,7 +180,7 @@ ot_openat_read_stream (int             dfd,
   while (G_UNLIKELY (fd == -1 && errno == EINTR));
   if (fd == -1)
     {
-      gs_set_error_from_errno (error, errno);
+      glnx_set_error_from_errno (error);
       goto out;
     }
 
