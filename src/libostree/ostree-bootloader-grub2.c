@@ -293,9 +293,9 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   g_autoptr(GFile) efi_new_config_temp = NULL;
   g_autoptr(GFile) efi_orig_config = NULL;
   g_autoptr(GFile) new_config_path = NULL;
-  glnx_unref_object GSSubprocessContext *procctx = NULL;
-  glnx_unref_object GSSubprocess *proc = NULL;
-  g_auto(GStrv) child_env = g_get_environ ();
+  GSubprocessFlags subp_flags = 0;
+  glnx_unref_object GSubprocessLauncher *launcher = NULL;
+  glnx_unref_object GSubprocess *proc = NULL;
   g_autofree char *bootversion_str = g_strdup_printf ("%u", (guint)bootversion);
   g_autoptr(GFile) config_path_efi_dir = NULL;
   g_autofree char *grub2_mkconfig_chroot = NULL;
@@ -337,41 +337,35 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
                                                       bootversion);
     }
 
-  procctx = gs_subprocess_context_newv ("grub2-mkconfig", "-o",
-                                        gs_file_get_path_cached (new_config_path),
-                                        NULL);
-  child_env = g_environ_setenv (child_env, "_OSTREE_GRUB2_BOOTVERSION", bootversion_str, TRUE);
+  if (!g_getenv ("OSTREE_DEBUG_GRUB2"))
+    subp_flags |= (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE);
+  
+  launcher = g_subprocess_launcher_new (subp_flags);
+  g_subprocess_launcher_setenv (launcher, "_OSTREE_GRUB2_BOOTVERSION", bootversion_str, TRUE);
   /* We have to pass our state to the child */
   if (self->is_efi)
-    child_env = g_environ_setenv (child_env, "_OSTREE_GRUB2_IS_EFI", "1", TRUE);
-  gs_subprocess_context_set_environment (procctx, child_env);
-  gs_subprocess_context_set_stdout_disposition (procctx, GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-  if (g_getenv ("OSTREE_DEBUG_GRUB2"))
-    gs_subprocess_context_set_stderr_disposition (procctx, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT);
-  else
-    gs_subprocess_context_set_stderr_disposition (procctx, GS_SUBPROCESS_STREAM_DISPOSITION_NULL);
-
+    g_subprocess_launcher_setenv (launcher, "_OSTREE_GRUB2_IS_EFI", "1", TRUE);
+    
   /* We need to chroot() if we're not in /.  This assumes our caller has
    * set up the bind mounts outside.
    */
   if (grub2_mkconfig_chroot != NULL)
-    {
-      gs_subprocess_context_set_child_setup (procctx, grub2_child_setup, grub2_mkconfig_chroot);
-    }
+    g_subprocess_launcher_set_child_setup (launcher, grub2_child_setup, grub2_mkconfig_chroot, NULL);
 
   /* In the current Fedora grub2 package, this script doesn't even try
      to be atomic; it just does:
 
-cat ${grub_cfg}.new > ${grub_cfg}
-rm -f ${grub_cfg}.new
+     cat ${grub_cfg}.new > ${grub_cfg}
+     rm -f ${grub_cfg}.new
 
      Upstream is fixed though.
   */
-  proc = gs_subprocess_new (procctx, cancellable, error);
-  if (!proc)
-    goto out;
+  proc = g_subprocess_launcher_spawn (launcher, error,
+                                      "grub2-mkconfig", "-o",
+                                      gs_file_get_path_cached (new_config_path),
+                                      NULL);
 
-  if (!gs_subprocess_wait_sync_check (proc, cancellable, error))
+  if (!g_subprocess_wait_check (proc, cancellable, error))
     goto out;
 
   /* Now let's fdatasync() for the new file */

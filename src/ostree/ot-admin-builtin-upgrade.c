@@ -133,16 +133,13 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
     }
   else
     {
-      g_autoptr(GFile) real_sysroot = g_file_new_for_path ("/");
-
       if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
         goto out;
 
-      if (opt_reboot && g_file_equal (ostree_sysroot_get_path (sysroot), real_sysroot))
+      if (opt_reboot)
         {
-          gs_subprocess_simple_run_sync (NULL, GS_SUBPROCESS_STREAM_DISPOSITION_INHERIT,
-                                         cancellable, error,
-                                         "systemctl", "reboot", NULL);
+          if (!ot_admin_execve_reboot (sysroot, error))
+            goto out;
         }
     }
 
