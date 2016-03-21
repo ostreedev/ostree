@@ -2561,6 +2561,16 @@ ostree_repo_open (OstreeRepo    *self,
       ostree_repo_set_disable_fsync (self, TRUE);
   }
 
+  { g_autofree char *tmp_expiry_seconds = NULL;
+
+    /* 86400 secs = one day */
+    if (!ot_keyfile_get_value_with_default (self->config, "core", "tmp-expiry-secs", "86400",
+                                            &tmp_expiry_seconds, error))
+      goto out;
+
+    self->tmp_expiry_seconds = g_ascii_strtoull (tmp_expiry_seconds, NULL, 10);
+  }
+
   if (!append_remotes_d (self, cancellable, error))
     goto out;
 
