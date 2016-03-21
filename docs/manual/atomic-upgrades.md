@@ -100,7 +100,10 @@ deployment lists.  This happens when doing an upgrade that does not
 include the kernel; think of a simple translation update.  OSTree
 optimizes for this case because on some systems `/boot` may be on a
 separate medium such as flash storage not optimized for significant
-amounts of write traffic.
+amounts of write traffic.  Related to this, modern OSTree has support
+for having `/boot` be a read-only mount by default - it will
+automatically remount read-write just for the portion of time
+necessary to update the bootloader configuration.
 
 To implement this, OSTree also maintains the directory
 `/ostree/boot.<replaceable>bootversion</replaceable>`, which is a set

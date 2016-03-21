@@ -192,6 +192,31 @@ AS_IF([ test x$with_selinux != xno ], [
 if test x$with_selinux != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +selinux"; fi
 AM_CONDITIONAL(USE_SELINUX, test $with_selinux != no)
 
+dnl This is what is in RHEL7.2 right now, picking it arbitrarily
+LIBMOUNT_DEPENDENCY="mount >= 2.23.0"
+
+AC_ARG_WITH(libmount,
+	    AS_HELP_STRING([--without-libmount], [Do not use libmount]),
+	    :, with_libmount=maybe)
+
+AS_IF([ test x$with_libmount != xno ], [
+    AC_MSG_CHECKING([for $LIBMOUNT_DEPENDENCY])
+    PKG_CHECK_EXISTS($LIBMOUNT_DEPENDENCY, have_libmount=yes, have_libmount=no)
+    AC_MSG_RESULT([$have_libmount])
+    AS_IF([ test x$have_libmount = xno && test x$with_libmount != xmaybe ], [
+       AC_MSG_ERROR([libmount is enabled but could not be found])
+    ])
+    AS_IF([ test x$have_libmount = xyes], [
+        AC_DEFINE([HAVE_LIBMOUNT], 1, [Define if we have libmount.pc])
+	PKG_CHECK_MODULES(OT_DEP_LIBMOUNT, $LIBMOUNT_DEPENDENCY)
+	with_libmount=yes
+    ], [
+	with_libmount=no
+    ])
+], [ with_libmount=no ])
+if test x$with_libmount != xno; then OSTREE_FEATURES="$OSTREE_FEATURES +libmount"; fi
+AM_CONDITIONAL(USE_LIBMOUNT, test $with_libmount != no)
+
 # Enabled by default because I think people should use it.
 AC_ARG_ENABLE(rofiles-fuse,
               [AS_HELP_STRING([--enable-rofiles-fuse],
@@ -260,6 +285,7 @@ echo "
     libsoup (retrieve remote HTTP repositories):  $with_soup
     libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux
+    libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
     man pages (xsltproc):                         $enable_man
