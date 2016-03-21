@@ -328,6 +328,7 @@ traverse_iter (OstreeRepo                          *repo,
 
           ostree_repo_commit_traverse_iter_get_file (iter, &name, &checksum);
 
+          g_debug ("Found file object %s", checksum);
           key = ostree_object_name_serialize (checksum, OSTREE_OBJECT_TYPE_FILE);
           g_hash_table_replace (inout_reachable, key, key);
           key = NULL;
@@ -341,6 +342,8 @@ traverse_iter (OstreeRepo                          *repo,
           ostree_repo_commit_traverse_iter_get_dir (iter, &name, &content_checksum,
                                                     &meta_checksum);
 
+          g_debug ("Found dirtree object %s", content_checksum);
+          g_debug ("Found dirmeta object %s", meta_checksum);
           key = ostree_object_name_serialize (meta_checksum, OSTREE_OBJECT_TYPE_DIR_META);
           g_hash_table_replace (inout_reachable, key, key);
           key = NULL;
@@ -381,6 +384,7 @@ traverse_dirtree (OstreeRepo           *repo,
                                  &dirtree, error))
     goto out;
 
+  g_debug ("Traversing dirtree %s", checksum);
   if (!ostree_repo_commit_traverse_iter_init_dirtree (&iter, repo, dirtree,
                                                       OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
                                                       error))
@@ -444,6 +448,7 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
       g_hash_table_add (inout_reachable, key);
       key = NULL;
 
+      g_debug ("Traversing commit %s", commit_checksum);
       if (!ostree_repo_commit_traverse_iter_init_commit (&iter, repo, commit,
                                                          OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE,
                                                          error))
