@@ -1349,11 +1349,12 @@ cleanup_tmpdir (OstreeRepo        *self,
           if (stbuf.st_mtime > curtime_secs)
             continue;
 
-          /* Now, we arbitrarily delete files/directories older than a
-           * day, since that's what we were doing before we had locking.
+          /* Now, we're pruning content based on the expiry, which
+           * defaults to a day.  That's what we were doing before we
+           * had locking...but in future we can be smarter here.
            */
           delta = curtime_secs - stbuf.st_mtime;
-          if (delta > 60*60*24)
+          if (delta > self->tmp_expiry_seconds)
             {
               if (!glnx_shutil_rm_rf_at (dfd_iter.fd, dent->d_name, cancellable, error))
                 goto out;

@@ -98,6 +98,7 @@ struct OstreeRepo {
   OstreeRepoMode mode;
   gboolean enable_uncompressed_cache;
   gboolean generate_sizes;
+  guint64 tmp_expiry_seconds;
 
   OstreeRepo *parent_repo;
 };
