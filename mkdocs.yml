@@ -1,4 +1,4 @@
-site_name: My Docs
+site_name: OSTree
 pages:
   - Home: 'index.md'
   - Contributing: 'CONTRIBUTING.md'
