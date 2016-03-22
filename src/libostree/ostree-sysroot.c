@@ -1676,7 +1676,7 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
   glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   GKeyFile *origin_clone = ostree_deployment_get_origin (deployment_clone);
   const char hotfix_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
-  const char *ovl_options;
+  const char *ovl_options = NULL;
   g_autofree char *deployment_path = NULL;
   glnx_fd_close int deployment_dfd = -1;
   pid_t mount_child;
@@ -1756,6 +1756,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
                                      ",workdir=", development_ovl_work);
       }
     }
+
+  g_assert (ovl_options != NULL);
 
   /* Here we run `mount()` in a fork()ed child because we need to use
    * `chdir()` in order to have the mount path options to overlayfs not
