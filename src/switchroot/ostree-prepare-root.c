@@ -216,7 +216,7 @@ main(int argc, char *argv[])
    * here just be relative.
    */
   orig_cwd_dfd = openat (AT_FDCWD, ".", O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
-  if (orig_cwd_dfd)
+  if (orig_cwd_dfd < 0)
     {
       perrorv ("failed to open .");
       exit (EXIT_FAILURE);
