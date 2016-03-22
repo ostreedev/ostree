@@ -231,7 +231,7 @@ main(int argc, char *argv[])
   /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
   if (lstat (".usr-ovl-work", &stbuf) == 0)
     {
-      const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper/upper,workdir=.usr-ovl-work";
+      const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
       if (mount ("overlay", "/usr", "overlay", 0, usr_ovl_options) < 0)
 	{
 	  perrorv ("failed to mount /usr overlayfs");
