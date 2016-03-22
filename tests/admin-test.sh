@@ -52,6 +52,8 @@ assert_ostree_deployment_refs() {
     diff -u ostree-refs{-expected,}.txt
 }
 
+export OSTREE_DEBUG_MOUNTINFO_FILE=${test_srcdir}/boot_partition.mountinfo
+
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)
 ${CMD_PREFIX} ostree --repo=sysroot/ostree/repo pull-local --remote=testos testos-repo testos/buildmaster/x86_64-runtime
 rev=$(${CMD_PREFIX} ostree --repo=sysroot/ostree/repo rev-parse testos/buildmaster/x86_64-runtime)

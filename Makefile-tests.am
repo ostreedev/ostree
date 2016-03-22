@@ -96,6 +96,7 @@ _installed_or_uninstalled_test_scripts = \
 	tests/test-admin-upgrade-endoflife.sh \
 	tests/test-admin-upgrade-systemd-update.sh \
 	tests/test-admin-deploy-syslinux.sh \
+	tests/test-admin-deploy-syslinux-bootonslash.sh \
 	tests/test-admin-deploy-2.sh \
 	tests/test-admin-deploy-karg.sh \
 	tests/test-admin-deploy-switch.sh \

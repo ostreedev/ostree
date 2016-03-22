@@ -66,10 +66,20 @@ static gboolean
 _ostree_bootloader_zipl_write_config (OstreeBootloader  *bootloader,
                                           int                bootversion,
                                           GPtrArray         *new_deployments,
+                                          const char        *boot_path_on_disk,
                                           GCancellable      *cancellable,
                                           GError           **error)
 {
   OstreeBootloaderZipl *self = OSTREE_BOOTLOADER_ZIPL (bootloader);
+
+  if (g_strcmp0 (boot_path_on_disk, "boot") != 0)
+    {
+      // TODO: Handle boot_path_on_disk != "boot"
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+          "/boot not on root not supported for zipl.  /boot was detected at %s",
+          boot_path_on_disk);
+      return FALSE;
+    }
 
   /* Write our stamp file */
   if (!glnx_file_replace_contents_at (self->sysroot->sysroot_fd, zipl_requires_execute_path,
