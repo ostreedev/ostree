@@ -251,11 +251,14 @@ AS_IF([test "x$with_dracut" = "xyes" || test "x$with_mkinitcpio" = "xyes"], [
 ])
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
 
-AC_ARG_WITH(grub2,
-            AS_HELP_STRING([--with-grub2],
-                           [Install grub2 hook (default: yes)]),,
-              [with_grub2=yes])
-AM_CONDITIONAL(BUILDOPT_GRUB2, test x$with_grub2 = xyes)
+AC_ARG_WITH(grub2-mkconfig,
+            AS_HELP_STRING([--with-grub2-mkconfig],
+                           [Use grub2-mkconfig to generate a GRUB2 configuration file (default: yes),
+                            otherwise use a custom ostree-grub-generator script.]),,
+              [with_grub2_mkconfig=yes])
+AM_CONDITIONAL(BUILDOPT_GRUB2_MKCONFIG, test x$with_grub2_mkconfig = xyes)
+AM_COND_IF(BUILDOPT_GRUB2_MKCONFIG,
+           AC_DEFINE([OSTREE_GRUB2_MKCONFIG], 1, [Define if using grub2-mkconfig]))
 
 dnl for tests
 AS_IF([test "x$found_introspection" = xyes], [
@@ -292,7 +295,8 @@ echo "
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
-    mkinitcpio:                                   $with_mkinitcpio"
+    mkinitcpio:                                   $with_mkinitcpio
+    grub2-mkconfig:                               $with_grub2_mkconfig"
 AS_IF([test "x$with_systemd" = "xyes"], [
     echo "    systemd unit dir:                             $with_systemdsystemunitdir"
 ])

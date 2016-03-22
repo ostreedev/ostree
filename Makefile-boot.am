@@ -1,4 +1,4 @@
-# Makefile for dracut module
+# Makefile for boot module
 #
 # Copyright (C) 2013 Colin Walters <walters@verbum.org>
 #
@@ -39,14 +39,15 @@ systemdsystemunit_DATA = src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service
 endif
 
-dist_pkglibexec_SCRIPTS = src/boot/grub2-15_ostree
-
-if BUILDOPT_GRUB2
+if BUILDOPT_GRUB2_MKCONFIG
+libexec_SCRIPTS = src/boot/grub2/grub2-15_ostree
 install-grub2-config-hook:
 	mkdir -p $(DESTDIR)$(grub2configdir)
-	ln -sf $(pkglibexecdir)/grub2-15_ostree $(DESTDIR)$(grub2configdir)/15_ostree
+	ln -sf $(libexecdir)/grub2-15_ostree $(DESTDIR)$(grub2configdir)/15_ostree
 grub2configdir = $(sysconfdir)/grub.d
 INSTALL_DATA_HOOKS += install-grub2-config-hook
+else
+libexec_SCRIPTS = src/boot/grub2/ostree-grub-generator
 endif
 
 EXTRA_DIST += src/boot/dracut/module-setup.sh \
@@ -54,4 +55,6 @@ EXTRA_DIST += src/boot/dracut/module-setup.sh \
 	src/boot/mkinitcpio/ostree \
 	src/boot/ostree-prepare-root.service \
 	src/boot/ostree-remount.service \
+	src/boot/grub2/grub2-15_ostree \
+	src/boot/grub2/ostree-grub-generator \
 	$(NULL)
