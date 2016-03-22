@@ -232,6 +232,21 @@ main(int argc, char *argv[])
   if (lstat (".usr-ovl-work", &stbuf) == 0)
     {
       const char usr_ovl_options[] = "lowerdir=usr,upperdir=.usr-ovl-upper,workdir=.usr-ovl-work";
+
+      /* Except overlayfs barfs if we try to mount it on a read-only
+       * filesystem.  For this use case I think admins are going to be
+       * okay if we remount the rootfs here, rather than waiting until
+       * later boot and `systemd-remount-fs.service`.
+       */
+      if (path_is_on_readonly_fs ("."))
+	{
+	  if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
+	    {
+	      perrorv ("Failed to remount rootfs writable (for overlayfs)");
+	      exit (EXIT_FAILURE);
+	    }
+	}
+      
       if (mount ("overlay", "/usr", "overlay", 0, usr_ovl_options) < 0)
 	{
 	  perrorv ("failed to mount /usr overlayfs");
