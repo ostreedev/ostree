@@ -118,7 +118,7 @@ main(int argc, char *argv[])
   char destpath[PATH_MAX];
   char newroot[PATH_MAX];
   struct stat stbuf;
-  int i;
+  int orig_cwd_dfd;
 
   if (argc < 2)
     {
