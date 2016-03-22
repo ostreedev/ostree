@@ -247,7 +247,7 @@ main(int argc, char *argv[])
 	    }
 	}
       
-      if (mount ("overlay", "/usr", "overlay", 0, usr_ovl_options) < 0)
+      if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
 	{
 	  perrorv ("failed to mount /usr overlayfs");
 	  exit (EXIT_FAILURE);
