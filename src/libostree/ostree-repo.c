@@ -3310,24 +3310,37 @@ import_one_object_copy (OstreeRepo    *self,
                         OstreeRepo    *source,
                         const char   *checksum,
                         OstreeObjectType objtype,
+                        gboolean      trusted,
                         GCancellable  *cancellable,
                         GError        **error)
 {
   gboolean ret = FALSE;
   guint64 length;
-  g_autoptr(GInputStream) object = NULL;
+  g_autoptr(GInputStream) object_stream = NULL;
 
   if (!ostree_repo_load_object_stream (source, objtype, checksum,
-                                       &object, &length,
+                                       &object_stream, &length,
                                        cancellable, error))
     goto out;
 
   if (objtype == OSTREE_OBJECT_TYPE_FILE)
     {
-      if (!ostree_repo_write_content_trusted (self, checksum,
-                                              object, length,
-                                              cancellable, error))
-        goto out;
+      if (trusted)
+        {
+          if (!ostree_repo_write_content_trusted (self, checksum,
+                                                  object_stream, length,
+                                                  cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_autofree guchar *real_csum = NULL;
+          if (!ostree_repo_write_content (self, checksum,
+                                          object_stream, length,
+                                          &real_csum,
+                                          cancellable, error))
+            goto out;
+        }
     }
   else
     {
@@ -3336,10 +3349,29 @@ import_one_object_copy (OstreeRepo    *self,
           if (!copy_detached_metadata (self, source, checksum, cancellable, error))
             goto out;
         }
-      if (!ostree_repo_write_metadata_stream_trusted (self, objtype,
-                                                      checksum, object, length,
-                                                      cancellable, error))
-        goto out;
+
+      if (trusted)
+        {
+          if (!ostree_repo_write_metadata_stream_trusted (self, objtype,
+                                                          checksum, object_stream, length,
+                                                          cancellable, error))
+            goto out;
+        }
+      else
+        {
+          g_autofree guchar *real_csum = NULL;
+          g_autoptr(GVariant) variant = NULL;
+
+          if (!ostree_repo_load_variant (source, objtype, checksum,
+                                         &variant, error))
+            goto out;
+
+          if (!ostree_repo_write_metadata (self, objtype,
+                                           checksum, variant,
+                                           &real_csum,
+                                           cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
@@ -3420,10 +3452,42 @@ ostree_repo_import_object_from (OstreeRepo           *self,
                                 GCancellable         *cancellable,
                                 GError              **error)
 {
+  return
+    ostree_repo_import_object_from_with_trust (self, source, objtype,
+                                               checksum, TRUE, cancellable, error);
+}
+
+/**
+ * ostree_repo_import_object_from_with_trust:
+ * @self: Destination repo
+ * @source: Source repo
+ * @objtype: Object type
+ * @checksum: checksum
+ * @trusted: If %TRUE, assume the source repo is valid and trusted
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Copy object named by @objtype and @checksum into @self from the
+ * source repository @source.  If both repositories are of the same
+ * type and on the same filesystem, this will simply be a fast Unix
+ * hard link operation.
+ *
+ * Otherwise, a copy will be performed.
+ */
+gboolean
+ostree_repo_import_object_from_with_trust (OstreeRepo           *self,
+                                           OstreeRepo           *source,
+                                           OstreeObjectType      objtype,
+                                           const char           *checksum,
+                                           gboolean              trusted,
+                                           GCancellable         *cancellable,
+                                           GError              **error)
+{
   gboolean ret = FALSE;
   gboolean hardlink_was_supported = FALSE;
-      
-  if (self->mode == source->mode)
+
+  if (trusted && /* Don't hardlink into untrusted remotes */
+      self->mode == source->mode)
     {
       if (!import_one_object_link (self, source, checksum, objtype,
                                    &hardlink_was_supported,
@@ -3438,10 +3502,10 @@ ostree_repo_import_object_from (OstreeRepo           *self,
       if (!ostree_repo_has_object (self, objtype, checksum, &has_object,
                                    cancellable, error))
         goto out;
-  
+
       if (!has_object)
         {
-          if (!import_one_object_copy (self, source, checksum, objtype,
+          if (!import_one_object_copy (self, source, checksum, objtype, trusted,
                                        cancellable, error))
             goto out;
         }
@@ -3451,6 +3515,7 @@ ostree_repo_import_object_from (OstreeRepo           *self,
  out:
   return ret;
 }
+
 
 /**
  * ostree_repo_query_object_storage_size:
