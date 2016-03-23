@@ -74,6 +74,14 @@ Boston, MA 02111-1307, USA.
             </varlistentry>
 
             <varlistentry>
+                <term><option>--untrusted</option></term>
+
+                <listitem><para>
+                    Do not trust local sources, verify checksums and don't hardlink into source.
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
                 <term><option>--disable-static-deltas</option></term>
 
                 <listitem><para>

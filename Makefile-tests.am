@@ -48,6 +48,7 @@ test_scripts = \
 	tests/test-pull-metalink.sh \
 	tests/test-pull-summary-sigs.sh \
 	tests/test-pull-resume.sh \
+	tests/test-pull-untrusted.sh \
 	tests/test-local-pull-depth.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-upgrade-unconfigured.sh \
