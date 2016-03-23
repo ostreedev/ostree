@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..1'
+echo '1..2'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -126,3 +126,11 @@ ${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
 assert_file_has_content deltascount "^1$"
 
 echo "ok prune"
+
+rm repo -rf
+ostree --repo=repo init --mode=bare-user
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo
+${CMD_PREFIX} ostree --repo=repo pull --depth=-1 --commit-metadata-only origin test
+ostree --repo=repo prune
+
+echo "ok prune with partial repo"
