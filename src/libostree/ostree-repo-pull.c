@@ -1188,7 +1188,8 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
   if (pull_data->remote_repo_local)
     {
-      if (!ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
+      if (!is_stored &&
+          !ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
                                            objtype, tmp_checksum,
                                            cancellable, error))
         goto out;
