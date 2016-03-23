@@ -25,6 +25,8 @@
 #include <selinux/label.h>
 #endif
 
+#include <fnmatch.h>
+
 #include "otutil.h"
 
 #include "ostree-sepolicy.h"
@@ -50,6 +52,7 @@ struct OstreeSePolicy {
   GFile *selinux_policy_root;
   struct selabel_handle *selinux_hnd;
   char *selinux_policy_name;
+  char *selinux_policy_csum;
 #endif
 };
 
@@ -77,6 +80,7 @@ ostree_sepolicy_finalize (GObject *object)
 #ifdef HAVE_SELINUX
   g_clear_object (&self->selinux_policy_root);
   g_clear_pointer (&self->selinux_policy_name, g_free);
+  g_clear_pointer (&self->selinux_policy_csum, g_free);
   if (self->selinux_hnd)
     {
       selabel_close (self->selinux_hnd);
@@ -154,6 +158,92 @@ ostree_sepolicy_class_init (OstreeSePolicyClass *klass)
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
+
+#ifdef HAVE_SELINUX
+
+/* Find the latest policy file in our root and return its checksum. */
+static gboolean
+get_policy_checksum (char **out_csum,
+                     GCancellable *cancellable,
+                     GError **error)
+{
+  gboolean ret = FALSE;
+  const char *binary_policy_path = selinux_binary_policy_path ();
+  g_autofree char *bindir_path = g_path_get_dirname (binary_policy_path);
+  g_autoptr(GFile) bindir = g_file_new_for_path (bindir_path);
+  g_autoptr(GFile) best_child = NULL;
+  int best_version = 0;
+
+  /* The binary_policy_path includes the prefix of the basename, but without the
+   * period, e.g. "policy". */
+  g_autofree char *binfile_prefix = g_path_get_basename (binary_policy_path);
+  g_autofree char *binfile_no_fnmatch = g_strdup_printf ("%s.*[!0-9]*",
+                                                         binfile_prefix);
+
+  g_autoptr(GFileEnumerator) direnum =
+    g_file_enumerate_children (bindir, OSTREE_GIO_FAST_QUERYINFO,
+                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                               cancellable, error);
+
+  if (!direnum)
+    goto out;
+
+  while (TRUE)
+    {
+      GFile *child;
+      GFileInfo *fi;
+      GFileType ftype;
+
+      if (!gs_file_enumerator_iterate (direnum, &fi, &child, cancellable, error))
+        goto out;
+      if (!fi)
+        break;
+
+      ftype = g_file_info_get_file_type (fi);
+      if (ftype == G_FILE_TYPE_REGULAR)
+        {
+          g_autofree char *name = g_file_get_basename (child);
+
+          /* poor man's regex */
+          if (g_str_has_prefix (name, binfile_prefix) &&
+              fnmatch (binfile_no_fnmatch, name, FNM_NOESCAPE))
+            {
+              int version = /* do +1 for the period */
+                (int)g_ascii_strtoll (name + strlen (binfile_prefix) + 1,
+                                      NULL, 10);
+              g_assert (version > 0);
+
+              if (version > best_version)
+                {
+                  best_version = version;
+
+                  /* NB: The docs for gs_file_enumerator_iterate() says we can't
+                   * unref child, but says nothing re. adding a ref (though it
+                   * should be fine judging by the source). That said, better to
+                   * just dup it. */
+                  g_object_unref (best_child);
+                  best_child = g_file_dup (child);
+                }
+            }
+        }
+    }
+
+  if (!best_child)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Could not find binary policy file");
+      goto out;
+    }
+
+  *out_csum = ot_checksum_file (best_child, G_CHECKSUM_SHA256,
+                                cancellable, error);
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+#endif
 
 static gboolean
 initable_init (GInitable     *initable,
@@ -257,6 +347,12 @@ initable_init (GInitable     *initable,
         freecon (con);
       }
 
+      if (!get_policy_checksum (&self->selinux_policy_csum, cancellable, error))
+        {
+          g_prefix_error (error, "While calculating SELinux checksum: ");
+          goto out;
+        }
+
       self->selinux_policy_name = g_strdup (policytype);
       self->selinux_policy_root = g_object_ref (etc_selinux_dir);
     }
@@ -306,11 +402,33 @@ ostree_sepolicy_get_path (OstreeSePolicy  *self)
   return self->path;
 }
 
+/**
+ * ostree_sepolicy_get_name:
+ * @self:
+ *
+ * Returns: (transfer none): Type of current policy
+ */
 const char *
 ostree_sepolicy_get_name (OstreeSePolicy *self)
 {
 #ifdef HAVE_SELINUX
   return self->selinux_policy_name;
+#else
+  return NULL;
+#endif
+}
+
+/**
+ * ostree_sepolicy_get_csum:
+ * @self:
+ *
+ * Returns: (transfer none): Checksum of current policy
+ */
+const char *
+ostree_sepolicy_get_csum (OstreeSePolicy *self)
+{
+#ifdef HAVE_SELINUX
+  return self->selinux_policy_csum;
 #else
   return NULL;
 #endif
