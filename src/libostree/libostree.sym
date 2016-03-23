@@ -328,8 +328,7 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* UNCOMMENT WITH NEW SYMBOLS HERE:
 LIBOSTREE_2016.5 {
 global:
+        ostree_repo_import_object_from_with_trust;
 } LIBOSTREE_2016.4;
-*/

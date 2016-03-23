@@ -93,6 +93,7 @@ typedef struct {
 
   gboolean          is_mirror;
   gboolean          is_commit_only;
+  gboolean          is_untrusted;
 
   char         *dir;
   gboolean      commitpartial_exists;
@@ -473,9 +474,9 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       if (!file_is_stored && pull_data->remote_repo_local)
         {
-          if (!ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
-                                               OSTREE_OBJECT_TYPE_FILE, file_checksum,
-                                               cancellable, error))
+          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                          OSTREE_OBJECT_TYPE_FILE, file_checksum, !pull_data->is_untrusted,
+                                                          cancellable, error))
             goto out;
         }
       else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
@@ -1189,9 +1190,9 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
   if (pull_data->remote_repo_local)
     {
       if (!is_stored &&
-          !ostree_repo_import_object_from (pull_data->repo, pull_data->remote_repo_local,
-                                           objtype, tmp_checksum,
-                                           cancellable, error))
+          !ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                      objtype, tmp_checksum, !pull_data->is_untrusted,
+                                                      cancellable, error))
         goto out;
       is_stored = TRUE;
       is_requested = TRUE;
@@ -1931,6 +1932,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
+  pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
 
   if (error)
     pull_data->async_error = &pull_data->cached_async_error;
