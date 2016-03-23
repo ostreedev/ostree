@@ -33,6 +33,7 @@ static gboolean opt_commit_only;
 static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
+static gboolean opt_untrusted;
 static char* opt_subpath;
 static int opt_depth = 0;
  
@@ -43,6 +44,7 @@ static GOptionEntry options[] = {
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
    { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
+   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust (local) sources", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { NULL }
@@ -133,6 +135,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_commit_only)
     pullflags |= OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY;
+
+  if (opt_untrusted)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
 
   if (opt_dry_run && !opt_require_static_deltas)
     {

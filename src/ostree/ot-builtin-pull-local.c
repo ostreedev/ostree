@@ -32,11 +32,13 @@
 
 static char *opt_remote;
 static gboolean opt_disable_fsync;
+static gboolean opt_untrusted;
 static int opt_depth = 0;
 
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
+  { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust source", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
   { NULL }
 };
@@ -54,6 +56,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   g_autoptr(GPtrArray) refs_to_fetch = NULL;
   g_autoptr(GHashTable) source_objects = NULL;
+  OstreeRepoPullFlags pullflags = 0;
 
   context = g_option_context_new ("SRC_REPO [REFS...] -  Copy data from SRC_REPO");
 
@@ -82,6 +85,9 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
       g_autofree char *cwd = g_get_current_dir ();
       src_repo_uri = g_strconcat ("file://", cwd, "/", src_repo_arg, NULL);
     }
+
+  if (opt_untrusted)
+    pullflags |= OSTREE_REPO_PULL_FLAGS_UNTRUSTED;
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
@@ -133,7 +139,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
 
     g_variant_builder_add (&builder, "{s@v}", "flags",
-                           g_variant_new_variant (g_variant_new_int32 (OSTREE_REPO_PULL_FLAGS_NONE)));
+                           g_variant_new_variant (g_variant_new_int32 (pullflags)));
     g_variant_builder_add (&builder, "{s@v}", "refs",
                            g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch->pdata, -1)));
     if (opt_remote)
