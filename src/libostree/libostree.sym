@@ -322,3 +322,14 @@ global:
         ostree_deployment_get_unlocked;
         ostree_deployment_unlocked_state_to_string;
 } LIBOSTREE_2016.3;
+
+/*                         NOTE NOTE NOTE
+ * Versions above here are released.  Only add symbols below this line.
+ *                         NOTE NOTE NOTE
+ */
+
+/* UNCOMMENT WITH NEW SYMBOLS HERE:
+LIBOSTREE_2016.5 {
+global:
+} LIBOSTREE_2016.4;
+*/

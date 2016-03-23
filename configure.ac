@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([ostree], [2016.3], [walters@verbum.org])
+AC_INIT([ostree], [2016.4], [walters@verbum.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])
 AC_CONFIG_AUX_DIR([build-aux])
