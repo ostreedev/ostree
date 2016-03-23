@@ -290,7 +290,6 @@ write_libarchive_entry_to_mtree (OstreeRepo           *self,
  out:
   return ret;
 }
-#endif
 
 static gboolean
 create_empty_dir_with_uidgid (OstreeRepo   *self,
@@ -308,6 +307,7 @@ create_empty_dir_with_uidgid (OstreeRepo   *self,
   
   return _ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, out_csum, cancellable, error);
 }
+#endif
 
 /**
  * ostree_repo_import_archive_to_mtree:
@@ -331,6 +331,7 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
                                      GCancellable                 *cancellable,
                                      GError                      **error)
 {
+#ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = archive;
   struct archive_entry *entry;
@@ -393,6 +394,11 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
   ret = TRUE;
  out:
   return ret;
+#else
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "This version of ostree is not compiled with libarchive support");
+  return FALSE;
+#endif
 }
                           
 /**
