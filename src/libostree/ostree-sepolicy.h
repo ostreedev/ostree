@@ -45,6 +45,9 @@ _OSTREE_PUBLIC
 const char *ostree_sepolicy_get_name (OstreeSePolicy *self);
 
 _OSTREE_PUBLIC
+const char *ostree_sepolicy_get_csum (OstreeSePolicy *self);
+
+_OSTREE_PUBLIC
 gboolean ostree_sepolicy_get_label (OstreeSePolicy    *self,
                                     const char       *relpath,
                                     guint32           unix_mode,

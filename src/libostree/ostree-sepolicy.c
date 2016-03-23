@@ -50,6 +50,7 @@ struct OstreeSePolicy {
   GFile *selinux_policy_root;
   struct selabel_handle *selinux_hnd;
   char *selinux_policy_name;
+  char *selinux_policy_csum;
 #endif
 };
 
@@ -77,6 +78,7 @@ ostree_sepolicy_finalize (GObject *object)
 #ifdef HAVE_SELINUX
   g_clear_object (&self->selinux_policy_root);
   g_clear_pointer (&self->selinux_policy_name, g_free);
+  g_clear_pointer (&self->selinux_policy_csum, g_free);
   if (self->selinux_hnd)
     {
       selabel_close (self->selinux_hnd);
@@ -154,6 +156,93 @@ ostree_sepolicy_class_init (OstreeSePolicyClass *klass)
                                                         G_TYPE_FILE,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
+
+#ifdef HAVE_SELINUX
+
+/* Find the latest policy file in our root and return its checksum. */
+static gboolean
+get_policy_checksum (char        **out_csum,
+                     GCancellable *cancellable,
+                     GError      **error)
+{
+  gboolean ret = FALSE;
+
+  const char *binary_policy_path = selinux_binary_policy_path ();
+  const char *binfile_prefix = glnx_basename (binary_policy_path);
+  g_autofree char *bindir_path = g_path_get_dirname (binary_policy_path);
+
+  glnx_fd_close int bindir_dfd = -1;
+
+  g_autofree char *best_policy = NULL;
+  int best_version = 0;
+
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0,};
+
+  if (!glnx_opendirat (AT_FDCWD, bindir_path, TRUE, &bindir_dfd, error))
+    goto out;
+
+  if (!glnx_dirfd_iterator_init_at (bindir_dfd, ".", FALSE, &dfd_iter, error))
+    goto out;
+
+  while (TRUE)
+    {
+      struct dirent *dent = NULL;
+
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                       cancellable, error))
+        goto out;
+
+      if (dent == NULL)
+        break;
+
+      if (dent->d_type == DT_REG)
+        {
+          /* We could probably save a few hundred nanoseconds if we accept that
+           * the prefix will always be "policy" and hardcode that in a static
+           * compile-once GRegex... But picture how exciting it'd be if it *did*
+           * somehow change; there would be cheers & slow-mo high-fives at the
+           * sight of our code not breaking. Is that hope not worth a fraction
+           * of a millisecond? I believe it is... or maybe I'm just lazy. */
+          g_autofree char *regex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$",
+                                                    binfile_prefix);
+
+          /* we could use match groups to extract the version, but mehhh, we
+           * already have the prefix on hand */
+          if (g_regex_match_simple (regex, dent->d_name, 0, 0))
+            {
+              int version = /* do +1 for the period */
+                (int)g_ascii_strtoll (dent->d_name + strlen (binfile_prefix)+1,
+                                      NULL, 10);
+              g_assert (version > 0);
+
+              if (version > best_version)
+                {
+                  best_version = version;
+                  g_free (best_policy);
+                  best_policy = g_strdup (dent->d_name);
+                }
+            }
+        }
+    }
+
+  if (!best_policy)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Could not find binary policy file");
+      goto out;
+    }
+
+  *out_csum = ot_checksum_file_at (bindir_dfd, best_policy, G_CHECKSUM_SHA256,
+                                   cancellable, error);
+  if (*out_csum == NULL)
+    goto out;
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+#endif
 
 static gboolean
 initable_init (GInitable     *initable,
@@ -257,6 +346,12 @@ initable_init (GInitable     *initable,
         freecon (con);
       }
 
+      if (!get_policy_checksum (&self->selinux_policy_csum, cancellable, error))
+        {
+          g_prefix_error (error, "While calculating SELinux checksum: ");
+          goto out;
+        }
+
       self->selinux_policy_name = g_strdup (policytype);
       self->selinux_policy_root = g_object_ref (etc_selinux_dir);
     }
@@ -306,11 +401,33 @@ ostree_sepolicy_get_path (OstreeSePolicy  *self)
   return self->path;
 }
 
+/**
+ * ostree_sepolicy_get_name:
+ * @self:
+ *
+ * Returns: (transfer none): Type of current policy
+ */
 const char *
 ostree_sepolicy_get_name (OstreeSePolicy *self)
 {
 #ifdef HAVE_SELINUX
   return self->selinux_policy_name;
+#else
+  return NULL;
+#endif
+}
+
+/**
+ * ostree_sepolicy_get_csum:
+ * @self:
+ *
+ * Returns: (transfer none): Checksum of current policy
+ */
+const char *
+ostree_sepolicy_get_csum (OstreeSePolicy *self)
+{
+#ifdef HAVE_SELINUX
+  return self->selinux_policy_csum;
 #else
   return NULL;
 #endif

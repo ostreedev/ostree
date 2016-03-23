@@ -53,10 +53,11 @@ gboolean ot_gio_checksum_stream (GInputStream   *in,
                                  GCancellable   *cancellable,
                                  GError        **error);
 
-char * ot_checksum_file (GFile          *file,
-                         GChecksumType   checksum_type,
-                         GCancellable   *cancellable,
-                         GError        **error);
+char * ot_checksum_file_at (int             dfd,
+                            const char     *path,
+                            GChecksumType   checksum_type,
+                            GCancellable   *cancellable,
+                            GError        **error);
 
 void ot_gio_checksum_stream_async (GInputStream         *in,
                                    int                   io_priority,

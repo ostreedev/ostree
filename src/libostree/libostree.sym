@@ -331,4 +331,5 @@ global:
 LIBOSTREE_2016.5 {
 global:
         ostree_repo_import_object_from_with_trust;
+        ostree_sepolicy_get_csum;
 } LIBOSTREE_2016.4;
