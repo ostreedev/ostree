@@ -144,6 +144,43 @@ piece of metadata, but we are encouraging its use in the OSTree
 ecosystem of tools.  Commands like `ostree admin status` show it by
 default.
 
+## Derived data - static deltas and the summary file
+
+As discussed in [Formats](formats.md), the `archive-z2` repository we
+use for "prod" requires one HTTP fetch per client request by default.
+If we're only performing a release e.g. once a week, it's appropriate
+to use "static deltas" to speed up client updates.
+
+So once we've used the above command to pull content from `repo-dev`
+into `repo-prod`, let's generate a delta against the previous commit:
+
+```
+ostree --repo=repo-prod static-delta generate exampleos/x86_64/standard
+```
+
+We may also want to support client systems upgrading from *two*
+commits previous.
+
+```
+ostree --repo=repo-prod static-delta generate --from=exampleos/x86_64/standard^^ --to=exampleos/x86_64/standard
+```
+
+Generating a full permutation of deltas across all prior versions can
+get expensive, and there is some support in the OSTree core for static
+deltas which "recurse" to a parent.  This can help create a model
+where clients download a chain of deltas.  Support for this is not
+fully implemented yet however.
+
+Regardless of whether or not you choose to generate static deltas,
+you should update the summary file:
+
+```
+ostree --repo=repo-prod summary -u
+```
+
+(Remember, the `summary` command can not be run concurrently, so this
+ should be triggered serially by other jobs).
+
 ## Pruning our build and dev repositories
 
 First, the OSTree author believes you should *not* use OSTree as a
