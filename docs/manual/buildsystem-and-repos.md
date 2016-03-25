@@ -178,3 +178,8 @@ commit.
 ```
 ostree --repo=repo static-delta generate exampleos/x86_64/standard
 ```
+
+## More sophisticated repository management
+
+Next, see [Repository Management](repository-management.md) for the
+next steps in managing content in OSTree repositories.
