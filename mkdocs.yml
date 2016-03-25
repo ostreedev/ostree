@@ -10,4 +10,5 @@ pages:
       - Adapting Existing Systems: 'manual/adapting-existing.md'
       - Formats: 'manual/formats.md'
       - Build Systems and Repos: 'manual/buildsystem-and-repos.md'
+      - Repository Management: 'manual/repository-management.md'
       - Related Projects: 'manual/related-projects.md'
