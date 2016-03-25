@@ -32,6 +32,7 @@
 
 static char *opt_subject;
 static char *opt_body;
+static char *opt_parent;
 static char *opt_branch;
 static char *opt_statoverride_file;
 static char **opt_metadata_strings;
@@ -67,6 +68,7 @@ parse_fsync_cb (const char  *option_name,
 }
 
 static GOptionEntry options[] = {
+  { "parent", 0, 0, G_OPTION_ARG_STRING, &opt_parent, "Parent ref, or \"none\"", "REF" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "SUBJECT" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "BODY" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
@@ -361,8 +363,22 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
       modifier = ostree_repo_commit_modifier_new (flags, commit_filter, mode_adds, NULL);
     }
 
-  if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
-    goto out;
+  if (opt_parent)
+    {
+      if (g_str_equal (opt_parent, "none"))
+        parent = NULL;
+      else
+        {
+          if (!ostree_validate_checksum_string (opt_parent, error))
+            goto out;
+          parent = g_strdup (opt_parent);
+        }
+    }
+  else
+    {
+      if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
+        goto out;
+    }
 
   if (!opt_subject && !opt_body)
     {

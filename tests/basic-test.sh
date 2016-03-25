@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..50"
+echo "1..52"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -95,6 +95,23 @@ cd checkout-test2-4
 assert_file_has_content yet/another/tree/green 'leaf'
 assert_file_has_content four '4'
 echo "ok cwd contents"
+
+cd ${test_tmpdir}
+$OSTREE commit -b test2-no-parent -s '' $test_tmpdir/checkout-test2-4
+assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
+$OSTREE commit -b test2-no-parent -s '' --parent=none $test_tmpdir/checkout-test2-4
+assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
+echo "ok commit no parent"
+
+cd ${test_tmpdir}
+$OSTREE commit -b test2-custom-parent -s '' $test_tmpdir/checkout-test2-4
+$OSTREE commit -b test2-custom-parent -s '' $test_tmpdir/checkout-test2-4
+$OSTREE commit -b test2-custom-parent -s '' $test_tmpdir/checkout-test2-4
+assert_streq $($OSTREE log test2-custom-parent |grep '^commit' | wc -l) "3"
+prevparent=$($OSTREE rev-parse test2-custom-parent^)
+$OSTREE commit -b test2-custom-parent -s '' --parent=${prevparent} $test_tmpdir/checkout-test2-4
+assert_streq $($OSTREE log test2-custom-parent |grep '^commit' | wc -l) "3"
+echo "ok commit custom parent"
 
 cd ${test_tmpdir}
 $OSTREE diff test2^ test2 > diff-test2
