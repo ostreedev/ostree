@@ -32,9 +32,9 @@ ${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
 
 ${CMD_PREFIX} ostree --repo=repo2 --untrusted pull-local repo
 
-if [ ! "x`find repo2 -links +1`" == "x" ] ; then
+find repo2 -type f -links +1 | while read line; do
     assert_not_reached "pull-local created hardlinks"
-fi
+done
 echo "ok pull-local --untrusted didn't hardlink"
 
 # Corrupt repo
