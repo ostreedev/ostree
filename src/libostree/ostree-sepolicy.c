@@ -163,80 +163,85 @@ ostree_sepolicy_class_init (OstreeSePolicyClass *klass)
 
 /* Find the latest policy file in our root and return its checksum. */
 static gboolean
-get_policy_checksum (char **out_csum,
+get_policy_checksum (char        **out_csum,
                      GCancellable *cancellable,
-                     GError **error)
+                     GError      **error)
 {
   gboolean ret = FALSE;
+
   const char *binary_policy_path = selinux_binary_policy_path ();
   g_autofree char *bindir_path = g_path_get_dirname (binary_policy_path);
-  g_autoptr(GFile) bindir = g_file_new_for_path (bindir_path);
-  g_autoptr(GFile) best_child = NULL;
+  g_autofree char *binfile_prefix = g_path_get_basename (binary_policy_path);
+
+  glnx_fd_close int bindir_dfd = -1;
+
+  g_autofree char *best_policy = NULL;
   int best_version = 0;
 
-  /* The binary_policy_path includes the prefix of the basename, but without the
-   * period, e.g. "policy". */
-  g_autofree char *binfile_prefix = g_path_get_basename (binary_policy_path);
-  g_autofree char *binfile_no_fnmatch = g_strdup_printf ("%s.*[!0-9]*",
-                                                         binfile_prefix);
+  static gsize regex_initialized;
+  static GRegex *regex;
 
-  g_autoptr(GFileEnumerator) direnum =
-    g_file_enumerate_children (bindir, OSTREE_GIO_FAST_QUERYINFO,
-                               G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                               cancellable, error);
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0,};
 
-  if (!direnum)
+  if (g_once_init_enter (&regex_initialized))
+    {
+      g_autofree char *sregex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$",
+                                                 binfile_prefix);
+      regex = g_regex_new (sregex, 0, 0, NULL);
+      g_assert (regex);
+      g_once_init_leave (&regex_initialized, 1);
+    }
+
+  if (!glnx_opendirat (AT_FDCWD, bindir_path, TRUE, &bindir_dfd, error))
+    goto out;
+
+  if (!glnx_dirfd_iterator_init_at (bindir_dfd, ".", FALSE, &dfd_iter, error))
     goto out;
 
   while (TRUE)
     {
-      GFile *child;
-      GFileInfo *fi;
-      GFileType ftype;
+      struct dirent *dent = NULL;
 
-      if (!gs_file_enumerator_iterate (direnum, &fi, &child, cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent,
+                                                       cancellable, error))
         goto out;
-      if (!fi)
+
+      if (dent == NULL)
         break;
 
-      ftype = g_file_info_get_file_type (fi);
-      if (ftype == G_FILE_TYPE_REGULAR)
+      if (dent->d_type == DT_REG)
         {
-          g_autofree char *name = g_file_get_basename (child);
-
-          /* poor man's regex */
-          if (g_str_has_prefix (name, binfile_prefix) &&
-              fnmatch (binfile_no_fnmatch, name, FNM_NOESCAPE))
+          /* we could use match groups to extract the version, but mehhh, we
+           * already have the prefix on hand */
+          if (g_regex_match (regex, dent->d_name, 0, NULL))
             {
               int version = /* do +1 for the period */
-                (int)g_ascii_strtoll (name + strlen (binfile_prefix) + 1,
+                (int)g_ascii_strtoll (dent->d_name + strlen (binfile_prefix)+1,
                                       NULL, 10);
               g_assert (version > 0);
 
               if (version > best_version)
                 {
                   best_version = version;
-
-                  /* NB: The docs for gs_file_enumerator_iterate() says we can't
-                   * unref child, but says nothing re. adding a ref (though it
-                   * should be fine judging by the source). That said, better to
-                   * just dup it. */
-                  g_object_unref (best_child);
-                  best_child = g_file_dup (child);
+                  g_free (best_policy);
+                  best_policy = g_strdup (dent->d_name);
                 }
             }
         }
     }
 
-  if (!best_child)
+  if (!best_policy)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Could not find binary policy file");
       goto out;
     }
 
-  *out_csum = ot_checksum_file (best_child, G_CHECKSUM_SHA256,
-                                cancellable, error);
+  {
+    g_autofree char *path = glnx_fdrel_abspath (bindir_dfd, best_policy);
+    g_autoptr(GFile) file = g_file_new_for_path (path);
+    *out_csum = ot_checksum_file (file, G_CHECKSUM_SHA256, cancellable, error);
+  }
 
   ret = TRUE;
 out:
