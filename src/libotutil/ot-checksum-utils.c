@@ -140,17 +140,17 @@ ot_gio_checksum_stream (GInputStream   *in,
 }
 
 char *
-ot_checksum_file (GFile          *file,
-                  GChecksumType   checksum_type,
-                  GCancellable   *cancellable,
-                  GError        **error)
+ot_checksum_file_at (int             dfd,
+                     const char     *path,
+                     GChecksumType   checksum_type,
+                     GCancellable   *cancellable,
+                     GError        **error)
 {
   GChecksum *checksum = NULL;
   char *ret = NULL;
   g_autoptr(GInputStream) in = NULL;
 
-  in = (GInputStream*)g_file_read (file, cancellable, error);
-  if (!in)
+  if (!ot_openat_read_stream (dfd, path, TRUE, &in, cancellable, error))
     goto out;
 
   checksum = g_checksum_new (checksum_type);

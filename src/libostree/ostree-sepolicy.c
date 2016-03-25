@@ -25,8 +25,6 @@
 #include <selinux/label.h>
 #endif
 
-#include <fnmatch.h>
-
 #include "otutil.h"
 
 #include "ostree-sepolicy.h"
@@ -170,27 +168,15 @@ get_policy_checksum (char        **out_csum,
   gboolean ret = FALSE;
 
   const char *binary_policy_path = selinux_binary_policy_path ();
+  const char *binfile_prefix = glnx_basename (binary_policy_path);
   g_autofree char *bindir_path = g_path_get_dirname (binary_policy_path);
-  g_autofree char *binfile_prefix = g_path_get_basename (binary_policy_path);
 
   glnx_fd_close int bindir_dfd = -1;
 
   g_autofree char *best_policy = NULL;
   int best_version = 0;
 
-  static gsize regex_initialized;
-  static GRegex *regex;
-
   g_auto(GLnxDirFdIterator) dfd_iter = { 0,};
-
-  if (g_once_init_enter (&regex_initialized))
-    {
-      g_autofree char *sregex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$",
-                                                 binfile_prefix);
-      regex = g_regex_new (sregex, 0, 0, NULL);
-      g_assert (regex);
-      g_once_init_leave (&regex_initialized, 1);
-    }
 
   if (!glnx_opendirat (AT_FDCWD, bindir_path, TRUE, &bindir_dfd, error))
     goto out;
@@ -211,9 +197,18 @@ get_policy_checksum (char        **out_csum,
 
       if (dent->d_type == DT_REG)
         {
+          /* We could probably save a few hundred nanoseconds if we accept that
+           * the prefix will always be "policy" and hardcode that in a static
+           * compile-once GRegex... But picture how exciting it'd be if it *did*
+           * somehow change; there would be cheers & slow-mo high-fives at the
+           * sight of our code not breaking. Is that hope not worth a fraction
+           * of a millisecond? I believe it is... or maybe I'm just lazy. */
+          g_autofree char *regex = g_strdup_printf ("^\\Q%s\\E\\.[0-9]+$",
+                                                    binfile_prefix);
+
           /* we could use match groups to extract the version, but mehhh, we
            * already have the prefix on hand */
-          if (g_regex_match (regex, dent->d_name, 0, NULL))
+          if (g_regex_match_simple (regex, dent->d_name, 0, 0))
             {
               int version = /* do +1 for the period */
                 (int)g_ascii_strtoll (dent->d_name + strlen (binfile_prefix)+1,
@@ -237,11 +232,10 @@ get_policy_checksum (char        **out_csum,
       goto out;
     }
 
-  {
-    g_autofree char *path = glnx_fdrel_abspath (bindir_dfd, best_policy);
-    g_autoptr(GFile) file = g_file_new_for_path (path);
-    *out_csum = ot_checksum_file (file, G_CHECKSUM_SHA256, cancellable, error);
-  }
+  *out_csum = ot_checksum_file_at (bindir_dfd, best_policy, G_CHECKSUM_SHA256,
+                                   cancellable, error);
+  if (*out_csum == NULL)
+    goto out;
 
   ret = TRUE;
 out:
