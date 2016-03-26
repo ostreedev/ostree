@@ -132,7 +132,7 @@ ostree_run (int    argc,
   /* avoid gvfs (http://bugzilla.gnome.org/show_bug.cgi?id=526454) */
   g_setenv ("GIO_USE_VFS", "local", TRUE);
 
-  g_log_set_handler (NULL, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
+  g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE, message_handler, NULL);
 
   /*
    * Parse the global options. We rearrange the options as
@@ -255,7 +255,7 @@ ostree_option_context_parse (GOptionContext *context,
     }
 
   if (opt_verbose)
-    g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, message_handler, NULL);
+    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, message_handler, NULL);
 
   if (opt_repo == NULL && !(flags & OSTREE_BUILTIN_FLAG_NO_REPO))
     {
