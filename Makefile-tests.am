@@ -216,6 +216,10 @@ EXTRA_DIST += \
 	tests/gpg-verify-data/trustdb.gpg \
 	tests/gpg-verify-data/gpg.conf
 
+tests-libreaddir-rand-so-symlink:
+	ln -fns ../.libs/libreaddir-rand.so tests
+ALL_LOCAL_RULES += tests-libreaddir-rand-so-symlink
+
 # Unfortunately the glib test data APIs don't actually handle
 # non-recursive Automake, so we change our code to canonically look
 # for tests/ which is just a symlink when installed.

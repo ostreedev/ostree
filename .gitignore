@@ -70,6 +70,7 @@ _build
 /test-remote-add.test
 /test-setuid.test
 /test-xattrs.test
+/tests/libreaddir-rand.so
 test-varint
 test*.test
 *.trs
