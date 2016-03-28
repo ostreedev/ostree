@@ -22,7 +22,7 @@ dist-snapshot:
 	  tar -A -f $${TARFILE_TMP} submodule.tar; \
 	  rm submodule.tar; \
 	done; \
-	mv $(PKG_VER).tar{.tmp,}; \
+	mv $(PKG_VER).tar.tmp $(PKG_VER).tar; \
 	rm -f $(PKG_VER).tar.xz; \
 	xz $(PKG_VER).tar 
 
