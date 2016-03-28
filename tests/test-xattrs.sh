@@ -21,7 +21,8 @@ set -euo pipefail
 
 touch test-xattrs
 if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
-    exit 77
+    echo "1..0 # SKIP: cannot run setfattr"
+    exit 0
 fi
 
 echo "1..2"
