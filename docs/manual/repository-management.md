@@ -32,7 +32,7 @@ Many content vendors will want to separate their internal development
 with what is made public to the world.  Therefore, you will want (at
 least) two OSTree repositories, we'll call them "dev" and "prod".
 
-To phase this another way, let's say you have continuous delivery
+To phrase this another way, let's say you have a continuous delivery
 system which is building from git and committing into your "dev"
 OSTree repository.  This might happen tens to hundreds of times per
 day.  That's a substantial amount of history over time, and it's
@@ -48,13 +48,13 @@ We'll discuss this later, but first, let's talk about promotion
 
 ## Promoting content along OSTree branches - "buildmaster", "smoketested"
 
-Besides multiple repositories, like git, OSTree also supports multiple
-branches inside one repository.  We saw in an earlier section an
-example branch name like `exampleos/x86_64/standard`.  Choosing the
-branch name for your "prod" repository is absolutely critical as
-client systems will reference it.  It becomes an important part of
-your face to the world, in the same way the "master" branch in a git
-repository is.
+Besides multiple repositories, OSTree also supports multiple branches
+inside one repository, equivalent to git's branches.  We saw in an
+earlier section an example branch name like
+`exampleos/x86_64/standard`.  Choosing the branch name for your "prod"
+repository is absolutely critical as client systems will reference it.
+It becomes an important part of your face to the world, in the same
+way the "master" branch in a git repository is.
 
 But with your "dev" repository internally, it can be very useful to
 use OSTree's branching concepts to represent different stages in a
@@ -66,7 +66,7 @@ term "buildmaster" to represent something that came straight from git
 master.  It may not be tested very much.
 
 Our next step should be to hook up a testing system (Jenkins,
-Buildbot, etc.) to this.  When build (commit) passes some tests, we
+Buildbot, etc.) to this.  When a build (commit) passes some tests, we
 want to "promote" that commit.  Let's create a new branch called
 `smoketested` to say that some basic sanity checks pass on the
 complete system.  This might be where human testers get involved, for
@@ -181,6 +181,9 @@ ostree --repo=repo-prod summary -u
 
 (Remember, the `summary` command can not be run concurrently, so this
  should be triggered serially by other jobs).
+
+There is some more information on the design of the summary file in
+[Repo](repo.md).
 
 ## Pruning our build and dev repositories
 
