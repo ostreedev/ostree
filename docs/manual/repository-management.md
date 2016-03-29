@@ -16,8 +16,9 @@ particular model or tool.  That said, a goal is to include at least
 some sample scripts and workflows upstream in a potential new
 "contrib" git repository.
 
-Today, the [Pulp Project](http://www.pulpproject.org/) which is a
-generic content management system, does have an
+One example of software which can assist in managing OSTree
+repositories today is the [Pulp Project](http://www.pulpproject.org/),
+which has a
 [Pulp OSTree plugin](https://pulp-ostree.readthedocs.org/en/latest/).
 
 ## Separate development vs release repositories
