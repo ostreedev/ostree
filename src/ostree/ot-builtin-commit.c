@@ -33,6 +33,7 @@
 static char *opt_subject;
 static char *opt_body;
 static char *opt_parent;
+static gboolean opt_orphan;
 static char *opt_branch;
 static char *opt_statoverride_file;
 static char **opt_metadata_strings;
@@ -72,6 +73,7 @@ static GOptionEntry options[] = {
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "SUBJECT" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "BODY" },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
+  { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Add a key/value pair to detached metadata", "KEY=VALUE" },
@@ -340,10 +342,10 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
         goto out;
     }
       
-  if (!opt_branch)
+  if (!(opt_branch || opt_orphan))
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "A branch must be specified with --branch");
+                           "A branch must be specified with --branch, or use --orphan");
       goto out;
     }
 
@@ -374,13 +376,13 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
           parent = g_strdup (opt_parent);
         }
     }
-  else
+  else if (!opt_orphan)
     {
       if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
         goto out;
     }
 
-  if (!opt_subject && !opt_body)
+  if (!opt_subject && !opt_body && !opt_orphan)
     {
       if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
         goto out;
@@ -563,7 +565,10 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
             }
         }
 
-      ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
+      if (opt_branch)
+        ostree_repo_transaction_set_ref (repo, NULL, opt_branch, commit_checksum);
+      else
+        g_assert (opt_orphan);
 
       if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
         goto out;

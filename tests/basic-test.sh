@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..52"
+echo "1..53"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -112,6 +112,16 @@ prevparent=$($OSTREE rev-parse test2-custom-parent^)
 $OSTREE commit -b test2-custom-parent -s '' --parent=${prevparent} $test_tmpdir/checkout-test2-4
 assert_streq $($OSTREE log test2-custom-parent |grep '^commit' | wc -l) "3"
 echo "ok commit custom parent"
+
+cd ${test_tmpdir}
+orphaned_rev=$($OSTREE commit --orphan -s '' $test_tmpdir/checkout-test2-4)
+$OSTREE ls ${orphaned_rev} >/dev/null
+$OSTREE prune --refs-only
+if $OSTREE ls ${orphaned_rev} 2>err.txt; then
+    assert_not_reached "Found orphaned commit"
+fi
+assert_file_has_content err.txt "No such metadata object"
+echo "ok commit orphaned"
 
 cd ${test_tmpdir}
 $OSTREE diff test2^ test2 > diff-test2
