@@ -20,7 +20,7 @@
 set -euo pipefail
 
 # If gjs is not installed, skip the test
-if ! gjs --help >/dev/null 2>&1; then
+if ! which gjs >/dev/null 2>&1; then
     echo "1..0 # SKIP no gjs"
     exit 0
 fi
@@ -55,7 +55,16 @@ do_corrupt_pull_test() {
 
 # FIXME - ignore errors here since gjs in RHEL7 has the final
 # unrooting bug
-gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
+
+# super hacky fix to support both installed and uninstalled tests. we'll
+# probably want to just enable it for one of them.
+if [ -f /lib64/libostree-1.so ]; then
+  gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
+else
+  GI_TYPELIB_PATH=${BUILDDIR} LD_PRELOAD=${BUILDDIR}/.libs/libostree-1.so \
+    gjs $(dirname $0)/corrupt-repo-ref.js ${repopath} main || true
+fi
+
 assert_file_has_content corrupted-status.txt 'Changed byte'
 do_corrupt_pull_test
 echo "ok corruption"
