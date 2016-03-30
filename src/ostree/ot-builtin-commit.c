@@ -194,9 +194,8 @@ commit_editor (OstreeRepo     *repo,
   input = g_strdup_printf ("\n"
       "# Please enter the commit message for your changes. The first line will\n"
       "# become the subject, and the remainder the body. Lines starting\n"
-      "# with '#' will be ignored, and an empty message aborts the commit.\n"
-      "#\n"
-      "# Branch: %s\n", branch);
+      "# with '#' will be ignored, and an empty message aborts the commit."
+      "%s%s\n", branch ? "\n#\n# Branch: " : "", branch ?: "");
 
   output = ot_editor_prompt (repo, input, cancellable, error);
   if (output == NULL)
@@ -382,7 +381,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
         goto out;
     }
 
-  if (!opt_subject && !opt_body && !opt_orphan)
+  if (!opt_subject && !opt_body)
     {
       if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
         goto out;
