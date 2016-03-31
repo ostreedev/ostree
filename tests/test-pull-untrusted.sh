@@ -39,6 +39,12 @@ echo "ok pull-local --untrusted didn't hardlink"
 
 # Corrupt repo
 for i in ${test_tmpdir}/repo/objects/*/*.file; do
+
+    # make sure it's not a symlink
+    if [ -L $i ]; then
+        continue
+    fi
+
     echo "corrupting $i"
     echo "broke" >> $i
     break;
@@ -50,14 +56,14 @@ ${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
 if ${CMD_PREFIX} ostree --repo=repo2 pull-local repo; then
     echo "ok trusted pull with corruption succeeded"
 else
-    assert_not_reached "corrupted trusted pull unexpectedly succeeded!"
+    assert_not_reached "trusted pull with corruption unexpectedly failed!"
 fi
 
 rm -rf repo2
 mkdir repo2
 ${CMD_PREFIX} ostree --repo=repo2 init --mode="bare"
 if ${CMD_PREFIX} ostree --repo=repo2 pull-local --untrusted repo; then
-    assert_not_reached "corrupted untrusted pull unexpectedly failed!"
+    assert_not_reached "untrusted pull with corruption unexpectedly succeeded!"
 else
     echo "ok untrusted pull with corruption failed"
 fi
