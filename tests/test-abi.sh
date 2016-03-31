@@ -21,8 +21,8 @@ set -euo pipefail
 
 echo '1..1'
 
-grep ' ostree_[A-Za-z0-9_]*;' ${SRCDIR}/src/libostree/libostree.sym | sed -e 's,^ *\([A-Za-z0-9_]*\);,\1,' | sort -u > expected-symbols.txt
-eu-readelf -a ${BUILDDIR}/.libs/libostree-1.so | grep 'FUNC.*GLOBAL.*DEFAULT.*@@LIBOSTREE_' | sed -e 's,^.* \(ostree_[A-Za-z0-9_]*\)@@LIBOSTREE_[0-9_.]*,\1,' |sort -u > found-symbols.txt
+grep ' ostree_[A-Za-z0-9_]*;' ${G_TEST_SRCDIR}/src/libostree/libostree.sym | sed -e 's,^ *\([A-Za-z0-9_]*\);,\1,' | sort -u > expected-symbols.txt
+eu-readelf -a ${G_TEST_BUILDDIR}/.libs/libostree-1.so | grep 'FUNC.*GLOBAL.*DEFAULT.*@@LIBOSTREE_' | sed -e 's,^.* \(ostree_[A-Za-z0-9_]*\)@@LIBOSTREE_[0-9_.]*,\1,' |sort -u > found-symbols.txt
 diff -u expected-symbols.txt found-symbols.txt
 
 echo 'ok'
