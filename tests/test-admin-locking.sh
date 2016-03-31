@@ -25,8 +25,8 @@ set -euo pipefail
 setup_os_repository "archive-z2" "syslinux"
 
 # If parallel is not installed, skip the test
-if ! parallel --help >/dev/null 2>&1; then
-    echo "1..0 # SKIP no /usr/bin/parallel"
+if ! parallel --gnu /bin/true </dev/null >/dev/null 2>&1; then
+    echo "1..0 # SKIP GNU parallel not available"
     exit 0
 fi    
 
@@ -42,7 +42,7 @@ echo "rev=${rev}"
 ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
 assert_has_dir sysroot/boot/ostree/testos-${bootcsum}
 
-parallel_cmd=parallel
+parallel_cmd="parallel --gnu"
 if parallel --help | grep -q -e --no-notice; then
     parallel_cmd="${parallel_cmd} --no-notice"
 fi
