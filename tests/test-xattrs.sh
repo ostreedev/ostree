@@ -19,15 +19,11 @@
 
 set -euo pipefail
 
-touch test-xattrs
-if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
-    echo "1..0 # SKIP: cannot run setfattr"
-    exit 0
-fi
+. $(dirname $0)/libtest.sh
+
+skip_without_user_xattrs
 
 echo "1..2"
-
-. $(dirname $0)/libtest.sh
 
 setup_test_repository "archive-z2"
 
