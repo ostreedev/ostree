@@ -26,6 +26,8 @@ fi
 
 . $(dirname $0)/libtest.sh
 
+skip_without_user_xattrs
+
 echo "1..1"
 
 # Run "triggers" like ldconfig, gtk-update-icon-cache, etc.

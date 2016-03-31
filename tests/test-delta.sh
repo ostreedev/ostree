@@ -21,6 +21,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_user_xattrs
+
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 

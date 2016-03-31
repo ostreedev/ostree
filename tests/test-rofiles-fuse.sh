@@ -25,6 +25,9 @@ if ! fusermount --version >/dev/null 2>&1; then
 fi
 
 . $(dirname $0)/libtest.sh
+
+skip_without_user_xattrs
+
 setup_test_repository "bare-user"
 
 echo "1..5"
