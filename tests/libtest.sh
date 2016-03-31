@@ -332,3 +332,20 @@ skip_without_user_xattrs () {
         exit 0
     fi
 }
+
+skip_without_fuse () {
+    if ! fusermount --version >/dev/null 2>&1; then
+        echo "1..0 # SKIP no fusermount"
+        exit 0
+    fi
+
+    if ! [ -w /dev/fuse ]; then
+        echo "1..0 # SKIP no write access to /dev/fuse"
+        exit 0
+    fi
+
+    if ! [ -e /etc/mtab ]; then
+        echo "1..0 # SKIP no /etc/mtab"
+        exit 0
+    fi
+}
