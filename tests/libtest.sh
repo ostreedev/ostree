@@ -41,8 +41,12 @@ test_tmpdir=$(pwd)
 if ! test -f .testtmp; then
     files=$(ls)
     if test -n "${files}"; then
+	ls -l
 	assert_not_reached "test tmpdir=${test_tmpdir} is not empty; run this test via \`make check TESTS=\`, not directly"
     fi
+    # Remember that this is an acceptable test $(pwd), for the benefit of
+    # C and JS tests which may source this file again
+    touch .testtmp
 fi
 
 export G_DEBUG=fatal-warnings
