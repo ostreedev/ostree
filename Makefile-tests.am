@@ -23,8 +23,6 @@ include $(top_srcdir)/buildutil/glib-tap.mk
 # include the builddir in $PATH so we find our just-built ostree
 # binary.
 TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
-	SRCDIR=$$(cd $(top_srcdir) && pwd) \
-	BUILDDIR=$$(cd $(top_builddir) && pwd) \
 	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd) \
 	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd) \
 	PATH=$$(cd $(top_builddir) && pwd):$${PATH} \
