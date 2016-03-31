@@ -321,6 +321,9 @@ global:
         ostree_sysroot_deployment_unlock;
         ostree_deployment_get_unlocked;
         ostree_deployment_unlocked_state_to_string;
+        ostree_repo_get_remote_option;
+        ostree_repo_get_remote_list_option;
+        ostree_repo_get_remote_boolean_option;
 } LIBOSTREE_2016.3;
 
 /*                         NOTE NOTE NOTE
