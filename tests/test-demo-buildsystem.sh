@@ -19,13 +19,9 @@
 
 set -euo pipefail
 
-if ! fusermount --version >/dev/null 2>&1; then
-    echo "1..0 # SKIP no fusermount"
-    exit 0
-fi
-
 . $(dirname $0)/libtest.sh
 
+skip_without_fuse
 skip_without_user_xattrs
 
 echo "1..1"
