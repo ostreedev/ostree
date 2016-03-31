@@ -13,7 +13,7 @@ touch ${tempdir}/.testtmp
 function cleanup () {
     if test -n "${TEST_SKIP_CLEANUP:-}"; then
 	echo "Skipping cleanup of ${tempdir}"
-    else if test -f ${tempdir}/.test; then
+    else if test -f ${tempdir}/.testtmp; then
 	rm "${tempdir}" -rf
     fi
     fi
