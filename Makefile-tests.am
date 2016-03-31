@@ -131,6 +131,9 @@ libreaddir_rand_la_SOURCES = tests/readdir-rand.c
 libreaddir_rand_la_CFLAGS = $(OT_INTERNAL_GIO_UNIX_CFLAGS)
 libreaddir_rand_la_LIBADD = $(OT_INTERNAL_GIO_UNIX_LIBS)
 libreaddir_rand_la_LDFLAGS = -avoid-version
+if !ENABLE_INSTALLED_TESTS
+libreaddir_rand_la_LDFLAGS += -rpath $(abs_builddir)
+endif
 
 test_programs = tests/test-varint tests/test-ot-unix-utils tests/test-bsdiff tests/test-mutable-tree \
 	tests/test-keyfile-utils tests/test-ot-opt-utils tests/test-ot-tool-util \
