@@ -78,4 +78,6 @@ if ${OSTREE} show test2 | grep -o 'Found [[:digit:]] signature'; then
   assert_not_reached
 fi
 
+gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye
+
 echo "ok"
