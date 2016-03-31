@@ -19,8 +19,11 @@
 
 set -euo pipefail
 
-if ! fusermount --version >/dev/null 2>&1; then
+if ! which fusermount >/dev/null 2>&1; then
     echo "1..0 # SKIP no fusermount"
+    exit 0
+elif ! capsh --print | grep ^Current | grep -q cap_sys_admin; then
+    echo "1..0 # SKIP no CAP_SYS_ADMIN"
     exit 0
 fi
 

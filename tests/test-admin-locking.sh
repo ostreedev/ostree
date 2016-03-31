@@ -25,10 +25,10 @@ set -euo pipefail
 setup_os_repository "archive-z2" "syslinux"
 
 # If parallel is not installed, skip the test
-if ! parallel --help >/dev/null 2>&1; then
-    echo "1..0 # SKIP no /usr/bin/parallel"
+if ! which parallel >/dev/null 2>&1; then
+    echo "1..0 # SKIP no parallel"
     exit 0
-fi    
+fi
 
 echo "1..1"
 
