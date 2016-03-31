@@ -195,13 +195,6 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
 gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);
 
-gboolean
-_ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
-                                        const char  *remote_name,
-                                        const char  *option_name,
-                                        char       **out_value,
-                                        GError     **error);
-
 #ifdef HAVE_LIBSOUP
 OstreeFetcher *
 _ostree_repo_remote_new_fetcher (OstreeRepo  *self,

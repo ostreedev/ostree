@@ -217,6 +217,27 @@ ost_repo_get_remote (OstreeRepo  *self,
   return remote;
 }
 
+static OstreeRemote *
+ost_repo_get_remote_inherited (OstreeRepo  *self,
+                               const char  *name,
+                               GError     **error)
+{
+  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(GError) temp_error = NULL;
+
+  remote = ost_repo_get_remote (self, name, &temp_error);
+  if (remote == NULL)
+    {
+      if (self->parent_repo != NULL)
+        return ost_repo_get_remote_inherited (self->parent_repo, name, error);
+
+      g_propagate_error (error, g_steal_pointer (&temp_error));
+      return NULL;
+    }
+
+  return g_steal_pointer (&remote);
+}
+
 static void
 ost_repo_add_remote (OstreeRepo   *self,
                      OstreeRemote *remote)
@@ -272,6 +293,8 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
+  g_autoptr(GError) temp_error = NULL;
+  g_autofree char *value = NULL;
 
   if (_ostree_repo_remote_name_is_file (remote_name))
     {
@@ -279,18 +302,40 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
       return TRUE;
     }
 
-  remote = ost_repo_get_remote (self, remote_name, error);
-
+  remote = ost_repo_get_remote (self, remote_name, &temp_error);
   if (remote != NULL)
     {
-      ret = ot_keyfile_get_value_with_default (remote->options,
-                                               remote->group,
-                                               option_name,
-                                               default_value,
-                                               out_value,
-                                               error);
-    }
+      value = g_key_file_get_string (remote->options, remote->group, option_name, &temp_error);
+      if (value == NULL)
+        {
+          if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+            {
+              if (self->parent_repo != NULL)
+                return ostree_repo_get_remote_option (self->parent_repo,
+                                                      remote_name, option_name,
+                                                      default_value,
+                                                      out_value,
+                                                      error);
 
+              value = g_strdup (default_value);
+              ret = TRUE;
+            }
+          else
+            g_propagate_error (error, g_steal_pointer (&temp_error));
+        }
+      else
+        ret = TRUE;
+    }
+  else if (self->parent_repo != NULL)
+    return ostree_repo_get_remote_option (self->parent_repo,
+                                          remote_name, option_name,
+                                          default_value,
+                                          out_value,
+                                          error);
+  else
+    g_propagate_error (error, g_steal_pointer (&temp_error));
+
+  *out_value = g_steal_pointer (&value);
   return ret;
 }
 
@@ -308,6 +353,8 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
+  g_autoptr(GError) temp_error = NULL;
+  g_auto(GStrv) value = NULL;
 
   if (_ostree_repo_remote_name_is_file (remote_name))
     {
@@ -315,29 +362,38 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
       return TRUE;
     }
 
-  remote = ost_repo_get_remote (self, remote_name, error);
-
+  remote = ost_repo_get_remote (self, remote_name, &temp_error);
   if (remote != NULL)
     {
-      g_auto(GStrv) value = NULL;
-      GError *local_error = NULL;
-
       value = g_key_file_get_string_list (remote->options,
                                           remote->group,
                                           option_name,
-                                          NULL, &local_error);
+                                          NULL, &temp_error);
 
       /* Default value if key not found is always NULL. */
-      if (g_error_matches (local_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
-        g_clear_error (&local_error);
-
-      if (local_error == NULL)
+      if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
         {
-          ot_transfer_out_value (out_value, &value);
+          if (self->parent_repo != NULL)
+            return ostree_repo_get_remote_list_option (self->parent_repo,
+                                                       remote_name, option_name,
+                                                       out_value,
+                                                       error);
           ret = TRUE;
         }
+      else if (temp_error)
+        g_propagate_error (error, g_steal_pointer (&temp_error));
+      else
+        ret = TRUE;
     }
+  else if (self->parent_repo != NULL)
+    return ostree_repo_get_remote_list_option (self->parent_repo,
+                                               remote_name, option_name,
+                                               out_value,
+                                               error);
+  else
+    g_propagate_error (error, g_steal_pointer (&temp_error));
 
+  *out_value = g_steal_pointer (&value);
   return ret;
 }
 
@@ -355,61 +411,50 @@ ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
                                        GError     **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(GError) temp_error = NULL;
   gboolean ret = FALSE;
+  gboolean value = FALSE;
 
   if (_ostree_repo_remote_name_is_file (remote_name))
     {
       *out_value = default_value;
       return TRUE;
     }
-  
-  remote = ost_repo_get_remote (self, remote_name, error);
 
+  remote = ost_repo_get_remote (self, remote_name, &temp_error);
   if (remote != NULL)
     {
-      ret = ot_keyfile_get_boolean_with_default (remote->options,
-                                                 remote->group,
-                                                 option_name,
-                                                 default_value,
-                                                 out_value,
-                                                 error);
+      value = g_key_file_get_boolean (remote->options, remote->group, option_name, &temp_error);
+      if (temp_error != NULL)
+        {
+          if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
+            {
+              if (self->parent_repo != NULL)
+                return ostree_repo_get_remote_boolean_option (self->parent_repo,
+                                                              remote_name, option_name,
+                                                              default_value,
+                                                              out_value,
+                                                              error);
+
+              value = default_value;
+              ret = TRUE;
+            }
+          else
+            g_propagate_error (error, g_steal_pointer (&temp_error));
+        }
+      else
+        ret = TRUE;
     }
+  else if (self->parent_repo != NULL)
+    return ostree_repo_get_remote_boolean_option (self->parent_repo,
+                                                  remote_name, option_name,
+                                                  default_value,
+                                                  out_value,
+                                                  error);
+  else
+    g_propagate_error (error, g_steal_pointer (&temp_error));
 
-  return ret;
-}
-
-gboolean
-_ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
-                                        const char  *remote_name,
-                                        const char  *option_name,
-                                        char       **out_value,
-                                        GError     **error)
-{
-  OstreeRepo *parent = ostree_repo_get_parent (self);
-  g_autofree char *value = NULL;
-  gboolean ret = FALSE;
-
-  if (!ostree_repo_get_remote_option (self,
-                                      remote_name, option_name,
-                                      NULL, &value, error))
-    goto out;
-
-  if (value == NULL && parent != NULL)
-    {
-      if (!_ostree_repo_get_remote_option_inherit (parent,
-                                                   remote_name, option_name,
-                                                   &value, error))
-        goto out;
-    }
-
-  /* Success here just means no error occurred during lookup,
-   * not necessarily that we found a value for the option name. */
-  if (out_value != NULL)
-    *out_value = g_steal_pointer (&value);
-
-  ret = TRUE;
-
-out:
+  *out_value = value;
   return ret;
 }
 
@@ -1231,6 +1276,25 @@ ostree_repo_remote_change (OstreeRepo     *self,
   g_assert_not_reached ();
 }
 
+static void
+_ostree_repo_remote_list (OstreeRepo *self,
+                          GHashTable *out)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_mutex_lock (&self->remotes_lock);
+
+  g_hash_table_iter_init (&iter, self->remotes);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    g_hash_table_insert (out, g_strdup (key), NULL);
+
+  g_mutex_unlock (&self->remotes_lock);
+
+  if (self->parent_repo)
+    _ostree_repo_remote_list (self, out);
+}
+
 /**
  * ostree_repo_remote_list:
  * @self: Repo
@@ -1248,10 +1312,15 @@ ostree_repo_remote_list (OstreeRepo *self,
 {
   char **remotes = NULL;
   guint n_remotes;
+  g_autoptr(GHashTable) remotes_ht = NULL;
 
-  g_mutex_lock (&self->remotes_lock);
+  remotes_ht = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                      (GDestroyNotify) g_free,
+                                      (GDestroyNotify) NULL);
 
-  n_remotes = g_hash_table_size (self->remotes);
+  _ostree_repo_remote_list (self, remotes_ht);
+
+  n_remotes = g_hash_table_size (remotes_ht);
 
   if (n_remotes > 0)
     {
@@ -1260,7 +1329,7 @@ ostree_repo_remote_list (OstreeRepo *self,
 
       remotes = g_new (char *, n_remotes + 1);
 
-      list = g_hash_table_get_keys (self->remotes);
+      list = g_hash_table_get_keys (remotes_ht);
       list = g_list_sort (list, (GCompareFunc) strcmp);
 
       for (link = list; link != NULL; link = link->next)
@@ -1270,8 +1339,6 @@ ostree_repo_remote_list (OstreeRepo *self,
 
       remotes[ii] = NULL;
     }
-
-  g_mutex_unlock (&self->remotes_lock);
 
   if (out_n_remotes)
     *out_n_remotes = n_remotes;
@@ -1308,7 +1375,7 @@ ostree_repo_remote_get_url (OstreeRepo  *self,
     }
   else
     {
-      if (!_ostree_repo_get_remote_option_inherit (self, name, "url", &url, error))
+      if (!ostree_repo_get_remote_option (self, name, "url", NULL, &url, error))
         goto out;
 
       if (url == NULL)
@@ -1435,7 +1502,7 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
 
   /* First make sure the remote name is valid. */
 
-  remote = ost_repo_get_remote (self, name, error);
+  remote = ost_repo_get_remote_inherited (self, name, error);
   if (remote == NULL)
     goto out;
 
@@ -4376,6 +4443,25 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
 static const char *OSTREE_ALL_REMOTES = "__OSTREE_ALL_REMOTES__";
 
+static GFile *
+find_keyring (OstreeRepo          *self,
+              OstreeRemote        *remote,
+              GCancellable        *cancellable)
+{
+  g_autoptr(GFile) file = NULL;
+  file = g_file_get_child (self->repodir, remote->keyring);
+
+  if (g_file_query_exists (file, cancellable))
+    {
+      return g_steal_pointer (&file);
+    }
+
+  if (self->parent_repo)
+    return find_keyring (self->parent_repo, remote, cancellable);
+
+  return NULL;
+}
+
 OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
@@ -4412,13 +4498,13 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
       OstreeRemote *remote;
       g_autoptr(GFile) file = NULL;
 
-      remote = ost_repo_get_remote (self, remote_name, error);
+      remote = ost_repo_get_remote_inherited (self, remote_name, error);
       if (remote == NULL)
         goto out;
 
-      file = g_file_get_child (self->repodir, remote->keyring);
+      file = find_keyring (self, remote, cancellable);
 
-      if (g_file_query_exists (file, cancellable))
+      if (file != NULL)
         {
           _ostree_gpg_verifier_add_keyring (verifier, file);
           add_global_keyring_dir = FALSE;
