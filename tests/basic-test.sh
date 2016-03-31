@@ -114,7 +114,7 @@ assert_streq $($OSTREE log test2-custom-parent |grep '^commit' | wc -l) "3"
 echo "ok commit custom parent"
 
 cd ${test_tmpdir}
-orphaned_rev=$($OSTREE commit --orphan -s '' $test_tmpdir/checkout-test2-4)
+orphaned_rev=$($OSTREE commit --orphan -s "$(date)" $test_tmpdir/checkout-test2-4)
 $OSTREE ls ${orphaned_rev} >/dev/null
 $OSTREE prune --refs-only
 if $OSTREE ls ${orphaned_rev} 2>err.txt; then
