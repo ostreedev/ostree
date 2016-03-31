@@ -23,4 +23,4 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
-. ${SRCDIR}/pull-test.sh
+. ${test_srcdir}/pull-test.sh

@@ -130,9 +130,9 @@ assert_streq "${totalsize_orig}" "${totalsize_swapped}"
 
 echo 'ok generate + show endian swapped'
 
-tar xf ${SRCDIR}/pre-endian-deltas-repo-big.tar.xz
+tar xf ${test_srcdir}/pre-endian-deltas-repo-big.tar.xz
 mv pre-endian-deltas-repo{,-big}
-tar xf ${SRCDIR}/pre-endian-deltas-repo-little.tar.xz
+tar xf ${test_srcdir}/pre-endian-deltas-repo-little.tar.xz
 mv pre-endian-deltas-repo{,-little}
 legacy_origrev=$(${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big rev-parse main^)
 legacy_newrev=$(${CMD_PREFIX} ostree --repo=pre-endian-deltas-repo-big rev-parse main)

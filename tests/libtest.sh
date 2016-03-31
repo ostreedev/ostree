@@ -17,7 +17,17 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-SRCDIR=$(dirname $0)
+if [ -n "${G_TEST_SRCDIR:-}" ]; then
+  test_srcdir="${G_TEST_SRCDIR}/tests"
+else
+  test_srcdir=$(dirname $0)
+fi
+
+if [ -n "${G_TEST_BUILDDIR:-}" ]; then
+  test_builddir="${G_TEST_BUILDDIR}/tests"
+else
+  test_builddir=$(dirname $0)
+fi
 
 assert_not_reached () {
     echo $@ 1>&2; exit 1
@@ -54,7 +64,7 @@ export TEST_GPG_KEYID_3="DF444D67"
 # homedir in order to create lockfiles.  Work around
 # this by copying locally.
 echo "Copying gpghome to ${test_tmpdir}"
-cp -a ${SRCDIR}/gpghome ${test_tmpdir}
+cp -a "${test_srcdir}/gpghome" ${test_tmpdir}
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
@@ -63,9 +73,9 @@ if test -n "${OT_TESTS_DEBUG:-}"; then
 fi
 
 if test -n "${OT_TESTS_VALGRIND:-}"; then
-    CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${SRCDIR}/ostree-valgrind.supp"
+    CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/ostree-valgrind.supp"
 else
-    CMD_PREFIX="env LD_PRELOAD=${SRCDIR}/libreaddir-rand.so"
+    CMD_PREFIX="env LD_PRELOAD=${test_builddir}/libreaddir-rand.so"
 fi
 
 assert_streq () {
