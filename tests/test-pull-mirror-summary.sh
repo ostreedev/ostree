@@ -121,3 +121,5 @@ echo "ok pull mirror with invalid summary sig and no verification"
 # assert_file_has_content deltas.txt "${origmain}-${newmain}"
 
 # echo "ok pull mirror with signed summary covering static deltas"
+
+gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye

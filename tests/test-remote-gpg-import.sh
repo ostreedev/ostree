@@ -143,4 +143,5 @@ if ${OSTREE} pull R2:main >/dev/null 2>&1; then
 fi
 ${OSTREE} pull R3:main >/dev/null
 
+gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye
 echo "ok"

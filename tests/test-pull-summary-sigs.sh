@@ -133,3 +133,5 @@ assert_file_has_content summary.txt "Good signature from \"Ostree Tester <test@t
 grep static-deltas summary.txt > static-deltas.txt
 assert_file_has_content static-deltas.txt \
   $(${OSTREE} --repo=repo rev-parse origin:main)
+
+gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye
