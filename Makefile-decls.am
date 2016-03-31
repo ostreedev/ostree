@@ -43,8 +43,6 @@ gir_DATA =
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA =
 gsettings_SCHEMAS =
-# git.mk
-GITIGNOREFILES =
 
 # This is a special facility to chain together hooks easily
 INSTALL_DATA_HOOKS =

@@ -30,6 +30,8 @@ AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 AM_CFLAGS += $(WARN_CFLAGS)
 DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc --disable-maintainer-mode
 
+GITIGNOREFILES = aclocal.m4 build-aux/ buildutil/*.m4 config.h.in gtk-doc.make
+
 SUBDIRS += .
 
 if ENABLE_GTK_DOC
@@ -101,3 +103,5 @@ release-tarball-embedded:
 	$(embed_dependency) embedded-dependencies/libsoup; \
 	mv ostree-embeddeps-$${GITVERSION}.tar{.tmp,}; \
 	gzip -f ostree-embeddeps-$${GITVERSION}.tar 
+
+-include $(top_srcdir)/git.mk

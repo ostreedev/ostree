@@ -121,3 +121,5 @@ EXTRA_DIST += \
 	version.xml \
 	ostree-sections.txt \
 	$(NULL)
+
+-include $(top_srcdir)/git.mk

@@ -226,6 +226,7 @@ EXTRA_DIST += \
 tests/libreaddir-rand.so: Makefile
 	$(AM_V_GEN) ln -fns ../.libs/libreaddir-rand.so tests
 ALL_LOCAL_RULES += tests/libreaddir-rand.so
+CLEANFILES += tests/libreaddir-rand.so
 
 # Unfortunately the glib test data APIs don't actually handle
 # non-recursive Automake, so we change our code to canonically look
