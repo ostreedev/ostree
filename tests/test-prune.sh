@@ -21,6 +21,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_user_xattrs
+
 setup_fake_remote_repo1 "archive-z2"
 
 echo '1..2'
@@ -126,12 +128,6 @@ ${CMD_PREFIX} ostree --repo=repo static-delta list | wc -l > deltascount
 assert_file_has_content deltascount "^1$"
 
 echo "ok prune"
-
-touch test-xattrs
-if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
-    echo "ok prune with partial repo # SKIP bare-user repository requires xattr support"
-    exit 0
-fi
 
 rm repo -rf
 ostree --repo=repo init --mode=bare-user
