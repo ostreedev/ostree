@@ -39,6 +39,12 @@ echo "ok pull-local --untrusted didn't hardlink"
 
 # Corrupt repo
 for i in ${test_tmpdir}/repo/objects/*/*.file; do
+
+    # make sure it's not a symlink
+    if [ -L $i ]; then
+        continue
+    fi
+
     echo "corrupting $i"
     echo "broke" >> $i
     break;
