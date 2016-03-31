@@ -25,6 +25,13 @@ if ! fusermount --version >/dev/null 2>&1; then
 fi
 
 . $(dirname $0)/libtest.sh
+
+touch test-xattrs
+if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    echo "1..0 # SKIP bare-user repository requires xattr support"
+    exit 0
+fi
+
 setup_test_repository "bare-user"
 
 echo "1..5"

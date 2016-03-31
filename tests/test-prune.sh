@@ -127,6 +127,12 @@ assert_file_has_content deltascount "^1$"
 
 echo "ok prune"
 
+touch test-xattrs
+if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    echo "ok prune with partial repo # SKIP bare-user repository requires xattr support"
+    exit 0
+fi
+
 rm repo -rf
 ostree --repo=repo init --mode=bare-user
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin $(cat httpd-address)/ostree/gnomerepo

@@ -19,9 +19,15 @@
 
 set -euo pipefail
 
-echo "1..1"
-
 . $(dirname $0)/libtest.sh
+
+touch test-xattrs
+if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    echo "1..0 # SKIP bare-user repository requires xattr support"
+    exit 0
+fi
+
+echo "1..1"
 
 setup_test_repository "bare-user"
 echo "ok setup"

@@ -156,6 +156,13 @@ ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
 
 echo 'ok pull delta'
 
+touch test-xattrs
+if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+    echo "ok apply offline # SKIP bare-user repository requires xattr support"
+    echo "ok apply offline inline # SKIP bare-user repository requires xattr support"
+    exit 0
+fi
+
 rm repo2 -rf
 mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=bare-user
 mkdir deltadir
