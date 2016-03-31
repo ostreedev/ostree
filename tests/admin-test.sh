@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (C) 2011,2014 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
