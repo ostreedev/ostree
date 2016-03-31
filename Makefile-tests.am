@@ -25,7 +25,10 @@ include $(top_srcdir)/buildutil/glib-tap.mk
 TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	SRCDIR=$$(cd $(top_srcdir) && pwd) \
 	BUILDDIR=$$(cd $(top_builddir) && pwd) \
-	PATH=$$(cd $(top_builddir) && pwd):$${PATH}
+	GI_TYPELIB_PATH=$$(cd $(top_builddir) && pwd) \
+	LD_LIBRARY_PATH=$$(cd $(top_builddir)/.libs && pwd) \
+	PATH=$$(cd $(top_builddir) && pwd):$${PATH} \
+	$(NULL)
 
 uninstalled_test_scripts = tests/test-abi.sh
 
