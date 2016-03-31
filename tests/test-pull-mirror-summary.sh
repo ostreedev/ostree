@@ -122,4 +122,4 @@ echo "ok pull mirror with invalid summary sig and no verification"
 
 # echo "ok pull mirror with signed summary covering static deltas"
 
-gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye
+libtest_cleanup_gpg

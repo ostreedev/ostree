@@ -349,3 +349,7 @@ skip_without_fuse () {
         exit 0
     fi
 }
+
+libtest_cleanup_gpg () {
+    gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye || true
+}

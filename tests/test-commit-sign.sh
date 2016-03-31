@@ -132,6 +132,6 @@ if ${CMD_PREFIX} ostree --repo=repo show main | grep -o 'Found [[:digit:]] signa
 fi
 
 rm -rf repo gnomerepo-files
-gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye
+libtest_cleanup_gpg
 
 echo "ok"
