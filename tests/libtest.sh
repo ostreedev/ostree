@@ -324,3 +324,11 @@ os_repository_new_commit ()
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit  --add-metadata-string "version=${version}" -b testos/buildmaster/x86_64-runtime -s "Build"
     cd ${test_tmpdir}
 }
+
+skip_without_user_xattrs () {
+    touch test-xattrs
+    if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
+        echo "1..0 # SKIP this test requires xattr support"
+        exit 0
+    fi
+}
