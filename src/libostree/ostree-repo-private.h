@@ -196,29 +196,6 @@ gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);
 
 gboolean
-_ostree_repo_get_remote_option (OstreeRepo  *self,
-                                const char  *remote_name,
-                                const char  *option_name,
-                                const char  *default_value,
-                                char       **out_value,
-                                GError     **error);
-
-gboolean
-_ostree_repo_get_remote_list_option (OstreeRepo   *self,
-                                     const char   *remote_name,
-                                     const char   *option_name,
-                                     char       ***out_value,
-                                     GError      **error);
-
-gboolean
-_ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
-                                        const char  *remote_name,
-                                        const char  *option_name,
-                                        gboolean     default_value,
-                                        gboolean    *out_value,
-                                        GError     **error);
-
-gboolean
 _ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
                                         const char  *remote_name,
                                         const char  *option_name,

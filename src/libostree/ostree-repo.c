@@ -257,13 +257,29 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
   return g_str_has_prefix (remote_name, "file://");
 }
 
+/**
+ * ostree_repo_get_remote_option:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @default_value: (allow-none): Value returned if @option_name is not present
+ * @out_value: (out): Return location for value
+ * @error: Error
+ *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, or @default_value if the remote exists but not the
+ * option name.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
+ */
 gboolean
-_ostree_repo_get_remote_option (OstreeRepo  *self,
-                                const char  *remote_name,
-                                const char  *option_name,
-                                const char  *default_value,
-                                char       **out_value,
-                                GError     **error)
+ostree_repo_get_remote_option (OstreeRepo  *self,
+                               const char  *remote_name,
+                               const char  *option_name,
+                               const char  *default_value,
+                               char       **out_value,
+                               GError     **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
@@ -289,12 +305,29 @@ _ostree_repo_get_remote_option (OstreeRepo  *self,
   return ret;
 }
 
+/**
+ * ostree_repo_get_remote_list_option:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @out_value: (out) (array zero-terminated=1): location to store the list
+ *            of strings. The list should be freed with
+ *            g_strfreev().
+ * @error: Error
+ *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, and returns it as an zero terminated array of strings.
+ * If the option is not set, @out_value will be set to %NULL.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
+ */
 gboolean
-_ostree_repo_get_remote_list_option (OstreeRepo   *self,
-                                     const char   *remote_name,
-                                     const char   *option_name,
-                                     char       ***out_value,
-                                     GError      **error)
+ostree_repo_get_remote_list_option (OstreeRepo   *self,
+                                    const char   *remote_name,
+                                    const char   *option_name,
+                                    char       ***out_value,
+                                    GError      **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
@@ -331,13 +364,29 @@ _ostree_repo_get_remote_list_option (OstreeRepo   *self,
   return ret;
 }
 
+/**
+ * ostree_repo_get_remote_boolean_option:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @default_value: (allow-none): Value returned if @option_name is not present
+ * @out_value: (out) : location to store the result.
+ * @error: Error
+ *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, and returns it as a boolean.
+ * If the option is not set, @out_value will be set to @default_value.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
+ */
 gboolean
-_ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
-                                        const char  *remote_name,
-                                        const char  *option_name,
-                                        gboolean     default_value,
-                                        gboolean    *out_value,
-                                        GError     **error)
+ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
+                                       const char  *remote_name,
+                                       const char  *option_name,
+                                       gboolean     default_value,
+                                       gboolean    *out_value,
+                                       GError     **error)
 {
   local_cleanup_remote OstreeRemote *remote = NULL;
   gboolean ret = FALSE;
@@ -374,9 +423,9 @@ _ostree_repo_get_remote_option_inherit (OstreeRepo  *self,
   g_autofree char *value = NULL;
   gboolean ret = FALSE;
 
-  if (!_ostree_repo_get_remote_option (self,
-                                       remote_name, option_name,
-                                       NULL, &value, error))
+  if (!ostree_repo_get_remote_option (self,
+                                      remote_name, option_name,
+                                      NULL, &value, error))
     goto out;
 
   if (value == NULL && parent != NULL)
@@ -412,9 +461,9 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
   g_return_val_if_fail (remote_name != NULL, NULL);
 
-  if (!_ostree_repo_get_remote_boolean_option (self, remote_name,
-                                               "tls-permissive", FALSE,
-                                               &tls_permissive, error))
+  if (!ostree_repo_get_remote_boolean_option (self, remote_name,
+                                              "tls-permissive", FALSE,
+                                              &tls_permissive, error))
     goto out;
 
   if (tls_permissive)
@@ -426,13 +475,13 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
     g_autofree char *tls_client_cert_path = NULL;
     g_autofree char *tls_client_key_path = NULL;
 
-    if (!_ostree_repo_get_remote_option (self, remote_name,
-                                         "tls-client-cert-path", NULL,
-                                         &tls_client_cert_path, error))
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-client-cert-path", NULL,
+                                        &tls_client_cert_path, error))
       goto out;
-    if (!_ostree_repo_get_remote_option (self, remote_name,
-                                         "tls-client-key-path", NULL,
-                                         &tls_client_key_path, error))
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-client-key-path", NULL,
+                                        &tls_client_key_path, error))
       goto out;
 
     if ((tls_client_cert_path != NULL) != (tls_client_key_path != NULL))
@@ -462,9 +511,9 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   {
     g_autofree char *tls_ca_path = NULL;
 
-    if (!_ostree_repo_get_remote_option (self, remote_name,
-                                         "tls-ca-path", NULL,
-                                         &tls_ca_path, error))
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-ca-path", NULL,
+                                        &tls_ca_path, error))
       goto out;
 
     if (tls_ca_path != NULL)
@@ -482,9 +531,9 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
   {
     g_autofree char *http_proxy = NULL;
 
-    if (!_ostree_repo_get_remote_option (self, remote_name,
-                                         "proxy", NULL,
-                                         &http_proxy, error))
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "proxy", NULL,
+                                        &http_proxy, error))
       goto out;
 
     if (http_proxy != NULL)
@@ -1343,8 +1392,8 @@ ostree_repo_remote_get_gpg_verify (OstreeRepo  *self,
       return TRUE;
     }
 
- return _ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
-                                                TRUE, out_gpg_verify, error);
+ return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify",
+                                               TRUE, out_gpg_verify, error);
 }
 
 /**
@@ -1366,8 +1415,8 @@ ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                            gboolean    *out_gpg_verify_summary,
                                            GError     **error)
 {
-  return _ostree_repo_get_remote_boolean_option (self, name, "gpg-verify-summary",
-                                                 FALSE, out_gpg_verify_summary, error);
+  return ostree_repo_get_remote_boolean_option (self, name, "gpg-verify-summary",
+                                                FALSE, out_gpg_verify_summary, error);
 }
 
 /**
@@ -1889,8 +1938,8 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
   g_return_val_if_fail (OSTREE_REPO (self), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
 
-  if (!_ostree_repo_get_remote_option (self, name, "metalink", NULL,
-                                       &metalink_url_string, error))
+  if (!ostree_repo_get_remote_option (self, name, "metalink", NULL,
+                                      &metalink_url_string, error))
     goto out;
 
   if (!repo_remote_fetch_summary (self,

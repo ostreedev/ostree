@@ -148,6 +148,29 @@ gboolean      ostree_repo_remote_get_gpg_verify_summary (OstreeRepo  *self,
                                                          GError     **error);
 
 _OSTREE_PUBLIC
+gboolean      ostree_repo_get_remote_option (OstreeRepo  *self,
+                                             const char  *remote_name,
+                                             const char  *option_name,
+                                             const char  *default_value,
+                                             char       **out_value,
+                                             GError     **error);
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_get_remote_list_option (OstreeRepo   *self,
+                                                  const char   *remote_name,
+                                                  const char   *option_name,
+                                                  char       ***out_value,
+                                                  GError      **error);
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
+                                                     const char  *remote_name,
+                                                     const char  *option_name,
+                                                     gboolean     default_value,
+                                                     gboolean    *out_value,
+                                                     GError     **error);
+
+_OSTREE_PUBLIC
 gboolean      ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                              const char         *name,
                                              GInputStream       *source_stream,

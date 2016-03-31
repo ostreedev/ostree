@@ -2008,9 +2008,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
-  if (!_ostree_repo_get_remote_option (self,
-                                       remote_name_or_baseurl, "metalink",
-                                       NULL, &metalink_url_str, error))
+  if (!ostree_repo_get_remote_option (self,
+                                      remote_name_or_baseurl, "metalink",
+                                      NULL, &metalink_url_str, error))
     goto out;
 
   if (!metalink_url_str)
@@ -2064,9 +2064,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                      summary_bytes, FALSE);
     }
 
-  if (!_ostree_repo_get_remote_list_option (self,
-                                            remote_name_or_baseurl, "branches",
-                                            &configured_branches, error))
+  if (!ostree_repo_get_remote_list_option (self,
+                                           remote_name_or_baseurl, "branches",
+                                           &configured_branches, error))
     goto out;
 
   if (strcmp (soup_uri_get_scheme (pull_data->base_uri), "file") == 0)
