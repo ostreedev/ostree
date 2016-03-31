@@ -25,7 +25,7 @@ echo '1..11'
 
 setup_test_repository "archive-z2"
 
-. ${SRCDIR}/archive-test.sh
+. ${test_srcdir}/archive-test.sh
 
 cd ${test_tmpdir}
 mkdir repo2
