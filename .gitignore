@@ -38,6 +38,12 @@ ABOUT-NLS
 _build
 
 /build-aux/test-driver
+/buildutil/gtk-doc.m4
+/buildutil/libtool.m4
+/buildutil/ltoptions.m4
+/buildutil/ltsugar.m4
+/buildutil/ltversion.m4
+/buildutil/lt~obsolete.m4
 
 /doc/ostree-decl.txt
 /doc/ostree-overrides.txt
@@ -51,12 +57,20 @@ _build
 /doc/xml
 /doc/ostree.1
 
+/man/*.1
+/man/*.5
+
 /ostree
 /ostree-prepare-root
 /ostree-remount
 /OSTree-1.0.gir
 
+/rofiles-fuse
+
 /src/libostree/ostree-1.pc
+/src/libostree/ostree-enumtypes.c
+/src/libostree/ostree-enumtypes.h
+/src/ostree/parse-datetime.c
 
 /test-admin-deploy-1.test
 /test-admin-deploy-2.test
@@ -71,6 +85,10 @@ _build
 /test-setuid.test
 /test-xattrs.test
 /tests/libreaddir-rand.so
+/tests/test-basic-c
+/tests/test-libarchive-import
+/tests/test-lzma
+/tests/test-sysroot-c
 test-varint
 test*.test
 *.trs
