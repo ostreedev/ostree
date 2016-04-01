@@ -59,6 +59,7 @@ test_scripts = \
 	tests/test-admin-deploy-switch.sh \
 	tests/test-admin-deploy-etcmerge-cornercases.sh \
 	tests/test-admin-deploy-uboot.sh \
+	tests/test-admin-deploy-grub2.sh \
 	tests/test-admin-instutil-set-kargs.sh \
 	tests/test-admin-upgrade-not-backwards.sh \
 	tests/test-admin-pull-deploy-commit.sh \
@@ -97,7 +98,8 @@ installed_test_data = tests/archive-test.sh \
 	tests/pre-endian-deltas-repo-little.tar.xz \
 	$(NULL)
 
-test_extra_scripts = tests/syslinux-entries-crosscheck.py
+test_extra_scripts = tests/bootloader-entries-crosscheck.py \
+     tests/ostree-grub-generator
 
 # We can't use nobase_ as we need to strip off the tests/, can't
 # use plain installed_ as we do need the gpghome/ prefix.

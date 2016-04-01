@@ -21,11 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..1"
-
 # Exports OSTREE_SYSROOT so --sysroot not needed.
-setup_os_repository "archive-z2" "grub2"
-
-echo "ok setup"
+setup_os_repository "archive-z2" "grub2 ostree-grub-generator"
 
 . $(dirname $0)/admin-test.sh
