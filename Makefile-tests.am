@@ -40,6 +40,7 @@ test_scripts = \
 	tests/test-export.sh \
 	tests/test-help.sh \
 	tests/test-libarchive.sh \
+	tests/test-parent.sh \
 	tests/test-pull-archive-z.sh \
 	tests/test-pull-commit-only.sh \
 	tests/test-pull-corruption.sh \
