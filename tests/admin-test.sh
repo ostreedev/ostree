@@ -21,10 +21,17 @@ set -euo pipefail
 echo "1..16"
 
 function validate_bootloader() {
-    (cd ${test_tmpdir};
-     if test -f sysroot/boot/syslinux/syslinux.cfg; then
-	$(dirname $0)/syslinux-entries-crosscheck.py sysroot
-     fi)
+    cd ${test_tmpdir};
+    bootloader=""
+    if test -f sysroot/boot/syslinux/syslinux.cfg; then
+	    bootloader="syslinux"
+    elif test -f sysroot/boot/grub2/grub.cfg; then
+	    bootloader="grub2"
+    fi
+    if test -n "${bootloader}"; then
+        $(dirname $0)/bootloader-entries-crosscheck.py sysroot ${bootloader}
+    fi
+    cd -
 }
 
 orig_mtime=$(stat -c '%.Y' sysroot/ostree/deploy)

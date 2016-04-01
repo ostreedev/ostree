@@ -25,8 +25,13 @@ if len(sys.argv) == 1:
 else:
     sysroot = sys.argv[1]
 
+bootloader = sys.argv[2]
 loaderpath = sysroot + '/boot/loader/entries'
 syslinuxpath = sysroot + '/boot/syslinux/syslinux.cfg'
+
+if bootloader == "grub2":
+    sys.stdout.write('GRUB2 configuration validation not implemented.\n')
+    sys.exit(0)
 
 def fatal(msg):
     sys.stderr.write(msg)

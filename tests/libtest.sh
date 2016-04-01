@@ -229,6 +229,20 @@ setup_os_boot_uboot() {
     ln -s loader/uEnv.txt sysroot/boot/uEnv.txt
 }
 
+setup_os_boot_grub2() {
+    grub2_options=$1
+    mkdir -p sysroot/boot/grub2/
+    ln -s ../loader/grub.cfg sysroot/boot/grub2/grub.cfg
+    export OSTREE_BOOT_PARTITION="/boot"
+    case "$grub2_options" in
+        *ostree-grub-generator*)
+            cp ${test_srcdir}/ostree-grub-generator ${test_tmpdir}
+            chmod +x ${test_tmpdir}/ostree-grub-generator
+            export OSTREE_GRUB2_EXEC=${test_tmpdir}/ostree-grub-generator
+            ;;
+    esac
+}
+
 setup_os_repository () {
     mode=$1
     bootmode=$2
@@ -300,6 +314,9 @@ EOF
             ;;
         "uboot")
 	    setup_os_boot_uboot
+            ;;
+        *grub2*)
+        setup_os_boot_grub2 "${bootmode}"
             ;;
     esac
     
