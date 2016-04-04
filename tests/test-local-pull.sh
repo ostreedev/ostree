@@ -19,11 +19,14 @@
 
 set -euo pipefail
 
+# We don't want OSTREE_GPG_HOME used for these tests.
+unset OSTREE_GPG_HOME
+
 . $(dirname $0)/libtest.sh
 
 skip_without_user_xattrs
 
-echo "1..4"
+echo "1..7"
 
 setup_test_repository "archive-z2"
 echo "ok setup"
@@ -57,3 +60,38 @@ find checkout3 -printf '%P %s %#m %u/%g %y %l\n' | sort > checkout3.files
 cmp checkout1.files checkout2.files
 cmp checkout1.files checkout3.files
 echo "ok checkouts same"
+
+mkdir repo4
+${CMD_PREFIX} ostree --repo=repo4 init --mode="archive-z2"
+${CMD_PREFIX} ostree --repo=repo4 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+if ${CMD_PREFIX} ostree --repo=repo4 pull-local --remote=origin --gpg-verify repo test2 2>&1; then
+    assert_not_reached "GPG verification unexpectedly succeeded"
+fi
+echo "ok --gpg-verify with no signature"
+
+${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME} test2  ${TEST_GPG_KEYID_1}
+
+mkdir repo5
+${CMD_PREFIX} ostree --repo=repo5 init --mode="archive-z2"
+${CMD_PREFIX} ostree --repo=repo5 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+${CMD_PREFIX} ostree --repo=repo5 pull-local --remote=origin --gpg-verify repo test2
+echo "ok --gpg-verify"
+
+mkdir repo6
+${CMD_PREFIX} ostree --repo=repo6 init --mode="archive-z2"
+${CMD_PREFIX} ostree --repo=repo6 remote add --gpg-import ${test_tmpdir}/gpghome/key1.asc origin repo
+if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
+    assert_not_reached "GPG summary verification with no summary unexpectedly succeeded"
+fi
+
+${OSTREE} summary -u update
+
+if ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1; then
+    assert_not_reached "GPG summary verification with signed no summary unexpectedly succeeded"
+fi
+
+${OSTREE} summary -u update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME}
+
+${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
+
+echo "ok --gpg-verify-summary"
