@@ -2107,12 +2107,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         soup_uri_free (uri);
       }
 
-    if (bytes_sig && !_ostree_repo_load_cache_summary_if_same_sig (self,
-                                                                   remote_name_or_baseurl,
-                                                                   bytes_sig,
-                                                                   &bytes_summary,
-                                                                   cancellable,
-                                                                   error))
+    if (bytes_sig &&
+        !_ostree_repo_remote_name_is_file (remote_name_or_baseurl) &&
+        !_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                      remote_name_or_baseurl,
+                                                      bytes_sig,
+                                                      &bytes_summary,
+                                                      cancellable,
+                                                      error))
       goto out;
 
     if (bytes_summary)
@@ -2160,7 +2162,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!summary_from_cache && bytes_summary && bytes_sig)
       {
-        if (!_ostree_repo_cache_summary (self,
+        if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl) &&
+            !_ostree_repo_cache_summary (self,
                                          remote_name_or_baseurl,
                                          bytes_summary,
                                          bytes_sig,
