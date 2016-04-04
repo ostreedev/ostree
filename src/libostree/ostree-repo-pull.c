@@ -1900,6 +1900,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
   gboolean require_static_deltas = FALSE;
+  gboolean opt_gpg_verify = FALSE;
+  gboolean opt_gpg_verify_summary = FALSE;
 
   if (options)
     {
@@ -1910,6 +1912,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
+      (void) g_variant_lookup (options, "gpg-verify", "b", &opt_gpg_verify);
+      (void) g_variant_lookup (options, "gpg-verify-summary", "b", &opt_gpg_verify_summary);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
       (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
@@ -1967,10 +1971,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (_ostree_repo_remote_name_is_file (remote_name_or_baseurl))
     {
       /* For compatibility with pull-local, don't gpg verify local
-       * pulls.
+       * pulls by default.
        */
-      pull_data->gpg_verify = FALSE;
-      pull_data->gpg_verify_summary = FALSE;
+      pull_data->gpg_verify = opt_gpg_verify;
+      pull_data->gpg_verify_summary = opt_gpg_verify_summary;
+
+      if ((pull_data->gpg_verify || pull_data->gpg_verify_summary) &&
+          pull_data->remote_name == NULL)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Must specify remote name to enable gpg verification");
+          goto out;
+        }
     }
   else
     {
@@ -2181,7 +2193,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         result = _ostree_repo_gpg_verify_with_metadata (self,
                                                         bytes_summary,
                                                         sig_variant,
-                                                        remote_name_or_baseurl,
+                                                        pull_data->remote_name,
                                                         NULL,
                                                         NULL,
                                                         cancellable,

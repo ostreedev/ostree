@@ -33,12 +33,16 @@
 static char *opt_remote;
 static gboolean opt_disable_fsync;
 static gboolean opt_untrusted;
+static gboolean opt_gpg_verify;
+static gboolean opt_gpg_verify_summary;
 static int opt_depth = 0;
 
 static GOptionEntry options[] = {
   { "remote", 0, 0, G_OPTION_ARG_STRING, &opt_remote, "Add REMOTE to refspec", "REMOTE" },
   { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
   { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust source", NULL },
+  { "gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify, "GPG verify commits (must specify --remote)", NULL },
+  { "gpg-verify-summary", 0, 0, G_OPTION_ARG_NONE, &opt_gpg_verify_summary, "GPG verify summary (must specify --remote)", NULL },
   { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
   { NULL }
 };
@@ -145,9 +149,15 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     if (opt_remote)
       g_variant_builder_add (&builder, "{s@v}", "override-remote-name",
                              g_variant_new_variant (g_variant_new_string (opt_remote)));
+    if (opt_gpg_verify)
+      g_variant_builder_add (&builder, "{s@v}", "gpg-verify",
+                             g_variant_new_variant (g_variant_new_boolean (TRUE)));
+    if (opt_gpg_verify_summary)
+      g_variant_builder_add (&builder, "{s@v}", "gpg-verify-summary",
+                             g_variant_new_variant (g_variant_new_boolean (TRUE)));
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
-    
+
     if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
                                         g_variant_builder_end (&builder),
                                         progress,
