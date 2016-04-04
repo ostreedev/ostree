@@ -63,7 +63,7 @@ But let's discuss building our own.  If you're just experimenting,
 it's quite easy to start with the command line.  We'll assume for this
 purpose that you have a build process that outputs a directory tree -
 we'll call this tool `$pkginstallroot` (which could be `yum
---installroot` or `dbootstrap`, etc.).
+--installroot` or `debootstrap`, etc.).
 
 Your initial prototype is going to look like:
 
@@ -132,7 +132,7 @@ the desired version).
 Now, to construct our final tree:
 
 ```
-rm exampleos-build -rf
+rm -rf exampleos-build
 for package in bash systemd; do
   ostree --repo=build-repo checkout -U --union exampleos/x86_64/${package} exampleos-build
 done

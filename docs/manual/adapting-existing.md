@@ -23,7 +23,7 @@ deployment.
 Because OSTree only preserves `/var` across upgrades (each
 deployment's chroot directory will be garbage collected
 eventually), you will need to choose how to handle other
-toplevel writable directories specified by the [Filesystem Hierarchy Standard](http://www.pathname.com/fhs/")
+toplevel writable directories specified by the [Filesystem Hierarchy Standard](http://www.pathname.com/fhs/).
 Your operating system may of course choose
 not to support some of these such as `/usr/local`, but following is the
 recommended set:
@@ -37,9 +37,9 @@ recommended set:
  - `/tmp` → `/sysroot/tmp`
 
 Furthermore, since `/var` is empty by default, your operating system
-will need to dynamically create the <emphasis>targets</emphasis> of
-these at boot.  A good way to do this is using `systemd-tmpfiles`, if
-your OS uses systemd.  For example:
+will need to dynamically create the *targets* of these at boot.  A
+good way to do this is using `systemd-tmpfiles`, if your OS uses
+systemd.  For example:
 
 ```
 d /var/log/journal 0755 root root -
@@ -64,10 +64,10 @@ d /run/media 0755 root root -
 Particularly note here the double indirection of `/home`.  By default,
 each deployment will share the global toplevel `/home` directory on
 the physical root filesystem.  It is then up to higher levels of
-management tools to keep <filename>/etc/passwd</filename> or
-equivalent synchronized between operating systems.  Each deployment
-can easily be reconfigured to have its own home directory set simply
-by making `/var/home` a real directory.  </chapter>
+management tools to keep `/etc/passwd` or equivalent synchronized
+between operating systems.  Each deployment can easily be reconfigured
+to have its own home directory set simply by making `/var/home` a real
+directory.
 
 ## Booting and initramfs technology
 
@@ -144,11 +144,11 @@ these new packages on top.  A command like this:
 
 ```
 ostree commit -b osname/releasename/description
---tree=ref=$osname/releasename/description
+--tree=ref=$osname/$releasename/$description
 --tree=dir=/var/tmp/newpackages.13A8D0/
 ```
 
-will create a new commit in the `$osname/releasename/description`
+will create a new commit in the `$osname/$releasename/$description`
 branch.  The OSTree SHA256 checksum of all the files in
 `/var/tmp/newpackages.13A8D0/` will be computed, but we will not
 re-checksum the present existing tree.  In this layering model,
@@ -156,4 +156,4 @@ earlier directories will take precedence, but files in later layers
 will silently override earlier layers.
 
 Then to actually deploy this tree for the next boot:
-`ostree admin deploy <replaceable>osname/releasename/description`
+`ostree admin deploy $osname/$releasename/$description`
