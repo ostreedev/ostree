@@ -50,6 +50,7 @@ test_scripts = \
 	tests/test-pull-summary-sigs.sh \
 	tests/test-pull-resume.sh \
 	tests/test-pull-untrusted.sh \
+	tests/test-local-pull.sh \
 	tests/test-local-pull-depth.sh \
 	tests/test-gpg-signed-commit.sh \
 	tests/test-admin-upgrade-unconfigured.sh \
@@ -92,7 +93,6 @@ installed_test_data = tests/archive-test.sh \
 	tests/admin-test.sh \
 	tests/basic-test.sh \
 	tests/test-basic-user.sh \
-	tests/test-local-pull.sh \
 	tests/corrupt-repo-ref.js \
 	tests/pre-endian-deltas-repo-big.tar.xz \
 	tests/pre-endian-deltas-repo-little.tar.xz \

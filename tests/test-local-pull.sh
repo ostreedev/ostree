@@ -23,7 +23,7 @@ set -euo pipefail
 
 skip_without_user_xattrs
 
-echo "1..1"
+echo "1..4"
 
 setup_test_repository "archive-z2"
 echo "ok setup"
