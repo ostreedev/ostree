@@ -18,7 +18,7 @@ implements this.
 To begin a simple upgrade, OSTree fetches the contents of the ref from
 the remote server.  Suppose we're tracking a ref named
 `exampleos/buildmaster/x86_64-runtime`.  OSTree fetches the URL
-`http://$example.com/repo/refs/exampleos/buildmaster/x86_64-runtime`,
+`http://example.com/repo/refs/exampleos/buildmaster/x86_64-runtime`,
 which contains a SHA256 checksum.  This determines the tree to deploy,
 and `/etc` will be merged from currently booted tree.
 
@@ -35,7 +35,7 @@ we need to perform a deployment.
 
 As mentioned in the introduction, OSTree is also designed to allow a
 model where filesystem trees are computed on the client.  It is
-completely agnostic as to how those trees are generated; hey could be
+completely agnostic as to how those trees are generated; they could be
 computed with traditional packages, packages with post-deployment
 scripts on top, or built by developers directly from revision control
 locally, etc.
@@ -58,7 +58,7 @@ Given a commit to deploy, OSTree first allocates a directory for
 it.  This is of the form `/boot/loader/entries/ostree-$osname-$checksum.$serial.conf`.
 The `$serial` is normally 0, but if a
 given commit is deployed more than once, it will be incremented.
-his is supported because the previous deployment may have
+This is supported because the previous deployment may have
 configuration in `/etc` that we do not want to use or overwrite.
 
 Now that we have a deployment directory, a 3-way merge is
@@ -94,7 +94,7 @@ collected at any point.
 
 ## The /ostree/boot directory
 
-However, we want to optimize for the case where we the set of
+However, we want to optimize for the case where the set of
 kernel/initramfs pairs is the same between both the old and new
 deployment lists.  This happens when doing an upgrade that does not
 include the kernel; think of a simple translation update.  OSTree
@@ -106,11 +106,11 @@ automatically remount read-write just for the portion of time
 necessary to update the bootloader configuration.
 
 To implement this, OSTree also maintains the directory
-`/ostree/boot.<replaceable>bootversion</replaceable>`, which is a set
+`/ostree/boot.$bootversion`, which is a set
 of symbolic links to the deployment directories.  The
-<replaceable>bootversion</replaceable> here must match the version of
+`$bootversion` here must match the version of
 `/boot`.  However, in order to allow atomic transitions of
-<emphasis>this</emphasis> directory, this is also a swapped directory,
+*this* directory, this is also a swapped directory,
 so just like `/boot`, it has a version of `0` or `1` appended.
 
 Each bootloader entry has a special `ostree=` argument which refers to

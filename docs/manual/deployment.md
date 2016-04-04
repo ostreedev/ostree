@@ -54,9 +54,9 @@ to avoid computing checksums on the client by default.
 The deployment should not have a traditional UNIX `/etc`; instead, it
 should include `/usr/etc`.  This is the "default configuration".  When
 OSTree creates a deployment, it performs a 3-way merge using the
-<emphasis>old</emphasis> default configuration, the active system's
-`/etc`, and the new default configuration.  In the final filesystem
-tree for a deployment then, `/etc` is a regular writable directory.
+*old* default configuration, the active system's `/etc`, and the new
+default configuration.  In the final filesystem tree for a deployment
+then, `/etc` is a regular writable directory.
 
 Besides the exceptions of `/var` and `/etc` then, the rest of the
 contents of the tree are checked out as hard links into the
@@ -87,4 +87,4 @@ deployment.
 
 At present, not all bootloaders implement the BootLoaderSpec, so
 OSTree contains code for some of these to regenerate native config
-files (such as `/boot/syslinux/syslinux.conf` based on the entries.
+files (such as `/boot/syslinux/syslinux.conf`) based on the entries.

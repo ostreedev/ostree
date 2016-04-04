@@ -87,7 +87,7 @@ two different generated filesystem trees.  In this example, the
 "runtime" tree contains just enough to run a basic system, and
 "devel-debug" contains all of the developer tools and debuginfo.
 
-The `ostree` supports a simple syntax using the carat `^` to refer to
+The `ostree` supports a simple syntax using the caret `^` to refer to
 the parent of a given commit.  For example,
 `exampleos/buildmaster/x86_64-runtime^` refers to the previous build,
 and `exampleos/buildmaster/x86_64-runtime^^` refers to the one before

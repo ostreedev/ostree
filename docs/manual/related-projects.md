@@ -18,7 +18,7 @@ date, and relatively agnostic.
 Broadly speaking, projects in this area fall into two camps; either
 a tool to snapshot systems on the client side (dpkg/rpm + BTRFS/LVM),
 or a tool to compose on a server and replicate (ChromiumOS, Clear
-Linux).  OSTree is flexible enough to do both. 
+Linux).  OSTree is flexible enough to do both.
 
 ## Combining dpkg/rpm + (BTRFS/LVM)
 
