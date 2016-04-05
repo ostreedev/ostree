@@ -1987,10 +1987,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else
     {
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
-      if (!ostree_repo_remote_get_gpg_verify (self, remote_name_or_baseurl,
+      if (!ostree_repo_remote_get_gpg_verify (self, pull_data->remote_name,
                                               &pull_data->gpg_verify, error))
         goto out;
-      if (!ostree_repo_remote_get_gpg_verify_summary (self, remote_name_or_baseurl,
+      if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
                                                       &pull_data->gpg_verify_summary, error))
         goto out;
     }
@@ -2120,7 +2120,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
 
     if (bytes_sig &&
-        !_ostree_repo_remote_name_is_file (remote_name_or_baseurl) &&
+        !pull_data->remote_repo_local &&
         !_ostree_repo_load_cache_summary_if_same_sig (self,
                                                       remote_name_or_baseurl,
                                                       bytes_sig,
@@ -2174,7 +2174,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!summary_from_cache && bytes_summary && bytes_sig)
       {
-        if (!_ostree_repo_remote_name_is_file (remote_name_or_baseurl) &&
+        if (!pull_data->remote_repo_local &&
             !_ostree_repo_cache_summary (self,
                                          remote_name_or_baseurl,
                                          bytes_summary,
