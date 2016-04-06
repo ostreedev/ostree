@@ -257,14 +257,17 @@ AC_ARG_WITH(builtin-grub2-mkconfig,
               [with_builtin_grub2_mkconfig=no])
 AM_CONDITIONAL(BUILDOPT_BUILTIN_GRUB2_MKCONFIG, test x$with_builtin_grub2_mkconfig = xyes)
 AM_COND_IF(BUILDOPT_BUILTIN_GRUB2_MKCONFIG,
-           AC_DEFINE([USE_BUILTIN_GRUB2_MKCONFIG], 1, [Define if using internal ostree-grub-generator]),
-[
-  # Otherwise, look for the path to the system generator.  On some
-  # distributions GRUB2 *-mkconfig executable has 'grub2' prefix and
-  # on some 'grub'.
-  AC_CHECK_PROG(GRUB2_MKCONFIG, grub2-mkconfig, grub2-mkconfig, grub-mkconfig)
-  AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executible name])
-])
+           AC_DEFINE([USE_BUILTIN_GRUB2_MKCONFIG], 1, [Define if using internal ostree-grub-generator]))
+AC_ARG_WITH(grub2-mkconfig-path,
+            AS_HELP_STRING([--with-grub2-mkconfig-path],
+                           [Path to grub2-mkconfig]))
+AS_IF([test x$with_grub2_mkconfig_path = x], [
+  dnl Otherwise, look for the path to the system generator.  On some
+  dnl distributions GRUB2 *-mkconfig executable has 'grub2' prefix and
+  dnl on some 'grub'.  We default to grub2-mkconfig.
+  AC_CHECK_PROGS(GRUB2_MKCONFIG, [grub2-mkconfig grub-mkconfig], [grub2-mkconfig])
+],[GRUB2_MKCONFIG=$with_grub2_mkconfig_path])
+AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executible name])
 
 dnl for tests
 AS_IF([test "x$found_introspection" = xyes], [
@@ -301,8 +304,12 @@ echo "
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
-    mkinitcpio:                                   $with_mkinitcpio
-    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
+    mkinitcpio:                                   $with_mkinitcpio"
+AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
+    echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
+], [
+    echo "    grub2-mkconfig path:                          $GRUB2_MKCONFIG"
+])
 AS_IF([test "x$with_systemd" = "xyes"], [
     echo "    systemd unit dir:                             $with_systemdsystemunitdir"
 ])
