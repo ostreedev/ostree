@@ -264,12 +264,8 @@ AC_ARG_WITH(grub2-mkconfig-path,
 AS_IF([test x$with_grub2_mkconfig_path = x], [
   dnl Otherwise, look for the path to the system generator.  On some
   dnl distributions GRUB2 *-mkconfig executable has 'grub2' prefix and
-  dnl on some 'grub'.
-  AC_CHECK_PROGS(GRUB2_MKCONFIG, [grub2-mkconfig grub-mkconfig])
-  dnl Now if we don't find it in the buildroot, hackily search for fedora and
-  dnl dnl use grub2- if found
-  AS_IF([test x$GRUB2_MKCONFIG = x], [
-    AS_IF([grep 'ID_LIKE.*fedora' /etc/os-release], [GRUB2_MKCONFIG=grub2-mkconfig], [GRUB2_MKCONFIG=grub-mkconfig])])
+  dnl on some 'grub'.  We default to grub2-mkconfig.
+  AC_CHECK_PROGS(GRUB2_MKCONFIG, [grub2-mkconfig grub-mkconfig], [grub2-mkconfig])
 ],[GRUB2_MKCONFIG=$with_grub2_mkconfig_path])
 AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executible name])
 
