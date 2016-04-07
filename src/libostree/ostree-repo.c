@@ -280,8 +280,19 @@ _ostree_repo_remote_name_is_file (const char *remote_name)
 
 /**
  * ostree_repo_get_remote_option:
- * @self:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @default_value: (allow-none): Value returned if @option_name is not present
+ * @out_value: (out): Return location for value
+ * @error: Error
  *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, or @default_value if the remote exists but not the
+ * option name.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
 gboolean
 ostree_repo_get_remote_option (OstreeRepo  *self,
@@ -341,8 +352,20 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
 
 /**
  * ostree_repo_get_remote_list_option:
- * @self:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @out_value: (out) (array zero-terminated=1): location to store the list
+ *            of strings. The list should be freed with
+ *            g_strfreev().
+ * @error: Error
  *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, and returns it as an zero terminated array of strings.
+ * If the option is not set, @out_value will be set to %NULL.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
 gboolean
 ostree_repo_get_remote_list_option (OstreeRepo   *self,
@@ -399,8 +422,19 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
 
 /**
  * ostree_repo_get_remote_boolean_option:
- * @self:
+ * @self: A OstreeRepo
+ * @remote_name: Name
+ * @option_name: Option
+ * @default_value: (allow-none): Value returned if @option_name is not present
+ * @out_value: (out) : location to store the result.
+ * @error: Error
  *
+ * OSTree remotes are represented by keyfile groups, formatted like:
+ * `[remote "remotename"]`. This function returns a value named @option_name
+ * underneath that group, and returns it as a boolean.
+ * If the option is not set, @out_value will be set to @default_value.
+ *
+ * Returns: %TRUE on success, otherwise %FALSE with @error set
  */
 gboolean
 ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
