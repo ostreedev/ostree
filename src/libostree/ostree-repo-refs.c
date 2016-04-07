@@ -655,28 +655,34 @@ ostree_repo_list_refs_ext (OstreeRepo                 *self,
 }
 
 /**
- * ostree_repo_remote_list_refs:
+ * ostree_repo_remote_list_refs_ext:
  * @self: Repo
  * @remote_name: Name of the remote.
+ * @flags: Options controlling listing behavior
  * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
  * @cancellable: Cancellable
  * @error: Error
  *
  */
 gboolean
-ostree_repo_remote_list_refs (OstreeRepo       *self,
-                              const char       *remote_name,
-                              GHashTable      **out_all_refs,
-                              GCancellable     *cancellable,
-                              GError          **error)
+ostree_repo_remote_list_refs_ext (OstreeRepo       *self,
+                                  const char       *remote_name,
+                                  OstreeRepoRemoteListRefsFlags flags,
+                                  GHashTable      **out_all_refs,
+                                  GCancellable     *cancellable,
+                                  GError          **error)
 {
   g_autoptr(GBytes) summary_bytes = NULL;
   gboolean ret = FALSE;
   g_autoptr(GHashTable) ret_all_refs = NULL;
+  OstreeRepoRemoteFetchSummaryFlags summary_flags = 0;
 
-  if (!ostree_repo_remote_fetch_summary (self, remote_name,
-                                         &summary_bytes, NULL,
-                                         cancellable, error))
+  if ((flags & OSTREE_REPO_REMOTE_LIST_REFS_FALLBACK_TO_CACHE) != 0)
+    summary_flags |= OSTREE_REPO_REMOTE_FETCH_SUMMARY_FALLBACK_TO_CACHE;
+
+  if (!ostree_repo_remote_fetch_summary_ext (self, remote_name, summary_flags,
+                                             &summary_bytes, NULL,
+                                             cancellable, error))
     goto out;
 
   if (summary_bytes == NULL)
@@ -732,6 +738,27 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
 
  out:
   return ret;
+}
+
+/**
+ * ostree_repo_remote_list_refs:
+ * @self: Repo
+ * @remote_name: Name of the remote.
+ * @out_all_refs: (out) (element-type utf8 utf8): Mapping from ref to checksum
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ */
+gboolean
+ostree_repo_remote_list_refs (OstreeRepo       *self,
+                              const char       *remote_name,
+                              GHashTable      **out_all_refs,
+                              GCancellable     *cancellable,
+                              GError          **error)
+{
+  return ostree_repo_remote_list_refs_ext (self, remote_name,
+                                           OSTREE_REPO_REMOTE_LIST_REFS_NONE, out_all_refs,
+                                           cancellable, error);
 }
 
 gboolean      

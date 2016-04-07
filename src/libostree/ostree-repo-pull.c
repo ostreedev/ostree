@@ -1772,6 +1772,53 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 }
 
 gboolean
+_ostree_repo_load_cache_summary (OstreeRepo        *self,
+                                 const char        *remote,
+                                 GBytes            **summary,
+                                 GBytes            **summary_sig,
+                                 GCancellable      *cancellable,
+                                 GError           **error)
+{
+  gboolean ret = FALSE;
+  const char *summary_cache_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote);
+  const char *summary_cache_sig_file = glnx_strjoina (_OSTREE_SUMMARY_CACHE_PATH, "/", remote, ".sig");
+  glnx_fd_close int summary_fd = -1;
+  glnx_fd_close int summary_sig_fd = -1;
+  g_autoptr(GBytes) summary_data = NULL;
+  g_autoptr(GBytes) summary_sig_data = NULL;
+
+  summary_fd = openat (self->repo_dir_fd, summary_cache_file, O_CLOEXEC | O_RDONLY);
+  if (summary_fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
+  summary_data = glnx_fd_readall_bytes (summary_fd, cancellable, error);
+  if (!summary_data)
+    goto out;
+
+  /* Don't fail (yet) if no signature cache, it may not be needed */
+  if (!ot_openat_ignore_enoent (self->repo_dir_fd, summary_cache_sig_file, &summary_sig_fd, error))
+    goto out;
+
+  if (summary_sig_fd >= 0)
+    {
+      summary_sig_data = glnx_fd_readall_bytes (summary_sig_fd, cancellable, error);
+      if (!summary_sig_data)
+        goto out;
+    }
+
+  *summary = g_steal_pointer (&summary_data);
+  *summary_sig = g_steal_pointer (&summary_sig_data);
+  ret = TRUE;
+
+ out:
+  return ret;
+}
+
+
+gboolean
 _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
                                              const char        *remote,
                                              GBytes            *summary_sig,
@@ -1853,13 +1900,18 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
                                       cancellable, error))
     goto out;
 
-  if (!glnx_file_replace_contents_at (self->repo_dir_fd,
-                                      summary_cache_sig_file,
-                                      g_bytes_get_data (summary_sig, NULL),
-                                      g_bytes_get_size (summary_sig),
-                                      self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
-                                      cancellable, error))
-    goto out;
+  if (summary_sig)
+    {
+      if (!glnx_file_replace_contents_at (self->repo_dir_fd,
+                                          summary_cache_sig_file,
+                                          g_bytes_get_data (summary_sig, NULL),
+                                          g_bytes_get_size (summary_sig),
+                                          self->disable_fsync ? GLNX_FILE_REPLACE_NODATASYNC : GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                          cancellable, error))
+        goto out;
+    }
+  else
+    (void) unlinkat (self->repo_dir_fd, summary_cache_sig_file, 0);
 
   ret = TRUE;
  out:

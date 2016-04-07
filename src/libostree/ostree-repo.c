@@ -1743,11 +1743,13 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                            const char    *metalink_url_string,
                            GBytes       **out_summary,
                            GBytes       **out_signatures,
+                           gboolean       fallback_to_cache,
                            GCancellable  *cancellable,
                            GError       **error)
 {
   glnx_unref_object OstreeFetcher *fetcher = NULL;
   g_autoptr(GMainContext) mainctx = NULL;
+  g_autoptr(GError) local_error = NULL;
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
   gboolean from_cache = FALSE;
@@ -1787,8 +1789,30 @@ repo_remote_fetch_summary (OstreeRepo    *self,
                                       metalink_url_string ? TRUE : FALSE,
                                       out_signatures,
                                       cancellable,
-                                      error))
-    goto out;
+                                      &local_error))
+    {
+      if (fallback_to_cache)
+        {
+          g_autoptr(GError) fallback_error = NULL;
+          if (!_ostree_repo_load_cache_summary (self,
+                                                name,
+                                                out_summary,
+                                                out_signatures,
+                                                cancellable,
+                                                &fallback_error))
+            {
+              g_debug ("Fallback to cache failed due to %s\n", fallback_error->message);
+              /* If the cache fails, return the network failuer error */
+              g_propagate_error (error, g_steal_pointer (&local_error));
+              goto out;
+            }
+        }
+      else
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          goto out;
+        }
+    }
 
   if (*out_signatures)
     {
@@ -1816,7 +1840,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
         goto out;
     }
 
-  if (!from_cache && *out_summary && *out_signatures)
+  if (!from_cache && *out_summary)
     {
       g_autoptr(GError) temp_error = NULL;
 
@@ -1849,9 +1873,10 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 #endif
 
 /**
- * ostree_repo_remote_fetch_summary:
+ * ostree_repo_remote_fetch_summary_ext:
  * @self: Self
  * @name: name of a remote
+ * @flags: Options controlling fetch behavior
  * @out_summary: (allow-none): return location for raw summary data, or %NULL
  * @out_signatures: (allow-none): return location for raw summary signature
  *                                data, or %NULL
@@ -1872,12 +1897,13 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  * Returns: %TRUE on success, %FALSE on failure
  */
 gboolean
-ostree_repo_remote_fetch_summary (OstreeRepo    *self,
-                                  const char    *name,
-                                  GBytes       **out_summary,
-                                  GBytes       **out_signatures,
-                                  GCancellable  *cancellable,
-                                  GError       **error)
+ostree_repo_remote_fetch_summary_ext (OstreeRepo    *self,
+                                      const char    *name,
+                                      OstreeRepoRemoteFetchSummaryFlags flags,
+                                      GBytes       **out_summary,
+                                      GBytes       **out_signatures,
+                                      GCancellable  *cancellable,
+                                      GError       **error)
 {
 #ifdef HAVE_LIBSOUP
   g_autofree char *metalink_url_string = NULL;
@@ -1898,6 +1924,7 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                   metalink_url_string,
                                   &summary,
                                   &signatures,
+                                  (flags & OSTREE_REPO_REMOTE_FETCH_SUMMARY_FALLBACK_TO_CACHE) != 0,
                                   cancellable,
                                   error))
     goto out;
@@ -1950,6 +1977,44 @@ out:
   return FALSE;
 #endif
 }
+
+/**
+ * ostree_repo_remote_fetch_summary:
+ * @self: Self
+ * @name: name of a remote
+ * @out_summary: (allow-none): return location for raw summary data, or %NULL
+ * @out_signatures: (allow-none): return location for raw summary signature
+ *                                data, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Tries to fetch the summary file and any GPG signatures on the summary file
+ * over HTTP, and returns the binary data in @out_summary and @out_signatures
+ * respectively.
+ *
+ * If no summary file exists on the remote server, @out_summary is set to
+ * @NULL.  Likewise if the summary file is not signed, @out_signatures is
+ * set to @NULL.  In either case the function still returns %TRUE.
+ *
+ * Parse the summary data into a #GVariant using g_variant_new_from_bytes()
+ * with #OSTREE_SUMMARY_GVARIANT_FORMAT as the format string.
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_fetch_summary (OstreeRepo    *self,
+                                  const char    *name,
+                                  GBytes       **out_summary,
+                                  GBytes       **out_signatures,
+                                  GCancellable  *cancellable,
+                                  GError       **error)
+{
+  return ostree_repo_remote_fetch_summary_ext (self, name,
+                                               OSTREE_REPO_REMOTE_FETCH_SUMMARY_NONE,
+                                               out_summary, out_signatures,
+                                               cancellable, error);
+}
+
 
 static gboolean
 ostree_repo_mode_to_string (OstreeRepoMode   mode,
