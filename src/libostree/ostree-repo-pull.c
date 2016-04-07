@@ -448,12 +448,7 @@ scan_dirtree_object (OtPullData   *pull_data,
   files_variant = g_variant_get_child_value (tree, 0);
   dirs_variant = g_variant_get_child_value (tree, 1);
 
-  /* Skip files if we're traversing a request only directory */
-  if (pull_data->dir)
-    n = 0;
-  else
-    n = g_variant_n_children (files_variant);
-
+  n = g_variant_n_children (files_variant);
   for (i = 0; i < n; i++)
     {
       const char *filename;
@@ -465,6 +460,14 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       if (!ot_util_filename_validate (filename, error))
         goto out;
+
+      /* Skip files if we're traversing a request only directory, unless it exactly
+       * matches the path */
+      if (pull_data->dir &&
+          /* Should always an initial slash, we assert it in scan_dirtree_object */
+          pull_data->dir[0] == '/' &&
+          strcmp (pull_data->dir+1, filename) != 0)
+        continue;
 
       file_checksum = ostree_checksum_from_bytes_v (csum);
 

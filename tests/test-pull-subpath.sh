@@ -44,6 +44,10 @@ assert_file_has_content err.txt "Couldn't find file object"
 rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
 assert_has_file repo/state/${rev}.commitpartial
 
+# Test pulling a file, not a dir
+${CMD_PREFIX} ostree --repo=repo pull --subpath=/firstfile origin main
+${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile
+
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 assert_not_has_file repo/state/${rev}.commitpartial
 ${CMD_PREFIX} ostree --repo=repo fsck
