@@ -214,6 +214,7 @@ tests_test_gpg_verify_result_CFLAGS = $(TESTS_CFLAGS) $(OT_INTERNAL_GPGME_CFLAGS
 tests_test_gpg_verify_result_LDADD = $(TESTS_LDADD) $(OT_INTERNAL_GPGME_LIBS)
 
 EXTRA_DIST += \
+	tests/libostreetest.h \
 	tests/gpg-verify-data/README.md \
 	tests/gpg-verify-data/lgpl2 \
 	tests/gpg-verify-data/lgpl2.sig \
