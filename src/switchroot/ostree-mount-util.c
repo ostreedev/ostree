@@ -66,4 +66,3 @@ path_is_on_readonly_fs (char *path)
 
   return (stvfsbuf.f_flag & ST_RDONLY) != 0;
 }
-

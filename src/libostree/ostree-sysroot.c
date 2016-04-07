@@ -1850,4 +1850,3 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
  out:
   return ret;
 }
-
