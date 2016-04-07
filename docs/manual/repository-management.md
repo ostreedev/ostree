@@ -179,7 +179,7 @@ you should update the summary file:
 ostree --repo=repo-prod summary -u
 ```
 
-(Remember, the `summary` command can not be run concurrently, so this
+(Remember, the `summary` command cannot be run concurrently, so this
  should be triggered serially by other jobs).
 
 There is some more information on the design of the summary file in
