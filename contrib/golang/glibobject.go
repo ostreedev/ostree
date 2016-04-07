@@ -47,50 +47,50 @@ func GoBool(b C.gboolean) bool {
 }
 
 type GError struct {
-     ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func NewGError() GError {
-     return GError{nil}
+	return GError{nil}
 }
 
 func (e *GError) Native() *C.GError {
-     if e == nil {
-     	return nil
-     }
-     return (*C.GError)(e.ptr)
+	if e == nil {
+		return nil
+	}
+	return (*C.GError)(e.ptr)
 }
 
 func ConvertGError(e *C.GError) error {
-     defer C.g_error_free(e)
-     return errors.New(C.GoString((*C.char)(C._g_error_get_message(e))))
+	defer C.g_error_free(e)
+	return errors.New(C.GoString((*C.char)(C._g_error_get_message(e))))
 }
 
 type GType uint
 
 func (t GType) Name() string {
-     return C.GoString((*C.char)(C.g_type_name(C.GType(t))))
+	return C.GoString((*C.char)(C.g_type_name(C.GType(t))))
 }
-     
+
 type GVariant struct {
-     ptr unsafe.Pointer
+	ptr unsafe.Pointer
 }
 
 func GVariantNew(p unsafe.Pointer) *GVariant {
-     o := &GVariant{p}
-     runtime.SetFinalizer(o, (*GVariant).Unref)
-     return o;
+	o := &GVariant{p}
+	runtime.SetFinalizer(o, (*GVariant).Unref)
+	return o;
 }
 
 func GVariantNewSink(p unsafe.Pointer) *GVariant {
-     o := &GVariant{p}
-     runtime.SetFinalizer(o, (*GVariant).Unref)
-     o.RefSink()
-     return o;
+	o := &GVariant{p}
+	runtime.SetFinalizer(o, (*GVariant).Unref)
+	o.RefSink()
+	return o;
 }
 
 func (v *GVariant) native() *C.GVariant {
-     return (*C.GVariant)(v.ptr);
+	return (*C.GVariant)(v.ptr);
 }
 
 func (v *GVariant) Ref() {
@@ -98,7 +98,7 @@ func (v *GVariant) Ref() {
 }
 
 func (v *GVariant) Unref() {
-     C.g_variant_unref(v.native())
+	C.g_variant_unref(v.native())
 }
 
 func (v *GVariant) RefSink() {
@@ -116,14 +116,14 @@ func (v *GVariant) GetChildValue(i int) *GVariant {
 }
 
 func (v *GVariant) LookupString(key string) (string, error) {
-     ckey := C.CString(key)
-     defer C.free(unsafe.Pointer(ckey))
-     // TODO: Find a way to have constant C strings in golang
-     cstr := C._g_variant_lookup_string(v.native(), ckey)
-     if cstr == nil {
-     	return "", fmt.Errorf("No such key: %s", key)
-     }
-     return C.GoString(cstr), nil
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	// TODO: Find a way to have constant C strings in golang
+	cstr := C._g_variant_lookup_string(v.native(), ckey)
+	if cstr == nil {
+		return "", fmt.Errorf("No such key: %s", key)
+	}
+	return C.GoString(cstr), nil
 }
 
 /*
@@ -144,9 +144,9 @@ type GObject struct {
 }
 
 func GObjectNew(p unsafe.Pointer) *GObject {
-     o := &GObject{p}
-     runtime.SetFinalizer(o, (*GObject).Unref)
-     return o;
+	o := &GObject{p}
+	runtime.SetFinalizer(o, (*GObject).Unref)
+	return o;
 }
 
 func (v *GObject) Ptr() unsafe.Pointer {
@@ -172,7 +172,7 @@ func (v *GObject) Ref() {
 }
 
 func (v *GObject) Unref() {
-     C.g_object_unref(C.gpointer(v.ptr))
+	C.g_object_unref(C.gpointer(v.ptr))
 }
 
 func (v *GObject) RefSink() {
@@ -191,7 +191,7 @@ func (v *GObject) ForceFloating() {
 // GIO types
 
 type GCancellable struct {
-     *GObject
+	*GObject
 }
 
 func (self *GCancellable) native() *C.GCancellable {
