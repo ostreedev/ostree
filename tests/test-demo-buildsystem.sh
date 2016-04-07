@@ -42,14 +42,14 @@ exampleos_build_commit_package() {
     mkdir -p ${pkg}-package/usr/bin/
     echo "${pkg}-content ${version}" > ${pkg}-package/usr/bin/${pkg}
     # Use a dummy subject for this.
-    ostree --repo=build-repo commit -b exampleos/x86_64/${pkg} -s '' --tree=dir=${pkg}-package
+    ${CMD_PREFIX} ostree --repo=build-repo commit -b exampleos/x86_64/${pkg} -s '' --tree=dir=${pkg}-package
     rm ${pkg}-package -rf
 }
 
 exampleos_recompose() {
     rm exampleos-build -rf
     for pkg in ${packages}; do
-	ostree --repo=build-repo checkout -U --union exampleos/x86_64/${pkg} exampleos-build
+	${CMD_PREFIX} ostree --repo=build-repo checkout -U --union exampleos/x86_64/${pkg} exampleos-build
     done
 
     # Now that we have our rootfs, run triggers
@@ -60,15 +60,15 @@ exampleos_recompose() {
     # Then we commit it, using --link-checkout-speedup to effectively
     # only re-checksum the ldconfig file.  We also have dummy commit
     # message here.
-    ostree --repo=build-repo commit -b exampleos/x86_64/standard -s 'exampleos build' --link-checkout-speedup exampleos-build
+    ${CMD_PREFIX} ostree --repo=build-repo commit -b exampleos/x86_64/standard -s 'exampleos build' --link-checkout-speedup exampleos-build
 }
 
 packages="bash systemd"
 
 mkdir build-repo
-ostree --repo=build-repo init --mode=bare-user
+${CMD_PREFIX} ostree --repo=build-repo init --mode=bare-user
 mkdir repo
-ostree --repo=repo init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
 # Our FUSE mount point
 mkdir mnt
 
@@ -81,7 +81,7 @@ exampleos_build_commit_package systemd 224
 exampleos_recompose
 
 # This is our first commit - let's publish it.
-ostree --repo=repo pull-local build-repo exampleos/x86_64/standard
+${CMD_PREFIX} ostree --repo=repo pull-local build-repo exampleos/x86_64/standard
 
 # Now, update the bash package - this is a new commit on the branch
 # exampleos/x86_64/bash.
@@ -91,11 +91,11 @@ exampleos_build_commit_package bash 0.5.0
 exampleos_recompose
 
 # Publish again:
-ostree --repo=repo pull-local build-repo exampleos/x86_64/standard
+${CMD_PREFIX} ostree --repo=repo pull-local build-repo exampleos/x86_64/standard
 # Optional: Generate a static delta vs the previous build
-ostree --repo=repo static-delta generate exampleos/x86_64/standard
+${CMD_PREFIX} ostree --repo=repo static-delta generate exampleos/x86_64/standard
 # Optional: Regenerate the summary file
-ostree --repo=repo summary -u
+${CMD_PREFIX} ostree --repo=repo summary -u
 
 # Try: ostree --repo=demo-repo ls -R exampleos/x86_64/standard
 
