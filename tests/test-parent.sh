@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2016 Alexander Larsson <alexl@redhat.com>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,6 @@ export OSTREE_GPG_SIGN="${OSTREE} gpg-sign --gpg-homedir=${TEST_GPG_KEYHOME}"
 cd ${test_tmpdir}
 
 # Create a repo
-mkdir repo2
 ${CMD_PREFIX} ostree --repo=repo2 init
 ${CMD_PREFIX} ostree --repo=repo2 remote add --gpg-import=${test_tmpdir}/gpghome/trusted/pubring.gpg --set=gpg-verify=true aremote file://$(pwd)/repo test2
 
@@ -44,8 +43,8 @@ if ${CMD_PREFIX} ostree --repo=repo3 pull aremote; then
 fi
 echo "ok unsigned pull w/parent"
 
-# Make a signed commit
+# Make a signed commit and ensure we can now pull
 ${OSTREE} commit -b test2 -s "A GPG signed commit" -m "Signed commit body" --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_GPG_KEYHOME} --tree=dir=files
+${CMD_PREFIX} ostree --repo=repo3 pull aremote
 
-# Make sure we pick up the remote url and gpg config from the parent
 echo "ok signed pull w/parent"
