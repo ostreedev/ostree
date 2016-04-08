@@ -4513,12 +4513,22 @@ find_keyring (OstreeRepo          *self,
               OstreeRemote        *remote,
               GCancellable        *cancellable)
 {
+  g_autoptr(GFile) remotes_d = NULL;
   g_autoptr(GFile) file = NULL;
   file = g_file_get_child (self->repodir, remote->keyring);
 
   if (g_file_query_exists (file, cancellable))
     {
       return g_steal_pointer (&file);
+    }
+
+  remotes_d = get_remotes_d_dir (self);
+  if (remotes_d)
+    {
+      g_autoptr(GFile) file2 = g_file_get_child (remotes_d, remote->keyring);
+
+      if (g_file_query_exists (file2, cancellable))
+        return g_steal_pointer (&file2);
     }
 
   if (self->parent_repo)
