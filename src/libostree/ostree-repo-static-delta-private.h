@@ -196,6 +196,12 @@ _ostree_repo_static_delta_dump (OstreeRepo                 *repo,
                                 GCancellable               *cancellable,
                                 GError                    **error);
 
+gboolean
+_ostree_repo_static_delta_delete (OstreeRepo                 *repo,
+                                  const char                 *delta_id,
+                                  GCancellable               *cancellable,
+                                  GError                    **error);
+
 /* Used for static deltas which due to a historical mistake are
  * inconsistent endian.
  *
