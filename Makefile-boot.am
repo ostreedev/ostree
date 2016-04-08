@@ -41,10 +41,10 @@ endif
 
 if !BUILDOPT_BUILTIN_GRUB2_MKCONFIG
 # We're using the system grub2-mkconfig generator
-libexec_SCRIPTS = src/boot/grub2/grub2-15_ostree
+pkglibexec_SCRIPTS += src/boot/grub2/grub2-15_ostree
 install-grub2-config-hook:
 	mkdir -p $(DESTDIR)$(grub2configdir)
-	ln -sf $(libexecdir)/grub2-15_ostree $(DESTDIR)$(grub2configdir)/15_ostree
+	ln -sf $(pkglibexecdir)/grub2-15_ostree $(DESTDIR)$(grub2configdir)/15_ostree
 grub2configdir = $(sysconfdir)/grub.d
 INSTALL_DATA_HOOKS += install-grub2-config-hook
 else
