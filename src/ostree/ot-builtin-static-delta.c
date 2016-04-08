@@ -42,6 +42,7 @@ static gboolean opt_disable_bsdiff;
 
 BUILTINPROTO(list);
 BUILTINPROTO(show);
+BUILTINPROTO(delete);
 BUILTINPROTO(generate);
 BUILTINPROTO(apply_offline);
 
@@ -50,6 +51,7 @@ BUILTINPROTO(apply_offline);
 static OstreeCommand static_delta_subcommands[] = {
   { "list", ot_static_delta_builtin_list },
   { "show", ot_static_delta_builtin_show },
+  { "delete", ot_static_delta_builtin_delete },
   { "generate", ot_static_delta_builtin_generate },
   { "apply-offline", ot_static_delta_builtin_apply_offline },
   { NULL, NULL }
@@ -167,6 +169,39 @@ ot_static_delta_builtin_show (int argc, char **argv, GCancellable *cancellable, 
     g_option_context_free (context);
   return ret;
 }
+
+static gboolean
+ot_static_delta_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error)
+{
+  gboolean ret = FALSE;
+  GOptionContext *context;
+  glnx_unref_object OstreeRepo *repo = NULL;
+  const char *delta_id = NULL;
+
+  context = g_option_context_new ("DELETE - Remove a delta");
+
+  if (!ostree_option_context_parse (context, list_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
+    goto out;
+
+  if (argc < 3)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "DELTA must be specified");
+      goto out;
+    }
+
+  delta_id = argv[2];
+
+  if (!ostree_cmd__private__ ()->ostree_static_delta_delete (repo, delta_id, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (context)
+    g_option_context_free (context);
+  return ret;
+}
+
 
 static gboolean
 ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellable, GError **error)

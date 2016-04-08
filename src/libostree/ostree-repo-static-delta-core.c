@@ -783,6 +783,41 @@ _ostree_delta_needs_byteswap (GVariant *superblock)
 }
 
 gboolean
+_ostree_repo_static_delta_delete (OstreeRepo                    *self,
+                                  const char                    *delta_id,
+                                  GCancellable                  *cancellable,
+                                  GError                      **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *from = NULL;
+  g_autofree char *to = NULL;
+  g_autofree char *deltadir = NULL;
+  struct stat buf;
+
+  _ostree_parse_delta_name (delta_id, &from, &to);
+  deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
+
+  if (fstatat (self->repo_dir_fd, deltadir, &buf, 0) != 0)
+    {
+      if (errno == ENOENT)
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                     "Can't find delta %s", delta_id);
+      else
+        glnx_set_error_from_errno (error);
+
+      goto out;
+    }
+
+  if (!glnx_shutil_rm_rf_at (self->repo_dir_fd, deltadir,
+                             cancellable, error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 const char                    *delta_id,
                                 GCancellable                  *cancellable,

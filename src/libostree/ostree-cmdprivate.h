@@ -27,6 +27,7 @@ G_BEGIN_DECLS
 typedef struct {
   gboolean (* ostree_generate_grub2_config) (OstreeSysroot *sysroot, int bootversion, int target_fd, GCancellable *cancellable, GError **error);
   gboolean (* ostree_static_delta_dump) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
+  gboolean (* ostree_static_delta_delete) (OstreeRepo *repo, const char *delta_id, GCancellable *cancellable, GError **error);
 } OstreeCmdPrivateVTable;
 
 /* Note this not really "public", we just export the symbol, but not the header */

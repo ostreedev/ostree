@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..7'
+echo '1..8'
 
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
@@ -186,3 +186,18 @@ ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${newrev} >/dev/null
 
 echo 'ok apply offline inline'
+
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}-${newrev}$ || exit 1
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}$ || exit 1
+
+${CMD_PREFIX} ostree --repo=repo static-delta delete ${origrev} || exit 1
+
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}-${newrev}$ || exit 1
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}$ && exit 1
+
+${CMD_PREFIX} ostree --repo=repo static-delta delete ${origrev}-${newrev} || exit 1
+
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}-${newrev}$ && exit 1
+${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}$ && exit 1
+
+echo 'ok delete'
