@@ -88,6 +88,7 @@ enum {
   PROP_0,
 
   PROP_PATH,
+  PROP_REMOTES_CONFIG_DIR,
   PROP_SYSROOT_PATH
 };
 
@@ -625,6 +626,7 @@ ostree_repo_finalize (GObject *object)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->config_file);
   g_clear_object (&self->sysroot_dir);
+  g_free (self->remotes_config_dir);
 
   g_clear_object (&self->transaction_lock_path);
 
@@ -664,6 +666,9 @@ ostree_repo_set_property(GObject         *object,
     case PROP_SYSROOT_PATH:
       self->sysroot_dir = g_value_dup_object (value);
       break;
+    case PROP_REMOTES_CONFIG_DIR:
+      self->remotes_config_dir = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -685,6 +690,9 @@ ostree_repo_get_property(GObject         *object,
       break;
     case PROP_SYSROOT_PATH:
       g_value_set_object (value, self->sysroot_dir);
+      break;
+    case PROP_REMOTES_CONFIG_DIR:
+      g_value_set_string (value, self->remotes_config_dir);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -738,6 +746,13 @@ ostree_repo_class_init (OstreeRepoClass *klass)
                                                         "",
                                                         "",
                                                         G_TYPE_FILE,
+                                                        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+  g_object_class_install_property (object_class,
+                                   PROP_REMOTES_CONFIG_DIR,
+                                   g_param_spec_string ("remotes-config-dir",
+                                                        "",
+                                                        "",
+                                                        NULL,
                                                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
   /**
@@ -2315,19 +2330,32 @@ append_one_remote_config (OstreeRepo      *self,
  out:
   return ret;
 }
-                                 
+
+static GFile *
+get_remotes_d_dir (OstreeRepo          *self)
+{
+  if (self->remotes_config_dir != NULL)
+    return g_file_resolve_relative_path (self->sysroot_dir, self->remotes_config_dir);
+  else if (ostree_repo_is_system (self))
+    return g_file_resolve_relative_path (self->sysroot_dir, SYSCONF_REMOTES);
+
+  return NULL;
+}
+
 static gboolean
 append_remotes_d (OstreeRepo          *self,
                   GCancellable        *cancellable,
                   GError             **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) etc_ostree_remotes_d = NULL;
+  g_autoptr(GFile) remotes_d = NULL;
   g_autoptr(GFileEnumerator) direnum = NULL;
 
-  etc_ostree_remotes_d = g_file_resolve_relative_path (self->sysroot_dir, SYSCONF_REMOTES);
+  remotes_d = get_remotes_d_dir (self);
+  if (remotes_d == NULL)
+    return TRUE;
 
-  if (!enumerate_directory_allow_noent (etc_ostree_remotes_d, OSTREE_GIO_FAST_QUERYINFO, 0,
+  if (!enumerate_directory_allow_noent (remotes_d, OSTREE_GIO_FAST_QUERYINFO, 0,
                                         &direnum,
                                         cancellable, error))
     goto out;
@@ -2502,11 +2530,8 @@ ostree_repo_open (OstreeRepo    *self,
       ostree_repo_set_disable_fsync (self, TRUE);
   }
 
-  if (ostree_repo_is_system (self))
-    {
-      if (!append_remotes_d (self, cancellable, error))
-        goto out;
-    }
+  if (!append_remotes_d (self, cancellable, error))
+    goto out;
 
   if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     goto out;
