@@ -60,6 +60,7 @@ struct OstreeRepo {
   int uncompressed_objects_dir_fd;
   GFile *config_file;
   GFile *sysroot_dir;
+  char *remotes_config_dir;
 
   GFile *transaction_lock_path;
   GHashTable *txn_refs;
