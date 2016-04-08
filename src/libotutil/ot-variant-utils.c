@@ -319,7 +319,7 @@ ot_variant_bsearch_str (GVariant   *array,
                         int        *out_pos)
 {
   gsize imax, imin;
-  gsize imid;
+  gsize imid = -1;
   gsize n;
 
   n = g_variant_n_children (array);
@@ -337,7 +337,7 @@ ot_variant_bsearch_str (GVariant   *array,
       imid = (imin + imax) / 2;
 
       child = g_variant_get_child_value (array, imid);
-      g_variant_get_child (child, 0, "&s", &cur, NULL);      
+      g_variant_get_child (child, 0, "&s", &cur, NULL);
 
       cmp = strcmp (cur, str);
       if (cmp < 0)

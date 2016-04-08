@@ -63,7 +63,7 @@ awareness of BTRFS in dpkg/rpm itself) will be required.
 The OSTree author believes that having total freedom at the block
 storage layer is better for general purpose operating systems. For
 example, with OSTree, one is free to use BTRFS in any way you like -
-you can use a subvolume for `/home`, or you cannot.
+you may decide to use a subvolume for `/home`, or not.
 
 Furthermore, in its most basic incarnation, the rpm/dpkg + BTRFS
 doesn't solve the race conditions that happen when unpacking packages

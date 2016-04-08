@@ -491,7 +491,7 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
                       GError                    **error)
 {
   gboolean ret = FALSE;
-  SoupURI *target_uri;
+  SoupURI *target_uri = NULL;
 
   if (!self->found_a_file_element)
     {
@@ -564,7 +564,7 @@ try_metalink_targets (OstreeMetalinkRequest      *self,
                    self->urls->len, self->last_metalink_error);
       goto out;
     }
-  
+
   ret = TRUE;
   if (out_target_uri)
     *out_target_uri = soup_uri_copy (target_uri);
