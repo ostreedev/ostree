@@ -745,52 +745,6 @@ query_child_info_dir (OstreeRepo               *repo,
   return ret;
 }
 
-static gboolean
-bsearch_in_file_variant (GVariant  *variant,
-                         const char *name,
-                         int        *out_pos)
-{
-  gsize imax, imin;
-  gsize imid;
-  gsize n;
-
-  n = g_variant_n_children (variant);
-  if (n == 0)
-    return FALSE;
-
-  imax = n - 1;
-  imin = 0;
-  while (imax >= imin)
-    {
-      g_autoptr(GVariant) child = NULL;
-      const char *cur;
-      int cmp;
-
-      imid = (imin + imax) / 2;
-
-      child = g_variant_get_child_value (variant, imid);
-      g_variant_get_child (child, 0, "&s", &cur, NULL);      
-
-      cmp = strcmp (cur, name);
-      if (cmp < 0)
-        imin = imid + 1;
-      else if (cmp > 0)
-        {
-          if (imid == 0)
-            break;
-          imax = imid - 1;
-        }
-      else
-        {
-          *out_pos = imid;
-          return TRUE;
-        }
-    }
-
-  *out_pos = imid;
-  return FALSE;
-}
-
 int
 ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
                                     const char      *name,
@@ -806,7 +760,7 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
   dirs_variant = g_variant_get_child_value (self->tree_contents, 1);
 
   i = -1;
-  if (bsearch_in_file_variant (files_variant, name, &i))
+  if (ot_variant_bsearch_str (files_variant, name, &i))
     {
       *is_dir = FALSE;
       ret_container = files_variant;
@@ -814,7 +768,7 @@ ostree_repo_file_tree_find_child  (OstreeRepoFile  *self,
     }
   else
     {
-      if (bsearch_in_file_variant (dirs_variant, name, &i))
+      if (ot_variant_bsearch_str (dirs_variant, name, &i))
         {
           *is_dir = TRUE;
           ret_container = dirs_variant;
