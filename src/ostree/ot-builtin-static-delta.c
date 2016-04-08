@@ -178,7 +178,7 @@ ot_static_delta_builtin_delete (int argc, char **argv, GCancellable *cancellable
   glnx_unref_object OstreeRepo *repo = NULL;
   const char *delta_id = NULL;
 
-  context = g_option_context_new ("SHOW - Dump information on a delta");
+  context = g_option_context_new ("DELETE - Remove a delta");
 
   if (!ostree_option_context_parse (context, list_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;

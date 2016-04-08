@@ -52,6 +52,12 @@ Boston, MA 02111-1307, USA.
                 <command>ostree static-delta list</command>
             </cmdsynopsis>
             <cmdsynopsis>
+                <command>ostree static-delta show</command>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree static-delta delete</command>
+            </cmdsynopsis>
+            <cmdsynopsis>
                 <command>ostree static-delta generate</command> <arg choice="req">--to=REV</arg> <arg choice="opt" rep="repeat">OPTIONS</arg>
             </cmdsynopsis>
             <cmdsynopsis>
