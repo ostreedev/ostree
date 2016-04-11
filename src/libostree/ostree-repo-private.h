@@ -33,7 +33,8 @@ G_BEGIN_DECLS
 
 #define _OSTREE_OBJECT_SIZES_ENTRY_SIGNATURE "ay"
 
-#define _OSTREE_SUMMARY_CACHE_PATH "tmp/cache/summaries"
+#define _OSTREE_SUMMARY_CACHE_DIR "summaries"
+#define _OSTREE_CACHE_DIR "cache"
 
 /**
  * OstreeRepo:
@@ -52,6 +53,7 @@ struct OstreeRepo {
   int    repo_dir_fd;
   GFile *tmp_dir;
   int    tmp_dir_fd;
+  int    cache_dir_fd;
   GFile *objects_dir;
   GFile *state_dir;
   int objects_dir_fd;

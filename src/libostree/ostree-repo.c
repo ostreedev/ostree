@@ -613,6 +613,8 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->tmp_dir);
   if (self->tmp_dir_fd)
     (void) close (self->tmp_dir_fd);
+  if (self->cache_dir_fd)
+    (void) close (self->cache_dir_fd);
   g_clear_object (&self->objects_dir);
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
@@ -784,6 +786,7 @@ ostree_repo_init (OstreeRepo *self)
   g_mutex_init (&self->remotes_lock);
 
   self->repo_dir_fd = -1;
+  self->cache_dir_fd = -1;
   self->commit_stagedir_fd = -1;
   self->objects_dir_fd = -1;
   self->uncompressed_objects_dir_fd = -1;
@@ -2371,6 +2374,7 @@ ostree_repo_open (OstreeRepo    *self,
   g_autofree char *version = NULL;
   g_autofree char *mode = NULL;
   g_autofree char *parent_repo_path = NULL;
+  g_autoptr(GError) temp_error = NULL;
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
@@ -2506,6 +2510,34 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (!glnx_opendirat (self->repo_dir_fd, "tmp", TRUE, &self->tmp_dir_fd, error))
     goto out;
+
+  if (!glnx_shutil_mkdir_p_at (self->tmp_dir_fd, _OSTREE_CACHE_DIR, 0775, cancellable, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
+        {
+          g_clear_error (&temp_error);
+          g_debug ("No permissions to create cache dir");
+        }
+      else
+        {
+          g_propagate_error (error, g_steal_pointer (&temp_error));
+          goto out;
+        }
+    }
+
+  if (!glnx_opendirat (self->tmp_dir_fd, _OSTREE_CACHE_DIR, TRUE, &self->cache_dir_fd, &temp_error))
+    {
+      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&temp_error);
+          g_debug ("No cache dir");
+        }
+      else
+        {
+          g_propagate_error (error, g_steal_pointer (&temp_error));
+          goto out;
+        }
+    }
 
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
