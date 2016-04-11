@@ -1908,7 +1908,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (options)
     {
-      int flags_i;
+      int flags_i = OSTREE_REPO_PULL_FLAGS_NONE;
       (void) g_variant_lookup (options, "refs", "^a&s", &refs_to_fetch);
       (void) g_variant_lookup (options, "flags", "i", &flags_i);
       /* Reduce risk of issues if enum happens to be 64 bit for some reason */
