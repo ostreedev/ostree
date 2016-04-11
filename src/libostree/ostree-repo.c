@@ -3999,11 +3999,17 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
  * Like ostree_repo_pull(), but supports an extensible set of flags.
  * The following are currently defined:
  *
- *   * subdir (s): Pull just this subdirectory
+ *   * refs (as): Array of string refs
  *   * flags (i): An instance of #OstreeRepoPullFlags
- *   * refs: (as): Array of string refs
- *   * depth: (i): How far in the history to traverse; default is 0, -1 means infinite
- *   * override-commit-ids: (as): Array of specific commit IDs to fetch for refs
+ *   * subdir (s): Pull just this subdirectory
+ *   * override-remote-name (s): If local, add this remote to refspec
+ *   * gpg-verify (b): GPG verify commits
+ *   * gpg-verify-summary (b): GPG verify summary
+ *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
+ *   * disable-static-deltas (b): Do not use static deltas
+ *   * require-static-deltas (b): Require static deltas
+ *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
+ *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
