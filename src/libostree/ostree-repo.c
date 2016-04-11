@@ -2574,6 +2574,34 @@ ostree_repo_set_disable_fsync (OstreeRepo    *self,
 }
 
 /**
+ * ostree_repo_set_cache_dir:
+ * @self: An #OstreeRepo
+ * @cache_dir: Path of location to store caches for remotes
+ *
+ * Set a custom location for the cache directory used for e.g.
+ * per-remote summary caches. Setting this manually is useful when
+ * doing operations on a system repo as a user because you don't have
+ * write permissions in the repo, where the cache is normally stored.
+ */
+gboolean
+ostree_repo_set_cache_dir (OstreeRepo    *self,
+                           const char    *cache_dir,
+                           GCancellable   *cancellable,
+                           GError        **error)
+{
+  int fd;
+
+  if (!glnx_opendirat (-1, cache_dir, TRUE, &fd, error))
+    return FALSE;
+
+  if (self->cache_dir_fd != -1)
+    close (self->cache_dir_fd);
+  self->cache_dir_fd = fd;
+
+  return TRUE;
+}
+
+/**
  * ostree_repo_get_disable_fsync:
  * @self: An #OstreeRepo
  *

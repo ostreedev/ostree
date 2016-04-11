@@ -35,10 +35,12 @@ static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
 static char* opt_subpath;
+static char* opt_cache_dir;
 static int opt_depth = 0;
  
 static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
+   { "cache-dir", 0, 0, G_OPTION_ARG_STRING, &opt_cache_dir, "Use custom cache dir", NULL },
    { "disable-fsync", 0, 0, G_OPTION_ARG_NONE, &opt_disable_fsync, "Do not invoke fsync()", NULL },
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
@@ -129,6 +131,12 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (opt_disable_fsync)
     ostree_repo_set_disable_fsync (repo, TRUE);
+
+  if (opt_cache_dir)
+    {
+      if (!ostree_repo_set_cache_dir (repo, opt_cache_dir, cancellable, error))
+        goto out;
+    }
 
   if (opt_mirror)
     pullflags |= OSTREE_REPO_PULL_FLAGS_MIRROR;
