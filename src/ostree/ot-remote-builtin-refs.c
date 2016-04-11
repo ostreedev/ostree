@@ -25,7 +25,10 @@
 #include "ot-main.h"
 #include "ot-remote-builtins.h"
 
+static char* opt_cache_dir;
+
 static GOptionEntry option_entries[] = {
+  { "cache-dir", 0, 0, G_OPTION_ARG_STRING, &opt_cache_dir, "Use custom cache dir", NULL },
 };
 
 gboolean
@@ -47,6 +50,12 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
     {
       ot_util_usage_error (context, "NAME must be specified", error);
       goto out;
+    }
+
+  if (opt_cache_dir)
+    {
+      if (!ostree_repo_set_cache_dir (repo, AT_FDCWD, opt_cache_dir, cancellable, error))
+        goto out;
     }
 
   remote_name = argv[1];

@@ -28,7 +28,10 @@
 
 static gboolean opt_raw;
 
+static char* opt_cache_dir;
+
 static GOptionEntry option_entries[] = {
+  { "cache-dir", 0, 0, G_OPTION_ARG_STRING, &opt_cache_dir, "Use custom cache dir", NULL },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data", NULL },
   { NULL }
 };
@@ -58,6 +61,12 @@ ot_remote_builtin_summary (int argc, char **argv, GCancellable *cancellable, GEr
     }
 
   remote_name = argv[1];
+
+  if (opt_cache_dir)
+    {
+      if (!ostree_repo_set_cache_dir (repo, AT_FDCWD, opt_cache_dir, cancellable, error))
+        goto out;
+    }
 
   if (opt_raw)
     flags |= OSTREE_DUMP_RAW;
