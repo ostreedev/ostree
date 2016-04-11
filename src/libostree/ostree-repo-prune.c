@@ -125,7 +125,10 @@ _ostree_repo_prune_tmp (OstreeRepo *self,
   g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
   glnx_fd_close int fd = -1;
 
-  fd = glnx_opendirat_with_errno (self->repo_dir_fd, _OSTREE_SUMMARY_CACHE_PATH, FALSE);
+  if (self->cache_dir_fd == -1)
+    return TRUE;
+
+  fd = glnx_opendirat_with_errno (self->cache_dir_fd, _OSTREE_SUMMARY_CACHE_DIR, FALSE);
   if (fd < 0)
     {
       if (errno == ENOENT)
