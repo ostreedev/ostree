@@ -252,7 +252,7 @@ AS_IF([test "x$with_dracut" = "xyes" || test "x$with_mkinitcpio" = "xyes"], [
 AM_CONDITIONAL(BUILDOPT_SYSTEMD, test x$with_systemd = xyes)
 
 AC_ARG_WITH(builtin-grub2-mkconfig,
-            AS_HELP_STRING([--with-builtin-grub-mkconfig],
+            AS_HELP_STRING([--with-builtin-grub2-mkconfig],
                            [Use a builtin minimal grub2-mkconfig to generate a GRUB2 configuration file (default: no)]),,
               [with_builtin_grub2_mkconfig=no])
 AM_CONDITIONAL(BUILDOPT_BUILTIN_GRUB2_MKCONFIG, test x$with_builtin_grub2_mkconfig = xyes)
