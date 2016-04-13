@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..55"
+echo "1..56"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -508,5 +508,9 @@ cd ..
 if cmp timestamp-{orig,new}.txt; then
     assert_not_reached "failed to update mtime on repo"
 fi
-
 echo "ok mtime updated"
+
+cd ${test_tmpdir}
+$OSTREE init --mode=bare --repo=repo-extensions
+assert_has_dir repo-extensions/extensions
+echo "ok extensions dir"
