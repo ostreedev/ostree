@@ -2172,6 +2172,13 @@ ostree_repo_create (OstreeRepo     *self,
   if (!g_file_make_directory (self->tmp_dir, cancellable, error))
     goto out;
 
+  {
+    g_autoptr(GFile) extensions_dir =
+      g_file_resolve_relative_path (self->repodir, "extensions");
+    if (!g_file_make_directory (extensions_dir, cancellable, error))
+      goto out;
+  }
+
   g_clear_object (&child);
   child = g_file_get_child (self->repodir, "refs");
   if (!g_file_make_directory (child, cancellable, error))
