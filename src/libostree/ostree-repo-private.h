@@ -289,6 +289,14 @@ gboolean
 _ostree_repo_update_mtime (OstreeRepo        *self,
                            GError           **error);
 
+gboolean
+_ostree_repo_load_cache_summary (OstreeRepo        *self,
+                                 const char        *remote,
+                                 GBytes            **summary,
+                                 GBytes            **summary_sig,
+                                 GCancellable      *cancellable,
+                                 GError           **error);
+
 /* Load the summary from the cache if the provided .sig file is the same as the
    cached version.  */
 gboolean

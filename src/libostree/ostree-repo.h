@@ -187,6 +187,26 @@ gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                                 GCancellable  *cancellable,
                                                 GError       **error);
 
+/**
+ * OstreeRepoRemoteFetchSummaryFlags:
+ * @OSTREE_REPO_REMOTE_FETCH_SUMMARY_NONE: No flags.
+ * @OSTREE_REPO_REMOTE_FETCH_SUMMARY_FALLBACK_TO_CACHE: Use cached data on network failure.
+ */
+typedef enum {
+  OSTREE_REPO_REMOTE_FETCH_SUMMARY_NONE = 0,
+  OSTREE_REPO_REMOTE_FETCH_SUMMARY_FALLBACK_TO_CACHE = 1<<0,
+} OstreeRepoRemoteFetchSummaryFlags;
+
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_remote_fetch_summary_ext (OstreeRepo    *self,
+                                                    const char    *name,
+                                                    OstreeRepoRemoteFetchSummaryFlags flags,
+                                                    GBytes       **out_summary,
+                                                    GBytes       **out_signatures,
+                                                    GCancellable  *cancellable,
+                                                    GError       **error);
+
 _OSTREE_PUBLIC
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
@@ -387,6 +407,25 @@ gboolean ostree_repo_remote_list_refs (OstreeRepo       *self,
                                        GHashTable      **out_all_refs,
                                        GCancellable     *cancellable,
                                        GError          **error);
+
+
+/**
+ * OstreeRepoRemoteListRefsFlags:
+ * @OSTREE_REPO_REMOTE_LIST_REFS_NONE: No flags.
+ * @OSTREE_REPO_REMOTE_LIST_REFS_FALLBACK_TO_CACHE: Use cached data on network failure.
+ */
+typedef enum {
+  OSTREE_REPO_REMOTE_LIST_REFS_NONE = 0,
+  OSTREE_REPO_REMOTE_LIST_REFS_FALLBACK_TO_CACHE = 1<<0,
+} OstreeRepoRemoteListRefsFlags;
+
+_OSTREE_PUBLIC
+gboolean ostree_repo_remote_list_refs_ext (OstreeRepo       *self,
+                                           const char       *remote_name,
+                                           OstreeRepoRemoteListRefsFlags flags,
+                                           GHashTable      **out_all_refs,
+                                           GCancellable     *cancellable,
+                                           GError          **error);
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_load_variant (OstreeRepo  *self,
