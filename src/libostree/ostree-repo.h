@@ -65,7 +65,8 @@ void          ostree_repo_set_disable_fsync (OstreeRepo    *self,
 
 _OSTREE_PUBLIC
 gboolean      ostree_repo_set_cache_dir (OstreeRepo    *self,
-                                         const char    *cache_dir,
+                                         int            dfd,
+                                         const char    *path,
                                          GCancellable   *cancellable,
                                          GError        **error);
 

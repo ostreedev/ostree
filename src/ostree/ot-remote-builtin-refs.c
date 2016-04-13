@@ -54,7 +54,7 @@ ot_remote_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError
 
   if (opt_cache_dir)
     {
-      if (!ostree_repo_set_cache_dir (repo, opt_cache_dir, cancellable, error))
+      if (!ostree_repo_set_cache_dir (repo, AT_FDCWD, opt_cache_dir, cancellable, error))
         goto out;
     }
 
