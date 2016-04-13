@@ -749,7 +749,10 @@ _ostree_repo_write_ref (OstreeRepo    *self,
     {
       if (!glnx_opendirat (self->repo_dir_fd, "refs/heads", TRUE,
                            &dfd, error))
-        goto out;
+        {
+          g_prefix_error (error, "Opening %s: ", "refs/heads");
+          goto out;
+        }
     }
   else
     {
@@ -757,7 +760,10 @@ _ostree_repo_write_ref (OstreeRepo    *self,
 
       if (!glnx_opendirat (self->repo_dir_fd, "refs/remotes", TRUE,
                            &refs_remotes_dfd, error))
-        goto out;
+        {
+          g_prefix_error (error, "Opening %s: ", "refs/remotes");
+          goto out;
+        }
 
       if (rev != NULL)
         {
@@ -767,7 +773,10 @@ _ostree_repo_write_ref (OstreeRepo    *self,
         }
 
       if (!glnx_opendirat (refs_remotes_dfd, remote, TRUE, &dfd, error))
-        goto out;
+        {
+          g_prefix_error (error, "Opening remotes/ dir %s: ", remote);
+          goto out;
+        }
     }
 
   if (rev == NULL)
