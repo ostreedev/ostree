@@ -2525,7 +2525,7 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
             }
 
           if (!get_modified_xattrs (self, modifier,
-                                    child_relpath, child_info, child, dfd_iter->fd, name,
+                                    child_relpath, child_info, child, dfd_iter != NULL ? dfd_iter->fd : -1, name,
                                     &xattrs,
                                     cancellable, error))
             goto out;
