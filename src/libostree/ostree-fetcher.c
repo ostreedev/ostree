@@ -541,6 +541,7 @@ _ostree_fetcher_constructed (GObject *object)
   self->thread_closure->output_stream_set = g_hash_table_new_full (NULL, NULL,
                                                                    (GDestroyNotify) NULL,
                                                                    (GDestroyNotify) g_object_unref);
+  g_mutex_init (&self->thread_closure->output_stream_set_lock);
 
   if (g_getenv ("OSTREE_DEBUG_HTTP"))
     {
