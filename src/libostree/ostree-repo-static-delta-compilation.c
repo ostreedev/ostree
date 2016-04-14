@@ -455,7 +455,7 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
                                GError          **error)
 {
   gboolean ret = FALSE;
-  g_autofree char *tmpname = g_strdup ("tmpostree-deltaobj-XXXXXX");
+  g_autofree char *tmpname = g_strdup ("/var/tmp/tmpostree-deltaobj-XXXXXX");
   glnx_fd_close int fd = -1;
   g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
