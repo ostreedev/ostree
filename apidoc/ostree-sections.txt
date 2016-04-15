@@ -100,7 +100,6 @@ ostree_checksum_bytes_peek_validate
 ostree_cmp_checksum_bytes
 ostree_validate_rev
 ostree_parse_refspec
-ostree_checksum_update_meta
 ostree_object_type_to_string
 ostree_object_type_from_string
 ostree_hash_object_name
