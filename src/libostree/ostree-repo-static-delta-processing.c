@@ -106,6 +106,12 @@ OPPROTO(close)
 OPPROTO(bspatch)
 #undef OPPROTO
 
+static void
+static_delta_execution_state_init (StaticDeltaExecutionState  *state)
+{
+  state->read_source_fd = -1;
+}
+
 static gboolean
 read_varuint64 (StaticDeltaExecutionState  *state,
                 guint64                    *out_value,
@@ -194,6 +200,8 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
   StaticDeltaExecutionState statedata = { 0, };
   StaticDeltaExecutionState *state = &statedata;
   guint n_executed = 0;
+
+  static_delta_execution_state_init (&statedata);
 
   state->repo = repo;
   state->async_error = error;
