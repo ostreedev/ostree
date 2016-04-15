@@ -59,9 +59,6 @@ _OSTREE_PUBLIC
 OstreeRepoFile * ostree_repo_file_get_root (OstreeRepoFile  *self);
 
 _OSTREE_PUBLIC
-void ostree_repo_file_make_empty_tree (OstreeRepoFile  *self);
-
-_OSTREE_PUBLIC
 void ostree_repo_file_tree_set_metadata (OstreeRepoFile *self,
                                           const char     *checksum,
                                           GVariant       *metadata);
