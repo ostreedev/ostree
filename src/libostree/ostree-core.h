@@ -215,9 +215,6 @@ gboolean ostree_parse_refspec (const char *refspec,
                                GError    **error);
 
 _OSTREE_PUBLIC
-void ostree_checksum_update_meta (GChecksum *checksum, GFileInfo *file_info, GVariant  *xattrs);
-
-_OSTREE_PUBLIC
 const char * ostree_object_type_to_string (OstreeObjectType objtype);
 
 _OSTREE_PUBLIC
