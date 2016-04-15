@@ -28,7 +28,7 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	PATH=$$(cd $(top_builddir) && pwd):$${PATH} \
 	$(NULL)
 
-uninstalled_test_scripts = tests/test-abi.sh
+uninstalled_test_scripts = tests/test-symbols.sh
 
 test_scripts = \
 	tests/test-basic.sh \
