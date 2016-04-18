@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_test_repository "archive-z2"
 
-echo '1..2'
+echo '1..3'
 
 $OSTREE checkout test2 test2-co
 $OSTREE commit --no-xattrs -b test2-noxattrs -s "test2 without xattrs" --tree=dir=test2-co
@@ -35,9 +35,19 @@ mkdir t
 (cd t && tar xf ../test2.tar)
 ${CMD_PREFIX} ostree --repo=repo diff --no-xattrs test2-noxattrs ./t > diff.txt
 assert_file_empty diff.txt
-rm test2.tar diff.txt t -rf
 
 echo 'ok export gnutar diff (no xattrs)'
+
+cd ${test_tmpdir}
+${OSTREE} 'export' test2-noxattrs --subpath=baz -o test2-subpath.tar
+mkdir t2
+(cd t2 && tar xf ../test2-subpath.tar)
+${CMD_PREFIX} ostree --repo=repo diff --no-xattrs ./t2 ./t/baz > diff.txt
+assert_file_empty diff.txt
+
+echo 'ok export --subpath gnutar diff (no xattrs)'
+
+rm test2.tar test2-subpath.tar diff.txt t t2 -rf
 
 cd ${test_tmpdir}
 ${OSTREE} 'export' test2 -o test2.tar

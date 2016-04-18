@@ -480,7 +480,7 @@ file_to_archive_entry_common (GFile         *root,
   g_autoptr(GVariant) xattrs = NULL;
   time_t ts = (time_t) opts->timestamp_secs;
 
-  if (pathstr && !pathstr[0])
+  if (pathstr == NULL || !pathstr[0])
     {
       g_free (pathstr);
       pathstr = g_strdup (".");
