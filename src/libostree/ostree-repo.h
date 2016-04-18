@@ -610,7 +610,10 @@ typedef struct {
   guint64 timestamp_secs;
 
   guint unused_uint[8];
-  gpointer unused_ptrs[8];
+
+  char *path_prefix;
+
+  gpointer unused_ptrs[7];
 } OstreeRepoExportArchiveOptions;
 
 _OSTREE_PUBLIC

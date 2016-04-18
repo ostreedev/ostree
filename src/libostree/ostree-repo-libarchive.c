@@ -480,6 +480,12 @@ file_to_archive_entry_common (GFile         *root,
   g_autoptr(GVariant) xattrs = NULL;
   time_t ts = (time_t) opts->timestamp_secs;
 
+  if (opts->path_prefix && opts->path_prefix[0])
+    {
+      g_autofree char *old_pathstr = pathstr;
+      pathstr = g_build_filename (opts->path_prefix, old_pathstr, NULL);
+    }
+
   if (pathstr == NULL || !pathstr[0])
     {
       g_free (pathstr);
