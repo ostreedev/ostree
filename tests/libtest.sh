@@ -370,6 +370,11 @@ skip_without_fuse () {
         exit 0
     fi
 
+    if ! capsh --print | grep -q 'Bounding set.*[^a-z]cap_sys_admin'; then
+	echo "1..0 # SKIP No cap_sys_admin in bounding set, can't use FUSE"
+        exit 0
+    fi
+
     if ! [ -w /dev/fuse ]; then
         echo "1..0 # SKIP no write access to /dev/fuse"
         exit 0
