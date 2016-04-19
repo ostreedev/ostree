@@ -426,7 +426,7 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
  * @self: A OstreeRepo
  * @remote_name: Name
  * @option_name: Option
- * @default_value: (allow-none): Value returned if @option_name is not present
+ * @default_value: Value returned if @option_name is not present
  * @out_value: (out) : location to store the result.
  * @error: Error
  *
