@@ -48,7 +48,7 @@ assert_file_empty diff.txt
 echo 'ok export --subpath gnutar diff (no xattrs)'
 
 cd ${test_tmpdir}
-${OSTREE} 'export' test2-noxattrs --prefix=the-prefix -o test2-prefix.tar
+${OSTREE} 'export' test2-noxattrs --prefix=the-prefix/ -o test2-prefix.tar
 mkdir t3
 (cd t3 && tar xf ../test2-prefix.tar)
 ${CMD_PREFIX} ostree --repo=repo diff --no-xattrs test2-noxattrs ./t3/the-prefix > diff.txt
