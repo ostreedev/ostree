@@ -305,9 +305,6 @@ httpd_callback (SoupServer *server, SoupMessage *msg,
                 SoupClientContext *context, gpointer data)
 {
   OtTrivialHttpd *self = data;
-  SoupMessageHeadersIter iter;
-
-  soup_message_headers_iter_init (&iter, msg->request_headers);
 
   if (msg->method == SOUP_METHOD_GET || msg->method == SOUP_METHOD_HEAD)
     do_get (self, server, msg, path, context);
