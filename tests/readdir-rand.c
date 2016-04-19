@@ -97,7 +97,6 @@ readdir (DIR *dirp)
   while (cache_another)
     {
       DirEntries *de;
-      GSList *l;
 
       errno = 0;
       ret = real_readdir (dirp);
