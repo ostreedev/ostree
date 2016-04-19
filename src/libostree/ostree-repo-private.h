@@ -36,6 +36,10 @@ G_BEGIN_DECLS
 #define _OSTREE_SUMMARY_CACHE_DIR "summaries"
 #define _OSTREE_CACHE_DIR "cache"
 
+typedef enum {
+  OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
+} OstreeRepoTestErrorFlags;
+
 /**
  * OstreeRepo:
  *
@@ -85,6 +89,8 @@ struct OstreeRepo {
 
   uid_t target_owner_uid;
   gid_t target_owner_gid;
+
+  guint test_error_flags; /* OstreeRepoTestErrorFlags */
 
   GKeyFile *config;
   GHashTable *remotes;
