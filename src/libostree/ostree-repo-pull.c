@@ -1889,8 +1889,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   GHashTableIter hash_iter;
   gpointer key, value;
   g_autoptr(GBytes) bytes_summary = NULL;
-  g_autofree char *remote_key = NULL;
-  g_autofree char *path = NULL;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
