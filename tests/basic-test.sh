@@ -400,11 +400,24 @@ echo "ok disable cache checkout"
 cd ${test_tmpdir}
 rm checkout-test2 -rf
 $OSTREE checkout test2 checkout-test2
-if env OSTREE_REPO_TEST_ERROR=pre-commit $OSTREE commit -b test2 -s '' $test_tmpdir/checkout-test2 2>err.txt; then
+date > checkout-test2/date.txt
+rm repo/tmp/* -rf
+export TEST_BOOTID=3072029c-8b10-60d1-d31b-8422eeff9b42
+if env OSTREE_REPO_TEST_ERROR=pre-commit OSTREE_BOOTID=${TEST_BOOTID} \
+       $OSTREE commit -b test2 -s '' $test_tmpdir/checkout-test2 2>err.txt; then
     assert_not_reached "Should have hit OSTREE_REPO_TEST_ERROR_PRE_COMMIT"
 fi
 assert_file_has_content err.txt OSTREE_REPO_TEST_ERROR_PRE_COMMIT
-echo "ok test error pre commit"
+found_staging=0
+for d in $(find repo/tmp/ -maxdepth 1 -type d); do
+    bn=$(basename $d)
+    if test ${bn##staging-} != ${bn}; then
+	assert_str_match "${bn}" "^staging-${TEST_BOOTID}-"
+	found_staging=1
+    fi
+done
+assert_streq "${found_staging}" 1
+echo "ok test error pre commit/bootid"
 
 # Whiteouts
 cd ${test_tmpdir}

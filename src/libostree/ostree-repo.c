@@ -2431,12 +2431,20 @@ ostree_repo_open (OstreeRepo    *self,
   /* We use a per-boot identifier to keep track of which file contents
    * possibly haven't been sync'd to disk.
    */
-  if (!g_file_get_contents ("/proc/sys/kernel/random/boot_id",
-                           &self->boot_id,
-                           NULL,
-                           error))
-    goto out;
-  g_strdelimit (self->boot_id, "\n", '\0');
+  { const char *env_bootid = getenv ("OSTREE_BOOTID");
+
+    if (env_bootid != NULL)
+      self->boot_id = g_strdup (env_bootid);
+    else
+      {
+        if (!g_file_get_contents ("/proc/sys/kernel/random/boot_id",
+                                  &self->boot_id,
+                                  NULL,
+                                  error))
+          goto out;
+        g_strdelimit (self->boot_id, "\n", '\0');
+      }
+  }
 
   if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (self->repodir), TRUE,
                        &self->repo_dir_fd, error))

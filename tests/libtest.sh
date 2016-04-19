@@ -86,6 +86,12 @@ assert_streq () {
     test "$1" = "$2" || (echo 1>&2 "$1 != $2"; exit 1)
 }
 
+assert_str_match () {
+    if ! echo "$1" | grep -E -q "$2"; then
+	(echo 1>&2 "$1 does not match regexp $2"; exit 1)
+    fi
+}
+
 assert_not_streq () {
     (! test "$1" = "$2") || (echo 1>&2 "$1 == $2"; exit 1)
 }
