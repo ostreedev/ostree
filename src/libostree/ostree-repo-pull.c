@@ -1909,6 +1909,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean require_static_deltas = FALSE;
   gboolean opt_gpg_verify = FALSE;
   gboolean opt_gpg_verify_summary = FALSE;
+  const char *url_override = NULL;
 
   if (options)
     {
@@ -1926,6 +1927,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
+      (void) g_variant_lookup (options, "override-url", "&s", &url_override);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2021,7 +2023,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       g_autofree char *baseurl = NULL;
 
-      if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
+      if (url_override != NULL)
+        baseurl = g_strdup (url_override);
+      else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
         goto out;
 
       pull_data->base_uri = soup_uri_new (baseurl);
