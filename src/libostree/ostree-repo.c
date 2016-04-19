@@ -4097,6 +4097,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
  *   * require-static-deltas (b): Require static deltas
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
+ *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
