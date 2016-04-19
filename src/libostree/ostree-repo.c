@@ -798,6 +798,9 @@ ostree_repo_init (OstreeRepo *self)
 {
   static gsize gpgme_initialized;
   GLnxLockFile empty_lockfile = GLNX_LOCK_FILE_INIT;
+  const GDebugKey test_error_keys[] = {
+    { "pre-commit", OSTREE_REPO_TEST_ERROR_PRE_COMMIT },
+  };
 
   if (g_once_init_enter (&gpgme_initialized))
     {
@@ -805,6 +808,9 @@ ostree_repo_init (OstreeRepo *self)
       gpgme_set_locale (NULL, LC_CTYPE, setlocale (LC_CTYPE, NULL));
       g_once_init_leave (&gpgme_initialized, 1);
     }
+
+  self->test_error_flags = g_parse_debug_string (g_getenv ("OSTREE_REPO_TEST_ERROR"),
+                                                 test_error_keys, G_N_ELEMENTS (test_error_keys));
 
   g_mutex_init (&self->cache_lock);
   g_mutex_init (&self->txn_stats_lock);

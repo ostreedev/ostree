@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..53"
+echo "1..54"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -396,6 +396,15 @@ ${CMD_PREFIX} ostree --repo=repo2 checkout -U test2 test2-checkout
 assert_file_has_content test2-checkout/baz/cow moo
 assert_has_dir repo2/uncompressed-objects-cache
 echo "ok disable cache checkout"
+
+cd ${test_tmpdir}
+rm checkout-test2 -rf
+$OSTREE checkout test2 checkout-test2
+if env OSTREE_REPO_TEST_ERROR=pre-commit $OSTREE commit -b test2 -s '' $test_tmpdir/checkout-test2 2>err.txt; then
+    assert_not_reached "Should have hit OSTREE_REPO_TEST_ERROR_PRE_COMMIT"
+fi
+assert_file_has_content err.txt OSTREE_REPO_TEST_ERROR_PRE_COMMIT
+echo "ok test error pre commit"
 
 # Whiteouts
 cd ${test_tmpdir}
