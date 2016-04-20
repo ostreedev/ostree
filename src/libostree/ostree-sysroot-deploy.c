@@ -1366,6 +1366,59 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
         }
     }
 
+  {
+    /* Copy other files that are stored in the boot directory. Lets keep this simple:
+     *
+     * - Ignore subdirectories, only files in root of the boot directory are copied. There is
+     *   overhead of copying files to boot partition, therefore the amount of files in the boot/
+     *   should be kept to the minimum and subdirectories shouldn't really be necessary.
+     * - Files on the boot partition are updated only with major releases, when kernel/initramfs
+     *   bootcsum changes. Files that require frequent updates should not be stored here.
+     */
+    g_autoptr(GFileEnumerator) dir_enum = NULL;
+    g_autoptr(GFile) deployments_bootdir = g_file_get_child (deployment_dir, "boot");
+    dir_enum = g_file_enumerate_children (deployments_bootdir, OSTREE_GIO_FAST_QUERYINFO,
+                                          G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                          NULL, error);
+    while (TRUE)
+      {
+        GFileInfo *file_info = NULL;
+        g_autoptr(GFile) source_file = NULL;
+        g_autoptr(GFile) dest_file = NULL;
+        g_autoptr(GFile) symlink_target = NULL;
+        GFileType type;
+        const char *name;
+
+        if (!gs_file_enumerator_iterate (dir_enum, &file_info, NULL, cancellable, error))
+          goto out;
+        if (file_info == NULL)
+          break;
+
+        type = g_file_info_get_file_type (file_info);
+        name = g_file_info_get_name (file_info);
+        if (type == G_FILE_TYPE_DIRECTORY)
+          continue;
+        if (type == G_FILE_TYPE_SYMBOLIC_LINK)
+          {
+            symlink_target = g_file_get_child (bootcsumdir, g_file_info_get_symlink_target(file_info));
+            if (!g_file_query_exists (symlink_target, NULL))
+              continue;
+          }
+        if (g_str_has_prefix (name, "vmlinuz-") || g_str_has_prefix (name, "initramfs-"))
+          continue;
+
+        dest_file = g_file_get_child (bootcsumdir, name);
+        if (!g_file_query_exists (dest_file, NULL))
+          {
+            source_file = g_file_enumerator_get_child (dir_enum, file_info);
+            if (!gs_file_linkcopy_sync_data (source_file, dest_file,
+                                             G_FILE_COPY_OVERWRITE | G_FILE_COPY_NOFOLLOW_SYMLINKS | G_FILE_COPY_ALL_METADATA,
+                                             cancellable, error))
+              goto out;
+          }
+      }
+  }
+
   if (fstatat (deployment_dfd, "usr/lib/os-release", &stbuf, 0) != 0)
     {
       if (errno != ENOENT)
