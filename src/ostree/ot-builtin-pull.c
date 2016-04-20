@@ -37,7 +37,8 @@ static gboolean opt_untrusted;
 static char* opt_subpath;
 static char* opt_cache_dir;
 static int opt_depth = 0;
- 
+static char* opt_url;
+
 static GOptionEntry options[] = {
    { "commit-metadata-only", 0, 0, G_OPTION_ARG_NONE, &opt_commit_only, "Fetch only the commit metadata", NULL },
    { "cache-dir", 0, 0, G_OPTION_ARG_STRING, &opt_cache_dir, "Use custom cache dir", NULL },
@@ -49,6 +50,7 @@ static GOptionEntry options[] = {
    { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust (local) sources", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
+   { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
    { NULL }
  };
 
@@ -228,6 +230,9 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     GVariantBuilder builder;
     g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
 
+    if (opt_url)
+      g_variant_builder_add (&builder, "{s@v}", "override-url",
+                             g_variant_new_variant (g_variant_new_string (opt_url)));
     if (opt_subpath)
       g_variant_builder_add (&builder, "{s@v}", "subdir",
                              g_variant_new_variant (g_variant_new_string (opt_subpath)));
