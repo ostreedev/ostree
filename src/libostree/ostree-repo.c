@@ -3066,6 +3066,13 @@ ostree_repo_load_file (OstreeRepo         *self,
                                     error))
         goto out;
 
+      if (fd < 0 && self->commit_stagedir_fd != -1)
+        {
+          if (!ot_openat_ignore_enoent (self->commit_stagedir_fd, loose_path_buf, &fd,
+                                        error))
+            goto out;
+        }
+
       if (fd != -1)
         {
           tmp_stream = g_unix_input_stream_new (fd, TRUE);
