@@ -29,6 +29,10 @@
 #include "otutil.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 struct _OstreeBootloaderUboot
 {
@@ -69,13 +73,17 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
                                         GCancellable          *cancellable,
                                         GError               **error)
 {
+  gboolean ret = FALSE;
   g_autoptr(GPtrArray) boot_loader_configs = NULL;
   OstreeBootconfigParser *config;
   const char *val;
+  g_autofree char *boot_path = NULL;
+  g_autoptr(GFile) uenv_file = NULL;
+  char uenv_path[2048];
 
   if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
                                                  cancellable, error))
-    return FALSE;
+    goto out;
 
   /* U-Boot doesn't support a menu so just pick the first one since the list is ordered */
   config = boot_loader_configs->pdata[0];
@@ -85,9 +93,12 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "No \"linux\" key in bootloader config");
-      return FALSE;
+      goto out;
     }
   g_ptr_array_add (new_lines, g_strdup_printf ("kernel_image=%s", val));
+
+  boot_path = strndup (val, strlen (val) - strlen ("/vmlinuz"));
+  g_ptr_array_add (new_lines, g_strdup_printf ("bootdir=%s", boot_path));
 
   val = ostree_bootconfig_parser_get (config, "initrd");
   if (val)
@@ -97,7 +108,32 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
   if (val)
     g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
 
-  return TRUE;
+  /* Merge with user's uEnv.txt if it exists */
+  snprintf (uenv_path, sizeof(uenv_path), "boot/%s/uEnv.txt", boot_path);
+  uenv_file = g_file_get_child (self->sysroot->path, uenv_path);
+  if (g_file_query_exists (uenv_file, cancellable))
+    {
+      g_autoptr(GInputStream) instream = NULL;
+      g_autoptr(GDataInputStream) datastream = NULL;
+      gsize len;
+
+      instream = (GInputStream*)g_file_read (uenv_file, cancellable, error);
+      if (!instream)
+        goto out;
+
+      datastream = g_data_input_stream_new (instream);
+      while (TRUE)
+        {
+          val = g_data_input_stream_read_line (datastream, &len, cancellable, error);
+          if (!val)
+            break;
+          g_ptr_array_add (new_lines, (char *)val);
+        }
+    }
+
+  ret = TRUE;
+out:
+  return ret;
 }
 
 static gboolean
