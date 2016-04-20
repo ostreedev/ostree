@@ -1277,7 +1277,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   struct stat stbuf;
   const char *osname = ostree_deployment_get_osname (deployment);
   const char *bootcsum = ostree_deployment_get_bootcsum (deployment);
-  g_autoptr(GFile) bootdir = NULL;
   g_autofree char *bootcsumdir = NULL;
   g_autofree char *bootconfdir = NULL;
   g_autofree char *bootconf_name = NULL;
@@ -1293,10 +1292,6 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
   g_autofree char *contents = NULL;
   g_autofree char *deployment_version = NULL;
   g_autoptr(GHashTable) osrelease_values = NULL;
-  g_autofree char *linux_relpath = NULL;
-  g_autofree char *linux_key = NULL;
-  g_autofree char *initramfs_relpath = NULL;
-  g_autofree char *initrd_key = NULL;
   g_autofree char *version_key = NULL;
   g_autofree char *ostree_kernel_arg = NULL;
   g_autofree char *options_key = NULL;
