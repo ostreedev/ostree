@@ -573,11 +573,8 @@ _ostree_repo_open_trusted_content_bare (OstreeRepo          *self,
   g_autofree char *temp_filename = NULL;
   g_autoptr(GOutputStream) ret_stream = NULL;
   gboolean have_obj;
-  char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
-  if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                      &have_obj, loose_objpath,
-                                      NULL,
+  if (!_ostree_repo_has_loose_object (self, checksum, OSTREE_OBJECT_TYPE_FILE, &have_obj,
                                       cancellable, error))
     goto out;
 
@@ -662,7 +659,6 @@ write_object (OstreeRepo         *self,
   gboolean temp_file_is_regular;
   gboolean temp_file_is_symlink;
   gboolean object_is_symlink = FALSE;
-  char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
 
@@ -673,9 +669,8 @@ write_object (OstreeRepo         *self,
 
   if (expected_checksum)
     {
-      if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype,
-                                          &have_obj, loose_objpath,
-                                          NULL, cancellable, error))
+      if (!_ostree_repo_has_loose_object (self, expected_checksum, objtype, &have_obj,
+                                          cancellable, error))
         goto out;
       if (have_obj)
         {
@@ -852,8 +847,7 @@ write_object (OstreeRepo         *self,
       repo_store_size_entry (self, actual_checksum, unpacked_size, stbuf.st_size);
     }
 
-  if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype,
-                                      &have_obj, loose_objpath, NULL,
+  if (!_ostree_repo_has_loose_object (self, actual_checksum, objtype, &have_obj,
                                       cancellable, error))
     goto out;
           

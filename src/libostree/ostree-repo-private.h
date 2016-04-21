@@ -135,8 +135,6 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                const char           *checksum,
                                OstreeObjectType      objtype,
                                gboolean             *out_is_stored,
-                               char                 *loose_path_buf,
-                               GFile               **out_stored_path,
                                GCancellable         *cancellable,
                                GError             **error);
 
