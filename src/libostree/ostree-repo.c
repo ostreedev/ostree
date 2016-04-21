@@ -3292,15 +3292,13 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
                                const char           *checksum,
                                OstreeObjectType      objtype,
                                gboolean             *out_is_stored,
-                               char                 *loose_path_buf,
-                               GFile               **out_stored_path,
                                GCancellable         *cancellable,
                                GError             **error)
 {
   gboolean ret = FALSE;
   struct stat stbuf;
   int res = -1;
-  gboolean tmp_file = FALSE;
+  char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
 
   _ostree_loose_path (loose_path_buf, checksum, objtype, self->mode);
 
@@ -3316,9 +3314,7 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
         }
     }
 
-  if (res == 0)
-    tmp_file = TRUE;
-  else
+  if (res < 0)
     {
       do
         res = fstatat (self->objects_dir_fd, loose_path_buf, &stbuf, AT_SYMLINK_NOFOLLOW);
@@ -3332,30 +3328,8 @@ _ostree_repo_has_loose_object (OstreeRepo           *self,
 
   ret = TRUE;
   *out_is_stored = (res != -1);
-
-  if (out_stored_path)
-    {
-      if (res != -1)
-        *out_stored_path = g_file_resolve_relative_path (tmp_file ? self->tmp_dir : self->objects_dir, loose_path_buf);
-      else
-        *out_stored_path = NULL;
-    }
 out:
   return ret;
-}
-
-gboolean
-_ostree_repo_find_object (OstreeRepo           *self,
-                          OstreeObjectType      objtype,
-                          const char           *checksum,
-                          GFile               **out_stored_path,
-                          GCancellable         *cancellable,
-                          GError             **error)
-{
-  gboolean has_object;
-  char loose_path[_OSTREE_LOOSE_PATH_MAX];
-  return _ostree_repo_has_loose_object (self, checksum, objtype, &has_object, loose_path,
-                                        out_stored_path, cancellable, error);
 }
 
 /**
@@ -3382,13 +3356,12 @@ ostree_repo_has_object (OstreeRepo           *self,
 {
   gboolean ret = FALSE;
   gboolean ret_have_object;
-  g_autoptr(GFile) loose_path = NULL;
 
-  if (!_ostree_repo_find_object (self, objtype, checksum, &loose_path,
-                                 cancellable, error))
+  if (!_ostree_repo_has_loose_object (self, checksum, objtype, &ret_have_object,
+                                      cancellable, error))
     goto out;
 
-  ret_have_object = (loose_path != NULL);
+  /* In the future, here is where we would also look up in metadata pack files */
 
   if (!ret_have_object && self->parent_repo)
     {
