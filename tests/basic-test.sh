@@ -181,11 +181,23 @@ echo "ok commit with no xattrs"
 
 cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
-+2048 /a/nested/3
+2048 /a/nested/3
 EOF
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "with statoverride" --statoverride=../test-statoverride.txt
 echo "ok commit statoverridde"
+
+cd ${test_tmpdir}
+cat > test-skiplist.txt <<EOF
+/a/nested/3
+EOF
+cd ${test_tmpdir}/checkout-test2-4
+assert_has_file a/nested/3
+$OSTREE commit -b test2-skiplist -s "with skiplist" --skip-list=../test-skiplist.txt
+cd ${test_tmpdir}
+$OSTREE checkout test2-skiplist checkout-test2-skiplist
+assert_not_has_file checkout-test2-skiplist/a/nested/3
+echo "ok commit skiplist"
 
 cd ${test_tmpdir}
 $OSTREE prune

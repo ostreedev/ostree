@@ -27,7 +27,7 @@ setup_test_repository "bare"
 
 cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
-+2048 /abinary
+2048 /abinary
 EOF
 $OSTREE checkout test2 test2-checkout
 touch test2-checkout/abinary
