@@ -37,6 +37,8 @@
 
 #ifdef HAVE_LIBARCHIVE
 
+#define DEFAULT_DIRMODE (0755 | S_IFDIR)
+
 static void
 propagate_libarchive_error (GError      **error,
                             struct archive *a)
@@ -45,269 +47,759 @@ propagate_libarchive_error (GError      **error,
                "%s", archive_error_string (a));
 }
 
+static const char *
+path_relative (const char *src,
+               GError    **error)
+{
+  /* One issue here is that some archives almost record the pathname as just a
+   * string and don't need to actually encode parent/child relationships in the
+   * archive. For us however, this will be important. So we do our best to deal
+   * with non-conventional paths. We also validate the path at the end to make
+   * sure there are no illegal components. Also important, we relativize the
+   * path. */
+
+  /* relativize first (and make /../../ --> /) */
+  while (src[0] == '/')
+    {
+      src += 1;
+      if (src[0] == '.' && src[1] == '.' && src[2] == '/')
+        src += 2; /* keep trailing / so we continue */
+    }
+
+  /* now let's skip . and empty components */
+  while (TRUE)
+    {
+      if (src[0] == '.' && src[1] == '/')
+        src += 2;
+      else if (src[0] == '/')
+        src += 1;
+      else
+        break;
+    }
+
+  /* assume a single '.' means the root dir itself, which we handle as the empty
+   * string in our code */
+  if (src[0] == '.' && src[1] == '\0')
+    src += 1;
+
+  /* make sure that the final path is valid (no . or ..) */
+  if (!ot_util_path_split_validate (src, NULL, error))
+    {
+      g_prefix_error (error, "While making relative path \"%s\":", src);
+      return NULL;
+    }
+
+  return src;
+}
+
+static char *
+path_relative_ostree (const char *path,
+                      GError    **error)
+{
+  path = path_relative (path, error);
+  if (path == NULL)
+    return NULL;
+  if (g_str_has_prefix (path, "etc/"))
+    return g_strconcat ("usr/", path, NULL);
+  else if (strcmp (path, "etc") == 0)
+    return g_strdup ("usr/etc");
+  return g_strdup (path);
+}
+
+static void
+append_path_component (char       **path_builder,
+                       const char  *component)
+{
+  g_autofree char *s = g_steal_pointer (path_builder);
+  *path_builder = g_build_filename (s ?: "/", component, NULL);
+}
+
+/* inplace trailing slash squashing  */
+static void
+squash_trailing_slashes (char *path)
+{
+  char *endp = path + strlen (path) - 1;
+  for (; endp > path && *endp == '/'; endp--)
+    *endp = '\0';
+}
+
 static GFileInfo *
-file_info_from_archive_entry_and_modifier (OstreeRepo *repo,
-                                           struct archive_entry *entry,
-                                           OstreeRepoCommitModifier *modifier)
+file_info_from_archive_entry (struct archive_entry *entry)
 {
   g_autoptr(GFileInfo) info = NULL;
-  GFileInfo *modified_info = NULL;
-  const struct stat *st;
+  const struct stat *st = NULL;
   guint32 file_type;
+  mode_t mode;
 
   st = archive_entry_stat (entry);
+  mode = st->st_mode;
 
-  info = _ostree_header_gfile_info_new (st->st_mode, st->st_uid, st->st_gid);
-  file_type = ot_gfile_type_for_mode (st->st_mode);
+  /* Some archives only store the permission mode bits in hardlink entries, so
+   * let's just make it into a regular file. Yes, this hack will work even if
+   * it's a hardlink to a symlink. */
+  if (archive_entry_hardlink (entry))
+    mode |= S_IFREG;
 
+  info = _ostree_header_gfile_info_new (mode, st->st_uid, st->st_gid);
+
+  file_type = ot_gfile_type_for_mode (mode);
   if (file_type == G_FILE_TYPE_REGULAR)
     {
       g_file_info_set_attribute_uint64 (info, "standard::size", st->st_size);
     }
   else if (file_type == G_FILE_TYPE_SYMBOLIC_LINK)
     {
-      g_file_info_set_attribute_byte_string (info, "standard::symlink-target", archive_entry_symlink (entry));
+      g_file_info_set_attribute_byte_string (info, "standard::symlink-target",
+                                             archive_entry_symlink (entry));
     }
 
-  _ostree_repo_commit_modifier_apply (repo, modifier,
-                                      archive_entry_pathname (entry),
-                                      info, &modified_info);
-
-  return modified_info;
+  return g_steal_pointer (&info);
 }
 
 static gboolean
-import_libarchive_entry_file (OstreeRepo           *self,
-                              OstreeRepoImportArchiveOptions  *opts,
-                              struct archive       *a,
-                              struct archive_entry *entry,
-                              GFileInfo            *file_info,
-                              guchar              **out_csum,
-                              GCancellable         *cancellable,
-                              GError              **error)
+builder_add_label (GVariantBuilder  *builder,
+                   OstreeSePolicy   *sepolicy,
+                   const char       *path,
+                   mode_t            mode,
+                   GCancellable     *cancellable,
+                   GError          **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GInputStream) file_object_input = NULL;
-  g_autoptr(GInputStream) archive_stream = NULL;
-  guint64 length;
-  
-  if (g_cancellable_set_error_if_cancelled (cancellable, error))
+  g_autofree char *label = NULL;
+
+  if (!sepolicy)
+    return TRUE;
+
+  if (!ostree_sepolicy_get_label (sepolicy, path, mode, &label,
+                                  cancellable, error))
     return FALSE;
 
-  switch (g_file_info_get_file_type (file_info))
-    {
-    case G_FILE_TYPE_REGULAR:
-      archive_stream = _ostree_libarchive_input_stream_new (a);
-      break;
-    case G_FILE_TYPE_SYMBOLIC_LINK:
-      break;
-    default:
-      if (opts->ignore_unsupported_content)
-        {
-          ret = TRUE;
-          goto out;
-        }
-      else
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unable to import non-regular/non-symlink file '%s'",
-                       archive_entry_pathname (entry));
-          goto out;
-        }
-    }
-  
-  if (!ostree_raw_file_to_content_stream (archive_stream, file_info, NULL,
-                                          &file_object_input, &length, cancellable, error))
-    goto out;
-  
-  if (!ostree_repo_write_content (self, NULL, file_object_input, length, out_csum,
-                                  cancellable, error))
-    goto out;
-
-  ret = TRUE;
- out:
-  return ret;
+  if (label)
+    g_variant_builder_add (builder, "(@ay@ay)",
+                           g_variant_new_bytestring ("security.selinux"),
+                           g_variant_new_bytestring (label));
+  return TRUE;
 }
 
+
+/* Like ostree_mutable_tree_ensure_dir(), but also creates and sets dirmeta if
+ * the dir has to be created. */
 static gboolean
-write_libarchive_entry_to_mtree (OstreeRepo           *self,
-                                 OstreeRepoImportArchiveOptions  *opts,
-                                 OstreeMutableTree    *root,
-                                 struct archive       *a,
-                                 struct archive_entry *entry,
-                                 OstreeRepoCommitModifier *modifier,
-                                 const guchar         *tmp_dir_csum,
-                                 GCancellable         *cancellable,
-                                 GError              **error)
+mtree_ensure_dir_with_meta (OstreeRepo          *repo,
+                            OstreeMutableTree   *parent,
+                            const char          *name,
+                            GFileInfo           *file_info,
+                            GVariant            *xattrs,
+                            gboolean             error_if_exist, /* XXX: remove if not needed */
+                            OstreeMutableTree  **out_dir,
+                            GCancellable        *cancellable,
+                            GError             **error)
 {
-  gboolean ret = FALSE;
-  const char *pathname;
-  const char *hardlink;
-  const char *basename;
+  glnx_unref_object OstreeMutableTree *dir = NULL;
+  g_autofree guchar *csum_raw = NULL;
+  g_autofree char *csum = NULL;
+
+  if (name[0] == '\0') /* root? */
+    dir = g_object_ref (parent);
+  else if (ostree_mutable_tree_lookup (parent, name, NULL, &dir, error))
+    {
+      if (error_if_exist)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Directory \"%s\" already exists", name);
+          return FALSE;
+        }
+    }
+
+  if (dir == NULL)
+    {
+      if (!g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        return FALSE;
+
+      g_clear_error (error);
+
+      if (!ostree_mutable_tree_ensure_dir (parent, name, &dir, error))
+        return FALSE;
+    }
+
+  if (!_ostree_repo_write_directory_meta (repo, file_info, xattrs,
+                                          &csum_raw, cancellable, error))
+    return FALSE;
+
+  csum = ostree_checksum_from_bytes (csum_raw);
+
+  ostree_mutable_tree_set_metadata_checksum (dir, csum);
+
+  if (out_dir)
+    *out_dir = g_steal_pointer (&dir);
+
+  return TRUE;
+}
+
+typedef struct {
+  OstreeRepo                     *repo;
+  OstreeRepoImportArchiveOptions *opts;
+  OstreeMutableTree              *root;
+  struct archive                 *archive;
+  struct archive_entry           *entry;
+  GHashTable                     *deferred_hardlinks;
+  OstreeRepoCommitModifier       *modifier;
+} OstreeRepoArchiveImportContext;
+
+typedef struct {
+  OstreeMutableTree  *parent;
+  char               *path;
+  guint64             size;
+} DeferredHardlink;
+
+static inline char*
+aic_get_final_path (OstreeRepoArchiveImportContext *ctx,
+                    const char  *path,
+                    GError     **error)
+{
+  if (ctx->opts->use_ostree_convention)
+    return path_relative_ostree (path, error);
+  return g_strdup (path_relative (path, error));
+}
+
+static inline char*
+aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx,
+                              GError  **error)
+{
+  const char *pathname = archive_entry_pathname (ctx->entry);
+  g_autofree char *final = aic_get_final_path (ctx, pathname, error);
+
+  if (final == NULL)
+    return NULL;
+
+  /* get rid of trailing slashes some archives put on dirs */
+  squash_trailing_slashes (final);
+  return g_steal_pointer (&final);
+}
+
+static inline char*
+aic_get_final_entry_hardlink (OstreeRepoArchiveImportContext *ctx)
+{
+  GError *local_error = NULL;
+  const char *hardlink = archive_entry_hardlink (ctx->entry);
+  g_autofree char *final = NULL;
+
+  if (hardlink != NULL)
+    {
+      final = aic_get_final_path (ctx, hardlink, &local_error);
+
+      /* hardlinks always point to a preceding entry, so if there were an error
+       * it would have failed then */
+      g_assert_no_error (local_error);
+    }
+
+  return g_steal_pointer (&final);
+}
+
+static OstreeRepoCommitFilterResult
+aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx,
+                           const char  *relpath,
+                           GFileInfo  **out_file_info)
+{
+  g_autofree char *hardlink = aic_get_final_entry_hardlink (ctx);
   g_autoptr(GFileInfo) file_info = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
-  g_autoptr(GPtrArray) hardlink_split_path = NULL;
-  glnx_unref_object OstreeMutableTree *subdir = NULL;
-  glnx_unref_object OstreeMutableTree *parent = NULL;
-  glnx_unref_object OstreeMutableTree *hardlink_source_parent = NULL;
-  g_autofree char *hardlink_source_checksum = NULL;
-  glnx_unref_object OstreeMutableTree *hardlink_source_subdir = NULL;
-  g_autofree guchar *tmp_csum = NULL;
-  g_autofree char *tmp_checksum = NULL;
+  g_autofree char *abspath = NULL;
+  const char *cb_path = NULL;
 
-  pathname = archive_entry_pathname (entry); 
-      
-  if (!ot_util_path_split_validate (pathname, &split_path, error))
-    goto out;
-
-  if (split_path->len == 0)
-    {
-      parent = NULL;
-      basename = NULL;
-    }
+  if (ctx->opts->callback_with_entry_pathname)
+    cb_path = archive_entry_pathname (ctx->entry);
   else
     {
-      if (tmp_dir_csum)
-        {
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes (tmp_dir_csum);
-          if (!ostree_mutable_tree_ensure_parent_dirs (root, split_path,
-                                                       tmp_checksum,
-                                                       &parent,
-                                                       error))
-            goto out;
-        }
-      else
-        {
-          if (!ostree_mutable_tree_walk (root, split_path, 0, &parent, error))
-            goto out;
-        }
-      basename = (char*)split_path->pdata[split_path->len-1];
+      /* the user expects an abspath (where the dir to commit represents /) */
+      abspath = g_build_filename ("/", relpath, NULL);
+      cb_path = abspath;
     }
 
-  hardlink = archive_entry_hardlink (entry);
-  if (hardlink)
-    {
-      const char *hardlink_basename;
-      
-      g_assert (parent != NULL);
+  file_info = file_info_from_archive_entry (ctx->entry);
 
-      if (!ot_util_path_split_validate (hardlink, &hardlink_split_path, error))
-        goto out;
-      if (hardlink_split_path->len == 0)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Invalid hardlink path %s", hardlink);
-          goto out;
-        }
-      
-      hardlink_basename = hardlink_split_path->pdata[hardlink_split_path->len - 1];
-      
-      if (!ostree_mutable_tree_walk (root, hardlink_split_path, 0, &hardlink_source_parent, error))
-        goto out;
-      
-      if (!ostree_mutable_tree_lookup (hardlink_source_parent, hardlink_basename,
-                                       &hardlink_source_checksum,
-                                       &hardlink_source_subdir,
-                                       error))
-        {
-              g_prefix_error (error, "While resolving hardlink target: ");
-              goto out;
-        }
-      
-      if (hardlink_source_subdir)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Hardlink %s refers to directory %s",
-                       pathname, hardlink);
-          goto out;
-        }
-      g_assert (hardlink_source_checksum);
-      
-      if (!ostree_mutable_tree_replace_file (parent,
-                                             basename,
-                                             hardlink_source_checksum,
-                                             error))
-        goto out;
-    }
-  else
-    {
-      file_info = file_info_from_archive_entry_and_modifier (self, entry, modifier);
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_UNKNOWN)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Unsupported file for import: %s", pathname);
-          goto out;
-        }
-
-      if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_DIRECTORY)
-        {
-
-          if (!_ostree_repo_write_directory_meta (self, file_info, NULL, &tmp_csum, cancellable, error))
-            goto out;
-
-          if (parent == NULL)
-            {
-              subdir = g_object_ref (root);
-            }
-          else
-            {
-              if (!ostree_mutable_tree_ensure_dir (parent, basename, &subdir, error))
-                goto out;
-            }
-
-          g_free (tmp_checksum);
-          tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
-          ostree_mutable_tree_set_metadata_checksum (subdir, tmp_checksum);
-        }
-      else 
-        {
-          if (parent == NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Can't import file as root");
-              goto out;
-            }
-
-          if (!import_libarchive_entry_file (self, opts, a, entry, file_info, &tmp_csum,
-                                             cancellable, error))
-            goto out;
-
-          if (tmp_csum)
-            { 
-              g_free (tmp_checksum);
-              tmp_checksum = ostree_checksum_from_bytes (tmp_csum);
-              if (!ostree_mutable_tree_replace_file (parent, basename,
-                                                     tmp_checksum,
-                                                     error))
-                goto out;
-            }
-        }
-    }
-
-  ret = TRUE;
- out:
-  return ret;
+  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path,
+                                             file_info, out_file_info);
 }
 
 static gboolean
-create_empty_dir_with_uidgid (OstreeRepo   *self,
-                              guint32       uid,
-                              guint32       gid,
-                              guint8      **out_csum,
-                              GCancellable *cancellable,
-                              GError      **error)
+aic_ensure_parent_dir_with_file_info (OstreeRepoArchiveImportContext *ctx,
+                                      OstreeMutableTree   *parent,
+                                      const char          *fullpath,
+                                      GFileInfo           *file_info,
+                                      OstreeMutableTree  **out_dir,
+                                      GCancellable        *cancellable,
+                                      GError             **error)
 {
-  g_autoptr(GFileInfo) tmp_dir_info = g_file_info_new ();
-          
-  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::uid", uid);
-  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::gid", gid);
-  g_file_info_set_attribute_uint32 (tmp_dir_info, "unix::mode", 0755 | S_IFDIR);
-  
-  return _ostree_repo_write_directory_meta (self, tmp_dir_info, NULL, out_csum, cancellable, error);
+  const char *name = glnx_basename (fullpath);
+  g_auto(GVariantBuilder) xattrs_builder;
+
+  /* is this the root directory itself? transform into empty string */
+  if (name[0] == '/' && name[1] == '\0')
+    name++;
+
+  g_variant_builder_init (&xattrs_builder, (GVariantType*)"a(ayay)");
+
+  if (ctx->modifier && ctx->modifier->sepolicy)
+    if (!builder_add_label (&xattrs_builder, ctx->modifier->sepolicy, fullpath,
+                            DEFAULT_DIRMODE, cancellable, error))
+      return FALSE;
+
+  return mtree_ensure_dir_with_meta (ctx->repo, parent, name, file_info,
+                                     g_variant_builder_end (&xattrs_builder),
+                                     FALSE /* error_if_exist */, out_dir,
+                                     cancellable, error);
 }
-#endif
+
+static gboolean
+aic_ensure_parent_dir (OstreeRepoArchiveImportContext *ctx,
+                       OstreeMutableTree   *parent,
+                       const char          *fullpath,
+                       OstreeMutableTree  **out_dir,
+                       GCancellable        *cancellable,
+                       GError             **error)
+{
+  /* Who should own the parent dir? Since it's not in the archive, it's up to
+   * us. Here, we use the heuristic of simply creating it as the same user as
+   * the owner of the archive entry for which we're creating the dir. This is OK
+   * since any nontrivial dir perms should have explicit archive entries. */
+
+  guint32 uid = archive_entry_uid (ctx->entry);
+  guint32 gid = archive_entry_gid (ctx->entry);
+  glnx_unref_object GFileInfo *file_info = g_file_info_new ();
+
+  g_file_info_set_attribute_uint32 (file_info, "unix::uid", uid);
+  g_file_info_set_attribute_uint32 (file_info, "unix::gid", gid);
+  g_file_info_set_attribute_uint32 (file_info, "unix::mode", DEFAULT_DIRMODE);
+
+  return aic_ensure_parent_dir_with_file_info (ctx, parent, fullpath, file_info,
+                                               out_dir, cancellable, error);
+}
+
+static gboolean
+aic_create_parent_dirs (OstreeRepoArchiveImportContext *ctx,
+                        GPtrArray           *components,
+                        OstreeMutableTree  **out_subdir,
+                        GCancellable        *cancellable,
+                        GError             **error)
+{
+  g_autofree char *fullpath = NULL;
+  glnx_unref_object OstreeMutableTree *dir = NULL;
+
+  /* start with the root itself */
+  if (!aic_ensure_parent_dir (ctx, ctx->root, "/", &dir, cancellable, error))
+    return FALSE;
+
+  for (guint i = 0; i < components->len-1; i++)
+    {
+      glnx_unref_object OstreeMutableTree  *subdir = NULL;
+      append_path_component (&fullpath, components->pdata[i]);
+
+      if (!aic_ensure_parent_dir (ctx, dir, fullpath, &subdir,
+                                  cancellable, error))
+        return FALSE;
+
+      g_set_object (&dir, subdir);
+    }
+
+  *out_subdir = g_steal_pointer (&dir);
+  return TRUE;
+}
+
+static gboolean
+aic_get_parent_dir (OstreeRepoArchiveImportContext *ctx,
+                    const char          *path,
+                    OstreeMutableTree  **out_dir,
+                    GCancellable        *cancellable,
+                    GError             **error)
+{
+  g_autoptr(GPtrArray) components = NULL;
+  if (!ot_util_path_split_validate (path, &components, error))
+    return FALSE;
+
+  if (components->len == 0) /* root dir? */
+    {
+      *out_dir = g_object_ref (ctx->root);
+      return TRUE;
+    }
+
+  if (ostree_mutable_tree_walk (ctx->root, components, 0, out_dir, error))
+    return TRUE; /* already exists, nice! */
+
+  if (!g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    return FALSE; /* some other error occurred */
+
+  if (ctx->opts->autocreate_parents)
+    {
+      g_clear_error (error);
+      return aic_create_parent_dirs (ctx, components, out_dir,
+                                     cancellable, error);
+    }
+
+  return FALSE;
+}
+
+static gboolean
+aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
+                const char         *path,
+                GFileInfo          *file_info,
+                GVariant          **out_xattrs,
+                GCancellable       *cancellable,
+                GError            **error)
+{
+  g_autofree char *abspath = g_build_filename ("/", path, NULL);
+  g_autoptr(GVariant) xattrs = NULL;
+  const char *cb_path = abspath;
+
+  if (ctx->opts->callback_with_entry_pathname)
+    cb_path = archive_entry_pathname (ctx->entry);
+
+  if (ctx->modifier && ctx->modifier->xattr_callback)
+    xattrs = ctx->modifier->xattr_callback (ctx->repo, cb_path, file_info,
+                                            ctx->modifier->xattr_user_data);
+
+  if (ctx->modifier && ctx->modifier->sepolicy)
+    {
+      mode_t mode = g_file_info_get_attribute_uint32 (file_info, "unix::mode");
+      g_autoptr(GVariantBuilder) builder =
+        ot_util_variant_builder_from_variant (xattrs, G_VARIANT_TYPE
+                                                        ("a(ayay)"));
+
+      if (!builder_add_label (builder, ctx->modifier->sepolicy, abspath, mode,
+                              cancellable, error))
+        return FALSE;
+
+      if (xattrs)
+        g_variant_unref (xattrs);
+
+      xattrs = g_variant_builder_end (builder);
+      g_variant_ref_sink (xattrs);
+    }
+
+  *out_xattrs = g_steal_pointer (&xattrs);
+  return TRUE;
+}
+
+/* XXX: add option in ctx->opts to disallow already existing dirs? see
+ * error_if_exist */
+static gboolean
+aic_handle_dir (OstreeRepoArchiveImportContext *ctx,
+                OstreeMutableTree  *parent,
+                const char         *path,
+                GFileInfo          *fi,
+                GCancellable       *cancellable,
+                GError            **error)
+{
+  const char *name = glnx_basename (path);
+  g_autoptr(GVariant) xattrs = NULL;
+
+  if (!aic_get_xattrs (ctx, path, fi, &xattrs, cancellable, error))
+    return FALSE;
+
+  return mtree_ensure_dir_with_meta (ctx->repo, parent, name, fi, xattrs,
+                                     FALSE /* error_if_exist */, NULL,
+                                     cancellable, error);
+}
+
+static gboolean
+aic_write_file (OstreeRepoArchiveImportContext *ctx,
+                GFileInfo          *fi,
+                GVariant           *xattrs,
+                char              **out_csum,
+                GCancellable       *cancellable,
+                GError            **error)
+{
+  g_autoptr(GInputStream) archive_stream = NULL;
+  g_autoptr(GInputStream) file_object_input = NULL;
+  guint64 length;
+
+  g_autofree guchar *csum_raw = NULL;
+
+  if (g_file_info_get_file_type (fi) == G_FILE_TYPE_REGULAR)
+    archive_stream = _ostree_libarchive_input_stream_new (ctx->archive);
+
+  if (!ostree_raw_file_to_content_stream (archive_stream, fi, xattrs,
+                                          &file_object_input, &length,
+                                          cancellable, error))
+    return FALSE;
+
+  if (!ostree_repo_write_content (ctx->repo, NULL, file_object_input, length,
+                                  &csum_raw, cancellable, error))
+    return FALSE;
+
+  *out_csum = ostree_checksum_from_bytes (csum_raw);
+  return TRUE;
+}
+
+static gboolean
+aic_import_file (OstreeRepoArchiveImportContext *ctx,
+                 OstreeMutableTree  *parent,
+                 const char         *path,
+                 GFileInfo          *fi,
+                 GCancellable       *cancellable,
+                 GError            **error)
+{
+  const char *name = glnx_basename (path);
+  g_autoptr(GVariant) xattrs = NULL;
+  g_autofree char *csum = NULL;
+
+  if (!aic_get_xattrs (ctx, path, fi, &xattrs, cancellable, error))
+    return FALSE;
+
+  if (!aic_write_file (ctx, fi, xattrs, &csum, cancellable, error))
+    return FALSE;
+
+  if (!ostree_mutable_tree_replace_file (parent, name, csum, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static void
+aic_add_deferred_hardlink (OstreeRepoArchiveImportContext *ctx,
+                           const char        *hardlink,
+                           DeferredHardlink  *dh)
+{
+  gboolean new_slist;
+  GSList *slist;
+
+  slist = g_hash_table_lookup (ctx->deferred_hardlinks, hardlink);
+  new_slist = (slist == NULL);
+
+  slist = g_slist_append (slist, dh);
+
+  if (new_slist)
+    g_hash_table_insert (ctx->deferred_hardlinks, g_strdup (hardlink), slist);
+}
+
+static void
+aic_defer_hardlink (OstreeRepoArchiveImportContext *ctx,
+                    OstreeMutableTree  *parent,
+                    const char         *path,
+                    guint64             size,
+                    const char         *hardlink)
+{
+  DeferredHardlink *dh = g_slice_new (DeferredHardlink);
+  dh->parent = g_object_ref (parent);
+  dh->path = g_strdup (path);
+  dh->size = size;
+
+  aic_add_deferred_hardlink (ctx, hardlink, dh);
+}
+
+static gboolean
+aic_handle_file (OstreeRepoArchiveImportContext *ctx,
+                 OstreeMutableTree  *parent,
+                 const char         *path,
+                 GFileInfo          *fi,
+                 GCancellable       *cancellable,
+                 GError            **error)
+{
+  /* The wonderful world of hardlinks and archives. We have to be very careful
+   * here. Do not assume that if a file is a hardlink, it will have size 0 (e.g.
+   * cpio). Do not assume that if a file will have hardlinks to it, it will have
+   * size > 0. Also do not assume that its nlink param is present (tar) or even
+   * accurate (cpio). Also do not assume that hardlinks follow each other in
+   * order of entries.
+   *
+   * These archives were made to be extracted onto a filesystem, not directly
+   * hashed into an object store. So to be careful, we defer all hardlink
+   * imports until the very end. Nonzero files have to be imported, hardlink or
+   * not, since we can't easily seek back to this position later on.
+   * */
+
+  g_autofree char *hardlink = aic_get_final_entry_hardlink (ctx);
+  guint64 size = g_file_info_get_attribute_uint64 (fi, "standard::size");
+
+  if (hardlink == NULL || size > 0)
+    if (!aic_import_file (ctx, parent, path, fi, cancellable, error))
+      return FALSE;
+
+  if (hardlink)
+    aic_defer_hardlink (ctx, parent, path, size, hardlink);
+
+  return TRUE;
+}
+
+static gboolean
+aic_handle_entry (OstreeRepoArchiveImportContext *ctx,
+                  OstreeMutableTree  *parent,
+                  const char         *path,
+                  GFileInfo          *fi,
+                  GCancellable       *cancellable,
+                  GError            **error)
+{
+  switch (g_file_info_get_file_type (fi))
+    {
+    case G_FILE_TYPE_DIRECTORY:
+      return aic_handle_dir (ctx, parent, path, fi, cancellable, error);
+    case G_FILE_TYPE_REGULAR:
+    case G_FILE_TYPE_SYMBOLIC_LINK:
+      return aic_handle_file (ctx, parent, path, fi, cancellable, error);
+    default:
+      if (ctx->opts->ignore_unsupported_content)
+        return TRUE;
+      else
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "Unsupported file type for path \"%s\"", path);
+          return FALSE;
+        }
+    }
+}
+
+static gboolean
+aic_import_entry (OstreeRepoArchiveImportContext *ctx,
+                  GCancellable  *cancellable,
+                  GError       **error)
+{
+  g_autoptr(GFileInfo) fi = NULL;
+  glnx_unref_object OstreeMutableTree *parent = NULL;
+  g_autofree char *path = aic_get_final_entry_pathname (ctx, error);
+
+  if (path == NULL)
+    return FALSE;
+
+  if (aic_apply_modifier_filter (ctx, path, &fi)
+        == OSTREE_REPO_COMMIT_FILTER_SKIP)
+    return TRUE;
+
+  if (!aic_get_parent_dir (ctx, path, &parent, cancellable, error))
+    return FALSE;
+
+  return aic_handle_entry (ctx, parent, path, fi, cancellable, error);
+}
+
+static gboolean
+aic_import_from_hardlink (OstreeRepoArchiveImportContext *ctx,
+                          const char        *target,
+                          DeferredHardlink  *dh,
+                          GError           **error)
+{
+  g_autofree char *csum = NULL;
+  const char *name = glnx_basename (target);
+  const char *name_dh = glnx_basename (dh->path);
+  g_autoptr(GPtrArray) components = NULL;
+  glnx_unref_object OstreeMutableTree *parent = NULL;
+
+  if (!ostree_mutable_tree_lookup (dh->parent, name_dh, &csum, NULL, error))
+    return FALSE;
+
+  g_assert (csum);
+
+  if (!ot_util_path_split_validate (target, &components, error))
+    return FALSE;
+
+  if (!ostree_mutable_tree_walk (ctx->root, components, 0, &parent, error))
+    return FALSE;
+
+  if (!ostree_mutable_tree_replace_file (parent, name, csum, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+aic_lookup_file_csum (OstreeRepoArchiveImportContext *ctx,
+                      const char    *target,
+                      char         **out_csum,
+                      GError       **error)
+{
+  g_autofree char *csum = NULL;
+  const char *name = glnx_basename (target);
+  glnx_unref_object OstreeMutableTree *parent = NULL;
+  glnx_unref_object OstreeMutableTree *subdir = NULL;
+  g_autoptr(GPtrArray) components = NULL;
+
+  if (!ot_util_path_split_validate (target, &components, error))
+    return FALSE;
+
+  if (!ostree_mutable_tree_walk (ctx->root, components, 0, &parent, error))
+    return FALSE;
+
+  if (!ostree_mutable_tree_lookup (parent, name, &csum, &subdir, error))
+    return FALSE;
+
+  if (subdir != NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Expected hardlink file target at \"%s\" but found a "
+                   "directory", target);
+      return FALSE;
+    }
+
+  *out_csum = g_steal_pointer (&csum);
+  return TRUE;
+}
+
+static gboolean
+aic_import_deferred_hardlinks_for (OstreeRepoArchiveImportContext *ctx,
+                                   const char    *target,
+                                   GSList        *hardlinks,
+                                   GError       **error)
+{
+  GSList *payload = hardlinks;
+  g_autofree char *csum = NULL;
+
+  /* find node with the payload, if any (if none, then they're all hardlinks to
+   * a zero sized target, and there's no rewrite required) */
+  while (payload && ((DeferredHardlink*)payload->data)->size == 0)
+    payload = g_slist_next (payload);
+
+  /* rewrite the target so it points to the csum of the payload hardlink */
+  if (payload)
+    if (!aic_import_from_hardlink (ctx, target, payload->data, error))
+      return FALSE;
+
+  if (!aic_lookup_file_csum (ctx, target, &csum, error))
+    return FALSE;
+
+  /* import all the hardlinks */
+  for (GSList *hl = hardlinks; hl != NULL; hl = g_slist_next (hl))
+    {
+      DeferredHardlink *df = hl->data;
+      const char *name = glnx_basename (df->path);
+
+      if (hl == payload)
+        continue; /* small optimization; no need to redo this one */
+
+      if (!ostree_mutable_tree_replace_file (df->parent, name, csum, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+aic_import_deferred_hardlinks (OstreeRepoArchiveImportContext *ctx,
+                               GCancellable  *cancellable,
+                               GError       **error)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, ctx->deferred_hardlinks);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    if (!aic_import_deferred_hardlinks_for (ctx, key, value, error))
+      return FALSE;
+
+  return TRUE;
+}
+
+static void
+deferred_hardlink_free (void *data)
+{
+  DeferredHardlink *dh = data;
+  g_object_unref (dh->parent);
+  g_free (dh->path);
+  g_slice_free (DeferredHardlink, dh);
+}
+
+static void
+deferred_hardlinks_list_free (void *data)
+{
+  GSList *slist = data;
+  g_slist_free_full (slist, deferred_hardlink_free);
+}
+#endif /* HAVE_LIBARCHIVE */
 
 /**
  * ostree_repo_import_archive_to_mtree:
@@ -334,61 +826,56 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = archive;
-  struct archive_entry *entry;
-  g_autofree guchar *tmp_csum = NULL;
-  int r;
+  g_autoptr(GHashTable) deferred_hardlinks =
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+                           deferred_hardlinks_list_free);
 
+  OstreeRepoArchiveImportContext aictx = {
+    .repo = self,
+    .opts = opts,
+    .root = mtree,
+    .archive = archive,
+    .deferred_hardlinks = deferred_hardlinks,
+    .modifier = modifier
+  };
 
   while (TRUE)
     {
-      r = archive_read_next_header (a, &entry);
+      int r = archive_read_next_header (a, &aictx.entry);
       if (r == ARCHIVE_EOF)
         break;
-      else if (r != ARCHIVE_OK)
+      if (r != ARCHIVE_OK)
         {
           propagate_libarchive_error (error, a);
           goto out;
         }
 
-      /* TODO - refactor this to only create the metadata on demand
-       * (i.e. if there is a missing parent dir)
-       */
-      if (opts->autocreate_parents && !tmp_csum)
-        {
-          /* Here, we auto-pick the first uid/gid we find in the
-           * archive.  Realistically this is probably always going to
-           * be root, but eh, at least we try to match.
-           */
-          if (!create_empty_dir_with_uidgid (self, archive_entry_uid (entry),
-                                             archive_entry_gid (entry),
-                                             &tmp_csum, cancellable, error))
-            goto out;
-        }
+      if (g_cancellable_set_error_if_cancelled (cancellable, error))
+        goto out;
 
-      if (!write_libarchive_entry_to_mtree (self, opts, mtree, a,
-                                            entry, modifier, tmp_csum,
-                                            cancellable, error))
+      if (!aic_import_entry (&aictx, cancellable, error))
         goto out;
     }
+
+  if (!aic_import_deferred_hardlinks (&aictx, cancellable, error))
+    goto out;
 
   /* If we didn't import anything at all, and autocreation of parents
    * is enabled, automatically create a root directory.  This is
    * useful primarily when importing Docker image layers, which can
    * just be metadata.
    */
-  if (!ostree_mutable_tree_get_metadata_checksum (mtree) && opts->autocreate_parents)
+  if (opts->autocreate_parents &&
+      ostree_mutable_tree_get_metadata_checksum (mtree) == NULL)
     {
-      char tmp_checksum[65];
+      glnx_unref_object GFileInfo *fi = g_file_info_new ();
+      g_file_info_set_attribute_uint32 (fi, "unix::uid", 0);
+      g_file_info_set_attribute_uint32 (fi, "unix::gid", 0);
+      g_file_info_set_attribute_uint32 (fi, "unix::mode", DEFAULT_DIRMODE);
 
-      if (!tmp_csum)
-        {
-          /* We didn't have any archive entries to match, so pick uid 0, gid 0. */
-          if (!create_empty_dir_with_uidgid (self, 0, 0, &tmp_csum, cancellable, error))
-            goto out;
-        }
-      
-      ostree_checksum_inplace_from_bytes (tmp_csum, tmp_checksum);
-      ostree_mutable_tree_set_metadata_checksum (mtree, tmp_checksum);
+      if (!aic_ensure_parent_dir_with_file_info (&aictx, mtree, "/", fi, NULL,
+                                                 cancellable, error))
+        goto out;
     }
 
   ret = TRUE;
@@ -400,7 +887,7 @@ ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
   return FALSE;
 #endif
 }
-                          
+
 /**
  * ostree_repo_write_archive_to_mtree:
  * @self: An #OstreeRepo
@@ -420,8 +907,8 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
                                     OstreeMutableTree         *mtree,
                                     OstreeRepoCommitModifier  *modifier,
                                     gboolean                   autocreate_parents,
-                                    GCancellable             *cancellable,
-                                    GError                  **error)
+                                    GCancellable              *cancellable,
+                                    GError                   **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;

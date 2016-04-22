@@ -36,22 +36,6 @@
 #include <sys/xattr.h>
 #include <glib/gprintf.h>
 
-struct OstreeRepoCommitModifier {
-  volatile gint refcount;
-
-  OstreeRepoCommitModifierFlags flags;
-  OstreeRepoCommitFilter filter;
-  gpointer user_data;
-  GDestroyNotify destroy_notify;
-
-  OstreeRepoCommitModifierXattrCallback xattr_callback;
-  GDestroyNotify xattr_destroy;
-  gpointer xattr_user_data;
-
-  OstreeSePolicy *sepolicy;
-  GHashTable *devino_cache;
-};
-
 gboolean
 _ostree_repo_ensure_loose_objdir_at (int             dfd,
                                      const char     *loose_path,
