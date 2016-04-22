@@ -322,12 +322,16 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
         {
           if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
             {
-              if (self->parent_repo != NULL)
-                return ostree_repo_get_remote_option (self->parent_repo,
-                                                      remote_name, option_name,
-                                                      default_value,
-                                                      out_value,
-                                                      error);
+              /* Note: We ignore errors on the parent because the parent config may not
+                 specify this remote, causing a "remote not found" error, but we found
+                 the remote at some point, so we need to instead return the default */
+              if (self->parent_repo != NULL &&
+                  ostree_repo_get_remote_option (self->parent_repo,
+                                                 remote_name, option_name,
+                                                 default_value,
+                                                 out_value,
+                                                 NULL))
+                return TRUE;
 
               value = g_strdup (default_value);
               ret = TRUE;
@@ -397,11 +401,16 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
       /* Default value if key not found is always NULL. */
       if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
         {
-          if (self->parent_repo != NULL)
-            return ostree_repo_get_remote_list_option (self->parent_repo,
-                                                       remote_name, option_name,
-                                                       out_value,
-                                                       error);
+          /* Note: We ignore errors on the parent because the parent config may not
+             specify this remote, causing a "remote not found" error, but we found
+             the remote at some point, so we need to instead return the default */
+          if (self->parent_repo != NULL &&
+              ostree_repo_get_remote_list_option (self->parent_repo,
+                                                  remote_name, option_name,
+                                                  out_value,
+                                                  NULL))
+            return TRUE;
+
           ret = TRUE;
         }
       else if (temp_error)
@@ -464,12 +473,16 @@ ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
         {
           if (g_error_matches (temp_error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND))
             {
-              if (self->parent_repo != NULL)
-                return ostree_repo_get_remote_boolean_option (self->parent_repo,
-                                                              remote_name, option_name,
-                                                              default_value,
-                                                              out_value,
-                                                              error);
+              /* Note: We ignore errors on the parent because the parent config may not
+                 specify this remote, causing a "remote not found" error, but we found
+                 the remote at some point, so we need to instead return the default */
+              if (self->parent_repo != NULL &&
+                  ostree_repo_get_remote_boolean_option (self->parent_repo,
+                                                         remote_name, option_name,
+                                                         default_value,
+                                                         out_value,
+                                                         NULL))
+                return TRUE;
 
               value = default_value;
               ret = TRUE;
