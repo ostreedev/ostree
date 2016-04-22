@@ -22,6 +22,8 @@
 
 #include <libsoup/soup.h>
 
+#include <gio/gunixoutputstream.h>
+
 #include "ot-main.h"
 #include "ot-builtins.h"
 #include "ostree.h"
@@ -32,6 +34,7 @@
 #include <signal.h>
 
 static char *opt_port_file = NULL;
+static char *opt_log = NULL;
 static gboolean opt_daemonize;
 static gboolean opt_autoexit;
 static gboolean opt_force_ranges;
@@ -40,6 +43,7 @@ static gint opt_port = 0;
 typedef struct {
   GFile *root;
   gboolean running;
+  GOutputStream *log;
 } OtTrivialHttpd;
 
 static GOptionEntry options[] = {
@@ -48,8 +52,27 @@ static GOptionEntry options[] = {
   { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", NULL },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
+  { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here", "PATH" },
   { NULL }
 };
+
+static void
+httpd_log (OtTrivialHttpd *httpd, const gchar *format, ...)
+{
+  g_autoptr(GString) str = NULL;
+  va_list args;
+  gsize written;
+
+  if (!httpd->log)
+    return;
+
+  str = g_string_new (NULL);
+  va_start (args, format);
+  g_string_vprintf (str, format, args);
+  va_end (args);
+
+  g_output_stream_write_all (httpd->log, str->str, str->len, &written, NULL, NULL);
+}
 
 static int
 compare_strings (gconstpointer a, gconstpointer b)
@@ -154,6 +177,7 @@ do_get (OtTrivialHttpd    *self,
   struct stat stbuf;
   g_autofree char *safepath = NULL;
 
+  httpd_log (self, "serving %s\n", path);
   if (strstr (path, "../") != NULL)
     {
       soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
@@ -296,6 +320,16 @@ do_get (OtTrivialHttpd    *self,
       soup_message_set_status (msg, SOUP_STATUS_OK);
     }
  out:
+  {
+    guint status = 0;
+    g_autofree gchar *reason = NULL;
+
+    g_object_get (msg,
+                  "status-code", &status,
+                  "reason-phrase", &reason,
+                  NULL);
+    httpd_log (self, "  status: %s (%u)\n", reason, status);
+  }
   return;
 }
 
@@ -350,6 +384,37 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
     dirpath = ".";
 
   app->root = g_file_new_for_path (dirpath);
+
+  if (opt_log)
+    {
+      GOutputStream *stream = NULL;
+
+      if (g_strcmp0 (opt_log, "-") == 0)
+        {
+          if (opt_daemonize)
+            {
+              ot_util_usage_error (context, "Cannot use --log-file=- and --daemonize at the same time", error);
+              goto out;
+            }
+          stream = G_OUTPUT_STREAM (g_unix_output_stream_new (STDOUT_FILENO, FALSE));
+        }
+      else
+        {
+          g_autoptr(GFile) log_file;
+          GFileOutputStream* log_stream;
+
+          log_file = g_file_new_for_path (opt_log);
+          log_stream = g_file_create (log_file,
+                                      G_FILE_CREATE_PRIVATE,
+                                      cancellable,
+                                      error);
+          if (!log_stream)
+            goto out;
+          stream = G_OUTPUT_STREAM (log_stream);
+        }
+
+      app->log = stream;
+    }
 
 #if SOUP_CHECK_VERSION(2, 48, 0)
   server = soup_server_new (SOUP_SERVER_SERVER_HEADER, "ostree-httpd ", NULL);
@@ -456,13 +521,17 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
         goto out;
       g_signal_connect (dirmon, "changed", G_CALLBACK (on_dir_changed), app);
     }
-
+  {
+    g_autofree gchar *path = g_file_get_path (app->root);
+    httpd_log (app, "serving at root %s\n", path);
+  }
   while (app->running)
     g_main_context_iteration (NULL, TRUE);
- 
+
   ret = TRUE;
  out:
   g_clear_object (&app->root);
+  g_clear_object (&app->log);
   if (context)
     g_option_context_free (context);
   return ret;
