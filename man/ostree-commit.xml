@@ -163,7 +163,15 @@ Boston, MA 02111-1307, USA.
                 <term><option>--statoverride</option>="PATH"</term>
 
                 <listitem><para>
-                    File containing list of modifications to make permissions.
+                    File containing list of modifications to make permissions (file mode, followed by space, followed by file path).
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--skip-list</option>="PATH"</term>
+
+                <listitem><para>
+                    File containing list of file paths to skip (one path per line).
                 </para></listitem>
             </varlistentry>
 

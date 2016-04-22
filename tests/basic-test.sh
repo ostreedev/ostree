@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..54"
+echo "1..55"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -179,13 +179,31 @@ cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "no xattrs" --no-xattrs
 echo "ok commit with no xattrs"
 
+# NB: The + is optional, but we need to make sure we support it
 cd ${test_tmpdir}
 cat > test-statoverride.txt <<EOF
-+2048 /a/nested/3
++1048 /a/nested/2
+2048 /a/nested/3
 EOF
 cd ${test_tmpdir}/checkout-test2-4
-$OSTREE commit -b test2 -s "with statoverride" --statoverride=../test-statoverride.txt
-echo "ok commit statoverridde"
+$OSTREE commit -b test2-override -s "with statoverride" --statoverride=../test-statoverride.txt
+cd ${test_tmpdir}
+$OSTREE checkout test2-override checkout-test2-override
+test -g checkout-test2-override/a/nested/2
+test -u checkout-test2-override/a/nested/3
+echo "ok commit statoverride"
+
+cd ${test_tmpdir}
+cat > test-skiplist.txt <<EOF
+/a/nested/3
+EOF
+cd ${test_tmpdir}/checkout-test2-4
+assert_has_file a/nested/3
+$OSTREE commit -b test2-skiplist -s "with skiplist" --skip-list=../test-skiplist.txt
+cd ${test_tmpdir}
+$OSTREE checkout test2-skiplist checkout-test2-skiplist
+assert_not_has_file checkout-test2-skiplist/a/nested/3
+echo "ok commit skiplist"
 
 cd ${test_tmpdir}
 $OSTREE prune

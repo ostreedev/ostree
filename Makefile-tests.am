@@ -72,7 +72,6 @@ test_scripts = \
 	tests/test-repo-checkout-subpath.sh	\
 	tests/test-reset-nonlinear.sh \
 	tests/test-oldstyle-partial.sh \
-	tests/test-setuid.sh \
 	tests/test-delta.sh \
 	tests/test-xattrs.sh \
 	tests/test-auto-summary.sh \
