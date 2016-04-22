@@ -134,10 +134,31 @@ assert_file_has_content () {
     fi
 }
 
+assert_symlink_has_content () {
+    if ! test -L "$1"; then
+        echo 1>&2 "File '$1' is not a symbolic link"
+        exit 1
+    fi
+    if ! readlink "$1" | grep -q -e "$2"; then
+        sed -e 's/^/# /' < "$1" >&2
+        echo 1>&2 "Symbolic link '$1' doesn't match regexp '$2'"
+        exit 1
+    fi
+}
+
 assert_file_empty() {
     if test -s "$1"; then
         sed -e 's/^/# /' < "$1" >&2
         echo 1>&2 "File '$1' is not empty"
+        exit 1
+    fi
+}
+
+assert_files_hardlinked() {
+    f1=$(stat -c %i $1)
+    f2=$(stat -c %i $2)
+    if [ "$f1" != "$f2" ]; then
+        echo 1>&2 "Files '$1' and '$2' are not hardlinked"
         exit 1
     fi
 }
