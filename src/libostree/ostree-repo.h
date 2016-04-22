@@ -582,7 +582,8 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
 typedef struct {
   guint ignore_unsupported_content : 1;
   guint autocreate_parents : 1;
-  guint reserved : 30;
+  guint use_ostree_convention : 1;
+  guint reserved : 29;
 
   guint unused_uint[8];
   gpointer unused_ptrs[8];

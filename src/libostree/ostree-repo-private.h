@@ -40,6 +40,22 @@ typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
 } OstreeRepoTestErrorFlags;
 
+struct OstreeRepoCommitModifier {
+  volatile gint refcount;
+
+  OstreeRepoCommitModifierFlags flags;
+  OstreeRepoCommitFilter filter;
+  gpointer user_data;
+  GDestroyNotify destroy_notify;
+
+  OstreeRepoCommitModifierXattrCallback xattr_callback;
+  GDestroyNotify xattr_destroy;
+  gpointer xattr_user_data;
+
+  OstreeSePolicy *sepolicy;
+  GHashTable *devino_cache;
+};
+
 /**
  * OstreeRepo:
  *
