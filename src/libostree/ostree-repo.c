@@ -5012,7 +5012,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
   if (!glnx_dirfd_iterator_init_at (tmpdir_dfd, ".", FALSE, &dfd_iter, error))
     return FALSE;
 
-  while (TRUE)
+  while (tmpdir_name == NULL)
     {
       gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
       struct dirent *dent;
