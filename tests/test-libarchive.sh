@@ -26,57 +26,95 @@ fi
 
 . $(dirname $0)/libtest.sh
 
-echo "1..7"
+echo "1..20"
 
 setup_test_repository "bare"
+
 cd ${test_tmpdir}
 mkdir foo
 cd foo
-echo hi > hi
-ln -s hi hello
-mkdir subdir
-echo contents > subdir/more
-mkdir subdir/1
-touch subdir/1/empty
-mkdir subdir/2
-touch subdir/2/empty
-echo not > subdir/2/notempty
+mkdir -p usr/bin
+echo contents > usr/bin/foo
+touch usr/bin/foo0
+ln usr/bin/foo usr/bin/bar
+ln usr/bin/foo0 usr/bin/bar0
+ln -s foo usr/bin/sl
+mkdir -p usr/local/bin
+ln usr/bin/foo usr/local/bin/baz
+ln usr/bin/foo0 usr/local/bin/baz0
+ln usr/bin/sl usr/local/bin/slhl
+touch usr/bin/setuidme
+touch usr/bin/skipme
 
 tar -c -z -f ../foo.tar.gz .
+find . | cpio -o -H newc > ../foo.cpio
+
 cd ..
-$OSTREE commit -s "from tar" -b test-tar --tree=tar=foo.tar.gz
+
+cat > statoverride.txt <<EOF
+2048 /usr/bin/setuidme
+EOF
+
+cat > skiplist.txt <<EOF
+/usr/bin/skipme
+EOF
+
+$OSTREE commit -s "from tar" -b test-tar \
+  --statoverride=statoverride.txt \
+  --skip-list=skiplist.txt \
+  --tree=tar=foo.tar.gz
 echo "ok tar commit"
+$OSTREE commit -s "from cpio" -b test-cpio \
+  --statoverride=statoverride.txt \
+  --skip-list=skiplist.txt \
+  --tree=tar=foo.cpio
+echo "ok cpio commit"
 
-cd ${test_tmpdir}
-$OSTREE checkout test-tar test-tar-checkout
-cd test-tar-checkout
-assert_file_has_content hi hi
-assert_file_has_content hello hi
-assert_file_has_content subdir/more contents
-assert_has_file subdir/1/empty
-assert_has_file subdir/2/empty
-cd ${test_tmpdir}
-rm -rf test-tar-checkout
-echo "ok tar contents"
+assert_valid_checkout () {
+  cd ${test_tmpdir}
+  $OSTREE checkout test-$1 test-$1-checkout
+  cd test-$1-checkout
 
-cd ${test_tmpdir}
-mkdir hardlinktest
-cd hardlinktest
-echo other > otherfile
-echo foo1 > foo
-ln foo bar
-tar czf ${test_tmpdir}/hardlinktest.tar.gz .
-cd ${test_tmpdir}
-$OSTREE commit -s 'hardlinks' -b test-hardlinks --tree=tar=hardlinktest.tar.gz
-rm -rf hardlinktest
-echo "ok hardlink commit"
+  # basic content check
+  assert_file_has_content usr/bin/foo contents
+  assert_file_has_content usr/bin/bar contents
+  assert_file_has_content usr/local/bin/baz contents
+  assert_file_empty usr/bin/foo0
+  assert_file_empty usr/bin/bar0
+  assert_file_empty usr/local/bin/baz0
+  echo "ok $1 contents"
 
-cd ${test_tmpdir}
-$OSTREE checkout test-hardlinks test-hardlinks-checkout
-cd test-hardlinks-checkout
-assert_file_has_content foo foo1
-assert_file_has_content bar foo1
-echo "ok hardlink contents"
+  # hardlinks
+  assert_files_hardlinked usr/bin/foo usr/bin/bar
+  assert_files_hardlinked usr/bin/foo usr/local/bin/baz
+  echo "ok $1 hardlink"
+  assert_files_hardlinked usr/bin/foo0 usr/bin/bar0
+  assert_files_hardlinked usr/bin/foo0 usr/local/bin/baz0
+  echo "ok $1 hardlink to empty files"
+
+  # symlinks
+  assert_symlink_has_content usr/bin/sl foo
+  assert_file_has_content usr/bin/sl contents
+  echo "ok $1 symlink"
+  # ostree checkout doesn't care if two symlinks are actually hardlinked
+  # together (which is fine). checking that it's also a symlink is good enough.
+  assert_symlink_has_content usr/local/bin/slhl foo
+  echo "ok $1 hardlink to symlink"
+
+  # stat override
+  test -u usr/bin/setuidme
+  echo "ok $1 setuid"
+
+  # skip list
+  test ! -f usr/bin/skipme
+  echo "ok $1 file skip"
+
+  cd ${test_tmpdir}
+  rm -rf test-$1-checkout
+}
+
+assert_valid_checkout tar
+assert_valid_checkout cpio
 
 cd ${test_tmpdir}
 mkdir multicommit-files
@@ -115,3 +153,4 @@ cd ${test_tmpdir}
 $OSTREE checkout partial partial-checkout
 cd partial-checkout
 assert_file_has_content subdir/original "original"
+echo "ok tar partial commit contents"
