@@ -389,8 +389,15 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
     {
       GOutputStream *stream = NULL;
 
-      if (g_strcmp0(opt_log, "-") == 0)
-        stream = G_OUTPUT_STREAM (g_unix_output_stream_new (STDOUT_FILENO, FALSE));
+      if (g_strcmp0 (opt_log, "-") == 0)
+        {
+          if (opt_daemonize)
+            {
+              ot_util_usage_error (context, "Cannot use --log-file=- and --daemonize at the same time", error);
+              goto out;
+            }
+          stream = G_OUTPUT_STREAM (g_unix_output_stream_new (STDOUT_FILENO, FALSE));
+        }
       else
         {
           g_autoptr(GFile) log_file;
