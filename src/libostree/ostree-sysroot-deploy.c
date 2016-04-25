@@ -87,6 +87,39 @@ symlink_at_replace (const char    *oldpath,
   return ret;
 }
 
+/* Try a hardlink if we can, otherwise fall back to copying.  Used
+ * right now for kernels/initramfs in /boot, where we can just
+ * hardlink if we're on the same partition.
+ */
+static gboolean
+hardlink_or_copy_at (int         src_dfd,
+                     const char *src_subpath,
+                     int         dest_dfd,
+                     const char *dest_subpath,
+                     GCancellable  *cancellable,
+                     GError       **error)
+{
+  gboolean ret = FALSE;
+
+  if (linkat (src_dfd, src_subpath, dest_dfd, dest_subpath, 0) != 0)
+    {
+      if (errno == EMLINK || errno == EXDEV)
+        {
+          return glnx_file_copy_at (src_dfd, src_subpath, NULL, dest_dfd, dest_subpath, 0,
+                                    cancellable, error);
+        }
+      else
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
 static gboolean
 dirfd_copy_attributes_and_xattrs (int            src_parent_dfd,
                                   const char    *src_name,
@@ -1337,9 +1370,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
           glnx_set_prefix_error_from_errno (error, "fstat %s", dest_kernel_name);
           goto out;
         }
-      if (!glnx_file_copy_at (tree_boot_dfd, tree_kernel_name, NULL,
-                              bootcsum_dfd, dest_kernel_name, 0,
-                              cancellable, error))
+      if (!hardlink_or_copy_at (tree_boot_dfd, tree_kernel_name,
+                                bootcsum_dfd, dest_kernel_name,
+                                cancellable, error))
         goto out;
     }
 
@@ -1354,9 +1387,9 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
               glnx_set_prefix_error_from_errno (error, "fstat %s", dest_initramfs_name);
               goto out;
             }
-          if (!glnx_file_copy_at (tree_boot_dfd, tree_initramfs_name, NULL,
-                                  bootcsum_dfd, dest_initramfs_name, 0,
-                                  cancellable, error))
+          if (!hardlink_or_copy_at (tree_boot_dfd, tree_initramfs_name,
+                                    bootcsum_dfd, dest_initramfs_name,
+                                    cancellable, error))
             goto out;
         }
     }
