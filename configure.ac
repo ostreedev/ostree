@@ -222,7 +222,7 @@ AC_ARG_ENABLE(rofiles-fuse,
               [AS_HELP_STRING([--enable-rofiles-fuse],
                               [generate rofiles-fuse helper [default=yes]])],,
               enable_rofiles_fuse=yes)
-AS_IF([ test $enable_rofiles_fuse != xno ], [
+AS_IF([ test x$enable_rofiles_fuse != xno ], [
     PKG_CHECK_MODULES(BUILDOPT_FUSE, $FUSE_DEPENDENCY)
 ], [enable_rofiles_fuse=no])
 AM_CONDITIONAL(BUILDOPT_FUSE, test x$enable_rofiles_fuse = xyes)
