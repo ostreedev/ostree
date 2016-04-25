@@ -21,6 +21,8 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+skip_without_user_xattrs
+
 echo '1..2'
 
 setup_test_repository "archive-z2"
