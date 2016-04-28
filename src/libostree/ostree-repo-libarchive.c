@@ -272,14 +272,23 @@ aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx,
                            const char  *relpath,
                            GFileInfo  **out_file_info)
 {
-  /* the user expects an abspath (where the dir to commit represents /) */
-  g_autofree char *abspath = g_build_filename ("/", relpath, NULL);
   g_autofree char *hardlink = aic_get_final_entry_hardlink (ctx);
   g_autoptr(GFileInfo) file_info = NULL;
+  g_autofree char *abspath = NULL;
+  const char *cb_path = NULL;
+
+  if (ctx->opts->callback_with_entry_pathname)
+    cb_path = archive_entry_pathname (ctx->entry);
+  else
+    {
+      /* the user expects an abspath (where the dir to commit represents /) */
+      abspath = g_build_filename ("/", relpath, NULL);
+      cb_path = abspath;
+    }
 
   file_info = file_info_from_archive_entry (ctx->entry);
 
-  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, abspath,
+  return _ostree_repo_commit_modifier_apply (ctx->repo, ctx->modifier, cb_path,
                                              file_info, out_file_info);
 }
 
@@ -410,9 +419,13 @@ aic_get_xattrs (OstreeRepoArchiveImportContext *ctx,
 {
   g_autofree char *abspath = g_build_filename ("/", path, NULL);
   g_autoptr(GVariant) xattrs = NULL;
+  const char *cb_path = abspath;
+
+  if (ctx->opts->callback_with_entry_pathname)
+    cb_path = archive_entry_pathname (ctx->entry);
 
   if (ctx->modifier && ctx->modifier->xattr_callback)
-    xattrs = ctx->modifier->xattr_callback (ctx->repo, abspath, file_info,
+    xattrs = ctx->modifier->xattr_callback (ctx->repo, cb_path, file_info,
                                             ctx->modifier->xattr_user_data);
 
   if (ctx->modifier && ctx->modifier->sepolicy)
