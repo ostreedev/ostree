@@ -21,7 +21,8 @@ if BUILDOPT_DRACUT
 # Not using $(libdir) here is intentional, dracut modules go in prefix/lib
 dracutmoddir = $(prefix)/lib/dracut/modules.d/98ostree
 dracutmod_SCRIPTS = src/boot/dracut/module-setup.sh
-
+endif
+if BUILDOPT_DRACUT_CONF
 dracutconfdir = $(sysconfdir)/dracut.conf.d
 dracutconf_DATA = src/boot/dracut/ostree.conf
 endif
