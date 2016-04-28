@@ -72,7 +72,7 @@ env NOCONFIGURE=1 ./autogen.sh
 %configure --disable-silent-rules \
 	   --enable-gtk-doc \
 	   --with-selinux \
-	   --with-dracut
+	   --with-dracut=yesbutnoconf
 make %{?_smp_mflags}
 
 %install
@@ -94,7 +94,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/ostree
 %{_sbindir}/ostree-prepare-root
 %{_sbindir}/ostree-remount
-%{_sysconfdir}/dracut.conf.d/ostree.conf
 %dir %{_prefix}/lib/dracut/modules.d/98ostree
 %{_prefix}/lib/systemd/system/ostree*.service
 %{_prefix}/lib/dracut/modules.d/98ostree/*
