@@ -55,7 +55,6 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
   glnx_unref_object OstreeRepo *repo = NULL;
   int i;
   const char *src_repo_arg;
-  GSConsole *console = NULL;
   g_autofree char *src_repo_uri = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   g_autoptr(GPtrArray) refs_to_fetch = NULL;
@@ -132,14 +131,11 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
       g_ptr_array_add (refs_to_fetch, NULL);
     }
 
-  console = gs_console_get ();
-  if (console)
-    {
-      gs_console_begin_status_line (console, "", NULL, NULL);
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
-    }
-
   { GVariantBuilder builder;
+    g_auto(GLnxConsoleRef) console = { 0, };
+
+    glnx_console_lock (&console);
+
     g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
 
     g_variant_builder_add (&builder, "{s@v}", "flags",
@@ -158,17 +154,21 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     g_variant_builder_add (&builder, "{s@v}", "depth",
                            g_variant_new_variant (g_variant_new_int32 (opt_depth)));
 
+    if (console.is_tty)
+      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+
     if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
                                         g_variant_builder_end (&builder),
                                         progress,
                                         cancellable, error))
       goto out;
+
+    if (progress)
+      ostree_async_progress_finish (progress);
   }
 
   ret = TRUE;
  out:
-  if (progress)
-    ostree_async_progress_finish (progress);
   if (context)
     g_option_context_free (context);
   if (repo)

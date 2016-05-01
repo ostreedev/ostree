@@ -58,16 +58,17 @@ static void
 gpg_verify_result_cb (OstreeRepo *repo,
                       const char *checksum,
                       OstreeGpgVerifyResult *result,
-                      GSConsole *console)
+                      GLnxConsoleRef *console)
 {
-  /* Temporarily place the GSConsole stream (which is just stdout)
-   * back in normal mode before printing GPG verification results. */
-  gs_console_end_status_line (console, NULL, NULL);
+  /* Temporarily place the tty back in normal mode before printing GPG
+   * verification results.
+   */
+  glnx_console_unlock (console);
 
   g_print ("\n");
   ostree_print_gpg_verify_result (result);
 
-  gs_console_begin_status_line (console, "", NULL, NULL);
+  glnx_console_lock (console);
 }
 
 static gboolean printed_console_progress;
@@ -111,7 +112,6 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   gboolean ret = FALSE;
   g_autofree char *remote = NULL;
   OstreeRepoPullFlags pullflags = 0;
-  GSConsole *console = NULL;
   g_autoptr(GPtrArray) refs_to_fetch = NULL;
   g_autoptr(GPtrArray) override_commit_ids = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
@@ -206,29 +206,12 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
       g_ptr_array_add (refs_to_fetch, NULL);
     }
 
-  if (!opt_dry_run)
-    {
-      console = gs_console_get ();
-      if (console)
-        {
-          gs_console_begin_status_line (console, "", NULL, NULL);
-          progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
-          signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
-                                                G_CALLBACK (gpg_verify_result_cb),
-                                                console);
-        }
-    }
-  else
-    {
-      progress = ostree_async_progress_new_and_connect (dry_run_console_progress_changed, console);
-      signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
-                                            G_CALLBACK (gpg_verify_result_cb),
-                                            console);
-    }
-
   {
     GVariantBuilder builder;
+    g_auto(GLnxConsoleRef) console = { 0, };
     g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+    glnx_console_lock (&console);
 
     if (opt_url)
       g_variant_builder_add (&builder, "{s@v}", "override-url",
@@ -257,25 +240,38 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",
                              g_variant_new_variant (g_variant_new_strv ((const char*const*)override_commit_ids->pdata, override_commit_ids->len)));
 
+    if (!opt_dry_run)
+      {
+        if (console.is_tty)
+          progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
+      }
+    else
+      {
+        progress = ostree_async_progress_new_and_connect (dry_run_console_progress_changed, NULL);
+      }
+
+    if (console.is_tty)
+      {
+        signal_handler_id = g_signal_connect (repo, "gpg-verify-result",
+                                              G_CALLBACK (gpg_verify_result_cb),
+                                              &console);
+      }
+
     if (!ostree_repo_pull_with_options (repo, remote, g_variant_builder_end (&builder),
                                         progress, cancellable, error))
       goto out;
+
+    if (progress)
+      ostree_async_progress_finish (progress);
+
+    if (opt_dry_run)
+      g_assert (printed_console_progress);
   }
-
-  if (progress)
-    ostree_async_progress_finish (progress);
-
-  if (opt_dry_run)
-    g_assert (printed_console_progress);
 
   ret = TRUE;
  out:
   if (signal_handler_id > 0)
     g_signal_handler_disconnect (repo, signal_handler_id);
-
-  if (console)
-    gs_console_end_status_line (console, NULL, NULL);
- 
   if (context)
     g_option_context_free (context);
   return ret;
