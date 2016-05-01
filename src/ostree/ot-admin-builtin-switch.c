@@ -61,8 +61,6 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
-  GSConsole *console = NULL;
-  gboolean in_status_line = FALSE;
   GKeyFile *old_origin;
   GKeyFile *new_origin = NULL;
 
@@ -125,28 +123,24 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   if (!ostree_sysroot_upgrader_set_origin (upgrader, new_origin, cancellable, error))
     goto out;
 
-  console = gs_console_get ();
-  if (console)
-    {
-      gs_console_begin_status_line (console, "", NULL, NULL);
-      in_status_line = TRUE;
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
-    }
+  { g_auto(GLnxConsoleRef) console = { 0, };
+    glnx_console_lock (&console);
 
-  /* Always allow older...there's not going to be a chronological
-   * relationship necessarily.
-   */
-  if (!ostree_sysroot_upgrader_pull (upgrader, 0,
-                                     OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER,
-                                     progress, &changed,
-                                     cancellable, error))
-    goto out;
+    if (console.is_tty)
+      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
-  if (in_status_line)
-    {
-      gs_console_end_status_line (console, NULL, NULL);
-      in_status_line = FALSE;
-    }
+    /* Always allow older...there's not going to be a chronological
+     * relationship necessarily.
+     */
+    if (!ostree_sysroot_upgrader_pull (upgrader, 0,
+                                       OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER,
+                                       progress, &changed,
+                                       cancellable, error))
+      goto out;
+
+    if (progress)
+      ostree_async_progress_finish (progress);
+  }
 
   if (!ostree_sysroot_upgrader_deploy (upgrader, cancellable, error))
     goto out;
@@ -171,8 +165,6 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
 
   ret = TRUE;
  out:
-  if (in_status_line)
-    gs_console_end_status_line (console, NULL, NULL);
   if (new_origin)
     g_key_file_unref (new_origin);
   if (context)

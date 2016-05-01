@@ -27,6 +27,7 @@
 #include <gio/gunixinputstream.h>
 #include <gio/gfiledescriptorbased.h>
 #include "otutil.h"
+#include <glnx-console.h>
 
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
@@ -4120,12 +4121,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
  * custom status message, or else outstanding fetch progress in bytes/sec,
  * or else outstanding content or metadata writes to the repository in
  * number of objects.
+ *
+ * Compatibility note: this function previously assumed that @user_data
+ * was a pointer to a #GSConsole instance.  This is no longer the case,
+ * and @user_data is ignored.
  **/
 void
 ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress,
                                                    gpointer             user_data)
 {
-  GSConsole *console = user_data;
   GString *buf;
   g_autofree char *status = NULL;
   guint outstanding_fetches;
@@ -4135,7 +4139,8 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   guint fetched_delta_parts;
   guint total_delta_parts;
 
-  if (!console)
+  /* Historical note; we used to treat this as a GSConsole instance */
+  if (user_data == NULL)
     return;
 
   buf = g_string_new ("");
@@ -4202,7 +4207,7 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       g_string_append_printf (buf, "Scanning metadata: %u", n_scanned_metadata);
     }
 
-  gs_console_begin_status_line (console, buf->str, NULL, NULL);
+  glnx_console_text (buf->str);
 
   g_string_free (buf, TRUE);
 }

@@ -55,8 +55,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
   g_autoptr(GFile) deployment_path = NULL;
   g_autoptr(GFile) deployment_origin_path = NULL;
   g_autoptr(GKeyFile) origin = NULL;
-  GSConsole *console = NULL;
-  gboolean in_status_line = FALSE;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
   OstreeSysrootUpgraderPullFlags upgraderpullflags = 0;
@@ -108,27 +106,23 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
         }
     }
 
-  console = gs_console_get ();
-  if (console)
-    {
-      gs_console_begin_status_line (console, "", NULL, NULL);
-      in_status_line = TRUE;
-      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, console);
-    }
+  { g_auto(GLnxConsoleRef) console = { 0, };
+    glnx_console_lock (&console);
 
-  if (opt_allow_downgrade)
-    upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER;
+    if (console.is_tty)
+      progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
-  if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
-                                     progress, &changed,
-                                     cancellable, error))
-    goto out;
+    if (opt_allow_downgrade)
+      upgraderpullflags |= OSTREE_SYSROOT_UPGRADER_PULL_FLAGS_ALLOW_OLDER;
+    
+    if (!ostree_sysroot_upgrader_pull (upgrader, 0, upgraderpullflags,
+                                       progress, &changed,
+                                       cancellable, error))
+      goto out;
 
-  if (in_status_line)
-    {
-      gs_console_end_status_line (console, NULL, NULL);
-      in_status_line = FALSE;
-    }
+    if (progress)
+      ostree_async_progress_finish (progress);
+  }
 
   if (!changed)
     {
@@ -148,8 +142,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
 
   ret = TRUE;
  out:
-  if (in_status_line)
-    gs_console_end_status_line (console, NULL, NULL);
   if (context)
     g_option_context_free (context);
   return ret;
