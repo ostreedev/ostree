@@ -613,7 +613,7 @@ ostree_content_file_parse_at (gboolean                compressed,
                               cancellable, error))
     goto out;
       
-  if (!gs_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, cancellable, error))
+  if (!glnx_stream_fstat ((GFileDescriptorBased*)file_input, &stbuf, error))
     goto out;
   
   if (!ostree_content_stream_parse (compressed, file_input, stbuf.st_size, trusted,

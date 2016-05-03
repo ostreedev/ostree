@@ -2925,7 +2925,7 @@ load_metadata_internal (OstreeRepo       *self,
             {
               struct stat stbuf;
 
-              if (!gs_stream_fstat ((GFileDescriptorBased*)ret_stream, &stbuf, cancellable, error))
+              if (!glnx_stream_fstat ((GFileDescriptorBased*)ret_stream, &stbuf, error))
                 goto out;
               *out_size = stbuf.st_size;
             }
@@ -3100,8 +3100,8 @@ ostree_repo_load_file (OstreeRepo         *self,
           tmp_stream = g_unix_input_stream_new (fd, TRUE);
           fd = -1; /* Transfer ownership */
           
-          if (!gs_stream_fstat ((GFileDescriptorBased*) tmp_stream, &stbuf,
-                                cancellable, error))
+          if (!glnx_stream_fstat ((GFileDescriptorBased*) tmp_stream, &stbuf,
+                                  error))
             goto out;
           
           if (!ostree_content_stream_parse (TRUE, tmp_stream, stbuf.st_size, TRUE,
