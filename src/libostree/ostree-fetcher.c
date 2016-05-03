@@ -1067,7 +1067,7 @@ _ostree_fetcher_bytes_transferred (OstreeFetcher       *self)
       
       if (G_IS_FILE_DESCRIPTOR_BASED (stream))
         {
-          if (gs_stream_fstat ((GFileDescriptorBased*)stream, &stbuf, NULL, NULL))
+          if (glnx_stream_fstat ((GFileDescriptorBased*)stream, &stbuf, NULL))
             ret += stbuf.st_size;
         }
     }
