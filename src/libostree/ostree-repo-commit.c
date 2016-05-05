@@ -2225,6 +2225,10 @@ create_tree_variant_from_hashes (GHashTable            *file_checksums,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *name = key;
+
+      /* Should have been validated earlier, but be paranoid */
+      g_assert (ot_util_filename_validate (name, NULL));
+
       sorted_filenames = g_slist_prepend (sorted_filenames, (char*)name);
     }
 
