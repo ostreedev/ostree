@@ -159,6 +159,11 @@ ostree_mutable_tree_replace_file (OstreeMutableTree *self,
 {
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!ot_util_filename_validate (name, error))
+    goto out;
+
   if (g_hash_table_lookup (self->subdirs, name))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
@@ -186,6 +191,9 @@ ostree_mutable_tree_ensure_dir (OstreeMutableTree *self,
   glnx_unref_object OstreeMutableTree *ret_dir = NULL;
 
   g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!ot_util_filename_validate (name, error))
+    goto out;
 
   if (g_hash_table_lookup (self->files, name))
     {
