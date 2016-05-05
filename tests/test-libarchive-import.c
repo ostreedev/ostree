@@ -301,6 +301,31 @@ test_libarchive_ignore_device_file (gconstpointer data)
   g_assert_no_error (error);
 }
 
+static gboolean
+check_ostree_convention (GError *error)
+{
+  if (!spawn_cmdline ("ostree --repo=repo ls bar file", &error))
+    return FALSE;
+
+  if (!spawn_cmdline ("ostree --repo=repo ls bar anotherfile", &error))
+    return FALSE;
+
+  if (!spawn_cmdline ("ostree --repo=repo ls bar /usr/etc/file", &error))
+    return FALSE;
+
+  if (spawn_cmdline ("ostree --repo=repo ls bar /etc/file", &error))
+    g_assert_not_reached ();
+  g_assert (error != NULL);
+  g_clear_error (&error);
+
+  if (spawn_cmdline ("ostree --repo=repo ls bar devnull", &error))
+    g_assert_not_reached ();
+  g_assert (error != NULL);
+  g_clear_error (&error);
+
+  return TRUE;
+}
+
 static void
 test_libarchive_ostree_convention (gconstpointer data)
 {
@@ -321,25 +346,8 @@ test_libarchive_ostree_convention (gconstpointer data)
   if (!import_write_and_ref (td->repo, &opts, a, "bar", NULL, &error))
     goto out;
 
-  /* check contents */
-  if (!spawn_cmdline ("ostree --repo=repo ls bar file", &error))
+  if (!check_ostree_convention (error))
     goto out;
-
-  if (!spawn_cmdline ("ostree --repo=repo ls bar anotherfile", &error))
-    goto out;
-
-  if (!spawn_cmdline ("ostree --repo=repo ls bar /usr/etc/file", &error))
-    goto out;
-
-  if (spawn_cmdline ("ostree --repo=repo ls bar /etc/file", &error))
-    g_assert_not_reached ();
-  g_assert (error != NULL);
-  g_clear_error (&error);
-
-  if (spawn_cmdline ("ostree --repo=repo ls bar devnull", &error))
-    g_assert_not_reached ();
-  g_assert (error != NULL);
-  g_clear_error (&error);
 
  out:
   g_assert_no_error (error);
@@ -403,7 +411,74 @@ test_libarchive_xattr_callback (gconstpointer data)
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
   g_assert_no_error (error);
+}
 
+static GVariant*
+path_cb (OstreeRepo  *repo,
+         const char  *path,
+         GFileInfo   *file_info,
+         gpointer     user_data)
+{
+  if (strcmp (path, "/etc/file") == 0)
+    *(gboolean*)user_data = TRUE;
+  return NULL;
+}
+
+static void
+entry_pathname_test_helper (gconstpointer data, gboolean on)
+{
+  TestData *td = (void*)data; GError *error = NULL;
+  struct archive *a = archive_read_new ();
+  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoCommitModifier *modifier = NULL;
+  gboolean met_etc_file = FALSE;
+
+  modifier = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
+  ostree_repo_commit_modifier_set_xattr_callback (modifier, path_cb,
+                                                  NULL, &met_etc_file);
+
+  test_archive_setup (td->fd, a);
+
+  opts.autocreate_parents = TRUE;
+  opts.use_ostree_convention = TRUE;
+  opts.ignore_unsupported_content = TRUE;
+  opts.callback_with_entry_pathname = on;
+
+  if (!import_write_and_ref (td->repo, &opts, a, "bar", modifier, &error))
+    goto out;
+
+  /* the flag shouldn't have any effect on the final tree */
+  if (!check_ostree_convention (error))
+    goto out;
+
+  if (!on && met_etc_file)
+    {
+      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Received callback with /etc/file");
+      goto out;
+    }
+
+  if (on && !met_etc_file)
+    {
+      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Did not receive callback with /etc/file");
+      goto out;
+    }
+
+ out:
+  g_assert_no_error (error);
+}
+
+static void
+test_libarchive_no_use_entry_pathname (gconstpointer data)
+{
+  entry_pathname_test_helper (data, FALSE);
+}
+
+static void
+test_libarchive_use_entry_pathname (gconstpointer data)
+{
+  entry_pathname_test_helper (data, TRUE);
 }
 
 static void
@@ -478,6 +553,8 @@ int main (int argc, char **argv)
   g_test_add_data_func ("/libarchive/ignore-device-file", &td, test_libarchive_ignore_device_file);
   g_test_add_data_func ("/libarchive/ostree-convention", &td, test_libarchive_ostree_convention);
   g_test_add_data_func ("/libarchive/xattr-callback", &td, test_libarchive_xattr_callback);
+  g_test_add_data_func ("/libarchive/no-use-entry-pathname", &td, test_libarchive_no_use_entry_pathname);
+  g_test_add_data_func ("/libarchive/use-entry-pathname", &td, test_libarchive_use_entry_pathname);
   g_test_add_data_func ("/libarchive/selinux", &td, test_libarchive_selinux);
 
   r = g_test_run();
