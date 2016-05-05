@@ -114,9 +114,14 @@ parse_file_by_line (const char    *path,
 
   lines = g_strsplit (contents, "\n", -1);
   for (char **iter = lines; iter && *iter; iter++)
-    if (**iter != '\0') /* skip empty lines at least */
+    {
+      /* skip empty lines at least */
+      if (**iter == '\0')
+        continue;
+
       if (!cb (*iter, cbdata, error))
         goto out;
+    }
 
   ret = TRUE;
 out:
