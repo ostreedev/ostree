@@ -47,8 +47,9 @@ propagate_libarchive_error (GError      **error,
                "%s", archive_error_string (a));
 }
 
-static inline const char *
-path_relative (const char *src)
+static const char *
+path_relative (const char *src,
+               GError    **error)
 {
   /* One issue here is that some archives almost record the pathname as just a
    * string and don't need to actually encode parent/child relationships in the
@@ -81,13 +82,23 @@ path_relative (const char *src)
   if (src[0] == '.' && src[1] == '\0')
     src += 1;
 
+  /* make sure that the final path is valid (no . or ..) */
+  if (!ot_util_path_split_validate (src, NULL, error))
+    {
+      g_prefix_error (error, "While making relative path \"%s\":", src);
+      return NULL;
+    }
+
   return src;
 }
 
 static char *
-path_relative_ostree (const char *path)
+path_relative_ostree (const char *path,
+                      GError    **error)
 {
-  path = path_relative (path);
+  path = path_relative (path, error);
+  if (path == NULL)
+    return NULL;
   if (g_str_has_prefix (path, "etc/"))
     return g_strconcat ("usr/", path, NULL);
   else if (strcmp (path, "etc") == 0)
@@ -242,18 +253,23 @@ typedef struct {
 
 static inline char*
 aic_get_final_path (OstreeRepoArchiveImportContext *ctx,
-                    const char  *path)
+                    const char  *path,
+                    GError     **error)
 {
   if (ctx->opts->use_ostree_convention)
-    return path_relative_ostree (path);
-  return g_strdup (path_relative (path));
+    return path_relative_ostree (path, error);
+  return g_strdup (path_relative (path, error));
 }
 
 static inline char*
-aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx)
+aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx,
+                              GError  **error)
 {
   const char *pathname = archive_entry_pathname (ctx->entry);
-  g_autofree char *final = aic_get_final_path (ctx, pathname);
+  g_autofree char *final = aic_get_final_path (ctx, pathname, error);
+
+  if (final == NULL)
+    return NULL;
 
   /* get rid of trailing slashes some archives put on dirs */
   squash_trailing_slashes (final);
@@ -263,8 +279,20 @@ aic_get_final_entry_pathname (OstreeRepoArchiveImportContext *ctx)
 static inline char*
 aic_get_final_entry_hardlink (OstreeRepoArchiveImportContext *ctx)
 {
+  GError *local_error = NULL;
   const char *hardlink = archive_entry_hardlink (ctx->entry);
-  return hardlink ? aic_get_final_path (ctx, hardlink) : NULL;
+  g_autofree char *final = NULL;
+
+  if (hardlink != NULL)
+    {
+      final = aic_get_final_path (ctx, hardlink, &local_error);
+
+      /* hardlinks always point to a preceding entry, so if there were an error
+       * it would have failed then */
+      g_assert_no_error (local_error);
+    }
+
+  return g_steal_pointer (&final);
 }
 
 static OstreeRepoCommitFilterResult
@@ -625,7 +653,10 @@ aic_import_entry (OstreeRepoArchiveImportContext *ctx,
 {
   g_autoptr(GFileInfo) fi = NULL;
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autofree char *path = aic_get_final_entry_pathname (ctx);
+  g_autofree char *path = aic_get_final_entry_pathname (ctx, error);
+
+  if (path == NULL)
+    return FALSE;
 
   if (aic_apply_modifier_filter (ctx, path, &fi)
         == OSTREE_REPO_COMMIT_FILTER_SKIP)
