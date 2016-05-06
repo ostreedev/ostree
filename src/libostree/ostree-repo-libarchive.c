@@ -54,9 +54,9 @@ path_relative (const char *src,
   /* One issue here is that some archives almost record the pathname as just a
    * string and don't need to actually encode parent/child relationships in the
    * archive. For us however, this will be important. So we do our best to deal
-   * with non-conventional paths (but note that we don't try to be sophisticated
-   * enough to handle e.g. ../ & ./ in the middle of normal dir comps, which
-   * would probably require a stack). Also important, we relativize the path. */
+   * with non-conventional paths. We also validate the path at the end to make
+   * sure there are no illegal components. Also important, we relativize the
+   * path. */
 
   /* relativize first (and make /../../ --> /) */
   while (src[0] == '/')
