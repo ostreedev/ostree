@@ -57,6 +57,9 @@ static GOptionEntry options[] = {
 };
 
 static void
+httpd_log (OtTrivialHttpd *httpd, const gchar *format, ...) __attribute__ ((format(printf, 2, 3)));
+
+static void
 httpd_log (OtTrivialHttpd *httpd, const gchar *format, ...)
 {
   g_autoptr(GString) str = NULL;
