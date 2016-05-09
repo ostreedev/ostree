@@ -70,10 +70,12 @@ ostree_sysroot_finalize (GObject *object)
   g_clear_object (&self->path);
   g_clear_object (&self->sepolicy);
   g_clear_object (&self->repo);
+  g_clear_pointer (&self->deployments, g_ptr_array_unref);
+  g_clear_object (&self->booted_deployment);
 
   glnx_release_lock_file (&self->lock);
 
-  (void) ostree_sysroot_unload (self);
+  ostree_sysroot_unload (self);
 
   G_OBJECT_CLASS (ostree_sysroot_parent_class)->finalize (object);
 }
@@ -873,7 +875,7 @@ ostree_sysroot_load_if_changed (OstreeSysroot  *self,
     }
 
   g_clear_pointer (&self->deployments, g_ptr_array_unref);
-  g_clear_pointer (&self->booted_deployment, g_object_unref);
+  g_clear_object (&self->booted_deployment);
   self->bootversion = -1;
   self->subbootversion = -1;
 
