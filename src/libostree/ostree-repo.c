@@ -1895,6 +1895,7 @@ static gboolean
 repo_remote_fetch_summary (OstreeRepo    *self,
                            const char    *name,
                            const char    *metalink_url_string,
+                           GVariant      *options,
                            GBytes       **out_summary,
                            GBytes       **out_signatures,
                            GCancellable  *cancellable,
@@ -1905,6 +1906,10 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   gboolean ret = FALSE;
   SoupURI *base_uri = NULL;
   gboolean from_cache = FALSE;
+  g_autofree char *url_override = NULL;
+
+  if (options)
+    (void) g_variant_lookup (options, "override-url", "&s", &url_override);
 
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
@@ -1917,11 +1922,10 @@ repo_remote_fetch_summary (OstreeRepo    *self,
     g_autofree char *url_string = NULL;
     if (metalink_url_string)
       url_string = g_strdup (metalink_url_string);
-    else
-      {
-        if (!ostree_repo_remote_get_url (self, name, &url_string, error))
-          goto out;
-      }
+    else if (url_override)
+      url_string = g_strdup (url_override);
+    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+      goto out;
 
     base_uri = soup_uri_new (url_string);
     if (base_uri == NULL)
@@ -2004,8 +2008,8 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  * ostree_repo_remote_fetch_summary:
  * @self: Self
  * @name: name of a remote
- * @out_summary: (allow-none): return location for raw summary data, or %NULL
- * @out_signatures: (allow-none): return location for raw summary signature
+ * @out_summary: (nullable): return location for raw summary data, or %NULL
+ * @out_signatures: (nullable): return location for raw summary signature
  *                                data, or %NULL
  * @cancellable: a #GCancellable
  * @error: a #GError
@@ -2031,6 +2035,42 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                   GCancellable  *cancellable,
                                   GError       **error)
 {
+  return ostree_repo_remote_fetch_summary_with_options (self,
+                                                        name,
+                                                        NULL,
+                                                        out_summary,
+                                                        out_signatures,
+                                                        cancellable,
+                                                        error);
+}
+
+/**
+ * ostree_repo_remote_fetch_summary_with_options:
+ * @self: Self
+ * @name: name of a remote
+ * @options: (nullable): A GVariant a{sv} with an extensible set of flags
+ * @out_summary: (nullable): return location for raw summary data, or %NULL
+ * @out_signatures: (nullable): return location for raw summary signature
+ *                              data, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
+ * The following are currently defined:
+ *
+ * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
+                                               const char    *name,
+                                               GVariant      *options,
+                                               GBytes       **out_summary,
+                                               GBytes       **out_signatures,
+                                               GCancellable  *cancellable,
+                                               GError       **error)
+{
 #ifdef HAVE_LIBSOUP
   g_autofree char *metalink_url_string = NULL;
   g_autoptr(GBytes) summary = NULL;
@@ -2048,6 +2088,7 @@ ostree_repo_remote_fetch_summary (OstreeRepo    *self,
   if (!repo_remote_fetch_summary (self,
                                   name,
                                   metalink_url_string,
+                                  options,
                                   &summary,
                                   &signatures,
                                   cancellable,

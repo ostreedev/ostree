@@ -195,6 +195,15 @@ gboolean      ostree_repo_remote_fetch_summary (OstreeRepo    *self,
                                                 GError       **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
+                                                        const char    *name,
+                                                        GVariant      *options,
+                                                        GBytes       **out_summary,
+                                                        GBytes       **out_signatures,
+                                                        GCancellable  *cancellable,
+                                                        GError       **error);
+
+_OSTREE_PUBLIC
 OstreeRepo * ostree_repo_get_parent (OstreeRepo  *self);
 
 _OSTREE_PUBLIC
