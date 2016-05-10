@@ -337,3 +337,9 @@ global:
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
+
+LIBOSTREE_2016.6 {
+global:
+        ostree_repo_remote_fetch_summary_with_options;
+
+} LIBOSTREE_2016.5;
