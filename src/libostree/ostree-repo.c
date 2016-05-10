@@ -1913,8 +1913,6 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   if (fetcher == NULL)
     goto out;
 
-  base_uri = soup_uri_new (metalink_url_string);
-
   {
     g_autofree char *url_string = NULL;
     if (metalink_url_string)
