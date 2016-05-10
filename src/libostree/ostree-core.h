@@ -90,10 +90,10 @@ typedef enum {
 /**
  * OSTREE_DIRMETA_GVARIANT_FORMAT:
  *
- * u - uid
- * u - gid
- * u - mode
- * a(ayay) - xattrs
+ * - u - uid
+ * - u - gid
+ * - u - mode
+ * - a(ayay) - xattrs
  */
 #define OSTREE_DIRMETA_GVARIANT_STRING "(uuua(ayay))"
 #define OSTREE_DIRMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_DIRMETA_GVARIANT_STRING)
@@ -106,10 +106,10 @@ typedef enum {
  * can't store in the real filesystem but we can still use a regular .file object
  * that we can hardlink to in the case of a user-mode checkout.
  *
- * u - uid
- * u - gid
- * u - mode
- * a(ayay) - xattrs
+ * - u - uid
+ * - u - gid
+ * - u - mode
+ * - a(ayay) - xattrs
  */
 #define OSTREE_FILEMETA_GVARIANT_STRING "(uuua(ayay))"
 #define OSTREE_FILEMETA_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_FILEMETA_GVARIANT_STRING)
@@ -117,8 +117,8 @@ typedef enum {
 /**
  * OSTREE_TREE_GVARIANT_FORMAT:
  *
- * a(say) - array of (filename, checksum) for files
- * a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories
+ * - a(say) - array of (filename, checksum) for files
+ * - a(sayay) - array of (dirname, tree_checksum, meta_checksum) for directories
  */
 #define OSTREE_TREE_GVARIANT_STRING "(a(say)a(sayay))"
 #define OSTREE_TREE_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_TREE_GVARIANT_STRING)
@@ -126,14 +126,14 @@ typedef enum {
 /**
  * OSTREE_COMMIT_GVARIANT_FORMAT:
  *
- * a{sv} - Metadata
- * ay - parent checksum (empty string for initial)
- * a(say) - Related objects
- * s - subject 
- * s - body
- * t - Timestamp in seconds since the epoch (UTC)
- * ay - Root tree contents
- * ay - Root tree metadata
+ * - a{sv} - Metadata
+ * - ay - parent checksum (empty string for initial)
+ * - a(say) - Related objects
+ * - s - subject
+ * - s - body
+ * - t - Timestamp in seconds since the epoch (UTC)
+ * - ay - Root tree contents
+ * - ay - Root tree metadata
  */
 #define OSTREE_COMMIT_GVARIANT_STRING "(a{sv}aya(say)sstayay)"
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_COMMIT_GVARIANT_STRING)
@@ -141,8 +141,9 @@ typedef enum {
 /**
  * OSTREE_SUMMARY_GVARIANT_FORMAT:
  *
- * refs: a(s(taya{sv})) - Map of ref name -> (latest commit size, latest commit checksum, additional metadata), sorted by ref name
- * extensions: a{sv} - Additional metadata, none defined at the current time
+ * - a(s(taya{sv})) - Map of ref name -> (latest commit size, latest commit checksum, additional metadata), sorted by ref name
+ * - a{sv} - Additional metadata, at the current time the following are defined:
+ *   - key: "ostree.static-deltas", value: a{sv}, static delta name -> 32 bytes of checksum
  */
 #define OSTREE_SUMMARY_GVARIANT_STRING "(a(s(taya{sv}))a{sv})"
 #define OSTREE_SUMMARY_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_GVARIANT_STRING)
