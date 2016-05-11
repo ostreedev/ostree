@@ -77,7 +77,7 @@ if test -n "${OT_TESTS_DEBUG:-}"; then
 fi
 
 if test -n "${OT_TESTS_VALGRIND:-}"; then
-    CMD_PREFIX="env G_SLICE=always-malloc valgrind -q --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/ostree-valgrind.supp"
+    CMD_PREFIX="env G_SLICE=always-malloc OSTREE_SUPRESS_SYNCFS=1 valgrind -q --leak-check=full --num-callers=30 --suppressions=${test_srcdir}/glib.supp --suppressions=${test_srcdir}/ostree.supp"
 else
     CMD_PREFIX="env LD_PRELOAD=${test_builddir}/libreaddir-rand.so"
 fi
