@@ -1253,7 +1253,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  GVariantBuilder metadata_builder;
+  g_auto(GVariantBuilder) metadata_builder = {0,};
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
@@ -1384,16 +1384,18 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_autoptr(GVariant) delta_part_content = NULL;
       g_autoptr(GVariant) delta_part = NULL;
       g_autoptr(GVariant) delta_part_header = NULL;
-      GVariantBuilder *mode_builder = g_variant_builder_new (G_VARIANT_TYPE ("a(uuu)"));
-      GVariantBuilder *xattr_builder = g_variant_builder_new (G_VARIANT_TYPE ("aa(ayay)"));
+      g_auto(GVariantBuilder) mode_builder = {0,};
+      g_auto(GVariantBuilder) xattr_builder = {0,};
       guint8 compression_type_char;
 
+      g_variant_builder_init (&mode_builder, G_VARIANT_TYPE ("a(uuu)"));
+      g_variant_builder_init (&xattr_builder, G_VARIANT_TYPE ("aa(ayay)"));
       { guint j;
         for (j = 0; j < part_builder->modes->len; j++)
-          g_variant_builder_add_value (mode_builder, part_builder->modes->pdata[j]);
+          g_variant_builder_add_value (&mode_builder, part_builder->modes->pdata[j]);
         
         for (j = 0; j < part_builder->xattrs->len; j++)
-          g_variant_builder_add_value (xattr_builder, part_builder->xattrs->pdata[j]);
+          g_variant_builder_add_value (&xattr_builder, part_builder->xattrs->pdata[j]);
       }
         
       payload_b = g_string_free_to_bytes (part_builder->payload);
@@ -1403,7 +1405,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       part_builder->operations = NULL;
       /* FIXME - avoid duplicating memory here */
       delta_part_content = g_variant_new ("(a(uuu)aa(ayay)@ay@ay)",
-                                          mode_builder, xattr_builder,
+                                          &mode_builder, &xattr_builder,
                                           ot_gvariant_new_ay_bytes (payload_b),
                                           ot_gvariant_new_ay_bytes (operations_b));
       g_variant_ref_sink (delta_part_content);
