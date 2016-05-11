@@ -134,7 +134,7 @@ static OstreeRemote *
 ost_remote_new_from_keyfile (GKeyFile    *keyfile,
                              const gchar *group)
 {
-  GMatchInfo *match = NULL;
+  g_autoptr(GMatchInfo) match = NULL;
   OstreeRemote *remote;
 
   static gsize regex_initialized;
@@ -160,8 +160,6 @@ ost_remote_new_from_keyfile (GKeyFile    *keyfile,
   remote->keyring = g_strdup_printf ("%s.trustedkeys.gpg", remote->name);
 
   ot_keyfile_copy_group (keyfile, remote->options, group);
-
-  g_match_info_unref (match);
 
   return remote;
 }
