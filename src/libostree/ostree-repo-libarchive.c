@@ -331,6 +331,7 @@ aic_ensure_parent_dir_with_file_info (OstreeRepoArchiveImportContext *ctx,
 {
   const char *name = glnx_basename (fullpath);
   g_auto(GVariantBuilder) xattrs_builder;
+  g_autoptr(GVariant) xattrs = NULL;
 
   /* is this the root directory itself? transform into empty string */
   if (name[0] == '/' && name[1] == '\0')
@@ -343,8 +344,9 @@ aic_ensure_parent_dir_with_file_info (OstreeRepoArchiveImportContext *ctx,
                             DEFAULT_DIRMODE, cancellable, error))
       return FALSE;
 
+  xattrs = g_variant_ref_sink (g_variant_builder_end (&xattrs_builder));
   return mtree_ensure_dir_with_meta (ctx->repo, parent, name, file_info,
-                                     g_variant_builder_end (&xattrs_builder),
+                                     xattrs,
                                      FALSE /* error_if_exist */, out_dir,
                                      cancellable, error);
 }

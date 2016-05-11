@@ -2384,7 +2384,7 @@ get_modified_xattrs (OstreeRepo                       *self,
 
       if (label)
         {
-          GVariantBuilder *builder;
+          g_autoptr(GVariantBuilder) builder = NULL;
 
           /* ret_xattrs may be NULL */
           builder = ot_util_variant_builder_from_variant (ret_xattrs,

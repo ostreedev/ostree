@@ -1759,6 +1759,8 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                           GError                  **error)
 {
   GVariantBuilder builder;
+  g_autoptr(GVariant) options = NULL;
+
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
 
   if (dir_to_pull)
@@ -1770,7 +1772,8 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
     g_variant_builder_add (&builder, "{s@v}", "refs",
                            g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
 
-  return ostree_repo_pull_with_options (self, remote_name, g_variant_builder_end (&builder),
+  options = g_variant_ref_sink (g_variant_builder_end (&builder));
+  return ostree_repo_pull_with_options (self, remote_name, options,
                                         progress, cancellable, error);
 }
 

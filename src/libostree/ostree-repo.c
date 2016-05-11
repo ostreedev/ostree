@@ -3510,13 +3510,16 @@ ostree_repo_delete_object (OstreeRepo           *self,
 
       if (tombstone_commits)
         {
-          g_autoptr(GVariantBuilder) builder = NULL;
-          builder = g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
-          g_variant_builder_add (builder, "{sv}", "commit", g_variant_new_bytestring (sha256));
+          g_auto(GVariantBuilder) builder = {0,};
+          g_autoptr(GVariant) variant = NULL;
+
+          g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+          g_variant_builder_add (&builder, "{sv}", "commit", g_variant_new_bytestring (sha256));
+          variant = g_variant_ref_sink (g_variant_builder_end (&builder));
           if (!ostree_repo_write_metadata_trusted (self,
                                                    OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
                                                    sha256,
-                                                   g_variant_builder_end (builder),
+                                                   variant,
                                                    cancellable,
                                                    error))
             goto out;
@@ -4286,7 +4289,6 @@ ostree_repo_append_gpg_signature (OstreeRepo     *self,
   gboolean ret = FALSE;
   g_autoptr(GVariant) metadata = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
-  g_autoptr(GVariantBuilder) builder = NULL;
 
   if (!ostree_repo_read_commit_detached_metadata (self,
                                                   commit_checksum,
@@ -4954,7 +4956,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   g_autoptr(GVariant) summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
-  GVariantDict additional_metadata_builder;
+  g_auto(GVariantDict) additional_metadata_builder = {0,};
 
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
     goto out;
@@ -4987,7 +4989,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   {
     guint i;
     g_autoptr(GPtrArray) delta_names = NULL;
-    GVariantDict deltas_builder;
+    g_auto(GVariantDict) deltas_builder = {0,};
     g_autoptr(GVariant) deltas = NULL;
 
     if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
