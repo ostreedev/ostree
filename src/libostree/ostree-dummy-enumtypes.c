@@ -1,5 +1,6 @@
-/*** BEGIN file-header ***/
-/*
+/* This file declares a stub function that is only exported
+ * to pacify ABI checkers - no one could really have used it.
+ *
  * Copyright (C) 2015 Red Hat, Inc.
  *
  * This library is free software; you can redistribute it and/or
@@ -18,26 +19,14 @@
  * Boston, MA 02111-1307, USA.
  */
 
-/*** END file-header ***/
+#include "ostree-dummy-enumtypes.h"
 
-/*** BEGIN file-production ***/
-#pragma once
-
-#include <glib-object.h>
-
-G_BEGIN_DECLS
-
-/* Enumerations from "@filename@" */
-
-/*** END file-production ***/
-
-/*** BEGIN enumeration-production ***/
-#define @ENUMPREFIX@_TYPE_@ENUMSHORT@ (_@enum_name@_get_type ())
-GType _@enum_name@_get_type (void) G_GNUC_CONST;
-
-/*** END enumeration-production ***/
-
-/*** BEGIN file-tail ***/
-G_END_DECLS
-
-/*** END file-tail ***/
+/* Exported for backwards compat - see 
+ * https://bugzilla.gnome.org/show_bug.cgi?id=764131
+ * https://github.com/ostreedev/ostree/pull/294
+ */
+GType
+ostree_fetcher_config_flags_get_type (void)
+{
+  return G_TYPE_INVALID;
+}
