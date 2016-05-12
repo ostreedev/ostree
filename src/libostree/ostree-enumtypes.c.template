@@ -28,7 +28,7 @@
 
 /*** BEGIN value-header ***/
 GType
-@enum_name@_get_type (void)
+_@enum_name@_get_type (void)
 {
   static volatile gsize the_type__volatile = 0;
 
