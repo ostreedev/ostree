@@ -45,7 +45,7 @@ operate "live" on the currently booted filesystem.  The way they could
 work with OSTree is instead to take the list of installed packages in
 the currently booted tree, and compute a new filesystem from that.  A
 later chapter describes in more details how this could work:
-[adapting-existing.md](Adapting Existing Systems).
+[Adapting Existing Systems](adapting-existing.md).
 
 For the purposes of this section, let's assume that we have a
 newly generated filesystem tree stored in the repo (which shares
@@ -56,7 +56,7 @@ checking it back out of the repo into a deployment.
 
 Given a commit to deploy, OSTree first allocates a directory for
 it.  This is of the form `/boot/loader/entries/ostree-$osname-$checksum.$serial.conf`.
-The `$serial` is normally 0, but if a
+The `$serial` is normally `0`, but if a
 given commit is deployed more than once, it will be incremented.
 This is supported because the previous deployment may have
 configuration in `/etc` that we do not want to use or overwrite.

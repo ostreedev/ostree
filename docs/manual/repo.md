@@ -98,7 +98,7 @@ that.
 A later addition to OSTree is the concept of a "summary" file, created
 via the `ostree summary -u` command.  This was introduced for a few
 reasons.  A primary use case is to be a target a
-(Metalink)[https://en.wikipedia.org/wiki/Metalink], which requires a
+[Metalink](https://en.wikipedia.org/wiki/Metalink), which requires a
 single file with a known checksum as a target.
 
 The summary file primarily contains two mappings:
