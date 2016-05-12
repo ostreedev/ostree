@@ -125,8 +125,7 @@ the client executes.
 
 This "updates as code" model allows for multiple content generation
 strategies.  The design of this was inspired by that of Chromium:
-[http://dev.chromium.org/chromium-os/chromiumos-design-docs/filesystem-autoupdate](ChromiumOS
-autoupdate).
+[ChromiumOS Autoupdate](http://dev.chromium.org/chromium-os/chromiumos-design-docs/filesystem-autoupdate).
 
 ### The delta superblock
 
