@@ -273,6 +273,7 @@ session_thread_set_proxy_cb (ThreadClosure *thread_closure,
                 proxy_uri, NULL);
 }
 
+#ifdef HAVE_LIBSOUP_CLIENT_CERTS
 static void
 session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
                                        gpointer data)
@@ -288,6 +289,7 @@ session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
                 SOUP_SESSION_TLS_INTERACTION,
                 interaction, NULL);
 }
+#endif
 
 static void
 session_thread_set_tls_database_cb (ThreadClosure *thread_closure,
