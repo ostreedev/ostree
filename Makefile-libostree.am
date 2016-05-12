@@ -128,6 +128,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-gpg-verifier.h \
 	src/libostree/ostree-gpg-verify-result.c \
 	src/libostree/ostree-gpg-verify-result-private.h \
+	src/libostree/ostree-autocleanups.h \
 	$(NULL)
 if USE_LIBARCHIVE
 libostree_1_la_SOURCES += src/libostree/ostree-libarchive-input-stream.h \

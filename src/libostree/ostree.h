@@ -31,3 +31,5 @@
 #include <ostree-bootconfig-parser.h>
 #include <ostree-diff.h>
 #include <ostree-gpg-verify-result.h>
+
+#include <ostree-autocleanups.h>
