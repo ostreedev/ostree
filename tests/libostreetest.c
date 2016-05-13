@@ -94,6 +94,9 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   if (!ot_test_run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
     goto out;
 
+  /* Make sure deployments are mutable */
+  g_setenv ("OSTREE_SYSROOT_DEBUG", "mutable-deployments", TRUE);
+
   ret_sysroot = ostree_sysroot_new (sysroot_path);
 
   ret = TRUE;
