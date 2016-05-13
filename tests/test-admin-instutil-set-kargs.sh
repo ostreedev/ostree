@@ -54,8 +54,7 @@ assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'option
 echo "ok instutil set-kargs --append"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --import-proc-cmdline
-# Here we're asserting that the *host* system has a root= kernel
-# argument.  I think it's unlikely that anyone doesn't have one, but
-# if this is not true for you, please file a bug!
-assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf 'options.*root=.'
+for arg in $(cat /proc/cmdline); do
+    assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "options.*$arg"
+done
 echo "ok instutil set-kargs --import-proc-cmdline"
