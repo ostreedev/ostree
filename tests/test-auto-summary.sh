@@ -31,30 +31,30 @@ mkdir test
 
 echo hello > test/a
 
-${CMD_PREFIX} $OSTREE commit -b test -s "A commit" test
+$OSTREE commit -b test -s "A commit" test
 echo "ok commit 1"
 
-${CMD_PREFIX} $OSTREE summary --update
+$OSTREE summary --update
 
 OLD_MD5=$(md5sum repo/summary)
 
 echo hello2 > test/a
 
-${CMD_PREFIX} $OSTREE commit -b test -s "Another commit" test
+$OSTREE commit -b test -s "Another commit" test
 echo "ok commit 2"
 
 assert_streq "$OLD_MD5" "$(md5sum repo/summary)"
 
-${CMD_PREFIX} $OSTREE --repo=repo config set core.commit-update-summary true
+$OSTREE --repo=repo config set core.commit-update-summary true
 
 echo hello3 > test/a
 
-${CMD_PREFIX} $OSTREE commit -b test -s "Another commit..." test
+$OSTREE commit -b test -s "Another commit..." test
 echo "ok commit 3"
 
 assert_not_streq "$OLD_MD5" "$(md5sum repo/summary)"
 
 # Check that summary --update deletes the .sig file
 touch repo/summary.sig
-${CMD_PREFIX} $OSTREE summary --update
+$OSTREE summary --update
 assert_not_has_file repo/summary.sig
