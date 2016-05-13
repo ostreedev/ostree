@@ -30,7 +30,7 @@ G_BEGIN_DECLS
 #define OSTREE_WITH_AUTOCLEANUPS 0
 #endif
 
-#if OSTREE_WITH_AUTOCLEANUPS
+#if OSTREE_WITH_AUTOCLEANUPS && GLIB_CHECK_VERSION(2, 44, 0)
 
 /*
  * The following types have no specific clear/free/unref functions, so
@@ -41,7 +41,6 @@ G_BEGIN_DECLS
  * OstreeRepoImportArchiveOptions
  * OstreeRepoExportArchiveOptions
  * OstreeRepoCheckoutOptions
- * OstreeMutableTreeIter
  */
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeDiffItem, ostree_diff_item_unref)
