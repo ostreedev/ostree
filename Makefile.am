@@ -60,12 +60,14 @@ libglnx_srcpath := $(srcdir)/libglnx
 libglnx_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(libglnx_srcpath)"
 libglnx_libs := $(OT_DEP_GIO_UNIX_LIBS)
 include libglnx/Makefile-libglnx.am.inc
+EXTRA_DIST += libglnx/Makefile-libglnx.am
 noinst_LTLIBRARIES += libglnx.la
 
 libbsdiff_srcpath := $(srcdir)/bsdiff
 libbsdiff_cflags := $(OT_DEP_GIO_UNIX_CFLAGS) "-I$(bsdiff_srcpath)"
 libbsdiff_libs := $(OT_DEP_GIO_UNIX_LIBS)
 include bsdiff/Makefile-bsdiff.am.inc
+EXTRA_DIST += bsdiff/Makefile-bsdiff.am
 noinst_LTLIBRARIES += libbsdiff.la
 
 include Makefile-otutil.am
