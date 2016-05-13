@@ -44,7 +44,7 @@ provide a minimal host for Docker formatted Linux containers.
 Replicating a base immutable OS, then using Docker for applications
 meshes together two different tools with different tradeoffs.
 
-[xdg-app](https://github.com/alexlarsson/xdg-app) uses OSTree
+[flatpak](https://github.com/alexlarsson/xdg-app) uses OSTree
 for desktop application containers.
 
 [GNOME Continuous](https://wiki.gnome.org/Projects/GnomeContinuous) is
