@@ -45,6 +45,9 @@ PKG_PROG_PKG_CONFIG
 
 AM_PATH_GLIB_2_0
 
+dnl When bumping the gio-unix-2.0 dependency (or glib-2.0 in general),
+dnl remember to bump GLIB_VERSION_MIN_REQUIRED and
+dnl GLIB_VERSION_MAX_ALLOWED in Makefile.am
 GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
@@ -57,6 +60,9 @@ PKG_CHECK_MODULES(OT_DEP_ZLIB, zlib)
 dnl We're not actually linking to this, just using the header
 PKG_CHECK_MODULES(OT_DEP_E2P, e2p)
 
+dnl When bumping the libsoup-2.4 dependency, remember to bump
+dnl SOUP_VERSION_MIN_REQUIRED and SOUP_VERSION_MAX_ALLOWED in
+dnl Makefile.am
 SOUP_DEPENDENCY="libsoup-2.4 >= 2.39.1"
 AC_ARG_WITH(soup,
 	    AS_HELP_STRING([--with-soup], [Use libsoup @<:@default=yes@:>@]),
