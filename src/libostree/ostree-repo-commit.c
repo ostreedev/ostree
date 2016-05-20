@@ -2010,6 +2010,7 @@ ostree_repo_write_commit (OstreeRepo      *self,
  * @body: (allow-none): Body
  * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
  * @root: The tree to point the commit to
+ * @time: The time to use to stamp the commit
  * @out_commit: (out): Resulting ASCII SHA256 checksum for commit
  * @cancellable: Cancellable
  * @error: Error
