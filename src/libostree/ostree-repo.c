@@ -1914,6 +1914,9 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
 
+  mainctx = g_main_context_new ();
+  g_main_context_push_thread_default (mainctx);
+
   fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
   if (fetcher == NULL)
     goto out;

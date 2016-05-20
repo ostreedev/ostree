@@ -589,6 +589,11 @@ typedef struct
   GMainLoop             *loop;
 } FetchMetalinkSyncData;
 
+/*
+ * Note that for legacy reasons we iterate the caller's main context.
+ * If you don't want that (and you probably don't) push a temporary
+ * one.
+ */
 gboolean
 _ostree_metalink_request_sync (OstreeMetalink        *self,
                                SoupURI               **out_target_uri,
@@ -607,8 +612,7 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   if (fetching_sync_uri != NULL)
     *fetching_sync_uri = _ostree_metalink_get_uri (self);
 
-  mainctx = g_main_context_new ();
-  g_main_context_push_thread_default (mainctx);
+  mainctx = g_main_context_ref_thread_default ();
 
   request.metalink = g_object_ref (self);
   request.urls = g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
@@ -633,8 +637,6 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
 
   ret = TRUE;
  out:
-  if (mainctx)
-    g_main_context_pop_thread_default (mainctx);
   g_clear_object (&request.metalink);
   g_clear_pointer (&request.urls, g_ptr_array_unref);
   g_clear_pointer (&request.parser, g_markup_parse_context_free);
