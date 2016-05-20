@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "libglnx.h"
 #include "libgsystem.h"
 #include <glib.h>
 #include <stdlib.h>
