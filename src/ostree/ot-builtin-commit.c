@@ -32,6 +32,7 @@
 
 static char *opt_subject;
 static char *opt_body;
+static gboolean opt_editor;
 static char *opt_parent;
 static gboolean opt_orphan;
 static char *opt_branch;
@@ -73,6 +74,7 @@ static GOptionEntry options[] = {
   { "parent", 0, 0, G_OPTION_ARG_STRING, &opt_parent, "Parent ref, or \"none\"", "REF" },
   { "subject", 's', 0, G_OPTION_ARG_STRING, &opt_subject, "One line subject", "SUBJECT" },
   { "body", 'm', 0, G_OPTION_ARG_STRING, &opt_body, "Full description", "BODY" },
+  { "editor", 'e', 0, G_OPTION_ARG_NONE, &opt_editor, "Use an editor to write the commit message", NULL },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
   { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
@@ -425,7 +427,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
         goto out;
     }
 
-  if (!opt_subject && !opt_body)
+  if (opt_editor)
     {
       if (!commit_editor (repo, opt_branch, &opt_subject, &opt_body, cancellable, error))
         goto out;
