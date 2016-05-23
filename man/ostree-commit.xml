@@ -214,6 +214,22 @@ Boston, MA 02111-1307, USA.
                     Override the timestamp of the commit to TIMESTAMP.
                 </para></listitem>
             </varlistentry>
+
+            <varlistentry>
+                <term><option>--orphan</option></term>
+
+                <listitem><para>
+                    Create a commit without writing a ref
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--fsync</option>="POLICY"</term>
+
+                <listitem><para>
+                    POLICY is a boolean which specifies whether fsync should be used or not.  Default to true.
+                </para></listitem>
+            </varlistentry>
         </variablelist>
     </refsect1>
 
