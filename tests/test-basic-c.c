@@ -34,6 +34,143 @@ test_repo_is_not_system (gconstpointer data)
   g_assert (!ostree_repo_is_system (repo));
 }
 
+static GBytes *
+input_stream_to_bytes (GInputStream *input)
+{
+  g_autoptr(GOutputStream) mem_out_stream = NULL;
+  g_autoptr(GError) error = NULL;
+
+  if (input == NULL)
+    return g_bytes_new (NULL, 0);
+
+  mem_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+  g_output_stream_splice (mem_out_stream,
+                          input,
+                          G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
+                          NULL,
+                          &error);
+  g_assert_no_error (error);
+
+  return g_memory_output_stream_steal_as_bytes (G_MEMORY_OUTPUT_STREAM (mem_out_stream));
+}
+
+static void
+test_raw_file_to_archive_z2_stream (gconstpointer data)
+{
+  OstreeRepo *repo = OSTREE_REPO (data);
+  g_autofree gchar *commit_checksum = NULL;
+  g_autoptr(GHashTable) reachable = NULL;
+  g_autoptr(GError) error = NULL;
+  /* branch name of the test repository, see setup_test_repository in libtest.sh */
+  const gchar *rev = "test2";
+  GHashTableIter iter;
+  GVariant *serialized_object;
+  guint checks = 0;
+
+  ostree_repo_resolve_rev (repo,
+                           rev,
+                           FALSE,
+                           &commit_checksum,
+                           &error);
+  g_assert_no_error (error);
+  reachable = ostree_repo_traverse_new_reachable ();
+  ostree_repo_traverse_commit (repo,
+                               commit_checksum,
+                               -1,
+                               &reachable,
+                               NULL,
+                               &error);
+  g_assert_no_error (error);
+  g_hash_table_iter_init (&iter, reachable);
+  while (g_hash_table_iter_next (&iter, (gpointer*)&serialized_object, NULL))
+    {
+      const gchar *object_checksum;
+      OstreeObjectType object_type;
+      g_autoptr(GInputStream) input = NULL;
+      g_autoptr(GFileInfo) info = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
+      g_autoptr(GBytes) input_bytes = NULL;
+      g_autoptr(GInputStream) mem_input = NULL;
+      g_autoptr(GInputStream) zlib_stream = NULL;
+      g_autoptr(GBytes) zlib_bytes = NULL;
+      g_autoptr(GInputStream) mem_zlib = NULL;
+      g_autoptr(GInputStream) input2 = NULL;
+      g_autoptr(GFileInfo) info2 = NULL;
+      g_autoptr(GVariant) xattrs2 = NULL;
+      g_autoptr(GBytes) input2_bytes = NULL;
+
+      ostree_object_name_deserialize (serialized_object, &object_checksum, &object_type);
+      if (object_type != OSTREE_OBJECT_TYPE_FILE)
+        continue;
+
+      ostree_repo_load_file (repo,
+                             object_checksum,
+                             &input,
+                             &info,
+                             &xattrs,
+                             NULL,
+                             &error);
+      g_assert_no_error (error);
+
+      input_bytes = input_stream_to_bytes (input);
+      /* This is to simulate NULL input received from
+       * ostree_repo_load_file. Instead of creating the mem_input
+       * variable, I could also rewind the input stream and pass it to
+       * the function below, but this would assume that the input
+       * stream implements either the GSeekable or
+       * GFileDescriptorBased interface. */
+      if (input != NULL)
+        mem_input = g_memory_input_stream_new_from_bytes (input_bytes);
+      ostree_raw_file_to_archive_z2_stream (mem_input,
+                                            info,
+                                            xattrs,
+                                            &zlib_stream,
+                                            NULL,
+                                            &error);
+      g_assert_no_error (error);
+
+      zlib_bytes = input_stream_to_bytes (zlib_stream);
+      mem_zlib = g_memory_input_stream_new_from_bytes (zlib_bytes);
+      ostree_content_stream_parse (FALSE,
+                                   mem_zlib,
+                                   g_bytes_get_size (zlib_bytes),
+                                   FALSE,
+                                   &input2,
+                                   &info2,
+                                   &xattrs2,
+                                   NULL,
+                                   &error);
+      g_assert_error (error, G_IO_ERROR, G_IO_ERROR_FAILED);
+      g_clear_error (&error);
+
+      g_seekable_seek (G_SEEKABLE (mem_zlib),
+                       0,
+                       G_SEEK_SET,
+                       NULL,
+                       &error);
+      g_assert_no_error (error);
+
+      ostree_content_stream_parse (TRUE,
+                                   mem_zlib,
+                                   g_bytes_get_size (zlib_bytes),
+                                   FALSE,
+                                   &input2,
+                                   &info2,
+                                   &xattrs2,
+                                   NULL,
+                                   &error);
+      g_assert_no_error (error);
+
+      input2_bytes = input_stream_to_bytes (input2);
+      g_assert_true (g_bytes_equal (input_bytes, input2_bytes));
+      g_assert_true (g_variant_equal (xattrs, xattrs2));
+      /* TODO: Not sure how to compare fileinfos */
+      ++checks;
+    }
+  /* to make sure we really tested the function */
+  g_assert_cmpint (checks, >, 0);
+}
+
 int main (int argc, char **argv)
 {
   g_autoptr(GError) error = NULL;
@@ -46,6 +183,7 @@ int main (int argc, char **argv)
     goto out;
   
   g_test_add_data_func ("/repo-not-system", repo, test_repo_is_not_system);
+  g_test_add_data_func ("/raw-file-to-archive-z2-stream", repo, test_raw_file_to_archive_z2_stream);
 
   return g_test_run();
  out:

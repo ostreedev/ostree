@@ -341,5 +341,5 @@ global:
 LIBOSTREE_2016.6 {
 global:
         ostree_repo_remote_fetch_summary_with_options;
-
+        ostree_raw_file_to_archive_z2_stream;
 } LIBOSTREE_2016.5;
