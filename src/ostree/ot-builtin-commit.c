@@ -218,14 +218,18 @@ commit_editor (OstreeRepo     *repo,
   char **lines = NULL;
   int i;
 
-  *subject = NULL;
-  *body = NULL;
-
   input = g_strdup_printf ("\n"
       "# Please enter the commit message for your changes. The first line will\n"
       "# become the subject, and the remainder the body. Lines starting\n"
       "# with '#' will be ignored, and an empty message aborts the commit."
-      "%s%s\n", branch ? "\n#\n# Branch: " : "", branch ?: "");
+      "%s%s%s%s%s%s\n"
+              , branch ? "\n#\n# Branch: " : "", branch ? branch : ""
+              , *subject ? "\n" : "", *subject ? *subject : ""
+              , *body ? "\n" : "", *body ? *body : ""
+              );
+
+  *subject = NULL;
+  *body = NULL;
 
   output = ot_editor_prompt (repo, input, cancellable, error);
   if (output == NULL)
