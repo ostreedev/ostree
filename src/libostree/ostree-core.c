@@ -400,6 +400,99 @@ write_file_header_update_checksum (GOutputStream         *out,
   return ret;
 }
 
+/*
+ * header_and_input_to_stream:
+ * @file_header: A file header
+ * @input: File raw content stream
+ * @out_input: (out): Serialized object stream
+ * @out_header_size: (out): Length of the header
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Combines @file_header and @input into a single stream.
+ */
+static gboolean
+header_and_input_to_stream (GVariant           *file_header,
+                            GInputStream       *input,
+                            GInputStream      **out_input,
+                            guint64            *out_header_size,
+                            GCancellable       *cancellable,
+                            GError            **error)
+{
+  gpointer header_data;
+  gsize header_size;
+  g_autoptr(GInputStream) ret_input = NULL;
+  g_autoptr(GPtrArray) streams = NULL;
+  g_autoptr(GOutputStream) header_out_stream = NULL;
+  g_autoptr(GInputStream) header_in_stream = NULL;
+
+  header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
+
+  if (!_ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
+                                        cancellable, error))
+    return FALSE;
+
+  if (!g_output_stream_close (header_out_stream, cancellable, error))
+    return FALSE;
+
+  header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
+  header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
+  header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
+
+  streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+
+  g_ptr_array_add (streams, g_object_ref (header_in_stream));
+  if (input)
+    g_ptr_array_add (streams, g_object_ref (input));
+
+  ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
+  ot_transfer_out_value (out_input, &ret_input);
+  if (out_header_size)
+    *out_header_size = header_size;
+
+  return TRUE;
+}
+
+/**
+ * ostree_raw_file_to_archive_z2_stream:
+ * @input: File raw content stream
+ * @file_info: A file info
+ * @xattrs: (allow-none): Optional extended attributes
+ * @out_input: (out): Serialized object stream
+ * @out_length: (out): Length of stream
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Convert from a "bare" file representation into an
+ * OSTREE_OBJECT_TYPE_FILE stream suitable for ostree pull.
+ */
+gboolean
+ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
+                                      GFileInfo          *file_info,
+                                      GVariant           *xattrs,
+                                      GInputStream      **out_input,
+                                      GCancellable       *cancellable,
+                                      GError            **error)
+{
+  g_autoptr(GVariant) file_header = NULL;
+  g_autoptr(GInputStream) zlib_input = NULL;
+
+  file_header = _ostree_zlib_file_header_new (file_info, xattrs);
+  if (input != NULL)
+    {
+      g_autoptr(GConverter) zlib_compressor = NULL;
+
+      zlib_compressor = G_CONVERTER (g_zlib_compressor_new (G_ZLIB_COMPRESSOR_FORMAT_RAW, 9));
+      zlib_input = g_converter_input_stream_new (input, zlib_compressor);
+    }
+  return header_and_input_to_stream (file_header,
+                                     zlib_input,
+                                     out_input,
+                                     NULL,
+                                     cancellable,
+                                     error);
+}
+
 /**
  * ostree_raw_file_to_content_stream:
  * @input: File raw content stream
@@ -423,44 +516,20 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
                                    GCancellable       *cancellable,
                                    GError            **error)
 {
-  gboolean ret = FALSE;
-  gpointer header_data;
-  gsize header_size;
-  g_autoptr(GInputStream) ret_input = NULL;
   g_autoptr(GVariant) file_header = NULL;
-  g_autoptr(GPtrArray) streams = NULL;
-  g_autoptr(GOutputStream) header_out_stream = NULL;
-  g_autoptr(GInputStream) header_in_stream = NULL;
+  guint64 header_size;
 
   file_header = file_header_new (file_info, xattrs);
-
-  header_out_stream = g_memory_output_stream_new (NULL, 0, g_realloc, g_free);
-
-  if (!_ostree_write_variant_with_size (header_out_stream, file_header, 0, NULL, NULL,
-                                        cancellable, error))
-    goto out;
-
-  if (!g_output_stream_close (header_out_stream, cancellable, error))
-    goto out;
-
-  header_size = g_memory_output_stream_get_data_size ((GMemoryOutputStream*) header_out_stream);
-  header_data = g_memory_output_stream_steal_data ((GMemoryOutputStream*) header_out_stream);
-  header_in_stream = g_memory_input_stream_new_from_data (header_data, header_size, g_free);
-
-  streams = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
-
-  g_ptr_array_add (streams, g_object_ref (header_in_stream));
-  if (input)
-    g_ptr_array_add (streams, g_object_ref (input));
-  
-  ret_input = (GInputStream*)ostree_chain_input_stream_new (streams);
-
-  ret = TRUE;
-  ot_transfer_out_value (out_input, &ret_input);
+  if (!header_and_input_to_stream (file_header,
+                                   input,
+                                   out_input,
+                                   &header_size,
+                                   cancellable,
+                                   error))
+    return FALSE;
   if (out_length)
     *out_length = header_size + g_file_info_get_size (file_info);
- out:
-  return ret;
+  return TRUE;
 }
 
 /**

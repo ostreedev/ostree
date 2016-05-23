@@ -114,6 +114,7 @@ ostree_object_from_string
 ostree_content_stream_parse
 ostree_content_file_parse
 ostree_content_file_parse_at
+ostree_raw_file_to_archive_z2_stream
 ostree_raw_file_to_content_stream
 ostree_checksum_file_from_input
 ostree_checksum_file
