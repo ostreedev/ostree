@@ -57,7 +57,7 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            This allows you to commit changes to a branch.  The specification of the branch is required.  If no commit message is specified with <option>--subject</option> then a text editor will be opened.  The commit will be aborted if the commit subject is left empty.  The command will print the checksum of a successful commit.
+            This allows you to commit changes to a branch.  The specification of the branch is required.  The command will print the checksum of a successful commit.
         </para>
     </refsect1>
 
@@ -68,7 +68,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--subject</option>, <option>-s</option>="SUBJECT"</term>
 
                 <listitem><para>
-                    One line subject.
+                    One line subject. (optional)
                 </para></listitem>
             </varlistentry>
 
@@ -76,7 +76,15 @@ Boston, MA 02111-1307, USA.
                 <term><option>--body</option>, <option>-m</option>="BODY"</term>
 
                 <listitem><para>
-                    Full description.
+                    Full description. (optional)
+                </para></listitem>
+            </varlistentry>
+
+            <varlistentry>
+                <term><option>--editor</option>, <option>-e</option></term>
+
+                <listitem><para>
+                    Open a text editor for the commit description.  It will use OSTREE_EDITOR, VISUAL, EDITOR, or vi, in descending order of preference.  The commit will be aborted if the message is left empty.
                 </para></listitem>
             </varlistentry>
 
@@ -84,7 +92,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--branch</option>, <option>-b</option>="BRANCH"</term>
 
                 <listitem><para>
-                    Branch.
+                    Branch.  Required, unless --orphan is given.
                 </para></listitem>
             </varlistentry>
 
@@ -219,7 +227,7 @@ Boston, MA 02111-1307, USA.
                 <term><option>--orphan</option></term>
 
                 <listitem><para>
-                    Create a commit without writing a ref
+                    Create a commit without writing to a ref (branch)
                 </para></listitem>
             </varlistentry>
 
