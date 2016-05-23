@@ -118,8 +118,15 @@ dump_commit (GVariant            *variant,
       g_print ("Version: %s\n", version);
     }
 
-  g_print ("\n");
-  dump_indented_lines (subject);
+  if (subject[0])
+    {
+      g_print ("\n");
+      dump_indented_lines (subject);
+    }
+  else
+    {
+      g_print ("(no subject)\n");
+    }
 
   if (body[0])
     {
