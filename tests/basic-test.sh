@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..56"
+echo "1..57"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -102,6 +102,12 @@ assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
 $OSTREE commit -b test2-no-parent -s '' --parent=none $test_tmpdir/checkout-test2-4
 assert_streq $($OSTREE log test2-no-parent |grep '^commit' | wc -l) "1"
 echo "ok commit no parent"
+
+cd ${test_tmpdir}
+empty_rev=$($OSTREE commit -b test2-no-subject -s '' --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
+omitted_rev=$($OSTREE commit -b test2-no-subject-2 --timestamp="2005-10-29 12:43:29 +0000" $test_tmpdir/checkout-test2-4)
+assert_streq $empty_rev $omitted_rev
+echo "ok commit no subject"
 
 cd ${test_tmpdir}
 $OSTREE commit -b test2-custom-parent -s '' $test_tmpdir/checkout-test2-4
