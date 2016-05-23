@@ -1962,7 +1962,7 @@ create_empty_gvariant_dict (void)
  * ostree_repo_write_commit:
  * @self: Repo
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
- * @subject: Subject
+ * @subject: (allow-none): Subject
  * @body: (allow-none): Body
  * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
  * @root: The tree to point the commit to
@@ -2006,7 +2006,7 @@ ostree_repo_write_commit (OstreeRepo      *self,
  * ostree_repo_write_commit_with_time:
  * @self: Repo
  * @parent: (allow-none): ASCII SHA256 checksum for parent, or %NULL for none
- * @subject: Subject
+ * @subject: (allow-none): Subject
  * @body: (allow-none): Body
  * @metadata: (allow-none): GVariant of type a{sv}, or %NULL for none
  * @root: The tree to point the commit to
@@ -2036,8 +2036,6 @@ ostree_repo_write_commit_with_time (OstreeRepo      *self,
   g_autofree guchar *commit_csum = NULL;
   OstreeRepoFile *repo_root = OSTREE_REPO_FILE (root);
 
-  g_return_val_if_fail (subject != NULL, FALSE);
-
   /* Add sizes information to our metadata object */
   if (!add_size_index_to_metadata (self, metadata, &new_metadata,
                                    cancellable, error))
@@ -2047,7 +2045,7 @@ ostree_repo_write_commit_with_time (OstreeRepo      *self,
                           new_metadata ? new_metadata : create_empty_gvariant_dict (),
                           parent ? ostree_checksum_to_bytes_v (parent) : ot_gvariant_new_bytearray (NULL, 0),
                           g_variant_new_array (G_VARIANT_TYPE ("(say)"), NULL, 0),
-                          subject, body ? body : "",
+                          subject ? subject : "", body ? body : "",
                           GUINT64_TO_BE (time),
                           ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_contents_checksum (repo_root)),
                           ostree_checksum_to_bytes_v (ostree_repo_file_tree_get_metadata_checksum (repo_root)));
