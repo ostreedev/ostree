@@ -33,7 +33,10 @@
 GVariant *
 ot_gvariant_new_empty_string_dict (void)
 {
-  return g_variant_builder_end (g_variant_builder_new (G_VARIANT_TYPE ("a{sv}")));
+  g_auto(GVariantBuilder) builder = {{0,}};
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+  return g_variant_builder_end (&builder);
 }
 
 GVariant *
