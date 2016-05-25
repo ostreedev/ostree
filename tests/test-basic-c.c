@@ -114,9 +114,11 @@ test_raw_file_to_archive_z2_stream (gconstpointer data)
 
       input_bytes = input_stream_to_bytes (input);
       /* This is to simulate NULL input received from
-       * ostree_repo_load_file. I could also rewind the input stream,
-       * but this would assume that the input stream implements either
-       * the GSeekable or GFileDescriptorBased interface. */
+       * ostree_repo_load_file. Instead of creating the mem_input
+       * variable, I could also rewind the input stream and pass it to
+       * the function below, but this would assume that the input
+       * stream implements either the GSeekable or
+       * GFileDescriptorBased interface. */
       if (input != NULL)
         mem_input = g_memory_input_stream_new_from_bytes (input_bytes);
       ostree_raw_file_to_archive_z2_stream (mem_input,
