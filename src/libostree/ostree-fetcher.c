@@ -25,6 +25,7 @@
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixoutputstream.h>
 
+#include "libglnx.h"
 #include "ostree-fetcher.h"
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 #include "ostree-tls-cert-interaction.h"

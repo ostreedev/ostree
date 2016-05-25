@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "libglnx.h"
 #include "ostree.h"
 #include "otutil.h"
 

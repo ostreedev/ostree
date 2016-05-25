@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "ostree.h"
 #include "libglnx.h"
+#include "ostree.h"
 
 typedef enum {
   OSTREE_BUILTIN_FLAG_NONE = 0,

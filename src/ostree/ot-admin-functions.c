@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include "libglnx.h"
 #include "ot-admin-functions.h"
 #include "otutil.h"
 #include "ostree.h"
