@@ -113,7 +113,12 @@ test_raw_file_to_archive_z2_stream (gconstpointer data)
       g_assert_no_error (error);
 
       input_bytes = input_stream_to_bytes (input);
-      mem_input = g_memory_input_stream_new_from_bytes (input_bytes);
+      /* This is to simulate NULL input received from
+       * ostree_repo_load_file. I could also rewind the input stream,
+       * but this would assume that the input stream implements either
+       * the GSeekable or GFileDescriptorBased interface. */
+      if (input != NULL)
+        mem_input = g_memory_input_stream_new_from_bytes (input_bytes);
       ostree_raw_file_to_archive_z2_stream (mem_input,
                                             info,
                                             xattrs,
