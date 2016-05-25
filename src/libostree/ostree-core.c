@@ -459,7 +459,6 @@ header_and_input_to_stream (GVariant           *file_header,
  * @file_info: A file info
  * @xattrs: (allow-none): Optional extended attributes
  * @out_input: (out): Serialized object stream
- * @out_length: (out): Length of stream
  * @cancellable: Cancellable
  * @error: Error
  *
