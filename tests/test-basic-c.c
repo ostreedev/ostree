@@ -39,7 +39,6 @@ input_stream_to_bytes (GInputStream *input)
 {
   g_autoptr(GOutputStream) mem_out_stream = NULL;
   g_autoptr(GError) error = NULL;
-  g_autoptr(GBytes) bytes = NULL;
 
   if (input == NULL)
     return g_bytes_new (NULL, 0);
