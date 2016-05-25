@@ -26,11 +26,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <gio/gfiledescriptorbased.h>
+#include "libglnx.h"
 #include "ostree.h"
 #include "ostree-core-private.h"
 #include "ostree-chain-input-stream.h"
 #include "otutil.h"
-#include "libglnx.h"
 
 #define ALIGN_VALUE(this, boundary) \
   (( ((unsigned long)(this)) + (((unsigned long)(boundary)) -1)) & (~(((unsigned long)(boundary))-1)))
