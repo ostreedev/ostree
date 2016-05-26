@@ -26,6 +26,7 @@
 #include <glib-unix.h>
 #include <gio/gunixinputstream.h>
 #include <gio/gfiledescriptorbased.h>
+#include "libglnx.h"
 #include "otutil.h"
 #include <glnx-console.h>
 
@@ -36,6 +37,7 @@
 #include "ostree-gpg-verifier.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ot-fs-utils.h"
+#include "ostree-autocleanups.h"
 
 #ifdef HAVE_LIBSOUP
 #include "ostree-metalink.h"
@@ -4647,23 +4649,17 @@ find_keyring (OstreeRepo          *self,
   return NULL;
 }
 
-OstreeGpgVerifyResult *
-_ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
-                                       GBytes              *signed_data,
-                                       GVariant            *metadata,
-                                       const char          *remote_name,
-                                       GFile               *keyringdir,
-                                       GFile               *extra_keyring,
-                                       GCancellable        *cancellable,
-                                       GError             **error)
+static OstreeGpgVerifyResult *
+_ostree_repo_verify_data_internal (OstreeRepo    *self,
+                                   const gchar   *remote_name,
+                                   GBytes        *data,
+                                   GBytes        *signatures,
+                                   GFile         *keyringdir,
+                                   GFile         *extra_keyring,
+                                   GCancellable  *cancellable,
+                                   GError       **error)
 {
-  OstreeGpgVerifyResult *result = NULL;
   glnx_unref_object OstreeGpgVerifier *verifier = NULL;
-  g_autoptr(GVariant) signaturedata = NULL;
-  GByteArray *buffer;
-  GVariantIter iter;
-  GVariant *child;
-  g_autoptr (GBytes) signatures = NULL;
   gboolean add_global_keyring_dir = TRUE;
 
   verifier = _ostree_gpg_verifier_new ();
@@ -4674,7 +4670,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
 
       if (!_ostree_gpg_verifier_add_keyring_dir (verifier, self->repodir,
                                                  cancellable, error))
-        goto out;
+        return NULL;
     }
   else if (remote_name != NULL)
     {
@@ -4685,7 +4681,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
 
       remote = ost_repo_get_remote_inherited (self, remote_name, error);
       if (remote == NULL)
-        goto out;
+        return NULL;
 
       file = find_keyring (self, remote, cancellable);
 
@@ -4702,19 +4698,42 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     {
       /* Use the deprecated global keyring directory. */
       if (!_ostree_gpg_verifier_add_global_keyring_dir (verifier, cancellable, error))
-        goto out;
+        return NULL;
     }
 
   if (keyringdir)
     {
       if (!_ostree_gpg_verifier_add_keyring_dir (verifier, keyringdir,
                                                  cancellable, error))
-        goto out;
+        return NULL;
     }
   if (extra_keyring != NULL)
     {
       _ostree_gpg_verifier_add_keyring (verifier, extra_keyring);
     }
+
+  return _ostree_gpg_verifier_check_signature (verifier,
+                                               data,
+                                               signatures,
+                                               cancellable,
+                                               error);
+}
+
+OstreeGpgVerifyResult *
+_ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
+                                       GBytes              *signed_data,
+                                       GVariant            *metadata,
+                                       const char          *remote_name,
+                                       GFile               *keyringdir,
+                                       GFile               *extra_keyring,
+                                       GCancellable        *cancellable,
+                                       GError             **error)
+{
+  g_autoptr(GVariant) signaturedata = NULL;
+  GByteArray *buffer;
+  GVariantIter iter;
+  GVariant *child;
+  g_autoptr (GBytes) signatures = NULL;
 
   if (metadata)
     signaturedata = g_variant_lookup_value (metadata,
@@ -4724,7 +4743,7 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                    "GPG verification enabled, but no signatures found (use gpg-verify=false in remote config to disable)");
-      goto out;
+      return NULL;
     }
 
   /* OpenPGP data is organized into binary records called packets.  RFC 4880
@@ -4746,12 +4765,14 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     }
   signatures = g_byte_array_free_to_bytes (buffer);
 
-  result = _ostree_gpg_verifier_check_signature (verifier,
-                                                 signed_data, signatures,
-                                                 cancellable, error);
-
- out:
-  return result;
+  return _ostree_repo_verify_data_internal (self,
+                                            remote_name,
+                                            signed_data,
+                                            signatures,
+                                            keyringdir,
+                                            extra_keyring,
+                                            cancellable,
+                                            error);
 }
 
 /* Needed an internal version for the remote_name parameter. */

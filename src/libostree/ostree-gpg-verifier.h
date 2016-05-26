@@ -35,6 +35,11 @@ G_BEGIN_DECLS
 
 typedef struct OstreeGpgVerifier OstreeGpgVerifier;
 
+/* If this type becomes public in future, move this autoptr cleanup
+ * definition to the ostree-autocleanups.h header file. Right now it
+ * relies on glnx's fallback definition of the macro. */
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (OstreeGpgVerifier, g_object_unref)
+
 GType _ostree_gpg_verifier_get_type (void);
 
 OstreeGpgVerifier *_ostree_gpg_verifier_new (void);
