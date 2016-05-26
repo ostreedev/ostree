@@ -4821,6 +4821,8 @@ out:
  *
  * Check for a valid GPG signature on commit named by the ASCII
  * checksum @commit_checksum.
+ *
+ * Returns: %TRUE if there was a GPG signature from a trusted keyring, otherwise %FALSE
  */
 gboolean
 ostree_repo_verify_commit (OstreeRepo   *self,
