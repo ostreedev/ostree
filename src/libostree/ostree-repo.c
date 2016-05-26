@@ -2116,15 +2116,8 @@ ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                            signatures,
                                            cancellable,
                                            error);
-      if (result == NULL)
+      if (!ostree_gpg_verify_result_require_valid_signature (result, error))
         goto out;
-
-      if (ostree_gpg_verify_result_count_valid (result) == 0)
-        {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                               "GPG signatures found, but none are in trusted keyring");
-          goto out;
-        }
     }
 
   if (out_summary != NULL)
@@ -4838,25 +4831,12 @@ ostree_repo_verify_commit (OstreeRepo   *self,
                            GError      **error)
 {
   glnx_unref_object OstreeGpgVerifyResult *result = NULL;
-  gboolean ret = FALSE;
 
   result = ostree_repo_verify_commit_ext (self, commit_checksum,
                                           keyringdir, extra_keyring,
                                           cancellable, error);
-  if (result == NULL)
-    goto out;
 
-  if (ostree_gpg_verify_result_count_valid (result) == 0)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                   "GPG signatures found, but none are in trusted keyring");
-      goto out;
-    }
-
-  ret = TRUE;
-
- out:
-  return ret;
+  return ostree_gpg_verify_result_require_valid_signature (result, error);
 }
 
 /**

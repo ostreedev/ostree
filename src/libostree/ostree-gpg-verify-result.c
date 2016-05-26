@@ -622,3 +622,33 @@ ostree_gpg_verify_result_describe_variant (GVariant *variant,
         }
     }
 }
+
+/**
+ * ostree_gpg_verify_result_require_valid_signature:
+ * @result: (nullable): an #OstreeGpgVerifyResult
+ * @error: A #GError
+ *
+ * Checks if the result contains at least one signature from the
+ * trusted keyring.  You can call this function immediately after
+ * ostree_repo_verify_summary() or ostree_repo_verify_commit_ext() -
+ * it will handle the %NULL @result and filled @error too.
+ *
+ * Returns: %TRUE if @result was not %NULL and had at least one
+ * signature from trusted keyring, otherwise %FALSE
+ */
+gboolean
+ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
+                                                  GError **error)
+{
+  if (result == NULL)
+    return FALSE;
+
+  if (ostree_gpg_verify_result_count_valid (result) == 0)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "GPG signatures found, but none are in trusted keyring");
+      return FALSE;
+    }
+
+  return TRUE;
+}
