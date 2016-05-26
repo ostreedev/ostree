@@ -1031,6 +1031,26 @@ OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        GError       **error);
 
 _OSTREE_PUBLIC
+gboolean ostree_repo_verify_data (OstreeRepo    *self,
+                                  const gchar   *remote_name,
+                                  GBytes        *data,
+                                  GBytes        *signatures,
+                                  GFile         *keyringdir,
+                                  GFile         *extra_keyring,
+                                  GCancellable  *cancellable,
+                                  GError       **error);
+
+_OSTREE_PUBLIC
+OstreeGpgVerifyResult * ostree_repo_verify_data_ext (OstreeRepo    *self,
+                                                     const gchar   *remote_name,
+                                                     GBytes        *data,
+                                                     GBytes        *signatures,
+                                                     GFile         *keyringdir,
+                                                     GFile         *extra_keyring,
+                                                     GCancellable  *cancellable,
+                                                     GError       **error);
+
+_OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_verify_summary (OstreeRepo    *self,
                                                     const char    *remote_name,
                                                     GBytes        *summary,
