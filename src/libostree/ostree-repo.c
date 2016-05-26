@@ -4894,6 +4894,49 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
 }
 
 /**
+ * ostree_repo_gpg_verify_data:
+ * @self: Repository
+ * @remote_name: (nullable): Name of remote
+ * @data: Data as a #GBytes
+ * @signatures: Signatures as a #GBytes
+ * @keyringdir: (nullable): Path to directory GPG keyrings; overrides built-in default if given
+ * @extra_keyring: (nullable): Path to additional keyring file (not a directory)
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Verify @signatures for @data using GPG keys in the keyring for
+ * @remote_name, and return an #OstreeGpgVerifyResult.
+ *
+ * The @remote_name parameter can be %NULL. In that case it will do
+ * the verifications using GPG keys in the keyrings of all remotes.
+ *
+ * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ */
+OstreeGpgVerifyResult *
+ostree_repo_gpg_verify_data (OstreeRepo    *self,
+                             const gchar   *remote_name,
+                             GBytes        *data,
+                             GBytes        *signatures,
+                             GFile         *keyringdir,
+                             GFile         *extra_keyring,
+                             GCancellable  *cancellable,
+                             GError       **error)
+{
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (data != NULL, NULL);
+  g_return_val_if_fail (signatures != NULL, NULL);
+
+  return _ostree_repo_gpg_verify_data_internal (self,
+                                                (remote_name != NULL) ? remote_name : OSTREE_ALL_REMOTES,
+                                                data,
+                                                signatures,
+                                                keyringdir,
+                                                extra_keyring,
+                                                cancellable,
+                                                error);
+}
+
+/**
  * ostree_repo_verify_summary:
  * @self: Repo
  * @remote_name: Name of remote
