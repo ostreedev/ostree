@@ -4650,14 +4650,14 @@ find_keyring (OstreeRepo          *self,
 }
 
 static OstreeGpgVerifyResult *
-_ostree_repo_verify_data_internal (OstreeRepo    *self,
-                                   const gchar   *remote_name,
-                                   GBytes        *data,
-                                   GBytes        *signatures,
-                                   GFile         *keyringdir,
-                                   GFile         *extra_keyring,
-                                   GCancellable  *cancellable,
-                                   GError       **error)
+_ostree_repo_gpg_verify_data_internal (OstreeRepo    *self,
+                                       const gchar   *remote_name,
+                                       GBytes        *data,
+                                       GBytes        *signatures,
+                                       GFile         *keyringdir,
+                                       GFile         *extra_keyring,
+                                       GCancellable  *cancellable,
+                                       GError       **error)
 {
   glnx_unref_object OstreeGpgVerifier *verifier = NULL;
   gboolean add_global_keyring_dir = TRUE;
@@ -4765,14 +4765,14 @@ _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
     }
   signatures = g_byte_array_free_to_bytes (buffer);
 
-  return _ostree_repo_verify_data_internal (self,
-                                            remote_name,
-                                            signed_data,
-                                            signatures,
-                                            keyringdir,
-                                            extra_keyring,
-                                            cancellable,
-                                            error);
+  return _ostree_repo_gpg_verify_data_internal (self,
+                                                remote_name,
+                                                signed_data,
+                                                signatures,
+                                                keyringdir,
+                                                extra_keyring,
+                                                cancellable,
+                                                error);
 }
 
 /* Needed an internal version for the remote_name parameter. */
