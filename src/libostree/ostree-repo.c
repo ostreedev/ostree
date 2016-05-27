@@ -4894,54 +4894,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
 }
 
 /**
- * ostree_repo_verify_data:
- * @self: Repository
- * @remote_name: (nullable): Name of remote
- * @data: Data as a #GBytes
- * @signatures: Signatures as a #GBytes
- * @keyringdir: (nullable): Path to directory GPG keyrings; overrides built-in default if given
- * @extra_keyring: (nullable): Path to additional keyring file (not a directory)
- * @cancellable: Cancellable
- * @error: Error
- *
- * Verify @signatures for @data using GPG keys in the keyring for
- * @remote_name, and return an #OstreeGpgVerifyResult.
- *
- * The @remote_name parameter can be %NULL. In that case it will do
- * the verifications using GPG keys in the keyrings of all remotes.
- *
- * Returns: %TRUE if there was a GPG signature from a trusted keyring, otherwise %FALSE
- */
-gboolean
-ostree_repo_verify_data (OstreeRepo    *self,
-                         const gchar   *remote_name,
-                         GBytes        *data,
-                         GBytes        *signatures,
-                         GFile         *keyringdir,
-                         GFile         *extra_keyring,
-                         GCancellable  *cancellable,
-                         GError       **error)
-{
-  g_autoptr(OstreeGpgVerifyResult) result = NULL;
-
-  g_return_val_if_fail (OSTREE_IS_REPO (self), FALSE);
-  g_return_val_if_fail (data != NULL, FALSE);
-  g_return_val_if_fail (signatures != NULL, FALSE);
-
-  result = ostree_repo_verify_data_ext (self,
-                                        remote_name,
-                                        data,
-                                        signatures,
-                                        keyringdir,
-                                        extra_keyring,
-                                        cancellable,
-                                        error);
-
-  return ensure_valid_gpg_result (result, error);
-}
-
-/**
- * ostree_repo_verify_data_ext:
+ * ostree_repo_gpg_verify_data:
  * @self: Repository
  * @remote_name: (nullable): Name of remote
  * @data: Data as a #GBytes
@@ -4960,7 +4913,7 @@ ostree_repo_verify_data (OstreeRepo    *self,
  * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
  */
 OstreeGpgVerifyResult *
-ostree_repo_verify_data_ext (OstreeRepo    *self,
+ostree_repo_gpg_verify_data (OstreeRepo    *self,
                              const gchar   *remote_name,
                              GBytes        *data,
                              GBytes        *signatures,
@@ -4973,14 +4926,14 @@ ostree_repo_verify_data_ext (OstreeRepo    *self,
   g_return_val_if_fail (data != NULL, NULL);
   g_return_val_if_fail (signatures != NULL, NULL);
 
-  return _ostree_repo_verify_data_internal (self,
-                                            (remote_name != NULL) ? remote_name : OSTREE_ALL_REMOTES,
-                                            data,
-                                            signatures,
-                                            keyringdir,
-                                            extra_keyring,
-                                            cancellable,
-                                            error);
+  return _ostree_repo_gpg_verify_data_internal (self,
+                                                (remote_name != NULL) ? remote_name : OSTREE_ALL_REMOTES,
+                                                data,
+                                                signatures,
+                                                keyringdir,
+                                                extra_keyring,
+                                                cancellable,
+                                                error);
 }
 
 /**
