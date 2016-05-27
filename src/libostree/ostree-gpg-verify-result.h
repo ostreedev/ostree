@@ -133,4 +133,8 @@ void ostree_gpg_verify_result_describe_variant (GVariant *variant,
                                                 const gchar *line_prefix,
                                                 OstreeGpgSignatureFormatFlags flags);
 
+_OSTREE_PUBLIC
+gboolean ostree_gpg_verify_result_require_valid_signature (OstreeGpgVerifyResult *result,
+                                                           GError **error);
+
 G_END_DECLS
