@@ -1255,8 +1255,11 @@ impl_repo_remote_delete (OstreeRepo     *self,
 
   if (remote->file != NULL)
     {
-      if (!gs_file_unlink (remote->file, cancellable, error))
-        goto out;
+      if (unlink (gs_file_get_path_cached (remote->file)) != 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
   else
     {
