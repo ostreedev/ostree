@@ -957,38 +957,36 @@ ostree_repo_checkout_gc (OstreeRepo        *self,
     g_hash_table_iter_init (&iter, to_clean_dirs);
   while (to_clean_dirs && g_hash_table_iter_next (&iter, &key, &value))
     {
-      g_autoptr(GFile) objdir = NULL;
-      g_autoptr(GFileEnumerator) enumerator = NULL;
-      g_autofree char *objdir_name = NULL;
+      g_autofree char *objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
+      g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-      objdir_name = g_strdup_printf ("%02x", GPOINTER_TO_UINT (key));
-      objdir = g_file_get_child (self->uncompressed_objects_dir, objdir_name);
-
-      enumerator = g_file_enumerate_children (objdir, "standard::name,standard::type,unix::inode,unix::nlink", 
-                                              G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-                                              cancellable, 
-                                              error);
-      if (!enumerator)
+      if (!glnx_dirfd_iterator_init_at (self->uncompressed_objects_dir_fd, objdir_name, FALSE,
+                                        &dfd_iter, error))
         goto out;
-  
+
       while (TRUE)
         {
-          GFileInfo *file_info;
-          guint32 nlinks;
+          struct dirent *dent;
+          struct stat stbuf;
 
-          if (!gs_file_enumerator_iterate (enumerator, &file_info, NULL,
-                                           cancellable, error))
+          if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
             goto out;
-          if (file_info == NULL)
+          if (dent == NULL)
             break;
-          
-          nlinks = g_file_info_get_attribute_uint32 (file_info, "unix::nlink");
-          if (nlinks == 1)
+
+          if (fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW) != 0)
             {
-              g_autoptr(GFile) objpath = NULL;
-              objpath = g_file_get_child (objdir, g_file_info_get_name (file_info));
-              if (!gs_file_unlink (objpath, cancellable, error))
-                goto out;
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+          
+          if (stbuf.st_nlink == 1)
+            {
+              if (unlinkat (dfd_iter.fd, dent->d_name, 0) != 0)
+                {
+                  glnx_set_error_from_errno (error);
+                  goto out;
+                }
             }
         }
     }
