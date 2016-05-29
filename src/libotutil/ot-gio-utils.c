@@ -390,25 +390,12 @@ ot_gfile_ensure_unlinked (GFile         *path,
                           GCancellable  *cancellable,
                           GError       **error)
 {
-  gboolean ret = FALSE;
-  GError *temp_error = NULL;
-
-  if (!gs_file_unlink (path, cancellable, &temp_error))
+  if (unlink (gs_file_get_path_cached (path)) != 0)
     {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
+      if (errno != ENOENT)
+        return FALSE;
     }
-  
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 /**
