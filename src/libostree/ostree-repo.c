@@ -2228,8 +2228,14 @@ ostree_repo_create (OstreeRepo     *self,
   if (!ostree_repo_mode_to_string (mode, &mode_str, error))
     goto out;
 
-  if (!gs_file_ensure_directory (self->repodir, FALSE, cancellable, error))
-    goto out;
+  if (mkdir (gs_file_get_path_cached (self->repodir), 0755) != 0)
+    {
+      if (errno != EEXIST)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+    }
 
   config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
   g_string_append_printf (config_data, "mode=%s\n", mode_str);
@@ -2632,7 +2638,8 @@ ostree_repo_open (OstreeRepo    *self,
 
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2 && self->enable_uncompressed_cache)
     {
-      if (!gs_file_ensure_directory (self->uncompressed_objects_dir, TRUE, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, "uncompressed-objects-cache", 0755,
+                                   cancellable, error))
         goto out;
       if (!glnx_opendirat (self->repo_dir_fd, "uncompressed-objects-cache", TRUE,
                            &self->uncompressed_objects_dir_fd,

@@ -1483,7 +1483,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   descriptor_dir = g_file_get_parent (descriptor_path);
 
-  if (!gs_file_ensure_directory (descriptor_dir, TRUE, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (AT_FDCWD, gs_file_get_path_cached (descriptor_dir), 0755,
+                               cancellable, error))
     goto out;
 
   for (i = 0; i < part_tempfiles->len; i++)

@@ -39,8 +39,7 @@ ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GErr
   GOptionContext *context;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   gboolean ret = FALSE;
-  g_autoptr(GFile) dir = NULL;
-  g_autoptr(GFile) child = NULL;
+  glnx_fd_close int root_dfd = -1;
   glnx_unref_object OstreeSysroot *target_sysroot = NULL;
   guint i;
   const char *normal_toplevels[] = {"boot", "dev", "home", "proc", "run", "sys"};
@@ -58,36 +57,31 @@ ot_admin_builtin_init_fs (int argc, char **argv, GCancellable *cancellable, GErr
       goto out;
     }
 
-  dir = g_file_new_for_path (argv[1]);
-  target_sysroot = ostree_sysroot_new (dir);
+  if (!glnx_opendirat (AT_FDCWD, argv[1], TRUE, &root_dfd, error))
+    goto out;
+  { g_autoptr(GFile) dir = g_file_new_for_path (argv[1]);
+    target_sysroot = ostree_sysroot_new (dir);
+  }
 
   for (i = 0; i < G_N_ELEMENTS(normal_toplevels); i++)
     {
-      child = g_file_get_child (dir, normal_toplevels[i]);
-      if (!gs_file_ensure_directory_mode (child, 0755, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (root_dfd, normal_toplevels[i], 0755,
+                                   cancellable, error))
         goto out;
-      g_clear_object (&child);
     }
-
-  child = g_file_get_child (dir, "root");
-  if (!gs_file_ensure_directory_mode (child, 0700, cancellable, error))
+  
+  if (!glnx_shutil_mkdir_p_at (root_dfd, "root", 0700,
+                               cancellable, error))
     goto out;
-  g_clear_object (&child);
 
-  child = g_file_get_child (dir, "tmp");
-  if (!gs_file_ensure_directory_mode (child, 01777, cancellable, error))
+  if (!glnx_shutil_mkdir_p_at (root_dfd, "tmp", 01777,
+                               cancellable, error))
     goto out;
-  /* FIXME - we should be using an API that explicitly ignores umask;
-   */
-  {
-    const char *path = gs_file_get_path_cached (child);
-    if (chmod (path, 01777) == -1)
-      {
-        gs_set_prefix_error_from_errno (error, errno, "chmod");
-        goto out;
-      }
-  }
-  g_clear_object (&child);
+  if (fchmodat (root_dfd, "tmp", 01777, 0) == -1)
+    {
+      glnx_set_prefix_error_from_errno (error, "chmod: %s", "tmp");
+      goto out;
+    }
 
   if (!ostree_sysroot_ensure_initialized (target_sysroot, cancellable, error))
     goto out;

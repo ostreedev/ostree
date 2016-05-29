@@ -278,28 +278,29 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
                                    GError        **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) dir = NULL;
-  g_autoptr(GFile) ostree_dir = NULL;
-  g_autoptr(GFile) repo_dir = NULL;
+  struct stat stbuf;
 
-  ostree_dir = g_file_get_child (self->path, "ostree");
-  repo_dir = g_file_get_child (ostree_dir, "repo");
-  if (!gs_file_ensure_directory (repo_dir, TRUE, cancellable, error))
+  if (!ensure_sysroot_fd (self, error))
     goto out;
 
-  g_clear_object (&dir);
-  dir = g_file_get_child (ostree_dir, "deploy");
-  if (!gs_file_ensure_directory (dir, TRUE, cancellable, error))
-    goto out;
-
-  g_clear_object (&dir);
-  dir = ot_gfile_get_child_build_path (ostree_dir, "repo", "objects", NULL);
-  if (!g_file_query_exists (dir, NULL))
-    {
-      glnx_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
-      if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
+  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, "ostree/repo", 0755,
                                cancellable, error))
-        goto out;
+    goto out;
+
+  if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, "ostree/deploy", 0755,
+                               cancellable, error))
+    goto out;
+
+  if (fstatat (self->sysroot_fd, "ostree/repo/objects", &stbuf, 0) != 0)
+    {
+      if (errno == ENOENT)
+        {
+          g_autoptr(GFile) repo_dir = g_file_resolve_relative_path (self->path, "ostree/repo");
+          glnx_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
+          if (!ostree_repo_create (repo, OSTREE_REPO_MODE_BARE,
+                                   cancellable, error))
+            goto out;
+        }
     }
 
   ret = TRUE;
