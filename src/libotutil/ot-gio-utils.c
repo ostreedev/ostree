@@ -254,7 +254,8 @@ ot_gfile_load_contents_utf8_allow_noent (GFile          *path,
   GError *temp_error = NULL;
   g_autofree char *ret_contents = NULL;
 
-  ret_contents = gs_file_load_contents_utf8 (path, cancellable, &temp_error);
+  ret_contents = glnx_file_get_contents_utf8_at (AT_FDCWD, gs_file_get_path_cached (path), NULL,
+                                                 cancellable, &temp_error);
   if (!ret_contents)
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
