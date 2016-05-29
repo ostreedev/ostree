@@ -989,14 +989,13 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
                                    GError        **error)
 {
   gboolean ret = FALSE;
-  g_autofree char *tmpname = NULL;
+  char *tmpname = g_strdup ("tmplink.XXXXXX");
   guint i;
   const int max_attempts = 128;
 
   for (i = 0; i < max_attempts; i++)
     {
-      g_free (tmpname);
-      tmpname = gs_fileutil_gen_tmp_name (NULL, NULL);
+      glnx_gen_temp_name (tmpname);
       if (symlinkat (target, tmp_dirfd, tmpname) < 0)
         {
           if (errno == EEXIST)
