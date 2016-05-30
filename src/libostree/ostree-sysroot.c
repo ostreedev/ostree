@@ -293,7 +293,12 @@ ostree_sysroot_ensure_initialized (OstreeSysroot  *self,
 
   if (fstatat (self->sysroot_fd, "ostree/repo/objects", &stbuf, 0) != 0)
     {
-      if (errno == ENOENT)
+      if (errno != ENOENT)
+        {
+          glnx_set_prefix_error_from_errno (error, "stat %s", "ostree/repo/objects");
+          goto out;
+        }
+      else
         {
           g_autoptr(GFile) repo_dir = g_file_resolve_relative_path (self->path, "ostree/repo");
           glnx_unref_object OstreeRepo *repo = ostree_repo_new (repo_dir);
