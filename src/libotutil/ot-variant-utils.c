@@ -117,46 +117,6 @@ ot_util_variant_take_ref (GVariant *variant)
   return g_variant_take_ref (variant);
 }
 
-/**
- * ot_util_variant_map:
- * @src: a #GFile
- * @type: Use this for variant
- * @trusted: See documentation of g_variant_new_from_data()
- * @out_variant: (out): Return location for new variant
- * @error:
- *
- * Memory-map @src, and store a new #GVariant referring to this memory
- * in @out_variant.  Note the returned @out_variant is not floating.
- */
-gboolean
-ot_util_variant_map (GFile              *src,
-                     const GVariantType *type,
-                     gboolean            trusted,
-                     GVariant          **out_variant,
-                     GError            **error)
-{
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) ret_variant = NULL;
-  GMappedFile *mfile = NULL;
-
-  mfile = gs_file_map_noatime (src, NULL, error);
-  if (!mfile)
-    goto out;
-
-  ret_variant = g_variant_new_from_data (type,
-                                         g_mapped_file_get_contents (mfile),
-                                         g_mapped_file_get_length (mfile),
-                                         trusted,
-                                         (GDestroyNotify) g_mapped_file_unref,
-                                         mfile);
-  g_variant_ref_sink (ret_variant);
-  
-  ret = TRUE;
-  ot_transfer_out_value(out_variant, &ret_variant);
- out:
-  return ret;
-}
-
 gboolean
 ot_util_variant_map_at (int dfd,
                         const char *path,

@@ -42,12 +42,6 @@ gboolean ot_util_variant_save (GFile *dest,
                                GCancellable *cancellable,
                                GError  **error);
 
-gboolean ot_util_variant_map (GFile *src,
-                              const GVariantType *type,
-                              gboolean trusted,
-                              GVariant **out_variant,
-                              GError  **error);
-
 gboolean ot_util_variant_map_at (int dfd,
                                  const char *path,
                                  const GVariantType *type,
