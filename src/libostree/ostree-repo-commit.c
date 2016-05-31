@@ -2098,8 +2098,9 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   g_autoptr(GVariant) ret_metadata = NULL;
   GError *temp_error = NULL;
   
-  if (!ot_util_variant_map (metadata_path, G_VARIANT_TYPE ("a{sv}"),
-                            TRUE, &ret_metadata, &temp_error))
+  if (!ot_util_variant_map_at (AT_FDCWD, gs_file_get_path_cached (metadata_path),
+                               G_VARIANT_TYPE ("a{sv}"),
+                               TRUE, &ret_metadata, &temp_error))
     {
       if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {

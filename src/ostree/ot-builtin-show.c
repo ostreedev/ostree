@@ -51,12 +51,9 @@ do_print_variant_generic (const GVariantType *type,
                           GError **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) f = NULL;
   g_autoptr(GVariant) variant = NULL;
 
-  f = g_file_new_for_path (filename);
-
-  if (!ot_util_variant_map (f, type, TRUE, &variant, error))
+  if (!ot_util_variant_map_at (AT_FDCWD, filename, type, TRUE, &variant, error))
     goto out;
 
   ot_dump_variant (variant);
