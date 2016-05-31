@@ -4459,7 +4459,7 @@ sign_data (OstreeRepo     *self,
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
     goto out;
   
-  signature_file = gs_file_map_noatime (tmp_signature_file, cancellable, error);
+  signature_file = g_mapped_file_new (gs_file_get_path_cached (tmp_signature_file), FALSE, error);
   if (!signature_file)
     goto out;
   ret_signature = g_mapped_file_get_bytes (signature_file);
