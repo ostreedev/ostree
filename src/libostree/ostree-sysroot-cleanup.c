@@ -32,7 +32,7 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
                                              GError             **error)
 {
   gboolean ret = FALSE;
-  const char *osname = gs_file_get_basename_cached (osdir);
+  const char *osname = glnx_basename (gs_file_get_path_cached (osdir));
   g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFile) osdeploy_dir = NULL;
   GError *temp_error = NULL;
@@ -370,7 +370,7 @@ cleanup_old_deployments (OstreeSysroot       *self,
       g_autofree char *osname = NULL;
       g_autofree char *bootcsum = NULL;
 
-      if (!parse_bootdir_name (gs_file_get_basename_cached (bootdir),
+      if (!parse_bootdir_name (glnx_basename (gs_file_get_path_cached (bootdir)),
                                &osname, &bootcsum))
         g_assert_not_reached ();
 

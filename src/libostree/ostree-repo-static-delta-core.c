@@ -126,8 +126,8 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
               if (g_file_info_get_file_type (file_info2) != G_FILE_TYPE_DIRECTORY)
                 continue;
 
-              name1 = gs_file_get_basename_cached (child);
-              name2 = gs_file_get_basename_cached (child2);
+              name1 = g_file_info_get_name (file_info);
+              name2 = g_file_info_get_name (file_info2);
 
               {
                 g_autoptr(GFile) meta_path = g_file_get_child (child2, "superblock");

@@ -120,7 +120,7 @@ relabel_recursively (OstreeSePolicy *sepolicy,
       if (file_info == NULL)
         break;
 
-      g_ptr_array_add (path_parts, (char*)gs_file_get_basename_cached (child));
+      g_ptr_array_add (path_parts, (char*)g_file_info_get_name (file_info));
 
       ftype = g_file_info_get_file_type (file_info);
       if (ftype == G_FILE_TYPE_DIRECTORY)
