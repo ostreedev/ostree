@@ -1738,49 +1738,6 @@ validate_variant_is_csum (GVariant       *csum,
   return ret;
 }
 
-/* documented in ostree-repo.c */
-gboolean
-ostree_repo_pull (OstreeRepo               *self,
-                  const char               *remote_name,
-                  char                    **refs_to_fetch,
-                  OstreeRepoPullFlags       flags,
-                  OstreeAsyncProgress      *progress,
-                  GCancellable             *cancellable,
-                  GError                  **error)
-{
-  return ostree_repo_pull_one_dir (self, remote_name, NULL, refs_to_fetch, flags, progress, cancellable, error);
-}
-
-/* Documented in ostree-repo.c */
-gboolean
-ostree_repo_pull_one_dir (OstreeRepo               *self,
-                          const char               *remote_name,
-                          const char               *dir_to_pull,
-                          char                    **refs_to_fetch,
-                          OstreeRepoPullFlags       flags,
-                          OstreeAsyncProgress      *progress,
-                          GCancellable             *cancellable,
-                          GError                  **error)
-{
-  GVariantBuilder builder;
-  g_autoptr(GVariant) options = NULL;
-
-  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
-
-  if (dir_to_pull)
-    g_variant_builder_add (&builder, "{s@v}", "subdir",
-                           g_variant_new_variant (g_variant_new_string (dir_to_pull)));
-  g_variant_builder_add (&builder, "{s@v}", "flags",
-                         g_variant_new_variant (g_variant_new_int32 (flags)));
-  if (refs_to_fetch)
-    g_variant_builder_add (&builder, "{s@v}", "refs",
-                           g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
-
-  options = g_variant_ref_sink (g_variant_builder_end (&builder));
-  return ostree_repo_pull_with_options (self, remote_name, options,
-                                        progress, cancellable, error);
-}
-
 /* Load the summary from the cache if the provided .sig file is the same as the
    cached version.  */
 static gboolean

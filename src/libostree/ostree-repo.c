@@ -3697,7 +3697,6 @@ ostree_repo_read_commit (OstreeRepo   *self,
   return ret;
 }
 
-#ifndef HAVE_LIBSOUP
 /**
  * ostree_repo_pull:
  * @self: Repo
@@ -3734,9 +3733,7 @@ ostree_repo_pull (OstreeRepo               *self,
                   GCancellable             *cancellable,
                   GError                  **error)
 {
-  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
-  return FALSE;
+  return ostree_repo_pull_one_dir (self, remote_name, NULL, refs_to_fetch, flags, progress, cancellable, error);
 }
 
 /**
@@ -3763,12 +3760,24 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                           GCancellable             *cancellable,
                           GError                  **error)
 {
-  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
-  return FALSE;
-}
+  GVariantBuilder builder;
+  g_autoptr(GVariant) options = NULL;
 
-#endif
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
+
+  if (dir_to_pull)
+    g_variant_builder_add (&builder, "{s@v}", "subdir",
+                           g_variant_new_variant (g_variant_new_string (dir_to_pull)));
+  g_variant_builder_add (&builder, "{s@v}", "flags",
+                         g_variant_new_variant (g_variant_new_int32 (flags)));
+  if (refs_to_fetch)
+    g_variant_builder_add (&builder, "{s@v}", "refs",
+                           g_variant_new_variant (g_variant_new_strv ((const char *const*) refs_to_fetch, -1)));
+
+  options = g_variant_ref_sink (g_variant_builder_end (&builder));
+  return ostree_repo_pull_with_options (self, remote_name, options,
+                                        progress, cancellable, error);
+}
 
 /**
  * _formatted_time_remaining_from_seconds
