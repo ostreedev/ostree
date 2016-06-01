@@ -512,6 +512,7 @@ _ostree_static_delta_part_open (GInputStream   *part_in,
                                                                     g_bytes_get_size (inline_part_bytes) - 1);
           ret_part = g_variant_new_from_bytes (G_VARIANT_TYPE (OSTREE_STATIC_DELTA_PART_PAYLOAD_FORMAT_V0),
                                                content_bytes, trusted);
+          g_variant_ref_sink (ret_part);
         }
 
       if (!skip_checksum)
