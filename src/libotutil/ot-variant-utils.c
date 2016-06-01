@@ -166,7 +166,6 @@ ot_util_variant_map_at (int dfd,
                         GError  **error)
 {
   glnx_fd_close int fd = -1;
-  g_autoptr(GVariant) ret_variant = NULL;
 
   fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
   if (fd < 0)
@@ -224,8 +223,8 @@ ot_util_variant_map_fd (int                    fd,
   mdata->len = len;
 
   ret = TRUE;
-  *out_variant = g_variant_new_from_data (type, map, len, trusted,
-                                          variant_map_data_destroy, mdata);
+  *out_variant = g_variant_ref_sink (g_variant_new_from_data (type, map, len, trusted,
+                                                              variant_map_data_destroy, mdata));
  out:
   return ret;
 }
