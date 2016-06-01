@@ -4171,6 +4171,38 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 #endif
 
 /**
+ * _formatted_time_remaining_from_seconds
+ * @seconds_remaining: Estimated number of seconds remaining.
+ *
+ * Returns a strings showing the number of days, hours, minutes
+ * and seconds remaining.
+ **/
+static char *
+_formatted_time_remaining_from_seconds (guint64 seconds_remaining)
+{
+  guint64 minutes_remaining = seconds_remaining / 60;
+  guint64 hours_remaining = minutes_remaining / 60;
+  guint64 days_remaining = hours_remaining / 24;
+
+  GString *description = g_string_new (NULL);
+
+  if (days_remaining)
+    g_string_append_printf (description, "%lu days ", days_remaining);
+
+  if (hours_remaining)
+    g_string_append_printf (description, "%lu hours ", hours_remaining % 24);
+
+  if (minutes_remaining)
+    g_string_append_printf (description, "%lu minutes ", minutes_remaining % 60);
+
+  if (seconds_remaining)
+    g_string_append_printf (description, "%lu seconds ", seconds_remaining % 60);
+
+  return g_string_free (description, FALSE);
+}
+
+
+/**
  * ostree_repo_pull_default_console_progress_changed:
  * @progress: Async progress
  * @user_data: (allow-none): User data
@@ -4225,28 +4257,36 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       guint fetched = ostree_async_progress_get_uint (progress, "fetched");
       guint metadata_fetched = ostree_async_progress_get_uint (progress, "metadata-fetched");
       guint requested = ostree_async_progress_get_uint (progress, "requested");
-      guint64 bytes_sec = (g_get_monotonic_time () - ostree_async_progress_get_uint64 (progress, "start-time")) / G_USEC_PER_SEC;
+      guint64 start_time = ostree_async_progress_get_uint64 (progress, "start-time");
+      guint64 total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
+      guint64 current_time = g_get_monotonic_time ();
+      guint64 bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
+      guint64 est_time_remaining =  (total_delta_part_size - bytes_transferred) / bytes_sec;
       g_autofree char *formatted_bytes_transferred =
         g_format_size_full (bytes_transferred, 0);
       g_autofree char *formatted_bytes_sec = NULL;
+      g_autofree char *formatted_est_time_remaining = NULL;
 
       if (!bytes_sec) // Ignore first second
-        formatted_bytes_sec = g_strdup ("-");
+        {
+          formatted_bytes_sec = g_strdup ("-");
+          formatted_est_time_remaining = g_strdup ("- ");
+        }
       else
         {
-          bytes_sec = bytes_transferred / bytes_sec;
           formatted_bytes_sec = g_format_size (bytes_sec);
+          formatted_est_time_remaining = _formatted_time_remaining_from_seconds (est_time_remaining);
         }
 
       if (total_delta_parts > 0)
         {
-          guint64 total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
           g_autofree char *formatted_total =
             g_format_size (total_delta_part_size);
-          g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/s %s/%s",
+          /* No space between %s and remaining, since formatted_est_time_remaining has a trailing space */
+          g_string_append_printf (buf, "Receiving delta parts: %u/%u %s/s %s/%s %sremaining",
                                   fetched_delta_parts, total_delta_parts,
                                   formatted_bytes_sec, formatted_bytes_transferred,
-                                  formatted_total);
+                                  formatted_total, formatted_est_time_remaining);
         }
       else if (outstanding_metadata_fetches)
         {
