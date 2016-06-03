@@ -159,7 +159,8 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
     }
 
   ret = TRUE;
-  gs_transfer_out_value (out_deltas, &ret_deltas);
+  if (out_deltas)
+    *out_deltas = g_steal_pointer (&ret_deltas);
  out:
   return ret;
 }
