@@ -78,6 +78,10 @@ available.
 All of the above also applies if one replaces "BTRFS" with "LVM
 snapshots" except for the reflinks.
 
+OSTree supports using "bare-user" repositories, which do not require
+root to use. Using a filesystem-level layer without root is more
+difficult and would likely require a setuid helper or privileged service.
+
 Finally, see the next portion around ChromiumOS for why a hybrid but
 integrated package/image system improves on this.
 
@@ -147,37 +151,54 @@ See
 [this comment](http://blog.verbum.org/2013/08/26/ostree-v2013-6-released/#comment-1169)
 for a comparison.
 
-## NixOS
+## NixOS / Nix
 
-See [NixOS](http://nixos.org/). It was a very influential project for
-OSTree.  NixOS and OSTree both support the idea of independent "roots"
-that are bootable.
+See [NixOS](http://nixos.org/). It was a very influential project for OSTree.
+NixOS and OSTree both support the idea of independent "roots" that are bootable.
 
-In NixOS, the entire system is based on checksums of package inputs
-(build dependencies) - see [Nix store](http://nixos.org/nix/manual/#chap-package-management/). A both
-positive and negative of the Nix model is that a change in the build
-dependencies (e.g. being built with a newer gcc), requires a cascading
-rebuild of everything.
+In NixOS, files in a package are accessed by a path depending on the checksums
+of package inputs (build dependencies) - see
+[Nix store](http://nixos.org/nix/manual/#chap-package-management/).
+However, OSTree uses a commit/deploy model - it isn't tied to any particular
+directory layout, and you can put whatever data you want inside an OSTree, for
+example the standard FHS layout. A both positive and negative of the Nix model
+is that a change in the build dependencies (e.g. being built with a newer gcc),
+requires a cascading rebuild of everything. It's good because it makes it easy
+to do massive system-wide changes such as gcc upgrades, and allows installing
+multiple versions of packages at once. However, a security update to e.g. glibc
+forces a rebuild of everything from scratch, and so Nix is not practical at
+scale. OSTree supports using a build system that just rebuilds individual
+components (packages) as they change, without forcing a rebuild of their
+dependencies.
 
-In OSTree, the checksums are of object *content* (including extended
-attributes). This means that any data that's identical is
-transparently, automatically shared on disk. It's possible to ask the
-Nix store to deduplicate, (via hard links and immutable bit), but this
-is significantly less efficient than the OSTree approach. The Nix use
-of the ext immutable bit is racy, since it has to be briefly removed
-to make a hard link.
+Nix automatically detects runtime package dependencies by scanning content for
+hashes. OSTree only supports only system-level images, and doesn't do dependency
+management. Nix can store arbitrary files, using nix-store --add, but, more
+commonly, paths are added as the result of running a derivation file generated
+using the Nix language. OSTree is build-system agnostic; filesystem trees are
+committed using a simple C API, and this is the only way to commit files.
 
-At the lowest level, OSTree is just "git for binaries" - it isn't tied
-strongly to any particular build system. You can put whatever data you
-want inside an OSTree repository, built however you like. So for
-example, while one could make a build system that did the "purely
-functional" approach of Nix, it also works to have a build system that
-just rebuilds individual components (packages) as they change, without
-forcing a rebuild of their dependencies.
+OSTree automatically shares the storage of identical data using hard links into
+a content-addressed store. Nix can deduplicate using hard links as well, using
+the auto-optimise-store option, but this is not on by default, and Nix does not
+guarantee that all of its files are in the content-addressed store. OSTree
+provides a git-like command line interface for browsing the content-addressed
+store, while Nix does not have this functionality.
 
-The author of OSTree believes that while Nix has some good ideas,
-forcing a rebuild of everything for a security update to e.g. glibc is
-not practical at scale.
+Nix used to use the immutable bit to prevent modifications to /nix/store, but
+now it uses a read-only bind mount. The bind mount can be privately remounted,
+allowing per-process privileged write access. OSTree still uses the immutable
+bit, which is awkward, since it has to be briefly removed to make a hard link
+when checking out.
+
+NixOS supports switching OS images on-the-fly, by maintaining both booted-system
+and current-system roots. It is not clear how well this approach works. OSTree
+currently requries a reboot to switch images.
+
+Finally, NixOS supports installing user-specific packages from trusted
+repositories without requiring root, using a trusted daemon. OSTree could
+similarly support this with a setuid executable or trusted daemon, but there is
+still the problem of where to deploy user-specific programs.
 
 ## Solaris IPS
 
@@ -205,3 +226,39 @@ See
 [bmap](https://source.tizen.org/documentation/reference/bmaptool/introduction).
 A tool for optimized copying of disk images. Intended for offline use,
 so not directly comparable.
+
+## Git
+
+Although OSTree has been called "Git for Binaries", and the two share the idea
+of a hashed content store, the implementation details are quite different.
+OSTree supports extended attributes and uses SHA256 instead of Git's SHA1. It
+"checks out" files via hardlinks, rather than copying, and thus requires the
+files to be immutable. At the moment, OSTree commits may have at most one
+parent, as opposed to Git which allows an arbitrary number. Git uses a
+smart-delta protocol for updates, while OSTree uses (slow) HTTP requests or
+static deltas.
+
+## Conda
+
+Conda is an "OS-agnostic, system-level binary package manager and ecosystem";
+although most well-known for its accompanying Python distribution anaconda, its
+scope has been expanding quickly. The package format is very similar to
+well-known ones such as RPM. However, unlike typical RPMs, the packages are
+built to be relocatable. Also, the package manager runs natively on Windows.
+Conda's main advantage is its ability to install collections of packages into
+"environments" by unpacking them all to the same directory. Conda reduces
+duplication across environments using hardlinks, similar to OSTree's sharing
+between deployments (although Conda uses package / file path instead of file
+hash). Overall, it is quite similar to rpm-ostree in functionality and scope.
+
+## rpm-ostree
+
+This builds on top of ostree to support building RPMs into OSTree images, and
+even composing RPMs on-the-fly using an overlay filesystem. It is being
+developed by Fedora, Red Hat, and CentOS as part of Project Atomic.
+
+## GNOME Continuous
+
+This is a service that incrementally rebuilds and tests GNOME on every commit.
+The need to make and distribute snapshots for this system was the original
+inspiration for ostree.
