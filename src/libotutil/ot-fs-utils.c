@@ -230,3 +230,24 @@ ot_openat_ignore_enoent (int dfd,
  out:
   return ret;
 }
+
+GBytes *
+ot_file_mapat_bytes (int dfd,
+                     const char *path,
+                     GError **error)
+{
+  glnx_fd_close int fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
+  g_autoptr(GMappedFile) mfile = NULL;
+
+  if (fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      return FALSE;
+    }
+
+  mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+  if (!mfile)
+    return FALSE;
+
+  return g_mapped_file_get_bytes (mfile);
+}

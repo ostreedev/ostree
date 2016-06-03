@@ -66,4 +66,8 @@ gboolean ot_openat_ignore_enoent (int dfd,
                                   int *out_fd,
                                   GError **error);
 
+GBytes *ot_file_mapat_bytes (int dfd,
+                             const char *path,
+                             GError **error);
+
 G_END_DECLS

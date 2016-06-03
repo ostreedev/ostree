@@ -4618,7 +4618,6 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) summary_data = NULL;
-  g_autoptr(GFile) summary_file = NULL;
   g_autoptr(GFile) signature_path = NULL;
   g_autoptr(GVariant) existing_signatures = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
@@ -4626,8 +4625,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   guint i;
   signature_path = g_file_resolve_relative_path (self->repodir, "summary.sig");
 
-  summary_file = g_file_resolve_relative_path (self->repodir, "summary");
-  summary_data = gs_file_map_readonly (summary_file, cancellable, error);
+  summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
   if (!summary_data)
     goto out;
 
