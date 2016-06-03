@@ -3091,8 +3091,13 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 
   _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
   
-  return gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, out_fd,
-                               cancellable, error);
+  *out_fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+  if (*out_fd < 0)
+    {
+      glnx_set_error_from_errno (error);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 /**
