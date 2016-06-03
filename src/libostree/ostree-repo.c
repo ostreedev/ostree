@@ -4620,7 +4620,6 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GBytes) summary_data = NULL;
   g_autoptr(GFile) summary_file = NULL;
   g_autoptr(GFile) signature_path = NULL;
-  GError *temp_error = NULL;
   g_autoptr(GVariant) existing_signatures = NULL;
   g_autoptr(GVariant) new_metadata = NULL;
   g_autoptr(GVariant) normalized = NULL;
@@ -4634,18 +4633,8 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
 
   if (!ot_util_variant_map_at (AT_FDCWD, gs_file_get_path_cached (signature_path),
                                G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
-                               TRUE, &existing_signatures, &temp_error))
-    {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
-    }
+                               OT_VARIANT_MAP_ALLOW_NOENT, &existing_signatures, error))
+    goto out;
 
   for (i = 0; key_id[i]; i++)
     {

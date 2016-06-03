@@ -842,7 +842,7 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
 
   if (!ot_util_variant_map_at (self->repo_dir_fd, superblock_path,
                                (GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
-                               TRUE, &delta_superblock, error))
+                               OT_VARIANT_MAP_TRUSTED, &delta_superblock, error))
     goto out;
 
   g_print ("%s\n", g_variant_print (delta_superblock, 1));
