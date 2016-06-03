@@ -31,7 +31,7 @@ static char *opt_gpg_homedir;
 
 static GOptionEntry options[] = {
   { "update", 'u', 0, G_OPTION_ARG_NONE, &opt_update, "Update the summary", NULL },
-  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the commit with", "KEY-ID"},
+  { "gpg-sign", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_key_ids, "GPG Key ID to sign the summary with", "KEY-ID"},
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
   { NULL }
 };
