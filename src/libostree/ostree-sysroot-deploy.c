@@ -756,12 +756,12 @@ selinux_relabel_file (OstreeSysroot                 *sysroot,
     goto out;
 
   g_ptr_array_add (path_parts, (char*)prefix);
-  g_ptr_array_add (path_parts, (char*)gs_file_get_basename_cached (path));
+  g_ptr_array_add (path_parts, (char*)g_file_info_get_name (file_info));
   if (!relabel_one_path (sysroot, sepolicy, path, file_info, path_parts,
                          cancellable, error))
     {
       g_prefix_error (error, "Relabeling /%s/%s: ", prefix,
-                      gs_file_get_basename_cached (path));
+                      g_file_info_get_name (file_info));
       goto out;
     }
 

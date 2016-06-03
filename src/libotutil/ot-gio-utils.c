@@ -358,7 +358,7 @@ ot_gfile_replace_contents_fsync (GFile          *path,
 {
   gboolean ret = FALSE;
   int parent_dfd;
-  const char *target_basename = gs_file_get_basename_cached (path);
+  const char *target_basename = glnx_basename (gs_file_get_path_cached (path));
   g_autoptr(GFile) parent = NULL;
 
   parent = g_file_get_parent (path);
@@ -447,7 +447,7 @@ ot_util_ensure_directory_and_fsync (GFile         *dir,
 {
   gboolean ret = FALSE;
   int parentfd = -1;
-  const char *basename = gs_file_get_basename_cached (dir);
+  const char *basename = glnx_basename (gs_file_get_path_cached (dir));
   g_autoptr(GFile) parent = g_file_get_parent (dir);
   
  again:
