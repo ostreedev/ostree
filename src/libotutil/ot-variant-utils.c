@@ -121,18 +121,27 @@ gboolean
 ot_util_variant_map_at (int dfd,
                         const char *path,
                         const GVariantType *type,
-                        gboolean trusted,
+                        OtVariantMapFlags flags,
                         GVariant **out_variant,
                         GError  **error)
 {
   glnx_fd_close int fd = -1;
+  const gboolean trusted = (flags & OT_VARIANT_MAP_TRUSTED) > 0;
 
   fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
   if (fd < 0)
     {
-      glnx_set_error_from_errno (error);
-      g_prefix_error (error, "Opening %s: ", path);
-      return FALSE;
+      if (errno == ENOENT && (flags & OT_VARIANT_MAP_ALLOW_NOENT) > 0)
+        {
+          *out_variant = NULL;
+          return TRUE;
+        }
+      else
+        {
+          glnx_set_error_from_errno (error);
+          g_prefix_error (error, "Opening %s: ", path);
+          return FALSE;
+        }
     }
 
   return ot_util_variant_map_fd (fd, 0, type, trusted, out_variant, error);

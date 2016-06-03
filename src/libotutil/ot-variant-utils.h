@@ -42,10 +42,15 @@ gboolean ot_util_variant_save (GFile *dest,
                                GCancellable *cancellable,
                                GError  **error);
 
+typedef enum {
+  OT_VARIANT_MAP_TRUSTED = (1 << 0),
+  OT_VARIANT_MAP_ALLOW_NOENT = (1 << 1)
+} OtVariantMapFlags;
+
 gboolean ot_util_variant_map_at (int dfd,
                                  const char *path,
                                  const GVariantType *type,
-                                 gboolean trusted,
+                                 OtVariantMapFlags flags,
                                  GVariant **out_variant,
                                  GError  **error);
 

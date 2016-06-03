@@ -2097,22 +2097,13 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   g_autoptr(GFile) metadata_path =
     _ostree_repo_get_commit_metadata_loose_path (self, checksum);
   g_autoptr(GVariant) ret_metadata = NULL;
-  GError *temp_error = NULL;
   
   if (!ot_util_variant_map_at (AT_FDCWD, gs_file_get_path_cached (metadata_path),
                                G_VARIANT_TYPE ("a{sv}"),
-                               TRUE, &ret_metadata, &temp_error))
+                               OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
     {
-      if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-        {
-          g_clear_error (&temp_error);
-        }
-      else
-        {
-          g_prefix_error (error, "Unable to read existing detached metadata: ");
-          g_propagate_error (error, temp_error);
-          goto out;
-        }
+      g_prefix_error (error, "Unable to read existing detached metadata: ");
+      goto out;
     }
 
   ret = TRUE;
