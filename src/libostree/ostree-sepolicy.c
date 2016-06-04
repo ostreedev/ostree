@@ -32,7 +32,7 @@
 #include "ostree-bootloader-syslinux.h"
 
 /**
- * SECTION:libostree-sepolicy
+ * SECTION:ostree-sepolicy
  * @title: SELinux policy management
  * @short_description: Read SELinux policy and manage filesystem labels
  *

@@ -34,6 +34,10 @@ typedef enum {
 
 } OstreeSysrootDebugFlags;
 
+/**
+ * OstreeSysroot:
+ * Internal struct
+ */
 struct OstreeSysroot {
   GObject parent;
 

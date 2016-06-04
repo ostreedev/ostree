@@ -27,7 +27,7 @@
 #include "ostree-core.h"
 
 /**
- * SECTION:libostree-mutable-tree
+ * SECTION:ostree-mutable-tree
  * @title: In-memory modifiable filesystem tree
  * @short_description: Modifiable filesystem tree
  *

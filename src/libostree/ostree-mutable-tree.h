@@ -84,7 +84,8 @@ gboolean ostree_mutable_tree_lookup (OstreeMutableTree   *self,
                                      OstreeMutableTree  **out_subdir,
                                      GError             **error);
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
                                         GPtrArray          *split_path,
                                         const char         *metadata_checksum,

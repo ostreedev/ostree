@@ -37,7 +37,7 @@ find_booted_deployment (OstreeSysroot       *self,
                         GError             **error);
 
 /**
- * SECTION:libostree-sysroot
+ * SECTION:ostree-sysroot
  * @title: Root partition mount point
  * @short_description: Manage physical root filesystem
  *

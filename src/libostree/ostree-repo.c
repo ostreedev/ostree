@@ -43,7 +43,7 @@
 #include <glib/gstdio.h>
 
 /**
- * SECTION:libostree-repo
+ * SECTION:ostree-repo
  * @title: Content-addressed object store
  * @short_description: A git-like storage system for operating system binaries
  *
@@ -2301,6 +2301,8 @@ ostree_repo_set_disable_fsync (OstreeRepo    *self,
  * @self: An #OstreeRepo
  * @dfd: directory fd
  * @path: subpath in @dfd
+ * @cancellable: a #GCancellable
+ * @error: a #GError
  *
  * Set a custom location for the cache directory used for e.g.
  * per-remote summary caches. Setting this manually is useful when
@@ -4170,9 +4172,7 @@ out:
 
 /**
  * ostree_repo_sign_delta:
- * @self: Self
- * @from_commit: SHA256 of starting commit to sign, or %NULL
- * @to_commit: SHA256 of target commit to sign
+ *
  * This function is deprecated, sign the summary file instead.
  * Add a GPG signature to a static delta.
  */

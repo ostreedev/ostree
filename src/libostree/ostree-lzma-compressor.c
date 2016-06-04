@@ -32,7 +32,7 @@ enum {
 
 /**
  * SECTION:ostree-lzma-compressor
- * @short_description: LZMA compressor
+ * @title: LZMA compressor
  *
  * An implementation of #GConverter that compresses data using
  * LZMA.

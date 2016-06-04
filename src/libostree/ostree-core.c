@@ -47,7 +47,7 @@ zlib_file_header_parse (GVariant         *metadata,
                         GError          **error);
 
 /**
- * SECTION:libostree-core
+ * SECTION:ostree-core
  * @title: Core repository-independent functions
  * @short_description: Create, validate, and convert core data types
  *

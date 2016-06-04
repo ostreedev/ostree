@@ -115,6 +115,10 @@ gboolean      ostree_repo_remote_delete (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+/**
+ * OstreeRepoRemoteChange:
+ * The remote change operation.
+ */
 typedef enum {
   OSTREE_REPO_REMOTE_CHANGE_ADD,
   OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS,
@@ -223,6 +227,10 @@ gboolean      ostree_repo_write_config (OstreeRepo *self,
  * were written to the repository in this transaction.
  * @content_bytes_written: The amount of data added to the repository,
  * in bytes, counting only content objects.
+ * @padding1: reserved
+ * @padding2: reserved
+ * @padding3: reserved
+ * @padding4: reserved
  *
  * A list of statistics for each transaction that may be
  * interesting for reporting purposes.
@@ -699,7 +707,8 @@ typedef enum {
   OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES = 1
 } OstreeRepoCheckoutOverwriteMode;
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_checkout_tree (OstreeRepo               *self,
                            OstreeRepoCheckoutMode    mode,
                            OstreeRepoCheckoutOverwriteMode    overwrite_mode,
@@ -866,14 +875,16 @@ typedef enum {
   OSTREE_REPO_COMMIT_TRAVERSE_FLAG_NONE = (1 << 0)
 } OstreeRepoCommitTraverseFlags;
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_commit_traverse_iter_init_commit (OstreeRepoCommitTraverseIter    *iter,
                                               OstreeRepo                      *repo,
                                               GVariant                        *commit,
                                               OstreeRepoCommitTraverseFlags    flags,
                                               GError                         **error);
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_commit_traverse_iter_init_dirtree (OstreeRepoCommitTraverseIter    *iter,
                                                OstreeRepo                      *repo,
                                                GVariant                        *dirtree,
@@ -903,8 +914,8 @@ void ostree_repo_commit_traverse_iter_get_dir (OstreeRepoCommitTraverseIter *ite
                                                char                        **out_content_checksum,
                                                char                        **out_meta_checksum);
 
-_OSTREE_PUBLIC void
-ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter);
+_OSTREE_PUBLIC
+void ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter);
 
 _OSTREE_PUBLIC
 void ostree_repo_commit_traverse_iter_cleanup (void *p);
@@ -923,7 +934,8 @@ typedef enum {
   OSTREE_REPO_PRUNE_FLAGS_REFS_ONLY
 } OstreeRepoPruneFlags;
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_prune_static_deltas (OstreeRepo *self, const char *commit,
                                  GCancellable      *cancellable,
                                  GError           **error);
@@ -961,7 +973,8 @@ gboolean ostree_repo_pull (OstreeRepo             *self,
                            GCancellable           *cancellable,
                            GError                **error);
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_pull_one_dir (OstreeRepo               *self,
                           const char               *remote_name,
                           const char               *dir_to_pull,
@@ -1000,7 +1013,8 @@ gboolean ostree_repo_sign_delta (OstreeRepo     *self,
                                  GCancellable   *cancellable,
                                  GError        **error);
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
                                        const gchar    **key_id,
                                        const gchar    *homedir,

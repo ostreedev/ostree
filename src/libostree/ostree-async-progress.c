@@ -23,7 +23,7 @@
 #include "ostree-async-progress.h"
 
 /**
- * SECTION:libostree-async-progress
+ * SECTION:ostree-async-progress
  * @title: Progress notification system for asynchronous operations
  * @short_description: Values representing progress
  *

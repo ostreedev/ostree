@@ -2122,7 +2122,31 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  * ------------------------------------------------------------------------------------------
  */
 
-/* Documented below */
+/**
+ * ostree_repo_pull_with_options:
+ * @self: Repo
+ * @remote_name: Name of remote
+ * @options: A GVariant a{sv} with an extensible set of flags.
+ * @progress: (allow-none): Progress
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_repo_pull(), but supports an extensible set of flags.
+ * The following are currently defined:
+ *
+ *   * refs (as): Array of string refs
+ *   * flags (i): An instance of #OstreeRepoPullFlags
+ *   * subdir (s): Pull just this subdirectory
+ *   * override-remote-name (s): If local, add this remote to refspec
+ *   * gpg-verify (b): GPG verify commits
+ *   * gpg-verify-summary (b): GPG verify summary
+ *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
+ *   * disable-static-deltas (b): Do not use static deltas
+ *   * require-static-deltas (b): Require static deltas
+ *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
+ *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
+ *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
+ */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
                                const char             *remote_name_or_baseurl,
@@ -2836,7 +2860,24 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   return ret;
 }
 
-/* Documented below */
+/**
+ * ostree_repo_remote_fetch_summary_with_options:
+ * @self: Self
+ * @name: name of a remote
+ * @options: (nullable): A GVariant a{sv} with an extensible set of flags
+ * @out_summary: (nullable): return location for raw summary data, or %NULL
+ * @out_signatures: (nullable): return location for raw summary signature
+ *                              data, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
+ * The following are currently defined:
+ *
+ * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
 gboolean
 ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                                const char    *name,
@@ -2908,31 +2949,6 @@ out:
 
 #else /* HAVE_LIBSOUP */
 
-/**
- * ostree_repo_pull_with_options:
- * @self: Repo
- * @remote_name: Name of remote
- * @options: A GVariant a{sv} with an extensible set of flags.
- * @progress: (allow-none): Progress
- * @cancellable: Cancellable
- * @error: Error
- *
- * Like ostree_repo_pull(), but supports an extensible set of flags.
- * The following are currently defined:
- *
- *   * refs (as): Array of string refs
- *   * flags (i): An instance of #OstreeRepoPullFlags
- *   * subdir (s): Pull just this subdirectory
- *   * override-remote-name (s): If local, add this remote to refspec
- *   * gpg-verify (b): GPG verify commits
- *   * gpg-verify-summary (b): GPG verify summary
- *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
- *   * disable-static-deltas (b): Do not use static deltas
- *   * require-static-deltas (b): Require static deltas
- *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
- *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
- *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
- */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
                                const char             *remote_name,
@@ -2946,24 +2962,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   return FALSE;
 }
 
-/**
- * ostree_repo_remote_fetch_summary_with_options:
- * @self: Self
- * @name: name of a remote
- * @options: (nullable): A GVariant a{sv} with an extensible set of flags
- * @out_summary: (nullable): return location for raw summary data, or %NULL
- * @out_signatures: (nullable): return location for raw summary signature
- *                              data, or %NULL
- * @cancellable: a #GCancellable
- * @error: a #GError
- *
- * Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
- * The following are currently defined:
- *
- * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
- *
- * Returns: %TRUE on success, %FALSE on failure
- */
 gboolean
 ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
                                                const char    *name,
