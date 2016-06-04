@@ -25,7 +25,7 @@
 #include "ostree-sysroot-upgrader.h"
 
 /**
- * SECTION:libostree-sysroot-upgrader
+ * SECTION:ostree-sysroot-upgrader
  * @title: Simple upgrade class
  * @short_description: Upgrade OSTree systems
  *

@@ -13,25 +13,23 @@
 
 	<chapter xml:id="reference">
 		<title>API Reference</title>
-		<xi:include href="xml/libostree-core.xml"/>
-		<xi:include href="xml/libostree-repo.xml"/>
-		<xi:include href="xml/libostree-mutable-tree.xml"/>
-		<xi:include href="xml/libostree-sysroot.xml"/>
-		<xi:include href="xml/libostree-async-progress.xml"/>
-		<xi:include href="xml/libostree-sepolicy.xml"/>
-		<xi:include href="xml/libostree-sysroot-upgrader.xml"/>
-		<xi:include href="xml/libostree-gpg-verify-result.xml"/>
-		<xi:include href="xml/libostree-bootconfig-parser.xml"/>
-		<xi:include href="xml/libostree-chain-input-stream.xml"/>
-		<xi:include href="xml/libostree-checksum-input-stream.xml"/>
-		<xi:include href="xml/libostree-deployment.xml"/>
-		<xi:include href="xml/libostree-diff.xml"/>
-		<xi:include href="xml/libostree-repo-file.xml"/>
-
+		<xi:include href="xml/ostree-core.xml"/>
+		<xi:include href="xml/ostree-repo.xml"/>
+		<xi:include href="xml/ostree-mutable-tree.xml"/>
+		<xi:include href="xml/ostree-sysroot.xml"/>
+		<xi:include href="xml/ostree-async-progress.xml"/>
+		<xi:include href="xml/ostree-sepolicy.xml"/>
+		<xi:include href="xml/ostree-sysroot-upgrader.xml"/>
+		<xi:include href="xml/ostree-gpg-verify-result.xml"/>
+		<xi:include href="xml/ostree-bootconfig-parser.xml"/>
+		<xi:include href="xml/ostree-chain-input-stream.xml"/>
+		<xi:include href="xml/ostree-checksum-input-stream.xml"/>
+		<xi:include href="xml/ostree-deployment.xml"/>
+		<xi:include href="xml/ostree-diff.xml"/>
+		<xi:include href="xml/ostree-repo-file.xml"/>
 		<index id="api-index-full">
 			<title>API Index</title>
 			<xi:include href="xml/api-index-full.xml"><xi:fallback /></xi:include>
 		</index>
-
 	</chapter>
 </book>

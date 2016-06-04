@@ -27,7 +27,7 @@
 #include "ostree-gpg-verify-result-private.h"
 
 /**
- * SECTION: libostree-gpg-verify-result
+ * SECTION: ostree-gpg-verify-result
  * @title: GPG signature verification results
  * @short_description: Inspect detached GPG signatures
  *

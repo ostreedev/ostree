@@ -83,7 +83,7 @@ _ostree_make_temporary_symlink_at (int             tmp_dirfd,
 
 GFileInfo * _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid);
 
-/* XX + / + checksum-2 + . + extension, but let's just use 256 for a
+/* XX/checksum-2.extension, but let's just use 256 for a
  * bit of overkill.
  */
 #define _OSTREE_LOOSE_PATH_MAX (256)
@@ -112,8 +112,7 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
                                              const char        *to,
                                              guint              i);
 
-static inline char *
-_ostree_get_commitpartial_path (const char *checksum)
+static inline char * _ostree_get_commitpartial_path (const char *checksum)
 {
   return g_strconcat ("state/", checksum, ".commitpartial", NULL);
 }

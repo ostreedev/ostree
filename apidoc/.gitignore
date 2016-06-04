@@ -32,6 +32,7 @@
 /ostree.args
 /ostree.hierarchy
 /ostree.interfaces
+/ostree-overrides.txt
 /ostree.pdf
 /ostree.prerequisites
 /ostree.signals
@@ -48,4 +49,5 @@
 /tmpl/*.bak
 /tmpl/ostree-unused.sgml
 /xml
+/version.xml
 _libs

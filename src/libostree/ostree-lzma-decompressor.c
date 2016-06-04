@@ -29,6 +29,14 @@ enum {
   PROP_0,
 };
 
+/**
+ * SECTION:ostree-lzma-decompressor
+ * @title: LZMA decompressor
+ *
+ * An implementation of #GConverter that decompresses data using
+ * LZMA.
+ */
+
 static void _ostree_lzma_decompressor_iface_init          (GConverterIface *iface);
 
 struct _OstreeLzmaDecompressor

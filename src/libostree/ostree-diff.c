@@ -210,6 +210,8 @@ diff_add_dir_recurse (GFile          *d,
  * @modified: (element-type OstreeDiffItem): Modified files
  * @removed: (element-type Gio.File): Removed files
  * @added: (element-type Gio.File): Added files
+ * @cancellable: Cancellable
+ * @error: Error
  *
  * Compute the difference between directory @a and @b as 3 separate
  * sets of #OstreeDiffItem in @modified, @removed, and @added.

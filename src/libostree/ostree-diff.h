@@ -27,11 +27,17 @@
 
 G_BEGIN_DECLS
 
+/**
+ * OstreeDiffFlags:
+ */
 typedef enum {
   OSTREE_DIFF_FLAGS_NONE = 0,
   OSTREE_DIFF_FLAGS_IGNORE_XATTRS = (1 << 0)
 } OstreeDiffFlags;
 
+/**
+ * OstreeDiffItem:
+ */
 typedef struct _OstreeDiffItem OstreeDiffItem;
 struct _OstreeDiffItem
 {

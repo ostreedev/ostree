@@ -59,7 +59,7 @@ G_BEGIN_DECLS
  * @OSTREE_OBJECT_TYPE_DIR_TREE: List of children (trees or files), and metadata
  * @OSTREE_OBJECT_TYPE_DIR_META: Directory metadata
  * @OSTREE_OBJECT_TYPE_COMMIT: Toplevel object, refers to tree and dirmeta for root
- * @OSTREE_OBJECT_TYPE_COMMIT_TOMBSTONE: Toplevel object, refers to a deleted commit
+ * @OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Toplevel object, refers to a deleted commit
  *
  * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
  * content, the other types are metadata.
@@ -153,9 +153,9 @@ typedef enum {
 
 /**
  * OstreeRepoMode:
- * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; can only be written as root
+ * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; checkouts are hardlinks; can only be written as root
  * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
- * @OSTREE_REPO_MODE_BARE_USER: Files are stored as themselves, except ownership; can be written by user
+ * @OSTREE_REPO_MODE_BARE_USER: Files are stored as themselves, except ownership; can be written by user. Hardlinks work only in user checkouts.
  *
  * See the documentation of #OstreeRepo for more information about the
  * possible modes.
@@ -166,8 +166,8 @@ typedef enum {
   OSTREE_REPO_MODE_BARE_USER
 } OstreeRepoMode;
 
-const _OSTREE_PUBLIC
-GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
+_OSTREE_PUBLIC
+const GVariantType *ostree_metadata_variant_type (OstreeObjectType objtype);
 
 _OSTREE_PUBLIC
 gboolean ostree_validate_checksum_string (const char *sha256,
@@ -242,7 +242,8 @@ void ostree_object_from_string (const char *str,
                                 gchar     **out_checksum,
                                 OstreeObjectType *out_objtype);
 
-_OSTREE_PUBLIC gboolean
+_OSTREE_PUBLIC
+gboolean
 ostree_content_stream_parse (gboolean                compressed,
                              GInputStream           *input,
                              guint64                 input_length,
