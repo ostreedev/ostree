@@ -40,7 +40,7 @@ run_libtest (const char *cmd, GError **error)
   g_ptr_array_add (argv, "bash");
   g_ptr_array_add (argv, "-c");
 
-  g_string_append (cmdstr, ". ");
+  g_string_append (cmdstr, "set -xeuo pipefail; . ");
   g_string_append (cmdstr, builddir);
   g_string_append (cmdstr, "/tests/libtest.sh; ");
   g_string_append (cmdstr, cmd);
@@ -68,7 +68,7 @@ ot_test_setup_repo (GCancellable *cancellable,
   g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
   glnx_unref_object OstreeRepo* ret_repo = NULL;
 
-  if (!run_libtest ("setup_test_repository", error))
+  if (!run_libtest ("setup_test_repository archive-z2", error))
     goto out;
 
   ret_repo = ostree_repo_new (repo_path);
