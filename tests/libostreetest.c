@@ -28,8 +28,8 @@
 /* This function hovers in a quantum superposition of horrifying and
  * beautiful.  Future generations may interpret it as modern art.
  */
-static gboolean
-run_libtest (const char *cmd, GError **error)
+gboolean
+ot_test_run_libtest (const char *cmd, GError **error)
 {
   gboolean ret = FALSE;
   const char *builddir = g_getenv ("G_TEST_BUILDDIR");
@@ -68,7 +68,7 @@ ot_test_setup_repo (GCancellable *cancellable,
   g_autoptr(GFile) repo_path = g_file_new_for_path ("repo");
   glnx_unref_object OstreeRepo* ret_repo = NULL;
 
-  if (!run_libtest ("setup_test_repository archive-z2", error))
+  if (!ot_test_run_libtest ("setup_test_repository archive-z2", error))
     goto out;
 
   ret_repo = ostree_repo_new (repo_path);
@@ -91,7 +91,7 @@ ot_test_setup_sysroot (GCancellable *cancellable,
   g_autoptr(GFile) sysroot_path = g_file_new_for_path ("sysroot");
   glnx_unref_object OstreeSysroot *ret_sysroot = NULL;
 
-  if (!run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
+  if (!ot_test_run_libtest ("setup_os_repository \"archive-z2\" \"syslinux\"", error))
     goto out;
 
   ret_sysroot = ostree_sysroot_new (sysroot_path);
