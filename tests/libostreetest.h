@@ -27,6 +27,7 @@
 
 G_BEGIN_DECLS
 
+gboolean ot_test_run_libtest (const char *cmd, GError **error);
 
 OstreeRepo *ot_test_setup_repo (GCancellable *cancellable,
                                 GError **error);
