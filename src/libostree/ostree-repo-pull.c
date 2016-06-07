@@ -415,6 +415,26 @@ fetch_uri_contents_utf8_sync (OtPullData  *pull_data,
   return ret;
 }
 
+static gboolean
+write_commitpartial_for (OtPullData *pull_data,
+                         const char *checksum,
+                         GError **error)
+{
+  g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
+  glnx_fd_close int fd = -1;
+
+  fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0600);
+  if (fd == -1)
+    {
+      if (errno != EEXIST)
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
 static void
 enqueue_one_object_request (OtPullData        *pull_data,
                             const char        *checksum,
@@ -889,18 +909,8 @@ meta_fetch_on_complete (GObject           *object,
       /* Write the commitpartial file now while we're still fetching data */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         {
-          g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
-          glnx_fd_close int fd = -1;
-
-          fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0600);
-          if (fd == -1)
-            {
-              if (errno != EEXIST)
-                {
-                  glnx_set_error_from_errno (error);
-                  goto out;
-                }
-            }
+          if (!write_commitpartial_for (pull_data, checksum, error))
+            goto out;
         }
       
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
@@ -1205,11 +1215,18 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
   if (pull_data->remote_repo_local)
     {
-      if (!is_stored &&
-          !ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
-                                                      objtype, tmp_checksum, !pull_data->is_untrusted,
-                                                      cancellable, error))
-        goto out;
+      if (!is_stored)
+        {
+          if (!ostree_repo_import_object_from_with_trust (pull_data->repo, pull_data->remote_repo_local,
+                                                          objtype, tmp_checksum, !pull_data->is_untrusted,
+                                                          cancellable, error))
+            goto out;
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+            {
+              if (!write_commitpartial_for (pull_data, tmp_checksum, error))
+                goto out;
+            }
+        }
       is_stored = TRUE;
       is_requested = TRUE;
     }
