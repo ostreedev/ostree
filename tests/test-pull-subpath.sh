@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..1'
+echo '1..2'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig
@@ -52,4 +52,29 @@ ${CMD_PREFIX} ostree --repo=repo pull origin main
 assert_not_has_file repo/state/${rev}.commitpartial
 ${CMD_PREFIX} ostree --repo=repo fsck
 
-echo "ok"
+echo "ok http"
+
+rm repo -rf
+mkdir repo
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ostree/gnomerepo
+
+${CMD_PREFIX} ostree --repo=repo pull --subpath=/baz origin main
+
+${CMD_PREFIX} ostree --repo=repo ls origin:main /baz
+if ${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile 2>err.txt; then
+    assert_not_reached
+fi
+assert_file_has_content err.txt "Couldn't find file object"
+rev=$(${CMD_PREFIX} ostree --repo=repo rev-parse origin:main)
+assert_has_file repo/state/${rev}.commitpartial
+
+# Test pulling a file, not a dir
+${CMD_PREFIX} ostree --repo=repo pull --subpath=/firstfile origin main
+${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile
+
+${CMD_PREFIX} ostree --repo=repo pull origin main
+assert_not_has_file repo/state/${rev}.commitpartial
+${CMD_PREFIX} ostree --repo=repo fsck
+
+echo "ok local"
