@@ -38,8 +38,7 @@ GLIB_TESTS
 
 AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from glibc])])
 
-AC_CHECK_PROGS(YACC, 'bison -y', :)
-AS_IF([test "$YACC" = :], [AC_MSG_ERROR([bison not found but required])])
+AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required])])
 
 PKG_PROG_PKG_CONFIG
 
