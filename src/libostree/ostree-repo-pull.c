@@ -22,13 +22,16 @@
 
 #include "config.h"
 
-#include "libglnx.h"
 #include "ostree.h"
+#include "otutil.h"
+
+#ifdef HAVE_LIBSOUP
+
+#include "libglnx.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
 #include "ostree-metalink.h"
-#include "otutil.h"
 #include "ot-fs-utils.h"
 
 #include <gio/gunixinputstream.h>
@@ -1778,7 +1781,9 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
                                         progress, cancellable, error);
 }
 
-gboolean
+/* Load the summary from the cache if the provided .sig file is the same as the
+   cached version.  */
+static gboolean
 _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
                                              const char        *remote,
                                              GBytes            *summary_sig,
@@ -1840,7 +1845,7 @@ _ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
   return ret;
 }
 
-gboolean
+static gboolean
 _ostree_repo_cache_summary (OstreeRepo        *self,
                             const char        *remote,
                             GBytes            *summary,
@@ -1880,7 +1885,287 @@ _ostree_repo_cache_summary (OstreeRepo        *self,
 
 }
 
-/* Documented in ostree-repo.c */
+static OstreeFetcher *
+_ostree_repo_remote_new_fetcher (OstreeRepo  *self,
+                                 const char  *remote_name,
+                                 GError     **error)
+{
+  OstreeFetcher *fetcher = NULL;
+  OstreeFetcherConfigFlags fetcher_flags = 0;
+  gboolean tls_permissive = FALSE;
+  gboolean success = FALSE;
+
+  g_return_val_if_fail (OSTREE_IS_REPO (self), NULL);
+  g_return_val_if_fail (remote_name != NULL, NULL);
+
+  if (!ostree_repo_get_remote_boolean_option (self, remote_name,
+                                              "tls-permissive", FALSE,
+                                              &tls_permissive, error))
+    goto out;
+
+  if (tls_permissive)
+    fetcher_flags |= OSTREE_FETCHER_FLAGS_TLS_PERMISSIVE;
+
+  fetcher = _ostree_fetcher_new (self->tmp_dir_fd, fetcher_flags);
+
+  {
+    g_autofree char *tls_client_cert_path = NULL;
+    g_autofree char *tls_client_key_path = NULL;
+
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-client-cert-path", NULL,
+                                        &tls_client_cert_path, error))
+      goto out;
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-client-key-path", NULL,
+                                        &tls_client_key_path, error))
+      goto out;
+
+    if ((tls_client_cert_path != NULL) != (tls_client_key_path != NULL))
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Remote \"%s\" must specify both "
+                     "\"tls-client-cert-path\" and \"tls-client-key-path\"",
+                     remote_name);
+        goto out;
+      }
+    else if (tls_client_cert_path != NULL)
+      {
+        g_autoptr(GTlsCertificate) client_cert = NULL;
+
+        g_assert (tls_client_key_path != NULL);
+
+        client_cert = g_tls_certificate_new_from_files (tls_client_cert_path,
+                                                        tls_client_key_path,
+                                                        error);
+        if (client_cert == NULL)
+          goto out;
+
+        _ostree_fetcher_set_client_cert (fetcher, client_cert);
+      }
+  }
+
+  {
+    g_autofree char *tls_ca_path = NULL;
+
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "tls-ca-path", NULL,
+                                        &tls_ca_path, error))
+      goto out;
+
+    if (tls_ca_path != NULL)
+      {
+        g_autoptr(GTlsDatabase) db = NULL;
+
+        db = g_tls_file_database_new (tls_ca_path, error);
+        if (db == NULL)
+          goto out;
+
+        _ostree_fetcher_set_tls_database (fetcher, db);
+      }
+  }
+
+  {
+    g_autofree char *http_proxy = NULL;
+
+    if (!ostree_repo_get_remote_option (self, remote_name,
+                                        "proxy", NULL,
+                                        &http_proxy, error))
+      goto out;
+
+    if (http_proxy != NULL)
+      _ostree_fetcher_set_proxy (fetcher, http_proxy);
+  }
+
+  success = TRUE;
+
+out:
+  if (!success)
+    g_clear_object (&fetcher);
+
+  return fetcher;
+}
+
+static gboolean
+_ostree_preload_metadata_file (OstreeRepo    *self,
+                               OstreeFetcher *fetcher,
+                               SoupURI       *base_uri,
+                               const char    *filename,
+                               gboolean      is_metalink,
+                               GBytes        **out_bytes,
+                               GCancellable  *cancellable,
+                               GError        **error)
+{
+  gboolean ret = FALSE;
+
+  if (is_metalink)
+    {
+      glnx_unref_object OstreeMetalink *metalink = NULL;
+      GError *local_error = NULL;
+
+      metalink = _ostree_metalink_new (fetcher, filename,
+                                       OSTREE_MAX_METADATA_SIZE,
+                                       base_uri);
+
+      _ostree_metalink_request_sync (metalink, NULL, out_bytes, NULL,
+                                     cancellable, &local_error);
+
+      if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (&local_error);
+          *out_bytes = NULL;
+        }
+      else if (local_error != NULL)
+        {
+          g_propagate_error (error, local_error);
+          goto out;
+        }
+    }
+  else
+    {
+      SoupURI *uri;
+      const char *base_path;
+      g_autofree char *path = NULL;
+
+      base_path = soup_uri_get_path (base_uri);
+      path = g_build_filename (base_path, filename, NULL);
+      uri = soup_uri_new_with_base (base_uri, path);
+
+      ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
+                                                   FALSE, TRUE,
+                                                   out_bytes,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   cancellable, error);
+      soup_uri_free (uri);
+
+      if (!ret)
+        goto out;
+    }
+
+  ret = TRUE;
+out:
+  return ret;
+}
+
+static gboolean
+repo_remote_fetch_summary (OstreeRepo    *self,
+                           const char    *name,
+                           const char    *metalink_url_string,
+                           GVariant      *options,
+                           GBytes       **out_summary,
+                           GBytes       **out_signatures,
+                           GCancellable  *cancellable,
+                           GError       **error)
+{
+  glnx_unref_object OstreeFetcher *fetcher = NULL;
+  g_autoptr(GMainContext) mainctx = NULL;
+  gboolean ret = FALSE;
+  SoupURI *base_uri = NULL;
+  gboolean from_cache = FALSE;
+  g_autofree char *url_override = NULL;
+
+  if (options)
+    (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+
+  mainctx = g_main_context_new ();
+  g_main_context_push_thread_default (mainctx);
+
+  fetcher = _ostree_repo_remote_new_fetcher (self, name, error);
+  if (fetcher == NULL)
+    goto out;
+
+  {
+    g_autofree char *url_string = NULL;
+    if (metalink_url_string)
+      url_string = g_strdup (metalink_url_string);
+    else if (url_override)
+      url_string = g_strdup (url_override);
+    else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
+      goto out;
+
+    base_uri = soup_uri_new (url_string);
+    if (base_uri == NULL)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                     "Invalid URL '%s'", url_string);
+        goto out;
+      }
+  }
+
+  if (!_ostree_preload_metadata_file (self,
+                                      fetcher,
+                                      base_uri,
+                                      "summary.sig",
+                                      metalink_url_string ? TRUE : FALSE,
+                                      out_signatures,
+                                      cancellable,
+                                      error))
+    goto out;
+
+  if (*out_signatures)
+    {
+      if (!_ostree_repo_load_cache_summary_if_same_sig (self,
+                                                        name,
+                                                        *out_signatures,
+                                                        out_summary,
+                                                        cancellable,
+                                                        error))
+        goto out;
+    }
+
+  if (*out_summary)
+    from_cache = TRUE;
+  else
+    {
+      if (!_ostree_preload_metadata_file (self,
+                                          fetcher,
+                                          base_uri,
+                                          "summary",
+                                          metalink_url_string ? TRUE : FALSE,
+                                          out_summary,
+                                          cancellable,
+                                          error))
+        goto out;
+    }
+
+  if (!from_cache && *out_summary && *out_signatures)
+    {
+      g_autoptr(GError) temp_error = NULL;
+
+      if (!_ostree_repo_cache_summary (self,
+                                       name,
+                                       *out_summary,
+                                       *out_signatures,
+                                       cancellable,
+                                       &temp_error))
+        {
+          if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED))
+            g_debug ("No permissions to save summary cache");
+          else
+            {
+              g_propagate_error (error, g_steal_pointer (&temp_error));
+              goto out;
+            }
+        }
+    }
+
+  ret = TRUE;
+
+ out:
+  if (mainctx)
+    g_main_context_pop_thread_default (mainctx);
+  if (base_uri != NULL)
+    soup_uri_free (base_uri);
+  return ret;
+}
+
+/* ------------------------------------------------------------------------------------------
+ * Below is the libsoup-invariant API; these should match
+ * the stub functions in the #else clause
+ * ------------------------------------------------------------------------------------------
+ */
+
+/* Documented below */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
                                const char             *remote_name_or_baseurl,
@@ -2593,3 +2878,147 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
   return ret;
 }
+
+/* Documented below */
+gboolean
+ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
+                                               const char    *name,
+                                               GVariant      *options,
+                                               GBytes       **out_summary,
+                                               GBytes       **out_signatures,
+                                               GCancellable  *cancellable,
+                                               GError       **error)
+{
+  g_autofree char *metalink_url_string = NULL;
+  g_autoptr(GBytes) summary = NULL;
+  g_autoptr(GBytes) signatures = NULL;
+  gboolean ret = FALSE;
+  gboolean gpg_verify_summary;
+
+  g_return_val_if_fail (OSTREE_REPO (self), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (!ostree_repo_get_remote_option (self, name, "metalink", NULL,
+                                      &metalink_url_string, error))
+    goto out;
+
+  if (!repo_remote_fetch_summary (self,
+                                  name,
+                                  metalink_url_string,
+                                  options,
+                                  &summary,
+                                  &signatures,
+                                  cancellable,
+                                  error))
+    goto out;
+
+  if (!ostree_repo_remote_get_gpg_verify_summary (self, name, &gpg_verify_summary, error))
+    goto out;
+
+  if (gpg_verify_summary && signatures == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "GPG verification enabled, but no summary signatures found (use gpg-verify-summary=false in remote config to disable)");
+      goto out;
+    }
+
+  /* Verify any summary signatures. */
+  if (gpg_verify_summary && summary != NULL && signatures != NULL)
+    {
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+
+      result = ostree_repo_verify_summary (self,
+                                           name,
+                                           summary,
+                                           signatures,
+                                           cancellable,
+                                           error);
+      if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+        goto out;
+    }
+
+  if (out_summary != NULL)
+    *out_summary = g_steal_pointer (&summary);
+
+  if (out_signatures != NULL)
+    *out_signatures = g_steal_pointer (&signatures);
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+#else /* HAVE_LIBSOUP */
+
+/**
+ * ostree_repo_pull_with_options:
+ * @self: Repo
+ * @remote_name: Name of remote
+ * @options: A GVariant a{sv} with an extensible set of flags.
+ * @progress: (allow-none): Progress
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Like ostree_repo_pull(), but supports an extensible set of flags.
+ * The following are currently defined:
+ *
+ *   * refs (as): Array of string refs
+ *   * flags (i): An instance of #OstreeRepoPullFlags
+ *   * subdir (s): Pull just this subdirectory
+ *   * override-remote-name (s): If local, add this remote to refspec
+ *   * gpg-verify (b): GPG verify commits
+ *   * gpg-verify-summary (b): GPG verify summary
+ *   * depth (i): How far in the history to traverse; default is 0, -1 means infinite
+ *   * disable-static-deltas (b): Do not use static deltas
+ *   * require-static-deltas (b): Require static deltas
+ *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
+ *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
+ *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
+ */
+gboolean
+ostree_repo_pull_with_options (OstreeRepo             *self,
+                               const char             *remote_name,
+                               GVariant               *options,
+                               OstreeAsyncProgress    *progress,
+                               GCancellable           *cancellable,
+                               GError                **error)
+{
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+  return FALSE;
+}
+
+/**
+ * ostree_repo_remote_fetch_summary_with_options:
+ * @self: Self
+ * @name: name of a remote
+ * @options: (nullable): A GVariant a{sv} with an extensible set of flags
+ * @out_summary: (nullable): return location for raw summary data, or %NULL
+ * @out_signatures: (nullable): return location for raw summary signature
+ *                              data, or %NULL
+ * @cancellable: a #GCancellable
+ * @error: a #GError
+ *
+ * Like ostree_repo_remote_fetch_summary(), but supports an extensible set of flags.
+ * The following are currently defined:
+ *
+ * - override-url (s): Fetch summary from this URL if remote specifies no metalink in options
+ *
+ * Returns: %TRUE on success, %FALSE on failure
+ */
+gboolean
+ostree_repo_remote_fetch_summary_with_options (OstreeRepo    *self,
+                                               const char    *name,
+                                               GVariant      *options,
+                                               GBytes       **out_summary,
+                                               GBytes       **out_signatures,
+                                               GCancellable  *cancellable,
+                                               GError       **error)
+{
+  g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                       "This version of ostree was built without libsoup, and cannot fetch over HTTP");
+  return FALSE;
+}
+
+#endif /* HAVE_LIBSOUP */

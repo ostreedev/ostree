@@ -95,6 +95,7 @@ libostree_1_la_SOURCES = \
 	src/libostree/ostree-repo.c \
 	src/libostree/ostree-repo-checkout.c \
 	src/libostree/ostree-repo-commit.c \
+	src/libostree/ostree-repo-pull.c \
 	src/libostree/ostree-repo-libarchive.c \
 	src/libostree/ostree-repo-prune.c \
 	src/libostree/ostree-repo-refs.c \
@@ -159,7 +160,6 @@ libostree_1_la_SOURCES += \
 	src/libostree/ostree-fetcher.c \
 	src/libostree/ostree-metalink.h \
 	src/libostree/ostree-metalink.c \
-	src/libostree/ostree-repo-pull.c \
 	$(NULL)
 libostree_1_la_CFLAGS += $(OT_INTERNAL_SOUP_CFLAGS)
 libostree_1_la_LIBADD += $(OT_INTERNAL_SOUP_LIBS)

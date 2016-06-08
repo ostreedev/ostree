@@ -23,10 +23,6 @@
 #include "ostree-repo.h"
 #include "libglnx.h"
 
-#ifdef HAVE_LIBSOUP
-#include "ostree-fetcher.h"
-#endif
-
 G_BEGIN_DECLS
 
 #define OSTREE_DELTAPART_VERSION (0)
@@ -233,13 +229,6 @@ _ostree_repo_commit_modifier_apply (OstreeRepo               *self,
 gboolean
 _ostree_repo_remote_name_is_file (const char *remote_name);
 
-#ifdef HAVE_LIBSOUP
-OstreeFetcher *
-_ostree_repo_remote_new_fetcher (OstreeRepo  *self,
-                                 const char  *remote_name,
-                                 GError     **error);
-#endif
-
 OstreeGpgVerifyResult *
 _ostree_repo_gpg_verify_with_metadata (OstreeRepo          *self,
                                        GBytes              *signed_data,
@@ -326,23 +315,5 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
 gboolean
 _ostree_repo_update_mtime (OstreeRepo        *self,
                            GError           **error);
-
-/* Load the summary from the cache if the provided .sig file is the same as the
-   cached version.  */
-gboolean
-_ostree_repo_load_cache_summary_if_same_sig (OstreeRepo        *self,
-                                             const char        *remote,
-                                             GBytes            *summary_sig,
-                                             GBytes            **summary,
-                                             GCancellable      *cancellable,
-                                             GError           **error);
-
-gboolean
-_ostree_repo_cache_summary (OstreeRepo        *self,
-                            const char        *remote,
-                            GBytes            *summary,
-                            GBytes            *summary_sig,
-                            GCancellable      *cancellable,
-                            GError           **error);
 
 G_END_DECLS
