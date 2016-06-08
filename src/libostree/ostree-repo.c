@@ -4623,7 +4623,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GVariant) normalized = NULL;
   guint i;
 
-  summary_data = ot_file_map_contents_bytes (self->repo_dir_fd, "summary", error);
+  summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
   if (!summary_data)
     goto out;
 

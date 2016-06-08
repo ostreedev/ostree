@@ -232,9 +232,9 @@ ot_openat_ignore_enoent (int dfd,
 }
 
 GBytes *
-ot_file_map_contents_bytes (int dfd,
-                            const char *path,
-                            GError **error)
+ot_file_mapat_bytes (int dfd,
+                     const char *path,
+                     GError **error)
 {
   glnx_fd_close int fd = openat (dfd, path, O_RDONLY | O_CLOEXEC);
   g_autoptr(GMappedFile) mfile = NULL;
