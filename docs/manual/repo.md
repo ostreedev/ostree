@@ -47,6 +47,22 @@ payload sections.  The header contains uid, gid, mode, and symbolic
 link target (for symlinks), as well as extended attributes.  After the
 header, for regular files, the content follows.
 
+The OSTree data format intentionally does not contain timestamps. The reasoning
+is that data files may be downloaded at different times, and by different build
+systems, and so will have different timestamps but identical physical content.
+These files may be large, so most users would like them to be shared, both in
+the repository and between the repository and deployments.
+
+This could cause problems with programs that check if files are out-of-date by
+comparing timestamps. For Git, the logical choice is to not mess with
+timestamps, because unnecessary rebuilding is better than a broken tree.
+However, OSTree has to hardlink files to check them out, and commits are assumed
+to be internally consistent with no build steps needed. For this reason, OSTree
+acts as though all timestamps are set to time_t 1, so that comparisons will be
+considered up-to-date. 1 is a better choice than 0 because some programs use 0
+as a special value; for example, GNU Tar warns of an "implausibly old time
+stamp" with 0.
+
 # Repository types and locations
 
 Also unlike git, an OSTree repository can be in one of three separate
