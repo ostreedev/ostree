@@ -942,6 +942,14 @@ ostree_repo_is_writable (OstreeRepo *self,
   return self->writable;
 }
 
+/**
+ * _ostree_repo_update_mtime:
+ * @self: Repo
+ * @error: a #GError
+ *
+ * Bump the mtime of the repository so that programs
+ * can detect that the refs have updated.
+ */
 gboolean
 _ostree_repo_update_mtime (OstreeRepo        *self,
                            GError           **error)

@@ -210,7 +210,6 @@ commit_loose_object_trusted (OstreeRepo        *self,
   else
     {
       int res;
-      struct timespec times[2];
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
         {
@@ -266,12 +265,9 @@ commit_loose_object_trusted (OstreeRepo        *self,
         {
           /* To satisfy tools such as guile which compare mtimes
            * to determine whether or not source files need to be compiled,
-           * set the modification time to 0.
+           * set the modification time to OSTREE_TIMESTAMP.
            */
-          times[0].tv_sec = 0; /* atime */
-          times[0].tv_nsec = UTIME_OMIT;
-          times[1].tv_sec = 0; /* mtime */
-          times[1].tv_nsec = 0;
+          const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
           do
             res = futimens (fd, times);
           while (G_UNLIKELY (res == -1 && errno == EINTR));

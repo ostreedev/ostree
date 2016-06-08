@@ -982,9 +982,9 @@ file_to_archive_entry_common (GFile         *root,
     }
 
   archive_entry_update_pathname_utf8 (entry, pathstr);
-  archive_entry_set_ctime (entry, ts, 0);
-  archive_entry_set_mtime (entry, ts, 0);
-  archive_entry_set_atime (entry, ts, 0);
+  archive_entry_set_ctime (entry, ts, OSTREE_TIMESTAMP);
+  archive_entry_set_mtime (entry, ts, OSTREE_TIMESTAMP);
+  archive_entry_set_atime (entry, ts, OSTREE_TIMESTAMP);
   archive_entry_set_uid (entry, g_file_info_get_attribute_uint32 (file_info, "unix::uid"));
   archive_entry_set_gid (entry, g_file_info_get_attribute_uint32 (file_info, "unix::gid"));
   archive_entry_set_mode (entry, g_file_info_get_attribute_uint32 (file_info, "unix::mode"));

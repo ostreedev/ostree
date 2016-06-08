@@ -752,12 +752,12 @@ checkout_tree_at (OstreeRepo                        *self,
         }
     }
 
-  /* Set directory mtime to 0, so that it is constant for all checkouts.
+  /* Set directory mtime to OSTREE_TIMESTAMP, so that it is constant for all checkouts.
    * Must be done after setting permissions and creating all children.
    */
   if (!did_exist)
     {
-      const struct timespec times[2] = { { 0, UTIME_OMIT }, { 0, } };
+      const struct timespec times[2] = { { OSTREE_TIMESTAMP, UTIME_OMIT }, { OSTREE_TIMESTAMP, 0} };
       do
         res = futimens (destination_dfd, times);
       while (G_UNLIKELY (res == -1 && errno == EINTR));
