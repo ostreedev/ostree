@@ -632,7 +632,7 @@ checkout_tree_at (OstreeRepo                        *self,
 {
   gboolean ret = FALSE;
   gboolean did_exist = FALSE;
-  int destination_dfd = -1;
+  glnx_fd_close int destination_dfd = -1;
   int res;
   g_autoptr(GVariant) xattrs = NULL;
   g_autoptr(GFileEnumerator) dir_enum = NULL;
@@ -779,8 +779,6 @@ checkout_tree_at (OstreeRepo                        *self,
 
   ret = TRUE;
  out:
-  if (destination_dfd != -1)
-    (void) close (destination_dfd);
   return ret;
 }
 

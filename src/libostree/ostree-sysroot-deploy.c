@@ -253,8 +253,8 @@ ensure_directory_from_template (int                 orig_etc_fd,
                                 GError            **error)
 {
   gboolean ret = FALSE;
-  int src_dfd = -1;
-  int target_dfd = -1;
+  glnx_fd_close int src_dfd = -1;
+  glnx_fd_close int target_dfd = -1;
 
   g_assert (path != NULL);
   g_assert (*path != '/' && *path != '\0');
@@ -312,10 +312,6 @@ ensure_directory_from_template (int                 orig_etc_fd,
       target_dfd = -1;
     }
  out:
-  if (src_dfd != -1)
-    (void) close (src_dfd);
-  if (target_dfd != -1)
-    (void) close (target_dfd);
   return ret;
 }
 
@@ -337,7 +333,7 @@ copy_modified_config_file (int                 orig_etc_fd,
   gboolean ret = FALSE;
   struct stat modified_stbuf;
   struct stat new_stbuf;
-  int dest_parent_dfd = -1;
+  glnx_fd_close int dest_parent_dfd = -1;
 
   if (fstatat (modified_etc_fd, path, &modified_stbuf, AT_SYMLINK_NOFOLLOW) < 0)
     {
@@ -427,8 +423,6 @@ copy_modified_config_file (int                 orig_etc_fd,
 
   ret = TRUE;
  out:
-  if (dest_parent_dfd != -1)
-    (void) close (dest_parent_dfd);
   return ret;
 }
 

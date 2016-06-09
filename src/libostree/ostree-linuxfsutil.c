@@ -107,7 +107,7 @@ _ostree_linuxfs_alter_immutable_flag (GFile         *path,
                                       GError       **error)
 {
   gboolean ret = FALSE;
-  int fd = -1;
+  glnx_fd_close int fd = -1;
 
   if (g_cancellable_set_error_if_cancelled (cancellable, error))
     return FALSE;
@@ -129,7 +129,5 @@ _ostree_linuxfs_alter_immutable_flag (GFile         *path,
 
   ret = TRUE;
  out:
-  if (fd != -1)
-    (void) close (fd);
   return ret;
 }
