@@ -1476,7 +1476,7 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
   /* FIXME: Added since valgrind in el7 doesn't know about
    * `syncfs`...we should delete this later.
    */
-  if (g_getenv ("OSTREE_SUPRESS_SYNCFS") == NULL)
+  if (g_getenv ("OSTREE_SUPPRESS_SYNCFS") == NULL)
     {
       if (syncfs (self->tmp_dir_fd) < 0)
         {
