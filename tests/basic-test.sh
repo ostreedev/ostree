@@ -386,9 +386,9 @@ else
     $OSTREE checkout test2 test2-checkout
 fi
 stat '--format=%Y' test2-checkout/baz/cow > cow-mtime
-assert_file_has_content cow-mtime 0
+assert_file_has_content cow-mtime 1
 stat '--format=%Y' test2-checkout/baz/deeper > deeper-mtime
-assert_file_has_content deeper-mtime 0
+assert_file_has_content deeper-mtime 1
 echo "ok content mtime"
 
 cd ${test_tmpdir}
