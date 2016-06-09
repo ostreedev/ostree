@@ -4187,16 +4187,16 @@ _formatted_time_remaining_from_seconds (guint64 seconds_remaining)
   GString *description = g_string_new (NULL);
 
   if (days_remaining)
-    g_string_append_printf (description, "%lu days ", days_remaining);
+    g_string_append_printf (description, "%" G_GUINT64_FORMAT " days ", days_remaining);
 
   if (hours_remaining)
-    g_string_append_printf (description, "%lu hours ", hours_remaining % 24);
+    g_string_append_printf (description, "%" G_GUINT64_FORMAT " hours ", hours_remaining % 24);
 
   if (minutes_remaining)
-    g_string_append_printf (description, "%lu minutes ", minutes_remaining % 60);
+    g_string_append_printf (description, "%" G_GUINT64_FORMAT " minutes ", minutes_remaining % 60);
 
   if (seconds_remaining)
-    g_string_append_printf (description, "%lu seconds ", seconds_remaining % 60);
+    g_string_append_printf (description, "%" G_GUINT64_FORMAT " seconds ", seconds_remaining % 60);
 
   return g_string_free (description, FALSE);
 }
