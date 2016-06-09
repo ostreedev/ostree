@@ -235,7 +235,7 @@ OSTree supports extended attributes and uses SHA256 instead of Git's SHA1. It
 "checks out" files via hardlinks, rather than copying, and thus requires the
 checkout to be immutable. At the moment, OSTree commits may have at most one
 parent, as opposed to Git which allows an arbitrary number. Git uses a
-smart-delta protocol for updates, while OSTree uses 1 HTTP request per chagned
+smart-delta protocol for updates, while OSTree uses 1 HTTP request per changed
 file, or can generate static deltas.
 
 ## Conda
