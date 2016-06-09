@@ -1473,10 +1473,16 @@ ostree_repo_commit_transaction (OstreeRepo                  *self,
       goto out;
     }
 
-  if (syncfs (self->tmp_dir_fd) < 0)
+  /* FIXME: Added since valgrind in el7 doesn't know about
+   * `syncfs`...we should delete this later.
+   */
+  if (g_getenv ("OSTREE_SUPRESS_SYNCFS") == NULL)
     {
-      glnx_set_error_from_errno (error);
-      goto out;
+      if (syncfs (self->tmp_dir_fd) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
 
   if (!rename_pending_loose_objects (self, cancellable, error))
