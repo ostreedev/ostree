@@ -187,8 +187,8 @@ store, while Nix does not have this functionality.
 
 Nix used to use the immutable bit to prevent modifications to /nix/store, but
 now it uses a read-only bind mount. The bind mount can be privately remounted,
-allowing per-process privileged write access. OSTree just uses the immutable
-bit on the root of the deployment.
+allowing per-process privileged write access. OSTree uses the immutable
+bit on the root of the deployment, and mounts /usr as read-only.
 
 NixOS supports switching OS images on-the-fly, by maintaining both booted-system
 and current-system roots. It is not clear how well this approach works. OSTree
