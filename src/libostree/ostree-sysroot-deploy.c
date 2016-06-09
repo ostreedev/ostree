@@ -172,8 +172,8 @@ copy_dir_recurse (int              src_parent_dfd,
                   GError         **error)
 {
   gboolean ret = FALSE;
-  int src_dfd = -1;
-  int dest_dfd = -1;
+  glnx_fd_close int src_dfd = -1;
+  glnx_fd_close int dest_dfd = -1;
   DIR *srcd = NULL;
   struct dirent *dent;
 
@@ -240,10 +240,6 @@ copy_dir_recurse (int              src_parent_dfd,
       /* Note the srcd owns src_dfd */
       src_dfd = -1;
     }
-  if (src_dfd != -1)
-    (void) close (src_dfd);
-  if (dest_dfd != -1)
-    (void) close (dest_dfd);
   return ret;
 }
 
@@ -459,9 +455,9 @@ merge_etc_changes (GFile          *orig_etc,
   g_autoptr(GPtrArray) removed = NULL;
   g_autoptr(GPtrArray) added = NULL;
   guint i;
-  int orig_etc_fd = -1;
-  int modified_etc_fd = -1;
-  int new_etc_fd = -1; 
+  glnx_fd_close int orig_etc_fd = -1;
+  glnx_fd_close int modified_etc_fd = -1;
+  glnx_fd_close int new_etc_fd = -1; 
 
   modified = g_ptr_array_new_with_free_func ((GDestroyNotify) ostree_diff_item_unref);
   removed = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
@@ -538,12 +534,6 @@ merge_etc_changes (GFile          *orig_etc,
 
   ret = TRUE;
  out:
-  if (orig_etc_fd != -1)
-    (void) close (orig_etc_fd);
-  if (modified_etc_fd != -1)
-    (void) close (modified_etc_fd);
-  if (new_etc_fd != -1)
-    (void) close (new_etc_fd);
   return ret;
 }
 

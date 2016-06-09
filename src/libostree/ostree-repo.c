@@ -2925,7 +2925,7 @@ load_metadata_internal (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  int fd = -1;
+  glnx_fd_close int fd = -1;
   g_autoptr(GInputStream) ret_stream = NULL;
   g_autoptr(GVariant) ret_variant = NULL;
 
@@ -2953,8 +2953,6 @@ load_metadata_internal (OstreeRepo       *self,
           mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
           if (!mfile)
             goto out;
-          (void) close (fd); /* Ignore errors, we have it mapped */
-          fd = -1;
           ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
                                                  g_mapped_file_get_contents (mfile),
                                                  g_mapped_file_get_length (mfile),
@@ -2999,8 +2997,6 @@ load_metadata_internal (OstreeRepo       *self,
   ot_transfer_out_value (out_variant, &ret_variant);
   ot_transfer_out_value (out_stream, &ret_stream);
  out:
-  if (fd != -1)
-    (void) close (fd);
   return ret;
 }
 
