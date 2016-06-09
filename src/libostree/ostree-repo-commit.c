@@ -210,7 +210,6 @@ commit_loose_object_trusted (OstreeRepo        *self,
   else
     {
       int res;
-      struct timespec times[2];
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
         {
