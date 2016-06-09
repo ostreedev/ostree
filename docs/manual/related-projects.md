@@ -187,18 +187,18 @@ store, while Nix does not have this functionality.
 
 Nix used to use the immutable bit to prevent modifications to /nix/store, but
 now it uses a read-only bind mount. The bind mount can be privately remounted,
-allowing per-process privileged write access. OSTree still uses the immutable
-bit, which is awkward, since it has to be briefly removed to make a hard link
-when checking out.
+allowing per-process privileged write access. OSTree just uses the immutable
+bit on the root of the deployment.
 
 NixOS supports switching OS images on-the-fly, by maintaining both booted-system
 and current-system roots. It is not clear how well this approach works. OSTree
 currently requries a reboot to switch images.
 
 Finally, NixOS supports installing user-specific packages from trusted
-repositories without requiring root, using a trusted daemon. OSTree could
-similarly support this with a setuid executable or trusted daemon, but there is
-still the problem of where to deploy user-specific programs.
+repositories without requiring root, using a trusted daemon.
+[Flatpak](https://lwn.net/Articles/687909/), based on OSTree, similarly has a
+policykit-based system helper that allows you to authenticate via polkit to
+install into the system repository.
 
 ## Solaris IPS
 
@@ -233,23 +233,24 @@ Although OSTree has been called "Git for Binaries", and the two share the idea
 of a hashed content store, the implementation details are quite different.
 OSTree supports extended attributes and uses SHA256 instead of Git's SHA1. It
 "checks out" files via hardlinks, rather than copying, and thus requires the
-files to be immutable. At the moment, OSTree commits may have at most one
+checkout to be immutable. At the moment, OSTree commits may have at most one
 parent, as opposed to Git which allows an arbitrary number. Git uses a
-smart-delta protocol for updates, while OSTree uses (slow) HTTP requests or
-static deltas.
+smart-delta protocol for updates, while OSTree uses 1 HTTP request per chagned
+file, or can generate static deltas.
 
 ## Conda
 
-Conda is an "OS-agnostic, system-level binary package manager and ecosystem";
-although most well-known for its accompanying Python distribution anaconda, its
-scope has been expanding quickly. The package format is very similar to
-well-known ones such as RPM. However, unlike typical RPMs, the packages are
-built to be relocatable. Also, the package manager runs natively on Windows.
-Conda's main advantage is its ability to install collections of packages into
-"environments" by unpacking them all to the same directory. Conda reduces
-duplication across environments using hardlinks, similar to OSTree's sharing
-between deployments (although Conda uses package / file path instead of file
-hash). Overall, it is quite similar to rpm-ostree in functionality and scope.
+[Conda](http://conda.pydata.org/docs/) is an "OS-agnostic, system-level binary
+package manager and ecosystem"; although most well-known for its accompanying
+Python distribution anaconda, its scope has been expanding quickly. The package
+format is very similar to well-known ones such as RPM. However, unlike typical
+RPMs, the packages are built to be relocatable. Also, the package manager runs
+natively on Windows. Conda's main advantage is its ability to install
+collections of packages into "environments" by unpacking them all to the same
+directory. Conda reduces duplication across environments using hardlinks,
+similar to OSTree's sharing between deployments (although Conda uses package /
+file path instead of file hash). Overall, it is quite similar to rpm-ostree in
+functionality and scope.
 
 ## rpm-ostree
 
