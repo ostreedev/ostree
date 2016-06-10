@@ -809,6 +809,7 @@ meta_fetch_on_complete (GObject           *object,
   GError *local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
+  gboolean free_fetch_data = FALSE;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   checksum_obj = ostree_object_to_string (checksum, objtype);
@@ -874,6 +875,8 @@ meta_fetch_on_complete (GObject           *object,
 
       if (!fetch_data->object_is_stored)
         enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
+
+      free_fetch_data = TRUE;
     }
   else
     {
@@ -911,7 +914,7 @@ meta_fetch_on_complete (GObject           *object,
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  if (local_error)
+  if (local_error || free_fetch_data)
     {
       g_variant_unref (fetch_data->object);
       g_free (fetch_data);
