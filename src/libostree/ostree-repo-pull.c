@@ -1458,6 +1458,7 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   if (out_delta_superblock)
     *out_delta_superblock = g_steal_pointer (&ret_delta_superblock);
  out:
+  g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
   return ret;
 }
 
