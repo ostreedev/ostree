@@ -157,6 +157,7 @@ variant_map_data_destroy (gpointer data)
 {
   VariantMapData *mdata = data;
   (void) munmap (mdata->addr, mdata->len);
+  g_free (mdata);
 }
 
 gboolean
