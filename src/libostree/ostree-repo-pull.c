@@ -633,6 +633,7 @@ content_fetch_on_write_complete (GObject        *object,
   const char *expected_checksum;
   g_autofree guchar *csum = NULL;
   g_autofree char *checksum = NULL;
+  g_autofree char *checksum_obj = NULL;
 
   if (!ostree_repo_write_content_finish ((OstreeRepo*)object, result, 
                                          &csum, error))
@@ -643,7 +644,8 @@ content_fetch_on_write_complete (GObject        *object,
   ostree_object_name_deserialize (fetch_data->object, &expected_checksum, &objtype);
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
-  g_debug ("write of %s complete", ostree_object_to_string (checksum, objtype));
+  checksum_obj = ostree_object_to_string (checksum, objtype);
+  g_debug ("write of %s complete", checksum_obj);
 
   if (strcmp (checksum, expected_checksum) != 0)
     {
@@ -679,6 +681,7 @@ content_fetch_on_complete (GObject        *object,
   g_autoptr(GInputStream) object_input = NULL;
   g_autofree char *temp_path = NULL;
   const char *checksum;
+  g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
 
   temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
@@ -688,7 +691,8 @@ content_fetch_on_complete (GObject        *object,
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   g_assert (objtype == OSTREE_OBJECT_TYPE_FILE);
 
-  g_debug ("fetch of %s complete", ostree_object_to_string (checksum, objtype));
+  checksum_obj = ostree_object_to_string (checksum, objtype);
+  g_debug ("fetch of %s complete", checksum_obj);
 
   if (pull_data->is_mirror && pull_data->repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2)
     {
@@ -800,13 +804,15 @@ meta_fetch_on_complete (GObject           *object,
   g_autoptr(GVariant) metadata = NULL;
   g_autofree char *temp_path = NULL;
   const char *checksum;
+  g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
   GError *local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
-  g_debug ("fetch of %s%s complete", ostree_object_to_string (checksum, objtype),
+  checksum_obj = ostree_object_to_string (checksum, objtype);
+  g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
   temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
