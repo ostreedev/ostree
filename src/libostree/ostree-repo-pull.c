@@ -2182,7 +2182,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   guint64 end_time;
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
-  char **refs_to_fetch = NULL;
+  g_autofree char **refs_to_fetch = NULL;
   char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
