@@ -37,7 +37,7 @@ function libtestExec(shellCode) {
     let testdatadir = GLib.getenv("G_TEST_SRCDIR");
     let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
     let proc = GSystem.Subprocess.new_simple_argv(['bash', '-c',
-						   '. ' + GLib.shell_quote(libtestPath) + '; ' + shellCode],
+						   'set -xeuo pipefail; . ' + GLib.shell_quote(libtestPath) + '; ' + shellCode],
 						  GSystem.SubprocessStreamDisposition.INHERIT,
 						  GSystem.SubprocessStreamDisposition.INHERIT,
 						  null);
