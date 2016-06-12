@@ -33,8 +33,8 @@ if ! test -f libglnx/README.md || ! test -f bsdiff/README.md; then
     git submodule update --init
 fi
 # Workaround automake bug with subdir-objects and computed paths
-sed -e 's,$(libglnx_srcpath),'${srcdir}/libglnx,g < libglnx/Makefile-libglnx.am >libglnx/Makefile-libglnx.am.inc
-sed -e 's,$(libbsdiff_srcpath),'${srcdir}/bsdiff,g < bsdiff/Makefile-bsdiff.am >bsdiff/Makefile-bsdiff.am.inc
+sed -e 's,$(libglnx_srcpath),libglnx,g' < libglnx/Makefile-libglnx.am >libglnx/Makefile-libglnx.am.inc
+sed -e 's,$(libbsdiff_srcpath),bsdiff,g' < bsdiff/Makefile-bsdiff.am >bsdiff/Makefile-bsdiff.am.inc
 
 autoreconf --force --install --verbose
 
