@@ -30,9 +30,9 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 
 uninstalled_test_data = tests/ostree-symlink-stamp
 
-uninstalled_test_scripts = tests/test-symbols.sh
+dist_uninstalled_test_scripts = tests/test-symbols.sh
 
-test_scripts = \
+dist_test_scripts = \
 	tests/test-basic.sh \
 	tests/test-pull-subpath.sh \
 	tests/test-archivez.sh \
@@ -83,15 +83,15 @@ test_scripts = \
 	$(NULL)
 
 if BUILDOPT_FUSE
-test_scripts += tests/test-rofiles-fuse.sh
+dist_test_scripts += tests/test-rofiles-fuse.sh
 endif
 
 # This one uses corrupt-repo-ref.js
 if BUILDOPT_GJS
-test_scripts += tests/test-corruption.sh
+dist_test_scripts += tests/test-corruption.sh
 endif
 
-installed_test_data = tests/archive-test.sh \
+dist_installed_test_data = tests/archive-test.sh \
 	tests/pull-test.sh \
 	tests/libtest.sh \
 	tests/admin-test.sh \
@@ -102,7 +102,7 @@ installed_test_data = tests/archive-test.sh \
 	tests/pre-endian-deltas-repo-little.tar.xz \
 	$(NULL)
 
-test_extra_scripts = tests/bootloader-entries-crosscheck.py \
+dist_test_extra_scripts = tests/bootloader-entries-crosscheck.py \
      tests/ostree-grub-generator
 
 # We can't use nobase_ as we need to strip off the tests/, can't
@@ -124,7 +124,7 @@ gpgvinsttest_DATA = $(addprefix tests/gpg-verify-data/, \
 endif
 
 if BUILDOPT_GJS
-installed_test_scripts = tests/test-core.js \
+dist_installed_test_scripts = tests/test-core.js \
 	tests/test-sizes.js \
 	tests/test-sysroot.js \
 	$(NULL)
