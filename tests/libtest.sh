@@ -69,6 +69,7 @@ export TEST_GPG_KEYID_3="DF444D67"
 # this by copying locally.
 echo "Copying gpghome to ${test_tmpdir}"
 cp -a "${test_srcdir}/gpghome" ${test_tmpdir}
+chmod -R u+w "${test_tmpdir}"
 export TEST_GPG_KEYHOME=${test_tmpdir}/gpghome
 export OSTREE_GPG_HOME=${test_tmpdir}/gpghome/trusted
 
