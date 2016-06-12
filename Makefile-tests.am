@@ -244,7 +244,7 @@ tests/libreaddir-rand.so: Makefile
 ALL_LOCAL_RULES += tests/libreaddir-rand.so
 CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp tests/ostree
 
-tests/ostree-symlink-stamp:
+tests/ostree-symlink-stamp: Makefile
 	@real_bin=`cd $(top_builddir) && libtool --mode=execute echo ostree`; \
 	ln -sf "$${real_bin}" tests/ostree; \
 	touch $@
