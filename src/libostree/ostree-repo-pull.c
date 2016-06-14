@@ -2349,6 +2349,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
+  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->legacy_transaction_resuming,
+                                        cancellable, error))
+    goto out;
+
+  if (pull_data->legacy_transaction_resuming)
+    g_debug ("resuming legacy transaction");
+
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
@@ -2656,13 +2663,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
   if (pull_data->fetcher == NULL)
     goto out;
-
-  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->legacy_transaction_resuming,
-                                        cancellable, error))
-    goto out;
-
-  if (pull_data->legacy_transaction_resuming)
-    g_debug ("resuming legacy transaction");
 
   g_hash_table_iter_init (&hash_iter, commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
