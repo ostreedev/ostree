@@ -2385,6 +2385,59 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   {
+    if (refs_to_fetch != NULL)
+      {
+        char **strviter = refs_to_fetch;
+        char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
+
+        while (*strviter)
+          {
+            const char *branch = *strviter;
+
+            if (ostree_validate_checksum_string (branch, NULL))
+              {
+                char *key = g_strdup (branch);
+                g_hash_table_insert (commits_to_fetch, key, key);
+              }
+            else
+              {
+                char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
+                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
+              }
+
+            strviter++;
+            if (commitid_strviter)
+              commitid_strviter++;
+          }
+      }
+    else
+      {
+        g_autofree char **configured_branches = NULL;
+        if (!ostree_repo_get_remote_list_option (self,
+                                                remote_name_or_baseurl, "branches",
+                                                &configured_branches, error))
+          goto out;
+
+        char **branches_iter;
+
+        branches_iter = configured_branches;
+
+        if (!(branches_iter && *branches_iter) && !pull_data->is_mirror)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "No configured branches for remote %s", remote_name_or_baseurl);
+            goto out;
+          }
+        for (;branches_iter && *branches_iter; branches_iter++)
+          {
+            const char *branch = *branches_iter;
+
+            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+          }
+      }
+  }
+
+  {
     SoupURI *uri = NULL;
     g_autoptr(GBytes) bytes_summary = NULL;
     g_autoptr(GBytes) bytes_sig = NULL;
@@ -2394,6 +2447,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autoptr(GVariant) deltas = NULL;
     g_autoptr(GVariant) additional_metadata = NULL;
     gboolean summary_from_cache = FALSE;
+    gboolean fetch_all_refs = FALSE;
 
     if (!pull_data->summary_data_sig)
       {
@@ -2494,6 +2548,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           }
       }
 
+    fetch_all_refs = pull_data->is_mirror && (g_hash_table_size (requested_refs_to_fetch) == 0);
+
+    if (fetch_all_refs && !pull_data->summary)
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                    "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
+        goto out;
+      }
+
     if (pull_data->summary)
       {
         refs = g_variant_get_child_value (pull_data->summary, 0);
@@ -2508,7 +2571,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (!ostree_validate_rev (refname, error))
               goto out;
 
-            if (pull_data->is_mirror && !refs_to_fetch)
+            if (fetch_all_refs)
               g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
           }
 
@@ -2532,69 +2595,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             g_hash_table_insert (pull_data->summary_deltas_checksums,
                                  g_strdup (delta),
                                  csum_data);
-          }
-      }
-  }
-
-  {
-    g_autofree char **configured_branches = NULL;
-    if (!ostree_repo_get_remote_list_option (self,
-                                            remote_name_or_baseurl, "branches",
-                                            &configured_branches, error))
-      goto out;
-
-    if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
-      {
-        if (!pull_data->summary_data)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
-            goto out;
-          }
-
-      }
-    else if (refs_to_fetch != NULL)
-      {
-        char **strviter = refs_to_fetch;
-        char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
-
-        while (*strviter)
-          {
-            const char *branch = *strviter;
-
-            if (ostree_validate_checksum_string (branch, NULL))
-              {
-                char *key = g_strdup (branch);
-                g_hash_table_insert (commits_to_fetch, key, key);
-              }
-            else
-              {
-                char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
-                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
-              }
-
-            strviter++;
-            if (commitid_strviter)
-              commitid_strviter++;
-          }
-      }
-    else
-      {
-        char **branches_iter;
-
-        branches_iter = configured_branches;
-
-        if (!(branches_iter && *branches_iter))
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                        "No configured branches for remote %s", remote_name_or_baseurl);
-            goto out;
-          }
-        for (;branches_iter && *branches_iter; branches_iter++)
-          {
-            const char *branch = *branches_iter;
-
-            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
           }
       }
   }
