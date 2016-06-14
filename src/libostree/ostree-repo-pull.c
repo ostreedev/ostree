@@ -2471,9 +2471,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autoptr(GBytes) bytes_sig = NULL;
     g_autofree char *ret_contents = NULL;
     gsize i, n;
-    g_autoptr(GVariant) refs = NULL;
-    g_autoptr(GVariant) deltas = NULL;
-    g_autoptr(GVariant) additional_metadata = NULL;
     gboolean summary_from_cache = FALSE;
     gboolean fetch_all_refs = FALSE;
 
@@ -2587,6 +2584,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (pull_data->summary)
       {
+        g_autoptr(GVariant) refs = NULL;
+        g_autoptr(GVariant) deltas = NULL;
+        g_autoptr(GVariant) additional_metadata = NULL;
         refs = g_variant_get_child_value (pull_data->summary, 0);
         n = g_variant_n_children (refs);
         for (i = 0; i < n; i++)
