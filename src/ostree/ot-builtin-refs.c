@@ -75,14 +75,14 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
       g_autofree char *checksum = NULL;
       g_autofree char *checksum_existing = NULL;
 
-      if (ostree_repo_resolve_rev (repo, opt_create, TRUE, &checksum_existing, error))
+      if (!ostree_repo_resolve_rev (repo, opt_create, TRUE, &checksum_existing, error))
+        goto out;
+
+      if (checksum_existing != NULL)
         {
-          if (checksum_existing != NULL)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "--create specified but ref %s already exists", opt_create);
-              goto out;
-            }
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                       "--create specified but ref %s already exists", opt_create);
+          goto out;
         }
 
       if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
