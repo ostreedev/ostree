@@ -72,11 +72,21 @@ ${CMD_PREFIX} ostree --repo=repo commit --branch=foo/ctest -m ctest -s ctest tre
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount
 assert_file_has_content refscount "^5$"
 
-${CMD_PREFIX} ostree --repo=repo refs --create=ctest-new 2>/dev/null && (echo 1>&2 "refs --create unexpectedly succeeded without specifying an existing ref!"; exit 1)
-${CMD_PREFIX} ostree --repo=repo refs ctest --create 2>/dev/null && (echo 1>&2 "refs --create unexpectedly succeeded without specifying the ref to create!"; exit 1)
-${CMD_PREFIX} ostree --repo=repo refs does-not-exist --create=ctest-new 2>/dev/null && (echo 1>&2 "refs --create unexpectedly succeeded for a prefix that doesn't exist!"; exit 1)
-${CMD_PREFIX} ostree --repo=repo refs ctest --create=foo 2>/dev/null && (echo 1>&2 "refs --create unexpectedly succeeded for a prefix that is already in use by a folder!"; exit 1)
-${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest 2>/dev/null && (echo 1>&2 "refs --create unexpectedly succeeded in overwriting an existing prefix!"; exit 1)
+if ${CMD_PREFIX} ostree --repo=repo refs --create=ctest-new; then
+    assert_not_reached "refs --create unexpectedly succeeded without specifying an existing ref!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs ctest --create; then
+    assert_not_reached "refs --create unexpectedly succeeded without specifying the ref to create!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs does-not-exist --create=ctest-new; then
+    assert_not_reached "refs --create unexpectedly succeeded for a prefix that doesn't exist!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs ctest --create=foo; then
+    assert_not_reached "refs --create unexpectedly succeeded for a prefix that is already in use by a folder!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest; then
+    assert_not_reached "refs --create unexpectedly succeeded in overwriting an existing prefix!"
+fi
 
 #Check to see if any uncleaned tmp files were created after failed --create
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create1

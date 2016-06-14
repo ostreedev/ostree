@@ -52,7 +52,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
                                       cancellable, error))
         goto out;
     }
-  else if(opt_create)
+  else if (opt_create)
     {
       if (!ostree_repo_list_refs_ext (repo, NULL, &refs, OSTREE_REPO_LIST_REFS_EXT_NONE,
                                       cancellable, error))
@@ -70,36 +70,25 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
           g_print ("%s\n", ref);
         }
     }
-  else if(opt_create)
+  else if (opt_create)
     {
-      gboolean old_ref_exists = FALSE;
-      const char *checksum = NULL;
+      g_autofree char *checksum = NULL;
+      g_autofree char *checksum_existing = NULL;
 
-      g_hash_table_iter_init (&hashiter, refs);
-      while (g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue))
+      if (ostree_repo_resolve_rev (repo, opt_create, TRUE, &checksum_existing, error))
         {
-          g_autofree char *ref = NULL;
-          g_autofree char *remote = NULL;
-          const char *existing_ref= hashkey;
-
-          if (!ostree_parse_refspec (refspec_prefix, &remote, &ref, error))
-            goto out;
-
-          if(strcmp (opt_create, existing_ref) == 0)
+          if (checksum_existing != NULL)
             {
               g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "--create specified but ref %s already exists", existing_ref);
+                           "--create specified but ref %s already exists", opt_create);
               goto out;
-            }
-
-          if(strcmp(refspec_prefix, hashkey) == 0)
-            {
-              old_ref_exists = TRUE;
-              checksum = hashvalue;
             }
         }
 
-      if(old_ref_exists)
+      if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
+          goto out;
+
+      else
         {
           if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
             goto out;
@@ -114,13 +103,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
 
           if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
             goto out;
-
-          ret = TRUE;
-          goto out;
         }
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Could not find existing ref %s", refspec_prefix);
-      goto out;
     }
   else
     /* delete */
@@ -160,7 +143,7 @@ ostree_builtin_refs (int argc, char **argv, GCancellable *cancellable, GError **
 
   if (argc >= 2)
     {
-      if(opt_create && argc > 2)
+      if (opt_create && argc > 2)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                        "You must specify only 1 existing ref when creating a new ref");
