@@ -65,4 +65,35 @@ ${CMD_PREFIX} ostree refs --repo=repo | wc -l > refscount.delete3
 assert_file_has_content refscount.delete3 "^3$"
 assert_not_file_has_content reflist '^test-1$'
 
+#Add a few more commits, to test --create
+${CMD_PREFIX} ostree --repo=repo commit --branch=ctest -m ctest -s ctest tree
+${CMD_PREFIX} ostree --repo=repo commit --branch=foo/ctest -m ctest -s ctest tree
+
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount
+assert_file_has_content refscount "^5$"
+
+if ${CMD_PREFIX} ostree --repo=repo refs --create=ctest-new; then
+    assert_not_reached "refs --create unexpectedly succeeded without specifying an existing ref!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs ctest --create; then
+    assert_not_reached "refs --create unexpectedly succeeded without specifying the ref to create!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs does-not-exist --create=ctest-new; then
+    assert_not_reached "refs --create unexpectedly succeeded for a prefix that doesn't exist!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs ctest --create=foo; then
+    assert_not_reached "refs --create unexpectedly succeeded for a prefix that is already in use by a folder!"
+fi
+if ${CMD_PREFIX} ostree --repo=repo refs foo/ctest --create=ctest; then
+    assert_not_reached "refs --create unexpectedly succeeded in overwriting an existing prefix!"
+fi
+
+#Check to see if any uncleaned tmp files were created after failed --create
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create1
+assert_file_has_content refscount.create1 "^5$"
+
+${CMD_PREFIX} ostree --repo=repo refs ctest --create ctest-new
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create2
+assert_file_has_content refscount.create2 "^6$"
+
 echo "ok refs"
