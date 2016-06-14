@@ -2179,15 +2179,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   char **configured_branches = NULL;
   guint64 bytes_transferred;
   guint64 end_time;
+  GSource *update_timeout = NULL;
+
+  g_autofree char **refs_to_fetch = NULL;
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
-  g_autofree char **refs_to_fetch = NULL;
-  char **override_commit_ids = NULL;
-  GSource *update_timeout = NULL;
-  gboolean disable_static_deltas = FALSE;
-  gboolean require_static_deltas = FALSE;
   gboolean opt_gpg_verify = FALSE;
   gboolean opt_gpg_verify_summary = FALSE;
+  gboolean disable_static_deltas = FALSE;
+  gboolean require_static_deltas = FALSE;
+  char **override_commit_ids = NULL;
   const char *url_override = NULL;
 
   if (options)
