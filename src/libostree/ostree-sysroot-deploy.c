@@ -473,7 +473,7 @@ merge_etc_changes (GFile          *orig_etc,
       goto out;
     }
 
-  gs_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
+  ot_log_structured_print_id_v (OSTREE_CONFIGMERGE_ID,
                                 "Copying /etc changes: %u modified, %u removed, %u added", 
                                 modified->len,
                                 removed->len,
@@ -773,7 +773,7 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
       
   if (!g_file_query_exists (deployment_var_labeled, NULL))
     {
-      gs_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
+      ot_log_structured_print_id_v (OSTREE_VARRELABEL_ID,
                                     "Relabeling /var (no stamp file '%s' found)",
                                     gs_file_get_path_cached (deployment_var_labeled));
 
@@ -1927,7 +1927,7 @@ ostree_sysroot_write_deployments (OstreeSysroot     *self,
         }
     }
 
-  gs_log_structured_print_id_v (OSTREE_DEPLOYMENT_COMPLETE_ID,
+  ot_log_structured_print_id_v (OSTREE_DEPLOYMENT_COMPLETE_ID,
                                 "%s; bootconfig swap: %s deployment count change: %i",
                                 (bootloader_is_atomic ? "Transaction complete" : "Bootloader updated"),
                                 requires_new_bootversion ? "yes" : "no",

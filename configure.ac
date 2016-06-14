@@ -251,7 +251,13 @@ AC_ARG_WITH(mkinitcpio,
               [with_mkinitcpio=no])
 AM_CONDITIONAL(BUILDOPT_MKINITCPIO, test x$with_mkinitcpio = xyes)
 
-AS_IF([test "x$with_dracut" = "xyes" || test "x$with_dracut" = "xyesbutnoconf" || test "x$with_mkinitcpio" = "xyes"], [
+dnl We have separate checks for libsystemd and the unit dir for historical reasons
+PKG_CHECK_MODULES([LIBSYSTEMD], [libsystemd], [have_libsystemd=yes], [have_libsystemd=no])
+AM_CONDITIONAL(BUILDOPT_LIBSYSTEMD, test x$have_libsystemd = xyes)
+AM_COND_IF(BUILDOPT_LIBSYSTEMD,
+           AC_DEFINE([HAVE_LIBSYSTEMD], 1, [Define if we have libsystemd]))
+
+AS_IF([test "x$have_libsystemd" = "xyes"], [
   with_systemd=yes
   AC_ARG_WITH([systemdsystemunitdir],
               AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
@@ -309,6 +315,7 @@ echo "
     libsoup (retrieve remote HTTP repositories):  $with_soup
     libsoup TLS client certs:                     $have_libsoup_client_certs
     SELinux:                                      $with_selinux
+    systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
@@ -321,8 +328,5 @@ AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [
     echo "    grub2-mkconfig path:                          $GRUB2_MKCONFIG"
-])
-AS_IF([test "x$with_systemd" = "xyes"], [
-    echo "    systemd unit dir:                             $with_systemdsystemunitdir"
 ])
 echo ""
