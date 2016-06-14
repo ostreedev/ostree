@@ -2356,6 +2356,15 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->legacy_transaction_resuming)
     g_debug ("resuming legacy transaction");
 
+  if (pull_data->progress)
+    {
+      update_timeout = g_timeout_source_new_seconds (pull_data->dry_run ? 0 : 1);
+      g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
+      g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
+      g_source_attach (update_timeout, pull_data->main_context);
+      g_source_unref (update_timeout);
+    }
+
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
@@ -2711,15 +2720,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                          cancellable, error))
             goto out;
         }
-    }
-
-  if (pull_data->progress)
-    {
-      update_timeout = g_timeout_source_new_seconds (pull_data->dry_run ? 0 : 1);
-      g_source_set_priority (update_timeout, G_PRIORITY_HIGH);
-      g_source_set_callback (update_timeout, update_progress, pull_data, NULL);
-      g_source_attach (update_timeout, pull_data->main_context);
-      g_source_unref (update_timeout);
     }
 
   /* Now await work completion */
