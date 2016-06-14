@@ -92,6 +92,11 @@ typedef struct {
   guint             n_fetched_metadata;
   guint             n_fetched_content;
 
+
+  GHashTable       *requested_refs_to_fetch;
+  GHashTable       *commits_to_fetch;
+  gboolean          fetch_all_refs;
+
   int               maxdepth;
   guint64           start_time;
 
@@ -2168,8 +2173,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   GHashTableIter hash_iter;
   gpointer key, value;
   g_autofree char *metalink_url_str = NULL;
-  g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
-  g_autoptr(GHashTable) commits_to_fetch = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
   guint64 end_time;
@@ -2293,8 +2296,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
-  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  pull_data->requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  pull_data->commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   {
     if (refs_to_fetch != NULL)
@@ -2309,12 +2312,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             if (ostree_validate_checksum_string (branch, NULL))
               {
                 char *key = g_strdup (branch);
-                g_hash_table_insert (commits_to_fetch, key, key);
+                g_hash_table_insert (pull_data->commits_to_fetch, key, key);
               }
             else
               {
                 char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
-                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
+                g_hash_table_insert (pull_data->requested_refs_to_fetch, g_strdup (branch), commitid);
               }
 
             strviter++;
@@ -2325,12 +2328,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     else
       {
         g_autofree char **configured_branches = NULL;
+        char **branches_iter;
+
         if (!ostree_repo_get_remote_list_option (self,
                                                 remote_name_or_baseurl, "branches",
                                                 &configured_branches, error))
           goto out;
-
-        char **branches_iter;
 
         branches_iter = configured_branches;
 
@@ -2344,7 +2347,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           {
             const char *branch = *branches_iter;
 
-            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+            g_hash_table_insert (pull_data->requested_refs_to_fetch, g_strdup (branch), NULL);
           }
       }
   }
@@ -2573,7 +2576,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           }
       }
 
-    fetch_all_refs = pull_data->is_mirror && (g_hash_table_size (requested_refs_to_fetch) == 0);
+    fetch_all_refs = pull_data->is_mirror && (g_hash_table_size (pull_data->requested_refs_to_fetch) == 0);
 
     if (fetch_all_refs && !pull_data->summary)
       {
@@ -2600,7 +2603,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               goto out;
 
             if (fetch_all_refs)
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (refname), NULL);
+              g_hash_table_insert (pull_data->requested_refs_to_fetch, g_strdup (refname), NULL);
           }
 
         additional_metadata = g_variant_get_child_value (pull_data->summary, 1);
@@ -2627,7 +2630,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+  g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *branch = key;
@@ -2637,7 +2640,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Support specifying "" for an override commitid */
       if (override_commitid && *override_commitid)
         {
-          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
+          g_hash_table_replace (pull_data->requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
         }
       else    
         {
@@ -2659,7 +2662,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                 goto out;
             }
           /* Transfer ownership of contents */
-          g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
+          g_hash_table_replace (pull_data->requested_refs_to_fetch, g_strdup (branch), contents);
         }
     }
 
@@ -2673,14 +2676,14 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->fetcher == NULL)
     goto out;
 
-  g_hash_table_iter_init (&hash_iter, commits_to_fetch);
+  g_hash_table_iter_init (&hash_iter, pull_data->commits_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
       queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, 0);
     }
 
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+  g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       g_autofree char *from_revision = NULL;
@@ -2740,7 +2743,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
   g_assert_cmpint (pull_data->n_outstanding_content_write_requests, ==, 0);
 
-  g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+  g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *ref = key;
@@ -2818,7 +2821,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* iterate over commits fetched and delete any commitpartial files */
   if (!dir_to_pull && !pull_data->is_commit_only)
     {
-      g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
+      g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
@@ -2827,7 +2830,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           if (!ot_ensure_unlinked_at (pull_data->repo->repo_dir_fd, commitpartial_path, 0))
             goto out;
         }
-      g_hash_table_iter_init (&hash_iter, commits_to_fetch);
+      g_hash_table_iter_init (&hash_iter, pull_data->commits_to_fetch);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *commit = value;
@@ -2869,6 +2872,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
+  g_clear_pointer (&pull_data->requested_refs_to_fetch, (GDestroyNotify) g_hash_table_unref);
+  g_clear_pointer (&pull_data->commits_to_fetch, (GDestroyNotify) g_hash_table_unref);
   return ret;
 }
 
