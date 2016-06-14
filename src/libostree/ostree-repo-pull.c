@@ -2167,17 +2167,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean ret = FALSE;
   GHashTableIter hash_iter;
   gpointer key, value;
-  g_autoptr(GBytes) bytes_summary = NULL;
   g_autofree char *metalink_url_str = NULL;
   g_autoptr(GHashTable) requested_refs_to_fetch = NULL;
   g_autoptr(GHashTable) commits_to_fetch = NULL;
-  g_autofree char *remote_mode_str = NULL;
-  glnx_unref_object OstreeMetalink *metalink = NULL;
   OtPullData pull_data_real = { 0, };
   OtPullData *pull_data = &pull_data_real;
-  GKeyFile *remote_config = NULL;
-  char **configured_branches = NULL;
-  guint64 bytes_transferred;
   guint64 end_time;
   GSource *update_timeout = NULL;
 
@@ -2216,6 +2210,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
+  pull_data->dir = g_strdup (dir_to_pull);
 
   g_return_val_if_fail (!(disable_static_deltas && require_static_deltas), FALSE);
   /* We only do dry runs with static deltas, because we don't really have any
@@ -2252,7 +2247,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                         (GDestroyNotify)g_free, NULL);
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
-  pull_data->dir = g_strdup (dir_to_pull);
   g_queue_init (&pull_data->scan_object_queue);
 
   pull_data->start_time = g_get_monotonic_time ();
@@ -2321,6 +2315,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     {
       g_autoptr(GBytes) summary_bytes = NULL;
       SoupURI *metalink_uri = soup_uri_new (metalink_url_str);
+      glnx_unref_object OstreeMetalink *metalink = NULL;
       SoupURI *target_uri = NULL;
       
       if (!metalink_uri)
@@ -2352,11 +2347,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                      summary_bytes, FALSE);
     }
 
-  if (!ostree_repo_get_remote_list_option (self,
-                                           remote_name_or_baseurl, "branches",
-                                           &configured_branches, error))
-    goto out;
-
   if (strcmp (soup_uri_get_scheme (pull_data->base_uri), "file") == 0)
     {
       g_autoptr(GFile) remote_repo_path = g_file_new_for_path (soup_uri_get_path (pull_data->base_uri));
@@ -2366,6 +2356,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
   else
     {
+      g_autofree char *remote_mode_str = NULL;
+      g_autoptr(GKeyFile) remote_config = NULL;
+
       if (!load_remote_repo_config (pull_data, &remote_config, cancellable, error))
         goto out;
 
@@ -2393,6 +2386,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   {
     SoupURI *uri = NULL;
+    g_autoptr(GBytes) bytes_summary = NULL;
     g_autoptr(GBytes) bytes_sig = NULL;
     g_autofree char *ret_contents = NULL;
     gsize i, n;
@@ -2542,60 +2536,68 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
-  if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
-    {
-      if (!bytes_summary)
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
-          goto out;
-        }
+  {
+    g_autofree char **configured_branches = NULL;
+    if (!ostree_repo_get_remote_list_option (self,
+                                            remote_name_or_baseurl, "branches",
+                                            &configured_branches, error))
+      goto out;
 
-    } 
-  else if (refs_to_fetch != NULL)
-    {
-      char **strviter = refs_to_fetch;
-      char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
+    if (pull_data->is_mirror && !refs_to_fetch && !configured_branches)
+      {
+        if (!pull_data->summary_data)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "Fetching all refs was requested in mirror mode, but remote repository does not have a summary");
+            goto out;
+          }
 
-      while (*strviter)
-        {
-          const char *branch = *strviter;
+      }
+    else if (refs_to_fetch != NULL)
+      {
+        char **strviter = refs_to_fetch;
+        char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
 
-          if (ostree_validate_checksum_string (branch, NULL))
-            {
-              char *key = g_strdup (branch);
-              g_hash_table_insert (commits_to_fetch, key, key);
-            }
-          else
-            {
-              char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
-              g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
-            }
-          
-          strviter++;
-          if (commitid_strviter)
-            commitid_strviter++;
-        }
-    }
-  else
-    {
-      char **branches_iter;
+        while (*strviter)
+          {
+            const char *branch = *strviter;
 
-      branches_iter = configured_branches;
+            if (ostree_validate_checksum_string (branch, NULL))
+              {
+                char *key = g_strdup (branch);
+                g_hash_table_insert (commits_to_fetch, key, key);
+              }
+            else
+              {
+                char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
+                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
+              }
 
-      if (!(branches_iter && *branches_iter))
-        {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "No configured branches for remote %s", remote_name_or_baseurl);
-          goto out;
-        }
-      for (;branches_iter && *branches_iter; branches_iter++)
-        {
-          const char *branch = *branches_iter;
-              
-          g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
-        }
-    }
+            strviter++;
+            if (commitid_strviter)
+              commitid_strviter++;
+          }
+      }
+    else
+      {
+        char **branches_iter;
+
+        branches_iter = configured_branches;
+
+        if (!(branches_iter && *branches_iter))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "No configured branches for remote %s", remote_name_or_baseurl);
+            goto out;
+          }
+        for (;branches_iter && *branches_iter; branches_iter++)
+          {
+            const char *branch = *branches_iter;
+
+            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+          }
+      }
+  }
 
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2783,33 +2785,35 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   end_time = g_get_monotonic_time ();
 
-  bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
-  if (bytes_transferred > 0 && pull_data->progress)
-    {
-      guint shift; 
-      GString *buf = g_string_new ("");
+  {
+    guint64 bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
+    if (bytes_transferred > 0 && pull_data->progress)
+      {
+        guint shift;
+        GString *buf = g_string_new ("");
 
-      if (bytes_transferred < 1024)
-        shift = 1;
-      else
-        shift = 1024;
+        if (bytes_transferred < 1024)
+          shift = 1;
+        else
+          shift = 1024;
 
-      if (pull_data->n_fetched_deltaparts > 0)
-        g_string_append_printf (buf, "%u delta parts, %u loose fetched",
-                                pull_data->n_fetched_deltaparts,
-                                pull_data->n_fetched_metadata + pull_data->n_fetched_content);
-      else
-        g_string_append_printf (buf, "%u metadata, %u content objects fetched",
-                                pull_data->n_fetched_metadata, pull_data->n_fetched_content);
+        if (pull_data->n_fetched_deltaparts > 0)
+          g_string_append_printf (buf, "%u delta parts, %u loose fetched",
+                                  pull_data->n_fetched_deltaparts,
+                                  pull_data->n_fetched_metadata + pull_data->n_fetched_content);
+        else
+          g_string_append_printf (buf, "%u metadata, %u content objects fetched",
+                                  pull_data->n_fetched_metadata, pull_data->n_fetched_content);
 
-      g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
-                              (guint64)(bytes_transferred / shift),
-                              shift == 1 ? "B" : "KiB",
-                              (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
+        g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
+                                (guint64)(bytes_transferred / shift),
+                                shift == 1 ? "B" : "KiB",
+                                (guint) ((end_time - pull_data->start_time) / G_USEC_PER_SEC));
 
-      ostree_async_progress_set_status (pull_data->progress, buf->str);
-      g_string_free (buf, TRUE);
-    }
+        ostree_async_progress_set_status (pull_data->progress, buf->str);
+        g_string_free (buf, TRUE);
+      }
+  }
 
   /* iterate over commits fetched and delete any commitpartial files */
   if (!dir_to_pull && !pull_data->is_commit_only)
@@ -2849,7 +2853,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_main_context_unref (pull_data->main_context);
   if (update_timeout)
     g_source_destroy (update_timeout);
-  g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
@@ -2866,7 +2869,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_pointer (&pull_data->requested_content, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->requested_metadata, (GDestroyNotify) g_hash_table_unref);
   g_clear_pointer (&pull_data->idle_src, (GDestroyNotify) g_source_destroy);
-  g_clear_pointer (&remote_config, (GDestroyNotify) g_key_file_unref);
   return ret;
 }
 
