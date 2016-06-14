@@ -1173,43 +1173,31 @@ rename_pending_loose_objects (OstreeRepo        *self,
                               GError           **error)
 {
   gboolean ret = FALSE;
-  gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
-  if (!gs_dirfd_iterator_init_at (self->commit_stagedir_fd, ".", FALSE, &dfd_iter, error))
+  if (!glnx_dirfd_iterator_init_at (self->commit_stagedir_fd, ".", FALSE, &dfd_iter, error))
     goto out;
 
   /* Iterate over the outer checksum dir */
   while (TRUE)
     {
       struct dirent *dent;
-      gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
-      struct stat stbuf;
-      int res;
+      g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
 
-      if (!gs_dirfd_iterator_next_dent (&dfd_iter, &dent, cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent_ensure_dtype (&dfd_iter, &dent, cancellable, error))
         goto out;
-
       if (dent == NULL)
         break;
 
-      do
-        res = fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW);
-      while (G_UNLIKELY (res == -1 && errno == EINTR));
-      if (res == -1)
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-
-      if (!S_ISDIR (stbuf.st_mode))
+      if (dent->d_type != DT_DIR)
         continue;
 
       /* All object directories only have two character entries */
       if (strlen (dent->d_name) != 2)
         continue;
 
-      if (!gs_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
-                                      &child_dfd_iter, error))
+      if (!glnx_dirfd_iterator_init_at (dfd_iter.fd, dent->d_name, FALSE,
+                                        &child_dfd_iter, error))
         goto out;
 
       /* Iterate over inner checksum dir */
@@ -1218,9 +1206,8 @@ rename_pending_loose_objects (OstreeRepo        *self,
           struct dirent *child_dent;
           char loose_objpath[_OSTREE_LOOSE_PATH_MAX];
 
-          if (!gs_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
+          if (!glnx_dirfd_iterator_next_dent (&child_dfd_iter, &child_dent, cancellable, error))
             goto out;
-          
           if (child_dent == NULL)
             break;
 
@@ -2412,7 +2399,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
                                    GError                     **error);
 static gboolean
 write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
-                                  GSDirFdIterator             *src_dfd_iter,
+                                  GLnxDirFdIterator           *src_dfd_iter,
                                   OstreeMutableTree           *mtree,
                                   OstreeRepoCommitModifier    *modifier,
                                   GPtrArray                   *path,
@@ -2423,7 +2410,7 @@ static gboolean
 write_directory_content_to_mtree_internal (OstreeRepo                  *self,
                                            OstreeRepoFile              *repo_dir,
                                            GFileEnumerator             *dir_enum,
-                                           GSDirFdIterator             *dfd_iter,
+                                           GLnxDirFdIterator           *dfd_iter,
                                            GFileInfo                   *child_info,
                                            OstreeMutableTree           *mtree,
                                            OstreeRepoCommitModifier    *modifier,
@@ -2488,9 +2475,9 @@ write_directory_content_to_mtree_internal (OstreeRepo                  *self,
         }
       else
         {
-          gs_dirfd_iterator_cleanup GSDirFdIterator child_dfd_iter = { 0, };
+          g_auto(GLnxDirFdIterator) child_dfd_iter = { 0, };
 
-          if (!gs_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
+          if (!glnx_dirfd_iterator_init_at (dfd_iter->fd, name, FALSE, &child_dfd_iter, error))
             goto out;
 
           if (!write_dfd_iter_to_mtree_internal (self, &child_dfd_iter, child_mtree,
@@ -2693,7 +2680,7 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
 static gboolean
 write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
-                                  GSDirFdIterator             *src_dfd_iter,
+                                  GLnxDirFdIterator           *src_dfd_iter,
                                   OstreeMutableTree           *mtree,
                                   OstreeRepoCommitModifier    *modifier,
                                   GPtrArray                   *path,
@@ -2760,9 +2747,8 @@ write_dfd_iter_to_mtree_internal (OstreeRepo                  *self,
       g_autoptr(GFileInfo) child_info = NULL;
       const char *loose_checksum;
 
-      if (!gs_dirfd_iterator_next_dent (src_dfd_iter, &dent, cancellable, error))
+      if (!glnx_dirfd_iterator_next_dent (src_dfd_iter, &dent, cancellable, error))
         goto out;
-
       if (dent == NULL)
         break;
 
@@ -2888,15 +2874,14 @@ ostree_repo_write_dfd_to_mtree (OstreeRepo                *self,
 {
   gboolean ret = FALSE;
   g_autoptr(GPtrArray) pathbuilder = NULL;
-  gs_dirfd_iterator_cleanup GSDirFdIterator dfd_iter = { 0, };
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
   if (modifier && modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_GENERATE_SIZES)
     self->generate_sizes = TRUE;
 
   pathbuilder = g_ptr_array_new ();
 
-  if (!gs_dirfd_iterator_init_at (dfd, path, FALSE,
-                                  &dfd_iter, error))
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
     goto out;
 
   if (!write_dfd_iter_to_mtree_internal (self, &dfd_iter, mtree, modifier, pathbuilder,
