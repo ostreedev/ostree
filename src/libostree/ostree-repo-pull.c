@@ -2278,15 +2278,82 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
     }
 
+  /* Create the state directory here - it's new with the commitpartial code,
+   * and may not exist in older repositories.
+   */
+  if (mkdirat (pull_data->repo->repo_dir_fd, "state", 0777) != 0)
+    {
+      if (G_UNLIKELY (errno != EEXIST))
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+
+  pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
+  pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
+
+  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+  {
+    if (refs_to_fetch != NULL)
+      {
+        char **strviter = refs_to_fetch;
+        char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
+
+        while (*strviter)
+          {
+            const char *branch = *strviter;
+
+            if (ostree_validate_checksum_string (branch, NULL))
+              {
+                char *key = g_strdup (branch);
+                g_hash_table_insert (commits_to_fetch, key, key);
+              }
+            else
+              {
+                char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
+                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
+              }
+
+            strviter++;
+            if (commitid_strviter)
+              commitid_strviter++;
+          }
+      }
+    else
+      {
+        g_autofree char **configured_branches = NULL;
+        if (!ostree_repo_get_remote_list_option (self,
+                                                remote_name_or_baseurl, "branches",
+                                                &configured_branches, error))
+          goto out;
+
+        char **branches_iter;
+
+        branches_iter = configured_branches;
+
+        if (!(branches_iter && *branches_iter) && !pull_data->is_mirror)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "No configured branches for remote %s", remote_name_or_baseurl);
+            goto out;
+          }
+        for (;branches_iter && *branches_iter; branches_iter++)
+          {
+            const char *branch = *branches_iter;
+
+            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
+          }
+      }
+  }
+
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
   pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
   if (pull_data->fetcher == NULL)
     goto out;
-
-  pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
-  requested_refs_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  commits_to_fetch = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
   if (!ostree_repo_get_remote_option (self,
                                       remote_name_or_baseurl, "metalink",
@@ -2381,61 +2448,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
           goto out;
         }
     }
-
-  pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
-
-  {
-    if (refs_to_fetch != NULL)
-      {
-        char **strviter = refs_to_fetch;
-        char **commitid_strviter = override_commit_ids ? override_commit_ids : NULL;
-
-        while (*strviter)
-          {
-            const char *branch = *strviter;
-
-            if (ostree_validate_checksum_string (branch, NULL))
-              {
-                char *key = g_strdup (branch);
-                g_hash_table_insert (commits_to_fetch, key, key);
-              }
-            else
-              {
-                char *commitid = commitid_strviter ? g_strdup (*commitid_strviter) : NULL;
-                g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), commitid);
-              }
-
-            strviter++;
-            if (commitid_strviter)
-              commitid_strviter++;
-          }
-      }
-    else
-      {
-        g_autofree char **configured_branches = NULL;
-        if (!ostree_repo_get_remote_list_option (self,
-                                                remote_name_or_baseurl, "branches",
-                                                &configured_branches, error))
-          goto out;
-
-        char **branches_iter;
-
-        branches_iter = configured_branches;
-
-        if (!(branches_iter && *branches_iter) && !pull_data->is_mirror)
-          {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                        "No configured branches for remote %s", remote_name_or_baseurl);
-            goto out;
-          }
-        for (;branches_iter && *branches_iter; branches_iter++)
-          {
-            const char *branch = *branches_iter;
-
-            g_hash_table_insert (requested_refs_to_fetch, g_strdup (branch), NULL);
-          }
-      }
-  }
 
   {
     SoupURI *uri = NULL;
@@ -2632,18 +2644,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
             }
           /* Transfer ownership of contents */
           g_hash_table_replace (requested_refs_to_fetch, g_strdup (branch), contents);
-        }
-    }
-
-  /* Create the state directory here - it's new with the commitpartial code,
-   * and may not exist in older repositories.
-   */
-  if (mkdirat (pull_data->repo->repo_dir_fd, "state", 0777) != 0)
-    {
-      if (G_UNLIKELY (errno != EEXIST))
-        {
-          glnx_set_error_from_errno (error);
-          return FALSE;
         }
     }
 
