@@ -493,3 +493,55 @@ ot_util_ensure_directory_and_fsync (GFile         *dir,
  out:
   return ret;
 }
+
+#if !GLIB_CHECK_VERSION(2, 44, 0)
+
+gboolean
+ot_file_enumerator_iterate (GFileEnumerator  *direnum,
+                            GFileInfo       **out_info,
+                            GFile           **out_child,
+                            GCancellable     *cancellable,
+                            GError          **error)
+{
+  gboolean ret = FALSE;
+  GError *temp_error = NULL;
+
+  static GQuark cached_info_quark;
+  static GQuark cached_child_quark;
+  static gsize quarks_initialized;
+
+  g_return_val_if_fail (direnum != NULL, FALSE);
+  g_return_val_if_fail (out_info != NULL, FALSE);
+
+  if (g_once_init_enter (&quarks_initialized))
+    {
+      cached_info_quark = g_quark_from_static_string ("ot-cached-info");
+      cached_child_quark = g_quark_from_static_string ("ot-cached-child");
+      g_once_init_leave (&quarks_initialized, 1);
+    }
+
+  *out_info = g_file_enumerator_next_file (direnum, cancellable, &temp_error);
+  if (out_child)
+    *out_child = NULL;
+  if (temp_error != NULL)
+    {
+      g_propagate_error (error, temp_error);
+      goto out;
+    }
+  else if (*out_info != NULL)
+    {
+      g_object_set_qdata_full ((GObject*)direnum, cached_info_quark, *out_info, (GDestroyNotify)g_object_unref);
+      if (out_child != NULL)
+        {
+          const char *name = g_file_info_get_name (*out_info);
+          *out_child = g_file_get_child (g_file_enumerator_get_container (direnum), name);
+          g_object_set_qdata_full ((GObject*)direnum, cached_child_quark, *out_child, (GDestroyNotify)g_object_unref);
+        }
+    }
+
+  ret = TRUE;
+ out:
+  return ret;
+}
+
+#endif

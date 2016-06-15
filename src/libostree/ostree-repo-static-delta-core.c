@@ -94,8 +94,8 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
           GFileInfo *file_info;
           GFile *child;
 
-          if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                           NULL, error))
+          if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                          NULL, error))
             goto out;
           if (file_info == NULL)
             break;
@@ -117,8 +117,8 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
               const char *name1;
               const char *name2;
 
-              if (!gs_file_enumerator_iterate (dir_enum2, &file_info2, &child2,
-                                               NULL, error))
+              if (!g_file_enumerator_iterate (dir_enum2, &file_info2, &child2,
+                                              NULL, error))
                 goto out;
               if (file_info2 == NULL)
                 break;

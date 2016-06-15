@@ -253,8 +253,8 @@ _ostree_gpg_verifier_add_keyring_dir (OstreeGpgVerifier   *self,
       GFile *path;
       const char *name;
 
-      if (!gs_file_enumerator_iterate (enumerator, &file_info, &path,
-                                       cancellable, error))
+      if (!g_file_enumerator_iterate (enumerator, &file_info, &path,
+                                      cancellable, error))
         goto out;
       if (file_info == NULL)
         break;

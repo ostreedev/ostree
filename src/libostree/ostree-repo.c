@@ -2069,8 +2069,8 @@ append_remotes_d (OstreeRepo          *self,
           const char *name;
           guint32 type;
 
-          if (!gs_file_enumerator_iterate (direnum, &file_info, &path,
-                                           NULL, error))
+          if (!g_file_enumerator_iterate (direnum, &file_info, &path,
+                                          NULL, error))
             goto out;
           if (file_info == NULL)
             break;

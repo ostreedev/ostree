@@ -83,8 +83,8 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
           const char *fname;
           g_autofree char *subdir_grub_cfg = NULL;
 
-          if (!gs_file_enumerator_iterate (direnum, &file_info, NULL,
-                                           cancellable, error))
+          if (!g_file_enumerator_iterate (direnum, &file_info, NULL,
+                                          cancellable, error))
             goto out;
           if (file_info == NULL)
             break;

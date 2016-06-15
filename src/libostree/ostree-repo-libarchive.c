@@ -1075,8 +1075,8 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
       GFileInfo *file_info;
       GFile *path;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &path,
-                                       cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &path,
+                                      cancellable, error))
         goto out;
       if (file_info == NULL)
         break;

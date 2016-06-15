@@ -114,8 +114,8 @@ relabel_recursively (OstreeSePolicy *sepolicy,
       GFile *child;
       GFileType ftype;
 
-      if (!gs_file_enumerator_iterate (direnum, &file_info, &child,
-                                       cancellable, error))
+      if (!g_file_enumerator_iterate (direnum, &file_info, &child,
+                                      cancellable, error))
         goto out;
       if (file_info == NULL)
         break;

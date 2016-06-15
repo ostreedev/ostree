@@ -65,8 +65,8 @@ _ostree_sysroot_list_deployment_dirs_for_os (GFile               *osdir,
       g_autofree char *csum = NULL;
       gint deployserial;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                       cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                      cancellable, error))
         goto out;
       if (file_info == NULL)
         break;
@@ -127,8 +127,8 @@ list_all_deployment_directories (OstreeSysroot       *self,
       GFileInfo *file_info = NULL;
       GFile *child = NULL;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                       NULL, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                      NULL, error))
         goto out;
       if (file_info == NULL)
         break;
@@ -215,8 +215,8 @@ list_all_boot_directories (OstreeSysroot       *self,
       GFile *child = NULL;
       const char *name;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &child,
-                                       NULL, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &child,
+                                      NULL, error))
         goto out;
       if (file_info == NULL)
         break;
