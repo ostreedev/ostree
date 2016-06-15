@@ -28,21 +28,139 @@
 #include "ostree-cmdprivate.h"
 #include "otutil.h"
 
+#include <libsoup/soup.h>
+
 static gboolean opt_quiet;
 static gboolean opt_delete;
 static gboolean opt_add_tombstones;
+static gchar** opt_repair_remotes;
 
 static GOptionEntry options[] = {
   { "add-tombstones", 0, 0, G_OPTION_ARG_NONE, &opt_add_tombstones, "Add tombstones for missing commits", NULL },
   { "quiet", 'q', 0, G_OPTION_ARG_NONE, &opt_quiet, "Only print error messages", NULL },
   { "delete", 0, 0, G_OPTION_ARG_NONE, &opt_delete, "Remove corrupted objects", NULL },
+  { "repair-from-remote", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_repair_remotes, "Try do download corrupted files from the remote", NULL },
   { NULL }
 };
+
+static gboolean
+repair_object (OstreeRepo *repo,
+               gchar **repair_remotes,
+               const gchar *checksum,
+               OstreeObjectType objtype,
+               GCancellable *cancellable)
+{
+  gchar **iter;
+  g_autofree gchar *relative_path = NULL;
+  glnx_unref_object SoupSession *session = NULL;
+  const gchar *type = ostree_object_type_to_string (objtype);
+
+  if (objtype != OSTREE_OBJECT_TYPE_FILE)
+    {
+      g_printerr ("repair of %s %s failed, not implenented",
+                  type, checksum);
+      return FALSE;
+    }
+
+  session = soup_session_new ();
+  relative_path = ostree_get_relative_object_path (checksum, objtype, TRUE);
+  for (iter = repair_remotes; *iter; ++iter)
+    {
+      const gchar *remote = *iter;
+      g_autofree gchar *server_url = NULL;
+      g_autofree gchar *url = NULL;
+      glnx_unref_object SoupRequest *request = NULL;
+      g_autoptr(GInputStream) stream = NULL;
+      g_autoptr(GInputStream) file_stream = NULL;
+      g_autoptr(GFileInfo) file_info = NULL;
+      g_autoptr(GVariant) xattrs = NULL;
+      g_autoptr(GInputStream) content_stream = NULL;
+      guint64 content_len;
+      g_autofree guchar *binary_checksum = NULL;
+      g_autoptr(GError) error = NULL;
+
+      if (!ostree_repo_remote_get_url (repo, remote, &server_url, &error))
+        {
+          g_printerr ("repair of %s %s from %s failed, failed to get a URL for remote: %s",
+                      type, checksum, remote, error->message);
+          continue;
+        }
+
+      url = g_strconcat (server_url, "/", relative_path, NULL);
+      request = soup_session_request (session, url, &error);
+      if (!request)
+        {
+          g_printerr ("repair of %s %s from %s failed, failed to get a request to URL %s: %s",
+                      type, checksum, remote, url, error->message);
+          continue;
+        }
+
+      stream = soup_request_send (request,
+                                  cancellable,
+                                  &error);
+      if (!stream)
+        {
+          if (g_cancellable_is_cancelled (cancellable))
+            return FALSE;
+          g_printerr ("repair of %s %s from %s failed, failed to download the object from URL %s: %s",
+                      type, checksum, remote, url, error->message);
+          continue;
+        }
+
+      if (!ostree_content_stream_parse (TRUE,
+                                        stream,
+                                        soup_request_get_content_length (request),
+                                        FALSE,
+                                        &file_stream,
+                                        &file_info,
+                                        &xattrs,
+                                        cancellable,
+                                        &error))
+        {
+          g_printerr ("repair of %s %s from %s failed, failed to parse the content stream: %s",
+                      type, checksum, remote, error->message);
+          continue;
+        }
+
+      if (!ostree_raw_file_to_content_stream (file_stream,
+                                              file_info,
+                                              xattrs,
+                                              &content_stream,
+                                              &content_len,
+                                              cancellable,
+                                              &error))
+        {
+          g_printerr ("repair of %s %s from %s failed, failed to create a content stream: %s",
+                      type, checksum, remote, error->message);
+          continue;
+        }
+
+      if (!ostree_repo_write_content (repo,
+                                      checksum,
+                                      content_stream,
+                                      content_len,
+                                      &binary_checksum,
+                                      cancellable,
+                                      &error))
+        {
+          if (opt_delete)
+            (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
+          g_printerr ("repair of %s %s from %s failed, failed to write object to the repository: %s",
+                      type, checksum, remote, error->message);
+          continue;
+        }
+
+      return TRUE;
+    }
+
+  return FALSE;
+}
 
 static gboolean
 load_and_fsck_one_object (OstreeRepo            *repo,
                           const char            *checksum,
                           OstreeObjectType       objtype,
+                          gchar                **repair_remotes,
                           gboolean              *out_found_corruption,
                           GCancellable          *cancellable,
                           GError               **error)
@@ -140,7 +258,9 @@ load_and_fsck_one_object (OstreeRepo            *repo,
 
   if (missing)
     {
-      *out_found_corruption = TRUE;
+      if (repair_remotes == NULL ||
+          !repair_object (repo, repair_remotes, checksum, objtype, cancellable))
+        *out_found_corruption = TRUE;
     }
   else
     {
@@ -158,11 +278,13 @@ load_and_fsck_one_object (OstreeRepo            *repo,
           g_autofree char *msg = g_strdup_printf ("corrupted object %s.%s; actual checksum: %s",
                                                checksum, ostree_object_type_to_string (objtype),
                                                tmp_checksum);
-          if (opt_delete)
+          if (opt_delete || repair_remotes != NULL)
             {
               g_printerr ("%s\n", msg);
               (void) ostree_repo_delete_object (repo, objtype, checksum, cancellable, NULL);
-              *out_found_corruption = TRUE;
+              if (repair_remotes == NULL ||
+                  !repair_object (repo, repair_remotes, checksum, objtype, cancellable))
+                *out_found_corruption = TRUE;
             }
           else
             {
@@ -180,6 +302,7 @@ load_and_fsck_one_object (OstreeRepo            *repo,
 static gboolean
 fsck_reachable_objects_from_commits (OstreeRepo            *repo,
                                      GHashTable            *commits,
+                                     gchar                **repair_remotes,
                                      gboolean              *out_found_corruption,
                                      GCancellable          *cancellable,
                                      GError               **error)
@@ -222,7 +345,7 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
 
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
-      if (!load_and_fsck_one_object (repo, checksum, objtype, out_found_corruption,
+      if (!load_and_fsck_one_object (repo, checksum, objtype, repair_remotes, out_found_corruption,
                                      cancellable, error))
         goto out;
 
@@ -234,6 +357,53 @@ fsck_reachable_objects_from_commits (OstreeRepo            *repo,
   ret = TRUE;
  out:
   return ret;
+}
+
+static gboolean
+strv_contains (gchar **haystack,
+               const gchar *needle)
+{
+  gchar **iter;
+
+  for (iter = haystack; *iter; ++iter)
+    if (g_strcmp0 (*iter, needle) == 0)
+      return TRUE;
+
+  return FALSE;
+}
+
+static gboolean
+prepare_repair_remotes (OstreeRepo *repo,
+                        gchar ***out_repair_remotes,
+                        GError **error)
+{
+  gchar **iter;
+
+  if (opt_repair_remotes == NULL || *opt_repair_remotes == NULL)
+    {
+      *out_repair_remotes = NULL;
+      return TRUE;
+    }
+
+  if (strv_contains (opt_repair_remotes, "-"))
+    {
+      if (g_strv_length (opt_repair_remotes) > 1)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "Either list repair remotes explicitly or use - (dash) to use all available remotes");
+          return FALSE;
+        }
+      *out_repair_remotes = ostree_repo_remote_list (repo, NULL);
+      return TRUE;
+    }
+
+  for (iter = opt_repair_remotes; *iter; ++iter)
+    {
+      if (!ostree_repo_remote_get_url (repo, *iter, NULL, error))
+        return FALSE;
+    }
+  *out_repair_remotes = g_strdupv (opt_repair_remotes);
+  return TRUE;
 }
 
 gboolean
@@ -249,10 +419,14 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
   g_autoptr(GHashTable) objects = NULL;
   g_autoptr(GHashTable) commits = NULL;
   g_autoptr(GPtrArray) tombstones = NULL;
-  context = g_option_context_new ("- Check the repository for consistency");
+  g_auto(GStrv) repair_remotes = NULL;
 
+  context = g_option_context_new ("- Check the repository for consistency");
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
+
+  if (!prepare_repair_remotes (repo, &repair_remotes, error))
+    return FALSE;
 
   if (!opt_quiet)
     g_print ("Enumerating objects...\n");
@@ -321,7 +495,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
     g_print ("Verifying content integrity of %u commit objects...\n",
              (guint)g_hash_table_size (commits));
 
-  if (!fsck_reachable_objects_from_commits (repo, commits, &found_corruption,
+  if (!fsck_reachable_objects_from_commits (repo, commits, repair_remotes, &found_corruption,
                                             cancellable, error))
     goto out;
 
@@ -357,5 +531,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
  out:
   if (context)
     g_option_context_free (context);
+  g_strfreev (opt_repair_remotes);
+  opt_repair_remotes = NULL;
   return ret;
 }
