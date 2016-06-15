@@ -43,7 +43,6 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
-  g_autofree char *parent = NULL;
 
   if (opt_delete || opt_list)
     {
