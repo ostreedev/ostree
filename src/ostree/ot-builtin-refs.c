@@ -43,7 +43,6 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
   GHashTableIter hashiter;
   gpointer hashkey, hashvalue;
   gboolean ret = FALSE;
-  OstreeRepoTransactionStats stats;
   g_autofree char *parent = NULL;
 
   if (opt_delete || opt_list)
@@ -86,24 +85,11 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
         }
 
       if (!ostree_repo_resolve_rev (repo, refspec_prefix, FALSE, &checksum, error))
-          goto out;
+        goto out;
 
-      else
-        {
-          if (!ostree_repo_prepare_transaction (repo, NULL, cancellable, error))
-            goto out;
-
-          ostree_repo_transaction_set_ref (repo, NULL, opt_create, checksum);
-
-          if (!ostree_repo_resolve_rev (repo, opt_create, TRUE, &parent, error))
-            {
-              ostree_repo_abort_transaction (repo, cancellable, NULL);
-              goto out;
-            }
-
-          if (!ostree_repo_commit_transaction (repo, &stats, cancellable, error))
-            goto out;
-        }
+      if (!ostree_repo_set_ref_immediate (repo, NULL, opt_create, checksum,
+                                          cancellable, error))
+        goto out;
     }
   else
     /* delete */
