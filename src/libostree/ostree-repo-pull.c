@@ -39,6 +39,15 @@
 #define OSTREE_REPO_PULL_CONTENT_PRIORITY  (OSTREE_FETCHER_DEFAULT_PRIORITY)
 #define OSTREE_REPO_PULL_METADATA_PRIORITY (OSTREE_REPO_PULL_CONTENT_PRIORITY - 100)
 
+typedef enum {
+  FETCH_METADATA,
+  FETCH_CONTENT,
+  FETCH_DELTAPART,
+  FETCH_DELTASUPER,
+  FETCH_REF,
+  MAX_FETCH_TYPES
+} FetchType;
+
 typedef struct {
   OstreeRepo   *repo;
   int           tmpdir_dfd;
@@ -75,27 +84,20 @@ typedef struct {
   GHashTable       *expected_commit_sizes; /* Maps commit checksum to known size */
   GHashTable       *commit_to_depth; /* Maps commit checksum maximum depth */
   GHashTable       *scanned_metadata; /* Maps object name to itself */
+
   GHashTable       *requested_metadata; /* Maps object name to itself */
   GHashTable       *requested_content; /* Maps object name to itself */
-  guint             n_outstanding_metadata_fetches;
-  guint             n_outstanding_metadata_write_requests;
-  guint             n_outstanding_content_fetches;
-  guint             n_outstanding_content_write_requests;
-  guint             n_outstanding_deltapart_fetches;
-  guint             n_outstanding_deltapart_write_requests;
+  GHashTable       *requested_refs_to_fetch; /* Maps ref to commit */
+  GHashTable       *commits_to_fetch; /* Maps commit to itself */
+
+  guint             n_outstanding[MAX_FETCH_TYPES];
+  guint             n_outstanding_write_requests[MAX_FETCH_TYPES];
+  guint             n_fetched[MAX_FETCH_TYPES];
+  guint             n_requested[MAX_FETCH_TYPES];
+
   guint             n_total_deltaparts;
   guint64           total_deltapart_size;
   guint64           total_deltapart_usize;
-  gint              n_requested_metadata;
-  gint              n_requested_content;
-  guint             n_fetched_deltaparts;
-  guint             n_fetched_metadata;
-  guint             n_fetched_content;
-
-
-  GHashTable       *requested_refs_to_fetch;
-  GHashTable       *commits_to_fetch;
-  gboolean          fetch_all_refs;
 
   int               maxdepth;
   guint64           start_time;
@@ -103,6 +105,8 @@ typedef struct {
   gboolean          is_mirror;
   gboolean          is_commit_only;
   gboolean          is_untrusted;
+  gboolean          require_static_deltas;
+  gboolean          disable_static_deltas;
 
   char         *dir;
   gboolean      commitpartial_exists;
@@ -201,28 +205,29 @@ static gboolean
 update_progress (gpointer user_data)
 {
   OtPullData *pull_data;
-  guint outstanding_writes;
-  guint outstanding_fetches;
   guint64 bytes_transferred;
-  guint fetched;
-  guint requested;
   guint n_scanned_metadata;
   guint64 start_time;
+
+  guint outstanding_writes = 0;
+  guint outstanding_fetches = 0;
+  guint fetched = 0;
+  guint requested = 0;
+  int i;
 
   pull_data = user_data;
 
   if (! pull_data->progress)
     return FALSE;
 
-  outstanding_writes = pull_data->n_outstanding_content_write_requests +
-    pull_data->n_outstanding_metadata_write_requests +
-    pull_data->n_outstanding_deltapart_write_requests;
-  outstanding_fetches = pull_data->n_outstanding_content_fetches +
-    pull_data->n_outstanding_metadata_fetches +
-    pull_data->n_outstanding_deltapart_fetches;
+  for (i = 0; i < MAX_FETCH_TYPES; i++)
+    {
+      outstanding_writes += pull_data->n_outstanding_write_requests[i];
+      outstanding_fetches += pull_data->n_outstanding[i];
+      fetched += pull_data->n_fetched[i];
+      requested += pull_data->n_requested[i];
+    }
   bytes_transferred = _ostree_fetcher_bytes_transferred (pull_data->fetcher);
-  fetched = pull_data->n_fetched_metadata + pull_data->n_fetched_content;
-  requested = pull_data->n_requested_metadata + pull_data->n_requested_content;
   n_scanned_metadata = pull_data->n_scanned_metadata;
   start_time = pull_data->start_time;
 
@@ -236,7 +241,7 @@ update_progress (gpointer user_data)
 
   /* Deltas */
   ostree_async_progress_set_uint (pull_data->progress, "fetched-delta-parts",
-                                  pull_data->n_fetched_deltaparts);
+                                  pull_data->n_fetched[FETCH_DELTAPART]);
   ostree_async_progress_set_uint (pull_data->progress, "total-delta-parts",
                                   pull_data->n_total_deltaparts);
   ostree_async_progress_set_uint64 (pull_data->progress, "total-delta-part-size",
@@ -247,8 +252,8 @@ update_progress (gpointer user_data)
                                   pull_data->static_delta_superblocks->len);
 
   /* We fetch metadata before content.  These allow us to report metadata fetch progress specifically. */
-  ostree_async_progress_set_uint (pull_data->progress, "outstanding-metadata-fetches", pull_data->n_outstanding_metadata_fetches);
-  ostree_async_progress_set_uint (pull_data->progress, "metadata-fetched", pull_data->n_fetched_metadata);
+  ostree_async_progress_set_uint (pull_data->progress, "outstanding-metadata-fetches", pull_data->n_outstanding[FETCH_METADATA]);
+  ostree_async_progress_set_uint (pull_data->progress, "metadata-fetched", pull_data->n_fetched[FETCH_METADATA]);
 
   if (pull_data->fetching_sync_uri)
     {
@@ -269,14 +274,12 @@ update_progress (gpointer user_data)
 static gboolean
 pull_termination_condition (OtPullData          *pull_data)
 {
-  gboolean current_fetch_idle = (pull_data->n_outstanding_metadata_fetches == 0 &&
-                                 pull_data->n_outstanding_content_fetches == 0 &&
-                                 pull_data->n_outstanding_deltapart_fetches == 0);
-  gboolean current_write_idle = (pull_data->n_outstanding_metadata_write_requests == 0 &&
-                                 pull_data->n_outstanding_content_write_requests == 0 &&
-                                 pull_data->n_outstanding_deltapart_write_requests == 0 );
-  gboolean current_scan_idle = g_queue_is_empty (&pull_data->scan_object_queue);
-  gboolean current_idle = current_fetch_idle && current_write_idle && current_scan_idle;
+  gboolean current_idle = g_queue_is_empty (&pull_data->scan_object_queue);
+  int i;
+
+  for(i = 0; i < MAX_FETCH_TYPES && current_idle; i++)
+    current_idle = current_idle && pull_data->n_outstanding[i] == 0
+                                && pull_data->n_outstanding_write_requests[i] == 0;
 
   if (pull_data->caught_error)
     return TRUE;
@@ -660,9 +663,9 @@ content_fetch_on_write_complete (GObject        *object,
       goto out;
     }
 
-  pull_data->n_fetched_content++;
+  pull_data->n_fetched[FETCH_CONTENT]++;
  out:
-  pull_data->n_outstanding_content_write_requests--;
+  pull_data->n_outstanding_write_requests[FETCH_CONTENT]--;
   check_outstanding_requests_handle_error (pull_data, local_error);
   g_variant_unref (fetch_data->object);
   g_free (fetch_data);
@@ -714,7 +717,7 @@ content_fetch_on_complete (GObject        *object,
                                                 cancellable, error))
             goto out;
         }
-      pull_data->n_fetched_content++;
+      pull_data->n_fetched[FETCH_CONTENT]++;
     }
   else
     {
@@ -741,7 +744,7 @@ content_fetch_on_complete (GObject        *object,
                                               cancellable, error))
         goto out;
   
-      pull_data->n_outstanding_content_write_requests++;
+      pull_data->n_outstanding_write_requests[FETCH_CONTENT]++;
       ostree_repo_write_content_async (pull_data->repo, checksum,
                                        object_input, length,
                                        cancellable,
@@ -749,7 +752,7 @@ content_fetch_on_complete (GObject        *object,
     }
 
  out:
-  pull_data->n_outstanding_content_fetches--;
+  pull_data->n_outstanding[FETCH_CONTENT]--;
   check_outstanding_requests_handle_error (pull_data, local_error);
 }
 
@@ -791,7 +794,7 @@ on_metadata_written (GObject           *object,
   queue_scan_one_metadata_object_c (pull_data, csum, objtype, 0);
 
  out:
-  pull_data->n_outstanding_metadata_write_requests--;
+  pull_data->n_outstanding_write_requests[FETCH_METADATA]--;
   g_variant_unref (fetch_data->object);
   g_free (fetch_data);
 
@@ -911,13 +914,13 @@ meta_fetch_on_complete (GObject           *object,
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
                                         on_metadata_written, fetch_data);
-      pull_data->n_outstanding_metadata_write_requests++;
+      pull_data->n_outstanding_write_requests[FETCH_METADATA]++;
     }
 
  out:
-  g_assert (pull_data->n_outstanding_metadata_fetches > 0);
-  pull_data->n_outstanding_metadata_fetches--;
-  pull_data->n_fetched_metadata++;
+  g_assert (pull_data->n_outstanding[FETCH_METADATA] > 0);
+  pull_data->n_outstanding[FETCH_METADATA]--;
+  pull_data->n_fetched[FETCH_METADATA]++;
   check_outstanding_requests_handle_error (pull_data, local_error);
   if (local_error || free_fetch_data)
     {
@@ -951,8 +954,8 @@ on_static_delta_written (GObject           *object,
     goto out;
 
  out:
-  g_assert (pull_data->n_outstanding_deltapart_write_requests > 0);
-  pull_data->n_outstanding_deltapart_write_requests--;
+  g_assert (pull_data->n_outstanding_write_requests[FETCH_DELTAPART] > 0);
+  pull_data->n_outstanding_write_requests[FETCH_DELTAPART]--;
   check_outstanding_requests_handle_error (pull_data, local_error);
   /* Always free state */
   fetch_static_delta_data_free (fetch_data);
@@ -1009,12 +1012,12 @@ static_deltapart_fetch_on_complete (GObject           *object,
                                            pull_data->cancellable,
                                            on_static_delta_written,
                                            fetch_data);
-  pull_data->n_outstanding_deltapart_write_requests++;
+  pull_data->n_outstanding_write_requests[FETCH_DELTAPART]++;
 
  out:
-  g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
-  pull_data->n_outstanding_deltapart_fetches--;
-  pull_data->n_fetched_deltaparts++;
+  g_assert (pull_data->n_outstanding[FETCH_DELTAPART] > 0);
+  pull_data->n_outstanding[FETCH_DELTAPART]--;
+  pull_data->n_fetched[FETCH_DELTAPART]++;
   check_outstanding_requests_handle_error (pull_data, local_error);
   if (local_error)
     fetch_static_delta_data_free (fetch_data);
@@ -1333,13 +1336,13 @@ enqueue_one_object_request (OtPullData        *pull_data,
   is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
   if (is_meta)
     {
-      pull_data->n_outstanding_metadata_fetches++;
-      pull_data->n_requested_metadata++;
+      pull_data->n_outstanding[FETCH_METADATA]++;
+      pull_data->n_requested[FETCH_METADATA]++;
     }
   else
     {
-      pull_data->n_outstanding_content_fetches++;
-      pull_data->n_requested_content++;
+      pull_data->n_outstanding[FETCH_CONTENT]++;
+      pull_data->n_requested[FETCH_CONTENT]++;
     }
   fetch_data = g_new0 (FetchObjectData, 1);
   fetch_data->pull_data = pull_data;
@@ -1616,7 +1619,7 @@ process_one_static_delta (OtPullData   *pull_data,
                                           to_commit,
                                           pull_data->cancellable,
                                           on_metadata_written, fetch_data);
-        pull_data->n_outstanding_metadata_write_requests++;
+        pull_data->n_outstanding_write_requests[FETCH_METADATA]++;
       }
   }
 
@@ -1667,7 +1670,7 @@ process_one_static_delta (OtPullData   *pull_data,
           g_debug ("Have all objects from static delta %s-%s part %u",
                    from_revision ? from_revision : "empty", to_revision,
                    i);
-          pull_data->n_fetched_deltaparts++;
+          pull_data->n_fetched[FETCH_DELTAPART]++;
           continue;
         }
 
@@ -1710,7 +1713,7 @@ process_one_static_delta (OtPullData   *pull_data,
                                                    pull_data->cancellable,
                                                    on_static_delta_written,
                                                    fetch_data);
-          pull_data->n_outstanding_deltapart_write_requests++;
+          pull_data->n_outstanding_write_requests[FETCH_DELTAPART]++;
         }
       else
         {
@@ -1720,7 +1723,7 @@ process_one_static_delta (OtPullData   *pull_data,
                                                           pull_data->cancellable,
                                                           static_deltapart_fetch_on_complete,
                                                           fetch_data);
-          pull_data->n_outstanding_deltapart_fetches++;
+          pull_data->n_outstanding[FETCH_DELTAPART]++;
           soup_uri_free (target_uri);
         }
     }
@@ -2738,10 +2741,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       goto out;
     }
   
-  g_assert_cmpint (pull_data->n_outstanding_metadata_fetches, ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding_metadata_write_requests, ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding_content_fetches, ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding_content_write_requests, ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding[FETCH_METADATA], ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding_write_requests[FETCH_METADATA], ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding[FETCH_CONTENT], ==, 0);
+  g_assert_cmpint (pull_data->n_outstanding_write_requests[FETCH_CONTENT], ==, 0);
 
   g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2800,13 +2803,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         else
           shift = 1024;
 
-        if (pull_data->n_fetched_deltaparts > 0)
+        if (pull_data->n_fetched[FETCH_DELTAPART] > 0)
           g_string_append_printf (buf, "%u delta parts, %u loose fetched",
-                                  pull_data->n_fetched_deltaparts,
-                                  pull_data->n_fetched_metadata + pull_data->n_fetched_content);
+                                  pull_data->n_fetched[FETCH_DELTAPART],
+                                  pull_data->n_fetched[FETCH_METADATA] + pull_data->n_fetched[FETCH_CONTENT]);
         else
           g_string_append_printf (buf, "%u metadata, %u content objects fetched",
-                                  pull_data->n_fetched_metadata, pull_data->n_fetched_content);
+                                  pull_data->n_fetched[FETCH_METADATA], pull_data->n_fetched[FETCH_CONTENT]);
 
         g_string_append_printf (buf, "; %" G_GUINT64_FORMAT " %s transferred in %u seconds",
                                 (guint64)(bytes_transferred / shift),
