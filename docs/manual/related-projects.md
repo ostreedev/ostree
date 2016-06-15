@@ -134,6 +134,11 @@ believes that at the moment, the "CL updater" is not truly atomic in
 the sense that because it applies updates live, there is a window
 where the OS root may be inconsistent.
 
+## Mender.io
+
+[Mender.io](https://mender.io/) is another implementation of the dual
+partition approach.
+
 ## OLPC update
 
 OSTree is basically a generalization of olpc-update, except using
