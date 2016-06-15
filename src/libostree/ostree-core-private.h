@@ -88,11 +88,6 @@ GFileInfo * _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid);
  */
 #define _OSTREE_LOOSE_PATH_MAX (256)
 
-char *
-_ostree_get_relative_object_path (const char        *checksum,
-                                  OstreeObjectType   type,
-                                  gboolean           compressed);
-
 
 char *
 _ostree_get_relative_static_delta_path (const char        *from,

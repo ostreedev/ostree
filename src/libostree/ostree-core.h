@@ -243,16 +243,20 @@ void ostree_object_from_string (const char *str,
                                 OstreeObjectType *out_objtype);
 
 _OSTREE_PUBLIC
-gboolean
-ostree_content_stream_parse (gboolean                compressed,
-                             GInputStream           *input,
-                             guint64                 input_length,
-                             gboolean                trusted,
-                             GInputStream          **out_input,
-                             GFileInfo             **out_file_info,
-                             GVariant              **out_xattrs,
-                             GCancellable           *cancellable,
-                             GError                **error);
+char * ostree_get_relative_object_path (const char        *checksum,
+                                        OstreeObjectType   type,
+                                        gboolean           compressed);
+
+_OSTREE_PUBLIC
+gboolean ostree_content_stream_parse (gboolean                compressed,
+                                      GInputStream           *input,
+                                      guint64                 input_length,
+                                      gboolean                trusted,
+                                      GInputStream          **out_input,
+                                      GFileInfo             **out_file_info,
+                                      GVariant              **out_xattrs,
+                                      GCancellable           *cancellable,
+                                      GError                **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_content_file_parse (gboolean                compressed,
@@ -276,13 +280,12 @@ gboolean ostree_content_file_parse_at (gboolean                compressed,
                                        GError                **error);
 
 _OSTREE_PUBLIC
-gboolean
-ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
-                                      GFileInfo          *file_info,
-                                      GVariant           *xattrs,
-                                      GInputStream      **out_input,
-                                      GCancellable       *cancellable,
-                                      GError            **error);
+gboolean ostree_raw_file_to_archive_z2_stream (GInputStream       *input,
+                                               GFileInfo          *file_info,
+                                               GVariant           *xattrs,
+                                               GInputStream      **out_input,
+                                               GCancellable       *cancellable,
+                                               GError            **error);
 
 _OSTREE_PUBLIC
 gboolean ostree_raw_file_to_content_stream (GInputStream       *input,

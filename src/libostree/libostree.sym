@@ -340,6 +340,7 @@ global:
 
 LIBOSTREE_2016.6 {
 global:
+        ostree_get_relative_object_path;
         ostree_gpg_verify_result_require_valid_signature;
         ostree_raw_file_to_archive_z2_stream;
         ostree_repo_gpg_verify_data;
