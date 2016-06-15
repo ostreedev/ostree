@@ -2659,8 +2659,8 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
         {
           GFileInfo *child_info;
           
-          if (!gs_file_enumerator_iterate (dir_enum, &child_info, NULL,
-                                           cancellable, error))
+          if (!g_file_enumerator_iterate (dir_enum, &child_info, NULL,
+                                          cancellable, error))
             goto out;
           if (child_info == NULL)
             break;

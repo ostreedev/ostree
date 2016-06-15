@@ -93,4 +93,26 @@ gboolean ot_util_fsync_directory (GFile         *dir,
                                   GCancellable  *cancellable,
                                   GError       **error);
 
+#if !GLIB_CHECK_VERSION(2, 44, 0)
+gboolean
+ot_file_enumerator_iterate (GFileEnumerator  *direnum,
+                            GFileInfo       **out_info,
+                            GFile           **out_child,
+                            GCancellable     *cancellable,
+                            GError          **error);
+#else
+static inline gboolean
+ot_file_enumerator_iterate (GFileEnumerator  *direnum,
+                            GFileInfo       **out_info,
+                            GFile           **out_child,
+                            GCancellable     *cancellable,
+                            GError          **error)
+{
+  G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
+  return (g_file_enumerator_iterate) (direnum, out_info, out_child, cancellable, error);
+  G_GNUC_END_IGNORE_DEPRECATIONS;
+}
+#endif
+#define g_file_enumerator_iterate ot_file_enumerator_iterate
+
 G_END_DECLS

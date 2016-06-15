@@ -696,8 +696,8 @@ checkout_tree_at (OstreeRepo                        *self,
       GFile *src_child;
       const char *name;
 
-      if (!gs_file_enumerator_iterate (dir_enum, &file_info, &src_child,
-                                       cancellable, error))
+      if (!g_file_enumerator_iterate (dir_enum, &file_info, &src_child,
+                                      cancellable, error))
         goto out;
       if (file_info == NULL)
         break;
