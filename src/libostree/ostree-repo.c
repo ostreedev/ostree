@@ -2836,9 +2836,12 @@ ostree_repo_load_file (OstreeRepo         *self,
                */
               if (S_ISLNK (mode) || out_input)
                 { 
-                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                                               cancellable, error))
-                    goto out;
+                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+                  if (fd < 0)
+                    {
+                      glnx_set_error_from_errno (error);
+                      goto out;
+                    }
                 }
 
               if (S_ISREG (mode) && out_input)
@@ -2875,9 +2878,12 @@ ostree_repo_load_file (OstreeRepo         *self,
                 {
                   glnx_fd_close int fd = -1;
 
-                  if (!gs_file_openat_noatime (self->objects_dir_fd, loose_path_buf, &fd,
-                                               cancellable, error))
-                    goto out;
+                  fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
+                  if (fd < 0)
+                    {
+                      glnx_set_error_from_errno (error);
+                      goto out;
+                    }
 
                   if (out_xattrs)
                     {
