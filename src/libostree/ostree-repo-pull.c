@@ -1316,8 +1316,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   if (is_detached_meta)
     {
       char buf[_OSTREE_LOOSE_PATH_MAX];
-      _ostree_loose_path_with_suffix (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT,
-                                      pull_data->remote_mode, "meta");
+      _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, pull_data->remote_mode);
       obj_uri = suburi_new (pull_data->base_uri, "objects", buf, NULL);
     }
   else

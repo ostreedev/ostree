@@ -3114,8 +3114,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
     {
       char meta_loose[_OSTREE_LOOSE_PATH_MAX];
 
-      _ostree_loose_path_with_suffix (meta_loose, sha256,
-                                      OSTREE_OBJECT_TYPE_COMMIT, self->mode, "meta");
+      _ostree_loose_path (meta_loose, sha256, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
       do
         res = unlinkat (self->objects_dir_fd, meta_loose, 0);

@@ -2071,8 +2071,7 @@ _ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
                                              const char        *checksum)
 {
   char buf[_OSTREE_LOOSE_PATH_MAX];
-  _ostree_loose_path_with_suffix (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT, self->mode,
-                                  "meta");
+  _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
   return g_file_resolve_relative_path (self->objects_dir, buf);
 }
 
