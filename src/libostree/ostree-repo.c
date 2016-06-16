@@ -1816,7 +1816,8 @@ ostree_repo_mode_from_string (const char      *mode,
     ret_mode = OSTREE_REPO_MODE_BARE;
   else if (strcmp (mode, "bare-user") == 0)
     ret_mode = OSTREE_REPO_MODE_BARE_USER;
-  else if (strcmp (mode, "archive-z2") == 0)
+  else if (strcmp (mode, "archive-z2") == 0 ||
+           strcmp (mode, "archive") == 0)
     ret_mode = OSTREE_REPO_MODE_ARCHIVE_Z2;
   else
     {
