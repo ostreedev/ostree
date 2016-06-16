@@ -4,11 +4,12 @@ Once you have a build system going, if you actually want client
 systems to retrieve the content, you will quickly feel a need for
 "repository management".
 
-OSTree itself does not currently come with tools to do this.  One
-reason is that how content is delivered and managed has concerns very
-specific to the organization.  For example, some operating system
-content vendors may want integration with a specific errata
-notification system.
+The command line tool `ostree` does cover some core functionality, but
+doesn't include very high level workflows.  One reason is that how
+content is delivered and managed has concerns very specific to the
+organization.  For example, some operating system content vendors may
+want integration with a specific errata notification system when
+generating commits.
 
 In this section, we will describe some high level ideas and methods
 for managing content in OSTree repositories, mostly independent of any
@@ -20,6 +21,27 @@ One example of software which can assist in managing OSTree
 repositories today is the [Pulp Project](http://www.pulpproject.org/),
 which has a
 [Pulp OSTree plugin](https://pulp-ostree.readthedocs.org/en/latest/).
+
+## Mirroring repositories
+
+It's very common to want to perform a full or partial mirror, in
+particular across organizational boundaries (e.g. an upstream OS
+provider, and a user that wants offline and faster access to the
+content).  OSTree supports both full and partial mirroring of the base
+`archive-z2` content, although not yet of static deltas.
+
+To create a mirror, first create an `archive-z2` repository (you don't
+need to run this as root), then add the upstream as a remote, then use
+`pull --mirror`.
+
+```
+ostree --repo=repo init --mode=archive-z2
+ostree --repo=repo remote add exampleos https://exampleos.com/ostree/repo
+ostree --repo=repo pull --mirror exampleos:exampleos/x86_64/standard
+```
+
+You can use the `--depth=-1` option to retrieve all history, or a
+positive integer like `3` to retrieve just the last 3 commits.
 
 ## Separate development vs release repositories
 
