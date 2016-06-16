@@ -17,7 +17,7 @@ AC_PROG_YACC
 
 changequote(,)dnl
 if test "x$GCC" = "xyes"; then
-  WARN_CFLAGS="-Wall -Wstrict-prototypes -Werror=missing-prototypes \
+  WARN_CFLAGS="-Wall -Wempty-body -Wstrict-prototypes -Werror=missing-prototypes \
 		-Werror=implicit-function-declaration \
 		-Werror=pointer-arith -Werror=init-self -Werror=format=2 \
 		-Werror=format-security \
