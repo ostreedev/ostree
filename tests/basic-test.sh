@@ -278,7 +278,7 @@ echo "ok prune"
 
 cd ${test_tmpdir}
 rm repo3 -rf
-${CMD_PREFIX} ostree --repo=repo3 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo3 init --mode=archive
 ${CMD_PREFIX} ostree --repo=repo3 pull-local --remote=aremote repo test2
 rm repo3/refs/remotes -rf
 mkdir repo3/refs/remotes
@@ -405,7 +405,7 @@ echo "ok commit of fifo was rejected"
 cd ${test_tmpdir}
 rm repo2 -rf
 mkdir repo2
-${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo2 init --mode=archive
 ${CMD_PREFIX} ostree --repo=repo2 pull-local repo
 rm -rf test2-checkout
 ${CMD_PREFIX} ostree --repo=repo2 checkout -U --disable-cache test2 test2-checkout
