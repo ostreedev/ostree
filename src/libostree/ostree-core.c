@@ -1047,6 +1047,8 @@ ostree_object_type_to_string (OstreeObjectType objtype)
       return "commit";
     case OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT:
       return "tombstone-commit";
+    case OSTREE_OBJECT_TYPE_COMMIT_META:
+      return "commitmeta";
     default:
       g_assert_not_reached ();
       return NULL;
@@ -1070,6 +1072,10 @@ ostree_object_type_from_string (const char *str)
     return OSTREE_OBJECT_TYPE_DIR_META;
   else if (!strcmp (str, "commit"))
     return OSTREE_OBJECT_TYPE_COMMIT;
+  else if (!strcmp (str, "tombstone-commit"))
+    return OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT;
+  else if (!strcmp (str, "commitmeta"))
+    return OSTREE_OBJECT_TYPE_COMMIT_META;
   g_assert_not_reached ();
   return 0;
 }
@@ -1414,7 +1420,13 @@ _ostree_loose_path (char              *buf,
                     OstreeObjectType   objtype,
                     OstreeRepoMode     mode)
 {
-  _ostree_loose_path_with_suffix (buf, checksum, objtype, mode, "");
+  *buf = checksum[0];
+  buf++;
+  *buf = checksum[1];
+  buf++;
+  snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s",
+            checksum + 2, ostree_object_type_to_string (objtype),
+            (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE_Z2) ? "z" : "");
 }
 
 /**
@@ -1440,33 +1452,6 @@ _ostree_header_gfile_info_new (mode_t mode, uid_t uid, gid_t gid)
   g_file_info_set_attribute_uint32 (ret, "unix::gid", gid);
   g_file_info_set_attribute_uint32 (ret, "unix::mode", mode);
   return ret;
-}
-
-/*
- * _ostree_loose_path_with_suffix:
- * @buf: Output buffer, must be _OSTREE_LOOSE_PATH_MAX in size
- * @checksum: ASCII checksum
- * @objtype: Object type
- * @mode: Repository mode
- *
- * Like _ostree_loose_path, but also append a further arbitrary
- * suffix; useful for finding non-core objects.
- */
-void
-_ostree_loose_path_with_suffix (char              *buf,
-                                const char        *checksum,
-                                OstreeObjectType   objtype,
-                                OstreeRepoMode     mode,
-                                const char        *suffix)
-{
-  *buf = checksum[0];
-  buf++;
-  *buf = checksum[1];
-  buf++;
-  snprintf (buf, _OSTREE_LOOSE_PATH_MAX - 2, "/%s.%s%s%s",
-            checksum + 2, ostree_object_type_to_string (objtype),
-            (!OSTREE_OBJECT_TYPE_IS_META (objtype) && mode == OSTREE_REPO_MODE_ARCHIVE_Z2) ? "z" : "",
-            suffix);
 }
 
 /*
