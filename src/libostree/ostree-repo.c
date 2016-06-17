@@ -3865,20 +3865,23 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       guint64 start_time = ostree_async_progress_get_uint64 (progress, "start-time");
       guint64 total_delta_part_size = ostree_async_progress_get_uint64 (progress, "total-delta-part-size");
       guint64 current_time = g_get_monotonic_time ();
-      guint64 bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
-      guint64 est_time_remaining =  (total_delta_part_size - bytes_transferred) / bytes_sec;
       g_autofree char *formatted_bytes_transferred =
         g_format_size_full (bytes_transferred, 0);
       g_autofree char *formatted_bytes_sec = NULL;
       g_autofree char *formatted_est_time_remaining = NULL;
 
-      if (!bytes_sec) // Ignore first second
+      /* Ignore the first second, or when we haven't transferred any
+       * data, since those could cause divide by zero below.
+       */
+      if ((current_time - start_time) < G_USEC_PER_SEC || bytes_transferred == 0)
         {
           formatted_bytes_sec = g_strdup ("-");
           formatted_est_time_remaining = g_strdup ("- ");
         }
       else
         {
+          guint64 bytes_sec = bytes_transferred / ((current_time - start_time) / G_USEC_PER_SEC);
+          guint64 est_time_remaining =  (total_delta_part_size - bytes_transferred) / bytes_sec;
           formatted_bytes_sec = g_format_size (bytes_sec);
           formatted_est_time_remaining = _formatted_time_remaining_from_seconds (est_time_remaining);
         }
