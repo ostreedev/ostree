@@ -1484,7 +1484,7 @@ _ostree_get_relative_object_path (const char         *checksum,
 {
   GString *path;
 
-  g_assert (strlen (checksum) == 64);
+  g_assert (strlen (checksum) == OSTREE_SHA256_STRING_LEN);
 
   path = g_string_new ("objects/");
 
