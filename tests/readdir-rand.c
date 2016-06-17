@@ -109,12 +109,12 @@ readdir (DIR *dirp)
 	{
 	  if (g_random_boolean ())
 	    {
+	      struct dirent *copy;
 	      if (!de)
 		{
 		  de = dir_entries_new ();
 		  g_hash_table_insert (direntcache, dirp, de);
 		}
-	      struct dirent *copy;
 	      copy = g_memdup (ret, sizeof (struct dirent));
 	      g_ptr_array_add (de->entries, copy);
 	    }
