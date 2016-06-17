@@ -3870,7 +3870,10 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
       g_autofree char *formatted_bytes_sec = NULL;
       g_autofree char *formatted_est_time_remaining = NULL;
 
-      if ((current_time - start_time) < G_USEC_PER_SEC) // Ignore first second
+      /* Ignore the first second, or when we haven't transferred any
+       * data, since those could cause divide by zero below.
+       */
+      if ((current_time - start_time) < G_USEC_PER_SEC || bytes_transferred == 0)
         {
           formatted_bytes_sec = g_strdup ("-");
           formatted_est_time_remaining = g_strdup ("- ");
