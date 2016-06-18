@@ -1062,8 +1062,8 @@ _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
-static void
-ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
+void
+_ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  SoupURI               *uri,
                                  guint64                max_size,
                                  int                    priority,
@@ -1073,17 +1073,17 @@ ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
 {
   ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, priority, cancellable,
                                        callback, user_data,
-                                       ostree_fetcher_stream_uri_async);
+                                       _ostree_fetcher_stream_uri_async);
 }
 
-static GInputStream *
-ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+GInputStream *
+_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                   GAsyncResult          *result,
                                   GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        ostree_fetcher_stream_uri_async), NULL);
+                        _ostree_fetcher_stream_uri_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
@@ -1134,7 +1134,7 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+  data->result_stream = _ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
                                                           result, data->error);
   data->done = TRUE;
 }
@@ -1168,7 +1168,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   data.done = FALSE;
   data.error = error;
 
-  ostree_fetcher_stream_uri_async (fetcher, uri,
+  _ostree_fetcher_stream_uri_async (fetcher, uri,
                                    max_size,
                                    OSTREE_FETCHER_DEFAULT_PRIORITY,
                                    cancellable,
