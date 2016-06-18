@@ -304,10 +304,10 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
 
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  /* If the input is longer than 64 chars or contains non-hex chars,
+  /* If the input is longer than OSTREE_SHA256_STRING_LEN chars or contains non-hex chars,
      don't bother looking for it as an object */
   off = strspn (refspec, hexchars);
-  if (off > 64 || refspec[off] != '\0')
+  if (off > OSTREE_SHA256_STRING_LEN || refspec[off] != '\0')
     return TRUE;
 
   /* this looks through all objects and adds them to the ref_list if:
@@ -703,7 +703,7 @@ ostree_repo_remote_list_refs (OstreeRepo       *self,
         {
           const char *ref_name = NULL;
           g_autoptr(GVariant) csum_v = NULL;
-          char tmp_checksum[65];
+          char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
 
           g_variant_get_child (child, 0, "&s", &ref_name);
 

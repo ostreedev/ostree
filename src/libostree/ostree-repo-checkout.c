@@ -480,7 +480,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
                   key = g_new (OstreeDevIno, 1);
                   key->dev = stbuf.st_dev;
                   key->ino = stbuf.st_ino;
-                  memcpy (key->checksum, checksum, 65);
+                  memcpy (key->checksum, checksum, OSTREE_SHA256_STRING_LEN+1);
                   
                   g_hash_table_add ((GHashTable*)options->devino_to_csum_cache, key);
                 }

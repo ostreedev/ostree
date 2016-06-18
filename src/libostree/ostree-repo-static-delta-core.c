@@ -136,7 +136,7 @@ ostree_repo_list_static_delta_names (OstreeRepo                  *self,
                   {
                     g_autofree char *buf = g_strconcat (name1, name2, NULL);
                     GString *out = g_string_new ("");
-                    char checksum[65];
+                    char checksum[OSTREE_SHA256_STRING_LEN+1];
                     guchar csum[OSTREE_SHA256_DIGEST_LEN];
                     const char *dash = strchr (buf, '-');
 
@@ -187,7 +187,7 @@ _ostree_repo_static_delta_part_have_all_objects (OstreeRepo             *repo,
     {
       guint8 objtype = *checksums_data;
       const guint8 *csum = checksums_data + 1;
-      char tmp_checksum[65];
+      char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
 
       if (G_UNLIKELY(!ostree_validate_structureof_objtype (objtype, error)))
         goto out;
@@ -354,7 +354,7 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       guint64 size;
       guint64 usize;
       const guchar *csum;
-      char checksum[65];
+      char checksum[OSTREE_SHA256_STRING_LEN+1];
       gboolean have_all;
       g_autoptr(GInputStream) part_in = NULL;
       g_autoptr(GBytes) delta_data = NULL;

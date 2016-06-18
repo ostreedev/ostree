@@ -34,8 +34,8 @@ struct _OstreeRepoRealCommitTraverseIter {
   const char *name;
   OstreeRepoCommitIterResult state;
   guint idx;
-  char checksum_content[65];
-  char checksum_meta[65];
+  char checksum_content[OSTREE_SHA256_STRING_LEN+1];
+  char checksum_meta[OSTREE_SHA256_STRING_LEN+1];
 };
 
 /**

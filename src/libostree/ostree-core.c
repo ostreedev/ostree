@@ -1269,7 +1269,7 @@ ostree_checksum_to_bytes_v (const char *checksum)
 /**
  * ostree_checksum_inplace_from_bytes: (skip)
  * @csum: (array fixed-size=32): An binary checksum of length 32
- * @buf: Output location, must be at least 65 bytes in length
+ * @buf: Output location, must be at least OSTREE_SHA256_STRING_LEN+1 bytes in length
  *
  * Overwrite the contents of @buf with stringified version of @csum.
  */
@@ -1340,7 +1340,7 @@ ostree_checksum_b64_inplace_from_bytes (const guchar *csum,
 char *
 ostree_checksum_from_bytes (const guchar *csum)
 {
-  char *ret = g_malloc (65);
+  char *ret = g_malloc (OSTREE_SHA256_STRING_LEN+1);
   ostree_checksum_inplace_from_bytes (csum, ret);
   return ret;
 }
@@ -1759,7 +1759,7 @@ ostree_validate_structureof_checksum_string (const char *checksum,
   int i = 0;
   size_t len = strlen (checksum);
 
-  if (len != 64)
+  if (len != OSTREE_SHA256_STRING_LEN)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Invalid rev '%s'", checksum);

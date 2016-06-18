@@ -181,7 +181,7 @@ dump_summary_ref (const char   *ref_name,
   csum_bytes = ostree_checksum_bytes_peek_validate (csum_v, &csum_error);
   if (csum_error == NULL)
     {
-      char csum[65];
+      char csum[OSTREE_SHA256_STRING_LEN+1];
 
       ostree_checksum_inplace_from_bytes (csum_bytes, csum);
       g_print ("      %s\n", csum);

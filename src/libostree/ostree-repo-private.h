@@ -120,7 +120,7 @@ struct OstreeRepo {
 typedef struct {
   dev_t dev;
   ino_t ino;
-  char checksum[65];
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
 } OstreeDevIno;
 
 #define OSTREE_REPO_TMPDIR_STAGING "staging-"

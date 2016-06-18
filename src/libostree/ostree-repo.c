@@ -2445,7 +2445,7 @@ list_loose_objects_at (OstreeRepo             *self,
       const char *name = dent->d_name;
       const char *dot;
       OstreeObjectType objtype;
-      char buf[65];
+      char buf[OSTREE_SHA256_STRING_LEN+1];
 
       if (strcmp (name, ".") == 0 ||
           strcmp (name, "..") == 0)

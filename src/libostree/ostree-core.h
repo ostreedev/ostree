@@ -51,7 +51,19 @@ G_BEGIN_DECLS
  */
 #define OSTREE_MAX_RECURSION (256)
 
+/**
+ * OSTREE_SHA256_DIGEST_LEN:
+ *
+ * Length of a sha256 digest when expressed as raw bytes
+ */
 #define OSTREE_SHA256_DIGEST_LEN (32)
+
+/**
+ * OSTREE_SHA256_STRING_LEN:
+ *
+ * Length of a sha256 digest when expressed as a hexadecimal string
+ */
+#define OSTREE_SHA256_STRING_LEN (64)
 
 /**
  * OstreeObjectType:
