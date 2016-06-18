@@ -1213,3 +1213,57 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   g_clear_object (&(data.result_stream));
   return ret;
 }
+
+/**
+ * _ostree_fetcher_stream_to_membuf:
+ * Converts a GInputStream to an in-memory buffer,
+ * which must be freed later with g_free.
+ */
+gboolean
+_ostree_fetcher_stream_to_membuf (GInputStream   *result_stream,
+                                  gboolean        add_nul,
+                                  gboolean        allow_noent,
+                                  gpointer       *out_contents,
+                                  GCancellable   *cancellable,
+                                  GError         **error)
+{
+  gboolean ret = FALSE;
+  const guint8 nulchar = 0;
+  g_autoptr(GMemoryOutputStream) buf = NULL;
+  g_assert (error != NULL);
+
+  if (!result_stream)
+    {
+      if (allow_noent)
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (error);
+              ret = TRUE;
+              *out_contents = NULL;
+            }
+        }
+      goto out;
+    }
+
+  buf = (GMemoryOutputStream*)g_memory_output_stream_new_resizable ();
+  if (g_output_stream_splice ((GOutputStream*)buf, result_stream,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                              cancellable, error) < 0)
+    goto out;
+
+  if (add_nul)
+    {
+      if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
+        goto out;
+    }
+
+  if (!g_output_stream_close ((GOutputStream*)buf, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  *out_contents = g_memory_output_stream_steal_data (buf);
+
+ out:
+  return ret;
+}

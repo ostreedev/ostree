@@ -104,6 +104,15 @@ gboolean _ostree_fetcher_request_uri_to_membuf (OstreeFetcher *fetcher,
                                                 guint64        max_size,
                                                 GCancellable   *cancellable,
                                                 GError         **error);
+
+gboolean
+_ostree_fetcher_stream_to_membuf (GInputStream   *result_stream,
+                                  gboolean        add_nul,
+                                  gboolean        allow_noent,
+                                  gpointer       *out_contents,
+                                  GCancellable   *cancellable,
+                                  GError         **error);
+
 G_END_DECLS
 
 #endif
