@@ -2067,7 +2067,7 @@ _ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
  * ostree_repo_read_commit_detached_metadata:
  * @self: Repo
  * @checksum: ASCII SHA256 commit checksum
- * @out_metadata: (out) (transfer full): Metadata associated with commit in with format "a{sv}", or %NULL if none exists
+ * @out_metadata: (out) (transfer full): Metadata associated with commit in with format OSTREE_COMMIT_META_GVARIANT_FORMAT, or %NULL if none exists
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -2088,7 +2088,7 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   g_autoptr(GVariant) ret_metadata = NULL;
   
   if (!ot_util_variant_map_at (AT_FDCWD, gs_file_get_path_cached (metadata_path),
-                               G_VARIANT_TYPE ("a{sv}"),
+                               OSTREE_COMMIT_META_GVARIANT_FORMAT,
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
     {
       g_prefix_error (error, "Unable to read existing detached metadata: ");
