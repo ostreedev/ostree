@@ -113,9 +113,9 @@ _ostree_repo_file_new_root (OstreeRepo *repo,
 
   g_return_val_if_fail (repo != NULL, NULL);
   g_return_val_if_fail (contents_checksum != NULL, NULL);
-  g_return_val_if_fail (strlen (contents_checksum) == 64, NULL);
+  g_return_val_if_fail (strlen (contents_checksum) == OSTREE_SHA256_STRING_LEN, NULL);
   g_return_val_if_fail (metadata_checksum != NULL, NULL);
-  g_return_val_if_fail (strlen (metadata_checksum) == 64, NULL);
+  g_return_val_if_fail (strlen (metadata_checksum) == OSTREE_SHA256_STRING_LEN, NULL);
 
   self = g_object_new (OSTREE_TYPE_REPO_FILE, NULL);
   self->repo = g_object_ref (repo);
@@ -152,12 +152,12 @@ _ostree_repo_file_new_for_commit (OstreeRepo  *repo,
   g_autoptr(GVariant) commit_v = NULL;
   g_autoptr(GVariant) tree_contents_csum_v = NULL;
   g_autoptr(GVariant) tree_metadata_csum_v = NULL;
-  char tree_contents_csum[65];
-  char tree_metadata_csum[65];
+  char tree_contents_csum[OSTREE_SHA256_STRING_LEN + 1];
+  char tree_metadata_csum[OSTREE_SHA256_STRING_LEN + 1];
 
   g_return_val_if_fail (repo != NULL, NULL);
   g_return_val_if_fail (commit != NULL, NULL);
-  g_return_val_if_fail (strlen (commit) == 64, NULL);
+  g_return_val_if_fail (strlen (commit) == OSTREE_SHA256_STRING_LEN, NULL);
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT,
                                  commit, &commit_v, error))
@@ -807,7 +807,7 @@ ostree_repo_file_tree_query_child (OstreeRepoFile  *self,
   g_autoptr(GVariant) dirs_variant = NULL;
   g_autoptr(GVariant) content_csum_v = NULL;
   g_autoptr(GVariant) meta_csum_v = NULL;
-  char tmp_checksum[65];
+  char tmp_checksum[OSTREE_SHA256_STRING_LEN+1];
   GFileAttributeMatcher *matcher = NULL;
 
   if (!ostree_repo_file_ensure_resolved (self, error))

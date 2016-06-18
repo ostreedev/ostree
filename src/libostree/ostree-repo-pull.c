@@ -1096,7 +1096,7 @@ scan_commit_object (OtPullData         *pull_data,
     }
   else if (parent_csum_bytes != NULL && depth > 0)
     {
-      char parent_checksum[65];
+      char parent_checksum[OSTREE_SHA256_STRING_LEN+1];
       gpointer parent_depthp;
       int parent_depth;
 

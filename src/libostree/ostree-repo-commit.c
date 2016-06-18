@@ -2937,7 +2937,7 @@ ostree_repo_write_mtree (OstreeRepo           *self,
       g_autoptr(GHashTable) dir_contents_checksums = NULL;
       g_autoptr(GVariant) serialized_tree = NULL;
       g_autofree guchar *contents_csum = NULL;
-      char contents_checksum_buf[65];
+      char contents_checksum_buf[OSTREE_SHA256_STRING_LEN+1];
 
       dir_contents_checksums = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                       (GDestroyNotify)g_free, (GDestroyNotify)g_free);

@@ -866,7 +866,7 @@ gboolean ostree_repo_traverse_commit_union (OstreeRepo         *repo,
 struct _OstreeRepoCommitTraverseIter {
   gboolean initialized;
   gpointer dummy[10];
-  char dummy_checksum_data[65*2];
+  char dummy_checksum_data[(OSTREE_SHA256_STRING_LEN+1)*2];
 };
 
 typedef struct _OstreeRepoCommitTraverseIter OstreeRepoCommitTraverseIter;

@@ -60,7 +60,7 @@ typedef struct {
   OstreeRepoContentBareCommit barecommitstate;
   guint64          content_size;
   GOutputStream   *content_out;
-  char             checksum[65];
+  char             checksum[OSTREE_SHA256_STRING_LEN+1];
   char             *read_source_object;
   int               read_source_fd;
   gboolean        have_obj;
@@ -78,7 +78,7 @@ typedef struct {
 
 typedef struct {
   StaticDeltaExecutionState *state;
-  char checksum[65];
+  char checksum[OSTREE_SHA256_STRING_LEN+1];
 } StaticDeltaContentWrite;
 
 typedef gboolean (*DispatchOpFunc) (OstreeRepo                 *repo,
