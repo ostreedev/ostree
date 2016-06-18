@@ -772,8 +772,10 @@ _ostree_repo_write_ref (OstreeRepo    *self,
             goto out;
         }
 
-      if (!glnx_opendirat (refs_remotes_dfd, remote, TRUE, &dfd, error))
+      dfd = glnx_opendirat_with_errno (refs_remotes_dfd, remote, TRUE);
+      if (dfd < 0 && (errno != ENOENT || rev != NULL))
         {
+          glnx_set_error_from_errno (error);
           g_prefix_error (error, "Opening remotes/ dir %s: ", remote);
           goto out;
         }
@@ -781,13 +783,16 @@ _ostree_repo_write_ref (OstreeRepo    *self,
 
   if (rev == NULL)
     {
-      if (unlinkat (dfd, ref, 0) != 0)
+      if (dfd >= 0)
         {
-          if (errno != ENOENT)
-            {
-              glnx_set_error_from_errno (error);
-              goto out;
-            }
+          if (unlinkat (dfd, ref, 0) != 0)
+          {
+            if (errno != ENOENT)
+              {
+                glnx_set_error_from_errno (error);
+                goto out;
+              }
+          }
         }
     }
   else
