@@ -703,6 +703,7 @@ content_fetch_on_complete (GObject        *object,
   const char *checksum;
   g_autofree char *checksum_obj = NULL;
   OstreeObjectType objtype;
+  gboolean free_fetch_data = TRUE;
 
   temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
   if (!temp_path)
@@ -761,11 +762,17 @@ content_fetch_on_complete (GObject        *object,
                                        object_input, length,
                                        cancellable,
                                        content_fetch_on_write_complete, fetch_data);
+      free_fetch_data = FALSE;
     }
 
  out:
   pull_data->n_outstanding_content_fetches--;
   check_outstanding_requests_handle_error (pull_data, local_error);
+  if(free_fetch_data)
+    {
+      g_variant_unref (fetch_data->object);
+      g_free (fetch_data);
+    }
 }
 
 static void
@@ -829,7 +836,7 @@ meta_fetch_on_complete (GObject           *object,
   GError *local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
-  gboolean free_fetch_data = FALSE;
+  gboolean free_fetch_data = TRUE;
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   checksum_obj = ostree_object_to_string (checksum, objtype);
@@ -895,8 +902,6 @@ meta_fetch_on_complete (GObject           *object,
 
       if (!fetch_data->object_is_stored)
         enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
-
-      free_fetch_data = TRUE;
     }
   else
     {
@@ -917,6 +922,7 @@ meta_fetch_on_complete (GObject           *object,
                                         pull_data->cancellable,
                                         on_metadata_written, fetch_data);
       pull_data->n_outstanding_metadata_write_requests++;
+      free_fetch_data = FALSE;
     }
 
  out:
@@ -924,7 +930,7 @@ meta_fetch_on_complete (GObject           *object,
   pull_data->n_outstanding_metadata_fetches--;
   pull_data->n_fetched_metadata++;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  if (local_error || free_fetch_data)
+  if (free_fetch_data)
     {
       g_variant_unref (fetch_data->object);
       g_free (fetch_data);
@@ -978,6 +984,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
   GError *local_error = NULL;
   GError **error = &local_error;
   glnx_fd_close int fd = -1;
+  gboolean free_fetch_data = TRUE;
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
@@ -1015,13 +1022,14 @@ static_deltapart_fetch_on_complete (GObject           *object,
                                            on_static_delta_written,
                                            fetch_data);
   pull_data->n_outstanding_deltapart_write_requests++;
+  free_fetch_data = FALSE;
 
  out:
   g_assert (pull_data->n_outstanding_deltapart_fetches > 0);
   pull_data->n_outstanding_deltapart_fetches--;
   pull_data->n_fetched_deltaparts++;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  if (local_error)
+  if (free_fetch_data)
     fetch_static_delta_data_free (fetch_data);
 }
 
