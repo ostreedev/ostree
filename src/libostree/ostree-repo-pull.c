@@ -141,10 +141,27 @@ typedef struct {
 } FetchStaticDeltaData;
 
 typedef struct {
+  OtPullData *pull_data;
+  char *from_revision;
+  char *to_revision;
+  char *branch;
+} FetchDeltaSuperBlockData;
+
+typedef struct {
   guchar csum[OSTREE_SHA256_DIGEST_LEN];
   OstreeObjectType objtype;
   guint recursion_depth;
 } ScanObjectQueueData;
+
+static void
+fetch_delta_superblock_data_free (gpointer  data)
+{
+  FetchDeltaSuperBlockData *fetch_data = data;
+  g_free (fetch_data->from_revision);
+  g_free (fetch_data->to_revision);
+  g_free (fetch_data->branch);
+  g_free (fetch_data);
+}
 
 static SoupURI *
 suburi_new (SoupURI   *base,
@@ -167,6 +184,30 @@ static gboolean scan_one_metadata_object_c (OtPullData         *pull_data,
                                             guint               recursion_depth,
                                             GCancellable       *cancellable,
                                             GError            **error);
+
+static void
+delta_superblock_process (FetchDeltaSuperBlockData *fetch_data,
+                          GBytes *delta_superblock_data,
+                          GCancellable  *cancellable,
+                          GError       **error);
+
+static void
+fetch_revision (FetchDeltaSuperBlockData *fetch_data,
+                GCancellable  *cancellable,
+                GError       **error);
+
+static void
+delta_superblock_fetch_on_complete (GObject        *object,
+                         GAsyncResult   *result,
+                         gpointer        user_data);
+
+static gboolean
+process_one_static_delta (OtPullData   *pull_data,
+                          const char   *from_revision,
+                          const char   *to_revision,
+                          GVariant     *delta_superblock,
+                          GCancellable *cancellable,
+                          GError      **error);
 
 static SoupURI *
 suburi_new (SoupURI   *base,
@@ -264,7 +305,7 @@ update_progress (gpointer user_data)
   else
     ostree_async_progress_set_status (pull_data->progress, NULL);
 
-  if (pull_data->dry_run)
+  if (pull_data->dry_run && outstanding_fetches == 0)
     pull_data->dry_run_emitted_progress = TRUE;
 
   return TRUE;
@@ -277,15 +318,16 @@ pull_termination_condition (OtPullData          *pull_data)
   gboolean current_idle = g_queue_is_empty (&pull_data->scan_object_queue);
   int i;
 
-  for(i = 0; i < MAX_FETCH_TYPES && current_idle; i++)
+  for(i = 0; i < MAX_FETCH_TYPES && current_idle; i++) {
     current_idle = current_idle && pull_data->n_outstanding[i] == 0
                                 && pull_data->n_outstanding_write_requests[i] == 0;
+  }
+
+  if (pull_data->dry_run)
+    current_idle = current_idle && pull_data->dry_run_emitted_progress;
 
   if (pull_data->caught_error)
     return TRUE;
-
-  if (pull_data->dry_run)
-    return pull_data->dry_run_emitted_progress;
 
   switch (pull_data->phase)
     {
@@ -560,44 +602,60 @@ scan_dirtree_object (OtPullData   *pull_data,
   return ret;
 }
 
-static gboolean
-fetch_ref_contents (OtPullData    *pull_data,
-                    const char    *ref,
-                    char         **out_contents,
-                    GCancellable  *cancellable,
-                    GError       **error)
+/**
+ * fetch_revision:
+ * Fetch a static delta or commit file
+ */
+static void
+fetch_revision (FetchDeltaSuperBlockData *fetch_data,
+                GCancellable  *cancellable,
+                GError       **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *ret_contents = NULL;
-  SoupURI *target_uri = NULL;
+  OtPullData *pull_data = fetch_data->pull_data;
+  gboolean free_fetch_data = TRUE;
 
-  target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
-  
-  if (!fetch_uri_contents_utf8_sync (pull_data, target_uri, &ret_contents, cancellable, error))
+  g_strchomp (fetch_data->to_revision);
+
+  if (!ostree_validate_checksum_string (fetch_data->to_revision, error))
     goto out;
 
-  g_strchomp (ret_contents);
+  /* Store actual resolved rev so we know which refs to update */
+  g_hash_table_replace (pull_data->requested_refs_to_fetch, g_strdup (fetch_data->branch), g_strdup (fetch_data->to_revision));
 
-  if (!ostree_validate_checksum_string (ret_contents, error))
-    goto out;
-
-  ret = TRUE;
-  ot_transfer_out_value (out_contents, &ret_contents);
+  if (!pull_data->disable_static_deltas && (fetch_data->from_revision == NULL || g_strcmp0 (fetch_data->from_revision, fetch_data->to_revision) != 0))
+    {
+      g_autofree char *delta_name = _ostree_get_relative_static_delta_superblock_path (fetch_data->from_revision, fetch_data->to_revision);
+      SoupURI *target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+      g_debug ("fetching delta %s", delta_name);
+      _ostree_fetcher_stream_uri_async (pull_data->fetcher,
+                                        target_uri,
+                                        OSTREE_MAX_METADATA_SIZE,
+                                        OSTREE_REPO_PULL_METADATA_PRIORITY,
+                                        cancellable,
+                                        delta_superblock_fetch_on_complete,
+                                        fetch_data);
+      free_fetch_data = FALSE;
+      pull_data->n_outstanding[FETCH_DELTASUPER]++;
+      g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
+    }
+  else
+    {
+      delta_superblock_process (fetch_data, NULL, cancellable, error);
+    }
  out:
-  if (target_uri)
-    soup_uri_free (target_uri);
-  return ret;
+  if (free_fetch_data)
+    fetch_delta_superblock_data_free (fetch_data);
 }
 
 static gboolean
-lookup_commit_checksum_from_summary (OtPullData    *pull_data,
+lookup_commit_checksum_from_summary (GVariant      *summary,
                                      const char    *ref,
                                      char         **out_checksum,
                                      gsize         *out_size,
                                      GError       **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GVariant) refs = g_variant_get_child_value (pull_data->summary, 0);
+  g_autoptr(GVariant) refs = g_variant_get_child_value (summary, 0);
   g_autoptr(GVariant) refdata = NULL;
   g_autoptr(GVariant) reftargetdata = NULL;
   g_autoptr(GVariant) commit_data = NULL;
@@ -1166,6 +1224,10 @@ queue_scan_one_metadata_object (OtPullData         *pull_data,
                                 guint               recursion_depth)
 {
   guchar buf[OSTREE_SHA256_DIGEST_LEN];
+
+  if (pull_data->dry_run)
+    return;
+
   ostree_checksum_inplace_to_bytes (csum, buf);
   queue_scan_one_metadata_object_c (pull_data, buf, objtype, recursion_depth);
 }
@@ -1397,32 +1459,18 @@ load_remote_repo_config (OtPullData    *pull_data,
   return ret;
 }
 
-static gboolean
-request_static_delta_superblock_sync (OtPullData  *pull_data,
-                                      const char  *from_revision,
-                                      const char  *to_revision,
-                                      GVariant   **out_delta_superblock,
-                                      GCancellable *cancellable,
-                                      GError     **error)
+static void
+delta_superblock_process (FetchDeltaSuperBlockData *fetch_data,
+                          GBytes *delta_superblock_data,
+                          GCancellable  *cancellable,
+                          GError       **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GVariant) ret_delta_superblock = NULL;
-  g_autofree char *delta_name =
-    _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
-  g_autoptr(GBytes) delta_superblock_data = NULL;
-  g_autoptr(GBytes) delta_meta_data = NULL;
-  g_autoptr(GVariant) delta_superblock = NULL;
-  SoupURI *target_uri = NULL;
-  
-  target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
-  
-  if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
-                                       &delta_superblock_data,
-                                       pull_data->cancellable, error))
-    goto out;
-  
+  OtPullData *pull_data = fetch_data->pull_data;
+  char* from_revision = fetch_data->from_revision;
+  char* to_revision = fetch_data->to_revision;
   if (delta_superblock_data)
     {
+      g_autoptr(GVariant) delta_superblock = NULL;
       {
         g_autofree gchar *delta = NULL;
         g_autofree guchar *ret_csum = NULL;
@@ -1457,16 +1505,30 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
           }
       }
 
-      ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
-                                                       delta_superblock_data, FALSE);
+      delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                                      delta_superblock_data, FALSE);
+
+      g_debug ("processing delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
+      g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
+      if (!process_one_static_delta (pull_data, from_revision, to_revision,
+                                    delta_superblock,
+                                    cancellable, error))
+        goto out;
     }
-  
-  ret = TRUE;
-  if (out_delta_superblock)
-    *out_delta_superblock = g_steal_pointer (&ret_delta_superblock);
+  else
+    {
+      if (pull_data->require_static_deltas)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                        "Static deltas required, but none found for %s to %s",
+                        from_revision, to_revision);
+          goto out;
+        }
+      g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
+      queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, 0);
+    }
  out:
-  g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
-  return ret;
+  return;
 }
 
 static gboolean
@@ -2133,6 +2195,65 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   return ret;
 }
 
+static void
+delta_superblock_fetch_on_complete (GObject        *object,
+                         GAsyncResult   *result,
+                         gpointer        user_data)
+{
+  OstreeFetcher *fetcher = (OstreeFetcher *)object;
+  FetchDeltaSuperBlockData *fetch_data = user_data;
+  OtPullData *pull_data = fetch_data->pull_data;
+  GError *local_error = NULL;
+  GError **error = &local_error;
+  GInputStream* input = _ostree_fetcher_stream_uri_finish (fetcher, result, error);
+  GBytes* delta_superblock_data = NULL;
+
+  if (input)
+    {
+      delta_superblock_data = g_input_stream_read_bytes ( input, OSTREE_MAX_METADATA_SIZE, pull_data->cancellable, error);
+    }
+  else
+    {
+      if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_clear_error (error);
+        }
+    }
+
+  delta_superblock_process (fetch_data, delta_superblock_data, pull_data->cancellable, error);
+
+  g_assert (pull_data->n_outstanding[FETCH_DELTASUPER] > 0);
+  pull_data->n_outstanding[FETCH_DELTASUPER]--;
+  pull_data->n_fetched[FETCH_DELTASUPER]++;
+  check_outstanding_requests_handle_error (pull_data, local_error);
+  fetch_delta_superblock_data_free (fetch_data);
+}
+
+static void
+revision_fetch_on_complete (GObject        *object,
+                            GAsyncResult   *result,
+                            gpointer        user_data)
+{
+  OstreeFetcher *fetcher = (OstreeFetcher *)object;
+  FetchDeltaSuperBlockData *fetch_data = user_data;
+  OtPullData *pull_data = fetch_data->pull_data;
+  GError *local_error = NULL;
+  GError **error = &local_error;
+  GInputStream* input = _ostree_fetcher_stream_uri_finish (fetcher, result, error);
+
+  if (!_ostree_fetcher_stream_to_membuf (input, TRUE, FALSE, (gpointer*)(&fetch_data->to_revision), pull_data->cancellable, error))
+    goto out;
+
+  fetch_revision (fetch_data, pull_data->cancellable, error);
+
+ out:
+  g_assert (pull_data->n_outstanding[FETCH_REF] > 0);
+  pull_data->n_outstanding[FETCH_REF]--;
+  pull_data->n_fetched[FETCH_REF]++;
+  check_outstanding_requests_handle_error (pull_data, local_error);
+}
+
+
 /* ------------------------------------------------------------------------------------------
  * Below is the libsoup-invariant API; these should match
  * the stub functions in the #else clause
@@ -2180,14 +2301,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   OtPullData *pull_data = &pull_data_real;
   guint64 end_time;
   GSource *update_timeout = NULL;
+  gsize i, n;
 
   g_autofree char **refs_to_fetch = NULL;
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
   gboolean opt_gpg_verify = FALSE;
   gboolean opt_gpg_verify_summary = FALSE;
-  gboolean disable_static_deltas = FALSE;
-  gboolean require_static_deltas = FALSE;
   char **override_commit_ids = NULL;
   const char *url_override = NULL;
 
@@ -2203,8 +2323,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "gpg-verify", "b", &opt_gpg_verify);
       (void) g_variant_lookup (options, "gpg-verify-summary", "b", &opt_gpg_verify_summary);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
-      (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
-      (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
+      (void) g_variant_lookup (options, "disable-static-deltas", "b", &pull_data->disable_static_deltas);
+      (void) g_variant_lookup (options, "require-static-deltas", "b", &pull_data->require_static_deltas);
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
@@ -2218,11 +2338,11 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
   pull_data->dir = g_strdup (dir_to_pull);
 
-  g_return_val_if_fail (!(disable_static_deltas && require_static_deltas), FALSE);
+  g_return_val_if_fail (!(pull_data->disable_static_deltas && pull_data->require_static_deltas), FALSE);
   /* We only do dry runs with static deltas, because we don't really have any
    * in-advance information for bare fetches.
    */
-  g_return_val_if_fail (!pull_data->dry_run || require_static_deltas, FALSE);
+  g_return_val_if_fail (!pull_data->dry_run || pull_data->require_static_deltas, FALSE);
 
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
@@ -2476,7 +2596,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_autoptr(GBytes) bytes_summary = NULL;
     g_autoptr(GBytes) bytes_sig = NULL;
     g_autofree char *ret_contents = NULL;
-    gsize i, n;
     gboolean summary_from_cache = FALSE;
     gboolean fetch_all_refs = FALSE;
 
@@ -2518,7 +2637,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         goto out;
       }
 
-    if (!bytes_summary && require_static_deltas)
+    if (!bytes_summary && pull_data->require_static_deltas)
       {
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                      "Fetch configured to require static deltas, but no summary found");
@@ -2633,44 +2752,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       }
   }
 
-  g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *branch = key;
-      const char *override_commitid = value;
-      char *contents = NULL;
-
-      /* Support specifying "" for an override commitid */
-      if (override_commitid && *override_commitid)
-        {
-          g_hash_table_replace (pull_data->requested_refs_to_fetch, g_strdup (branch), g_strdup (override_commitid));
-        }
-      else    
-        {
-          if (pull_data->summary)
-            {
-              gsize commit_size = 0;
-              guint64 *malloced_size;
-
-              if (!lookup_commit_checksum_from_summary (pull_data, branch, &contents, &commit_size, error))
-                goto out;
-
-              malloced_size = g_new0 (guint64, 1);
-              *malloced_size = commit_size;
-              g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (contents), malloced_size);
-            }
-          else
-            {
-              if (!fetch_ref_contents (pull_data, branch, &contents, cancellable, error))
-                goto out;
-            }
-          /* Transfer ownership of contents */
-          g_hash_table_replace (pull_data->requested_refs_to_fetch, g_strdup (branch), contents);
-        }
-    }
-
-  pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
-
   /* Now discard the previous fetcher, as it was bound to a temporary main context
    * for synchronous requests.
    */
@@ -2679,53 +2760,70 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->fetcher == NULL)
     goto out;
 
-  g_hash_table_iter_init (&hash_iter, pull_data->commits_to_fetch);
-  while (g_hash_table_iter_next (&hash_iter, &key, &value))
-    {
-      const char *commit = value;
-      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, 0);
-    }
+  pull_data->phase = OSTREE_PULL_PHASE_FETCHING_OBJECTS;
 
   g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
-      g_autofree char *from_revision = NULL;
-      const char *ref = key;
-      const char *to_revision = value;
-      GVariant *delta_superblock = NULL;
+      char *ref = key;
+      char *override_commitid = value;
+      char *from_revision = NULL;
+      FetchDeltaSuperBlockData* fetch_data = NULL;
 
       if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
                                     &from_revision, error))
         goto out;
 
-      if (!disable_static_deltas && (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
+      fetch_data = g_new0 (FetchDeltaSuperBlockData, 1);
+      fetch_data->pull_data = pull_data;
+      fetch_data->from_revision = from_revision;
+      fetch_data->branch = g_strdup(ref);
+
+      /* Support specifying "" for an override commitid */
+      if (override_commitid && *override_commitid)
         {
-          if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
-                                                     &delta_superblock, cancellable, error))
-            goto out;
+          fetch_data->to_revision = g_strdup (override_commitid);
+          fetch_revision (fetch_data, cancellable, error);
         }
-          
-      if (!delta_superblock)
+      else if (pull_data->summary)
         {
-          if (require_static_deltas)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Static deltas required, but none found for %s to %s",
-                           from_revision, to_revision);
-              goto out;
-            }
-          g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
-          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, 0);
+          gsize commit_size = 0;
+          guint64 *malloced_size;
+
+          if (!lookup_commit_checksum_from_summary (pull_data->summary, ref, &(fetch_data->to_revision), &commit_size, error))
+            goto out;
+
+          malloced_size = g_new0 (guint64, 1);
+          *malloced_size = commit_size;
+          g_hash_table_insert (pull_data->expected_commit_sizes, g_strdup (fetch_data->to_revision), malloced_size);
+
+          fetch_revision (fetch_data, cancellable, error);
         }
       else
         {
-          g_debug ("processing delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
-          g_ptr_array_add (pull_data->static_delta_superblocks, g_variant_ref (delta_superblock));
-          if (!process_one_static_delta (pull_data, from_revision, to_revision,
-                                         delta_superblock,
-                                         cancellable, error))
-            goto out;
+          SoupURI *target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
+
+          g_debug ("fetching ref %s", ref);
+
+          pull_data->n_outstanding[FETCH_REF]++;
+          _ostree_fetcher_stream_uri_async (pull_data->fetcher,
+                                            target_uri,
+                                            OSTREE_MAX_METADATA_SIZE,
+                                            OSTREE_REPO_PULL_METADATA_PRIORITY,
+                                            cancellable,
+                                            revision_fetch_on_complete,
+                                            fetch_data);
+
+          g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
         }
+
+    }
+
+  g_hash_table_iter_init (&hash_iter, pull_data->commits_to_fetch);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      const char *commit = value;
+      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, 0);
     }
 
   /* Now await work completion */
@@ -2735,16 +2833,17 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->caught_error)
     goto out;
 
+  for(i = 0; i < MAX_FETCH_TYPES; i++) {
+    g_assert_cmpint (pull_data->n_outstanding[i], ==, 0);
+    g_assert_cmpint (pull_data->n_outstanding_write_requests[i], ==, 0);
+  }
+
   if (pull_data->dry_run)
     {
+      /* Skip updating refs */
       ret = TRUE;
       goto out;
     }
-  
-  g_assert_cmpint (pull_data->n_outstanding[FETCH_METADATA], ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding_write_requests[FETCH_METADATA], ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding[FETCH_CONTENT], ==, 0);
-  g_assert_cmpint (pull_data->n_outstanding_write_requests[FETCH_CONTENT], ==, 0);
 
   g_hash_table_iter_init (&hash_iter, pull_data->requested_refs_to_fetch);
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
@@ -2862,6 +2961,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_object (&pull_data->fetcher);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
+  g_free (pull_data->dir);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
