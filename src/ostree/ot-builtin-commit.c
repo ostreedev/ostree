@@ -428,7 +428,15 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   else if (!opt_orphan)
     {
       if (!ostree_repo_resolve_rev (repo, opt_branch, TRUE, &parent, error))
-        goto out;
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+            {
+              /* A folder exists with the specified ref name,
+                 * which is handled by _ostree_repo_write_ref */
+              g_clear_error (error);
+            }
+          else goto out;
+        }
     }
 
   if (opt_editor)
