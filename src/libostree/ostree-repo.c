@@ -2094,6 +2094,27 @@ append_remotes_d (OstreeRepo          *self,
 }
 
 gboolean
+ostree_repo_exists (OstreeRepo	*self
+					gboolean	*does_exist
+					GError		**error)
+{
+  struct stat stbuf;
+
+  if (lstat (gs_file_get_path_cached (self->objects_dir), &stbuf) < 0)
+    {
+      if(errno == ENOENT)
+        {
+          *does_exist = FALSE;
+          return TRUE;
+        }
+      glnx_set_error_from_errno(error)
+      return FALSE;
+    }
+  *does_exist = TRUE;
+  return TRUE;
+}
+
+gboolean
 ostree_repo_open (OstreeRepo    *self,
                   GCancellable  *cancellable,
                   GError       **error)

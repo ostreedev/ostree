@@ -36,6 +36,8 @@ func repoFromNative(p *C.OstreeRepo) *Repo {
 	return r
 }
 
+// Attempts to open a repository and returns a pointer to the repo
+// If the repo does not exist, it creates and then opens it
 func RepoNewOpen(path string) (*Repo, error) {
 	var cerr *C.GError = nil
 	cpath := C.CString(path)
@@ -43,6 +45,16 @@ func RepoNewOpen(path string) (*Repo, error) {
 	defer C.g_object_unref(C.gpointer(pathc))
 	crepo := C.ostree_repo_new(pathc)
 	repo := repoFromNative(crepo);
+	var exists C.gboolean = 0
+	success := GoBool(C.ostree_repo_exists(crepo, &exists,&cerr))
+	if success && exists == 0 {
+		cerr = nil
+		created := GoBool(C.ostree_repo_exists(crepo, &exists, &cerr))
+		if !created {
+			return nil, ConvertGError(cerr)
+		}
+	}
+	cerr = nil
 	r := GoBool(C.ostree_repo_open(repo.native(), nil, &cerr))
 	if !r {
 		return nil, ConvertGError(cerr)

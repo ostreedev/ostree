@@ -350,6 +350,6 @@ global:
 /*
 LIBOSTREE_2016.7 {
 global:
-        ostree_some_new_symbol;
+        ostree_repo_exists;
 } LIBOSTREE_2016.6;
 */
