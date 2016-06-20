@@ -792,6 +792,25 @@ _ostree_repo_write_ref (OstreeRepo    *self,
     }
   else
     {
+      g_autoptr(GHashTable) refs = NULL;
+      GHashTableIter hashiter;
+      gpointer hashkey, hashvalue;
+
+      ostree_repo_list_refs (self, ref, &refs, cancellable, error);
+      g_hash_table_iter_init (&hashiter, refs);
+
+      while ((g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue)))
+        {
+          if (strcmp (ref, (char *)hashkey) != 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Specified ref %s already exists as a folder", ref);
+              goto out;
+            }
+        }
+
+      glnx_shutil_rm_rf_at (dfd, ref, cancellable, error);
+
       if (!write_checksum_file_at (self, dfd, ref, rev, cancellable, error))
         goto out;
     }

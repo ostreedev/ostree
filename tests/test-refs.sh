@@ -92,8 +92,16 @@ fi
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create1
 assert_file_has_content refscount.create1 "^5$"
 
-${CMD_PREFIX} ostree --repo=repo refs ctest --create ctest-new
+${CMD_PREFIX} ostree --repo=repo refs ctest --create=ctest-new
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create2
 assert_file_has_content refscount.create2 "^6$"
+
+#Check to see if a deleted folder can be re-used as the name of a ref
+${CMD_PREFIX} ostree --repo=repo refs foo/ctest --delete
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create3
+assert_file_has_content refscount.create3 "^5$"
+${CMD_PREFIX} ostree --repo=repo refs ctest --create=foo
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create4
+assert_file_has_content refscount.create4 "^6$"
 
 echo "ok refs"

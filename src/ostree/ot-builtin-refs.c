@@ -74,7 +74,16 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
       g_autofree char *checksum_existing = NULL;
 
       if (!ostree_repo_resolve_rev (repo, opt_create, TRUE, &checksum_existing, error))
-        goto out;
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+            {
+              /* A folder exists with the specified ref name,
+               * which is handled by _ostree_repo_write_ref */
+              g_error_free (*error);
+              *error = NULL;
+            }
+          else goto out;
+        }
 
       if (checksum_existing != NULL)
         {
