@@ -55,6 +55,12 @@ _OSTREE_PUBLIC
 OstreeRepo* ostree_repo_new_default (void);
 
 _OSTREE_PUBLIC
+gboolean	 ostree_repo_exists	(OstreeRepo		*self,
+								 gboolean		*does_exist,
+								 GError			**error);
+
+
+_OSTREE_PUBLIC
 gboolean      ostree_repo_open   (OstreeRepo     *self,
                                   GCancellable   *cancellable,
                                   GError        **error);
