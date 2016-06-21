@@ -151,7 +151,7 @@ ot_log_structured_print_id_v (const char *message_id,
                               ...)
 {
   const char *key0 = glnx_strjoina ("MESSAGE_ID=", message_id);
-  char *keys[] = { key0, NULL };
+  const char *keys[] = { key0, NULL };
   g_autofree char *msg = NULL;
   va_list args;
 
