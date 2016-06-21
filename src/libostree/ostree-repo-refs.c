@@ -100,21 +100,22 @@ write_checksum_file_at (OstreeRepo   *self,
   {
     size_t l = strlen (sha256);
     char *bufnl = alloca (l + 2);
+    g_autoptr(GError) temp_error = NULL;
 
     memcpy (bufnl, sha256, l);
     bufnl[l] = '\n';
     bufnl[l+1] = '\0';
 
     if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
-                                             cancellable, error))
+                                             cancellable, &temp_error))
       {
-        if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+        if (g_error_matches (temp_error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
           {
             g_autoptr(GHashTable) refs = NULL;
             GHashTableIter hashiter;
             gpointer hashkey, hashvalue;
 
-            g_clear_error (error);
+            g_clear_error (&temp_error);
 
             if (!ostree_repo_list_refs (self, name, &refs, cancellable, error))
               goto out;
@@ -126,7 +127,7 @@ write_checksum_file_at (OstreeRepo   *self,
                 if (strcmp (name, (char *)hashkey) != 0)
                   {
                     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                                 "Specified ref %s already exists as a folder", name);
+                                 "Conflict: %s exists under %s when attempting write", (char*)hashkey, name);
                     goto out;
                   }
               }
@@ -137,6 +138,11 @@ write_checksum_file_at (OstreeRepo   *self,
             if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
                                                      cancellable, error))
               goto out;
+          }
+        else
+          {
+            g_propagate_error (error, g_steal_pointer (&temp_error));
+            goto out;
           }
       }
   }
