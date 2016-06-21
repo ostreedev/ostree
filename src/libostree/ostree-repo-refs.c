@@ -107,7 +107,38 @@ write_checksum_file_at (OstreeRepo   *self,
 
     if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
                                              cancellable, error))
-      goto out;
+      {
+        if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY))
+          {
+            g_autoptr(GHashTable) refs = NULL;
+            GHashTableIter hashiter;
+            gpointer hashkey, hashvalue;
+
+            g_clear_error (error);
+
+            if (!ostree_repo_list_refs (self, name, &refs, cancellable, error))
+              goto out;
+
+            g_hash_table_iter_init (&hashiter, refs);
+
+            while ((g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue)))
+              {
+                if (strcmp (name, (char *)hashkey) != 0)
+                  {
+                    g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                 "Specified ref %s already exists as a folder", name);
+                    goto out;
+                  }
+              }
+
+            if (!glnx_shutil_rm_rf_at (dfd, name, cancellable, error))
+              goto out;
+
+            if (!_ostree_repo_file_replace_contents (self, dfd, name, (guint8*)bufnl, l + 1,
+                                                     cancellable, error))
+              goto out;
+          }
+      }
   }
 
   ret = TRUE;
@@ -792,25 +823,6 @@ _ostree_repo_write_ref (OstreeRepo    *self,
     }
   else
     {
-      g_autoptr(GHashTable) refs = NULL;
-      GHashTableIter hashiter;
-      gpointer hashkey, hashvalue;
-
-      ostree_repo_list_refs (self, ref, &refs, cancellable, error);
-      g_hash_table_iter_init (&hashiter, refs);
-
-      while ((g_hash_table_iter_next (&hashiter, &hashkey, &hashvalue)))
-        {
-          if (strcmp (ref, (char *)hashkey) != 0)
-            {
-              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                           "Specified ref %s already exists as a folder", ref);
-              goto out;
-            }
-        }
-
-      glnx_shutil_rm_rf_at (dfd, ref, cancellable, error);
-
       if (!write_checksum_file_at (self, dfd, ref, rev, cancellable, error))
         goto out;
     }

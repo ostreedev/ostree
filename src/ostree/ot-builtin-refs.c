@@ -79,8 +79,7 @@ static gboolean do_ref (OstreeRepo *repo, const char *refspec_prefix, GCancellab
             {
               /* A folder exists with the specified ref name,
                * which is handled by _ostree_repo_write_ref */
-              g_error_free (*error);
-              *error = NULL;
+              g_clear_error (error);
             }
           else goto out;
         }

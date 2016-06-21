@@ -433,8 +433,7 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
             {
               /* A folder exists with the specified ref name,
                  * which is handled by _ostree_repo_write_ref */
-              g_error_free (*error);
-              *error = NULL;
+              g_clear_error (error);
             }
           else goto out;
         }
