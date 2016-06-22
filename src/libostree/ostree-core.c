@@ -1993,8 +1993,9 @@ ostree_validate_structureof_dirmeta (GVariant      *dirmeta,
 /**
  * ostree_commit_get_parent:
  * @commit_variant: Variant of type %OSTREE_OBJECT_TYPE_COMMIT
- * 
- * Returns: Binary checksum with parent of @commit_variant, or %NULL if none
+ *
+ * Returns: Checksum of the parent commit of @commit_variant, or %NULL
+ * if none
  */
 gchar *
 ostree_commit_get_parent (GVariant  *commit_variant)
