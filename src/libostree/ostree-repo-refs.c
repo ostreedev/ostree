@@ -208,6 +208,7 @@ resolve_refspec_fallback (OstreeRepo     *self,
                           const char     *remote,
                           const char     *ref,
                           gboolean        allow_noent,
+                          gboolean        fallback_remote,
                           char          **out_rev,
                           GCancellable   *cancellable,
                           GError        **error)
@@ -218,7 +219,7 @@ resolve_refspec_fallback (OstreeRepo     *self,
   if (self->parent_repo)
     {
       if (!resolve_refspec (self->parent_repo, remote, ref, allow_noent,
-                            TRUE, &ret_rev, error))
+                            fallback_remote, &ret_rev, error))
         goto out;
     }
   else if (!allow_noent)
@@ -302,7 +303,7 @@ resolve_refspec (OstreeRepo     *self,
     }
   else
     {
-      if (!resolve_refspec_fallback (self, remote, ref, allow_noent,
+      if (!resolve_refspec_fallback (self, remote, ref, allow_noent, fallback_remote,
                                      &ret_rev, cancellable, error))
         goto out;
     }
