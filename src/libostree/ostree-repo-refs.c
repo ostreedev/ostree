@@ -199,6 +199,7 @@ resolve_refspec (OstreeRepo     *self,
                  const char     *remote,
                  const char     *ref,
                  gboolean        allow_noent,
+                 gboolean        fallback_remote,
                  char          **out_rev,
                  GError        **error);
 
@@ -216,8 +217,8 @@ resolve_refspec_fallback (OstreeRepo     *self,
 
   if (self->parent_repo)
     {
-      if (!resolve_refspec (self->parent_repo, remote, ref,
-                            allow_noent, &ret_rev, error))
+      if (!resolve_refspec (self->parent_repo, remote, ref, allow_noent,
+                            TRUE, &ret_rev, error))
         goto out;
     }
   else if (!allow_noent)
@@ -241,6 +242,7 @@ resolve_refspec (OstreeRepo     *self,
                  const char     *remote,
                  const char     *ref,
                  gboolean        allow_noent,
+                 gboolean        fallback_remote,
                  char          **out_rev,
                  GError        **error)
 {
@@ -270,7 +272,7 @@ resolve_refspec (OstreeRepo     *self,
       if (!ot_openat_ignore_enoent (self->repo_dir_fd, local_ref, &target_fd, error))
         goto out;
 
-      if (target_fd == -1)
+      if (target_fd == -1 && fallback_remote)
         {
           local_ref = glnx_strjoina ("refs/remotes/", ref);
 
@@ -388,23 +390,13 @@ ostree_repo_resolve_partial_checksum (OstreeRepo   *self,
   return ret;
 }
 
-/**
- * ostree_repo_resolve_rev:
- * @self: Repo
- * @refspec: A refspec
- * @allow_noent: Do not throw an error if refspec does not exist
- * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
- * @error: Error
- *
- * Look up the given refspec, returning the checksum it references in
- * the parameter @out_rev.
- */
-gboolean
-ostree_repo_resolve_rev (OstreeRepo     *self,
-                         const char     *refspec,
-                         gboolean        allow_noent,
-                         char          **out_rev,
-                         GError        **error)
+static gboolean
+_ostree_repo_resolve_rev_internal (OstreeRepo     *self,
+                                   const char     *refspec,
+                                   gboolean        allow_noent,
+                                   gboolean        fallback_remote,
+                                   char          **out_rev,
+                                   GError        **error)
 {
   gboolean ret = FALSE;
   g_autofree char *ret_rev = NULL;
@@ -456,7 +448,7 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
             goto out;
           
           if (!resolve_refspec (self, remote, ref, allow_noent,
-                                &ret_rev, error))
+                                fallback_remote, &ret_rev, error))
             goto out;
         }
     }
@@ -465,6 +457,53 @@ ostree_repo_resolve_rev (OstreeRepo     *self,
   ot_transfer_out_value (out_rev, &ret_rev);
  out:
   return ret;
+}
+
+/**
+ * ostree_repo_resolve_rev:
+ * @self: Repo
+ * @refspec: A refspec
+ * @allow_noent: Do not throw an error if refspec does not exist
+ * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @error: Error
+ *
+ * Look up the given refspec, returning the checksum it references in
+ * the parameter @out_rev. Will fall back on remote directory if cannot
+ * find the given refspec in local.
+ */
+gboolean
+ostree_repo_resolve_rev (OstreeRepo     *self,
+                         const char     *refspec,
+                         gboolean        allow_noent,
+                         char          **out_rev,
+                         GError        **error)
+{
+  return _ostree_repo_resolve_rev_internal (self, refspec, allow_noent, TRUE, out_rev, error);
+}
+
+/**
+ * ostree_repo_resolve_rev_ext:
+ * @self: Repo
+ * @refspec: A refspec
+ * @allow_noent: Do not throw an error if refspec does not exist
+ * @flags: Options controlling behavior
+ * @out_rev: (out) (transfer full): A checksum,or %NULL if @allow_noent is true and it does not exist
+ * @error: Error
+ *
+ * Look up the given refspec, returning the checksum it references in
+ * the parameter @out_rev. Differently from ostree_repo_resolve_rev(),
+ * this will not fall back to searching through remote repos if a
+ * local ref is specified but not found.
+ */
+gboolean
+ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
+                             const char                    *refspec,
+                             gboolean                       allow_noent,
+                             OstreeRepoResolveRevExtFlags   flags,
+                             char                         **out_rev,
+                             GError                       **error)
+{
+  return _ostree_repo_resolve_rev_internal (self, refspec, allow_noent, FALSE, out_rev, error);
 }
 
 static gboolean

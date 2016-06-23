@@ -300,6 +300,7 @@ ostree_repo_write_content_trusted
 ostree_repo_write_content_async
 ostree_repo_write_content_finish
 ostree_repo_resolve_rev
+ostree_repo_resolve_rev_ext
 ostree_repo_list_refs
 ostree_repo_list_refs_ext
 ostree_repo_remote_list_refs
