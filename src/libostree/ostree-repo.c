@@ -2715,18 +2715,29 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
                            GError             **error)
 {
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
-  
+
   g_assert (self->mode == OSTREE_REPO_MODE_BARE ||
             self->mode == OSTREE_REPO_MODE_BARE_USER);
 
   _ostree_loose_path (loose_path_buf, checksum, OSTREE_OBJECT_TYPE_FILE, self->mode);
-  
-  *out_fd = openat (self->objects_dir_fd, loose_path_buf, O_RDONLY | O_CLOEXEC);
-  if (*out_fd < 0)
+
+  if (!ot_openat_ignore_enoent (self->objects_dir_fd, loose_path_buf, out_fd, error))
+    return FALSE;
+
+  if (*out_fd == -1)
     {
-      glnx_set_error_from_errno (error);
+      if (self->parent_repo)
+        return _ostree_repo_read_bare_fd (self->parent_repo,
+                                          checksum,
+                                          out_fd,
+                                          cancellable,
+                                          error);
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "No such file object %s", checksum);
       return FALSE;
     }
+
   return TRUE;
 }
 
