@@ -104,4 +104,16 @@ ${CMD_PREFIX} ostree --repo=repo refs ctest --create=foo
 ${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create4
 assert_file_has_content refscount.create4 "^6$"
 
+#Check if a name for a ref in remote repo can be used locally, and vice versa.
+${CMD_PREFIX} ostree --repo=repo commit --branch=origin:remote1
+${CMD_PREFIX} ostree --repo=repo commit --branch=local1
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create5
+assert_file_has_content refscount.create5 "^8$"
+
+${CMD_PREFIX} ostree --repo=repo refs origin:remote1 --create=remote1
+${CMD_PREFIX} ostree --repo=repo refs origin:remote1 --create=origin/remote1
+${CMD_PREFIX} ostree --repo=repo refs local1 --create=origin:local1
+${CMD_PREFIX} ostree --repo=repo refs | wc -l > refscount.create6
+assert_file_has_content refscount.create6 "^11$"
+
 echo "ok refs"

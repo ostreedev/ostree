@@ -382,6 +382,22 @@ gboolean      ostree_repo_resolve_rev (OstreeRepo  *self,
                                        char       **out_rev,
                                        GError     **error);
 
+/**
+ * OstreeRepoResolveRevExtFlags:
+ * @OSTREE_REPO_RESOLVE_REV_EXT_NONE: No flags.
+ */
+typedef enum {
+  OSTREE_REPO_RESOLVE_REV_EXT_NONE = 0,
+} OstreeRepoResolveRevExtFlags;
+
+_OSTREE_PUBLIC
+gboolean      ostree_repo_resolve_rev_ext (OstreeRepo                    *self,
+                                           const char                    *refspec,
+                                           gboolean                       allow_noent,
+                                           OstreeRepoResolveRevExtFlags   flags,
+                                           char                         **out_rev,
+                                           GError                       **error);
+
 _OSTREE_PUBLIC
 gboolean      ostree_repo_list_refs (OstreeRepo       *self,
                                      const char       *refspec_prefix,

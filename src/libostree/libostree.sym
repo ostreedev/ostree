@@ -346,10 +346,7 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Uncomment this when adding a new symbol */
-/*
 LIBOSTREE_2016.7 {
 global:
-        someostree_some_new_symbol;
+        ostree_repo_resolve_rev_ext;
 } LIBOSTREE_2016.6;
-*/
