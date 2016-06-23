@@ -115,4 +115,14 @@ ot_file_enumerator_iterate (GFileEnumerator  *direnum,
 #endif
 #define g_file_enumerator_iterate ot_file_enumerator_iterate
 
+const char *
+ot_file_get_path_cached (GFile *file);
+
+static inline
+const char *
+gs_file_get_path_cached (GFile *file)
+{
+  return ot_file_get_path_cached (file);
+}
+
 G_END_DECLS

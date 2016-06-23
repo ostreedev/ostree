@@ -54,7 +54,7 @@ AM_PATH_GLIB_2_0
 dnl When bumping the gio-unix-2.0 dependency (or glib-2.0 in general),
 dnl remember to bump GLIB_VERSION_MIN_REQUIRED and
 dnl GLIB_VERSION_MAX_ALLOWED in Makefile.am
-GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0 libgsystem >= 2015.1"
+GIO_DEPENDENCY="gio-unix-2.0 >= 2.40.0"
 PKG_CHECK_MODULES(OT_DEP_GIO_UNIX, $GIO_DEPENDENCY)
 
 dnl 5.1.0 is an arbitrary version here

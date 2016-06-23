@@ -21,7 +21,6 @@
 #include "config.h"
 
 #include "ot-fs-utils.h"
-#include "libgsystem.h"
 #include "libglnx.h"
 #include <sys/xattr.h>
 #include <gio/gunixinputstream.h>

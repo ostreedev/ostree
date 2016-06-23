@@ -20,8 +20,8 @@
 
 #include "config.h"
 
-#include <libgsystem.h>
 #include <gpgme.h>
+#include "libglnx.h"
 
 #include "ostree-gpg-verify-result-private.h"
 
