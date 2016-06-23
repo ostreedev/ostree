@@ -214,7 +214,6 @@ global:
         ostree_repo_remote_list;
         ostree_repo_remote_list_refs;
         ostree_repo_resolve_rev;
-        ostree_repo_resolve_rev_ext;
         ostree_repo_scan_hardlinks;
         ostree_repo_set_disable_fsync;
         ostree_repo_set_ref_immediate;
@@ -347,10 +346,7 @@ global:
  *                         NOTE NOTE NOTE
  */
 
-/* Uncomment this when adding a new symbol */
-/*
 LIBOSTREE_2016.7 {
 global:
-        someostree_some_new_symbol;
+        ostree_repo_resolve_rev_ext;
 } LIBOSTREE_2016.6;
-*/
