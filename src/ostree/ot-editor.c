@@ -23,8 +23,8 @@
 #include "config.h"
 
 #include "libglnx.h"
+#include "otutil.h"
 #include "ot-editor.h"
-#include "libgsystem.h"
 
 #include <sys/wait.h>
 #include <string.h>
