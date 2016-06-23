@@ -2734,7 +2734,7 @@ _ostree_repo_read_bare_fd (OstreeRepo           *self,
                                           error);
 
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                   "No such file object %s.", checksum);
+                   "No such file object %s", checksum);
       return FALSE;
     }
 
