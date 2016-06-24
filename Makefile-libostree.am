@@ -148,6 +148,7 @@ libostree_1_la_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/bsdiff -I$(srcdir)/libglnx -I$(
 	-fvisibility=hidden '-D_OSTREE_PUBLIC=__attribute__((visibility("default"))) extern'
 libostree_1_la_LDFLAGS = -version-number 1:0:0 -Bsymbolic-functions -Wl,--version-script=$(top_srcdir)/src/libostree/libostree.sym
 libostree_1_la_LIBADD = libotutil.la libbupsplit.la libglnx.la libbsdiff.la libostree-kernel-args.la $(OT_INTERNAL_GIO_UNIX_LIBS) $(OT_INTERNAL_GPGME_LIBS) $(OT_DEP_LZMA_LIBS) $(OT_DEP_ZLIB_LIBS)
+libostree_1_la_DEPENDENCIES = $(top_srcdir)/src/libostree/libostree.sym
 
 EXTRA_DIST += src/libostree/libostree.sym
 
