@@ -261,8 +261,11 @@ can_write (const char *path)
       else
 	return -errno;
     }
-  if (!devino_set_contains (stbuf.st_dev, stbuf.st_ino))
-    return -EROFS;
+  if (!S_ISDIR (stbuf.st_mode))
+    {
+      if (!devino_set_contains (stbuf.st_dev, stbuf.st_ino))
+        return -EROFS;
+    }
   return 0;
 }
 
