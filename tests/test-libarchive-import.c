@@ -433,6 +433,9 @@ entry_pathname_test_helper (gconstpointer data, gboolean on)
   OstreeRepoCommitModifier *modifier = NULL;
   gboolean met_etc_file = FALSE;
 
+  if (skip_if_no_xattr (td))
+    goto out;
+
   modifier = ostree_repo_commit_modifier_new (0, NULL, NULL, NULL);
   ostree_repo_commit_modifier_set_xattr_callback (modifier, path_cb,
                                                   NULL, &met_etc_file);
