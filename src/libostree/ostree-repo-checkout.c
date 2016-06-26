@@ -346,7 +346,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
  again:
   if (linkat (srcfd, loose_path, destination_dfd, destination_name, 0) != -1)
     ret_was_supported = TRUE;
-  else if (errno == EMLINK || errno == EXDEV || errno == EPERM)
+  else if (!options->no_copy_fallback && (errno == EMLINK || errno == EXDEV || errno == EPERM))
     {
       /* EMLINK, EXDEV and EPERM shouldn't be fatal; we just can't do the
        * optimization of hardlinking instead of copying.

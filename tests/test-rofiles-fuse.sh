@@ -26,7 +26,7 @@ skip_without_user_xattrs
 
 setup_test_repository "bare-user"
 
-echo "1..5"
+echo "1..6"
 
 mkdir mnt
 
@@ -71,3 +71,13 @@ echo "ok deletion"
 ${CMD_PREFIX} ostree --repo=repo commit -b test2 -s fromfuse --link-checkout-speedup --tree=dir=checkout-test2
 
 echo "ok commit"
+
+${CMD_PREFIX} ostree --repo=repo checkout -U test2 mnt/test2-checkout-copy-fallback
+assert_file_has_content mnt/test2-checkout-copy-fallback/anewfile-for-fuse anewfile-for-fuse
+
+if ${CMD_PREFIX} ostree --repo=repo checkout -UH test2 mnt/test2-checkout-copy-hardlinked 2>err.txt; then
+    assert_not_reached "Checking out via hardlinks across mountpoint unexpectedly succeeded!"
+fi
+assert_file_has_content err.txt "Invalid cross-device link"
+
+echo "ok checkout copy fallback"

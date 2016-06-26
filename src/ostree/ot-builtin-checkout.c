@@ -40,6 +40,7 @@ static gboolean opt_whiteouts;
 static gboolean opt_from_stdin;
 static char *opt_from_file;
 static gboolean opt_disable_fsync;
+static gboolean opt_require_hardlinks;
 
 static gboolean
 parse_fsync_cb (const char  *option_name,
@@ -67,6 +68,7 @@ static GOptionEntry options[] = {
   { "from-stdin", 0, 0, G_OPTION_ARG_NONE, &opt_from_stdin, "Process many checkouts from standard input", NULL },
   { "from-file", 0, 0, G_OPTION_ARG_STRING, &opt_from_file, "Process many checkouts from input file", "FILE" },
   { "fsync", 0, 0, G_OPTION_ARG_CALLBACK, parse_fsync_cb, "Specify how to invoke fsync()", "POLICY" },
+  { "require-hardlinks", 'H', 0, G_OPTION_ARG_NONE, &opt_require_hardlinks, "Do not fall back to full copies if hardlinking fails", NULL },
   { NULL }
 };
 
@@ -85,7 +87,7 @@ process_one_checkout (OstreeRepo           *repo,
    * `ostree_repo_checkout_tree_at` until such time as we have a more
    * convenient infrastructure for testing C APIs with data.
    */
-  if (opt_disable_cache || opt_whiteouts)
+  if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks)
     {
       OstreeRepoCheckoutOptions options = { 0, };
       
@@ -97,6 +99,7 @@ process_one_checkout (OstreeRepo           *repo,
         options.process_whiteouts = TRUE;
       if (subpath)
         options.subpath = subpath;
+      options.no_copy_fallback = opt_require_hardlinks;
 
       if (!ostree_repo_checkout_tree_at (repo, &options,
                                          AT_FDCWD, destination,
