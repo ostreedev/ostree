@@ -64,7 +64,7 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   GKeyFile *old_origin;
   GKeyFile *new_origin = NULL;
 
-  context = g_option_context_new ("REF - Construct new tree from current origin and deploy it, if it changed");
+  context = g_option_context_new ("REF - Construct new tree from REF and deploy it");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
                                           OSTREE_ADMIN_BUILTIN_FLAG_SUPERUSER,
