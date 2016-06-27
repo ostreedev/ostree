@@ -255,6 +255,7 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                  const char        *checksum,
                                  OstreeObjectType   objtype,
                                  int                temp_dfd,
+                                 int                fd,
                                  const char        *temp_filename,
                                  GCancellable      *cancellable,
                                  GError           **error);

@@ -726,7 +726,7 @@ content_fetch_on_complete (GObject        *object,
       if (!have_object)
         {
           if (!_ostree_repo_commit_loose_final (pull_data->repo, checksum, OSTREE_OBJECT_TYPE_FILE,
-                                                _ostree_fetcher_get_dfd (fetcher), temp_path,
+                                                _ostree_fetcher_get_dfd (fetcher), -1, temp_path,
                                                 cancellable, error))
             goto out;
         }

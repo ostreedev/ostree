@@ -19,7 +19,7 @@ include Makefile-decls.am
 
 shortened_sysconfdir = $$(echo "$(sysconfdir)" | sed -e 's|^$(prefix)||' -e 's|^/||')
 
-ACLOCAL_AMFLAGS = -I buildutil ${ACLOCAL_FLAGS}
+ACLOCAL_AMFLAGS = -I buildutil -I libglnx ${ACLOCAL_FLAGS}
 AM_CPPFLAGS += -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"' \
 	-DLOCALEDIR=\"$(datadir)/locale\" -DSYSCONFDIR=\"$(sysconfdir)\" \
 	-DSHORTENED_SYSCONFDIR=\"$(shortened_sysconfdir)\" \
