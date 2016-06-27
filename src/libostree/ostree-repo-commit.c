@@ -25,6 +25,7 @@
 #include <glib-unix.h>
 #include <gio/gfiledescriptorbased.h>
 #include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
 #include "otutil.h"
 
 #include "ostree-core-private.h"
@@ -114,6 +115,7 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                  const char        *checksum,
                                  OstreeObjectType   objtype,
                                  int                temp_dfd,
+                                 int                fd,
                                  const char        *temp_filename,
                                  GCancellable      *cancellable,
                                  GError           **error)
@@ -133,17 +135,26 @@ _ostree_repo_commit_loose_final (OstreeRepo        *self,
                                             cancellable, error))
     goto out;
 
-  if (G_UNLIKELY (renameat (temp_dfd, temp_filename,
-                            dest_dfd, tmpbuf) == -1))
+  if (fd != -1)
     {
-      if (errno != EEXIST)
+      if (!glnx_link_tmpfile_at (temp_dfd, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                                 fd, temp_filename, dest_dfd, tmpbuf, error))
+        goto out;
+    }
+  else
+    {
+      if (G_UNLIKELY (renameat (temp_dfd, temp_filename,
+                                dest_dfd, tmpbuf) == -1))
         {
-          glnx_set_error_from_errno (error);
-          g_prefix_error (error, "Storing file '%s': ", temp_filename);
-          goto out;
+          if (errno != EEXIST)
+            {
+              glnx_set_error_from_errno (error);
+              g_prefix_error (error, "Storing file '%s': ", temp_filename);
+              goto out;
+            }
+          else
+            (void) unlinkat (temp_dfd, temp_filename, 0);
         }
-      else
-        (void) unlinkat (temp_dfd, temp_filename, 0);
     }
 
   ret = TRUE;
@@ -173,10 +184,18 @@ commit_loose_object_trusted (OstreeRepo        *self,
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && self->target_owner_uid != -1) 
     {
-      if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
-                                self->target_owner_uid,
-                                self->target_owner_gid,
-                                AT_SYMLINK_NOFOLLOW) == -1))
+      if (fd != -1)
+        {
+          if (fchown (fd, self->target_owner_uid, self->target_owner_gid) < 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
+        }
+      else if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
+                                     self->target_owner_uid,
+                                     self->target_owner_gid,
+                                     AT_SYMLINK_NOFOLLOW) == -1))
         {
           glnx_set_error_from_errno (error);
           goto out;
@@ -293,7 +312,7 @@ commit_loose_object_trusted (OstreeRepo        *self,
     }
 
   if (!_ostree_repo_commit_loose_final (self, checksum, objtype,
-                                        self->tmp_dir_fd, temp_filename,
+                                        self->tmp_dir_fd, fd, temp_filename,
                                         cancellable, error))
     goto out;
   
@@ -466,9 +485,13 @@ _ostree_repo_open_content_bare (OstreeRepo          *self,
 
   if (!have_obj)
     {
-      if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &ret_stream,
-                                      cancellable, error))
+      int fd;
+
+      if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                          &fd, &temp_filename, error))
         goto out;
+
+      ret_stream = g_unix_output_stream_new (fd, TRUE);
       
       if (!fallocate_stream ((GFileDescriptorBased*)ret_stream, content_len,
                              cancellable, error))
@@ -519,6 +542,42 @@ _ostree_repo_commit_trusted_content_bare (OstreeRepo          *self,
 }
 
 static gboolean
+create_regular_tmpfile_linkable_with_content (OstreeRepo *self,
+                                              guint64 length,
+                                              GInputStream *input,
+                                              int *out_fd,
+                                              char **out_path,
+                                              GCancellable *cancellable,
+                                              GError **error)
+{
+  g_autoptr(GOutputStream) temp_out = NULL;
+  glnx_fd_close int temp_fd = -1;
+  g_autofree char *temp_filename = NULL;
+
+  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                      &temp_fd, &temp_filename,
+                                      error))
+    return FALSE;
+  temp_out = g_unix_output_stream_new (temp_fd, FALSE);
+
+  if (!fallocate_stream ((GFileDescriptorBased*)temp_out, length,
+                         cancellable, error))
+    return FALSE;
+
+  if (g_output_stream_splice (temp_out, input, 0,
+                              cancellable, error) < 0)
+    return FALSE;
+  if (fchmod (temp_fd, 0644) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      return FALSE;
+    }
+  *out_fd = temp_fd; temp_fd = -1;
+  *out_path = g_steal_pointer (&temp_filename);
+  return TRUE;
+}
+
+static gboolean
 write_object (OstreeRepo         *self,
               OstreeObjectType    objtype,
               const char         *expected_checksum,
@@ -539,11 +598,11 @@ write_object (OstreeRepo         *self,
   g_autoptr(GInputStream) file_input = NULL;
   g_autoptr(GFileInfo) file_info = NULL;
   g_autoptr(GVariant) xattrs = NULL;
-  g_autoptr(GOutputStream) temp_out = NULL;
   gboolean have_obj;
   GChecksum *checksum = NULL;
   gboolean temp_file_is_regular;
   gboolean temp_file_is_symlink;
+  glnx_fd_close int temp_fd = -1;
   gboolean object_is_symlink = FALSE;
   gssize unpacked_size = 0;
   gboolean indexable = FALSE;
@@ -623,16 +682,9 @@ write_object (OstreeRepo         *self,
         {
           guint64 size = g_file_info_get_size (file_info);
 
-          if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
-                                          cancellable, error))
-            goto out;
-
-          if (!fallocate_stream ((GFileDescriptorBased*)temp_out, size,
-                                 cancellable, error))
-            goto out;
-
-          if (g_output_stream_splice (temp_out, file_input, 0,
-                                      cancellable, error) < 0)
+          if (!create_regular_tmpfile_linkable_with_content (self, size, file_input,
+                                                             &temp_fd, &temp_filename,
+                                                             cancellable, error))
             goto out;
         }
       else if (repo_mode == OSTREE_REPO_MODE_BARE && temp_file_is_symlink)
@@ -648,15 +700,17 @@ write_object (OstreeRepo         *self,
           g_autoptr(GVariant) file_meta = NULL;
           g_autoptr(GConverter) zlib_compressor = NULL;
           g_autoptr(GOutputStream) compressed_out_stream = NULL;
+          g_autoptr(GOutputStream) temp_out = NULL;
 
           if (self->generate_sizes)
             indexable = TRUE;
 
-          if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644,
-                                          &temp_filename, &temp_out,
-                                          cancellable, error))
+          if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY|O_CLOEXEC,
+                                              &temp_fd, &temp_filename,
+                                              error))
             goto out;
           temp_file_is_regular = TRUE;
+          temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
           file_meta = _ostree_zlib_file_header_new (file_info, xattrs);
 
@@ -676,31 +730,27 @@ write_object (OstreeRepo         *self,
               if (unpacked_size < 0)
                 goto out;
             }
+
+          if (!g_output_stream_flush (temp_out, cancellable, error))
+            goto out;
+
+          if (fchmod (temp_fd, 0644) < 0)
+            {
+              glnx_set_error_from_errno (error);
+              goto out;
+            }
         }
       else
         g_assert_not_reached ();
     }
   else
     {
-      if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, 0644, &temp_filename, &temp_out,
-                                      cancellable, error))
-        goto out;
-
-      if (!fallocate_stream ((GFileDescriptorBased*)temp_out, file_object_length,
-                             cancellable, error))
-        goto out;
-
-      if (g_output_stream_splice (temp_out, checksum_input ? (GInputStream*)checksum_input : input,
-                                  0,
-                                  cancellable, error) < 0)
+      if (!create_regular_tmpfile_linkable_with_content (self, file_object_length,
+                                                         checksum_input ? (GInputStream*)checksum_input : input,
+                                                         &temp_fd, &temp_filename,
+                                                         cancellable, error))
         goto out;
       temp_file_is_regular = TRUE;
-    }
-
-  if (temp_out)
-    {
-      if (!g_output_stream_flush (temp_out, cancellable, error))
-        goto out;
     }
 
   if (!checksum)
@@ -724,7 +774,7 @@ write_object (OstreeRepo         *self,
     {
       struct stat stbuf;
 
-      if (fstatat (self->tmp_dir_fd, temp_filename, &stbuf, AT_SYMLINK_NOFOLLOW) == -1)
+      if (fstat (temp_fd, &stbuf) == -1)
         {
           glnx_set_error_from_errno (error);
           goto out;
@@ -742,7 +792,6 @@ write_object (OstreeRepo         *self,
   if (do_commit)
     {
       guint32 uid, gid, mode;
-      int fd = -1;
 
       if (file_info)
         {
@@ -752,15 +801,12 @@ write_object (OstreeRepo         *self,
         }
       else
         uid = gid = mode = 0;
-
-      if (temp_out)
-        fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)temp_out);
       
       if (!commit_loose_object_trusted (self, actual_checksum, objtype,
                                         temp_filename,
                                         object_is_symlink,
                                         uid, gid, mode,
-                                        xattrs, fd,
+                                        xattrs, temp_fd,
                                         cancellable, error))
         goto out;
 

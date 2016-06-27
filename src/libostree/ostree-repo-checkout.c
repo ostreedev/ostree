@@ -45,7 +45,7 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   gboolean ret = FALSE;
   g_autofree char *temp_filename = NULL;
   g_autoptr(GOutputStream) temp_out = NULL;
-  int fd;
+  glnx_fd_close int fd = -1;
   int res;
   guint32 file_mode;
 
@@ -53,18 +53,17 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   file_mode = g_file_info_get_attribute_uint32 (src_info, "unix::mode");
   file_mode &= ~(S_ISUID|S_ISGID);
 
-  if (!gs_file_open_in_tmpdir_at (self->tmp_dir_fd, file_mode,
-                                  &temp_filename, &temp_out,
-                                  cancellable, error))
+  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_WRONLY | O_CLOEXEC,
+                                      &fd, &temp_filename,
+                                      error))
     goto out;
+  temp_out = g_unix_output_stream_new (fd, FALSE);
 
   if (g_output_stream_splice (temp_out, content, 0, cancellable, error) < 0)
     goto out;
 
   if (!g_output_stream_flush (temp_out, cancellable, error))
     goto out;
-
-  fd = g_file_descriptor_based_get_fd ((GFileDescriptorBased*)temp_out);
 
   if (!self->disable_fsync)
     {
@@ -81,23 +80,22 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
   if (!g_output_stream_close (temp_out, cancellable, error))
     goto out;
 
+  if (fchmod (fd, file_mode) < 0)
+    {
+      glnx_set_error_from_errno (error);
+      goto out;
+    }
+
   if (!_ostree_repo_ensure_loose_objdir_at (self->uncompressed_objects_dir_fd,
                                             loose_path,
                                             cancellable, error))
     goto out;
 
-  if (G_UNLIKELY (renameat (self->tmp_dir_fd, temp_filename,
-                            self->uncompressed_objects_dir_fd, loose_path) == -1))
-    {
-      if (errno != EEXIST)
-        {
-          glnx_set_error_from_errno (error);
-          g_prefix_error (error, "Storing file '%s': ", temp_filename);
-          goto out;
-        }
-      else
-        (void) unlinkat (self->tmp_dir_fd, temp_filename, 0);
-    }
+  if (!glnx_link_tmpfile_at (self->tmp_dir_fd, GLNX_LINK_TMPFILE_NOREPLACE_IGNORE_EXIST,
+                             fd, temp_filename,
+                             self->uncompressed_objects_dir_fd, loose_path,
+                             error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -292,9 +290,16 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
                                                xattrs, cancellable, error))
             goto out;
         }
+      if (G_UNLIKELY (renameat (destination_dfd, temp_filename,
+                                destination_dfd, destination_name) == -1))
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
   else if (g_file_info_get_file_type (file_info) == G_FILE_TYPE_REGULAR)
     {
+      glnx_fd_close int temp_fd = -1;
       g_autoptr(GOutputStream) temp_out = NULL;
       guint32 file_mode;
 
@@ -303,24 +308,24 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
       if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
         file_mode &= ~(S_ISUID|S_ISGID);
 
-      if (!gs_file_open_in_tmpdir_at (destination_dfd, file_mode,
-                                      &temp_filename, &temp_out,
-                                      cancellable, error))
+      if (!glnx_open_tmpfile_linkable_at (destination_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                          &temp_fd, &temp_filename,
+                                          error))
         goto out;
+      temp_out = g_unix_output_stream_new (temp_fd, FALSE);
 
       if (!write_regular_file_content (repo, options, temp_out, file_info, xattrs, input,
                                        cancellable, error))
         goto out;
+
+      if (!glnx_link_tmpfile_at (destination_dfd, GLNX_LINK_TMPFILE_REPLACE,
+                                 temp_fd, temp_filename, destination_dfd,
+                                 destination_name,
+                                 error))
+        goto out;
     }
   else
     g_assert_not_reached ();
-
-  if (G_UNLIKELY (renameat (destination_dfd, temp_filename,
-                            destination_dfd, destination_name) == -1))
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
 
   ret = TRUE;
  out:

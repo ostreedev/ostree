@@ -35,6 +35,7 @@ OSTREE_FEATURES=""
 AC_SUBST([OSTREE_FEATURES])
 
 GLIB_TESTS
+LIBGLNX_CONFIGURE
 
 AC_CHECK_HEADER([sys/xattr.h],,[AC_MSG_ERROR([You must have sys/xattr.h from glibc])])
 
