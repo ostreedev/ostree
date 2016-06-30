@@ -268,3 +268,48 @@ developed by Fedora, Red Hat, and CentOS as part of Project Atomic.
 This is a service that incrementally rebuilds and tests GNOME on every commit.
 The need to make and distribute snapshots for this system was the original
 inspiration for ostree.
+
+## Docker
+
+It makes sense to compare OSTree and Docker as far as *wire formats*
+go.  OSTree is not itself a container tool, but can be used as a
+transport/storage format for container tools.
+
+Docker has (at the time of this writing) two format versions (v1 and
+v2).  v1 is deprecated, so we'll look at [format version 2](https://github.com/docker/docker/blob/master/image/spec/v1.1.md).
+
+A Docker image is a series of layers, and a layer is essentially JSON
+metadata plus a tarball.  The tarballs capture changes between layers,
+including handling deleting files in higher layers.
+
+Because the payload format is just tar, Docker hence captures
+(numeric) uid/gid and xattrs.
+
+This "layering" model is an interesting and powerful part of Docker,
+allowing different images to reference a shared base.  OSTree doesn't
+implement this natively, but it's not difficult to implement in higher
+level tools.  For example in
+[flatpak](https://github.com/flatpak/flatpak), there's a concept of a
+SDK and runtime, and it would make a lot of sense for the SDK to
+depend on the runtime, to avoid clients downloading data twice (even
+if it's deduplicated on disk).
+
+That gets to an advantage of OSTree over Docker; OSTree checksums
+individual files (not tarballs), and uses this for deduplication.
+Docker (natively) only shares storage via layering.
+
+The biggest feature OSTree has over Docker though is support for
+(static) deltas, and even without pre-configured static deltas, the
+archive-z2 format has "natural" deltas.  Particularly for a "base
+operating system", one really wants on-wire deltas.  It'd likely be
+possible to extend Docker with this concept.
+
+A core challenge both share is around metadata (particularly signing)
+and search/discovery (the ostree `summary` file doesn't scale very
+well).
+
+One major issue Docker has is that it [checksums compressed data](https://github.com/projectatomic/skopeo/issues/11),
+and furthermore the tar format is flexible, with multiple ways to represent data,
+making it hard to impossible to reassemble and verify from on-disk state.
+The [tarsum](https://github.com/docker/docker/blob/master/pkg/tarsum/tarsum_spec.md) effort
+was intended to address this, but it was not adopted in the end for v2.
