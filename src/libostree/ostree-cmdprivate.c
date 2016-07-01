@@ -47,6 +47,7 @@ ostree_cmd__private__ (void)
   static OstreeCmdPrivateVTable table = {
     impl_ostree_generate_grub2_config,
     _ostree_repo_static_delta_dump,
+    _ostree_repo_static_delta_query_exists,
     _ostree_repo_static_delta_delete
   };
 

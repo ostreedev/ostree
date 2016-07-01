@@ -37,6 +37,7 @@ static gboolean opt_empty;
 static gboolean opt_swap_endianness;
 static gboolean opt_inline;
 static gboolean opt_disable_bsdiff;
+static gboolean opt_if_not_exists;
 
 #define BUILTINPROTO(name) static gboolean ot_static_delta_builtin_ ## name (int argc, char **argv, GCancellable *cancellable, GError **error)
 
@@ -64,6 +65,7 @@ static GOptionEntry generate_options[] = {
   { "inline", 0, 0, G_OPTION_ARG_NONE, &opt_inline, "Inline delta parts into main delta", NULL },
   { "to", 0, 0, G_OPTION_ARG_STRING, &opt_to_rev, "Create delta to revision REV", "REV" },
   { "disable-bsdiff", 0, 0, G_OPTION_ARG_NONE, &opt_disable_bsdiff, "Disable use of bsdiff", NULL },
+  { "if-not-exists", 'n', 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Only generate if a delta does not already exist", NULL },
   { "set-endianness", 0, 0, G_OPTION_ARG_STRING, &opt_endianness, "Choose metadata endianness ('l' or 'B')", "ENDIAN" },
   { "swap-endianness", 0, 0, G_OPTION_ARG_NONE, &opt_swap_endianness, "Swap metadata endianness from host order", NULL },
   { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
@@ -264,6 +266,20 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
         }
       if (!ostree_repo_resolve_rev (repo, opt_to_rev, FALSE, &to_resolved, error))
         goto out;
+
+      if (opt_if_not_exists)
+        {
+          gboolean does_exist;
+          g_autofree char *delta_id = from_resolved ? g_strconcat (from_resolved, "-", to_resolved, NULL) : g_strdup (to_resolved);
+          if (!ostree_cmd__private__ ()->ostree_static_delta_query_exists (repo, delta_id, &does_exist, cancellable, error))
+            goto out;
+          if (does_exist)
+            {
+              g_print ("Delta %s already exists.\n", delta_id);
+              ret = TRUE;
+              goto out;
+            }
+        }
       
       if (opt_endianness)
         {

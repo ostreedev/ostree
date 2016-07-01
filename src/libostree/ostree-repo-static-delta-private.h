@@ -191,6 +191,13 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
                                        GError                    **error);
 
 gboolean
+_ostree_repo_static_delta_query_exists (OstreeRepo                 *repo,
+                                        const char                 *delta_id,
+                                        gboolean                   *out_exists,
+                                        GCancellable               *cancellable,
+                                        GError                    **error);
+
+gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                 *repo,
                                 const char                 *delta_id,
                                 GCancellable               *cancellable,

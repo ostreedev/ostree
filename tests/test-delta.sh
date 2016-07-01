@@ -82,6 +82,8 @@ get_assert_one_direntry_matching() {
 origrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 
 ${CMD_PREFIX} ostree --repo=repo static-delta generate --empty --to=${origrev}
+${CMD_PREFIX} ostree --repo=repo static-delta generate --if-not-exists --empty --to=${origrev} > out.txt
+assert_file_has_content out.txt "${origrev} already exists"
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev} || exit 1
 ${CMD_PREFIX} ostree --repo=repo prune
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ${origrev} || exit 1
@@ -91,7 +93,12 @@ ${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
 
 newrev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
 
-${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --inline
+${CMD_PREFIX} ostree --repo=repo static-delta generate --if-not-exists --from=${origrev} --to=${newrev} --inline
+${CMD_PREFIX} ostree --repo=repo static-delta generate --if-not-exists --from=${origrev} --to=${newrev} --inline > out.txt
+assert_file_has_content out.txt "${origrev}-${newrev} already exists"
+# Should regenerate
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${origrev} --to=${newrev} --inline > out.txt
+assert_not_file_has_content out.txt "${origrev}-${newrev} already exists"
 
 deltaprefix=$(get_assert_one_direntry_matching repo/deltas '.')
 deltadir=$(get_assert_one_direntry_matching repo/deltas/${deltaprefix} '-')

@@ -820,6 +820,39 @@ _ostree_repo_static_delta_delete (OstreeRepo                    *self,
 }
 
 gboolean
+_ostree_repo_static_delta_query_exists (OstreeRepo                    *self,
+                                        const char                    *delta_id,
+                                        gboolean                      *out_exists,
+                                        GCancellable                  *cancellable,
+                                        GError                      **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *from = NULL; 
+  g_autofree char *to = NULL;
+  g_autofree char *superblock_path = NULL;
+  struct stat stbuf;
+
+  _ostree_parse_delta_name (delta_id, &from, &to);
+  superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
+
+  if (fstatat (self->repo_dir_fd, superblock_path, &stbuf, 0) < 0)
+    {
+      if (errno == ENOENT)
+        {
+          *out_exists = FALSE;
+          return TRUE;
+        }
+      else
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
+  *out_exists = TRUE;
+  return TRUE;
+}
+
+gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 const char                    *delta_id,
                                 GCancellable                  *cancellable,
