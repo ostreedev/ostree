@@ -826,7 +826,6 @@ _ostree_repo_static_delta_query_exists (OstreeRepo                    *self,
                                         GCancellable                  *cancellable,
                                         GError                      **error)
 {
-  gboolean ret = FALSE;
   g_autofree char *from = NULL; 
   g_autofree char *to = NULL;
   g_autofree char *superblock_path = NULL;
