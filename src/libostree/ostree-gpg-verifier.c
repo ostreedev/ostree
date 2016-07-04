@@ -23,6 +23,7 @@
 
 #include "config.h"
 
+#include "libglnx.h"
 #include "ostree-gpg-verifier.h"
 #include "ostree-gpg-verify-result-private.h"
 #include "otutil.h"

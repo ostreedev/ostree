@@ -22,12 +22,12 @@
 
 #include "config.h"
 
+#include "libglnx.h"
 #include "ostree.h"
 #include "otutil.h"
 
 #ifdef HAVE_LIBSOUP
 
-#include "libglnx.h"
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 #include "ostree-repo-static-delta-private.h"
