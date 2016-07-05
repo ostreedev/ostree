@@ -1062,8 +1062,8 @@ _ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
-static void
-ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
+void
+_ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
                                  SoupURI               *uri,
                                  guint64                max_size,
                                  int                    priority,
@@ -1073,17 +1073,17 @@ ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
 {
   ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, priority, cancellable,
                                        callback, user_data,
-                                       ostree_fetcher_stream_uri_async);
+                                       _ostree_fetcher_stream_uri_async);
 }
 
-static GInputStream *
-ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
+GInputStream *
+_ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
                                   GAsyncResult          *result,
                                   GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        ostree_fetcher_stream_uri_async), NULL);
+                        _ostree_fetcher_stream_uri_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
@@ -1134,7 +1134,7 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
+  data->result_stream = _ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
                                                           result, data->error);
   data->done = TRUE;
 }
@@ -1168,7 +1168,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   data.done = FALSE;
   data.error = error;
 
-  ostree_fetcher_stream_uri_async (fetcher, uri,
+  _ostree_fetcher_stream_uri_async (fetcher, uri,
                                    max_size,
                                    OSTREE_FETCHER_DEFAULT_PRIORITY,
                                    cancellable,
@@ -1211,5 +1211,59 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
   g_clear_object (&(data.result_stream));
+  return ret;
+}
+
+/**
+ * _ostree_fetcher_stream_to_membuf:
+ * Converts a GInputStream to an in-memory buffer,
+ * which must be freed later with g_free.
+ */
+gboolean
+_ostree_fetcher_stream_to_membuf (GInputStream   *result_stream,
+                                  gboolean        add_nul,
+                                  gboolean        allow_noent,
+                                  gpointer       *out_contents,
+                                  GCancellable   *cancellable,
+                                  GError         **error)
+{
+  gboolean ret = FALSE;
+  const guint8 nulchar = 0;
+  g_autoptr(GMemoryOutputStream) buf = NULL;
+  g_assert (error != NULL);
+
+  if (!result_stream)
+    {
+      if (allow_noent)
+        {
+          if (g_error_matches (*error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_clear_error (error);
+              ret = TRUE;
+              *out_contents = NULL;
+            }
+        }
+      goto out;
+    }
+
+  buf = (GMemoryOutputStream*)g_memory_output_stream_new_resizable ();
+  if (g_output_stream_splice ((GOutputStream*)buf, result_stream,
+                              G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE,
+                              cancellable, error) < 0)
+    goto out;
+
+  if (add_nul)
+    {
+      if (!g_output_stream_write ((GOutputStream*)buf, &nulchar, 1, cancellable, error))
+        goto out;
+    }
+
+  if (!g_output_stream_close ((GOutputStream*)buf, cancellable, error))
+    goto out;
+
+  ret = TRUE;
+  *out_contents = g_memory_output_stream_steal_data (buf);
+
+ out:
   return ret;
 }
