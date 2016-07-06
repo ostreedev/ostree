@@ -768,7 +768,7 @@ content_fetch_on_complete (GObject        *object,
  out:
   pull_data->n_outstanding_content_fetches--;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  if(free_fetch_data)
+  if (free_fetch_data)
     {
       g_variant_unref (fetch_data->object);
       g_free (fetch_data);
