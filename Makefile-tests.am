@@ -57,6 +57,7 @@ dist_test_scripts = \
 	tests/test-pull-metalink.sh \
 	tests/test-pull-summary-sigs.sh \
 	tests/test-pull-resume.sh \
+	tests/test-pull-repeated.sh \
 	tests/test-pull-untrusted.sh \
 	tests/test-pull-override-url.sh \
 	tests/test-local-pull.sh \
