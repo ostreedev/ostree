@@ -138,6 +138,7 @@ assert_file_has_content () {
     if ! grep -q -e "$2" "$1"; then
         sed -e 's/^/# /' < "$1" >&2
         echo 1>&2 "File '$1' doesn't match regexp '$2'"
+	cat $1
         exit 1
     fi
 }
