@@ -38,7 +38,13 @@ static char *opt_log = NULL;
 static gboolean opt_daemonize;
 static gboolean opt_autoexit;
 static gboolean opt_force_ranges;
+static int opt_random_500s_percentage;
+/* We have a strong upper bound for any unlikely
+ * cases involving repeated random 500s. */
+static int opt_random_500s_max = 100;
 static gint opt_port = 0;
+
+static guint emitted_random_500s_count = 0;
 
 typedef struct {
   GFile *root;
@@ -52,6 +58,8 @@ static GOptionEntry options[] = {
   { "port", 'P', 0, G_OPTION_ARG_INT, &opt_port, "Use the specified TCP port", NULL },
   { "port-file", 'p', 0, G_OPTION_ARG_FILENAME, &opt_port_file, "Write port number to PATH (- for standard output)", "PATH" },
   { "force-range-requests", 0, 0, G_OPTION_ARG_NONE, &opt_force_ranges, "Force range requests by only serving half of files", NULL },
+  { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
+  { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
   { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here", "PATH" },
   { NULL }
 };
@@ -184,6 +192,15 @@ do_get (OtTrivialHttpd    *self,
   if (strstr (path, "../") != NULL)
     {
       soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+      goto out;
+    }
+
+  if (opt_random_500s_percentage > 0 &&
+      emitted_random_500s_count < opt_random_500s_max &&
+      g_random_int_range (0, 100) < opt_random_500s_percentage)
+    {
+      emitted_random_500s_count++;
+      soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
       goto out;
     }
 
@@ -387,6 +404,13 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
     dirpath = ".";
 
   app->root = g_file_new_for_path (dirpath);
+
+  if (!(opt_random_500s_percentage >= 0 && opt_random_500s_percentage <= 99))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Invalid --random-500s=%u", opt_random_500s_percentage);
+      goto out;
+    }
 
   if (opt_log)
     {
