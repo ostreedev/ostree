@@ -44,7 +44,7 @@ typedef enum {
 typedef struct {
   volatile int ref_count;
 
-  SoupSession *session;
+  SoupSession *session;  /* not referenced */
   GMainContext *main_context;
   GMainLoop *main_loop;
 
@@ -140,7 +140,8 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
   if (g_atomic_int_dec_and_test (&thread_closure->ref_count))
     {
-      g_clear_object (&thread_closure->session);
+      /* The session thread should have cleared this by now. */
+      g_assert (thread_closure->session == NULL);
 
       g_clear_pointer (&thread_closure->main_context, g_main_context_unref);
       g_clear_pointer (&thread_closure->main_loop, g_main_loop_unref);
@@ -155,11 +156,6 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
       g_free (thread_closure->tmpdir_name);
       glnx_release_lock_file (&thread_closure->tmpdir_lock);
-
-      while (!g_queue_is_empty (&thread_closure->pending_queue))
-        g_object_unref (g_queue_pop_head (&thread_closure->pending_queue));
-
-      g_clear_pointer (&thread_closure->outstanding, g_hash_table_unref);
 
       g_clear_pointer (&thread_closure->output_stream_set, g_hash_table_unref);
       g_mutex_clear (&thread_closure->output_stream_set_lock);
@@ -460,6 +456,7 @@ ostree_fetcher_session_thread (gpointer data)
    * context for this thread before creating the session. */
   g_main_context_push_thread_default (mainctx);
 
+  /* We retain ownership of the SoupSession reference. */
   closure->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
                                                           SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
                                                           SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
@@ -481,6 +478,14 @@ ostree_fetcher_session_thread (gpointer data)
   closure->max_outstanding = 3 * max_conns;
 
   g_main_loop_run (closure->main_loop);
+
+  /* Since the ThreadClosure may be finalized from any thread we
+   * unreference all data related to the SoupSession ourself to ensure
+   * it's freed in the same thread where it was created. */
+  g_clear_pointer (&closure->outstanding, g_hash_table_unref);
+  while (!g_queue_is_empty (&closure->pending_queue))
+    g_object_unref (g_queue_pop_head (&closure->pending_queue));
+  g_clear_pointer (&closure->session, g_object_unref);
 
   thread_closure_unref (closure);
 
