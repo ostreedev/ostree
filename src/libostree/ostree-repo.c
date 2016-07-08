@@ -4219,7 +4219,7 @@ ostree_repo_sign_delta (OstreeRepo     *self,
 /**
  * ostree_repo_add_gpg_signature_summary:
  * @self: Self
- * @key_id: NULL-terminated array of GPG keys.
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
  * @homedir: (allow-none): GPG home directory, or %NULL
  * @cancellable: A #GCancellable
  * @error: a #GError
