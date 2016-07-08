@@ -88,8 +88,6 @@ typedef struct {
   guint64 max_size;
   guint64 current_size;
   guint64 content_length;
-
-  GTask *task;
 } OstreeFetcherPendingURI;
 
 /* Used by session_thread_idle_add() */
