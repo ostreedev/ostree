@@ -341,12 +341,19 @@ global:
         ostree_repo_remote_fetch_summary_with_options;
 } LIBOSTREE_2016.5;
 
+LIBOSTREE_2016.7 {
+global:
+        ostree_repo_resolve_rev_ext;
+} LIBOSTREE_2016.6;
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
+/* UNCOMMENT WHEN ADDING THE FIRST NEW SYMBOL FOR 2016.8
 LIBOSTREE_2016.7 {
 global:
-        ostree_repo_resolve_rev_ext;
-} LIBOSTREE_2016.6;
+	insert_symbol_here;
+} LIBOSTREE_2016.8;
+*/ 
