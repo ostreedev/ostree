@@ -264,6 +264,7 @@ ostree_repo_commit_traverse_iter_clear (OstreeRepoCommitTraverseIter *iter)
 {
   struct _OstreeRepoRealCommitTraverseIter *real =
     (struct _OstreeRepoRealCommitTraverseIter*)iter;
+  g_clear_object (&real->repo);
   g_clear_pointer (&real->commit, g_variant_unref);
   g_clear_pointer (&real->current_dir, g_variant_unref);
 }
