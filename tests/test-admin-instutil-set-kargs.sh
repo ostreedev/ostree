@@ -55,6 +55,11 @@ echo "ok instutil set-kargs --append"
 
 ${CMD_PREFIX} ostree admin instutil set-kargs --import-proc-cmdline
 for arg in $(cat /proc/cmdline); do
-    assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "options.*$arg"
+    case "$arg" in
+	ostree=*) # Skip ostree arg that gets stripped out
+	   ;;
+	*) assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "options.*$arg"
+	   ;;
+    esac
 done
 echo "ok instutil set-kargs --import-proc-cmdline"
