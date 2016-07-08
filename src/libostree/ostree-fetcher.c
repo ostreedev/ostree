@@ -452,12 +452,13 @@ static gpointer
 ostree_fetcher_session_thread (gpointer data)
 {
   ThreadClosure *closure = data;
+  g_autoptr(GMainContext) mainctx = g_main_context_ref (closure->main_context);
   gint max_conns;
 
   /* This becomes the GMainContext that SoupSession schedules async
    * callbacks and emits signals from.  Make it the thread-default
    * context for this thread before creating the session. */
-  g_main_context_push_thread_default (closure->main_context);
+  g_main_context_push_thread_default (mainctx);
 
   closure->session = soup_session_async_new_with_options (SOUP_SESSION_USER_AGENT, "ostree ",
                                                           SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
@@ -481,9 +482,12 @@ ostree_fetcher_session_thread (gpointer data)
 
   g_main_loop_run (closure->main_loop);
 
-  g_main_context_pop_thread_default (closure->main_context);
-
   thread_closure_unref (closure);
+
+  /* Do this last, since libsoup uses g_main_current_source() which
+   * relies on it.
+   */
+  g_main_context_pop_thread_default (mainctx);
 
   return NULL;
 }
