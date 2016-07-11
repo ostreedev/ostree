@@ -203,9 +203,9 @@ ostree_validate_rev (const char *rev,
   return ret;
 }
 
-static GVariant *
-file_header_new (GFileInfo         *file_info,
-                 GVariant          *xattrs)
+GVariant *
+_ostree_file_header_new (GFileInfo         *file_info,
+                         GVariant          *xattrs)
 {
   guint32 uid;
   guint32 gid;
@@ -518,7 +518,7 @@ ostree_raw_file_to_content_stream (GInputStream       *input,
   g_autoptr(GVariant) file_header = NULL;
   guint64 header_size;
 
-  file_header = file_header_new (file_info, xattrs);
+  file_header = _ostree_file_header_new (file_info, xattrs);
   if (!header_and_input_to_stream (file_header,
                                    input,
                                    out_input,
@@ -772,7 +772,7 @@ ostree_checksum_file_from_input (GFileInfo        *file_info,
     {
       g_autoptr(GVariant) file_header = NULL;
 
-      file_header = file_header_new (file_info, xattrs);
+      file_header = _ostree_file_header_new (file_info, xattrs);
 
       if (!write_file_header_update_checksum (NULL, file_header, checksum,
                                               cancellable, error))
