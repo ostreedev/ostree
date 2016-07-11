@@ -60,6 +60,7 @@ typedef struct {
   OstreeRepoContentBareCommit barecommitstate;
   guint64          content_size;
   GOutputStream   *content_out;
+  GChecksum       *content_checksum;
   char             checksum[OSTREE_SHA256_STRING_LEN+1];
   char             *read_source_object;
   int               read_source_fd;
@@ -387,6 +388,29 @@ validate_ofs (StaticDeltaExecutionState  *state,
 }
 
 static gboolean
+content_out_write (OstreeRepo                 *repo,
+                   StaticDeltaExecutionState  *state,
+                   const guint8*               buf,
+                   gsize                       len,
+                   GCancellable               *cancellable,  
+                   GError                    **error)
+{
+  gsize bytes_written;
+
+  if (state->content_checksum)
+    g_checksum_update (state->content_checksum, buf, len);
+
+  /* Ignore bytes_written since we discard partial content */
+  if (!g_output_stream_write_all (state->content_out,
+                                  buf, len,
+                                  &bytes_written,
+                                  cancellable, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
 do_content_open_generic (OstreeRepo                 *repo,
                          StaticDeltaExecutionState  *state,
                          GCancellable               *cancellable,  
@@ -451,7 +475,6 @@ dispatch_bspatch (OstreeRepo                 *repo,
   g_autofree guchar *buf = NULL;
   struct bspatch_stream stream;
   struct bzpatch_opaque_s opaque;
-  gsize bytes_written;
 
   if (!read_varuint64 (state, &offset, error))
     goto out;
@@ -484,19 +507,43 @@ dispatch_bspatch (OstreeRepo                 *repo,
                    &stream) < 0)
         goto out;
 
-      if (!g_output_stream_write_all (state->content_out,
-                                      buf,
-                                      state->content_size,
-                                      &bytes_written,
-                                      cancellable, error))
+      if (!content_out_write (repo, state, buf, state->content_size,
+                              cancellable, error))
         goto out;
-
-      g_assert (bytes_written == state->content_size);
     }
 
   ret = TRUE;
  out:
   return ret;
+}
+
+/* When processing untrusted static deltas, we need to checksum the
+ * file content, which includes a header.  Compare with what
+ * ostree_checksum_file_from_input() is doing too.
+ */
+static gboolean
+handle_untrusted_content_checksum (OstreeRepo                 *repo,
+                                   StaticDeltaExecutionState  *state,
+                                   GCancellable               *cancellable,  
+                                   GError                    **error)
+{
+  g_autoptr(GVariant) header = NULL;
+  g_autoptr(GFileInfo) finfo = NULL;
+  gsize bytes_written;
+  
+  if (state->trusted)
+    return TRUE;
+
+  finfo = _ostree_header_gfile_info_new (state->mode, state->uid, state->gid);
+  header = _ostree_file_header_new (finfo, state->xattrs);
+  
+  state->content_checksum = g_checksum_new (G_CHECKSUM_SHA256);
+
+  if (!_ostree_write_variant_with_size (NULL, header, 0, &bytes_written, state->content_checksum,
+                                        cancellable, error))
+    return FALSE;
+
+  return TRUE;
 }
 
 static gboolean
@@ -557,7 +604,6 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
     {
       guint64 content_offset;
       guint64 objlen;
-      gsize bytes_written;
       g_autoptr(GInputStream) object_input = NULL;
       g_autoptr(GInputStream) memin = NULL;
       
@@ -582,34 +628,23 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
           (repo->mode == OSTREE_REPO_MODE_BARE ||
            repo->mode == OSTREE_REPO_MODE_BARE_USER))
         {
-          if (state->trusted)
-            {
-              if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
-                                                           state->content_size,
-                                                           &state->barecommitstate,
-                                                           &state->content_out,
-                                                           &state->have_obj,
-                                                           cancellable, error))
-                goto out;
-            }
-          else
-            {
-              if (!_ostree_repo_open_untrusted_content_bare (repo, state->checksum,
-                                                             state->content_size,
-                                                             &state->barecommitstate,
-                                                             &state->content_out,
-                                                             &state->have_obj,
-                                                             cancellable, error))
-                goto out;
-            }
+          if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
+                                                       state->content_size,
+                                                       &state->barecommitstate,
+                                                       &state->content_out,
+                                                       &state->have_obj,
+                                                       cancellable, error))
+            goto out;
 
           if (!state->have_obj)
             {
-              if (!g_output_stream_write_all (state->content_out,
-                                              state->payload_data + content_offset,
-                                              state->content_size,
-                                              &bytes_written,
-                                              cancellable, error))
+              if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
+                goto out;
+
+              if (!content_out_write (repo, state,
+                                      state->payload_data + content_offset,
+                                      state->content_size,
+                                      cancellable, error))
                 goto out;
             }
         }
@@ -705,27 +740,17 @@ dispatch_open (OstreeRepo                 *repo,
       ret = TRUE;
       goto out;
     }
+  
+  if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
+                                               state->content_size,
+                                               &state->barecommitstate,
+                                               &state->content_out,
+                                               &state->have_obj,
+                                               cancellable, error))
+    goto out;
 
-  if (state->trusted)
-    {
-      if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
-                                                   state->content_size,
-                                                   &state->barecommitstate,
-                                                   &state->content_out,
-                                                   &state->have_obj,
-                                                   cancellable, error))
-        goto out;
-    }
-  else
-    {
-      if (!_ostree_repo_open_untrusted_content_bare (repo, state->checksum,
-                                                     state->content_size,
-                                                     &state->barecommitstate,
-                                                     &state->content_out,
-                                                     &state->have_obj,
-                                                     cancellable, error))
-        goto out;
-    }
+  if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
+    goto out;
 
   ret = TRUE;
  out:
@@ -743,7 +768,6 @@ dispatch_write (OstreeRepo                 *repo,
   gboolean ret = FALSE;
   guint64 content_size;
   guint64 content_offset;
-  gsize bytes_written;
       
   if (!read_varuint64 (state, &content_size, error))
     goto out;
@@ -785,11 +809,8 @@ dispatch_write (OstreeRepo                 *repo,
                   goto out;
                 }
               
-              if (!g_output_stream_write_all (state->content_out,
-                                              buf,
-                                              bytes_read,
-                                              &bytes_written,
-                                              cancellable, error))
+              if (!content_out_write (repo, state, (guint8*)buf, bytes_read,
+                                      cancellable, error))
                 goto out;
               
               content_size -= bytes_read;
@@ -800,11 +821,8 @@ dispatch_write (OstreeRepo                 *repo,
           if (!validate_ofs (state, content_offset, content_size, error))
             goto out;
 
-          if (!g_output_stream_write_all (state->content_out,
-                                          state->payload_data + content_offset,
-                                          content_size,
-                                          &bytes_written,
-                                          cancellable, error))
+          if (!content_out_write (repo, state, state->payload_data + content_offset, content_size,
+                                  cancellable, error))
             goto out;
         }
     }
@@ -898,22 +916,26 @@ dispatch_close (OstreeRepo                 *repo,
       if (!g_output_stream_flush (state->content_out, cancellable, error))
         goto out;
 
-      if (state->trusted)
+      if (state->content_checksum)
         {
-          if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->barecommitstate,
-                                                         state->uid, state->gid, state->mode,
-                                                         state->xattrs,
-                                                         cancellable, error))
-            goto out;
+          const char *actual_checksum = g_checksum_get_string (state->content_checksum);
+
+          g_assert (!state->trusted);
+
+          if (strcmp (actual_checksum, state->checksum) != 0)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Corrupted object %s (actual checksum is %s)",
+                           state->checksum, actual_checksum);
+              goto out;
+            }
         }
-      else
-        {
-          if (!_ostree_repo_commit_untrusted_content_bare (repo, state->checksum, &state->barecommitstate,
-                                                           state->uid, state->gid, state->mode,
-                                                           state->xattrs,
-                                                           cancellable, error))
-            goto out;
-        }
+
+      if (!_ostree_repo_commit_trusted_content_bare (repo, state->checksum, &state->barecommitstate,
+                                                     state->uid, state->gid, state->mode,
+                                                     state->xattrs,
+                                                     cancellable, error))
+        goto out;
     }
 
   if (!dispatch_unset_read_source (repo, state, cancellable, error))
