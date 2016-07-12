@@ -240,15 +240,13 @@ commit_loose_object_trusted (OstreeRepo        *self,
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE_USER)
         {
-          if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
-            goto out;
-
           if (!object_is_symlink)
             {
               /* We need to apply at least some mode bits, because the repo file was created
                  with mode 644, and we need e.g. exec bits to be right when we do a user-mode
                  checkout. To make this work we apply all user bits and the read bits for
-                 group/other */
+                 group/other.  Furthermore, setting user xattrs requires write access, so
+                 this makes sure it's at least writable by us.  (O_TMPFILE uses mode 0 by default) */
               do
                 res = fchmod (fd, mode | 0744);
               while (G_UNLIKELY (res == -1 && errno == EINTR));
@@ -258,6 +256,9 @@ commit_loose_object_trusted (OstreeRepo        *self,
                   goto out;
                 }
             }
+
+          if (!write_file_metadata_to_xattr (fd, uid, gid, mode, xattrs, error))
+            goto out;
         }
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && (self->mode == OSTREE_REPO_MODE_BARE ||
