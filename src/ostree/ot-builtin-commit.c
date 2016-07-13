@@ -455,12 +455,8 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
 
   if (argc <= 1 && (opt_trees == NULL || opt_trees[0] == NULL))
     {
-      char *current_dir = g_get_current_dir ();
-      object_to_commit = g_file_new_for_path (current_dir);
-      g_free (current_dir);
-
-      if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                 cancellable, error))
+      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, ".", mtree, modifier,
+                                           cancellable, error))
         goto out;
     }
   else if (opt_trees != NULL)
@@ -487,9 +483,8 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
           g_clear_object (&object_to_commit);
           if (strcmp (tree_type, "dir") == 0)
             {
-              object_to_commit = g_file_new_for_path (tree);
-              if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                         cancellable, error))
+              if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, tree, mtree, modifier,
+                                                   cancellable, error))
                 goto out;
             }
           else if (strcmp (tree_type, "tar") == 0)
@@ -520,9 +515,8 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
   else
     {
       g_assert (argc > 1);
-      object_to_commit = g_file_new_for_path (argv[1]);
-      if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, mtree, modifier,
-                                                 cancellable, error))
+      if (!ostree_repo_write_dfd_to_mtree (repo, AT_FDCWD, argv[1], mtree, modifier,
+                                           cancellable, error))
         goto out;
     }
 
