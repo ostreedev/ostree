@@ -33,7 +33,8 @@ TESTS_ENVIRONMENT += OT_TESTS_DEBUG=1 \
 	PATH=$$(cd $(top_builddir)/tests && pwd):$${PATH} \
 	$(NULL)
 
-uninstalled_test_data = tests/ostree-symlink-stamp
+uninstalled_test_data = tests/ostree-symlink-stamp tests/ostree-prepare-root-symlink-stamp \
+			tests/ostree-remount-symlink-stamp tests/rofiles-fuse-symlink-stamp
 
 dist_uninstalled_test_scripts = tests/test-symbols.sh
 
@@ -238,12 +239,32 @@ EXTRA_DIST += \
 tests/libreaddir-rand.so: Makefile
 	$(AM_V_GEN) ln -fns ../.libs/libreaddir-rand.so tests
 ALL_LOCAL_RULES += tests/libreaddir-rand.so
-CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp tests/ostree
+CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
+		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
+		tests/rofiles-fuse-symlink-stamp tests/ostree
 
 tests/ostree-symlink-stamp: Makefile
 	@set -e; \
 	real_bin=`cd $(top_builddir) && ./libtool --mode=execute echo ostree`; \
 	ln -sf "$${real_bin}" tests/ostree; \
+	touch $@
+
+tests/rofiles-fuse-symlink-stamp: Makefile
+	@set -e; \
+	real_bin=$(abs_top_builddir)/rofiles-fuse; \
+	ln -sf "$${real_bin}" tests/rofiles-fuse; \
+	touch $@
+
+tests/ostree-remount-symlink-stamp: Makefile
+	@set -e; \
+	real_bin=$(abs_top_builddir)/ostree-remount; \
+	ln -sf "$${real_bin}" tests/ostree-remount; \
+	touch $@
+
+tests/ostree-prepare-root-symlink-stamp: Makefile
+	@set -e; \
+	real_bin=$(abs_top_builddir)/ostree-prepare-root; \
+	ln -sf "$${real_bin}" tests/ostree-prepare-root; \
 	touch $@
 
 # Unfortunately the glib test data APIs don't actually handle
