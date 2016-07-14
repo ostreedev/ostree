@@ -64,7 +64,7 @@ However, in order to build from a git clone, you must update the
 submodules.  If you're packaging OSTree and want a tarball, I
 recommend using a "recursive git archive" script.  There are several
 available online;
-[this code](https://git.gnome.org/browse/ostree/tree/packaging/Makefile.dist-packaging#n11)
+[this code](https://github.com/ostreedev/ostree/blob/master/packaging/Makefile.dist-packaging#L11)
 in OSTree is an example.
 
 Once you have a git clone or recursive archive, building is the
