@@ -243,28 +243,15 @@ CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
 		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
 		tests/rofiles-fuse-symlink-stamp tests/ostree
 
-tests/ostree-symlink-stamp: Makefile
+tests/%-symlink-stamp: Makefile
 	@set -e; \
-	real_bin=`cd $(top_builddir) && ./libtool --mode=execute echo ostree`; \
-	ln -sf "$${real_bin}" tests/ostree; \
-	touch $@
-
-tests/rofiles-fuse-symlink-stamp: Makefile
-	@set -e; \
-	real_bin=$(abs_top_builddir)/rofiles-fuse; \
-	ln -sf "$${real_bin}" tests/rofiles-fuse; \
-	touch $@
-
-tests/ostree-remount-symlink-stamp: Makefile
-	@set -e; \
-	real_bin=$(abs_top_builddir)/ostree-remount; \
-	ln -sf "$${real_bin}" tests/ostree-remount; \
-	touch $@
-
-tests/ostree-prepare-root-symlink-stamp: Makefile
-	@set -e; \
-	real_bin=$(abs_top_builddir)/ostree-prepare-root; \
-	ln -sf "$${real_bin}" tests/ostree-prepare-root; \
+	lt_bin=`cd $(top_builddir) && ./libtool --mode=execute echo $*`; \
+	if test "$${lt_bin}" = "$*"; then \
+		real_bin=$(abs_top_builddir)/$*; \
+	else \
+		real_bin="$${lt_bin}"; \
+	fi; \
+	ln -sf "$${real_bin}" tests/$*; \
 	touch $@
 
 # Unfortunately the glib test data APIs don't actually handle
