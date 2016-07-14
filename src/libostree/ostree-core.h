@@ -192,6 +192,8 @@ guchar *ostree_checksum_to_bytes (const char *checksum);
 _OSTREE_PUBLIC
 GVariant *ostree_checksum_to_bytes_v (const char *checksum);
 _OSTREE_PUBLIC
+guchar *ostree_checksum_b64_to_bytes (const char *checksum);
+_OSTREE_PUBLIC
 void ostree_checksum_b64_inplace_to_bytes (const char *checksum,
                                            guint8     *buf);
 
@@ -199,6 +201,8 @@ _OSTREE_PUBLIC
 char * ostree_checksum_from_bytes (const guchar *csum);
 _OSTREE_PUBLIC
 char * ostree_checksum_from_bytes_v (GVariant *csum_v);
+_OSTREE_PUBLIC
+char * ostree_checksum_b64_from_bytes (const guchar *csum);
 
 _OSTREE_PUBLIC
 void ostree_checksum_inplace_from_bytes (const guchar *csum,
