@@ -62,6 +62,7 @@ struct OstreeRepoCommitModifier {
 struct OstreeRepo {
   GObject parent;
 
+  int privileged;
   char *stagedir_prefix;
   int commit_stagedir_fd;
   char *commit_stagedir_name;
