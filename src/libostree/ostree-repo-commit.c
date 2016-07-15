@@ -173,14 +173,16 @@ commit_loose_object_trusted (OstreeRepo        *self,
   if (self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
       && self->target_owner_uid != -1) 
     {
-      if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
-                                self->target_owner_uid,
-                                self->target_owner_gid,
-                                AT_SYMLINK_NOFOLLOW) == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
+      if (self->privileged) {
+        if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
+                                  self->target_owner_uid,
+                                  self->target_owner_gid,
+                                  AT_SYMLINK_NOFOLLOW) == -1))
+          {
+            glnx_set_error_from_errno (error);
+            goto out;
+          }
+      }
     }
 
   /* Special handling for symlinks in bare repositories */
@@ -192,14 +194,15 @@ commit_loose_object_trusted (OstreeRepo        *self,
        * Note, this does not apply for bare-user repos, as they store symlinks
        * as regular files.
        */
-      if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
-                                uid, gid,
-                                AT_SYMLINK_NOFOLLOW) == -1))
-        {
-          glnx_set_error_from_errno (error);
-          goto out;
-        }
-
+      if (self->privileged) {
+        if (G_UNLIKELY (fchownat (self->tmp_dir_fd, temp_filename,
+                                  uid, gid,
+                                  AT_SYMLINK_NOFOLLOW) == -1))
+          {
+            glnx_set_error_from_errno (error);
+            goto out;
+          }
+      }
       if (xattrs != NULL)
         {
           if (!glnx_dfd_name_set_all_xattrs (self->tmp_dir_fd, temp_filename,
@@ -213,15 +216,16 @@ commit_loose_object_trusted (OstreeRepo        *self,
 
       if (objtype == OSTREE_OBJECT_TYPE_FILE && self->mode == OSTREE_REPO_MODE_BARE)
         {
-          do
-            res = fchown (fd, uid, gid);
-          while (G_UNLIKELY (res == -1 && errno == EINTR));
+          if (self->privileged) {
+            do
+              res = fchown (fd, uid, gid);
+            while (G_UNLIKELY (res == -1 && errno == EINTR));
           if (G_UNLIKELY (res == -1))
             {
               glnx_set_error_from_errno (error);
               goto out;
             }
-
+          }
           do
             res = fchmod (fd, mode);
           while (G_UNLIKELY (res == -1 && errno == EINTR));

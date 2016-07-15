@@ -2116,7 +2116,8 @@ ostree_repo_open (OstreeRepo    *self,
    */
   { const char *env_bootid = getenv ("OSTREE_BOOTID");
     g_autofree char *boot_id = NULL;
-
+    //Have it as ostree flag and pass it from atomic? Or have it detect if running as non-root?
+    self->privileged = FALSE;
     if (env_bootid != NULL)
       boot_id = g_strdup (env_bootid);
     else
