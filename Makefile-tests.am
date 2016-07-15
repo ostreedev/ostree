@@ -243,8 +243,8 @@ CLEANFILES += tests/libreaddir-rand.so tests/ostree-symlink-stamp \
 		tests/ostree-prepare-root-symlink-stamp tests/ostree-remount-symlink-stamp \
 		tests/rofiles-fuse-symlink-stamp tests/ostree
 
-tests/%-symlink-stamp: Makefile
-	@set -e; \
+tests/%-symlink-stamp: % Makefile
+	$(AM_V_GEN) set -e; \
 	lt_bin=`cd $(top_builddir) && ./libtool --mode=execute echo $*`; \
 	if test "$${lt_bin}" = "$*"; then \
 		real_bin=$(abs_top_builddir)/$*; \
