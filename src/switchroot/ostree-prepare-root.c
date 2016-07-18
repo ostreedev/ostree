@@ -45,21 +45,20 @@
 #include "ostree-mount-util.h"
 
 static char *
-parse_ostree_cmdline (void)
+read_proc_cmdline (void)
 {
   FILE *f = fopen("/proc/cmdline", "r");
   char *cmdline = NULL;
-  const char *iter;
-  char *ret = NULL;
   size_t len;
 
   if (!f)
-    return NULL;
+    goto out;
+
   /* Note that /proc/cmdline will not end in a newline, so getline
    * will fail unelss we provide a length.
    */
   if (getline (&cmdline, &len, f) < 0)
-    return NULL;
+    goto out;
   /* ... but the length will be the size of the malloc buffer, not
    * strlen().  Fix that.
    */
@@ -67,6 +66,47 @@ parse_ostree_cmdline (void)
 
   if (cmdline[len-1] == '\n')
     cmdline[len-1] = '\0';
+out:
+  if (f)
+    fclose (f);
+  return cmdline;
+}
+
+static char *
+parse_ostree_cmdline (void)
+{
+  char *cmdline = NULL;
+  const char *iter;
+  char *ret = NULL;
+  int tmp_errno;
+
+  cmdline = read_proc_cmdline ();
+  if (!cmdline)
+    {
+      // Mount proc
+      if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
+        {
+          perrorv ("failed to mount proc on /proc: ");
+          exit (EXIT_FAILURE);
+        }
+
+      cmdline = read_proc_cmdline ();
+      tmp_errno = errno;
+
+      /* Leave the filesystem in the state that we found it: */
+      if (umount ("/proc"))
+        {
+          perrorv ("failed to umount proc from /proc: ");
+          exit (EXIT_FAILURE);
+        }
+
+      errno = tmp_errno;
+      if (!cmdline)
+        {
+          perrorv ("failed to read /proc/cmdline: ");
+          exit (EXIT_FAILURE);
+        }
+    }
 
   iter = cmdline;
   while (iter != NULL)
