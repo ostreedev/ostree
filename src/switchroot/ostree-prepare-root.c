@@ -156,12 +156,10 @@ main(int argc, char *argv[])
   int orig_cwd_dfd;
 
   if (argc < 2)
-    {
-      fprintf (stderr, "usage: ostree-prepare-root SYSROOT\n");
-      exit (EXIT_FAILURE);
-    }
+    root_mountpoint = "/";
+  else
+    root_mountpoint = argv[1];
 
-  root_mountpoint = argv[1];
   deploy_path = resolve_deploy_path (root_mountpoint);
 
   /* Create a temporary target for our mounts in the initramfs; this will
@@ -303,6 +301,15 @@ main(int argc, char *argv[])
       perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
       exit (EXIT_FAILURE);
     }
-  
-  exit (EXIT_SUCCESS);
+
+  if (getpid() == 1)
+    {
+      execl ("/sbin/init", "/sbin/init", NULL);
+      perrorv ("failed to exec init inside ostree");
+      exit (EXIT_FAILURE);
+    }
+  else
+    {
+      exit (EXIT_SUCCESS);
+    }
 }
