@@ -190,9 +190,7 @@ main(int argc, char *argv[])
   const char *root_mountpoint = NULL;
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
-  char destpath[PATH_MAX];
   struct stat stbuf;
-  int orig_cwd_dfd;
 
   if (argc < 2)
     root_mountpoint = "/";
@@ -220,12 +218,19 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
-  /* Link to the deployment's /var */
-  snprintf (srcpath, sizeof(srcpath), "%s/../../var", deploy_path);
-  snprintf (destpath, sizeof(destpath), "%s/var", deploy_path);
-  if (mount (srcpath, destpath, NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+  /* chdir to our new root.  We need to do this after bind-mounting it over
+   * itself otherwise our cwd is still on the non-bind-mounted filesystem
+   * below. */
+  if (chdir (deploy_path) < 0)
     {
-      perrorv ("failed to bind mount %s to %s", srcpath, destpath);
+      perrorv ("failed to chdir to deploy_path");
+      exit (EXIT_FAILURE);
+    }
+
+  /* Link to the deployment's /var */
+  if (mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
+    {
+      perrorv ("failed to bind mount ../../var to var");
       exit (EXIT_FAILURE);
     }
 
@@ -234,34 +239,15 @@ main(int argc, char *argv[])
   snprintf (srcpath, sizeof(srcpath), "%s/boot/loader", root_mountpoint);
   if (lstat (srcpath, &stbuf) == 0 && S_ISLNK (stbuf.st_mode))
     {
-      snprintf (destpath, sizeof(destpath), "%s/boot", deploy_path);
-      if (lstat (destpath, &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
+      if (lstat ("boot", &stbuf) == 0 && S_ISDIR (stbuf.st_mode))
         {
           snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint);
-          if (mount (srcpath, destpath, NULL, MS_BIND, NULL) < 0)
+          if (mount (srcpath, "boot", NULL, MS_BIND, NULL) < 0)
             {
-              perrorv ("failed to bind mount %s to %s", srcpath, destpath);
+              perrorv ("failed to bind mount %s to boot", srcpath);
               exit (EXIT_FAILURE);
             }
         }
-    }
-
-  /* Here we do a dance to chdir to the deploy_path so that we can have
-   * the potential overlayfs mount points not look ugly.  However...I
-   * think we could do this a lot earlier and make all of the mounts
-   * here just be relative.
-   */
-  orig_cwd_dfd = openat (AT_FDCWD, ".", O_RDONLY | O_NONBLOCK | O_DIRECTORY | O_CLOEXEC | O_NOCTTY);
-  if (orig_cwd_dfd < 0)
-    {
-      perrorv ("failed to open .");
-      exit (EXIT_FAILURE);
-    }
-
-  if (chdir (deploy_path) < 0)
-    {
-      perrorv ("failed to chdir to deploy_path");
-      exit (EXIT_FAILURE);
     }
 
   /* Do we have a persistent overlayfs for /usr?  If so, mount it now. */
@@ -304,13 +290,6 @@ main(int argc, char *argv[])
 	}
     }
 
-  if (fchdir (orig_cwd_dfd) < 0)
-    {
-      perrorv ("failed to chdir to orig root");
-      exit (EXIT_FAILURE);
-    }
-  (void) close (orig_cwd_dfd);
-
   touch_run_ostree ();
 
   /* In this instance typically we have our ready made-up up root at
@@ -338,14 +317,13 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
 
-  if (mount (root_mountpoint, "/sysroot.tmp/sysroot", NULL, MS_MOVE, NULL) < 0)
+  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE, NULL) < 0)
     {
-      perrorv ("failed to MS_MOVE '%s' to '/sysroot.tmp/sysroot'",
-          root_mountpoint);
+      perrorv ("failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
       exit (EXIT_FAILURE);
     }
 
-  if (mount ("/sysroot.tmp", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
+  if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
     {
       perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
       exit (EXIT_FAILURE);
