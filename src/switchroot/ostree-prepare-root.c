@@ -108,40 +108,17 @@ touch_run_ostree (void)
   (void) close (fd);
 }
 
-int
-main(int argc, char *argv[])
+static char*
+resolve_deploy_path (const char * root_mountpoint)
 {
-  const char *root_mountpoint = NULL;
-  char *ostree_target = NULL;
-  char *deploy_path = NULL;
-  char srcpath[PATH_MAX];
   char destpath[PATH_MAX];
-  char newroot[PATH_MAX];
   struct stat stbuf;
-  int orig_cwd_dfd;
-
-  if (argc < 2)
-    {
-      fprintf (stderr, "usage: ostree-prepare-root SYSROOT\n");
-      exit (EXIT_FAILURE);
-    }
-
-  root_mountpoint = argv[1];
+  char *ostree_target, *deploy_path;
 
   ostree_target = parse_ostree_cmdline ();
   if (!ostree_target)
     {
       fprintf (stderr, "No OSTree target; expected ostree=/ostree/boot.N/...\n");
-      exit (EXIT_FAILURE);
-    }
-
-  /* Create a temporary target for our mounts in the initramfs; this will
-   * be moved to the new system root below.
-   */
-  snprintf (newroot, sizeof(newroot), "%s.tmp", root_mountpoint);
-  if (mkdir (newroot, 0755) < 0)
-    {
-      perrorv ("Couldn't create temporary sysroot '%s': ", newroot);
       exit (EXIT_FAILURE);
     }
 
@@ -164,6 +141,38 @@ main(int argc, char *argv[])
       exit (EXIT_FAILURE);
     }
   printf ("Resolved OSTree target to: %s\n", deploy_path);
+  return deploy_path;
+}
+
+int
+main(int argc, char *argv[])
+{
+  const char *root_mountpoint = NULL;
+  char *deploy_path = NULL;
+  char srcpath[PATH_MAX];
+  char destpath[PATH_MAX];
+  char newroot[PATH_MAX];
+  struct stat stbuf;
+  int orig_cwd_dfd;
+
+  if (argc < 2)
+    {
+      fprintf (stderr, "usage: ostree-prepare-root SYSROOT\n");
+      exit (EXIT_FAILURE);
+    }
+
+  root_mountpoint = argv[1];
+  deploy_path = resolve_deploy_path (root_mountpoint);
+
+  /* Create a temporary target for our mounts in the initramfs; this will
+   * be moved to the new system root below.
+   */
+  snprintf (newroot, sizeof(newroot), "%s.tmp", root_mountpoint);
+  if (mkdir (newroot, 0755) < 0)
+    {
+      perrorv ("Couldn't create temporary sysroot '%s': ", newroot);
+      exit (EXIT_FAILURE);
+    }
   
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted
