@@ -76,12 +76,32 @@ test_that_prepare_root_sets_sysroot_up_correctly_with_initrd() {
 	echo "ok ostree-prepare-root sets sysroot up correctly with initrd"
 }
 
+setup_no_initrd_env() {
+	mount --bind "$1" "$1"
+	setup_rootfs "$1"
+	setup_bootfs "$1"
+}
+
+test_that_prepare_root_sets_root_up_correctly_with_no_initrd() {
+	find_in_env setup_no_initrd_env >files
+
+	grep -qx "/this_is_ostree_root" files
+	grep -qx "/sysroot/this_is_bootfs" files
+	grep -qx "/sysroot/this_is_real_root" files
+	grep -qx "/var/this_is_ostree_var" files
+	grep -qx "/usr/this_is_ostree_usr" files
+
+	grep -qx "/usr is not writable" files
+	echo "ok ostree-prepare-root sets root up correctly with no initrd"
+}
+
 # This script sources itself so we only want to run tests if we're the parent:
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 	. $(dirname $0)/libtest.sh
 	unshare -m true || \
 	    skip "this test needs to set up mount namespaces, rerun as root"
 
-	echo "1..1"
+	echo "1..2"
 	test_that_prepare_root_sets_sysroot_up_correctly_with_initrd
+	test_that_prepare_root_sets_root_up_correctly_with_no_initrd
 fi
