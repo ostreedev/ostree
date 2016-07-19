@@ -79,7 +79,10 @@ concept of a "static delta".
 These deltas are targeted to be a delta between two specific commit
 objects, including "bsdiff" and "rsync-style" deltas within a content
 object.  Static deltas also support `from NULL`, where the client can
-more efficiently download a commit object from scratch.
+more efficiently download a commit object from scratch - this is
+mostly useful when using OSTree for containers, rather than OS images.
+For OS images, one tends to download an installer ISO or qcow2 image
+which is a single file that contains the tree data already.
 
 Effectively, we're spending server-side storage (and one-time compute
 cost), and gaining efficiency in client network bandwidth.
