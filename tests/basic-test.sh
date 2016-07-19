@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..59"
+echo "1..60"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -193,6 +193,20 @@ echo "ok commit --skip-if-unchanged"
 cd ${test_tmpdir}/checkout-test2-4
 $OSTREE commit -b test2 -s "no xattrs" --no-xattrs
 echo "ok commit with no xattrs"
+
+mkdir tree-A tree-B
+touch tree-A/file-a tree-B/file-b
+
+$OSTREE commit -b test3-1 -s "Initial tree" --tree=dir=tree-A
+$OSTREE commit -b test3-2 -s "Replacement tree" --tree=dir=tree-B
+$OSTREE commit -b test3-combined -s "combined tree" --tree=ref=test3-1 --tree=ref=test3-2
+
+$OSTREE checkout test3-combined checkout-test3-combined
+
+assert_has_file checkout-test3-combined/file-a
+assert_has_file checkout-test3-combined/file-b
+
+echo "ok commit combined ref trees"
 
 # NB: The + is optional, but we need to make sure we support it
 cd ${test_tmpdir}
