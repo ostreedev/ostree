@@ -2550,16 +2550,6 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
 
       ostree_mutable_tree_set_metadata_checksum (mtree, ostree_repo_file_tree_get_metadata_checksum (repo_dir));
 
-      /* If the mtree was empty beforehand, the checksums on the mtree can simply
-       * become the checksums on the tree in the repo. Super simple. */
-      if (g_hash_table_size (ostree_mutable_tree_get_files (mtree)) == 0 &&
-          g_hash_table_size (ostree_mutable_tree_get_subdirs (mtree)) == 0)
-        {
-          ostree_mutable_tree_set_contents_checksum (mtree, ostree_repo_file_tree_get_contents_checksum (repo_dir));
-          ret = TRUE;
-          goto out;
-        }
-
       filter_result = OSTREE_REPO_COMMIT_FILTER_ALLOW;
     }
   else
