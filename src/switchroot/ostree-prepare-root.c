@@ -33,6 +33,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <sys/syscall.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -184,6 +185,12 @@ resolve_deploy_path (const char * root_mountpoint)
   return deploy_path;
 }
 
+static int
+pivot_root(const char * new_root, const char * put_old)
+{
+  return syscall(__NR_pivot_root, new_root, put_old);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -197,6 +204,7 @@ main(int argc, char *argv[])
   else
     root_mountpoint = argv[1];
 
+  root_mountpoint = realpath (root_mountpoint, NULL);
   deploy_path = resolve_deploy_path (root_mountpoint);
 
   /* Work-around for a kernel bug: for some reason the kernel
@@ -292,41 +300,58 @@ main(int argc, char *argv[])
 
   touch_run_ostree ();
 
-  /* In this instance typically we have our ready made-up up root at
-   * /sysroot/ostree/deploy/.../ (deploy_path) and the real rootfs at
-   * /sysroot (root_mountpoint).  We want to end up with our made-up root at
-   * /sysroot/ and the real rootfs under /sysroot/sysroot as systemd will be
-   * responsible for moving /sysroot to /.
-   *
-   * We need to do this in 3 moves to avoid trying to move /sysroot under
-   * itself:
-   *
-   * 1. /sysroot/ostree/deploy/... -> /sysroot.tmp
-   * 2. /sysroot -> /sysroot.tmp/sysroot
-   * 3. /sysroot.tmp -> /sysroot
-   */
-  if (mkdir ("/sysroot.tmp", 0755) < 0)
+  if (strcmp(root_mountpoint, "/") == 0)
     {
-      perrorv ("couldn't create temporary sysroot /sysroot.tmp: ");
-      exit (EXIT_FAILURE);
+      /* pivot_root rotates two mount points around.  In this instance . (the
+       * deploy location) becomes / and the existing / becomes /sysroot.  We
+       * have to use pivot_root rather than mount --move in this instance
+       * because our deploy location is mounted as a subdirectory of the real
+       * sysroot, so moving sysroot would also move the deploy location.   In
+       * reality attempting mount --move would fail with EBUSY. */
+      if (pivot_root (".", "sysroot") < 0)
+        {
+          perrorv ("failed to pivot_root to deployment");
+          exit (EXIT_FAILURE);
+        }
     }
-
-  if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE, NULL) < 0)
+  else
     {
-      perrorv ("failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
-      exit (EXIT_FAILURE);
-    }
+      /* In this instance typically we have our ready made-up up root at
+       * /sysroot/ostree/deploy/.../ (deploy_path) and the real rootfs at
+       * /sysroot (root_mountpoint).  We want to end up with our made-up root at
+       * /sysroot/ and the real rootfs under /sysroot/sysroot as systemd will be
+       * responsible for moving /sysroot to /.
+       *
+       * We need to do this in 3 moves to avoid trying to move /sysroot under
+       * itself:
+       *
+       * 1. /sysroot/ostree/deploy/... -> /sysroot.tmp
+       * 2. /sysroot -> /sysroot.tmp/sysroot
+       * 3. /sysroot.tmp -> /sysroot
+       */
+      if (mkdir ("/sysroot.tmp", 0755) < 0)
+        {
+          perrorv ("couldn't create temporary sysroot /sysroot.tmp: ");
+          exit (EXIT_FAILURE);
+        }
 
-  if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE, NULL) < 0)
-    {
-      perrorv ("failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
-      exit (EXIT_FAILURE);
-    }
+      if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE, NULL) < 0)
+        {
+          perrorv ("failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
+          exit (EXIT_FAILURE);
+        }
 
-  if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
-    {
-      perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
-      exit (EXIT_FAILURE);
+      if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE, NULL) < 0)
+        {
+          perrorv ("failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
+          exit (EXIT_FAILURE);
+        }
+
+      if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
+        {
+          perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
+          exit (EXIT_FAILURE);
+        }
     }
 
   if (getpid() == 1)
