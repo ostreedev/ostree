@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..11"
+echo "1..12"
 
 # Try both syntaxes
 repo_init
@@ -56,6 +56,17 @@ ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 $OSTREE show main >/dev/null
 echo "ok pull mirror"
+
+cd ${test_tmpdir}
+rm checkout-origin-main -rf
+$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+echo moomoo > checkout-origin-main/baz/cow
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "" --tree=dir=checkout-origin-main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
+${CMD_PREFIX} ostree --repo=mirrorrepo fsck
+echo "ok pull mirror (should not apply deltas)"
 
 cd ${test_tmpdir}
 mkdir mirrorrepo-local
