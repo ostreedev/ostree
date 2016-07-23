@@ -888,10 +888,20 @@ meta_fetch_on_complete (GObject           *object,
         goto out;
     }
 
-  ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
-                                    pull_data->cancellable,
-                                    on_metadata_written, fetch_data);
-  pull_data->n_outstanding_metadata_write_requests++;
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT_META)
+    {
+      /* Special path for detached metadata because write_metadata_async doesn't support it */
+      if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
+                                                       pull_data->cancellable, error))
+        goto out;
+    }
+  else
+    {
+      ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
+                                        pull_data->cancellable,
+                                        on_metadata_written, fetch_data);
+      pull_data->n_outstanding_metadata_write_requests++;
+    }
   free_fetch_data = FALSE;
 
  out:
@@ -1286,6 +1296,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
 
   ret = TRUE;
+
  out:
   return ret;
 }
