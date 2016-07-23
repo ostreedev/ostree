@@ -431,8 +431,8 @@ write_commitpartial_for (OtPullData *pull_data,
 
 static void
 fetch_object (OtPullData        *pull_data,
-                            const char        *checksum,
-                            OstreeObjectType   objtype);
+              char              *checksum,
+              OstreeObjectType   objtype);
 
 static gboolean
 scan_dirtree_object (OtPullData   *pull_data,
@@ -500,7 +500,7 @@ scan_dirtree_object (OtPullData   *pull_data,
         }
       else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
-          g_hash_table_insert (pull_data->requested_content, file_checksum, file_checksum);
+          g_hash_table_add (pull_data->requested_content, g_strdup (file_checksum));
           fetch_object (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE);
           file_checksum = NULL;  /* Transfer ownership */
         }
@@ -1220,9 +1220,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
   if (!is_stored && !is_requested)
     {
-      char *duped_checksum = g_strdup (tmp_checksum);
-
-      g_hash_table_insert (pull_data->requested_metadata, duped_checksum, duped_checksum);
+      g_hash_table_add (pull_data->requested_metadata, g_strdup (tmp_checksum));
 
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
         fetch_object (pull_data, g_strdup (tmp_checksum), OSTREE_OBJECT_TYPE_COMMIT_META);
@@ -1303,14 +1301,14 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
 /**
  * fetch_object:
- * @checksum: (transfer none): checksum of object
+ * @checksum: (transfer full): checksum of object
  * @objtype: object type
  *
  * Fetches the object of the given type and checksum
  */
 static void
 fetch_object (OtPullData        *pull_data,
-              const char        *checksum,
+              char              *checksum,
               OstreeObjectType   objtype)
 {
   SoupURI *obj_uri = NULL;
@@ -1357,6 +1355,7 @@ fetch_object (OtPullData        *pull_data,
                                                   pull_data->cancellable,
                                                   is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
   soup_uri_free (obj_uri);
+  g_free (checksum);
 }
 
 static gboolean
@@ -1523,7 +1522,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
         {
           if (!g_hash_table_lookup (pull_data->requested_content, checksum))
             {
-              g_hash_table_insert (pull_data->requested_content, checksum, checksum);
+              g_hash_table_add (pull_data->requested_content, g_strdup (checksum));
               fetch_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE);
               checksum = NULL;  /* Transfer ownership */
             }
