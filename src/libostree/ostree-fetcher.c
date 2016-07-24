@@ -540,7 +540,14 @@ _ostree_fetcher_finalize (GObject *object)
 
   /* Terminate the session thread. */
   g_main_loop_quit (self->thread_closure->main_loop);
-  g_clear_pointer (&self->session_thread, g_thread_unref);
+  if (self->session_thread)
+    {
+      /* We need to explicitly synchronize to clean up TLS */
+      if (self->session_thread != g_thread_self ())
+        g_thread_join (self->session_thread);
+      else
+        g_clear_pointer (&self->session_thread, g_thread_unref);
+    }
   g_clear_pointer (&self->thread_closure, thread_closure_unref);
 
   G_OBJECT_CLASS (_ostree_fetcher_parent_class)->finalize (object);
