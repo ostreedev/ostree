@@ -1244,13 +1244,13 @@ static GHashTable *
 parse_os_release (const char *contents,
                   const char *split)
 {
-  char **lines = g_strsplit (contents, split, -1);
+  g_autofree char **lines = g_strsplit (contents, split, -1);
   char **iter;
   GHashTable *ret = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
   for (iter = lines; *iter; iter++)
     {
-      char *line = *iter;
+      g_autofree char *line = *iter;
       char *eq;
       const char *quotedval;
       char *val;
@@ -1268,7 +1268,7 @@ parse_os_release (const char *contents,
       if (!val)
         continue;
       
-      g_hash_table_insert (ret, line, val);
+      g_hash_table_insert (ret, g_steal_pointer (&line), val);
     }
 
   return ret;
