@@ -132,6 +132,7 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     }
 
   { GVariantBuilder builder;
+    g_autoptr(GVariant) opts = NULL;
     g_auto(GLnxConsoleRef) console = { 0, };
 
     glnx_console_lock (&console);
@@ -157,8 +158,9 @@ ostree_builtin_pull_local (int argc, char **argv, GCancellable *cancellable, GEr
     if (console.is_tty)
       progress = ostree_async_progress_new_and_connect (ostree_repo_pull_default_console_progress_changed, &console);
 
+    opts = g_variant_ref_sink (g_variant_builder_end (&builder));
     if (!ostree_repo_pull_with_options (repo, src_repo_uri, 
-                                        g_variant_builder_end (&builder),
+                                        opts,
                                         progress,
                                         cancellable, error))
       goto out;
