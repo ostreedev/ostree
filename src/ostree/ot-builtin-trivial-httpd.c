@@ -386,7 +386,7 @@ gboolean
 ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, GError **error)
 {
   gboolean ret = FALSE;
-  GOptionContext *context;
+  g_autoptr(GOptionContext) context = NULL;
   const char *dirpath;
   OtTrivialHttpd appstruct = { 0, };
   OtTrivialHttpd *app = &appstruct;
@@ -501,8 +501,8 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
         }
       else if (pid > 0)
         {
-          /* Parent */
-          _exit (0);
+          ret = TRUE;
+          goto out;
         }
       /* Child, continue */
       /* Daemonising: close stdout/stderr so $() et al work on us */
@@ -559,7 +559,5 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
  out:
   g_clear_object (&app->root);
   g_clear_object (&app->log);
-  if (context)
-    g_option_context_free (context);
   return ret;
 }
