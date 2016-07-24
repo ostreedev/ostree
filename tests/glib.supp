@@ -401,6 +401,14 @@
    fun:g_task_start_task_thread
 }
 {
+   g_task_to_pool
+   Memcheck:Leak
+   ...
+   fun:g_thread_pool_start_thread
+   ...
+   fun:g_task_run_in_thread
+}
+{
    g_get_language_names
    Memcheck:Leak
    match-leak-kinds: definite
