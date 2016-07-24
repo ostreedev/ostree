@@ -244,7 +244,7 @@ static void
 ostree_bootconfig_parser_init (OstreeBootconfigParser *self)
 {
   self->options = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  self->lines = g_ptr_array_new ();
+  self->lines = g_ptr_array_new_with_free_func (g_variant_unref);
 }
 
 void
