@@ -1003,7 +1003,8 @@ GFile *
 ostree_sysroot_get_deployment_directory (OstreeSysroot    *self,
                                          OstreeDeployment *deployment)
 {
-  return g_file_resolve_relative_path (self->path, ostree_sysroot_get_deployment_dirpath (self, deployment));
+  g_autofree char *dirpath = ostree_sysroot_get_deployment_dirpath (self, deployment);
+  return g_file_resolve_relative_path (self->path, dirpath);
 }
 
 /**
