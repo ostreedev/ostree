@@ -16,6 +16,12 @@
    fun:g_type_register_static
 }
 {
+   g_type_register_dynamic
+   Memcheck:Leak
+   ...
+   fun:g_type_register_dynamic
+}
+{
    g_type_register_fundamental
    Memcheck:Leak
    ...
@@ -48,6 +54,12 @@
    Memcheck:Leak
    ...
    fun:g_type_add_interface_static
+}
+{
+   g_type_add_interface_dynamic
+   Memcheck:Leak
+   ...
+   fun:g_type_add_interface_dynamic
 }
 {
    g_param_spec_internal
