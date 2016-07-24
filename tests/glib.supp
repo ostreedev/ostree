@@ -545,3 +545,10 @@
    ...
    fun:glib_worker_main
 }
+{
+   glib_worker_2
+   Memcheck:Leak
+   ...
+   fun:g_thread_new
+   fun:g_get_worker_context
+}
