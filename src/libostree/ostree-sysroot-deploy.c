@@ -550,7 +550,6 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   const char *csum = ostree_deployment_get_csum (deployment);
   g_autofree char *checkout_target_name = NULL;
   g_autofree char *osdeploy_path = NULL;
-  g_autoptr(GFile) ret_deploy_target_path = NULL;
   glnx_fd_close int osdeploy_dfd = -1;
   int ret_fd;
 
@@ -1200,7 +1199,6 @@ swap_bootlinks (OstreeSysroot *self,
   gboolean ret = FALSE;
   int old_subbootversion, new_subbootversion;
   glnx_fd_close int ostree_dfd = -1;
-  glnx_fd_close int ostree_subbootdir_dfd = -1;
   g_autofree char *ostree_bootdir_name = NULL;
   g_autofree char *ostree_subbootdir_name = NULL;
 
@@ -1648,8 +1646,6 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
 {
   gboolean ret = FALSE;
   guint i;
-  g_autoptr(GHashTable) created_current_for_osname =
-    g_hash_table_new (g_str_hash, g_str_equal);
 
   for (i = 0; i < self->deployments->len; i++)
     {

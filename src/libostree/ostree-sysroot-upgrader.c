@@ -530,7 +530,6 @@ ostree_sysroot_upgrader_pull_one_dir (OstreeSysrootUpgrader  *self,
   glnx_unref_object OstreeRepo *repo = NULL;
   char *refs_to_fetch[] = { NULL, NULL };
   const char *from_revision = NULL;
-  g_autofree char *new_revision = NULL;
   g_autofree char *origin_refspec = NULL;
 
   if (self->override_csum != NULL)

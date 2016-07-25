@@ -1158,7 +1158,6 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
-  g_autofree char *ret_contents = NULL;
   g_autoptr(GMemoryOutputStream) buf = NULL;
   g_autoptr(GMainContext) mainctx = NULL;
   FetchUriSyncData data;
