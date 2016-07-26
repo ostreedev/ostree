@@ -40,7 +40,13 @@ perrorv (const char *format, ...)
   char buf[1024];
   char *p;
 
+#ifdef _GNU_SOURCE
   p = strerror_r (errno, buf, sizeof (buf));
+#else
+  strerror_r (errno, buf, sizeof (buf));
+  buf[sizeof (buf) - 1] = '\0';
+  p = buf;
+#endif  /* _GNU_SOURCE */
 
   va_start (args, format);
 
