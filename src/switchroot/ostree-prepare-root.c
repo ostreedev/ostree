@@ -222,7 +222,7 @@ main(int argc, char *argv[])
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
     {
-      perrorv ("failed to initial bind mount %s", deploy_path);
+      perrorv ("failed to make initial bind mount %s", deploy_path);
       exit (EXIT_FAILURE);
     }
 
