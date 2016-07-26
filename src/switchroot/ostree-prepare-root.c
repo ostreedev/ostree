@@ -215,7 +215,7 @@ main(int argc, char *argv[])
    * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
   if (mount (NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
     {
-      perrorv ("Failed to make \"/\" private mount: %m");
+      perrorv ("failed to make \"/\" private mount: %m");
       exit (EXIT_FAILURE);
     }
 
@@ -272,7 +272,7 @@ main(int argc, char *argv[])
 	{
 	  if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
 	    {
-	      perrorv ("Failed to remount rootfs writable (for overlayfs)");
+	      perrorv ("failed to remount rootfs writable (for overlayfs)");
 	      exit (EXIT_FAILURE);
 	    }
 	}
