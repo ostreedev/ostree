@@ -844,6 +844,8 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
  * Note in addition that unlike ostree_repo_checkout_tree(), the
  * default is not to use the repository-internal uncompressed objects
  * cache.
+ *
+ * This function is deprecated.  Use ostree_repo_checkout_at() instead.
  */
 gboolean
 ostree_repo_checkout_tree_at (OstreeRepo                        *self,
