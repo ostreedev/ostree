@@ -546,7 +546,7 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
                           GError           **error)
 {
   gboolean ret = FALSE;
-  OstreeRepoCheckoutOptions checkout_opts = { 0, };
+  OstreeRepoCheckoutAtOptions checkout_opts = { 0, };
   const char *csum = ostree_deployment_get_csum (deployment);
   g_autofree char *checkout_target_name = NULL;
   g_autofree char *osdeploy_path = NULL;
@@ -571,9 +571,9 @@ checkout_deployment_tree (OstreeSysroot     *sysroot,
   if (!glnx_shutil_rm_rf_at (osdeploy_dfd, checkout_target_name, cancellable, error))
     goto out;
 
-  if (!ostree_repo_checkout_tree_at (repo, &checkout_opts, osdeploy_dfd,
-                                     checkout_target_name, csum,
-                                     cancellable, error))
+  if (!ostree_repo_checkout_at (repo, &checkout_opts, osdeploy_dfd,
+                                checkout_target_name, csum,
+                                cancellable, error))
     goto out;
 
   if (!glnx_opendirat (osdeploy_dfd, checkout_target_name, TRUE, &ret_fd, error))
