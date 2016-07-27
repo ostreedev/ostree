@@ -815,6 +815,8 @@ deferred_hardlinks_list_free (void *data)
  *
  * Import an archive file @archive into the repository, and write its
  * file structure to @mtree.
+ *
+ * This function is deprecated.  Use ostree_repo_import_archive_to_mtree2() instead.
  */
 gboolean
 ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
@@ -1212,6 +1214,8 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  *
  * Import an archive file @archive into the repository, and write its
  * file structure to @mtree.
+ *
+ * This function is deprecated.  Use ostree_repo_export_tree_to_archive2() instead.
  */
 gboolean
 ostree_repo_export_tree_to_archive (OstreeRepo                *self,
