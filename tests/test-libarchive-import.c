@@ -166,12 +166,12 @@ test_libarchive_noautocreate_empty (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
   test_archive_setup (td->fd_empty, a);
 
-  (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
+  (void)ostree_repo_import_archive_to_mtree2 (td->repo, &opts, a, mtree, NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert (ostree_mutable_tree_get_metadata_checksum (mtree) == NULL);
 }
@@ -182,14 +182,14 @@ test_libarchive_autocreate_empty (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
   opts.autocreate_parents = 1;
 
   test_archive_setup (td->fd_empty, a);
 
-  (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
+  (void)ostree_repo_import_archive_to_mtree2 (td->repo, &opts, a, mtree, NULL, NULL, &error);
   g_assert_no_error (error);
   g_assert (ostree_mutable_tree_get_metadata_checksum (mtree) != NULL);
 }
@@ -200,12 +200,12 @@ test_libarchive_error_device_file (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
   glnx_unref_object OstreeMutableTree *mtree = ostree_mutable_tree_new ();
 
   test_archive_setup (td->fd, a);
 
-  (void)ostree_repo_import_archive_to_mtree (td->repo, &opts, a, mtree, NULL, NULL, &error);
+  (void)ostree_repo_import_archive_to_mtree2 (td->repo, &opts, a, mtree, NULL, NULL, &error);
   g_assert (error != NULL);
 }
 
@@ -228,7 +228,7 @@ skip_if_no_xattr (TestData *td)
 
 static gboolean
 import_write_and_ref (OstreeRepo      *repo,
-                      OstreeRepoImportArchiveOptions *opts,
+                      OstreeRepoImportArchiveOptions2 *opts,
                       struct archive  *a,
                       const char      *ref,
                       OstreeRepoCommitModifier *modifier,
@@ -242,7 +242,7 @@ import_write_and_ref (OstreeRepo      *repo,
   if (!ostree_repo_prepare_transaction (repo, NULL, NULL, error))
     goto out;
 
-  if (!ostree_repo_import_archive_to_mtree (repo, opts, a, mtree, modifier,
+  if (!ostree_repo_import_archive_to_mtree2 (repo, opts, a, mtree, modifier,
                                             NULL, error))
     goto out;
 
@@ -270,7 +270,7 @@ test_libarchive_ignore_device_file (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
 
   if (skip_if_no_xattr (td))
     goto out;
@@ -332,7 +332,7 @@ test_libarchive_ostree_convention (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
 
   if (skip_if_no_xattr (td))
     goto out;
@@ -374,7 +374,7 @@ test_libarchive_xattr_callback (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0 };
+  OstreeRepoImportArchiveOptions2 opts = { 0 };
   OstreeRepoCommitModifier *modifier = NULL;
   char buf[7] = { 0 };
 
@@ -429,7 +429,7 @@ entry_pathname_test_helper (gconstpointer data, gboolean on)
 {
   TestData *td = (void*)data; GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
   OstreeRepoCommitModifier *modifier = NULL;
   gboolean met_etc_file = FALSE;
 
@@ -490,7 +490,7 @@ test_libarchive_selinux (gconstpointer data)
   TestData *td = (void*)data;
   GError *error = NULL;
   struct archive *a = archive_read_new ();
-  OstreeRepoImportArchiveOptions opts = { 0 };
+  OstreeRepoImportArchiveOptions2 opts = { 0 };
   glnx_unref_object OstreeSePolicy *sepol = NULL;
   OstreeRepoCommitModifier *modifier = NULL;
   char buf[64] = { 0 };

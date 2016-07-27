@@ -949,7 +949,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   gboolean ret = FALSE;
   struct archive *a = NULL;
   g_autoptr(GFileInfo) tmp_dir_info = NULL;
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
 
   a = archive_read_new ();
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
@@ -966,7 +966,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 
   opts.autocreate_parents = !!autocreate_parents;
 
-  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
+  if (!ostree_repo_import_archive_to_mtree2 (self, &opts, a, mtree, modifier, cancellable, error))
     goto out;
 
   if (archive_read_close (a) != ARCHIVE_OK)

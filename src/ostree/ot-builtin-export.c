@@ -68,7 +68,7 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
   g_autofree char *commit = NULL;
   g_autoptr(GVariant) commit_data = NULL;
   struct archive *a;
-  OstreeRepoExportArchiveOptions opts = { 0, };
+  OstreeRepoExportArchiveOptions2 opts = { 0, };
 
   context = g_option_context_new ("COMMIT - Stream COMMIT to stdout in tar format");
 
@@ -136,8 +136,8 @@ ostree_builtin_export (int argc, char **argv, GCancellable *cancellable, GError 
 
   opts.path_prefix = opt_prefix;
 
-  if (!ostree_repo_export_tree_to_archive (repo, &opts, (OstreeRepoFile*)subtree, a,
-                                           cancellable, error))
+  if (!ostree_repo_export_tree_to_archive2 (repo, &opts, (OstreeRepoFile*)subtree, a,
+                                            cancellable, error))
     goto out;
 
   if (archive_write_close (a) != ARCHIVE_OK)
