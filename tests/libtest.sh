@@ -399,34 +399,25 @@ os_repository_new_commit ()
     cd ${test_tmpdir}
 }
 
+skip() {
+    echo "1..0 # SKIP" "$@"
+    exit 0
+}
+
 skip_without_user_xattrs () {
     touch test-xattrs
-    if ! setfattr -n user.testvalue -v somevalue test-xattrs; then
-        echo "1..0 # SKIP this test requires xattr support"
-        exit 0
-    fi
+    setfattr -n user.testvalue -v somevalue test-xattrs || \
+        skip "this test requires xattr support"
 }
 
 skip_without_fuse () {
-    if ! fusermount --version >/dev/null 2>&1; then
-        echo "1..0 # SKIP no fusermount"
-        exit 0
-    fi
+    fusermount --version >/dev/null 2>&1 || skip "no fusermount"
 
-    if ! capsh --print | grep -q 'Bounding set.*[^a-z]cap_sys_admin'; then
-	echo "1..0 # SKIP No cap_sys_admin in bounding set, can't use FUSE"
-        exit 0
-    fi
+    capsh --print | grep -q 'Bounding set.*[^a-z]cap_sys_admin' || \
+        skip "No cap_sys_admin in bounding set, can't use FUSE"
 
-    if ! [ -w /dev/fuse ]; then
-        echo "1..0 # SKIP no write access to /dev/fuse"
-        exit 0
-    fi
-
-    if ! [ -e /etc/mtab ]; then
-        echo "1..0 # SKIP no /etc/mtab"
-        exit 0
-    fi
+    [ -w /dev/fuse ] || skip "no write access to /dev/fuse"
+    [ -e /etc/mtab ] || skip "no /etc/mtab"
 }
 
 libtest_cleanup_gpg () {

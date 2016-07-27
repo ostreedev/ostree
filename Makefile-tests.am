@@ -87,6 +87,7 @@ dist_test_scripts = \
 	tests/test-prune.sh \
 	tests/test-refs.sh \
 	tests/test-demo-buildsystem.sh \
+	tests/test-switchroot.sh \
 	$(NULL)
 
 if BUILDOPT_FUSE
