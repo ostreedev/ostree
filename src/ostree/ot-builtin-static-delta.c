@@ -212,7 +212,7 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;
 
-  context = g_option_context_new ("Generate static delta files");
+  context = g_option_context_new ("GENERATE [TO] - Generate static delta files");
   if (!ostree_option_context_parse (context, generate_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
@@ -360,7 +360,7 @@ ot_static_delta_builtin_apply_offline (int argc, char **argv, GCancellable *canc
   GOptionContext *context;
   glnx_unref_object OstreeRepo *repo = NULL;
 
-  context = g_option_context_new ("DELTA - Apply static delta file");
+  context = g_option_context_new ("APPLY-OFFLINE - Apply static delta file");
   if (!ostree_option_context_parse (context, apply_offline_options, &argc, &argv, OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
     goto out;
 
