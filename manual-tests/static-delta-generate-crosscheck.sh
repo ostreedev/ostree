@@ -45,10 +45,10 @@ validate_delta_options() {
     mkdir testrepo
     ostree --repo=testrepo init --mode=bare-user
     ostree --repo=testrepo remote add --set=gpg-verify=false local file://${repo}
-    ostree --repo=${repo} static-delta generate $@ ${from} ${to}
-    ostree --repo=testrepo pull local ${branch}@${from}
+    ostree --repo=${repo} static-delta generate $@ --from=${from} --to=${to}
+    ostree --repo=testrepo pull --require-static-deltas local ${branch}@${from}
     assert_streq $(ostree --repo=testrepo rev-parse ${branch}) ${from}
-    ostree --repo=testrepo pull local ${branch}
+    ostree --repo=testrepo pull --require-static-deltas local ${branch}
     assert_streq $(ostree --repo=testrepo rev-parse ${branch}) ${to}
     ostree --repo=testrepo fsck
     rm testrepo -rf
