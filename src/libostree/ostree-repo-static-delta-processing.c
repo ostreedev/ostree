@@ -628,12 +628,12 @@ dispatch_open_splice_and_close (OstreeRepo                 *repo,
           (repo->mode == OSTREE_REPO_MODE_BARE ||
            repo->mode == OSTREE_REPO_MODE_BARE_USER))
         {
-          if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
-                                                       state->content_size,
-                                                       &state->barecommitstate,
-                                                       &state->content_out,
-                                                       &state->have_obj,
-                                                       cancellable, error))
+          if (!_ostree_repo_open_content_bare (repo, state->checksum,
+                                               state->content_size,
+                                               &state->barecommitstate,
+                                               &state->content_out,
+                                               &state->have_obj,
+                                               cancellable, error))
             goto out;
 
           if (!state->have_obj)
@@ -741,12 +741,12 @@ dispatch_open (OstreeRepo                 *repo,
       goto out;
     }
   
-  if (!_ostree_repo_open_trusted_content_bare (repo, state->checksum,
-                                               state->content_size,
-                                               &state->barecommitstate,
-                                               &state->content_out,
-                                               &state->have_obj,
-                                               cancellable, error))
+  if (!_ostree_repo_open_content_bare (repo, state->checksum,
+                                       state->content_size,
+                                       &state->barecommitstate,
+                                       &state->content_out,
+                                       &state->have_obj,
+                                       cancellable, error))
     goto out;
 
   if (!handle_untrusted_content_checksum (repo, state, cancellable, error))
