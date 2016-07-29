@@ -104,14 +104,14 @@ checkout_object_for_uncompressed_cache (OstreeRepo      *self,
 
 static gboolean
 fsync_is_enabled (OstreeRepo   *self,
-                  OstreeRepoCheckoutOptions *options)
+                  OstreeRepoCheckoutAtOptions *options)
 {
   return !(self->disable_fsync || options->disable_fsync);
 }
 
 static gboolean
 write_regular_file_content (OstreeRepo            *self,
-                            OstreeRepoCheckoutOptions *options,
+                            OstreeRepoCheckoutAtOptions *options,
                             GOutputStream         *output,
                             GFileInfo             *file_info,
                             GVariant              *xattrs,
@@ -181,7 +181,7 @@ write_regular_file_content (OstreeRepo            *self,
 
 static gboolean
 checkout_file_from_input_at (OstreeRepo     *self,
-                             OstreeRepoCheckoutOptions *options,
+                             OstreeRepoCheckoutAtOptions *options,
                              GFileInfo      *file_info,
                              GVariant       *xattrs,
                              GInputStream   *input,
@@ -264,7 +264,7 @@ checkout_file_from_input_at (OstreeRepo     *self,
  */
 static gboolean
 checkout_file_unioning_from_input_at (OstreeRepo     *repo,
-                                      OstreeRepoCheckoutOptions  *options,
+                                      OstreeRepoCheckoutAtOptions  *options,
                                       GFileInfo      *file_info,
                                       GVariant       *xattrs,
                                       GInputStream   *input,
@@ -334,7 +334,7 @@ checkout_file_unioning_from_input_at (OstreeRepo     *repo,
 
 static gboolean
 checkout_file_hardlink (OstreeRepo                          *self,
-                        OstreeRepoCheckoutOptions           *options,
+                        OstreeRepoCheckoutAtOptions           *options,
                         const char                          *loose_path,
                         int                                  destination_dfd,
                         const char                          *destination_name,
@@ -391,7 +391,7 @@ checkout_file_hardlink (OstreeRepo                          *self,
 
 static gboolean
 checkout_one_file_at (OstreeRepo                        *repo,
-                      OstreeRepoCheckoutOptions         *options,
+                      OstreeRepoCheckoutAtOptions         *options,
                       GFile                             *source,
                       GFileInfo                         *source_info,
                       int                                destination_dfd,
@@ -627,7 +627,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
  */
 static gboolean
 checkout_tree_at (OstreeRepo                        *self,
-                  OstreeRepoCheckoutOptions         *options,
+                  OstreeRepoCheckoutAtOptions       *options,
                   int                                destination_parent_fd,
                   const char                        *destination_name,
                   OstreeRepoFile                    *source,
@@ -813,7 +813,7 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GCancellable             *cancellable,
                            GError                  **error)
 {
-  OstreeRepoCheckoutOptions options = { 0, };
+  OstreeRepoCheckoutAtOptions options = { 0, };
 
   options.mode = mode;
   options.overwrite_mode = overwrite_mode;
@@ -827,7 +827,7 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
 }
 
 /**
- * ostree_repo_checkout_tree_at:
+ * ostree_repo_checkout_tree_at: (skip)
  * @self: Repo
  * @options: (allow-none): Options
  * @destination_dfd: Directory FD for destination
@@ -837,7 +837,50 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
  * @error: Error
  *
  * Similar to ostree_repo_checkout_tree(), but uses directory-relative
- * paths for the destination, uses a new `OstreeRepoCheckoutOptions`,
+ * paths for the destination, uses a new `OstreeRepoCheckoutAtOptions`,
+ * and takes a commit checksum and optional subpath pair, rather than
+ * requiring use of `GFile` APIs for the caller.
+ *
+ * Note in addition that unlike ostree_repo_checkout_tree(), the
+ * default is not to use the repository-internal uncompressed objects
+ * cache.
+ *
+ * This function is deprecated.  Use ostree_repo_checkout_at() instead.
+ */
+gboolean
+ostree_repo_checkout_tree_at (OstreeRepo                        *self,
+                              OstreeRepoCheckoutOptions         *options,
+                              int                                destination_dfd,
+                              const char                        *destination_path,
+                              const char                        *commit,
+                              GCancellable                      *cancellable,
+                              GError                           **error)
+{
+  OstreeRepoCheckoutAtOptions new_opts = {0, };
+  new_opts.mode = options->mode;
+  new_opts.overwrite_mode = options->overwrite_mode;
+  new_opts.enable_uncompressed_cache = options->enable_uncompressed_cache;
+  new_opts.disable_fsync = options->disable_fsync;
+  new_opts.process_whiteouts = options->process_whiteouts;
+  new_opts.no_copy_fallback = options->no_copy_fallback;
+  new_opts.subpath = options->subpath;
+  new_opts.devino_to_csum_cache = options->devino_to_csum_cache;
+  return ostree_repo_checkout_at (self, &new_opts, destination_dfd,
+                                  destination_path, commit, cancellable, error);
+}
+
+/**
+ * ostree_repo_checkout_at:
+ * @self: Repo
+ * @options: (allow-none): Options
+ * @destination_dfd: Directory FD for destination
+ * @destination_path: Directory for destination
+ * @commit: Checksum for commit
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Similar to ostree_repo_checkout_tree(), but uses directory-relative
+ * paths for the destination, uses a new `OstreeRepoCheckoutAtOptions`,
  * and takes a commit checksum and optional subpath pair, rather than
  * requiring use of `GFile` APIs for the caller.
  *
@@ -846,19 +889,19 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
  * cache.
  */
 gboolean
-ostree_repo_checkout_tree_at (OstreeRepo                         *self,
-                              OstreeRepoCheckoutOptions         *options,
-                              int                                destination_dfd,
-                              const char                        *destination_path,
-                              const char                        *commit,
-                              GCancellable                      *cancellable,
-                              GError                           **error)
+ostree_repo_checkout_at (OstreeRepo                        *self,
+                         OstreeRepoCheckoutAtOptions       *options,
+                         int                                destination_dfd,
+                         const char                        *destination_path,
+                         const char                        *commit,
+                         GCancellable                      *cancellable,
+                         GError                           **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GFile) commit_root = NULL;
   g_autoptr(GFile) target_dir = NULL;
   g_autoptr(GFileInfo) target_info = NULL;
-  OstreeRepoCheckoutOptions default_options = { 0, };
+  OstreeRepoCheckoutAtOptions default_options = { 0, };
 
   if (!options)
     {
@@ -920,7 +963,7 @@ devino_equal (gconstpointer   a,
  * ostree_repo_write_directory_to_mtree() using a (normally modified)
  * directory.  In order for OSTree to optimally detect just the new
  * files, use this function and fill in the `devino_to_csum_cache`
- * member of `OstreeRepoCheckoutOptions`, then call
+ * member of `OstreeRepoCheckoutAtOptions`, then call
  * ostree_repo_commit_set_devino_cache().
  *
  * Returns: (transfer full): Newly allocated cache

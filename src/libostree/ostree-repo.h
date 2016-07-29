@@ -606,54 +606,44 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GError                      **error);
 
 /**
- * OstreeRepoImportArchiveOptions:
+ * OstreeRepoImportArchiveOptions2: (skip)
  *
  * An extensible options structure controlling archive import.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
- * options.  This is used by ostree_repo_import_archive_to_mtree().
+ * options.  This is used by ostree_repo_import_archive_to_mtree2().
  */
 typedef struct {
-  guint ignore_unsupported_content : 1;
-  guint autocreate_parents : 1;
-  guint use_ostree_convention : 1;
-  guint callback_with_entry_pathname : 1;
-  guint reserved : 28;
-
-  guint unused_uint[8];
-  gpointer unused_ptrs[8];
-} OstreeRepoImportArchiveOptions;
+  gboolean ignore_unsupported_content;
+  gboolean autocreate_parents;
+  gboolean use_ostree_convention;
+  gboolean callback_with_entry_pathname;
+} OstreeRepoImportArchiveOptions2;
 
 _OSTREE_PUBLIC
-gboolean      ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
-                                                   OstreeRepoImportArchiveOptions  *opts,
-                                                   void                         *archive, /* Really struct archive * */
-                                                   OstreeMutableTree            *mtree,
-                                                   OstreeRepoCommitModifier     *modifier,
-                                                   GCancellable                 *cancellable,
-                                                   GError                      **error);
+gboolean      ostree_repo_import_archive_to_mtree2 (OstreeRepo                       *self,
+                                                    OstreeRepoImportArchiveOptions2  *opts,
+                                                    void                             *archive, /* Really struct archive * */
+                                                    OstreeMutableTree                *mtree,
+                                                    OstreeRepoCommitModifier         *modifier,
+                                                    GCancellable                     *cancellable,
+                                                    GError                          **error);
+
 /**
- * OstreeRepoExportArchiveOptions:
+ * OstreeRepoExportArchiveOptions2:
  *
  * An extensible options structure controlling archive creation.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
- * options.  This is used by ostree_repo_export_tree_to_archive().
+ * options.  This is used by ostree_repo_export_tree_to_archive2().
  */
 typedef struct {
-  guint disable_xattrs : 1;
-  guint reserved : 31;
-
+  gboolean disable_xattrs;
   guint64 timestamp_secs;
-
-  guint unused_uint[8];
-
   char *path_prefix;
-
-  gpointer unused_ptrs[7];
-} OstreeRepoExportArchiveOptions;
+} OstreeRepoExportArchiveOptions2;
 
 _OSTREE_PUBLIC
-gboolean ostree_repo_export_tree_to_archive (OstreeRepo                *self,
-                                             OstreeRepoExportArchiveOptions  *opts,
+gboolean ostree_repo_export_tree_to_archive2 (OstreeRepo                *self,
+                                             OstreeRepoExportArchiveOptions2  *opts,
                                              OstreeRepoFile            *root,
                                              void                      *archive,  /* Really struct archive * */
                                              GCancellable             *cancellable,
@@ -735,31 +725,27 @@ ostree_repo_checkout_tree (OstreeRepo               *self,
                            GError                  **error);
 
 /**
- * OstreeRepoCheckoutOptions:
+ * OstreeRepoCheckoutAtOptions:
  *
  * An extensible options structure controlling checkout.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
- * options.  This is used by ostree_repo_checkout_tree_at() which
+ * options.  This is used by ostree_repo_checkout_at() which
  * supercedes previous separate enumeration usage in
- * ostree_repo_checkout_tree().
+ * ostree_repo_checkout_tree() and ostree_repo_checkout_tree_at().
  */
 typedef struct {
   OstreeRepoCheckoutMode mode;
   OstreeRepoCheckoutOverwriteMode overwrite_mode;
-  
-  guint enable_uncompressed_cache : 1;
-  guint disable_fsync : 1;
-  guint process_whiteouts : 1;
-  guint no_copy_fallback : 1;
-  guint reserved : 28;
+
+  gboolean enable_uncompressed_cache;
+  gboolean disable_fsync;
+  gboolean process_whiteouts;
+  gboolean no_copy_fallback;
 
   const char *subpath;
 
   OstreeRepoDevInoCache *devino_to_csum_cache;
-
-  guint unused_uints[6];
-  gpointer unused_ptrs[7];
-} OstreeRepoCheckoutOptions;
+} OstreeRepoCheckoutAtOptions;
 
 _OSTREE_PUBLIC
 GType ostree_repo_devino_cache_get_type (void);
@@ -771,13 +757,13 @@ _OSTREE_PUBLIC
 void ostree_repo_devino_cache_unref (OstreeRepoDevInoCache *cache);
 
 _OSTREE_PUBLIC
-gboolean ostree_repo_checkout_tree_at (OstreeRepo                         *self,
-                                       OstreeRepoCheckoutOptions          *options,
-                                       int                                 destination_dfd,
-                                       const char                         *destination_path,
-                                       const char                         *commit,
-                                       GCancellable                       *cancellable,
-                                       GError                            **error);
+gboolean ostree_repo_checkout_at (OstreeRepo                         *self,
+                                  OstreeRepoCheckoutAtOptions        *options,
+                                  int                                 destination_dfd,
+                                  const char                         *destination_path,
+                                  const char                         *commit,
+                                  GCancellable                       *cancellable,
+                                  GError                            **error);
 
 _OSTREE_PUBLIC
 gboolean       ostree_repo_checkout_gc (OstreeRepo        *self,
@@ -1087,3 +1073,8 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
 
 
 G_END_DECLS
+
+
+/* Include here as the functions defined before should not depend on anything which
+   is defined in -deprecated.h.  */
+#include "ostree-repo-deprecated.h"

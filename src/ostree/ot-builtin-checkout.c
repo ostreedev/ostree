@@ -84,12 +84,12 @@ process_one_checkout (OstreeRepo           *repo,
 
   /* This strange code structure is to preserve testing
    * coverage of both `ostree_repo_checkout_tree` and
-   * `ostree_repo_checkout_tree_at` until such time as we have a more
+   * `ostree_repo_checkout_at` until such time as we have a more
    * convenient infrastructure for testing C APIs with data.
    */
   if (opt_disable_cache || opt_whiteouts || opt_require_hardlinks)
     {
-      OstreeRepoCheckoutOptions options = { 0, };
+      OstreeRepoCheckoutAtOptions options = { 0, };
       
       if (opt_user_mode)
         options.mode = OSTREE_REPO_CHECKOUT_MODE_USER;
@@ -101,10 +101,10 @@ process_one_checkout (OstreeRepo           *repo,
         options.subpath = subpath;
       options.no_copy_fallback = opt_require_hardlinks;
 
-      if (!ostree_repo_checkout_tree_at (repo, &options,
-                                         AT_FDCWD, destination,
-                                         resolved_commit,
-                                         cancellable, error))
+      if (!ostree_repo_checkout_at (repo, &options,
+                                    AT_FDCWD, destination,
+                                    resolved_commit,
+                                    cancellable, error))
         goto out;
     }
   else

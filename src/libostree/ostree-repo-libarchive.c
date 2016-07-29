@@ -237,7 +237,7 @@ mtree_ensure_dir_with_meta (OstreeRepo          *repo,
 
 typedef struct {
   OstreeRepo                     *repo;
-  OstreeRepoImportArchiveOptions *opts;
+  OstreeRepoImportArchiveOptions2 *opts;
   OstreeMutableTree              *root;
   struct archive                 *archive;
   struct archive_entry           *entry;
@@ -804,7 +804,40 @@ deferred_hardlinks_list_free (void *data)
 #endif /* HAVE_LIBARCHIVE */
 
 /**
- * ostree_repo_import_archive_to_mtree:
+ * ostree_repo_import_archive_to_mtree: (skip)
+ * @self: An #OstreeRepo
+ * @opts: Options structure, ensure this is zeroed, then set specific variables
+ * @archive: Really this is "struct archive*"
+ * @mtree: The #OstreeMutableTree to write to
+ * @modifier: (allow-none): Optional commit modifier
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ *
+ * This function is deprecated.  Use ostree_repo_import_archive_to_mtree2() instead.
+ */
+gboolean
+ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
+                                     OstreeRepoImportArchiveOptions  *opts,
+                                     void                         *archive,
+                                     OstreeMutableTree            *mtree,
+                                     OstreeRepoCommitModifier     *modifier,
+                                     GCancellable                 *cancellable,
+                                     GError                      **error)
+{
+  OstreeRepoImportArchiveOptions2 new_opts = {0, };
+  new_opts.ignore_unsupported_content = opts->ignore_unsupported_content;
+  new_opts.autocreate_parents = opts->autocreate_parents;
+  new_opts.use_ostree_convention = opts->use_ostree_convention;
+  new_opts.callback_with_entry_pathname = opts->callback_with_entry_pathname;
+  return ostree_repo_import_archive_to_mtree2 (self, &new_opts, archive, mtree,
+                                               modifier, cancellable, error);
+}
+
+/**
+ * ostree_repo_import_archive_to_mtree2:
  * @self: An #OstreeRepo
  * @opts: Options structure, ensure this is zeroed, then set specific variables
  * @archive: Really this is "struct archive*"
@@ -817,13 +850,13 @@ deferred_hardlinks_list_free (void *data)
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_import_archive_to_mtree (OstreeRepo                   *self,
-                                     OstreeRepoImportArchiveOptions  *opts,
-                                     void                         *archive,
-                                     OstreeMutableTree            *mtree,
-                                     OstreeRepoCommitModifier     *modifier,
-                                     GCancellable                 *cancellable,
-                                     GError                      **error)
+ostree_repo_import_archive_to_mtree2 (OstreeRepo                      *self,
+                                     OstreeRepoImportArchiveOptions2  *opts,
+                                     void                             *archive,
+                                     OstreeMutableTree                *mtree,
+                                     OstreeRepoCommitModifier         *modifier,
+                                     GCancellable                     *cancellable,
+                                     GError                          **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
@@ -916,7 +949,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   gboolean ret = FALSE;
   struct archive *a = NULL;
   g_autoptr(GFileInfo) tmp_dir_info = NULL;
-  OstreeRepoImportArchiveOptions opts = { 0, };
+  OstreeRepoImportArchiveOptions2 opts = { 0, };
 
   a = archive_read_new ();
 #ifdef HAVE_ARCHIVE_READ_SUPPORT_FILTER_ALL
@@ -933,7 +966,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 
   opts.autocreate_parents = !!autocreate_parents;
 
-  if (!ostree_repo_import_archive_to_mtree (self, &opts, a, mtree, modifier, cancellable, error))
+  if (!ostree_repo_import_archive_to_mtree2 (self, &opts, a, mtree, modifier, cancellable, error))
     goto out;
 
   if (archive_read_close (a) != ARCHIVE_OK)
@@ -958,7 +991,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 
 static gboolean
 file_to_archive_entry_common (GFile         *root,
-                              OstreeRepoExportArchiveOptions *opts,
+                              OstreeRepoExportArchiveOptions2 *opts,
                               GFile         *path,
                               GFileInfo  *file_info,
                               struct archive_entry *entry,
@@ -1040,7 +1073,7 @@ write_header_free_entry (struct archive *a,
 
 static gboolean
 write_directory_to_libarchive_recurse (OstreeRepo               *self,
-                                       OstreeRepoExportArchiveOptions *opts,
+                                       OstreeRepoExportArchiveOptions2 *opts,
                                        GFile                    *root,
                                        GFile                    *dir,
                                        struct archive           *a,
@@ -1171,7 +1204,36 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
 #endif
 
 /**
- * ostree_repo_export_tree_to_archive:
+ * ostree_repo_export_tree_to_archive: (skip)
+ * @self: An #OstreeRepo
+ * @opts: Options controlling conversion
+ * @root: An #OstreeRepoFile for the base directory
+ * @archive: A `struct archive`, but specified as void to avoid a dependency on the libarchive headers
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Import an archive file @archive into the repository, and write its
+ * file structure to @mtree.
+ *
+ * This function is deprecated.  Use ostree_repo_export_tree_to_archive2() instead.
+ */
+gboolean
+ostree_repo_export_tree_to_archive (OstreeRepo                *self,
+                                    OstreeRepoExportArchiveOptions *opts,
+                                    OstreeRepoFile            *root,
+                                    void                      *archive,
+                                    GCancellable             *cancellable,
+                                    GError                  **error)
+{
+  OstreeRepoExportArchiveOptions2 new_opts = {0, };
+  new_opts.disable_xattrs = opts->disable_xattrs;
+  new_opts.timestamp_secs = opts->timestamp_secs;
+  new_opts.path_prefix = opts->path_prefix;
+  return ostree_repo_export_tree_to_archive2 (self, &new_opts, root, archive, cancellable, error);
+}
+
+/**
+ * ostree_repo_export_tree_to_archive2:
  * @self: An #OstreeRepo
  * @opts: Options controlling conversion
  * @root: An #OstreeRepoFile for the base directory
@@ -1183,12 +1245,12 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
  * file structure to @mtree.
  */
 gboolean
-ostree_repo_export_tree_to_archive (OstreeRepo                *self,
-                                    OstreeRepoExportArchiveOptions *opts,
-                                    OstreeRepoFile            *root,
-                                    void                      *archive,
-                                    GCancellable             *cancellable,
-                                    GError                  **error)
+ostree_repo_export_tree_to_archive2 (OstreeRepo                      *self,
+                                     OstreeRepoExportArchiveOptions2 *opts,
+                                     OstreeRepoFile                  *root,
+                                     void                            *archive,
+                                     GCancellable                    *cancellable,
+                                     GError                         **error)
 {
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
