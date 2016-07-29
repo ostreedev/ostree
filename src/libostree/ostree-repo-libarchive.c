@@ -804,7 +804,7 @@ deferred_hardlinks_list_free (void *data)
 #endif /* HAVE_LIBARCHIVE */
 
 /**
- * ostree_repo_import_archive_to_mtree:
+ * ostree_repo_import_archive_to_mtree: (skip)
  * @self: An #OstreeRepo
  * @opts: Options structure, ensure this is zeroed, then set specific variables
  * @archive: Really this is "struct archive*"
@@ -1171,7 +1171,7 @@ write_directory_to_libarchive_recurse (OstreeRepo               *self,
 #endif
 
 /**
- * ostree_repo_export_tree_to_archive:
+ * ostree_repo_export_tree_to_archive: (skip)
  * @self: An #OstreeRepo
  * @opts: Options controlling conversion
  * @root: An #OstreeRepoFile for the base directory
