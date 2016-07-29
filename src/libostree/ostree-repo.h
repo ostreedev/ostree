@@ -756,6 +756,9 @@ typedef struct {
   const char *subpath;
 
   OstreeRepoDevInoCache *devino_to_csum_cache;
+
+  int unused_ints[6];
+  gpointer unused_ptrs[7];
 } OstreeRepoCheckoutAtOptions;
 
 _OSTREE_PUBLIC

@@ -879,6 +879,9 @@ ostree_repo_checkout_tree_at (OstreeRepo                        *self,
  * and takes a commit checksum and optional subpath pair, rather than
  * requiring use of `GFile` APIs for the caller.
  *
+ * It also replaces ostree_repo_checkout_at() which was not safe to
+ * use with GObject introspection.
+ *
  * Note in addition that unlike ostree_repo_checkout_tree(), the
  * default is not to use the repository-internal uncompressed objects
  * cache.
