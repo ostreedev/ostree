@@ -606,7 +606,7 @@ gboolean      ostree_repo_write_archive_to_mtree (OstreeRepo                   *
                                                   GError                      **error);
 
 /**
- * OstreeRepoImportArchiveOptions:
+ * OstreeRepoImportArchiveOptions: (skip)
  *
  * An extensible options structure controlling archive import.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
@@ -633,7 +633,7 @@ gboolean      ostree_repo_import_archive_to_mtree (OstreeRepo                   
                                                     GError                        **error);
 
 /**
- * OstreeRepoExportArchiveOptions:
+ * OstreeRepoExportArchiveOptions: (skip)
  *
  * An extensible options structure controlling archive creation.  Ensure that
  * you have entirely zeroed the structure, then set just the desired
