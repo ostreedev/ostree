@@ -35,4 +35,5 @@ libostree_public_headers = \
 	src/libostree/ostree-sysroot-upgrader.h \
 	src/libostree/ostree-deployment.h \
 	src/libostree/ostree-bootconfig-parser.h \
+	src/libostree/ostree-repo-deprecated.h \
 	$(NULL)
