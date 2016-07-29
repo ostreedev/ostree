@@ -87,11 +87,6 @@ typedef gboolean (*DispatchOpFunc) (OstreeRepo                 *repo,
                                     GCancellable               *cancellable,
                                     GError                    **error);
 
-typedef struct  {
-  const char *name;
-  DispatchOpFunc func;
-} OstreeStaticDeltaOperation;
-
 #define OPPROTO(name) \
   static gboolean dispatch_##name (OstreeRepo                 *repo, \
                                    StaticDeltaExecutionState  *state, \
