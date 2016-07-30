@@ -42,8 +42,7 @@ _ostree_static_delta_parse_checksum_array (GVariant      *array,
 
   n_checksums = n / OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN;
 
-  if (G_UNLIKELY(n == 0 ||
-                 n > (G_MAXUINT32/OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) ||
+  if (G_UNLIKELY(n > (G_MAXUINT32/OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) ||
                  (n_checksums * OSTREE_STATIC_DELTA_OBJTYPE_CSUM_LEN) != n))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
