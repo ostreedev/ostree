@@ -214,8 +214,14 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
                                                   error))
     goto out;
 
+  /* Skip processing for empty delta part */
+  if (state->n_checksums == 0)
+    {
+      ret = TRUE;
+      goto out;
+    }
+
   state->checksums = checksums_data;
-  g_assert (state->n_checksums > 0);
 
   g_variant_get (part, "(@a(uuu)@aa(ayay)@ay@ay)",
                  &mode_dict,
