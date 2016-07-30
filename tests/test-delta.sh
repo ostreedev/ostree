@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..8'
+echo '1..10'
 
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
@@ -208,3 +208,26 @@ ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}-${newrev}$
 ${CMD_PREFIX} ostree --repo=repo static-delta list | grep ^${origrev}$ && exit 1
 
 echo 'ok delete'
+
+# Make another commit with no changes to create a delta with no parts
+${CMD_PREFIX} ostree --repo=repo commit -b test -s test --tree=dir=files
+samerev=$(${CMD_PREFIX} ostree --repo=repo rev-parse test)
+${CMD_PREFIX} ostree --repo=repo static-delta generate --from=${newrev} --to=${samerev}
+${CMD_PREFIX} ostree --repo=repo static-delta show ${newrev}-${samerev} > show-empty.txt
+nparts_empty=$(grep '^Number of parts:' show-empty.txt)
+part0_meta_empty=$(grep '^PartMeta0:' show-empty.txt)
+totalsize_empty=$(grep '^Total Uncompressed Size:' show-empty.txt)
+assert_streq "${nparts_empty}" "Number of parts: 1"
+assert_str_match "${part0_meta_empty}" "nobjects=0"
+assert_streq "${totalsize_empty}" "Total Uncompressed Size: 0 (0 bytes)"
+
+echo 'ok generate + show empty delta part'
+
+rm -rf repo2
+mkdir repo2 && ${CMD_PREFIX} ostree --repo=repo2 init --mode=archive-z2
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${newrev}
+${CMD_PREFIX} ostree --repo=repo2 pull-local repo ${samerev}
+${CMD_PREFIX} ostree --repo=repo2 fsck
+${CMD_PREFIX} ostree --repo=repo2 ls ${samerev} >/dev/null
+
+echo 'ok pull empty delta part'
