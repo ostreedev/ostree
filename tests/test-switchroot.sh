@@ -26,6 +26,11 @@ setup_rootfs() {
 	cp -r "$1/bin" "$1/ostree/deploy/linux/deploy/1334/"
 }
 
+setup_overlay() {
+	mkdir -p "$1/ostree/deploy/linux/deploy/1334/.usr-ovl-work" \
+	         "$1/ostree/deploy/linux/deploy/1334/.usr-ovl-upper"
+}
+
 enter_fs() {
 	cd "$1"
 	mkdir testroot
@@ -52,6 +57,7 @@ find_in_env() {
 			&& echo "/sysroot/usr is writable" \
 			|| echo "/sysroot/usr is not writable"
 		EOF
+	(cd $tmpdir && find) >permanent_files
 	rm -rf "$tmpdir"
 }
 
@@ -95,13 +101,28 @@ test_that_prepare_root_sets_root_up_correctly_with_no_initrd() {
 	echo "ok ostree-prepare-root sets root up correctly with no initrd"
 }
 
+setup_no_initrd_with_overlay() {
+	setup_no_initrd_env "$1"
+	setup_overlay "$1"
+}
+
+test_that_prepare_root_provides_overlay_over_usr_if__usr_ovl_work_exists() {
+	find_in_env setup_no_initrd_with_overlay >files
+
+	grep -qx "/usr is writable" files
+	grep -qx "./ostree/deploy/linux/deploy/1334/.usr-ovl-upper/usr_writable" permanent_files
+	! grep -qx "./ostree/deploy/linux/deploy/1334/usr/usr_writable" permanent_files || exit 1
+	echo "ok ostree-prepare-root sets root up correctly with writable usr overlay"
+}
+
 # This script sources itself so we only want to run tests if we're the parent:
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
 	. $(dirname $0)/libtest.sh
 	unshare -m true || \
 	    skip "this test needs to set up mount namespaces, rerun as root"
 
-	echo "1..2"
+	echo "1..3"
 	test_that_prepare_root_sets_sysroot_up_correctly_with_initrd
 	test_that_prepare_root_sets_root_up_correctly_with_no_initrd
+	test_that_prepare_root_provides_overlay_over_usr_if__usr_ovl_work_exists
 fi
