@@ -1842,8 +1842,15 @@ ostree_repo_mode_from_string (const char      *mode,
  * @cancellable: Cancellable
  * @error: Error
  *
- * Create the underlying structure on disk for the
- * repository.
+ * Create the underlying structure on disk for the repository, and call
+ * ostree_repo_open() on the result, preparing it for use.
+
+ * Since version 2016.8, this function will succeed on an existing
+ * repository, and finish creating any necessary files in a partially
+ * created repository.  However, this function cannot change the mode
+ * of an existing repository, and will silently ignore an attempt to
+ * do so.
+ *
  */
 gboolean
 ostree_repo_create (OstreeRepo     *self,
@@ -1851,76 +1858,65 @@ ostree_repo_create (OstreeRepo     *self,
                     GCancellable   *cancellable,
                     GError        **error)
 {
-  gboolean ret = FALSE;
-  GString *config_data = NULL;
-  g_autoptr(GFile) child = NULL;
-  g_autoptr(GFile) grandchild = NULL;
-  const char *mode_str;
+  const char *repopath = gs_file_get_path_cached (self->repodir);
+  glnx_fd_close int dfd = -1;
+  struct stat stbuf;
+  const char *state_dirs[] = { "objects", "tmp", "extensions", "state",
+                               "refs", "refs/heads", "refs/remotes" };
 
-  if (!ostree_repo_mode_to_string (mode, &mode_str, error))
-    goto out;
-
-  if (mkdir (gs_file_get_path_cached (self->repodir), 0755) != 0)
+  if (mkdir (repopath, 0755) != 0)
     {
-      if (errno != EEXIST)
+      if (G_UNLIKELY (errno != EEXIST))
         {
           glnx_set_error_from_errno (error);
-          goto out;
+          return FALSE;
         }
     }
 
-  config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
-  g_string_append_printf (config_data, "mode=%s\n", mode_str);
+  if (!glnx_opendirat (AT_FDCWD, repopath, TRUE, &dfd, error))
+    return FALSE;
 
-  if (!g_file_replace_contents (self->config_file,
-                                config_data->str,
-                                config_data->len,
-                                NULL, FALSE, 0, NULL,
-                                cancellable, error))
-    goto out;
+  if (fstatat (dfd, "config", &stbuf, 0) < 0)
+    {
+      if (errno == ENOENT)
+        {
+          const char *mode_str;
+          g_autoptr(GString) config_data = g_string_new (DEFAULT_CONFIG_CONTENTS);
 
-  if (!g_file_make_directory (self->objects_dir, cancellable, error))
-    goto out;
+          if (!ostree_repo_mode_to_string (mode, &mode_str, error))
+            return FALSE;
 
-  if (!g_file_make_directory (self->tmp_dir, cancellable, error))
-    goto out;
+          g_string_append_printf (config_data, "mode=%s\n", mode_str);
 
-  {
-    g_autoptr(GFile) extensions_dir =
-      g_file_resolve_relative_path (self->repodir, "extensions");
-    if (!g_file_make_directory (extensions_dir, cancellable, error))
-      goto out;
-  }
+          if (!glnx_file_replace_contents_at (dfd, "config",
+                                              (guint8*)config_data->str, config_data->len,
+                                              0, cancellable, error))
+            return FALSE;
+        }
+      else
+        {
+          glnx_set_error_from_errno (error);
+          return FALSE;
+        }
+    }
 
-  g_clear_object (&child);
-  child = g_file_get_child (self->repodir, "refs");
-  if (!g_file_make_directory (child, cancellable, error))
-    goto out;
-
-  g_clear_object (&grandchild);
-  grandchild = g_file_get_child (child, "heads");
-  if (!g_file_make_directory (grandchild, cancellable, error))
-    goto out;
-
-  g_clear_object (&grandchild);
-  grandchild = g_file_get_child (child, "remotes");
-  if (!g_file_make_directory (grandchild, cancellable, error))
-    goto out;
-
-  g_clear_object (&child);
-  child = g_file_get_child (self->repodir, "state");
-  if (!g_file_make_directory (child, cancellable, error))
-    goto out;
+  for (guint i = 0; i < G_N_ELEMENTS (state_dirs); i++)
+    {
+      const char *elt = state_dirs[i];
+      if (mkdirat (dfd, elt, 0755) == -1)
+        {
+          if (G_UNLIKELY (errno != EEXIST))
+            {
+              glnx_set_error_from_errno (error);
+              return FALSE;
+            }
+        }
+    }
 
   if (!ostree_repo_open (self, cancellable, error))
-    goto out;
+    return FALSE;
 
-  ret = TRUE;
-
- out:
-  if (config_data)
-    g_string_free (config_data, TRUE);
-  return ret;
+  return TRUE;
 }
 
 static gboolean
