@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..57"
+echo "1..58"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -40,6 +40,12 @@ echo "ok shortened checksum"
 
 (cd repo && ${CMD_PREFIX} ostree rev-parse test2)
 echo "ok repo-in-cwd"
+
+rm test-repo -rf
+$OSTREE --repo=test-repo init --mode=bare-user
+$OSTREE --repo=test-repo init --mode=bare-user
+rm test-repo -rf
+echo "ok repo-init on existing repo"
 
 cd checkout-test2
 assert_has_file firstfile
