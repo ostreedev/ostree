@@ -25,6 +25,7 @@
 
 #include <glib-unix.h>
 #include <gio/gunixinputstream.h>
+#include <gio/gunixoutputstream.h>
 #include <gio/gfiledescriptorbased.h>
 #include "libglnx.h"
 #include "otutil.h"
@@ -3986,7 +3987,8 @@ sign_data (OstreeRepo     *self,
            GError        **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) tmp_signature_file = NULL;
+  glnx_fd_close int tmp_fd = -1;
+  g_autofree char *tmp_path = NULL;
   g_autoptr(GOutputStream) tmp_signature_output = NULL;
   gpgme_ctx_t context = NULL;
   g_autoptr(GBytes) ret_signature = NULL;
@@ -3995,12 +3997,12 @@ sign_data (OstreeRepo     *self,
   gpgme_key_t key = NULL;
   gpgme_data_t commit_buffer = NULL;
   gpgme_data_t signature_buffer = NULL;
-  GMappedFile *signature_file = NULL;
+  g_autoptr(GMappedFile) signature_file = NULL;
   
-  if (!gs_file_open_in_tmpdir (self->tmp_dir, 0644,
-                               &tmp_signature_file, &tmp_signature_output,
-                               cancellable, error))
+  if (!glnx_open_tmpfile_linkable_at (self->tmp_dir_fd, ".", O_RDWR | O_CLOEXEC,
+                                      &tmp_fd, &tmp_path, error))
     goto out;
+  tmp_signature_output = g_unix_output_stream_new (tmp_fd, FALSE);
 
   if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
     {
@@ -4079,7 +4081,7 @@ sign_data (OstreeRepo     *self,
   if (!g_output_stream_close (tmp_signature_output, cancellable, error))
     goto out;
   
-  signature_file = g_mapped_file_new (gs_file_get_path_cached (tmp_signature_file), FALSE, error);
+  signature_file = g_mapped_file_new_from_fd (tmp_fd, FALSE, error);
   if (!signature_file)
     goto out;
   ret_signature = g_mapped_file_get_bytes (signature_file);
@@ -4096,8 +4098,6 @@ out:
     gpgme_key_release (key);
   if (context)
     gpgme_release (context);
-  if (signature_file)
-    g_mapped_file_unref (signature_file);
   return ret;
 }
 
