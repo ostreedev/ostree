@@ -101,9 +101,6 @@ static guint signals[LAST_SIGNAL] = { 0 };
 
 G_DEFINE_TYPE (OstreeRepo, ostree_repo, G_TYPE_OBJECT)
 
-GS_DEFINE_CLEANUP_FUNCTION0(GKeyFile*, local_keyfile_unref, g_key_file_unref)
-#define local_cleanup_keyfile __attribute__ ((cleanup(local_keyfile_unref)))
-
 #define SYSCONF_REMOTES SHORTENED_SYSCONFDIR "/ostree/remotes.d"
 
 typedef struct {
@@ -189,8 +186,7 @@ ost_remote_unref (OstreeRemote *remote)
     }
 }
 
-GS_DEFINE_CLEANUP_FUNCTION0(OstreeRemote*, local_remote_unref, ost_remote_unref)
-#define local_cleanup_remote __attribute__ ((cleanup(local_remote_unref)))
+G_DEFINE_AUTOPTR_CLEANUP_FUNC(OstreeRemote, ost_remote_unref)
 
 static OstreeRemote *
 ost_repo_get_remote (OstreeRepo  *self,
@@ -221,7 +217,7 @@ ost_repo_get_remote_inherited (OstreeRepo  *self,
                                const char  *name,
                                GError     **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   g_autoptr(GError) temp_error = NULL;
 
   remote = ost_repo_get_remote (self, name, &temp_error);
@@ -301,7 +297,7 @@ ostree_repo_get_remote_option (OstreeRepo  *self,
                                char       **out_value,
                                GError     **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   gboolean ret = FALSE;
   g_autoptr(GError) temp_error = NULL;
   g_autofree char *value = NULL;
@@ -377,7 +373,7 @@ ostree_repo_get_remote_list_option (OstreeRepo   *self,
                                     char       ***out_value,
                                     GError      **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   gboolean ret = FALSE;
   g_autoptr(GError) temp_error = NULL;
   g_auto(GStrv) value = NULL;
@@ -452,7 +448,7 @@ ostree_repo_get_remote_boolean_option (OstreeRepo  *self,
                                        gboolean    *out_value,
                                        GError     **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   g_autoptr(GError) temp_error = NULL;
   gboolean ret = FALSE;
   gboolean value = FALSE;
@@ -967,7 +963,7 @@ impl_repo_remote_add (OstreeRepo     *self,
                       GCancellable   *cancellable,
                       GError        **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   gboolean different_sysroot = FALSE;
   gboolean ret = FALSE;
 
@@ -1070,7 +1066,7 @@ impl_repo_remote_add (OstreeRepo     *self,
     }
   else
     {
-      local_cleanup_keyfile GKeyFile *config = NULL;
+      g_autoptr(GKeyFile) config = NULL;
 
       config = ostree_repo_copy_config (self);
       ot_keyfile_copy_group (remote->options, config, remote->group);
@@ -1125,7 +1121,7 @@ impl_repo_remote_delete (OstreeRepo     *self,
                          GCancellable   *cancellable,
                          GError        **error)
 {
-  local_cleanup_remote OstreeRemote *remote = NULL;
+  g_autoptr(OstreeRemote) remote = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (name != NULL, FALSE);
@@ -1163,7 +1159,7 @@ impl_repo_remote_delete (OstreeRepo     *self,
     }
   else
     {
-      local_cleanup_keyfile GKeyFile *config = NULL;
+      g_autoptr(GKeyFile) config = NULL;
 
       config = ostree_repo_copy_config (self);
 
@@ -2018,7 +2014,7 @@ append_one_remote_config (OstreeRepo      *self,
                           GError         **error)
 {
   gboolean ret = FALSE;
-  local_cleanup_keyfile GKeyFile *remotedata = g_key_file_new ();
+  g_autoptr(GKeyFile) remotedata = g_key_file_new ();
 
   if (!g_key_file_load_from_file (remotedata, gs_file_get_path_cached (path),
                                   0, error))
