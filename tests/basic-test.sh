@@ -42,8 +42,8 @@ echo "ok shortened checksum"
 echo "ok repo-in-cwd"
 
 rm test-repo -rf
-ostree --repo=test-repo init --mode=bare-user
-ostree --repo=test-repo init --mode=bare-user
+$OSTREE --repo=test-repo init --mode=bare-user
+$OSTREE --repo=test-repo init --mode=bare-user
 rm test-repo -rf
 echo "ok repo-init on existing repo"
 
