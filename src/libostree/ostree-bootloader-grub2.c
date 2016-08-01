@@ -389,8 +389,18 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
     goto out;
 
   /* Now let's fdatasync() for the new file */
-  if (!gs_file_sync_data (new_config_path, cancellable, error))
-    goto out;
+  { glnx_fd_close int new_config_fd = open (gs_file_get_path_cached (new_config_path), O_RDONLY | O_CLOEXEC);
+    if (new_config_fd < 0)
+      {
+        glnx_set_prefix_error_from_errno (error, "Opening %s", gs_file_get_path_cached (new_config_path));
+        goto out;
+      }
+    if (fdatasync (new_config_fd) < 0)
+      {
+        glnx_set_error_from_errno (error);
+        goto out;
+      }
+  }
 
   if (self->is_efi)
     {
