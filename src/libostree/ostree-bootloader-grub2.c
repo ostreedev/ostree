@@ -408,9 +408,11 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
        */
       if (!ot_gfile_ensure_unlinked (self->config_path_efi, cancellable, error))
         goto out;
-      if (!gs_file_rename (new_config_path, self->config_path_efi,
-                           cancellable, error))
-        goto out;
+      if (rename (gs_file_get_path_cached (new_config_path), gs_file_get_path_cached (self->config_path_efi)) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
   
   ret = TRUE;

@@ -795,9 +795,12 @@ selinux_relabel_var_if_needed (OstreeSysroot                 *sysroot,
                                  cancellable, error))
         goto out;
 
-      if (!gs_file_rename (deployment_var_labeled_tmp, deployment_var_labeled,
-                           cancellable, error))
-        goto out;
+      if (rename (gs_file_get_path_cached (deployment_var_labeled_tmp),
+                  gs_file_get_path_cached (deployment_var_labeled)) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
 
   ret = TRUE;
@@ -861,9 +864,11 @@ merge_configuration (OstreeSysroot         *sysroot,
   else if (etc_exists)
     {
       /* Compatibility hack */
-      if (!gs_file_rename (deployment_etc_path, deployment_usretc_path,
-                           cancellable, error))
-        goto out;
+      if (renameat (deployment_dfd, "etc", deployment_dfd, "usr/etc") < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
       usretc_exists = TRUE;
       etc_exists = FALSE;
     }
