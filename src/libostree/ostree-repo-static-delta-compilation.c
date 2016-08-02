@@ -504,8 +504,6 @@ try_content_bsdiff (OstreeRepo                       *repo,
                     GError                           **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GHashTable) from_bsdiff = NULL;
-  g_autoptr(GHashTable) to_bsdiff = NULL;
   g_autoptr(GBytes) tmp_from = NULL;
   g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) from_finfo = NULL;
@@ -549,8 +547,6 @@ try_content_rollsum (OstreeRepo                       *repo,
                      GError                          **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GHashTable) from_rollsum = NULL;
-  g_autoptr(GHashTable) to_rollsum = NULL;
   g_autoptr(GBytes) tmp_from = NULL;
   g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) from_finfo = NULL;
@@ -876,14 +872,12 @@ generate_delta_lowlatency (OstreeRepo                       *repo,
   g_autoptr(GVariant) to_commit = NULL;
   g_autoptr(GHashTable) to_reachable_objects = NULL;
   g_autoptr(GHashTable) from_reachable_objects = NULL;
-  g_autoptr(GHashTable) from_regfile_content = NULL;
   g_autoptr(GHashTable) new_reachable_metadata = NULL;
   g_autoptr(GHashTable) new_reachable_regfile_content = NULL;
   g_autoptr(GHashTable) new_reachable_symlink_content = NULL;
   g_autoptr(GHashTable) modified_regfile_content = NULL;
   g_autoptr(GHashTable) rollsum_optimized_content_objects = NULL;
   g_autoptr(GHashTable) bsdiff_optimized_content_objects = NULL;
-  g_autoptr(GHashTable) content_object_to_size = NULL;
 
   if (from != NULL)
     {
@@ -1265,7 +1259,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   g_autofree char *descriptor_relpath = NULL;
   g_autoptr(GFile) descriptor_path = NULL;
   g_autoptr(GFile) descriptor_dir = NULL;
-  g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
   g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
@@ -1371,7 +1364,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       GBytes *payload_b;
       GBytes *operations_b;
       g_autofree guchar *part_checksum = NULL;
-      g_autoptr(GChecksum) checksum = NULL;
       g_autoptr(GBytes) objtype_checksum_array = NULL;
       g_autoptr(GBytes) checksum_bytes = NULL;
       g_autoptr(GFile) part_tempfile = NULL;

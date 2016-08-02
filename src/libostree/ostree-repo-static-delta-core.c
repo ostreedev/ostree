@@ -356,7 +356,6 @@ ostree_repo_static_delta_execute_offline (OstreeRepo                    *self,
       char checksum[OSTREE_SHA256_STRING_LEN+1];
       gboolean have_all;
       g_autoptr(GInputStream) part_in = NULL;
-      g_autoptr(GBytes) delta_data = NULL;
       g_autoptr(GVariant) inline_part_data = NULL;
       g_autoptr(GVariant) header = NULL;
       g_autoptr(GVariant) csum_v = NULL;
@@ -860,7 +859,6 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
   g_autofree char *from = NULL; 
   g_autofree char *to = NULL;
   g_autofree char *superblock_path = NULL;
-  glnx_fd_close int superblock_fd = -1;
   g_autoptr(GVariant) delta_superblock = NULL;
   guint64 total_size = 0, total_usize = 0;
   guint64 total_fallback_size = 0, total_fallback_usize = 0;

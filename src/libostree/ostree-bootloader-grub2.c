@@ -54,7 +54,6 @@ _ostree_bootloader_grub2_query (OstreeBootloader *bootloader,
   gboolean ret = FALSE;
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   g_autoptr(GFile) efi_basedir = NULL;
-  g_autoptr(GFileInfo) file_info = NULL;
 
   if (g_file_query_exists (self->config_path_bios, NULL))
     {
@@ -290,8 +289,6 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
 {
   OstreeBootloaderGrub2 *self = OSTREE_BOOTLOADER_GRUB2 (bootloader);
   gboolean ret = FALSE;
-  g_autoptr(GFile) efi_new_config_temp = NULL;
-  g_autoptr(GFile) efi_orig_config = NULL;
   g_autoptr(GFile) new_config_path = NULL;
   GSubprocessFlags subp_flags = 0;
   glnx_unref_object GSubprocessLauncher *launcher = NULL;

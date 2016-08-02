@@ -612,10 +612,8 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
   g_autoptr(GVariant) refs = g_variant_get_child_value (pull_data->summary, 0);
   g_autoptr(GVariant) refdata = NULL;
   g_autoptr(GVariant) reftargetdata = NULL;
-  g_autoptr(GVariant) commit_data = NULL;
   guint64 commit_size;
   g_autoptr(GVariant) commit_csum_v = NULL;
-  g_autoptr(GBytes) commit_bytes = NULL;
   int i;
   
   if (!ot_variant_bsearch_str (refs, ref, &i))
@@ -977,7 +975,6 @@ static_deltapart_fetch_on_complete (GObject           *object,
   OstreeFetcher *fetcher = (OstreeFetcher *)object;
   FetchStaticDeltaData *fetch_data = user_data;
   OtPullData *pull_data = fetch_data->pull_data;
-  g_autoptr(GVariant) metadata = NULL;
   g_autofree char *temp_path = NULL;
   g_autoptr(GInputStream) in = NULL;
   g_autoptr(GVariant) part = NULL;
@@ -1427,8 +1424,6 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   g_autofree char *delta_name =
     _ostree_get_relative_static_delta_superblock_path (from_revision, to_revision);
   g_autoptr(GBytes) delta_superblock_data = NULL;
-  g_autoptr(GBytes) delta_meta_data = NULL;
-  g_autoptr(GVariant) delta_superblock = NULL;
   SoupURI *target_uri = NULL;
   
   target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
@@ -2418,7 +2413,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   {
     SoupURI *uri = NULL;
     g_autoptr(GBytes) bytes_sig = NULL;
-    g_autofree char *ret_contents = NULL;
     gsize i, n;
     g_autoptr(GVariant) refs = NULL;
     g_autoptr(GVariant) deltas = NULL;

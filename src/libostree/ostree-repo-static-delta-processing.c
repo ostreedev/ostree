@@ -188,7 +188,6 @@ _ostree_static_delta_part_execute (OstreeRepo      *repo,
 {
   gboolean ret = FALSE;
   guint8 *checksums_data;
-  g_autoptr(GVariant) checksums = NULL;
   g_autoptr(GVariant) mode_dict = NULL;
   g_autoptr(GVariant) xattr_dict = NULL;
   g_autoptr(GVariant) payload = NULL;
@@ -471,7 +470,6 @@ dispatch_bspatch (OstreeRepo                 *repo,
 {
   gboolean ret = FALSE;
   guint64 offset, length;
-  g_autoptr(GInputStream) in_stream = NULL;
   g_autoptr(GMappedFile) input_mfile = NULL;
   g_autofree guchar *buf = NULL;
   struct bspatch_stream stream;
