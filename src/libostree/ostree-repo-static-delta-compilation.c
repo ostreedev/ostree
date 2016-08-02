@@ -1258,19 +1258,19 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
   g_autoptr(GVariantBuilder) part_headers = NULL;
-  g_autoptr(GPtrArray) part_tempfiles = NULL;
+  g_autoptr(GArray) part_temp_fds = NULL;
+  g_autoptr(GPtrArray) part_temp_paths = NULL;
   g_autoptr(GVariant) delta_descriptor = NULL;
   g_autoptr(GVariant) to_commit = NULL;
   const char *opt_filename;
-  g_autofree char *descriptor_relpath = NULL;
-  g_autoptr(GFile) descriptor_path = NULL;
-  g_autoptr(GFile) descriptor_dir = NULL;
+  g_autofree char *descriptor_name = NULL;
+  glnx_fd_close int descriptor_dfd = -1;
   g_autoptr(GVariant) tmp_metadata = NULL;
   g_autoptr(GVariant) fallback_headers = NULL;
   g_autoptr(GVariant) detached = NULL;
   gboolean inline_parts;
-  guint endianness = G_BYTE_ORDER; 
-  g_autoptr(GFile) tmp_dir = NULL;
+  guint endianness = G_BYTE_ORDER;
+  glnx_fd_close int tmp_dfd = NULL;
   builder.parts = g_ptr_array_new_with_free_func ((GDestroyNotify)ostree_static_delta_part_builder_unref);
   builder.fallback_objects = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
@@ -1355,16 +1355,24 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (opt_filename)
     {
-      g_autoptr(GFile) f = g_file_new_for_path (opt_filename);
-      tmp_dir = g_file_get_parent (f);
+      g_autofree char *dnbuf = g_strdup (opt_filename);
+      const char *dn = dirname (dnbuf);
+      if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &tmp_dfd, error))
+        goto out;
     }
   else
     {
-      tmp_dir = g_object_ref (self->tmp_dir);
+      tmp_dfd = fcntl (self->tmp_dir_fd, F_DUPFD_CLOEXEC);
+      if (tmp_dfd < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
     }
 
   part_headers = g_variant_builder_new (G_VARIANT_TYPE ("a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT));
-  part_tempfiles = g_ptr_array_new_with_free_func (g_object_unref);
+  part_temp_paths = g_ptr_array_new_with_free_func (g_free);
+  part_temp_fds = g_array_new (FALSE, TRUE, sizeof(int));
   for (i = 0; i < builder.parts->len; i++)
     {
       OstreeStaticDeltaPartBuilder *part_builder = builder.parts->pdata[i];
@@ -1374,7 +1382,6 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_autoptr(GChecksum) checksum = NULL;
       g_autoptr(GBytes) objtype_checksum_array = NULL;
       g_autoptr(GBytes) checksum_bytes = NULL;
-      g_autoptr(GFile) part_tempfile = NULL;
       g_autoptr(GOutputStream) part_temp_outstream = NULL;
       g_autoptr(GInputStream) part_in = NULL;
       g_autoptr(GInputStream) part_payload_in = NULL;
@@ -1436,10 +1443,21 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
           g_autofree char *part_relpath = _ostree_get_relative_static_delta_part_path (from, to, i);
           g_variant_builder_add (&metadata_builder, "{sv}", part_relpath, delta_part);
         }
-      else if (!gs_file_open_in_tmpdir (tmp_dir, 0644,
-                                        &part_tempfile, &part_temp_outstream,
-                                        cancellable, error))
-        goto out;
+      else
+        {
+          char *part_tempfile;
+          int part_temp_fd;
+
+          if (!glnx_open_tmpfile_linkable_at (tmp_dfd, ".", O_WRONLY | O_CLOEXEC,
+                                              &part_temp_fd, &part_tempfile, error))
+            goto out;
+
+          /* Transfer tempfile ownership to arrays */
+          g_array_append_val (part_temp_fds, part_temp_fd);
+          g_ptr_array_add (part_temp_paths, g_steal_pointer (&part_tempfile));
+          part_temp_outstream = g_unix_output_stream_new (part_temp_fd, FALSE);
+        }
+
       part_in = ot_variant_read (delta_part);
       if (!ot_gio_splice_get_checksum (part_temp_outstream, part_in,
                                        &part_checksum,
@@ -1456,9 +1474,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
                                          ot_gvariant_new_ay_bytes (objtype_checksum_array));
 
       g_variant_builder_add_value (part_headers, g_variant_ref (delta_part_header));
-      if (part_tempfile)
-        g_ptr_array_add (part_tempfiles, g_object_ref (part_tempfile));
-      
+
       total_compressed_size += g_variant_get_size (delta_part);
       total_uncompressed_size += part_builder->uncompressed_size;
 
@@ -1473,27 +1489,43 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   if (opt_filename)
     {
-      descriptor_path = g_file_new_for_path (opt_filename);
+      g_autofree char *dnbuf = g_strdup (opt_filename);
+      const char *dn = dirname (dnbuf);
+      descriptor_name = g_strdup (opt_filename);
+
+      if (!glnx_opendirat (AT_FDCWD, dn, TRUE, &descriptor_dfd, error))
+        goto out;
     }
   else
     {
-      descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
-      descriptor_path = g_file_resolve_relative_path (self->repodir, descriptor_relpath);
+      g_autofree char *descriptor_relpath = _ostree_get_relative_static_delta_superblock_path (from, to);
+      g_autofree char *dnbuf = g_strdup (descriptor_relpath);
+      const char *dn = dirname (dnbuf);
+
+      if (!glnx_shutil_mkdir_p_at (self->repo_dir_fd, dn, 0755, cancellable, error))
+        goto out;
+      if (!glnx_opendirat (self->repo_dir_fd, dn, TRUE, &descriptor_dfd, error))
+        goto out;
+
+      descriptor_name = g_strdup (basename (descriptor_relpath));
     }
 
-  descriptor_dir = g_file_get_parent (descriptor_path);
-
-  if (!glnx_shutil_mkdir_p_at (AT_FDCWD, gs_file_get_path_cached (descriptor_dir), 0755,
-                               cancellable, error))
-    goto out;
-
-  for (i = 0; i < part_tempfiles->len; i++)
+  for (i = 0; i < part_temp_paths->len; i++)
     {
-      GFile *tempfile = part_tempfiles->pdata[i];
       g_autofree char *partstr = g_strdup_printf ("%u", i);
-      g_autoptr(GFile) part_path = g_file_resolve_relative_path (descriptor_dir, partstr);
+      /* Take ownership of the path/fd here */
+      g_autofree char *path = g_steal_pointer (&part_temp_paths->pdata[i]);
+      glnx_fd_close int fd = g_array_index (part_temp_fds, int, i);
+      g_array_index (part_temp_fds, int, i) = -1;
 
-      if (!gs_file_rename (tempfile, part_path, cancellable, error))
+      if (fchmod (fd, 0644) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+
+      if (!glnx_link_tmpfile_at (tmp_dfd, GLNX_LINK_TMPFILE_REPLACE, fd, path,
+                                 descriptor_dfd, partstr, error))
         goto out;
     }
 
@@ -1544,11 +1576,21 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_printerr ("bsdiff=%u objects\n", builder.n_bsdiff);
     }
 
-  if (!ot_util_variant_save (descriptor_path, delta_descriptor, cancellable, error))
+  if (!glnx_file_replace_contents_at (descriptor_dfd, descriptor_name,
+                                      g_variant_get_data (delta_descriptor),
+                                      g_variant_get_size (delta_descriptor),
+                                      0, cancellable, error))
     goto out;
 
   ret = TRUE;
  out:
+  for (i = 0; i < part_temp_fds->len; i++)
+    {
+      int fd = g_array_index (part_temp_fds, int, i);
+      if (fd == -1)
+        continue;
+      (void) close (fd);
+    }
   g_clear_pointer (&builder.parts, g_ptr_array_unref);
   g_clear_pointer (&builder.fallback_objects, g_ptr_array_unref);
   return ret;
