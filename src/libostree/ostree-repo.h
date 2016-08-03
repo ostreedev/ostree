@@ -748,8 +748,8 @@ typedef struct {
   OstreeRepoCheckoutMode mode;
   OstreeRepoCheckoutOverwriteMode overwrite_mode;
 
-  gboolean enable_uncompressed_cache;
-  gboolean disable_fsync;
+  gboolean enable_uncompressed_cache;  /* Deprecated */
+  gboolean enable_fsync;  /* Deprecated */
   gboolean process_whiteouts;
   gboolean no_copy_fallback;
 
