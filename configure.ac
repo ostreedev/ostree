@@ -15,16 +15,21 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_YACC
 
-changequote(,)dnl
-if test "x$GCC" = "xyes"; then
-  WARN_CFLAGS="-Wall -Wempty-body -Wstrict-prototypes -Werror=missing-prototypes \
-		-Werror=implicit-function-declaration \
-		-Werror=pointer-arith -Werror=init-self -Werror=format=2 \
-		-Werror=format-security \
-		-Werror=missing-include-dirs -Werror=aggregate-return \
-		-Werror=declaration-after-statement"
-fi
-changequote([,])dnl
+CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
+        -pipe \
+        -Wall \
+	-Werror=empty-body \
+	-Werror=strict-prototypes \
+	-Werror=missing-prototypes \
+	-Werror=implicit-function-declaration \
+        "-Werror=format=2 -Werror=format-security -Werror=format-nonliteral" \
+	-Werror=pointer-arith -Werror=init-self \
+        -Werror=missing-declarations \
+        -Werror=return-type \
+        -Werror=overflow \
+	-Werror=missing-include-dirs -Werror=aggregate-return \
+	-Werror=declaration-after-statement \
+])
 AC_SUBST(WARN_CFLAGS)
 
 # Initialize libtool
