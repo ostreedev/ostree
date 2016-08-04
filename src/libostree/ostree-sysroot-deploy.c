@@ -854,10 +854,15 @@ merge_configuration (OstreeSysroot         *sysroot,
   
   if (usretc_exists)
     {
+      glnx_fd_close int deployment_usr_dfd = -1;
+
+      if (!glnx_opendirat (deployment_dfd, "usr", TRUE, &deployment_usr_dfd, error))
+        goto out;
+
       /* TODO - set out labels as we copy files */
       g_assert (!etc_exists);
-      if (!gs_shutil_cp_a (deployment_usretc_path, deployment_etc_path,
-                           cancellable, error))
+      if (!copy_dir_recurse (deployment_usr_dfd, deployment_dfd, "etc",
+                             cancellable, error))
         goto out;
 
       /* Here, we initialize SELinux policy from the /usr/etc inside
