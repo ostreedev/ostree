@@ -752,6 +752,7 @@ typedef struct {
   gboolean enable_fsync;  /* Deprecated */
   gboolean process_whiteouts;
   gboolean no_copy_fallback;
+  gboolean unused_bools[7];
 
   const char *subpath;
 
