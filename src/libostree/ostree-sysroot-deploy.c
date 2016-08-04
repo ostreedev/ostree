@@ -171,76 +171,60 @@ copy_dir_recurse (int              src_parent_dfd,
                   GCancellable    *cancellable,
                   GError         **error)
 {
-  gboolean ret = FALSE;
-  glnx_fd_close int src_dfd = -1;
+  g_auto(GLnxDirFdIterator) src_dfd_iter = { 0, };
   glnx_fd_close int dest_dfd = -1;
-  DIR *srcd = NULL;
   struct dirent *dent;
 
-  if (!ot_gopendirat (src_parent_dfd, name, TRUE, &src_dfd, error))
-    goto out;
+  if (!glnx_dirfd_iterator_init_at (src_parent_dfd, name, TRUE, &src_dfd_iter, error))
+    return FALSE;
 
   /* Create with mode 0700, we'll fchmod/fchown later */
   if (mkdirat (dest_parent_dfd, name, 0700) != 0)
     {
       glnx_set_error_from_errno (error);
-      goto out;
+      return FALSE;
     }
 
-  if (!ot_gopendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
-    goto out;
+  if (!glnx_opendirat (dest_parent_dfd, name, TRUE, &dest_dfd, error))
+    return FALSE;
 
-  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd, dest_dfd,
+  if (!dirfd_copy_attributes_and_xattrs (src_parent_dfd, name, src_dfd_iter.fd, dest_dfd,
                                          cancellable, error))
-    goto out;
+    return FALSE;
  
-  srcd = fdopendir (src_dfd);
-  if (!srcd)
+  while (TRUE)
     {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-
-  while ((dent = readdir (srcd)) != NULL)
-    {
-      const char *name = dent->d_name;
       struct stat child_stbuf;
 
-      if (strcmp (name, ".") == 0 ||
-          strcmp (name, "..") == 0)
-        continue;
+      if (!glnx_dirfd_iterator_next_dent (&src_dfd_iter, &dent, cancellable, error))
+        return FALSE;
+      if (dent == NULL)
+        break;
 
-      if (fstatat (src_dfd, name, &child_stbuf,
+      if (fstatat (src_dfd_iter.fd, dent->d_name, &child_stbuf,
                    AT_SYMLINK_NOFOLLOW) != 0)
         {
           glnx_set_error_from_errno (error);
-          goto out;
+          return FALSE;
         }
 
       if (S_ISDIR (child_stbuf.st_mode))
         {
-          if (!copy_dir_recurse (src_dfd, dest_dfd, name,
+          if (!copy_dir_recurse (src_dfd_iter.fd, dest_dfd, dent->d_name,
                                  cancellable, error))
-            goto out;
+            return FALSE;
         }
       else
         {
-          if (!glnx_file_copy_at (src_dfd, name, &child_stbuf, dest_dfd, name,
+          if (!glnx_file_copy_at (src_dfd_iter.fd, dent->d_name, &child_stbuf,
+                                  dest_dfd, dent->d_name,
                                   GLNX_FILE_COPY_OVERWRITE,
                                   cancellable, error))
-            goto out;
+            return FALSE;
         }
     }
 
-  ret = TRUE;
- out:
-  if (srcd)
-    {
-      (void) closedir (srcd);
-      /* Note the srcd owns src_dfd */
-      src_dfd = -1;
-    }
-  return ret;
+  return TRUE;
 }
 
 static gboolean
