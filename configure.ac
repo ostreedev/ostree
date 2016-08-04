@@ -25,6 +25,7 @@ CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -Werror=missing-declarations \
         -Werror=return-type \
         -Werror=overflow \
+        -Werror=int-conversion \
 	-Werror=missing-include-dirs -Werror=aggregate-return \
 	-Werror=declaration-after-statement \
 ])
