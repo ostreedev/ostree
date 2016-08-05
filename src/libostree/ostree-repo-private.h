@@ -75,13 +75,10 @@ struct OstreeRepo {
   char  *cache_dir;
   int objects_dir_fd;
   GFile *deltas_dir;
-  GFile *uncompressed_objects_dir;
   int uncompressed_objects_dir_fd;
-  GFile *config_file;
   GFile *sysroot_dir;
   char *remotes_config_dir;
 
-  GFile *transaction_lock_path;
   GHashTable *txn_refs;
   GMutex txn_stats_lock;
   OstreeRepoTransactionStats txn_stats;
