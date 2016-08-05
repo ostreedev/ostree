@@ -523,13 +523,10 @@ ostree_repo_finalize (GObject *object)
   if (self->objects_dir_fd != -1)
     (void) close (self->objects_dir_fd);
   g_clear_object (&self->deltas_dir);
-  g_clear_object (&self->uncompressed_objects_dir);
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
   g_clear_object (&self->sysroot_dir);
   g_free (self->remotes_config_dir);
-
-  g_clear_object (&self->transaction_lock_path);
 
   if (self->loose_object_devino_hash)
     g_hash_table_destroy (self->loose_object_devino_hash);
@@ -611,7 +608,6 @@ ostree_repo_constructed (GObject *object)
   self->tmp_dir = g_file_resolve_relative_path (self->repodir, "tmp");
 
   self->deltas_dir = g_file_get_child (self->repodir, "deltas");
-  self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
 
   /* Ensure the "sysroot-path" property is set. */
   if (self->sysroot_dir == NULL)
