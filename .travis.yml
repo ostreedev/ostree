@@ -1,0 +1,13 @@
+language: c
+dist: trusty
+sudo: required
+
+env:
+  - ci_distro=ubuntu ci_suite=trusty
+  - ci_docker=debian:jessie ci_distro=debian ci_suite=jessie
+  - ci_docker=debian:unstable ci_distro=debian ci_suite=unstable
+  - ci_docker=ubuntu:xenial ci_distro=ubuntu ci_suite=xenial
+
+script:
+  - tests/ci-install.sh
+  - ci_parallel=2 ci_sudo=yes tests/ci-build.sh

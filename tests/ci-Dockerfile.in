@@ -1,0 +1,10 @@
+FROM @ci_docker@
+ENV container docker
+
+ADD tests/ci-install.sh /ci-install.sh
+RUN ci_suite="@ci_suite@" ci_distro="@ci_distro@" ci_in_docker=yes /ci-install.sh
+
+ADD . /home/user/ostree
+RUN chown -R user:user /home/user/ostree
+WORKDIR /home/user/ostree
+USER user
