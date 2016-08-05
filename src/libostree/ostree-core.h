@@ -71,7 +71,7 @@ G_BEGIN_DECLS
  * @OSTREE_OBJECT_TYPE_DIR_TREE: List of children (trees or files), and metadata
  * @OSTREE_OBJECT_TYPE_DIR_META: Directory metadata
  * @OSTREE_OBJECT_TYPE_COMMIT: Toplevel object, refers to tree and dirmeta for root
- * @OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Toplevel object, refers to a deleted commit
+ * @OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT: Detached object for a deleted commit
  * @OSTREE_OBJECT_TYPE_COMMIT_META: Detached metadata for a commit
  *
  * Enumeration for core object types; %OSTREE_OBJECT_TYPE_FILE is for
@@ -92,7 +92,16 @@ typedef enum {
  *
  * Returns: %TRUE if object type is metadata
  */
-#define OSTREE_OBJECT_TYPE_IS_META(t) (t >= 2 && t <= 6)
+#define OSTREE_OBJECT_TYPE_IS_META(t) (t > OSTREE_OBJECT_TYPE_FILE && t <= OSTREE_OBJECT_TYPE_COMMIT_META)
+
+/**
+ * OSTREE_OBJECT_TYPE_IS_DETACHED:
+ * @t: An #OstreeObjectType
+ *
+ * Returns: %TRUE if object type is detached. A detached object is not content-addressable;
+ * its location is based off of another object.
+ */
+#define OSTREE_OBJECT_TYPE_IS_DETACHED(t) (t >= OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT && t <= OSTREE_OBJECT_TYPE_COMMIT_META)
 
 /**
  * OSTREE_OBJECT_TYPE_LAST:
@@ -142,7 +151,7 @@ typedef enum {
  *
  * - a{sv} - Metadata
  * - ay - parent checksum (empty string for initial)
- * - a(say) - Related objects
+ * - a(say) - Related objects (assumed empty)
  * - s - subject
  * - s - body
  * - t - Timestamp in seconds since the epoch (UTC)
@@ -151,6 +160,14 @@ typedef enum {
  */
 #define OSTREE_COMMIT_GVARIANT_STRING "(a{sv}aya(say)sstayay)"
 #define OSTREE_COMMIT_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_COMMIT_GVARIANT_STRING)
+
+/**
+ * OSTREE_COMMIT_META_GVARIANT_FORMAT:
+ *
+ * - a{sv} - Metadata
+ */
+#define OSTREE_COMMIT_META_GVARIANT_STRING "a{sv}"
+#define OSTREE_COMMIT_META_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_COMMIT_META_GVARIANT_STRING)
 
 /**
  * OSTREE_SUMMARY_GVARIANT_FORMAT:

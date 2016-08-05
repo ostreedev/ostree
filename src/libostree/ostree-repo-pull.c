@@ -117,12 +117,6 @@ typedef struct {
 typedef struct {
   OtPullData  *pull_data;
   GVariant    *object;
-  gboolean     is_detached_meta;
-
-  /* Only relevant when is_detached_meta is TRUE.  Controls
-   * whether to fetch the primary object after fetching its
-   * detached metadata (no need if it's already stored). */
-  gboolean     object_is_stored;
 } FetchObjectData;
 
 typedef struct {
@@ -436,11 +430,9 @@ write_commitpartial_for (OtPullData *pull_data,
 }
 
 static void
-enqueue_one_object_request (OtPullData        *pull_data,
-                            const char        *checksum,
-                            OstreeObjectType   objtype,
-                            gboolean           is_detached_meta,
-                            gboolean           object_is_stored);
+fetch_object (OtPullData        *pull_data,
+              char              *checksum,
+              OstreeObjectType   objtype);
 
 static gboolean
 scan_dirtree_object (OtPullData   *pull_data,
@@ -508,8 +500,8 @@ scan_dirtree_object (OtPullData   *pull_data,
         }
       else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
-          g_hash_table_insert (pull_data->requested_content, file_checksum, file_checksum);
-          enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, FALSE, FALSE);
+          g_hash_table_add (pull_data->requested_content, g_strdup (file_checksum));
+          fetch_object (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE);
           file_checksum = NULL;  /* Transfer ownership */
         }
     }
@@ -840,35 +832,31 @@ meta_fetch_on_complete (GObject           *object,
 
   ostree_object_name_deserialize (fetch_data->object, &checksum, &objtype);
   checksum_obj = ostree_object_to_string (checksum, objtype);
-  g_debug ("fetch of %s%s complete", checksum_obj,
-           fetch_data->is_detached_meta ? " (detached)" : "");
+  g_debug ("fetch of %s complete", checksum_obj);
 
   temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
-          if (fetch_data->is_detached_meta)
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT_META)
             {
-              /* There isn't any detached metadata, just fetch the commit */
+              /* There isn't any detached metadata, not an error */
               g_clear_error (&local_error);
-              if (!fetch_data->object_is_stored)
-                enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
             }
 
           /* When traversing parents, do not fail on a missing commit.
            * We may be pulling from a partial repository that ends in
            * a dangling parent reference. */
-          else if (objtype == OSTREE_OBJECT_TYPE_COMMIT &&
-                   pull_data->maxdepth != 0)
+          if (objtype == OSTREE_OBJECT_TYPE_COMMIT &&
+                pull_data->maxdepth != 0)
             {
               g_clear_error (&local_error);
               /* If the remote repo supports tombstone commits, check if the commit was intentionally
                  deleted.  */
               if (pull_data->has_tombstone_commits)
                 {
-                  enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
-                                              FALSE, FALSE);
+                  fetch_object (pull_data, g_strdup (checksum), OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT);
                 }
             }
         }
@@ -887,43 +875,34 @@ meta_fetch_on_complete (GObject           *object,
       goto out;
     }
 
-  if (fetch_data->is_detached_meta)
+  if (!ot_util_variant_map_fd (fd, 0, ostree_metadata_variant_type (objtype),
+                                FALSE, &metadata, error))
+    goto out;
+
+  (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
+
+  /* Write the commitpartial file now while we're still fetching data */
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      if (!ot_util_variant_map_fd (fd, 0, G_VARIANT_TYPE ("a{sv}"),
-                                   FALSE, &metadata, error))
+      if (!write_commitpartial_for (pull_data, checksum, error))
         goto out;
+    }
 
-      /* Now delete it, see comment in corresponding content fetch path */
-      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
-
+  if (objtype == OSTREE_OBJECT_TYPE_COMMIT_META)
+    {
+      /* Special path for detached metadata because write_metadata_async doesn't support it */
       if (!ostree_repo_write_commit_detached_metadata (pull_data->repo, checksum, metadata,
                                                        pull_data->cancellable, error))
         goto out;
-
-      if (!fetch_data->object_is_stored)
-        enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
     }
   else
     {
-      if (!ot_util_variant_map_fd (fd, 0, ostree_metadata_variant_type (objtype),
-                                   FALSE, &metadata, error))
-        goto out;
-
-      (void) unlinkat (_ostree_fetcher_get_dfd (fetcher), temp_path, 0);
-
-      /* Write the commitpartial file now while we're still fetching data */
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        {
-          if (!write_commitpartial_for (pull_data, checksum, error))
-            goto out;
-        }
-      
       ostree_repo_write_metadata_async (pull_data->repo, objtype, checksum, metadata,
                                         pull_data->cancellable,
                                         on_metadata_written, fetch_data);
       pull_data->n_outstanding_metadata_write_requests++;
-      free_fetch_data = FALSE;
     }
+  free_fetch_data = FALSE;
 
  out:
   g_assert (pull_data->n_outstanding_metadata_fetches > 0);
@@ -1241,13 +1220,12 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
   if (!is_stored && !is_requested)
     {
-      char *duped_checksum = g_strdup (tmp_checksum);
-      gboolean do_fetch_detached;
+      g_hash_table_add (pull_data->requested_metadata, g_strdup (tmp_checksum));
 
-      g_hash_table_insert (pull_data->requested_metadata, duped_checksum, duped_checksum);
-
-      do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-      enqueue_one_object_request (pull_data, tmp_checksum, objtype, do_fetch_detached, FALSE);
+      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+        fetch_object (pull_data, g_strdup (tmp_checksum), OSTREE_OBJECT_TYPE_COMMIT_META);
+      fetch_object (pull_data, tmp_checksum, objtype);
+      tmp_checksum = NULL;  /* Transfer ownership */
     }
   else if (objtype == OSTREE_OBJECT_TYPE_COMMIT && pull_data->is_commit_only)
     {
@@ -1264,7 +1242,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
       /* For commits, always refetch detached metadata. */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        enqueue_one_object_request (pull_data, tmp_checksum, objtype, TRUE, TRUE);
+        fetch_object (pull_data, g_strdup (tmp_checksum), OSTREE_OBJECT_TYPE_COMMIT_META);
 
       /* For commits, check whether we only had a partial fetch */
       if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -1316,16 +1294,22 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
 
   ret = TRUE;
+
  out:
   return ret;
 }
 
+/**
+ * fetch_object:
+ * @checksum: (transfer full): checksum of object
+ * @objtype: object type
+ *
+ * Fetches the object of the given type and checksum
+ */
 static void
-enqueue_one_object_request (OtPullData        *pull_data,
-                            const char        *checksum,
-                            OstreeObjectType   objtype,
-                            gboolean           is_detached_meta,
-                            gboolean           object_is_stored)
+fetch_object (OtPullData        *pull_data,
+              char              *checksum,
+              OstreeObjectType   objtype)
 {
   SoupURI *obj_uri = NULL;
   gboolean is_meta;
@@ -1334,21 +1318,11 @@ enqueue_one_object_request (OtPullData        *pull_data,
   guint64 *expected_max_size_p;
   guint64 expected_max_size;
 
-  g_debug ("queuing fetch of %s.%s%s", checksum,
-           ostree_object_type_to_string (objtype),
-           is_detached_meta ? " (detached)" : "");
+  g_debug ("queuing fetch of %s.%s", checksum,
+           ostree_object_type_to_string (objtype));
 
-  if (is_detached_meta)
-    {
-      char buf[_OSTREE_LOOSE_PATH_MAX];
-      _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, pull_data->remote_mode);
-      obj_uri = suburi_new (pull_data->base_uri, "objects", buf, NULL);
-    }
-  else
-    {
-      objpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
-      obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
-    }
+  objpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
+  obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
 
   is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
   if (is_meta)
@@ -1364,10 +1338,9 @@ enqueue_one_object_request (OtPullData        *pull_data,
   fetch_data = g_new0 (FetchObjectData, 1);
   fetch_data->pull_data = pull_data;
   fetch_data->object = ostree_object_name_serialize (checksum, objtype);
-  fetch_data->is_detached_meta = is_detached_meta;
-  fetch_data->object_is_stored = object_is_stored;
 
-  expected_max_size_p = is_detached_meta ? NULL : g_hash_table_lookup (pull_data->expected_commit_sizes, checksum);
+  expected_max_size_p = OSTREE_OBJECT_TYPE_IS_DETACHED(objtype) ? NULL
+                          : g_hash_table_lookup (pull_data->expected_commit_sizes, checksum);
   if (expected_max_size_p)
     expected_max_size = *expected_max_size_p;
   else if (is_meta)
@@ -1382,6 +1355,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
                                                   pull_data->cancellable,
                                                   is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
   soup_uri_free (obj_uri);
+  g_free (checksum);
 }
 
 static gboolean
@@ -1534,11 +1508,13 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
         {
           if (!g_hash_table_lookup (pull_data->requested_metadata, checksum))
             {
-              gboolean do_fetch_detached;
               g_hash_table_insert (pull_data->requested_metadata, checksum, checksum);
               
-              do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-              enqueue_one_object_request (pull_data, checksum, objtype, do_fetch_detached, FALSE);
+              /* Fetch metadata */
+              if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
+                fetch_object (pull_data, g_strdup (checksum), OSTREE_OBJECT_TYPE_COMMIT_META);
+
+              fetch_object (pull_data, checksum, objtype);
               checksum = NULL;  /* Transfer ownership */
             }
         }
@@ -1546,8 +1522,8 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
         {
           if (!g_hash_table_lookup (pull_data->requested_content, checksum))
             {
-              g_hash_table_insert (pull_data->requested_content, checksum, checksum);
-              enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, FALSE, FALSE);
+              g_hash_table_add (pull_data->requested_content, g_strdup (checksum));
+              fetch_object (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE);
               checksum = NULL;  /* Transfer ownership */
             }
         }
@@ -1627,8 +1603,6 @@ process_one_static_delta (OtPullData   *pull_data,
         fetch_data = g_new0 (FetchObjectData, 1);
         fetch_data->pull_data = pull_data;
         fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
-        fetch_data->is_detached_meta = FALSE;
-        fetch_data->object_is_stored = FALSE;
 
         to_commit = g_variant_get_child_value (delta_superblock, 4);
 
