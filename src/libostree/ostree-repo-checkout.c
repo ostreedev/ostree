@@ -651,7 +651,9 @@ checkout_tree_at (OstreeRepo                        *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (res == -1)
     {
-      if (errno == EEXIST && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES)
+      if (errno == EEXIST
+          && options->overwrite_mode == OSTREE_REPO_CHECKOUT_OVERWRITE_UNION_FILES
+          && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
         did_exist = TRUE;
       else
         {
@@ -663,6 +665,20 @@ checkout_tree_at (OstreeRepo                        *self,
   if (!glnx_opendirat (destination_parent_fd, destination_name, TRUE,
                        &destination_dfd, error))
     goto out;
+
+  /* Be sure the directory is writable by the user when doing an union
+     checkout.  */
+  if (options->mode == OSTREE_REPO_CHECKOUT_MODE_USER)
+    {
+      do
+        res = fchmod (destination_dfd, 0700);
+      while (G_UNLIKELY (res == -1 && errno == EINTR));
+      if (G_UNLIKELY (res == -1))
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+   }
 
   /* Set the xattrs now, so any derived labeling works */
   if (!did_exist && options->mode != OSTREE_REPO_CHECKOUT_MODE_USER)
