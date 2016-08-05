@@ -526,7 +526,6 @@ ostree_repo_finalize (GObject *object)
   g_clear_object (&self->uncompressed_objects_dir);
   if (self->uncompressed_objects_dir_fd != -1)
     (void) close (self->uncompressed_objects_dir_fd);
-  g_clear_object (&self->config_file);
   g_clear_object (&self->sysroot_dir);
   g_free (self->remotes_config_dir);
 
@@ -613,7 +612,6 @@ ostree_repo_constructed (GObject *object)
 
   self->deltas_dir = g_file_get_child (self->repodir, "deltas");
   self->uncompressed_objects_dir = g_file_get_child (self->repodir, "uncompressed-objects-cache");
-  self->config_file = g_file_get_child (self->repodir, "config");
 
   /* Ensure the "sysroot-path" property is set. */
   if (self->sysroot_dir == NULL)
@@ -905,8 +903,9 @@ ostree_repo_write_config (OstreeRepo *self,
   g_return_val_if_fail (self->inited, FALSE);
 
   data = g_key_file_to_data (new_config, &len, error);
-  if (!g_file_replace_contents (self->config_file, data, len, NULL, FALSE, 0, NULL,
-                                NULL, error))
+  if (!glnx_file_replace_contents_at (self->repo_dir_fd, "config",
+                                      (guint8*)data, len, 0,
+                                      NULL, error))
     goto out;
 
   g_key_file_free (self->config);
@@ -983,17 +982,9 @@ impl_repo_remote_add (OstreeRepo     *self,
     }
   else if (remote != NULL)
     {
-      GFile *file;
-
-      if (remote->file != NULL)
-        file = remote->file;
-      else
-        file = self->config_file;
-
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "Remote configuration for \"%s\" already exists: %s",
-                   name, gs_file_get_path_cached (file));
-
+                   name, remote->file ? gs_file_get_path_cached (remote->file) : "(in config)");
       goto out;
     }
 
@@ -2159,11 +2150,20 @@ ostree_repo_open (OstreeRepo    *self,
     }
 
   self->config = g_key_file_new ();
-  if (!g_key_file_load_from_file (self->config, gs_file_get_path_cached (self->config_file), 0, error))
-    {
-      g_prefix_error (error, "Couldn't parse config file: ");
+
+  { g_autofree char *contents = NULL;
+    gsize len;
+
+    contents = glnx_file_get_contents_utf8_at (self->repo_dir_fd, "config", &len,
+                                               NULL, error);
+    if (!contents)
       goto out;
-    }
+    if (!g_key_file_load_from_data (self->config, contents, len, 0, error))
+      {
+        g_prefix_error (error, "Couldn't parse config file: ");
+        goto out;
+      }
+  }
   if (!add_remotes_from_keyfile (self, self->config, NULL, error))
     goto out;
 
