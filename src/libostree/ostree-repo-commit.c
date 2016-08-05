@@ -2005,15 +2005,6 @@ ostree_repo_write_commit_with_time (OstreeRepo      *self,
   return ret;
 }
 
-GFile *
-_ostree_repo_get_commit_metadata_loose_path (OstreeRepo        *self,
-                                             const char        *checksum)
-{
-  char buf[_OSTREE_LOOSE_PATH_MAX];
-  _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
-  return g_file_resolve_relative_path (self->objects_dir, buf);
-}
-
 /**
  * ostree_repo_read_commit_detached_metadata:
  * @self: Repo
@@ -2034,11 +2025,12 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
                                            GError         **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GFile) metadata_path =
-    _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+  char buf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GVariant) ret_metadata = NULL;
+
+  _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
   
-  if (!ot_util_variant_map_at (AT_FDCWD, gs_file_get_path_cached (metadata_path),
+  if (!ot_util_variant_map_at (self->objects_dir_fd, buf,
                                G_VARIANT_TYPE ("a{sv}"),
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
     {
@@ -2071,53 +2063,36 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
                                             GCancellable    *cancellable,
                                             GError         **error)
 {
-  gboolean ret = FALSE;
-  g_autoptr(GFile) metadata_path =
-    _ostree_repo_get_commit_metadata_loose_path (self, checksum);
+  char pathbuf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GVariant) normalized = NULL;
   gsize normalized_size = 0;
+  const guint8 *data;
+
+  _ostree_loose_path (pathbuf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
   if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
                                             cancellable, error))
-    goto out;
+    return FALSE;
 
   if (metadata != NULL)
     {
       normalized = g_variant_get_normal_form (metadata);
       normalized_size = g_variant_get_size (normalized);
+      data = g_variant_get_data (normalized);
     }
 
-  if (normalized_size > 0)
+  if (data == NULL)
+    data = (guint8*)"";
+
+  if (!glnx_file_replace_contents_at (self->objects_dir_fd, pathbuf,
+                                      data, normalized_size,
+                                      0, cancellable, error))
     {
-      if (!g_file_replace_contents (metadata_path,
-                                    g_variant_get_data (normalized),
-                                    g_variant_get_size (normalized),
-                                    NULL, FALSE, 0, NULL,
-                                    cancellable, error))
-        {
-          g_prefix_error (error, "Unable to write detached metadata: ");
-          goto out;
-        }
-    }
-  else
-    {
-      g_autoptr(GFileOutputStream) output_stream = NULL;
-
-      /* Don't write to the stream, leave the file empty. */
-      output_stream = g_file_replace (metadata_path,
-                                      NULL, FALSE,
-                                      G_FILE_CREATE_NONE,
-                                      cancellable, error);
-      if (output_stream == NULL)
-        {
-          g_prefix_error (error, "Unable to write detached metadata: ");
-          goto out;
-        }
+      g_prefix_error (error, "Unable to write detached metadata: ");
+      return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static GVariant *
