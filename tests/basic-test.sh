@@ -452,38 +452,41 @@ echo "ok test error pre commit/bootid"
 # Whiteouts
 cd ${test_tmpdir}
 mkdir -p overlay/baz/
-touch overlay/baz/.wh.cow
-touch overlay/.wh.deeper
-touch overlay/anewfile
-mkdir overlay/anewdir/
-touch overlay/anewdir/blah
-$OSTREE --repo=repo commit -b overlay -s 'overlay' --tree=dir=overlay
-rm overlay -rf
+if touch overlay/baz/.wh.cow && touch overlay/.wh.deeper; then
+    touch overlay/anewfile
+    mkdir overlay/anewdir/
+    touch overlay/anewdir/blah
+    $OSTREE --repo=repo commit -b overlay -s 'overlay' --tree=dir=overlay
+    rm overlay -rf
 
-for branch in test2 overlay; do
-    $OSTREE --repo=repo checkout --union --whiteouts ${branch} overlay-co
-done
-for f in .wh.deeper baz/cow baz/.wh.cow; do
-    assert_not_has_file overlay-co/${f}
-done
-assert_not_has_dir overlay-co/deeper
-assert_has_file overlay-co/anewdir/blah
-assert_has_file overlay-co/anewfile
+    for branch in test2 overlay; do
+        $OSTREE --repo=repo checkout --union --whiteouts ${branch} overlay-co
+    done
+    for f in .wh.deeper baz/cow baz/.wh.cow; do
+        assert_not_has_file overlay-co/${f}
+    done
+    assert_not_has_dir overlay-co/deeper
+    assert_has_file overlay-co/anewdir/blah
+    assert_has_file overlay-co/anewfile
 
-echo "ok whiteouts enabled"
+    echo "ok whiteouts enabled"
 
-# Now double check whiteouts are not processed without --whiteouts 
-rm overlay-co -rf
-for branch in test2 overlay; do
-    $OSTREE --repo=repo checkout --union ${branch} overlay-co
-done
-for f in .wh.deeper baz/cow baz/.wh.cow; do
-    assert_has_file overlay-co/${f}
-done
-assert_not_has_dir overlay-co/deeper
-assert_has_file overlay-co/anewdir/blah
-assert_has_file overlay-co/anewfile
-echo "ok whiteouts disabled"
+    # Now double check whiteouts are not processed without --whiteouts
+    rm overlay-co -rf
+    for branch in test2 overlay; do
+        $OSTREE --repo=repo checkout --union ${branch} overlay-co
+    done
+    for f in .wh.deeper baz/cow baz/.wh.cow; do
+        assert_has_file overlay-co/${f}
+    done
+    assert_not_has_dir overlay-co/deeper
+    assert_has_file overlay-co/anewdir/blah
+    assert_has_file overlay-co/anewfile
+    echo "ok whiteouts disabled"
+else
+    echo "ok # SKIP whiteouts do not work, are you using aufs?"
+    echo "ok # SKIP whiteouts do not work, are you using aufs?"
+fi
 
 cd ${test_tmpdir}
 rm -rf test2-checkout
