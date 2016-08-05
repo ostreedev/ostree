@@ -73,8 +73,6 @@ struct OstreeRepo {
   int    tmp_dir_fd;
   int    cache_dir_fd;
   char  *cache_dir;
-  GFile *objects_dir;
-  GFile *state_dir;
   int objects_dir_fd;
   GFile *deltas_dir;
   GFile *uncompressed_objects_dir;
