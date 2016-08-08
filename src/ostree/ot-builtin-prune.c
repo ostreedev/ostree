@@ -106,7 +106,7 @@ prune_commits_keep_younger_than_date (OstreeRepo *repo, const char *date, GCance
     goto out;
 
   /* We used to prune the HEAD of a given ref by default, but that's
-   * broken for for a few reasons.  One is that people may use branches as
+   * broken for a few reasons.  One is that people may use branches as
    * tags.  Second is that if we do it, we should be deleting the ref
    * too, otherwise e.g. `summary -u` breaks trying to load it, etc.
    */
