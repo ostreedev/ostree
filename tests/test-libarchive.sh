@@ -159,7 +159,7 @@ echo "ok tar partial commit contents"
 cd ${test_tmpdir}
 # We need a bare-user repo for this
 rm repo -rf
-ostree --repo=repo init --mode=bare-user
+$OSTREE --repo=repo init --mode=bare-user
 # Yeah this is ugly but it's simpler than adding it to the installed tests etc.
 # We need a tarball that has a device file.
 python -c 'import base64,sys; base64.decode(sys.stdin, sys.stdout)' > testlayer.tar.gz <<EOF
