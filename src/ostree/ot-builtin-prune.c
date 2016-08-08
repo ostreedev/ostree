@@ -84,6 +84,8 @@ delete_commit (OstreeRepo *repo, const char *commit_to_delete, GCancellable *can
 static gboolean
 prune_commits_keep_younger_than_date (OstreeRepo *repo, const char *date, GCancellable *cancellable, GError **error)
 {
+  g_autoptr(GHashTable) refs = NULL;
+  g_autoptr(GHashTable) ref_heads = g_hash_table_new (g_str_hash, g_str_equal);
   g_autoptr(GHashTable) objects = NULL;
   GHashTableIter hash_iter;
   gpointer key, value;
@@ -99,6 +101,21 @@ prune_commits_keep_younger_than_date (OstreeRepo *repo, const char *date, GCance
 
   if (!ot_enable_tombstone_commits (repo, error))
     goto out;
+
+  if (!ostree_repo_list_refs (repo, NULL, &refs, cancellable, error))
+    goto out;
+
+  /* We used to prune the HEAD of a given ref by default, but that's
+   * broken for a few reasons.  One is that people may use branches as
+   * tags.  Second is that if we do it, we should be deleting the ref
+   * too, otherwise e.g. `summary -u` breaks trying to load it, etc.
+   */
+  g_hash_table_iter_init (&hash_iter, refs);
+  while (g_hash_table_iter_next (&hash_iter, &key, &value))
+    {
+      /* Value is lifecycle bound to refs */
+      g_hash_table_add (ref_heads, (char*)value);
+    }
 
   if (!ostree_repo_list_objects (repo, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
                                  cancellable, error))
@@ -117,6 +134,9 @@ prune_commits_keep_younger_than_date (OstreeRepo *repo, const char *date, GCance
       ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
       if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
+        continue;
+
+      if (g_hash_table_contains (ref_heads, checksum))
         continue;
 
       if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
