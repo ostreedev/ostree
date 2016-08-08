@@ -2066,7 +2066,7 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   char pathbuf[_OSTREE_LOOSE_PATH_MAX];
   g_autoptr(GVariant) normalized = NULL;
   gsize normalized_size = 0;
-  const guint8 *data;
+  const guint8 *data = NULL;
 
   _ostree_loose_path (pathbuf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
