@@ -18,6 +18,8 @@ AC_PROG_YACC
 CC_CHECK_FLAGS_APPEND([WARN_CFLAGS], [CFLAGS], [\
         -pipe \
         -Wall \
+	-Werror=empty-body \
+	-Werror=strict-prototypes \
 	-Werror=missing-prototypes \
 	-Werror=implicit-function-declaration \
         "-Werror=format=2 -Werror=format-security -Werror=format-nonliteral" \
