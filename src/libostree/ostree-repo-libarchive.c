@@ -981,7 +981,7 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
  * @dfd: Directory file descriptor
  * @path: Path to blob archive
  * @mtree: Mtree
- * @modifier: Modifier
+ * @modifier: (allow-none): Modifier
  * @cancellable: Cancellable
  * @error: Error
  *
