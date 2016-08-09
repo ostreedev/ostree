@@ -31,25 +31,6 @@ case "$ci_distro" in
         ;;
 esac
 
-case "$ci_suite" in
-    (jessie)
-        # Add alexl's Debian 8 backport repository to get libgsystem
-        # TODO: remove this when libgsystem is no longer needed
-        $sudo apt-get -y update
-        $sudo apt-get -y install apt-transport-https wget
-        wget -O - https://sdk.gnome.org/apt/debian/conf/alexl.gpg.key | $sudo apt-key add -
-        echo "deb [arch=amd64] https://sdk.gnome.org/apt/debian/ jessie main" | $sudo tee /etc/apt/sources.list.d/flatpak.list
-        ;;
-
-    (trusty|xenial)
-        # Add alexl's Flatpak PPA, again to get libgsystem
-        # TODO: remove this when libgsystem is no longer needed
-        $sudo apt-get -y update
-        $sudo apt-get -y install software-properties-common
-        $sudo add-apt-repository --yes ppa:alexlarsson/flatpak
-        ;;
-esac
-
 case "$ci_distro" in
     (debian|ubuntu)
         # TODO: fetch this list from the Debian packaging git repository?
