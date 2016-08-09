@@ -20,7 +20,7 @@
 # Boston, MA 02111-1307, USA.
 
 check() {
-    if [[ -x $systemdutildir/systemd ]] && [[ -x /usr/sbin/ostree-prepare-root ]]; then
+    if [[ -x $systemdutildir/systemd ]] && [[ -x /usr/lib/ostree/ostree-prepare-root ]]; then
        return 255
     fi
 
@@ -32,7 +32,7 @@ depends() {
 }
 
 install() {
-    dracut_install ostree-prepare-root
+    dracut_install /usr/lib/ostree/ostree-prepare-root
     inst_simple "${systemdsystemunitdir}/ostree-prepare-root.service"
     mkdir -p "${initdir}${systemdsystemconfdir}/initrd-switch-root.target.wants"
     ln_r "${systemdsystemunitdir}/ostree-prepare-root.service" \

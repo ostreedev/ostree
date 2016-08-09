@@ -43,6 +43,8 @@ gir_DATA =
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA =
 gsettings_SCHEMAS =
+ostree_bootdir = /usr/lib/ostree
+ostree_boot_PROGRAMS =
 
 # This is a special facility to chain together hooks easily
 INSTALL_DATA_HOOKS =

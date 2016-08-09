@@ -27,7 +27,7 @@ Before=plymouth-switch-root.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/ostree-prepare-root /sysroot
+ExecStart=/usr/lib/ostree/ostree-prepare-root /sysroot
 StandardInput=null
 StandardOutput=syslog
 StandardError=syslog+console

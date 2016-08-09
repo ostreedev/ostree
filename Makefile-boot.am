@@ -53,7 +53,7 @@ grub2configdir = $(sysconfdir)/grub.d
 INSTALL_DATA_HOOKS += install-grub2-config-hook
 else
 # We're using our internal generator
-libexec_SCRIPTS = src/boot/grub2/ostree-grub-generator
+ostree_boot_SCRIPTS = src/boot/grub2/ostree-grub-generator
 endif
 
 EXTRA_DIST += src/boot/dracut/module-setup.sh \

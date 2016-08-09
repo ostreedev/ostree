@@ -31,7 +31,7 @@ Before=systemd-tmpfiles-setup.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/ostree-remount
+ExecStart=/usr/lib/ostree/ostree-remount
 StandardInput=null
 StandardOutput=syslog
 StandardError=syslog+console
