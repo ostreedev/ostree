@@ -19,8 +19,6 @@
 
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
-
-const GSystem = imports.gi.GSystem;
 const OSTree = imports.gi.OSTree;
 
 function assertEquals(a, b) {
@@ -36,12 +34,8 @@ function assertNotEquals(a, b) {
 function libtestExec(shellCode) {
     let testdatadir = GLib.getenv("G_TEST_SRCDIR");
     let libtestPath = GLib.build_filenamev([testdatadir, 'libtest.sh'])
-    let proc = GSystem.Subprocess.new_simple_argv(['bash', '-c',
-						   'set -xeuo pipefail; . ' + GLib.shell_quote(libtestPath) + '; ' + shellCode],
-						  GSystem.SubprocessStreamDisposition.INHERIT,
-						  GSystem.SubprocessStreamDisposition.INHERIT,
-						  null);
-    proc.wait_sync_check(null);
+    let proc = Gio.Subprocess.new(['bash', '-c', 'set -xeuo pipefail; . ' + GLib.shell_quote(libtestPath) + '; ' + shellCode], 0);
+    proc.wait_check(null);
 }
 
 libtestExec('setup_os_repository archive-z2 syslinux');
