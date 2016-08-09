@@ -26,7 +26,7 @@ unset OSTREE_GPG_HOME
 
 skip_without_user_xattrs
 
-echo "1..7"
+echo "1..8"
 
 setup_test_repository "archive-z2"
 echo "ok setup"
@@ -95,3 +95,13 @@ ${OSTREE} summary -u update --gpg-sign=${TEST_GPG_KEYID_1} --gpg-homedir=${TEST_
 ${CMD_PREFIX} ostree --repo=repo6 pull-local --remote=origin --gpg-verify-summary repo test2 2>&1
 
 echo "ok --gpg-verify-summary"
+
+mkdir repo7
+${CMD_PREFIX} ostree --repo=repo7 init --mode="archive-z2"
+${CMD_PREFIX} ostree --repo=repo7 pull-local repo
+${CMD_PREFIX} ostree --repo=repo7 fsck
+for src_object in `find repo/objects -name '*.filez'`; do
+    dst_object=${src_object/repo/repo7}
+    assert_files_hardlinked "$src_object" "$dst_object"
+done
+echo "ok pull-local z2 to z2 default hardlink"
