@@ -1362,7 +1362,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     }
   else
     {
-      tmp_dfd = fcntl (self->tmp_dir_fd, F_DUPFD_CLOEXEC);
+      tmp_dfd = fcntl (self->tmp_dir_fd, F_DUPFD_CLOEXEC, 3);
       if (tmp_dfd < 0)
         {
           glnx_set_error_from_errno (error);
