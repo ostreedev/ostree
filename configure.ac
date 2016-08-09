@@ -1,4 +1,5 @@
 AC_PREREQ([2.63])
+dnl If incrementing the version here, remember to update libostree.sym too
 AC_INIT([ostree], [2016.8], [walters@verbum.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([buildutil])

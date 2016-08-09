@@ -346,14 +346,21 @@ global:
         ostree_repo_resolve_rev_ext;
 } LIBOSTREE_2016.6;
 
-/*                         NOTE NOTE NOTE
- * Versions above here are released.  Only add symbols below this line.
- *                         NOTE NOTE NOTE
- */
-
 LIBOSTREE_2016.8 {
 global:
         ostree_checksum_b64_to_bytes;
         ostree_checksum_b64_from_bytes;
         ostree_repo_checkout_at;
 } LIBOSTREE_2016.7;
+
+/*                         NOTE NOTE NOTE
+ * Versions above here are released.  Only add symbols below this line.
+ *                         NOTE NOTE NOTE
+ */
+
+/* Remove comment when first new symbol is added
+LIBOSTREE_2016.9
+global:
+	someostree_symbol_deleteme;
+} LIBOSTREE_2016.8;
+ * Remove comment when first new symbol is added */
