@@ -58,7 +58,6 @@ case "$ci_distro" in
             libgirepository1.0-dev \
             libglib2.0-dev \
             libgpgme11-dev \
-            libgsystem-dev \
             liblzma-dev \
             libmount-dev \
             libselinux1-dev \
