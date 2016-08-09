@@ -1584,13 +1584,14 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
 
   ret = TRUE;
  out:
-  for (i = 0; i < part_temp_fds->len; i++)
-    {
-      int fd = g_array_index (part_temp_fds, int, i);
-      if (fd == -1)
-        continue;
-      (void) close (fd);
-    }
+  if (part_temp_fds)
+    for (i = 0; i < part_temp_fds->len; i++)
+      {
+        int fd = g_array_index (part_temp_fds, int, i);
+        if (fd == -1)
+          continue;
+        (void) close (fd);
+      }
   g_clear_pointer (&builder.parts, g_ptr_array_unref);
   g_clear_pointer (&builder.fallback_objects, g_ptr_array_unref);
   return ret;
