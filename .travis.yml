@@ -11,3 +11,6 @@ env:
 script:
   - tests/ci-install.sh
   - ci_parallel=2 ci_sudo=yes tests/ci-build.sh
+
+notifications:
+  email: false
