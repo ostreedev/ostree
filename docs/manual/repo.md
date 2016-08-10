@@ -113,7 +113,7 @@ that.
 
 A later addition to OSTree is the concept of a "summary" file, created
 via the `ostree summary -u` command.  This was introduced for a few
-reasons.  A primary use case is to be a target a
+reasons.  A primary use case is to be compatible with
 [Metalink](https://en.wikipedia.org/wiki/Metalink), which requires a
 single file with a known checksum as a target.
 
@@ -126,12 +126,12 @@ The summary file primarily contains two mappings:
 This currently means that it grows linearly with both items.  On the
 other hand, using the summary file, a client can enumerate branches.
 
-Further, the summary file is fetched over e.g. pinned TLS, this
-creates a strong end-to-end verification of the commit or static delta.
+Further, fetching the summary file over e.g. pinned TLS creates a strong
+end-to-end verification of the commit or static delta.
 
-The summary file can also be GPG signed (detached), and currently this
-is the only way provide GPG signatures (transitively) on deltas.
+The summary file can also be GPG signed (detached). This is currently
+the only way to provide GPG signatures (transitively) on deltas.
 
 If a repository administrator creates a summary file, they must
-thereafter run `ostree summary -u` to update it whenever a commit is
-made or a static delta is generated.
+thereafter run `ostree summary -u` to update it whenever a ref is
+updated or a static delta is generated.
