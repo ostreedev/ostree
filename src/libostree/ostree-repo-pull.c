@@ -47,6 +47,7 @@ typedef struct {
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
   SoupURI      *base_uri;
+  SoupURI      *base_content_uri;
   OstreeRepo   *remote_repo_local;
 
   GMainContext    *main_context;
@@ -1347,7 +1348,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   else
     {
       objpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
-      obj_uri = suburi_new (pull_data->base_uri, objpath, NULL);
+      obj_uri = suburi_new (pull_data->base_content_uri, objpath, NULL);
     }
 
   is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
@@ -1431,7 +1432,7 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   g_autoptr(GVariant) delta_superblock = NULL;
   SoupURI *target_uri = NULL;
   
-  target_uri = suburi_new (pull_data->base_uri, delta_name, NULL);
+  target_uri = suburi_new (pull_data->base_content_uri, delta_name, NULL);
   
   if (!fetch_uri_contents_membuf_sync (pull_data, target_uri, FALSE, TRUE,
                                        &delta_superblock_data,
@@ -1734,7 +1735,7 @@ process_one_static_delta (OtPullData   *pull_data,
         }
       else
         {
-          target_uri = suburi_new (pull_data->base_uri, deltapart_path, NULL);
+          target_uri = suburi_new (pull_data->base_content_uri, deltapart_path, NULL);
           _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
                                                           OSTREE_FETCHER_DEFAULT_PRIORITY,
                                                           pull_data->cancellable,
@@ -2382,6 +2383,30 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                      summary_bytes, FALSE);
     }
 
+  {
+    g_autofree char *contenturl = NULL;
+
+    if (metalink_url_str == NULL && url_override != NULL)
+      contenturl = g_strdup (url_override);
+    else if (!ostree_repo_get_remote_option (self, remote_name_or_baseurl,
+                                             "contenturl", NULL,
+                                             &contenturl, error))
+      goto out;
+
+    if (contenturl == NULL)
+      pull_data->base_content_uri = soup_uri_copy (pull_data->base_uri);
+    else
+      {
+        pull_data->base_content_uri = soup_uri_new (contenturl);
+        if (!pull_data->base_content_uri)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Failed to parse contenturl '%s'", contenturl);
+            goto out;
+          }
+      }
+  }
+
   if (!ostree_repo_get_remote_list_option (self,
                                            remote_name_or_baseurl, "branches",
                                            &configured_branches, error))
@@ -2901,6 +2926,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
     soup_uri_free (pull_data->base_uri);
+  if (pull_data->base_content_uri)
+    soup_uri_free (pull_data->base_content_uri);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
