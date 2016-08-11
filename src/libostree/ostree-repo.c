@@ -3839,10 +3839,6 @@ ostree_repo_pull_default_console_progress_changed (OstreeAsyncProgress *progress
   guint fetched_delta_parts;
   guint total_delta_parts;
 
-  /* Historical note; we used to treat this as a GSConsole instance */
-  if (user_data == NULL)
-    return;
-
   buf = g_string_new ("");
 
   status = ostree_async_progress_get_status (progress);
