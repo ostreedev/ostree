@@ -30,12 +30,14 @@ static char **opt_set;
 static gboolean opt_no_gpg_verify;
 static gboolean opt_if_not_exists;
 static char *opt_gpg_import;
+static char *opt_contenturl;
 
 static GOptionEntry option_entries[] = {
   { "set", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_set, "Set config option KEY=VALUE for remote", "KEY=VALUE" },
   { "no-gpg-verify", 0, 0, G_OPTION_ARG_NONE, &opt_no_gpg_verify, "Disable GPG verification", NULL },
   { "if-not-exists", 0, 0, G_OPTION_ARG_NONE, &opt_if_not_exists, "Do nothing if the provided remote exists", NULL },
   { "gpg-import", 0, 0, G_OPTION_ARG_FILENAME, &opt_gpg_import, "Import GPG key from FILE", "FILE" },
+  { "contenturl", 0, 0, G_OPTION_ARG_STRING, &opt_contenturl, "Use URL when fetching content", "URL" },
   { NULL }
 };
 
@@ -82,6 +84,14 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
                              "branches",
                              g_variant_new_variant (g_variant_new_strv ((const char*const*)branchesp->pdata, -1)));
     }
+
+  /* We could just make users use --set instead for this since it's a string,
+   * but e.g. when mirrorlist support is added, it'll be kinda awkward to type:
+   *   --set=contenturl=mirrorlist=... */
+
+  if (opt_contenturl != NULL)
+    g_variant_builder_add (optbuilder, "{s@v}",
+                           "contenturl", g_variant_new_variant (g_variant_new_string (opt_contenturl)));
 
   for (iter = opt_set; iter && *iter; iter++)
     {
