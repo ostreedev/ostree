@@ -70,7 +70,7 @@ configuration, and the new deployment (based on its `/usr/etc`).
 
 At this point, a new deployment directory has been created as a
 hardlink farm; the running system is untouched, and the bootloader
-configuration is untouched.  We want to add this deployment o the
+configuration is untouched.  We want to add this deployment to the
 "deployment list".
 
 To support a more general case, OSTree supports atomic transitioning
