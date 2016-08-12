@@ -102,10 +102,16 @@ main(int argc, char *argv[])
   struct stat stbuf;
   int we_mounted_proc = 0;
 
-  if (argc < 2)
-    root_arg = "/";
+  if (getpid() == 1)
+    {
+      root_arg = "/";
+    }
   else
-    root_arg = argv[1];
+    {
+      if (argc < 2)
+        err (EXIT_FAILURE, "usage: ostree-prepare-root SYSROOT");
+      root_arg = argv[1];
+    }
 
   if (stat ("/proc/cmdline", &stbuf) < 0)
     {
