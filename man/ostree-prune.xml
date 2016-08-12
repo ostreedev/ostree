@@ -95,7 +95,7 @@ Boston, MA 02111-1307, USA.
                 <listitem><para>
 		  All commits older than DATE will be
                   pruned.  The format of DATE is the same as that
-                  accepted by GNU <program>date</program> utility - for more information
+                  accepted by GNU <literal>date</literal> utility - for more information
                   see <literal>info date</literal>.
 		</para></listitem>
             </varlistentry>
