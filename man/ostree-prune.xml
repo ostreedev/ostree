@@ -93,8 +93,11 @@ Boston, MA 02111-1307, USA.
                 <term><option>--keep-younger-than</option>=DATE</term>
 
                 <listitem><para>
-                    All commits older than DATE will be pruned.
-                </para></listitem>
+		  All commits older than DATE will be
+                  pruned.  The format of DATE is the same as that
+                  accepted by GNU <program>date</program> utility - for more information
+                  see <literal>info date</literal>.
+		</para></listitem>
             </varlistentry>
 
             <varlistentry>
