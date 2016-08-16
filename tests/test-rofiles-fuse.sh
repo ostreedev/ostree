@@ -30,7 +30,7 @@ echo "1..6"
 
 mkdir mnt
 
-$OSTREE checkout test2 checkout-test2
+$OSTREE checkout -U test2 checkout-test2
 
 rofiles-fuse checkout-test2 mnt
 cleanup_fuse() {
