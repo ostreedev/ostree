@@ -39,7 +39,6 @@
 
 // Global to store our read-write path
 static int basefd = -1;
-static GHashTable *created_devino_hash = NULL;
 
 static inline const char *
 ENSURE_RELPATH (const char *path)
@@ -48,51 +47,6 @@ ENSURE_RELPATH (const char *path)
   if (*path == 0)
     return ".";
   return path;
-}
-
-typedef struct {
-  dev_t dev;
-  ino_t ino;
-} DevIno;
-
-static guint
-devino_hash (gconstpointer a)
-{
-  DevIno *a_i = (gpointer)a;
-  return (guint) (a_i->dev + a_i->ino);
-}
-
-static int
-devino_equal (gconstpointer   a,
-              gconstpointer   b)
-{
-  DevIno *a_i = (gpointer)a;
-  DevIno *b_i = (gpointer)b;
-  return a_i->dev == b_i->dev
-    && a_i->ino == b_i->ino;
-}
-
-static gboolean
-devino_set_contains (dev_t dev, ino_t ino)
-{
-  DevIno devino = { dev, ino };
-  return g_hash_table_contains (created_devino_hash, &devino);
-}
-
-static gboolean
-devino_set_insert (dev_t dev, ino_t ino)
-{
-  DevIno *devino = g_new (DevIno, 1);
-  devino->dev = dev;
-  devino->ino = ino;
-  return g_hash_table_add (created_devino_hash, devino);
-}
-
-static gboolean
-devino_set_remove (dev_t dev, ino_t ino)
-{
-  DevIno devino = { dev, ino };
-  return g_hash_table_remove (created_devino_hash, &devino);
 }
 
 static int
@@ -188,15 +142,7 @@ callback_mkdir (const char *path, mode_t mode)
 static int
 callback_unlink (const char *path)
 {
-  struct stat stbuf;
   path = ENSURE_RELPATH (path);
-
-  if (fstatat (basefd, path, &stbuf, AT_SYMLINK_NOFOLLOW) == 0)
-    {
-      if (!S_ISDIR (stbuf.st_mode))
-	devino_set_remove (stbuf.st_dev, stbuf.st_ino);
-    }
-
   if (unlinkat (basefd, path, 0) == -1)
     return -errno;
   return 0;
@@ -250,6 +196,12 @@ callback_link (const char *from, const char *to)
   return 0;
 }
 
+static gboolean
+stbuf_is_regfile_hardlinked (struct stat *stbuf)
+{
+  return S_ISREG (stbuf->st_mode) && stbuf->st_nlink > 1;
+}
+
 static int
 can_write (const char *path)
 {
@@ -261,11 +213,8 @@ can_write (const char *path)
       else
 	return -errno;
     }
-  if (!S_ISDIR (stbuf.st_mode))
-    {
-      if (!devino_set_contains (stbuf.st_dev, stbuf.st_ino))
-        return -EROFS;
-    }
+  if (stbuf_is_regfile_hardlinked (&stbuf))
+    return -EROFS;
   return 0;
 }
 
@@ -334,41 +283,49 @@ callback_utime (const char *path, struct utimbuf *buf)
 static int
 do_open (const char *path, mode_t mode, struct fuse_file_info *finfo)
 {
-  const int flags = finfo->flags & O_ACCMODE;
   int fd;
   struct stat stbuf;
 
-  /* Support read only opens */
-  G_STATIC_ASSERT (O_RDONLY == 0);
-
   path = ENSURE_RELPATH (path);
 
-  if (flags == 0)
-    fd = openat (basefd, path, flags);
+  if ((finfo->flags & O_ACCMODE) == O_RDONLY)
+    {
+      /* Read */
+      fd = openat (basefd, path, finfo->flags);
+      if (fd == -1)
+        return -errno;
+    }
   else
     {
-      const int forced_excl_flags = flags | O_CREAT | O_EXCL;
-      /* Do an exclusive open, don't allow writable fds for existing
-	 files */
-      fd = openat (basefd, path, forced_excl_flags, mode);
-      /* If they didn't specify O_EXCL, give them EROFS if the file
-       * exists.
-       */
-      if (fd == -1 && (flags & O_EXCL) == 0)
-	{
-	  if (errno == EEXIST)
-	    errno = EROFS;
-	}
-      else if (fd != -1)
-	{
-	  if (fstat (fd, &stbuf) == -1)
-	    return -errno;
-	  devino_set_insert (stbuf.st_dev, stbuf.st_ino);
-	}
-    }
+      /* Write */
 
-  if (fd == -1)
-    return -errno;
+      /* We need to specially handle O_TRUNC */
+      fd = openat (basefd, path, finfo->flags & ~O_TRUNC, mode);
+      if (fd == -1)
+        return -errno;
+
+      if (fstat (fd, &stbuf) == -1)
+        {
+          (void) close (fd);
+          return -errno;
+        }
+
+      if (stbuf_is_regfile_hardlinked (&stbuf))
+        {
+          (void) close (fd);
+          return -EROFS;
+        }
+
+      /* Handle O_TRUNC here only after verifying hardlink state */
+      if (finfo->flags & O_TRUNC)
+        {
+          if (ftruncate (fd, 0) == -1)
+            {
+              (void) close (fd);
+              return -errno;
+            }
+        }
+    }
 
   finfo->fh = fd;
 
@@ -593,8 +550,6 @@ main (int argc, char *argv[])
       fprintf (stderr, "see `%s -h' for usage\n", argv[0]);
       exit (EXIT_FAILURE);
     }
-
-  created_devino_hash = g_hash_table_new_full (devino_hash, devino_equal, g_free, NULL); 
 
   fuse_main (args.argc, args.argv, &callback_oper, NULL);
 
