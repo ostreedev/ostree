@@ -21,7 +21,9 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
+export OSTREE_BOOT_PARTITION="/boot"
+export OSTREE_GRUB2_EXEC="builtin"
 # Exports OSTREE_SYSROOT so --sysroot not needed.
-setup_os_repository "archive-z2" "grub2 ostree-grub-generator"
+setup_os_repository "archive-z2" "grub2"
 
 . $(dirname $0)/admin-test.sh

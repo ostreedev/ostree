@@ -273,17 +273,8 @@ setup_os_boot_uboot() {
 }
 
 setup_os_boot_grub2() {
-    grub2_options=$1
     mkdir -p sysroot/boot/grub2/
     ln -s ../loader/grub.cfg sysroot/boot/grub2/grub.cfg
-    export OSTREE_BOOT_PARTITION="/boot"
-    case "$grub2_options" in
-        *ostree-grub-generator*)
-            cp ${test_srcdir}/ostree-grub-generator ${test_tmpdir}
-            chmod +x ${test_tmpdir}/ostree-grub-generator
-            export OSTREE_GRUB2_EXEC=${test_tmpdir}/ostree-grub-generator
-            ;;
-    esac
 }
 
 setup_os_repository () {
@@ -329,6 +320,11 @@ EOF
     mkdir -p usr/etc/testdirectory
     echo "a default daemon file" > usr/etc/testdirectory/test
 
+    # Install grub generator in the dedicated path
+    mkdir -p usr/lib/ostree/
+    cp ${test_srcdir}/ostree-grub-generator usr/lib/ostree/
+    chmod +x usr/lib/ostree/ostree-grub-generator
+
     ${CMD_PREFIX} ostree --repo=${test_tmpdir}/testos-repo commit --add-metadata-string version=1.0.9 -b testos/buildmaster/x86_64-runtime -s "Build"
     
     # Ensure these commits have distinct second timestamps
@@ -358,8 +354,8 @@ EOF
         "uboot")
 	    setup_os_boot_uboot
             ;;
-        *grub2*)
-        setup_os_boot_grub2 "${bootmode}"
+        "grub2")
+        setup_os_boot_grub2
             ;;
     esac
     
