@@ -300,6 +300,7 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   g_autoptr(GFile) config_path_efi_dir = NULL;
   g_autofree char *grub2_mkconfig_chroot = NULL;
   gboolean use_system_grub2_mkconfig = TRUE;
+  char generator_path[PATH_MAX];
   const gchar *grub_exec = NULL;
 
 #ifdef USE_BUILTIN_GRUB2_MKCONFIG
@@ -315,7 +316,45 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
         use_system_grub2_mkconfig = FALSE;
     }
   else
-    grub_exec = use_system_grub2_mkconfig ? GRUB2_MKCONFIG_PATH : "/usr/lib/ostree/ostree-grub-generator";
+    {
+      if (use_system_grub2_mkconfig)
+        {
+          grub_exec = GRUB2_MKCONFIG_PATH;
+        }
+      else
+        {
+          g_autoptr(GPtrArray) boot_loader_configs = NULL;
+          OstreeBootconfigParser *config;
+          g_autofree char *ostree_arg = NULL;
+          g_autofree char *sysroot_abspath = g_file_get_path (self->sysroot->path);
+          struct stat stbuf;
+
+          if (!_ostree_sysroot_read_boot_loader_configs (self->sysroot, bootversion, &boot_loader_configs,
+                                                         cancellable, error))
+            goto out;
+
+          config = boot_loader_configs->pdata[0];
+          ostree_arg = get_ostree_kernel_arg_from_config (config);
+          if (!ostree_arg)
+            {
+              g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                                   "No ostree= kernel argument found in boot loader configuration file");
+              goto out;
+            }
+
+          snprintf (generator_path, sizeof(generator_path), "%s/%s/usr/lib/ostree/ostree-grub-generator",
+                    sysroot_abspath, ostree_arg);
+
+          if (stat (generator_path, &stbuf) != 0)
+            {
+              glnx_set_prefix_error_from_errno (error, "%s", generator_path);
+              goto out;
+            }
+
+          grub_exec = generator_path;
+        }
+    }
+
 
   if (use_system_grub2_mkconfig && ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
       && g_file_has_parent (self->sysroot->path, NULL))

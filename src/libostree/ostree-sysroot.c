@@ -752,7 +752,7 @@ parse_deployment (OstreeSysroot       *self,
   return ret;
 }
 
-static char *
+char *
 get_ostree_kernel_arg_from_config (OstreeBootconfigParser  *config)
 {
   const char *options;

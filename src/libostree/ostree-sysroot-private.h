@@ -121,4 +121,8 @@ gboolean _ostree_sysroot_piecemeal_cleanup (OstreeSysroot *sysroot,
                                             GCancellable *cancellable,
                                             GError **error);
 
+/* NOTE: This should be generalize and moved into ostree-kernel-args.h API */
+char *
+get_ostree_kernel_arg_from_config (OstreeBootconfigParser  *config);
+
 G_END_DECLS
