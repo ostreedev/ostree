@@ -315,6 +315,31 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
   if (use_system_grub2_mkconfig)
     {
       grub_exec = GRUB2_MKCONFIG_PATH;
+      if (ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
+          && g_file_has_parent (self->sysroot->path, NULL))
+        {
+          g_autoptr(GPtrArray) deployments = NULL;
+          OstreeDeployment *tool_deployment;
+          g_autoptr(GFile) tool_deployment_root = NULL;
+
+          deployments = ostree_sysroot_get_deployments (self->sysroot);
+
+          g_assert_cmpint (deployments->len, >, 0);
+
+          tool_deployment = deployments->pdata[0];
+
+          /* Sadly we have to execute code to generate the bootloader configuration.
+           * If we're in a booted deployment, we just don't chroot.
+           *
+           * In the case of an installer, use the first deployment root (which
+           * will most likely be the only one.
+           *
+           * This all only applies if we're not using the builtin
+           * generator, which handles being run outside of the root.
+           */
+          tool_deployment_root = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
+          grub2_mkconfig_chroot = g_file_get_path (tool_deployment_root);
+        }
     }
   else
     {
@@ -347,32 +372,6 @@ _ostree_bootloader_grub2_write_config (OstreeBootloader      *bootloader,
         }
 
       grub_exec = generator_path;
-    }
-
-  if (use_system_grub2_mkconfig && ostree_sysroot_get_booted_deployment (self->sysroot) == NULL
-      && g_file_has_parent (self->sysroot->path, NULL))
-    {
-      g_autoptr(GPtrArray) deployments = NULL;
-      OstreeDeployment *tool_deployment;
-      g_autoptr(GFile) tool_deployment_root = NULL;
-
-      deployments = ostree_sysroot_get_deployments (self->sysroot);
-
-      g_assert_cmpint (deployments->len, >, 0);
-
-      tool_deployment = deployments->pdata[0];
-
-      /* Sadly we have to execute code to generate the bootloader configuration.
-       * If we're in a booted deployment, we just don't chroot.
-       *
-       * In the case of an installer, use the first deployment root (which
-       * will most likely be the only one.
-       *
-       * This all only applies if we're not using the builtin
-       * generator, which handles being run outside of the root.
-       */
-      tool_deployment_root = ostree_sysroot_get_deployment_directory (self->sysroot, tool_deployment);
-      grub2_mkconfig_chroot = g_file_get_path (tool_deployment_root);
     }
 
   if (self->is_efi)
