@@ -2211,8 +2211,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
   gboolean require_static_deltas = FALSE;
-  gboolean opt_gpg_verify = FALSE;
-  gboolean opt_gpg_verify_summary = FALSE;
+  gboolean opt_gpg_verify_set = FALSE;
+  gboolean opt_gpg_verify_summary_set = FALSE;
   const char *url_override = NULL;
 
   if (options)
@@ -2224,8 +2224,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
-      (void) g_variant_lookup (options, "gpg-verify", "b", &opt_gpg_verify);
-      (void) g_variant_lookup (options, "gpg-verify-summary", "b", &opt_gpg_verify_summary);
+      opt_gpg_verify_set =
+        g_variant_lookup (options, "gpg-verify", "b", &pull_data->gpg_verify);
+      opt_gpg_verify_summary_set =
+        g_variant_lookup (options, "gpg-verify-summary", "b", &pull_data->gpg_verify_summary);
       (void) g_variant_lookup (options, "depth", "i", &pull_data->maxdepth);
       (void) g_variant_lookup (options, "disable-static-deltas", "b", &disable_static_deltas);
       (void) g_variant_lookup (options, "require-static-deltas", "b", &require_static_deltas);
@@ -2286,9 +2288,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* For compatibility with pull-local, don't gpg verify local
        * pulls by default.
        */
-      pull_data->gpg_verify = opt_gpg_verify;
-      pull_data->gpg_verify_summary = opt_gpg_verify_summary;
-
       if ((pull_data->gpg_verify || pull_data->gpg_verify_summary) &&
           pull_data->remote_name == NULL)
         {
@@ -2300,12 +2299,18 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   else
     {
       pull_data->remote_name = g_strdup (remote_name_or_baseurl);
-      if (!ostree_repo_remote_get_gpg_verify (self, pull_data->remote_name,
-                                              &pull_data->gpg_verify, error))
-        goto out;
-      if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
-                                                      &pull_data->gpg_verify_summary, error))
-        goto out;
+
+      /* Fetch GPG verification settings from remote if it wasn't already
+       * explicitly set in the options. */
+      if (!opt_gpg_verify_set)
+        if (!ostree_repo_remote_get_gpg_verify (self, pull_data->remote_name,
+                                                &pull_data->gpg_verify, error))
+          goto out;
+
+      if (!opt_gpg_verify_summary_set)
+        if (!ostree_repo_remote_get_gpg_verify_summary (self, pull_data->remote_name,
+                                                        &pull_data->gpg_verify_summary, error))
+          goto out;
     }
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
