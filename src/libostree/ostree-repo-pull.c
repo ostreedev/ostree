@@ -2159,7 +2159,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
 /**
  * ostree_repo_pull_with_options:
  * @self: Repo
- * @remote_name: Name of remote
+ * @remote_name_or_baseurl: Name of remote or file:// url
  * @options: A GVariant a{sv} with an extensible set of flags.
  * @progress: (allow-none): Progress
  * @cancellable: Cancellable
