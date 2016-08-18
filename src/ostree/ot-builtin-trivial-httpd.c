@@ -77,9 +77,15 @@ httpd_log (OtTrivialHttpd *httpd, const gchar *format, ...)
   if (!httpd->log)
     return;
 
-  str = g_string_new (NULL);
+  {
+    g_autoptr(GDateTime) now = g_date_time_new_now_local ();
+    g_autofree char *timestamp = g_date_time_format (now, "%F %T");
+    str = g_string_new (timestamp);
+    g_string_append_printf (str, ".%06d - ", g_date_time_get_microsecond (now));
+  }
+
   va_start (args, format);
-  g_string_vprintf (str, format, args);
+  g_string_append_vprintf (str, format, args);
   va_end (args);
 
   g_output_stream_write_all (httpd->log, str->str, str->len, &written, NULL, NULL);
