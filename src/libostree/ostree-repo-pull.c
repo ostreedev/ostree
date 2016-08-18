@@ -2676,7 +2676,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       if (G_UNLIKELY (errno != EEXIST))
         {
           glnx_set_error_from_errno (error);
-          return FALSE;
+          goto out;
         }
     }
 
