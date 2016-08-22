@@ -593,7 +593,6 @@ gboolean
 _ostree_metalink_request_sync (OstreeMetalink        *self,
                                SoupURI               **out_target_uri,
                                GBytes                **out_data,
-                               SoupURI               **fetching_sync_uri,
                                GCancellable          *cancellable,
                                GError                **error)
 {
@@ -603,9 +602,6 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   GBytes *out_contents = NULL;
   gsize len;
   const guint8 *data;
-
-  if (fetching_sync_uri != NULL)
-    *fetching_sync_uri = _ostree_metalink_get_uri (self);
 
   mainctx = g_main_context_new ();
   g_main_context_push_thread_default (mainctx);
