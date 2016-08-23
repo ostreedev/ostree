@@ -95,7 +95,45 @@ create_config_from_boot_loader_entries (OstreeBootloaderUboot     *self,
 
   val = ostree_bootconfig_parser_get (config, "options");
   if (val)
-    g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
+    {
+      glnx_fd_close int uenv_fd = -1;
+      __attribute__((cleanup(_ostree_kernel_args_cleanup))) OstreeKernelArgs *kargs = NULL;
+      const char *uenv_path = NULL;
+      const char *ostree_arg = NULL;
+
+      g_ptr_array_add (new_lines, g_strdup_printf ("bootargs=%s", val));
+
+      /* Append system's uEnv.txt, if it exists in $deployment/usr/lib/ostree-boot/ */
+      kargs = _ostree_kernel_args_from_string (val);
+      ostree_arg = _ostree_kernel_args_get_last_value (kargs, "ostree");
+      if (!ostree_arg)
+      {
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "No ostree= kernel argument found in boot loader configuration file");
+        return FALSE;
+      }
+      ostree_arg += 1;
+      uenv_path = glnx_strjoina (ostree_arg, "/usr/lib/ostree-boot/uEnv.txt");
+      uenv_fd = openat (self->sysroot->sysroot_fd, uenv_path, O_CLOEXEC | O_RDONLY);
+      if (uenv_fd != -1)
+        {
+          char *uenv = glnx_fd_readall_utf8 (uenv_fd, NULL, cancellable, error);
+          if (!uenv)
+            {
+              g_prefix_error (error, "Reading %s: ", uenv_path);
+              return FALSE;
+            }
+          g_ptr_array_add (new_lines, uenv);
+        }
+      else
+        {
+          if (errno != ENOENT)
+            {
+              g_prefix_error (error, "openat %s: ", uenv_path);
+              return FALSE;
+            }
+        }
+    }
 
   return TRUE;
 }
