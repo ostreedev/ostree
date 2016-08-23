@@ -19,6 +19,8 @@
 
 set -euo pipefail
 
+echo "1..16"
+
 . $(dirname $0)/libtest.sh
 
 # Exports OSTREE_SYSROOT so --sysroot not needed.
