@@ -74,7 +74,9 @@ typedef struct {
   volatile int ref_count;
 
   ThreadClosure *thread_closure;
-  SoupURI *uri;
+  GPtrArray *mirrorlist; /* list of base URIs */
+  char *filename; /* relative name to fetch or NULL */
+  guint mirrorlist_idx;
 
   OstreeFetcherState state;
 
@@ -204,7 +206,8 @@ pending_uri_unref (OstreeFetcherPendingURI *pending)
 
   g_clear_pointer (&pending->thread_closure, thread_closure_unref);
 
-  soup_uri_free (pending->uri);
+  g_clear_pointer (&pending->mirrorlist, g_ptr_array_unref);
+  g_free (pending->filename);
   g_clear_object (&pending->request);
   g_clear_object (&pending->request_body);
   g_free (pending->out_tmpfile);
@@ -354,6 +357,31 @@ session_thread_process_pending_queue (ThreadClosure *thread_closure)
 }
 
 static void
+create_pending_soup_request (OstreeFetcherPendingURI  *pending,
+                             GError                  **error)
+{
+  g_autofree char *uristr = NULL;
+  SoupURI *next_mirror = NULL;
+  SoupURI *uri = NULL;
+
+  g_assert (pending->mirrorlist);
+  g_assert (pending->mirrorlist_idx < pending->mirrorlist->len);
+
+  next_mirror = g_ptr_array_index (pending->mirrorlist,
+                                   pending->mirrorlist_idx);
+  uristr = g_build_filename (soup_uri_get_path (next_mirror),
+                             pending->filename /* may be NULL */, NULL);
+  uri = soup_uri_copy (next_mirror);
+  soup_uri_set_path (uri, uristr);
+
+  g_clear_object (&pending->request);
+
+  pending->request = soup_session_request_uri (pending->thread_closure->session,
+                                               uri, error);
+  soup_uri_free (uri);
+}
+
+static void
 session_thread_request_uri (ThreadClosure *thread_closure,
                             gpointer data)
 {
@@ -365,10 +393,7 @@ session_thread_request_uri (ThreadClosure *thread_closure,
   pending = g_task_get_task_data (task);
   cancellable = g_task_get_cancellable (task);
 
-  pending->request = soup_session_request_uri (thread_closure->session,
-                                               pending->uri,
-                                               &local_error);
-
+  create_pending_soup_request (pending, &local_error);
   if (local_error != NULL)
     {
       g_task_return_error (task, local_error);
@@ -384,7 +409,8 @@ session_thread_request_uri (ThreadClosure *thread_closure,
     }
   else
     {
-      g_autofree char *uristring = soup_uri_to_string (pending->uri, FALSE);
+      g_autofree char *uristring
+        = soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
       g_autofree char *tmpfile = NULL;
       struct stat stbuf;
       gboolean exists;
@@ -463,6 +489,8 @@ ostree_fetcher_session_thread (gpointer data)
                                                           SOUP_SESSION_IDLE_TIMEOUT, 60,
                                                           NULL);
 
+  /* XXX: Now that we have mirrorlist support, we could make this even smarter
+   * by spreading requests across mirrors. */
   g_object_get (closure->session, "max-conns-per-host", &max_conns, NULL);
   if (max_conns < 8)
     {
@@ -856,7 +884,8 @@ on_stream_read (GObject        *object,
           if (bytes_read > pending->max_size ||
               (bytes_read + pending->current_size) > pending->max_size)
             {
-              g_autofree char *uristr = soup_uri_to_string (pending->uri, FALSE);
+              g_autofree char *uristr =
+                soup_uri_to_string (soup_request_get_uri (pending->request), FALSE);
               local_error = g_error_new (G_IO_ERROR, G_IO_ERROR_FAILED,
                                          "URI %s exceeded maximum size of %" G_GUINT64_FORMAT " bytes",
                                          uristr, pending->max_size);
@@ -937,20 +966,43 @@ on_request_sent (GObject        *object,
         }
       else if (!SOUP_STATUS_IS_SUCCESSFUL (msg->status_code))
         {
-          GIOErrorEnum code;
-          switch (msg->status_code)
+          /* is there another mirror we can try? */
+          if (pending->mirrorlist_idx + 1 < pending->mirrorlist->len)
             {
-            case 404:
-            case 410:
-              code = G_IO_ERROR_NOT_FOUND;
-              break;
-            default:
-              code = G_IO_ERROR_FAILED;
+              pending->mirrorlist_idx++;
+              create_pending_soup_request (pending, &local_error);
+              if (local_error != NULL)
+                goto out;
+
+              (void) g_input_stream_close (pending->request_body, NULL, NULL);
+              g_queue_insert_sorted (&pending->thread_closure->pending_queue,
+                                     g_object_ref (task), pending_task_compare,
+                                     NULL);
+              remove_pending_rerun_queue (pending);
             }
-          local_error = g_error_new (G_IO_ERROR, code,
-                                     "Server returned status %u: %s",
-                                     msg->status_code,
-                                     soup_status_get_phrase (msg->status_code));
+          else
+            {
+              GIOErrorEnum code;
+              switch (msg->status_code)
+                {
+                case 404:
+                case 410:
+                  code = G_IO_ERROR_NOT_FOUND;
+                  break;
+                default:
+                  code = G_IO_ERROR_FAILED;
+                }
+
+              local_error = g_error_new (G_IO_ERROR, code,
+                                         "Server returned status %u: %s",
+                                         msg->status_code,
+                                         soup_status_get_phrase (msg->status_code));
+
+              if (pending->mirrorlist->len > 1)
+                g_prefix_error (&local_error,
+                                "All %u mirrors failed. Last error was: ",
+                                pending->mirrorlist->len);
+            }
           goto out;
         }
     }
@@ -1013,27 +1065,30 @@ on_request_sent (GObject        *object,
 }
 
 static void
-ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
-                                     SoupURI               *uri,
-                                     gboolean               is_stream,
-                                     guint64                max_size,
-                                     int                    priority,
-                                     GCancellable          *cancellable,
-                                     GAsyncReadyCallback    callback,
-                                     gpointer               user_data,
-                                     gpointer               source_tag)
+ostree_fetcher_mirrored_request_internal (OstreeFetcher         *self,
+                                          GPtrArray             *mirrorlist,
+                                          const char            *filename,
+                                          gboolean               is_stream,
+                                          guint64                max_size,
+                                          int                    priority,
+                                          GCancellable          *cancellable,
+                                          GAsyncReadyCallback    callback,
+                                          gpointer               user_data,
+                                          gpointer               source_tag)
 {
   g_autoptr(GTask) task = NULL;
   OstreeFetcherPendingURI *pending;
 
   g_return_if_fail (OSTREE_IS_FETCHER (self));
-  g_return_if_fail (uri != NULL);
+  g_return_if_fail (mirrorlist != NULL);
+  g_return_if_fail (mirrorlist->len > 0);
 
   /* SoupRequest is created in session thread. */
   pending = g_new0 (OstreeFetcherPendingURI, 1);
   pending->ref_count = 1;
   pending->thread_closure = thread_closure_ref (self->thread_closure);
-  pending->uri = soup_uri_copy (uri);
+  pending->mirrorlist = g_ptr_array_ref (mirrorlist);
+  pending->filename = g_strdup (filename);
   pending->max_size = max_size;
   pending->is_stream = is_stream;
 
@@ -1051,53 +1106,57 @@ ostree_fetcher_request_uri_internal (OstreeFetcher         *self,
 }
 
 void
-_ostree_fetcher_request_uri_with_partial_async (OstreeFetcher         *self,
-                                               SoupURI               *uri,
-                                               guint64                max_size,
-                                               int                    priority,
-                                               GCancellable          *cancellable,
-                                               GAsyncReadyCallback    callback,
-                                               gpointer               user_data)
+_ostree_fetcher_mirrored_request_with_partial_async (OstreeFetcher         *self,
+                                                     GPtrArray             *mirrorlist,
+                                                     const char            *filename,
+                                                     guint64                max_size,
+                                                     int                    priority,
+                                                     GCancellable          *cancellable,
+                                                     GAsyncReadyCallback    callback,
+                                                     gpointer               user_data)
 {
-  ostree_fetcher_request_uri_internal (self, uri, FALSE, max_size, priority, cancellable,
-                                       callback, user_data,
-                                       _ostree_fetcher_request_uri_with_partial_async);
+  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, FALSE,
+                                            max_size, priority, cancellable,
+                                            callback, user_data,
+                                            _ostree_fetcher_mirrored_request_with_partial_async);
 }
 
 char *
-_ostree_fetcher_request_uri_with_partial_finish (OstreeFetcher         *self,
-                                                GAsyncResult          *result,
-                                                GError               **error)
+_ostree_fetcher_mirrored_request_with_partial_finish (OstreeFetcher         *self,
+                                                      GAsyncResult          *result,
+                                                      GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        _ostree_fetcher_request_uri_with_partial_async), NULL);
+                        _ostree_fetcher_mirrored_request_with_partial_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
-ostree_fetcher_stream_uri_async (OstreeFetcher         *self,
-                                 SoupURI               *uri,
-                                 guint64                max_size,
-                                 int                    priority,
-                                 GCancellable          *cancellable,
-                                 GAsyncReadyCallback    callback,
-                                 gpointer               user_data)
+ostree_fetcher_stream_mirrored_uri_async (OstreeFetcher         *self,
+                                          GPtrArray             *mirrorlist,
+                                          const char            *filename,
+                                          guint64                max_size,
+                                          int                    priority,
+                                          GCancellable          *cancellable,
+                                          GAsyncReadyCallback    callback,
+                                          gpointer               user_data)
 {
-  ostree_fetcher_request_uri_internal (self, uri, TRUE, max_size, priority, cancellable,
-                                       callback, user_data,
-                                       ostree_fetcher_stream_uri_async);
+  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, TRUE,
+                                            max_size, priority, cancellable,
+                                            callback, user_data,
+                                            ostree_fetcher_stream_mirrored_uri_async);
 }
 
 static GInputStream *
-ostree_fetcher_stream_uri_finish (OstreeFetcher         *self,
-                                  GAsyncResult          *result,
-                                  GError               **error)
+ostree_fetcher_stream_mirrored_uri_finish (OstreeFetcher         *self,
+                                           GAsyncResult          *result,
+                                           GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        ostree_fetcher_stream_uri_async), NULL);
+                        ostree_fetcher_stream_mirrored_uri_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
@@ -1148,20 +1207,21 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_uri_finish ((OstreeFetcher*)object,
-                                                          result, data->error);
+  data->result_stream = ostree_fetcher_stream_mirrored_uri_finish ((OstreeFetcher*)object,
+                                                                    result, data->error);
   data->done = TRUE;
 }
 
 gboolean
-_ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
-                                       SoupURI        *uri,
-                                       gboolean        add_nul,
-                                       gboolean        allow_noent,
-                                       GBytes         **out_contents,
-                                       guint64        max_size,
-                                       GCancellable   *cancellable,
-                                       GError         **error)
+_ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
+                                            GPtrArray     *mirrorlist,
+                                            const char     *filename,
+                                            gboolean        add_nul,
+                                            gboolean        allow_noent,
+                                            GBytes         **out_contents,
+                                            guint64        max_size,
+                                            GCancellable   *cancellable,
+                                            GError         **error)
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
@@ -1182,10 +1242,8 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
   data.done = FALSE;
   data.error = error;
 
-  ostree_fetcher_stream_uri_async (fetcher, uri,
-                                   max_size,
-                                   OSTREE_FETCHER_DEFAULT_PRIORITY,
-                                   cancellable,
+  ostree_fetcher_stream_mirrored_uri_async (fetcher, mirrorlist, filename, max_size,
+                                   OSTREE_FETCHER_DEFAULT_PRIORITY, cancellable,
                                    fetch_uri_sync_on_complete, &data);
   while (!data.done)
     g_main_context_iteration (mainctx, TRUE);
@@ -1226,4 +1284,23 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
     g_main_context_pop_thread_default (mainctx);
   g_clear_object (&(data.result_stream));
   return ret;
+}
+
+/* Helper for callers who just want to fetch single one-off URIs */
+gboolean
+_ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
+                                       SoupURI        *uri,
+                                       gboolean        add_nul,
+                                       gboolean        allow_noent,
+                                       GBytes         **out_contents,
+                                       guint64        max_size,
+                                       GCancellable   *cancellable,
+                                       GError         **error)
+{
+  g_autoptr(GPtrArray) mirrorlist = g_ptr_array_new ();
+  g_ptr_array_add (mirrorlist, uri); /* no transfer */
+  return _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, NULL,
+                                                     add_nul, allow_noent,
+                                                     out_contents, max_size,
+                                                     cancellable, error);
 }

@@ -46,8 +46,8 @@ typedef struct {
   char         *remote_name;
   OstreeRepoMode remote_mode;
   OstreeFetcher *fetcher;
-  SoupURI      *base_uri;
-  SoupURI      *base_content_uri;
+  GPtrArray     *meta_mirrorlist;    /* List of base URIs for fetching metadata */
+  GPtrArray     *content_mirrorlist; /* List of base URIs for fetching content */
   OstreeRepo   *remote_repo_local;
 
   GMainContext    *main_context;
@@ -137,11 +137,6 @@ typedef struct {
   guint recursion_depth;
 } ScanObjectQueueData;
 
-static SoupURI *
-suburi_new (SoupURI   *base,
-            const char *first,
-            ...) G_GNUC_NULL_TERMINATED;
-
 static void queue_scan_one_metadata_object (OtPullData         *pull_data,
                                             const char         *csum,
                                             OstreeObjectType    objtype,
@@ -158,39 +153,6 @@ static gboolean scan_one_metadata_object_c (OtPullData         *pull_data,
                                             guint               recursion_depth,
                                             GCancellable       *cancellable,
                                             GError            **error);
-
-static SoupURI *
-suburi_new (SoupURI   *base,
-            const char *first,
-            ...)
-{
-  va_list args;
-  GPtrArray *arg_array;
-  const char *arg;
-  char *subpath;
-  SoupURI *ret;
-
-  arg_array = g_ptr_array_new ();
-  g_ptr_array_add (arg_array, (char*)soup_uri_get_path (base));
-  g_ptr_array_add (arg_array, (char*)first);
-
-  va_start (args, first);
-  
-  while ((arg = va_arg (args, const char *)) != NULL)
-    g_ptr_array_add (arg_array, (char*)arg);
-  g_ptr_array_add (arg_array, NULL);
-
-  subpath = g_build_filenamev ((char**)arg_array->pdata);
-  g_ptr_array_unref (arg_array);
-  
-  ret = soup_uri_copy (base);
-  soup_uri_set_path (ret, subpath);
-  g_free (subpath);
-  
-  va_end (args);
-  
-  return ret;
-}
 
 static gboolean
 update_progress (gpointer user_data)
@@ -346,21 +308,23 @@ typedef struct {
 } OstreeFetchUriSyncData;
 
 static gboolean
-fetch_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
-                              SoupURI     *uri,
-                              char       **out_contents,
-                              GCancellable  *cancellable,
-                              GError     **error)
+fetch_mirrored_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
+                                       GPtrArray      *mirrorlist,
+                                       const char     *filename,
+                                       char          **out_contents,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) bytes = NULL;
   g_autofree char *ret_contents = NULL;
   gsize len;
 
-  if (!_ostree_fetcher_request_uri_to_membuf (fetcher, uri, TRUE,
-                                              FALSE, &bytes,
-                                              OSTREE_MAX_METADATA_SIZE,
-                                              cancellable, error))
+  if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
+                                                   filename, TRUE, FALSE,
+                                                   &bytes,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   cancellable, error))
     goto out;
 
   ret_contents = g_bytes_unref_to_data (bytes, &len);
@@ -377,6 +341,20 @@ fetch_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
   return ret;
+}
+
+static gboolean
+fetch_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
+                              SoupURI        *uri,
+                              char          **out_contents,
+                              GCancellable   *cancellable,
+                              GError        **error)
+{
+  g_autoptr(GPtrArray) mirrorlist = g_ptr_array_new ();
+  g_ptr_array_add (mirrorlist, uri); /* no transfer */
+  return fetch_mirrored_uri_contents_utf8_sync (fetcher, mirrorlist,
+                                                NULL, out_contents,
+                                                cancellable, error);
 }
 
 static gboolean
@@ -545,12 +523,14 @@ fetch_ref_contents (OtPullData    *pull_data,
 {
   gboolean ret = FALSE;
   g_autofree char *ret_contents = NULL;
-  SoupURI *target_uri = NULL;
+  g_autofree char *filename = NULL;
 
-  target_uri = suburi_new (pull_data->base_uri, "refs", "heads", ref, NULL);
+  filename = g_build_filename ("refs", "heads", ref, NULL);
   
-  if (!fetch_uri_contents_utf8_sync (pull_data->fetcher, target_uri,
-                                     &ret_contents, cancellable, error))
+  if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
+                                              pull_data->meta_mirrorlist,
+                                              filename, &ret_contents,
+                                              cancellable, error))
     goto out;
 
   g_strchomp (ret_contents);
@@ -561,8 +541,6 @@ fetch_ref_contents (OtPullData    *pull_data,
   ret = TRUE;
   ot_transfer_out_value (out_contents, &ret_contents);
  out:
-  if (target_uri)
-    soup_uri_free (target_uri);
   return ret;
 }
 
@@ -670,7 +648,7 @@ content_fetch_on_complete (GObject        *object,
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
@@ -808,7 +786,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -953,7 +931,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  temp_path = _ostree_fetcher_request_uri_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
@@ -1292,12 +1270,12 @@ enqueue_one_object_request (OtPullData        *pull_data,
                             gboolean           is_detached_meta,
                             gboolean           object_is_stored)
 {
-  SoupURI *obj_uri = NULL;
+  g_autofree char *obj_subpath = NULL;
   gboolean is_meta;
   FetchObjectData *fetch_data;
-  g_autofree char *objpath = NULL;
   guint64 *expected_max_size_p;
   guint64 expected_max_size;
+  GPtrArray *mirrorlist = NULL;
 
   g_debug ("queuing fetch of %s.%s%s", checksum,
            ostree_object_type_to_string (objtype),
@@ -1307,12 +1285,13 @@ enqueue_one_object_request (OtPullData        *pull_data,
     {
       char buf[_OSTREE_LOOSE_PATH_MAX];
       _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, pull_data->remote_mode);
-      obj_uri = suburi_new (pull_data->base_uri, "objects", buf, NULL);
+      obj_subpath = g_build_filename ("objects", buf, NULL);
+      mirrorlist = pull_data->meta_mirrorlist;
     }
   else
     {
-      objpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
-      obj_uri = suburi_new (pull_data->base_content_uri, objpath, NULL);
+      obj_subpath = _ostree_get_relative_object_path (checksum, objtype, TRUE);
+      mirrorlist = pull_data->content_mirrorlist;
     }
 
   is_meta = OSTREE_OBJECT_TYPE_IS_META (objtype);
@@ -1340,13 +1319,12 @@ enqueue_one_object_request (OtPullData        *pull_data,
   else
     expected_max_size = 0;
 
-  _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, obj_uri,
-                                                  expected_max_size,
-                                                  is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
-                                                          : OSTREE_REPO_PULL_CONTENT_PRIORITY,
-                                                  pull_data->cancellable,
-                                                  is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
-  soup_uri_free (obj_uri);
+  _ostree_fetcher_mirrored_request_with_partial_async (pull_data->fetcher, mirrorlist,
+                                                       obj_subpath, expected_max_size,
+                                                       is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
+                                                               : OSTREE_REPO_PULL_CONTENT_PRIORITY,
+                                                       pull_data->cancellable,
+                                                       is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
 }
 
 static gboolean
@@ -1358,12 +1336,11 @@ load_remote_repo_config (OtPullData    *pull_data,
   gboolean ret = FALSE;
   g_autofree char *contents = NULL;
   GKeyFile *ret_keyfile = NULL;
-  SoupURI *target_uri = NULL;
 
-  target_uri = suburi_new (pull_data->base_uri, "config", NULL);
-  
-  if (!fetch_uri_contents_utf8_sync (pull_data->fetcher, target_uri, &contents,
-                                     cancellable, error))
+  if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
+                                              pull_data->meta_mirrorlist,
+                                              "config", &contents,
+                                              cancellable, error))
     goto out;
 
   ret_keyfile = g_key_file_new ();
@@ -1375,7 +1352,6 @@ load_remote_repo_config (OtPullData    *pull_data,
   ot_transfer_out_value (out_keyfile, &ret_keyfile);
  out:
   g_clear_pointer (&ret_keyfile, (GDestroyNotify) g_key_file_unref);
-  g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
   return ret;
 }
 
@@ -1394,17 +1370,15 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   g_autoptr(GBytes) delta_superblock_data = NULL;
   g_autoptr(GBytes) delta_meta_data = NULL;
   g_autoptr(GVariant) delta_superblock = NULL;
-  SoupURI *target_uri = NULL;
-  
-  target_uri = suburi_new (pull_data->base_content_uri, delta_name, NULL);
-  
-  if (!_ostree_fetcher_request_uri_to_membuf (pull_data->fetcher, target_uri,
-                                              FALSE, TRUE,
-                                              &delta_superblock_data,
-                                              OSTREE_MAX_METADATA_SIZE,
-                                              pull_data->cancellable, error))
+
+  if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                   pull_data->content_mirrorlist,
+                                                   delta_name, FALSE, TRUE,
+                                                   &delta_superblock_data,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   pull_data->cancellable, error))
     goto out;
-  
+
   if (delta_superblock_data)
     {
       {
@@ -1449,7 +1423,6 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   if (out_delta_superblock)
     *out_delta_superblock = g_steal_pointer (&ret_delta_superblock);
  out:
-  g_clear_pointer (&target_uri, (GDestroyNotify) soup_uri_free);
   return ret;
 }
 
@@ -1615,7 +1588,6 @@ process_one_static_delta (OtPullData   *pull_data,
       const guchar *csum;
       g_autoptr(GVariant) header = NULL;
       gboolean have_all = FALSE;
-      SoupURI *target_uri = NULL;
       g_autofree char *deltapart_path = NULL;
       FetchStaticDeltaData *fetch_data;
       g_autoptr(GVariant) csum_v = NULL;
@@ -1689,7 +1661,7 @@ process_one_static_delta (OtPullData   *pull_data,
                                                NULL, &inline_delta_part,
                                                cancellable, error))
             goto out;
-                                               
+
           _ostree_static_delta_part_execute_async (pull_data->repo,
                                                    fetch_data->objects,
                                                    inline_delta_part,
@@ -1701,14 +1673,14 @@ process_one_static_delta (OtPullData   *pull_data,
         }
       else
         {
-          target_uri = suburi_new (pull_data->base_content_uri, deltapart_path, NULL);
-          _ostree_fetcher_request_uri_with_partial_async (pull_data->fetcher, target_uri, size,
-                                                          OSTREE_FETCHER_DEFAULT_PRIORITY,
-                                                          pull_data->cancellable,
-                                                          static_deltapart_fetch_on_complete,
-                                                          fetch_data);
+          _ostree_fetcher_mirrored_request_with_partial_async (pull_data->fetcher,
+                                                               pull_data->content_mirrorlist,
+                                                               deltapart_path, size,
+                                                               OSTREE_FETCHER_DEFAULT_PRIORITY,
+                                                               pull_data->cancellable,
+                                                               static_deltapart_fetch_on_complete,
+                                                               fetch_data);
           pull_data->n_outstanding_deltapart_fetches++;
-          soup_uri_free (target_uri);
         }
     }
 
@@ -1947,7 +1919,7 @@ out:
 static gboolean
 _ostree_preload_metadata_file (OstreeRepo    *self,
                                OstreeFetcher *fetcher,
-                               SoupURI       *base_uri,
+                               GPtrArray     *mirrorlist,
                                const char    *filename,
                                gboolean      is_metalink,
                                GBytes        **out_bytes,
@@ -1961,9 +1933,11 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
       glnx_unref_object OstreeMetalink *metalink = NULL;
       GError *local_error = NULL;
 
+      /* the metalink uri is buried in the mirrorlist as the first (and only)
+       * element */
       metalink = _ostree_metalink_new (fetcher, filename,
                                        OSTREE_MAX_METADATA_SIZE,
-                                       base_uri);
+                                       mirrorlist->pdata[0]);
 
       _ostree_metalink_request_sync (metalink, NULL, out_bytes,
                                      cancellable, &local_error);
@@ -1981,20 +1955,11 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
     }
   else
     {
-      SoupURI *uri;
-      const char *base_path;
-      g_autofree char *path = NULL;
-
-      base_path = soup_uri_get_path (base_uri);
-      path = g_build_filename (base_path, filename, NULL);
-      uri = soup_uri_new_with_base (base_uri, path);
-
-      ret = _ostree_fetcher_request_uri_to_membuf (fetcher, uri,
-                                                   FALSE, TRUE,
-                                                   out_bytes,
-                                                   OSTREE_MAX_METADATA_SIZE,
-                                                   cancellable, error);
-      soup_uri_free (uri);
+      ret = _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
+                                                        filename, FALSE, TRUE,
+                                                        out_bytes,
+                                                        OSTREE_MAX_METADATA_SIZE,
+                                                        cancellable, error);
 
       if (!ret)
         goto out;
@@ -2002,6 +1967,117 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
 
   ret = TRUE;
 out:
+  return ret;
+}
+
+static gboolean
+fetch_mirrorlist (OstreeFetcher  *fetcher,
+                  const char     *mirrorlist_url,
+                  GPtrArray     **out_mirrorlist,
+                  GCancellable   *cancellable,
+                  GError        **error)
+{
+  gboolean ret = FALSE;
+  char **lines = NULL;
+  g_autofree char *contents = NULL;
+  SoupURI *mirrorlist = NULL;
+  g_autoptr(GPtrArray) ret_mirrorlist =
+    g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+
+  mirrorlist = soup_uri_new (mirrorlist_url);
+  if (mirrorlist == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "Failed to parse mirrorlist URL '%s'", mirrorlist_url);
+      goto out;
+    }
+
+  if (!fetch_uri_contents_utf8_sync (fetcher, mirrorlist, &contents,
+                                     cancellable, error))
+    {
+      g_prefix_error (error, "While fetching mirrorlist '%s': ",
+                      mirrorlist_url);
+      goto out;
+    }
+
+  /* go through each mirror in mirrorlist and do a quick sanity check that it
+   * works so that we don't waste the fetcher's time when it goes through them
+   * */
+  lines = g_strsplit (contents, "\n", -1);
+  g_debug ("Scanning mirrorlist from '%s'", mirrorlist_url);
+  for (char **iter = lines; iter && *iter; iter++)
+    {
+      const char *mirror_uri_str = *iter;
+      SoupURI *mirror_uri = NULL;
+
+      /* let's be nice and support empty lines and comments */
+      if (*mirror_uri_str == '\0' || *mirror_uri_str == '#')
+        continue;
+
+      mirror_uri = soup_uri_new (mirror_uri_str);
+      if (mirror_uri == NULL)
+        {
+          g_debug ("Can't parse mirrorlist line '%s'", mirror_uri_str);
+          continue;
+        }
+      else if ((strcmp (soup_uri_get_scheme (mirror_uri), "http") != 0) &&
+               (strcmp (soup_uri_get_scheme (mirror_uri), "https") != 0))
+        {
+          /* let's not support mirrorlists that contain non-http based URIs for
+           * now (e.g. local URIs) -- we need to think about if and how we want
+           * to support this since we set up things differently depending on
+           * whether we're pulling locally or not */
+          g_debug ("Ignoring non-http/s mirrorlist entry '%s'", mirror_uri_str);
+          soup_uri_free (mirror_uri);
+          continue;
+        }
+
+      /* We keep sanity checking until we hit a working mirror; there's no need
+       * to waste resources checking the remaining ones. At the same time,
+       * guaranteeing that the first mirror in the list works saves the fetcher
+       * time from always iterating through a few bad first mirrors. */
+      if (ret_mirrorlist->len == 0)
+        {
+          GError *local_error = NULL;
+          g_autofree char *config_uri_str = g_build_filename (mirror_uri_str,
+                                                              "config", NULL);
+          SoupURI *config_uri = soup_uri_new (config_uri_str);
+
+          if (fetch_uri_contents_utf8_sync (fetcher, config_uri, NULL,
+                                            cancellable, &local_error))
+            g_ptr_array_add (ret_mirrorlist, g_steal_pointer (&mirror_uri));
+          else
+            {
+              g_debug ("Failed to fetch config from mirror '%s': %s",
+                       mirror_uri_str, local_error->message);
+              g_clear_error (&local_error);
+            }
+
+          soup_uri_free (config_uri);
+        }
+      else
+        {
+          g_ptr_array_add (ret_mirrorlist, g_steal_pointer (&mirror_uri));
+        }
+
+      if (mirror_uri != NULL)
+        soup_uri_free (mirror_uri);
+    }
+
+  if (ret_mirrorlist->len == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "No valid mirrors were found in mirrorlist '%s'",
+                   mirrorlist_url);
+      goto out;
+    }
+
+  *out_mirrorlist = g_steal_pointer (&ret_mirrorlist);
+  ret = TRUE;
+
+out:
+  if (mirrorlist != NULL)
+    soup_uri_free (mirrorlist);
   return ret;
 }
 
@@ -2018,9 +2094,9 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   glnx_unref_object OstreeFetcher *fetcher = NULL;
   g_autoptr(GMainContext) mainctx = NULL;
   gboolean ret = FALSE;
-  SoupURI *base_uri = NULL;
   gboolean from_cache = FALSE;
   g_autofree char *url_override = NULL;
+  g_autoptr(GPtrArray) mirrorlist = NULL;
 
   if (options)
     (void) g_variant_lookup (options, "override-url", "&s", &url_override);
@@ -2041,18 +2117,33 @@ repo_remote_fetch_summary (OstreeRepo    *self,
     else if (!ostree_repo_remote_get_url (self, name, &url_string, error))
       goto out;
 
-    base_uri = soup_uri_new (url_string);
-    if (base_uri == NULL)
+    if (metalink_url_string == NULL &&
+        g_str_has_prefix (url_string, "mirrorlist="))
       {
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                     "Invalid URL '%s'", url_string);
-        goto out;
+        if (!fetch_mirrorlist (fetcher, url_string + strlen ("mirrorlist="),
+                               &mirrorlist, cancellable, error))
+          goto out;
+      }
+    else
+      {
+        SoupURI *uri = soup_uri_new (url_string);
+
+        if (uri == NULL)
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                         "Failed to parse url '%s'", url_string);
+            goto out;
+          }
+
+        mirrorlist =
+          g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+        g_ptr_array_add (mirrorlist, uri /* transfer ownership */ );
       }
   }
 
   if (!_ostree_preload_metadata_file (self,
                                       fetcher,
-                                      base_uri,
+                                      mirrorlist,
                                       "summary.sig",
                                       metalink_url_string ? TRUE : FALSE,
                                       out_signatures,
@@ -2077,7 +2168,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
     {
       if (!_ostree_preload_metadata_file (self,
                                           fetcher,
-                                          base_uri,
+                                          mirrorlist,
                                           "summary",
                                           metalink_url_string ? TRUE : FALSE,
                                           out_summary,
@@ -2112,8 +2203,6 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  out:
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
-  if (base_uri != NULL)
-    soup_uri_free (base_uri);
   return ret;
 }
 
@@ -2181,6 +2270,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   gboolean opt_gpg_verify_set = FALSE;
   gboolean opt_gpg_verify_summary_set = FALSE;
   const char *url_override = NULL;
+  g_autofree char *base_meta_url = NULL;
+  g_autofree char *base_content_url = NULL;
 
   if (options)
     {
@@ -2305,13 +2396,28 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       else if (!ostree_repo_remote_get_url (self, remote_name_or_baseurl, &baseurl, error))
         goto out;
 
-      pull_data->base_uri = soup_uri_new (baseurl);
-
-      if (!pull_data->base_uri)
+      if (g_str_has_prefix (baseurl, "mirrorlist="))
         {
-          g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                       "Failed to parse url '%s'", baseurl);
-          goto out;
+          if (!fetch_mirrorlist (pull_data->fetcher,
+                                 baseurl + strlen ("mirrorlist="),
+                                 &pull_data->meta_mirrorlist,
+                                 cancellable, error))
+            goto out;
+        }
+      else
+        {
+          SoupURI *baseuri = soup_uri_new (baseurl);
+
+          if (baseuri == NULL)
+            {
+              g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Failed to parse url '%s'", baseurl);
+              goto out;
+            }
+
+          pull_data->meta_mirrorlist =
+            g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+          g_ptr_array_add (pull_data->meta_mirrorlist, baseuri /* transfer */);
         }
     }
   else
@@ -2338,10 +2444,16 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                            error))
         goto out;
 
+      /* XXX: would be interesting to implement metalink as another source of
+       * mirrors here since we use it as such anyway (rather than the "usual"
+       * use case of metalink, which is only for a single target filename) */
       {
+        /* reuse target_uri and take ownership */
         g_autofree char *repo_base = g_path_get_dirname (soup_uri_get_path (target_uri));
-        pull_data->base_uri = soup_uri_copy (target_uri);
-        soup_uri_set_path (pull_data->base_uri, repo_base);
+        soup_uri_set_path (target_uri, repo_base);
+        pull_data->meta_mirrorlist =
+          g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+        g_ptr_array_add (pull_data->meta_mirrorlist, target_uri);
       }
 
       pull_data->summary = g_variant_new_from_bytes (OSTREE_SUMMARY_GVARIANT_FORMAT,
@@ -2359,15 +2471,34 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       goto out;
 
     if (contenturl == NULL)
-      pull_data->base_content_uri = soup_uri_copy (pull_data->base_uri);
+      /* this is a bit hacky but greatly simplifies coding elsewhere; we take
+       * care in the out path to not double free if they're the same list */
+      pull_data->content_mirrorlist = pull_data->meta_mirrorlist;
     else
       {
-        pull_data->base_content_uri = soup_uri_new (contenturl);
-        if (!pull_data->base_content_uri)
+        if (g_str_has_prefix (contenturl, "mirrorlist="))
           {
-            g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                         "Failed to parse contenturl '%s'", contenturl);
-            goto out;
+            if (!fetch_mirrorlist (pull_data->fetcher,
+                                   contenturl + strlen ("mirrorlist="),
+                                   &pull_data->content_mirrorlist,
+                                   cancellable, error))
+              goto out;
+          }
+        else
+          {
+            SoupURI *contenturi = soup_uri_new (contenturl);
+
+            if (contenturi == NULL)
+              {
+                g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "Failed to parse contenturl '%s'", contenturl);
+                goto out;
+              }
+
+            pull_data->content_mirrorlist =
+              g_ptr_array_new_with_free_func ((GDestroyNotify) soup_uri_free);
+            g_ptr_array_add (pull_data->content_mirrorlist,
+                             contenturi /* transfer */);
           }
       }
   }
@@ -2377,9 +2508,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                            &configured_branches, error))
     goto out;
 
-  if (strcmp (soup_uri_get_scheme (pull_data->base_uri), "file") == 0)
+  /* NB: we don't support local mirrors in mirrorlists, so if this passes, it
+   * means that we're not using mirrorlists (see also fetch_mirrorlist()) */
+  if (strcmp (soup_uri_get_scheme (pull_data->meta_mirrorlist->pdata[0]), "file") == 0)
     {
-      g_autoptr(GFile) remote_repo_path = g_file_new_for_path (soup_uri_get_path (pull_data->base_uri));
+      g_autoptr(GFile) remote_repo_path =
+        g_file_new_for_path (soup_uri_get_path (pull_data->meta_mirrorlist->pdata[0]));
       pull_data->remote_repo_local = ostree_repo_new (remote_repo_path);
       if (!ostree_repo_open (pull_data->remote_repo_local, cancellable, error))
         goto out;
@@ -2418,7 +2552,6 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->static_delta_superblocks = g_ptr_array_new_with_free_func ((GDestroyNotify)g_variant_unref);
 
   {
-    SoupURI *uri = NULL;
     g_autoptr(GBytes) bytes_sig = NULL;
     g_autofree char *ret_contents = NULL;
     gsize i, n;
@@ -2429,13 +2562,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!pull_data->summary_data_sig)
       {
-        uri = suburi_new (pull_data->base_uri, "summary.sig", NULL);
-        if (!_ostree_fetcher_request_uri_to_membuf (pull_data->fetcher, uri,
-                                                    FALSE, TRUE, &bytes_sig,
-                                                    OSTREE_MAX_METADATA_SIZE,
-                                                    cancellable, error))
+        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                         pull_data->meta_mirrorlist,
+                                                         "summary.sig", FALSE, TRUE,
+                                                         &bytes_sig,
+                                                         OSTREE_MAX_METADATA_SIZE,
+                                                         cancellable, error))
           goto out;
-        soup_uri_free (uri);
       }
 
     if (bytes_sig &&
@@ -2453,13 +2586,13 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!pull_data->summary && !bytes_summary)
       {
-        uri = suburi_new (pull_data->base_uri, "summary", NULL);
-        if (!_ostree_fetcher_request_uri_to_membuf (pull_data->fetcher, uri,
-                                                    FALSE, TRUE, &bytes_summary,
-                                                    OSTREE_MAX_METADATA_SIZE,
-                                                    cancellable, error))
+        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                         pull_data->meta_mirrorlist,
+                                                         "summary", FALSE, TRUE,
+                                                         &bytes_summary,
+                                                         OSTREE_MAX_METADATA_SIZE,
+                                                         cancellable, error))
           goto out;
-        soup_uri_free (uri);
       }
 
     if (!bytes_summary && pull_data->gpg_verify_summary)
@@ -2893,10 +3026,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_object (&pull_data->cancellable);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
-  if (pull_data->base_uri)
-    soup_uri_free (pull_data->base_uri);
-  if (pull_data->base_content_uri)
-    soup_uri_free (pull_data->base_content_uri);
+  if (pull_data->content_mirrorlist != pull_data->meta_mirrorlist)
+    g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
+  /* we clear this *after* clearing content_mirrorlist to avoid unref'ing twice */
+  g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);

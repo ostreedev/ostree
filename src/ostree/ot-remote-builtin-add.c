@@ -54,7 +54,7 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   gboolean ret = FALSE;
 
-  context = g_option_context_new ("NAME URL [BRANCH...] - Add a remote repository");
+  context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...] - Add a remote repository");
 
   if (!ostree_option_context_parse (context, option_entries, &argc, &argv,
                                     OSTREE_BUILTIN_FLAG_NONE, &repo, cancellable, error))
