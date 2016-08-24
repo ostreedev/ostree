@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# To use a custrom script for generating grub.cfg, set the --with-grub2-mkconfig=no
-# configure switch when configuring and building OSTree.
+# The builtin grub.cfg generator.
 #
 # This script is called by ostree/src/libostree/ostree-bootloader-grub2.c whenever
 # boot loader configuration file needs to be updated. It can be used as a template
