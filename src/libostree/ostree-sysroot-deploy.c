@@ -1458,20 +1458,28 @@ install_deployment_kernel (OstreeSysroot   *sysroot,
     ostree_bootconfig_parser_set (bootconfig, "linux", boot_relpath);
   }
 
+  val = ostree_bootconfig_parser_get (bootconfig, "options");
+  kargs = _ostree_kernel_args_from_string (val);
+
   if (dest_initramfs_name)
     {
       g_autofree char * boot_relpath = g_strconcat ("/", bootcsumdir, "/", dest_initramfs_name, NULL);
       ostree_bootconfig_parser_set (bootconfig, "initrd", boot_relpath);
     }
-
-  val = ostree_bootconfig_parser_get (bootconfig, "options");
+  else
+    {
+      g_autofree char *prepare_root_arg = NULL;
+      prepare_root_arg = g_strdup_printf ("init=/ostree/boot.%d/%s/%s/%d/usr/lib/ostree/ostree-prepare-root",
+                                             new_bootversion, osname, bootcsum,
+                                             ostree_deployment_get_bootserial (deployment));
+      _ostree_kernel_args_replace_take (kargs, g_steal_pointer (&prepare_root_arg));
+    }
 
   ostree_kernel_arg = g_strdup_printf ("ostree=/ostree/boot.%d/%s/%s/%d",
                                        new_bootversion, osname, bootcsum,
                                        ostree_deployment_get_bootserial (deployment));
-  kargs = _ostree_kernel_args_from_string (val);
-  _ostree_kernel_args_replace_take (kargs, ostree_kernel_arg);
-  ostree_kernel_arg = NULL;
+  _ostree_kernel_args_replace_take (kargs, g_steal_pointer (&ostree_kernel_arg));
+
   options_key = _ostree_kernel_args_to_string (kargs);
   ostree_bootconfig_parser_set (bootconfig, "options", options_key);
   
