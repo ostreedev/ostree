@@ -423,7 +423,7 @@ write_commitpartial_for (OtPullData *pull_data,
   g_autofree char *commitpartial_path = _ostree_get_commitpartial_path (checksum);
   glnx_fd_close int fd = -1;
 
-  fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0600);
+  fd = openat (pull_data->repo->repo_dir_fd, commitpartial_path, O_EXCL | O_CREAT | O_WRONLY | O_CLOEXEC | O_NOCTTY, 0644);
   if (fd == -1)
     {
       if (errno != EEXIST)
