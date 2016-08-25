@@ -61,7 +61,7 @@ find repo/objects -name '*.filez' | while read name; do
 done
 echo "ok pull mirror summary"
 
-if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
+if ! has_gpgme; then
     exit 0;
 fi
 

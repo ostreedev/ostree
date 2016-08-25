@@ -19,12 +19,12 @@
 
 set -euo pipefail
 
-if ! ostree --version | grep -q -e '\+gpgme'; then
+. $(dirname $0)/libtest.sh
+
+if ! has_gpgme; then
     echo "1..0 #SKIP no gpg support compiled in"
     exit 0
 fi
-
-. $(dirname $0)/libtest.sh
 
 echo "1..1"
 

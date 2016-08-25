@@ -420,6 +420,10 @@ skip_without_fuse () {
     [ -e /etc/mtab ] || skip "no /etc/mtab"
 }
 
+has_gpgme () {
+    ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'
+}
+
 libtest_cleanup_gpg () {
     gpg-connect-agent --homedir ${test_tmpdir}/gpghome killagent /bye || true
 }
