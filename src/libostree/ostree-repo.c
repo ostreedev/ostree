@@ -3136,7 +3136,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      glnx_set_error_from_errno (error);
+      glnx_set_prefix_error_from_errno (error, "Deleting object %s.%s", sha256, ostree_object_type_to_string (objtype));
       goto out;
     }
 
@@ -3444,7 +3444,7 @@ ostree_repo_query_object_storage_size (OstreeRepo           *self,
   while (G_UNLIKELY (res == -1 && errno == EINTR));
   if (G_UNLIKELY (res == -1))
     {
-      glnx_set_error_from_errno (error);
+      glnx_set_prefix_error_from_errno (error, "Querying object %s.%s", sha256, ostree_object_type_to_string (objtype));
       goto out;
     }
 
