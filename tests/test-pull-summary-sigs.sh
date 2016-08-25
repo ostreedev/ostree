@@ -54,7 +54,7 @@ assert_file_has_content yet-another-copy/yet-another-hello-world "hello world ye
 ${CMD_PREFIX} ostree --repo=repo fsck
 echo "ok pull mirror summary"
 
-if ! ${CMD_PREFIX} ostree --version | grep -q -e '\+gpgme'; then
+if ! has_gpgme; then
     exit 0;
 fi
 
