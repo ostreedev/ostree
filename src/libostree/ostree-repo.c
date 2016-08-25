@@ -3590,7 +3590,7 @@ ostree_repo_list_objects (OstreeRepo                  *self,
     {
       if (!list_loose_objects (self, ret_objects, NULL, cancellable, error))
         goto out;
-      if (self->parent_repo)
+      if ((flags & OSTREE_REPO_LIST_OBJECTS_NO_PARENTS) == 0 && self->parent_repo)
         {
           if (!list_loose_objects (self->parent_repo, ret_objects, NULL, cancellable, error))
             goto out;

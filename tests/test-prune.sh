@@ -25,7 +25,7 @@ skip_without_user_xattrs
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..2'
+echo '1..3'
 
 cd ${test_tmpdir}
 mkdir repo
@@ -142,3 +142,39 @@ ${CMD_PREFIX} ostree --repo=repo pull --depth=-1 --commit-metadata-only origin t
 ${CMD_PREFIX} ostree --repo=repo prune
 
 echo "ok prune with partial repo"
+
+assert_has_n_objects() {
+    find $1/objects -name '*.filez' | wc -l > object-count
+    assert_file_has_content object-count $2
+    rm object-count
+}
+
+cd ${test_tmpdir}
+for repo in repo child-repo tmp-repo; do
+    rm ${repo} -rf
+    ${CMD_PREFIX} ostree --repo=${repo} init --mode=archive
+done
+echo parent=${test_tmpdir}/repo >> child-repo/config
+mkdir files
+for x in $(seq 3); do
+    echo afile${x} > files/afile${x}
+done
+${CMD_PREFIX} ostree --repo=repo commit -b test files
+assert_has_n_objects repo 3
+# Inherit 1-3, add 4-6
+for x in $(seq 4 6); do
+    echo afile${x} > files/afile${x}
+done
+# Commit into a temp repo, then do a local pull, which triggers
+# the parent repo lookup for dedup
+${CMD_PREFIX} ostree --repo=tmp-repo commit -b childtest files
+${CMD_PREFIX} ostree --repo=child-repo pull-local tmp-repo childtest
+assert_has_n_objects child-repo 3
+# Sanity check prune doesn't do anything
+for repo in repo child-repo; do ${CMD_PREFIX} ostree --repo=${repo} prune; done
+# Now, leave orphaned objects in the parent only pointed to by the child
+${CMD_PREFIX} ostree --repo=repo refs --delete test
+${CMD_PREFIX} ostree --repo=child-repo prune --refs-only --depth=0
+assert_has_n_objects child-repo 3
+
+echo "ok prune with parent repo"
