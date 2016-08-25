@@ -88,6 +88,8 @@ dist_test_scripts = \
 	tests/test-refs.sh \
 	tests/test-demo-buildsystem.sh \
 	tests/test-switchroot.sh \
+	tests/test-pull-contenturl.sh \
+	tests/test-pull-mirrorlist.sh \
 	$(NULL)
 
 if BUILDOPT_FUSE
