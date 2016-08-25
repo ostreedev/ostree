@@ -337,8 +337,8 @@ ostree_repo_prune (OstreeRepo        *self,
         }
     }
 
-  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL, &objects,
-                                 cancellable, error))
+  if (!ostree_repo_list_objects (self, OSTREE_REPO_LIST_OBJECTS_ALL | OSTREE_REPO_LIST_OBJECTS_NO_PARENTS,
+                                 &objects, cancellable, error))
     goto out;
 
   if (!refs_only)
