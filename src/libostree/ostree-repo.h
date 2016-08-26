@@ -1006,7 +1006,7 @@ ostree_repo_pull_one_dir (OstreeRepo               *self,
 
 _OSTREE_PUBLIC
 gboolean ostree_repo_pull_with_options (OstreeRepo             *self,
-                                        const char             *remote_name,
+                                        const char             *remote_name_or_baseurl,
                                         GVariant               *options,
                                         OstreeAsyncProgress    *progress,
                                         GCancellable           *cancellable,
