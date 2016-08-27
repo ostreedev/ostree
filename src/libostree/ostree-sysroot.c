@@ -1776,17 +1776,6 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
    * threads, etc.
    */
   {
-    /* Make a copy of the fd that's *not* FD_CLOEXEC so that we pass
-     * it to the child.
-     */
-    glnx_fd_close int child_deployment_dfd = dup (deployment_dfd);
-
-    if (child_deployment_dfd < 0)
-      {
-        glnx_set_error_from_errno (error);
-        goto out;
-      }
-
     mount_child = fork ();
     if (mount_child < 0)
       {
@@ -1796,9 +1785,8 @@ ostree_sysroot_deployment_unlock (OstreeSysroot     *self,
     else if (mount_child == 0)
       {
         /* Child process.  Do NOT use any GLib API here. */
-        if (fchdir (child_deployment_dfd) < 0)
+        if (fchdir (deployment_dfd) < 0)
           exit (EXIT_FAILURE);
-        (void) close (child_deployment_dfd);
         if (mount ("overlay", "/usr", "overlay", 0, ovl_options) < 0)
           exit (EXIT_FAILURE);
         exit (EXIT_SUCCESS);
