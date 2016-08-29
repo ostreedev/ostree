@@ -2001,18 +2001,14 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
     }
 
   /* go through each mirror in mirrorlist and do a quick sanity check that it
-   * works so that we don't waste the fetcher's time when it goes through them.
-   * we basically check that we can fetch the repo's config without errors.
+   * works so that we don't waste the fetcher's time when it goes through them
    * */
   lines = g_strsplit (contents, "\n", -1);
   g_debug ("Scanning mirrorlist from '%s'", mirrorlist_url);
   for (char **iter = lines; iter && *iter; iter++)
     {
       const char *mirror_uri_str = *iter;
-      GError *local_error = NULL;
       SoupURI *mirror_uri = NULL;
-      SoupURI *config_uri = NULL;
-      g_autofree char *config_uri_str = NULL;
 
       /* let's be nice and support empty lines and comments */
       if (*mirror_uri_str == '\0' || *mirror_uri_str == '#')
@@ -2036,23 +2032,38 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
           continue;
         }
 
-      config_uri_str = g_build_filename (mirror_uri_str, "config", NULL);
+      /* We keep sanity checking until we hit a working mirror; there's no need
+       * to waste resources checking the remaining ones. At the same time,
+       * guaranteeing that the first mirror in the list works saves the fetcher
+       * time from always iterating through a few bad first mirrors. */
+      if (ret_mirrorlist == NULL)
+        {
+          GError *local_error = NULL;
+          g_autofree char *config_uri_str = g_build_filename (mirror_uri_str,
+                                                              "config", NULL);
+          SoupURI *config_uri = soup_uri_new (config_uri_str);
 
-      config_uri = soup_uri_new (config_uri_str);
-      if (fetch_uri_contents_utf8_sync (fetcher, config_uri, NULL,
-                                        cancellable, &local_error))
-        ret_mirrorlist = g_slist_append (ret_mirrorlist,
-                                         g_steal_pointer (&mirror_uri));
+          if (fetch_uri_contents_utf8_sync (fetcher, config_uri, NULL,
+                                            cancellable, &local_error))
+            ret_mirrorlist = g_slist_append (ret_mirrorlist,
+                                             g_steal_pointer (&mirror_uri));
+          else
+            {
+              g_debug ("Failed to fetch config from mirror '%s': %s",
+                       mirror_uri_str, local_error->message);
+              g_clear_error (&local_error);
+            }
+
+          soup_uri_free (config_uri);
+        }
       else
         {
-          g_debug ("Failed to fetch config from mirror '%s': %s",
-                   mirror_uri_str, local_error->message);
-          g_clear_error (&local_error);
+          ret_mirrorlist = g_slist_append (ret_mirrorlist,
+                                           g_steal_pointer (&mirror_uri));
         }
 
       if (mirror_uri != NULL)
         soup_uri_free (mirror_uri);
-      soup_uri_free (config_uri);
     }
 
   if (ret_mirrorlist == NULL)
