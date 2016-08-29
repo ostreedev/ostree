@@ -2024,13 +2024,14 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
           g_debug ("Can't parse mirrorlist line '%s'", mirror_uri_str);
           continue;
         }
-      else if (strcmp (soup_uri_get_scheme (mirror_uri), "file") == 0)
+      else if ((strcmp (soup_uri_get_scheme (mirror_uri), "http") != 0) &&
+               (strcmp (soup_uri_get_scheme (mirror_uri), "https") != 0))
         {
-          /* let's not support mirrorlists that contain local URIs for now -- we
-           * need to think about if and how we want to support this since we set
-           * up things differently depending on whether we're pulling locally or
-           * not */
-          g_debug ("Ignoring local mirrorlist entry '%s'", mirror_uri_str);
+          /* let's not support mirrorlists that contain non-http based URIs for
+           * now (e.g. local URIs) -- we need to think about if and how we want
+           * to support this since we set up things differently depending on
+           * whether we're pulling locally or not */
+          g_debug ("Ignoring non-http/s mirrorlist entry '%s'", mirror_uri_str);
           soup_uri_free (mirror_uri);
           continue;
         }
