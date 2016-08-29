@@ -1219,6 +1219,12 @@ cleanup_tmpdir (OstreeRepo        *self,
       if (dent == NULL)
         break;
 
+      /* Special case this; we create it when opening, and don't want
+       * to blow it away.
+       */
+      if (strcmp (dent->d_name, "cache") == 0)
+        continue;
+
       if (TEMP_FAILURE_RETRY (fstatat (dfd_iter.fd, dent->d_name, &stbuf, AT_SYMLINK_NOFOLLOW)) < 0)
         {
           if (errno == ENOENT) /* Did another cleanup win? */
