@@ -71,7 +71,7 @@ void _ostree_fetcher_set_tls_database (OstreeFetcher *self,
 guint64 _ostree_fetcher_bytes_transferred (OstreeFetcher       *self);
 
 void _ostree_fetcher_mirrored_request_with_partial_async (OstreeFetcher         *self,
-                                                          GSList                *mirrorlist,
+                                                          GPtrArray             *mirrorlist,
                                                           const char            *filename,
                                                           guint64                max_size,
                                                           int                    priority,
@@ -84,7 +84,7 @@ char *_ostree_fetcher_mirrored_request_with_partial_finish (OstreeFetcher *self,
                                                             GError       **error);
 
 gboolean _ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher *fetcher,
-                                                     GSList        *mirrorlist,
+                                                     GPtrArray     *mirrorlist,
                                                      const char    *filename,
                                                      gboolean       add_nul,
                                                      gboolean       allow_noent,
