@@ -308,23 +308,23 @@ typedef struct {
 } OstreeFetchUriSyncData;
 
 static gboolean
-fetch_mirrorred_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
-                                        GSList         *mirrorlist,
-                                        const char     *filename,
-                                        char          **out_contents,
-                                        GCancellable   *cancellable,
-                                        GError        **error)
+fetch_mirrored_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
+                                       GSList         *mirrorlist,
+                                       const char     *filename,
+                                       char          **out_contents,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) bytes = NULL;
   g_autofree char *ret_contents = NULL;
   gsize len;
 
-  if (!_ostree_fetcher_mirrorred_request_to_membuf (fetcher, mirrorlist,
-                                                    filename, TRUE, FALSE,
-                                                    &bytes,
-                                                    OSTREE_MAX_METADATA_SIZE,
-                                                    cancellable, error))
+  if (!_ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
+                                                   filename, TRUE, FALSE,
+                                                   &bytes,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   cancellable, error))
     goto out;
 
   ret_contents = g_bytes_unref_to_data (bytes, &len);
@@ -352,8 +352,8 @@ fetch_uri_contents_utf8_sync (OstreeFetcher  *fetcher,
 {
   GSList *mirrorlist = g_slist_append (NULL, uri);
   gboolean ret =
-    fetch_mirrorred_uri_contents_utf8_sync (fetcher, mirrorlist, NULL,
-                                            out_contents, cancellable, error);
+    fetch_mirrored_uri_contents_utf8_sync (fetcher, mirrorlist, NULL,
+                                           out_contents, cancellable, error);
   g_slist_free (mirrorlist);
   return ret;
 }
@@ -528,10 +528,10 @@ fetch_ref_contents (OtPullData    *pull_data,
 
   filename = g_build_filename ("refs", "heads", ref, NULL);
   
-  if (!fetch_mirrorred_uri_contents_utf8_sync (pull_data->fetcher,
-                                               pull_data->meta_mirrorlist,
-                                               filename, &ret_contents,
-                                               cancellable, error))
+  if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
+                                              pull_data->meta_mirrorlist,
+                                              filename, &ret_contents,
+                                              cancellable, error))
     goto out;
 
   g_strchomp (ret_contents);
@@ -649,7 +649,7 @@ content_fetch_on_complete (GObject        *object,
   OstreeObjectType objtype;
   gboolean free_fetch_data = TRUE;
 
-  temp_path = _ostree_fetcher_mirrorred_request_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
@@ -787,7 +787,7 @@ meta_fetch_on_complete (GObject           *object,
   g_debug ("fetch of %s%s complete", checksum_obj,
            fetch_data->is_detached_meta ? " (detached)" : "");
 
-  temp_path = _ostree_fetcher_mirrorred_request_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     {
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
@@ -932,7 +932,7 @@ static_deltapart_fetch_on_complete (GObject           *object,
 
   g_debug ("fetch static delta part %s complete", fetch_data->expected_checksum);
 
-  temp_path = _ostree_fetcher_mirrorred_request_with_partial_finish (fetcher, result, error);
+  temp_path = _ostree_fetcher_mirrored_request_with_partial_finish (fetcher, result, error);
   if (!temp_path)
     goto out;
 
@@ -1320,12 +1320,12 @@ enqueue_one_object_request (OtPullData        *pull_data,
   else
     expected_max_size = 0;
 
-  _ostree_fetcher_mirrorred_request_with_partial_async (pull_data->fetcher, mirrorlist,
-                                                        obj_subpath, expected_max_size,
-                                                        is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
-                                                                : OSTREE_REPO_PULL_CONTENT_PRIORITY,
-                                                        pull_data->cancellable,
-                                                        is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
+  _ostree_fetcher_mirrored_request_with_partial_async (pull_data->fetcher, mirrorlist,
+                                                       obj_subpath, expected_max_size,
+                                                       is_meta ? OSTREE_REPO_PULL_METADATA_PRIORITY
+                                                               : OSTREE_REPO_PULL_CONTENT_PRIORITY,
+                                                       pull_data->cancellable,
+                                                       is_meta ? meta_fetch_on_complete : content_fetch_on_complete, fetch_data);
 }
 
 static gboolean
@@ -1338,10 +1338,10 @@ load_remote_repo_config (OtPullData    *pull_data,
   g_autofree char *contents = NULL;
   GKeyFile *ret_keyfile = NULL;
 
-  if (!fetch_mirrorred_uri_contents_utf8_sync (pull_data->fetcher,
-                                               pull_data->meta_mirrorlist,
-                                               "config", &contents,
-                                               cancellable, error))
+  if (!fetch_mirrored_uri_contents_utf8_sync (pull_data->fetcher,
+                                              pull_data->meta_mirrorlist,
+                                              "config", &contents,
+                                              cancellable, error))
     goto out;
 
   ret_keyfile = g_key_file_new ();
@@ -1372,12 +1372,12 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
   g_autoptr(GBytes) delta_meta_data = NULL;
   g_autoptr(GVariant) delta_superblock = NULL;
 
-  if (!_ostree_fetcher_mirrorred_request_to_membuf (pull_data->fetcher,
-                                                    pull_data->content_mirrorlist,
-                                                    delta_name, FALSE, TRUE,
-                                                    &delta_superblock_data,
-                                                    OSTREE_MAX_METADATA_SIZE,
-                                                    pull_data->cancellable, error))
+  if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                   pull_data->content_mirrorlist,
+                                                   delta_name, FALSE, TRUE,
+                                                   &delta_superblock_data,
+                                                   OSTREE_MAX_METADATA_SIZE,
+                                                   pull_data->cancellable, error))
     goto out;
 
   if (delta_superblock_data)
@@ -1674,13 +1674,13 @@ process_one_static_delta (OtPullData   *pull_data,
         }
       else
         {
-          _ostree_fetcher_mirrorred_request_with_partial_async (pull_data->fetcher,
-                                                                pull_data->content_mirrorlist,
-                                                                deltapart_path, size,
-                                                                OSTREE_FETCHER_DEFAULT_PRIORITY,
-                                                                pull_data->cancellable,
-                                                                static_deltapart_fetch_on_complete,
-                                                                fetch_data);
+          _ostree_fetcher_mirrored_request_with_partial_async (pull_data->fetcher,
+                                                               pull_data->content_mirrorlist,
+                                                               deltapart_path, size,
+                                                               OSTREE_FETCHER_DEFAULT_PRIORITY,
+                                                               pull_data->cancellable,
+                                                               static_deltapart_fetch_on_complete,
+                                                               fetch_data);
           pull_data->n_outstanding_deltapart_fetches++;
         }
     }
@@ -1956,11 +1956,11 @@ _ostree_preload_metadata_file (OstreeRepo    *self,
     }
   else
     {
-      ret = _ostree_fetcher_mirrorred_request_to_membuf (fetcher, mirrorlist,
-                                                         filename, FALSE, TRUE,
-                                                         out_bytes,
-                                                         OSTREE_MAX_METADATA_SIZE,
-                                                         cancellable, error);
+      ret = _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist,
+                                                        filename, FALSE, TRUE,
+                                                        out_bytes,
+                                                        OSTREE_MAX_METADATA_SIZE,
+                                                        cancellable, error);
 
       if (!ret)
         goto out;
@@ -2543,12 +2543,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!pull_data->summary_data_sig)
       {
-        if (!_ostree_fetcher_mirrorred_request_to_membuf (pull_data->fetcher,
-                                                          pull_data->meta_mirrorlist,
-                                                          "summary.sig", FALSE, TRUE,
-                                                          &bytes_sig,
-                                                          OSTREE_MAX_METADATA_SIZE,
-                                                          cancellable, error))
+        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                         pull_data->meta_mirrorlist,
+                                                         "summary.sig", FALSE, TRUE,
+                                                         &bytes_sig,
+                                                         OSTREE_MAX_METADATA_SIZE,
+                                                         cancellable, error))
           goto out;
       }
 
@@ -2567,12 +2567,12 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
     if (!pull_data->summary && !bytes_summary)
       {
-        if (!_ostree_fetcher_mirrorred_request_to_membuf (pull_data->fetcher,
-                                                          pull_data->meta_mirrorlist,
-                                                          "summary", FALSE, TRUE,
-                                                          &bytes_summary,
-                                                          OSTREE_MAX_METADATA_SIZE,
-                                                          cancellable, error))
+        if (!_ostree_fetcher_mirrored_request_to_membuf (pull_data->fetcher,
+                                                         pull_data->meta_mirrorlist,
+                                                         "summary", FALSE, TRUE,
+                                                         &bytes_summary,
+                                                         OSTREE_MAX_METADATA_SIZE,
+                                                         cancellable, error))
           goto out;
       }
 

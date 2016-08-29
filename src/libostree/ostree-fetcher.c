@@ -1058,16 +1058,16 @@ on_request_sent (GObject        *object,
 }
 
 static void
-ostree_fetcher_mirrorred_request_internal (OstreeFetcher         *self,
-                                           GSList                *mirrorlist,
-                                           const char            *filename,
-                                           gboolean               is_stream,
-                                           guint64                max_size,
-                                           int                    priority,
-                                           GCancellable          *cancellable,
-                                           GAsyncReadyCallback    callback,
-                                           gpointer               user_data,
-                                           gpointer               source_tag)
+ostree_fetcher_mirrored_request_internal (OstreeFetcher         *self,
+                                          GSList                *mirrorlist,
+                                          const char            *filename,
+                                          gboolean               is_stream,
+                                          guint64                max_size,
+                                          int                    priority,
+                                          GCancellable          *cancellable,
+                                          GAsyncReadyCallback    callback,
+                                          gpointer               user_data,
+                                          gpointer               source_tag)
 {
   g_autoptr(GTask) task = NULL;
   OstreeFetcherPendingURI *pending;
@@ -1099,57 +1099,57 @@ ostree_fetcher_mirrorred_request_internal (OstreeFetcher         *self,
 }
 
 void
-_ostree_fetcher_mirrorred_request_with_partial_async (OstreeFetcher         *self,
-                                                      GSList                *mirrorlist,
-                                                      const char            *filename,
-                                                      guint64                max_size,
-                                                      int                    priority,
-                                                      GCancellable          *cancellable,
-                                                      GAsyncReadyCallback    callback,
-                                                      gpointer               user_data)
+_ostree_fetcher_mirrored_request_with_partial_async (OstreeFetcher         *self,
+                                                     GSList                *mirrorlist,
+                                                     const char            *filename,
+                                                     guint64                max_size,
+                                                     int                    priority,
+                                                     GCancellable          *cancellable,
+                                                     GAsyncReadyCallback    callback,
+                                                     gpointer               user_data)
 {
-  ostree_fetcher_mirrorred_request_internal (self, mirrorlist, filename, FALSE,
-                                             max_size, priority, cancellable,
-                                             callback, user_data,
-                                             _ostree_fetcher_mirrorred_request_with_partial_async);
+  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, FALSE,
+                                            max_size, priority, cancellable,
+                                            callback, user_data,
+                                            _ostree_fetcher_mirrored_request_with_partial_async);
 }
 
 char *
-_ostree_fetcher_mirrorred_request_with_partial_finish (OstreeFetcher         *self,
-                                                       GAsyncResult          *result,
-                                                       GError               **error)
+_ostree_fetcher_mirrored_request_with_partial_finish (OstreeFetcher         *self,
+                                                      GAsyncResult          *result,
+                                                      GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        _ostree_fetcher_mirrorred_request_with_partial_async), NULL);
+                        _ostree_fetcher_mirrored_request_with_partial_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
 
 static void
-ostree_fetcher_stream_mirrorred_uri_async (OstreeFetcher         *self,
-                                           GSList                *mirrorlist,
-                                           const char            *filename,
-                                           guint64                max_size,
-                                           int                    priority,
-                                           GCancellable          *cancellable,
-                                           GAsyncReadyCallback    callback,
-                                           gpointer               user_data)
+ostree_fetcher_stream_mirrored_uri_async (OstreeFetcher         *self,
+                                          GSList                *mirrorlist,
+                                          const char            *filename,
+                                          guint64                max_size,
+                                          int                    priority,
+                                          GCancellable          *cancellable,
+                                          GAsyncReadyCallback    callback,
+                                          gpointer               user_data)
 {
-  ostree_fetcher_mirrorred_request_internal (self, mirrorlist, filename, TRUE,
-                                             max_size, priority, cancellable,
-                                             callback, user_data,
-                                             ostree_fetcher_stream_mirrorred_uri_async);
+  ostree_fetcher_mirrored_request_internal (self, mirrorlist, filename, TRUE,
+                                            max_size, priority, cancellable,
+                                            callback, user_data,
+                                            ostree_fetcher_stream_mirrored_uri_async);
 }
 
 static GInputStream *
-ostree_fetcher_stream_mirrorred_uri_finish (OstreeFetcher         *self,
-                                            GAsyncResult          *result,
-                                            GError               **error)
+ostree_fetcher_stream_mirrored_uri_finish (OstreeFetcher         *self,
+                                           GAsyncResult          *result,
+                                           GError               **error)
 {
   g_return_val_if_fail (g_task_is_valid (result, self), NULL);
   g_return_val_if_fail (g_async_result_is_tagged (result,
-                        ostree_fetcher_stream_mirrorred_uri_async), NULL);
+                        ostree_fetcher_stream_mirrored_uri_async), NULL);
 
   return g_task_propagate_pointer (G_TASK (result), error);
 }
@@ -1200,21 +1200,21 @@ fetch_uri_sync_on_complete (GObject        *object,
 {
   FetchUriSyncData *data = user_data;
 
-  data->result_stream = ostree_fetcher_stream_mirrorred_uri_finish ((OstreeFetcher*)object,
+  data->result_stream = ostree_fetcher_stream_mirrored_uri_finish ((OstreeFetcher*)object,
                                                                     result, data->error);
   data->done = TRUE;
 }
 
 gboolean
-_ostree_fetcher_mirrorred_request_to_membuf (OstreeFetcher  *fetcher,
-                                             GSList         *mirrorlist,
-                                             const char     *filename,
-                                             gboolean        add_nul,
-                                             gboolean        allow_noent,
-                                             GBytes         **out_contents,
-                                             guint64        max_size,
-                                             GCancellable   *cancellable,
-                                             GError         **error)
+_ostree_fetcher_mirrored_request_to_membuf (OstreeFetcher  *fetcher,
+                                            GSList         *mirrorlist,
+                                            const char     *filename,
+                                            gboolean        add_nul,
+                                            gboolean        allow_noent,
+                                            GBytes         **out_contents,
+                                            guint64        max_size,
+                                            GCancellable   *cancellable,
+                                            GError         **error)
 {
   gboolean ret = FALSE;
   const guint8 nulchar = 0;
@@ -1235,7 +1235,7 @@ _ostree_fetcher_mirrorred_request_to_membuf (OstreeFetcher  *fetcher,
   data.done = FALSE;
   data.error = error;
 
-  ostree_fetcher_stream_mirrorred_uri_async (fetcher, mirrorlist, filename, max_size,
+  ostree_fetcher_stream_mirrored_uri_async (fetcher, mirrorlist, filename, max_size,
                                    OSTREE_FETCHER_DEFAULT_PRIORITY, cancellable,
                                    fetch_uri_sync_on_complete, &data);
   while (!data.done)
@@ -1292,7 +1292,7 @@ _ostree_fetcher_request_uri_to_membuf (OstreeFetcher  *fetcher,
 {
   GSList *mirrorlist = g_slist_append (NULL, uri);
   gboolean ret =
-    _ostree_fetcher_mirrorred_request_to_membuf (fetcher, mirrorlist, NULL,
+    _ostree_fetcher_mirrored_request_to_membuf (fetcher, mirrorlist, NULL,
                                                  add_nul, allow_noent,
                                                  out_contents, max_size,
                                                  cancellable, error);
