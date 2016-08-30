@@ -19,6 +19,22 @@
  *
  */
 
-#pragma once
+#ifndef __OSTREE_MOUNT_UTIL_H_
+#define __OSTREE_MOUNT_UTIL_H_
 
-int path_is_on_readonly_fs (char *path);
+#include <err.h>
+#include <stdlib.h>
+#include <sys/statvfs.h>
+
+static inline int
+path_is_on_readonly_fs (char *path)
+{
+  struct statvfs stvfsbuf;
+
+  if (statvfs (path, &stvfsbuf) == -1)
+    err (EXIT_FAILURE, "statvfs(%s)", path);
+
+  return (stvfsbuf.f_flag & ST_RDONLY) != 0;
+}
+
+#endif /* __OSTREE_MOUNT_UTIL_H_ */
