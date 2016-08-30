@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <err.h>
 #include <errno.h>
 
 #include "ostree-mount-util.h"
@@ -49,15 +50,10 @@ maybe_mount_tmpfs_on_var (void)
     return;
 
   if (umount ("/var") < 0 && errno != EINVAL)
-    {
-      perror ("failed to unmount /var prior to mounting tmpfs, mounting over");
-    }
+    warn ("failed to unmount /var prior to mounting tmpfs, mounting over");
 
   if (mount ("tmpfs", "/var", "tmpfs", 0, NULL) < 0)
-    {
-      perror ("failed to mount tmpfs on /var");
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "failed to mount tmpfs on /var");
 }
 
 int
@@ -94,10 +90,7 @@ main(int argc, char *argv[])
            * already, then assume things are OK.
            */
           if (errno != EINVAL)
-            {
-              perrorv ("failed to remount %s", target);
-              exit (EXIT_FAILURE);
-            }
+            err (EXIT_FAILURE, "failed to remount %s", target);
 	}
     }
 

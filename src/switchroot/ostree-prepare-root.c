@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <err.h>
 #include <errno.h>
 #include <ctype.h>
 
@@ -86,27 +87,18 @@ parse_ostree_cmdline (void)
     {
       // Mount proc
       if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
-        {
-          perrorv ("failed to mount proc on /proc: ");
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to mount proc on /proc");
 
       cmdline = read_proc_cmdline ();
       tmp_errno = errno;
 
       /* Leave the filesystem in the state that we found it: */
       if (umount ("/proc"))
-        {
-          perrorv ("failed to umount proc from /proc: ");
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to umount proc from /proc");
 
       errno = tmp_errno;
       if (!cmdline)
-        {
-          perrorv ("failed to read /proc/cmdline: ");
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to read /proc/cmdline");
     }
 
   iter = cmdline;
@@ -158,29 +150,17 @@ resolve_deploy_path (const char * root_mountpoint)
 
   ostree_target = parse_ostree_cmdline ();
   if (!ostree_target)
-    {
-      fprintf (stderr, "No OSTree target; expected ostree=/ostree/boot.N/...\n");
-      exit (EXIT_FAILURE);
-    }
+    errx (EXIT_FAILURE, "No OSTree target; expected ostree=/ostree/boot.N/...");
 
   snprintf (destpath, sizeof(destpath), "%s/%s", root_mountpoint, ostree_target);
   printf ("Examining %s\n", destpath);
   if (lstat (destpath, &stbuf) < 0)
-    {
-      perrorv ("Couldn't find specified OSTree root '%s': ", destpath);
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "Couldn't find specified OSTree root '%s'", destpath);
   if (!S_ISLNK (stbuf.st_mode))
-    {
-      fprintf (stderr, "OSTree target is not a symbolic link: %s\n", destpath);
-      exit (EXIT_FAILURE);
-    }
+    errx (EXIT_FAILURE, "OSTree target is not a symbolic link: %s", destpath);
   deploy_path = realpath (destpath, NULL);
   if (deploy_path == NULL)
-    {
-      perrorv ("realpath(%s) failed: ", destpath);
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "realpath(%s) failed", destpath);
   printf ("Resolved OSTree target to: %s\n", deploy_path);
   return deploy_path;
 }
@@ -214,33 +194,21 @@ main(int argc, char *argv[])
    *
    * https://bugzilla.redhat.com/show_bug.cgi?id=847418 */
   if (mount (NULL, "/", NULL, MS_REC|MS_PRIVATE, NULL) < 0)
-    {
-      perrorv ("failed to make \"/\" private mount: %m");
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "failed to make \"/\" private mount");
 
   /* Make deploy_path a bind mount, so we can move it later */
   if (mount (deploy_path, deploy_path, NULL, MS_BIND, NULL) < 0)
-    {
-      perrorv ("failed to make initial bind mount %s", deploy_path);
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "failed to make initial bind mount %s", deploy_path);
 
   /* chdir to our new root.  We need to do this after bind-mounting it over
    * itself otherwise our cwd is still on the non-bind-mounted filesystem
    * below. */
   if (chdir (deploy_path) < 0)
-    {
-      perrorv ("failed to chdir to deploy_path");
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "failed to chdir to deploy_path");
 
   /* Link to the deployment's /var */
   if (mount ("../../var", "var", NULL, MS_MGC_VAL|MS_BIND, NULL) < 0)
-    {
-      perrorv ("failed to bind mount ../../var to var");
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "failed to bind mount ../../var to var");
 
   /* If /boot is on the same partition, use a bind mount to make it visible
    * at /boot inside the deployment. */
@@ -251,10 +219,7 @@ main(int argc, char *argv[])
         {
           snprintf (srcpath, sizeof(srcpath), "%s/boot", root_mountpoint);
           if (mount (srcpath, "boot", NULL, MS_BIND, NULL) < 0)
-            {
-              perrorv ("failed to bind mount %s to boot", srcpath);
-              exit (EXIT_FAILURE);
-            }
+            err (EXIT_FAILURE, "failed to bind mount %s to boot", srcpath);
         }
     }
 
@@ -271,31 +236,19 @@ main(int argc, char *argv[])
       if (path_is_on_readonly_fs ("."))
 	{
 	  if (mount (".", ".", NULL, MS_REMOUNT | MS_SILENT, NULL) < 0)
-	    {
-	      perrorv ("failed to remount rootfs writable (for overlayfs)");
-	      exit (EXIT_FAILURE);
-	    }
+	    err (EXIT_FAILURE, "failed to remount rootfs writable (for overlayfs)");
 	}
       
       if (mount ("overlay", "usr", "overlay", 0, usr_ovl_options) < 0)
-	{
-	  perrorv ("failed to mount /usr overlayfs");
-	  exit (EXIT_FAILURE);
-	}
+        err (EXIT_FAILURE, "failed to mount /usr overlayfs");
     }
   else
     {
       /* Otherwise, a read-only bind mount for /usr */
       if (mount ("usr", "usr", NULL, MS_BIND, NULL) < 0)
-	{
-	  perrorv ("failed to bind mount (class:readonly) /usr");
-	  exit (EXIT_FAILURE);
-	}
+        err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
       if (mount ("usr", "usr", NULL, MS_BIND | MS_REMOUNT | MS_RDONLY, NULL) < 0)
-	{
-	  perrorv ("failed to bind mount (class:readonly) /usr");
-	  exit (EXIT_FAILURE);
-	}
+        err (EXIT_FAILURE, "failed to bind mount (class:readonly) /usr");
     }
 
   touch_run_ostree ();
@@ -309,10 +262,7 @@ main(int argc, char *argv[])
        * sysroot, so moving sysroot would also move the deploy location.   In
        * reality attempting mount --move would fail with EBUSY. */
       if (pivot_root (".", "sysroot") < 0)
-        {
-          perrorv ("failed to pivot_root to deployment");
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to pivot_root to deployment");
     }
   else
     {
@@ -330,35 +280,22 @@ main(int argc, char *argv[])
        * 3. /sysroot.tmp -> /sysroot
        */
       if (mkdir ("/sysroot.tmp", 0755) < 0)
-        {
-          perrorv ("couldn't create temporary sysroot /sysroot.tmp: ");
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "couldn't create temporary sysroot /sysroot.tmp");
 
       if (mount (deploy_path, "/sysroot.tmp", NULL, MS_MOVE, NULL) < 0)
-        {
-          perrorv ("failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to '/sysroot.tmp'", deploy_path);
 
       if (mount (root_mountpoint, "sysroot", NULL, MS_MOVE, NULL) < 0)
-        {
-          perrorv ("failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to MS_MOVE '%s' to 'sysroot'", root_mountpoint);
 
       if (mount (".", root_mountpoint, NULL, MS_MOVE, NULL) < 0)
-        {
-          perrorv ("failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
-          exit (EXIT_FAILURE);
-        }
+        err (EXIT_FAILURE, "failed to MS_MOVE %s to %s", deploy_path, root_mountpoint);
     }
 
   if (getpid() == 1)
     {
       execl ("/sbin/init", "/sbin/init", NULL);
-      perrorv ("failed to exec init inside ostree");
-      exit (EXIT_FAILURE);
+      err (EXIT_FAILURE, "failed to exec init inside ostree");
     }
   else
     {

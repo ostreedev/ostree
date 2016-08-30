@@ -22,42 +22,11 @@
 
 #include "config.h"
 
-#include <stdarg.h>
-#include <errno.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/mount.h>
-#include <unistd.h>
+#include <err.h>
 #include <stdlib.h>
 #include <sys/statvfs.h>
 
 #include "ostree-mount-util.h"
-
-int
-perrorv (const char *format, ...)
-{
-  va_list args;
-  char buf[1024];
-  char *p;
-
-#ifdef _GNU_SOURCE
-  p = strerror_r (errno, buf, sizeof (buf));
-#else
-  strerror_r (errno, buf, sizeof (buf));
-  buf[sizeof (buf) - 1] = '\0';
-  p = buf;
-#endif  /* _GNU_SOURCE */
-
-  va_start (args, format);
-
-  vfprintf (stderr, format, args);
-  fprintf (stderr, ": %s\n", p);
-  fflush (stderr);
-
-  va_end (args);
-
-  return 0;
-}
 
 int
 path_is_on_readonly_fs (char *path)
@@ -65,10 +34,7 @@ path_is_on_readonly_fs (char *path)
   struct statvfs stvfsbuf;
 
   if (statvfs (path, &stvfsbuf) == -1)
-    {
-      perrorv ("statvfs(%s): ", path);
-      exit (EXIT_FAILURE);
-    }
+    err (EXIT_FAILURE, "statvfs(%s)", path);
 
   return (stvfsbuf.f_flag & ST_RDONLY) != 0;
 }
