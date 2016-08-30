@@ -16,19 +16,10 @@
 # Boston, MA 02111-1307, USA.
 
 if BUILDOPT_SYSTEMD
-
 ostree_boot_PROGRAMS += ostree-remount
-
-noinst_LTLIBRARIES += libswitchroot-mountutil.la
 endif
 
-libswitchroot_mountutil_la_SOURCES = \
-	src/switchroot/ostree-mount-util.c \
-	src/switchroot/ostree-mount-util.h \
-	$(NULL)
-
 ostree_prepare_root_SOURCES = \
-    src/switchroot/ostree-mount-util.c \
     src/switchroot/ostree-mount-util.h \
     src/switchroot/ostree-prepare-root.c \
     $(NULL)
@@ -54,6 +45,8 @@ ostree_boot_PROGRAMS += ostree-prepare-root
 ostree_prepare_root_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
 endif
 
-ostree_remount_SOURCES = src/switchroot/ostree-remount.c
-ostree_remount_LDADD = libswitchroot-mountutil.la
+ostree_remount_SOURCES = \
+    src/switchroot/ostree-mount-util.h \
+    src/switchroot/ostree-remount.c \
+    $(NULL)
 ostree_remount_CFLAGS = $(AM_CFLAGS) -Isrc/switchroot
