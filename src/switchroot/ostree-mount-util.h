@@ -21,6 +21,4 @@
 
 #pragma once
 
-int perrorv (const char *format, ...) __attribute__ ((format (printf, 1, 2)));
-
 int path_is_on_readonly_fs (char *path);
