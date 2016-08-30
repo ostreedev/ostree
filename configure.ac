@@ -295,6 +295,13 @@ AS_IF([test x$with_grub2_mkconfig_path = x], [
 ],[GRUB2_MKCONFIG=$with_grub2_mkconfig_path])
 AC_DEFINE_UNQUOTED([GRUB2_MKCONFIG_PATH], ["$GRUB2_MKCONFIG"], [The system grub2-mkconfig executible name])
 
+AC_ARG_WITH(static-compiler,
+            AS_HELP_STRING([--with-static-compiler],
+                           [Use the given compiler to build ostree-prepare-root statically linked (default: no)]),,
+              [with_static_compiler=no])
+AM_CONDITIONAL(BUILDOPT_USE_STATIC_COMPILER, test x$with_static_compiler != xno)
+AC_SUBST(STATIC_COMPILER, $with_static_compiler)
+
 dnl for tests
 AS_IF([test "x$found_introspection" = xyes], [
   AC_PATH_PROG(GJS, [gjs])
@@ -332,7 +339,8 @@ echo "
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs
     dracut:                                       $with_dracut
-    mkinitcpio:                                   $with_mkinitcpio"
+    mkinitcpio:                                   $with_mkinitcpio
+    Static compiler for ostree-prepare-root:      $with_static_compiler"
 AS_IF([test x$with_builtin_grub2_mkconfig = xyes], [
     echo "    builtin grub2-mkconfig (instead of system):   $with_builtin_grub2_mkconfig"
 ], [
