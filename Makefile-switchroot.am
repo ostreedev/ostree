@@ -38,7 +38,7 @@ if BUILDOPT_USE_STATIC_COMPILER
 ostree_boot_SCRIPTS = ostree-prepare-root
 
 ostree-prepare-root : $(ostree_prepare_root_SOURCES)
-	$(STATIC_COMPILER) -o $@ -static $(ostree_prepare_root_SOURCES) $(AM_CPPFLAGS) $(AM_CFLAGS)
+	$(STATIC_COMPILER) -o $@ -static $(ostree_prepare_root_SOURCES) $(AM_CPPFLAGS) $(AM_CFLAGS) $(DEFAULT_INCLUDES)
 else
 ostree_boot_PROGRAMS += ostree-prepare-root
 
