@@ -3026,6 +3026,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_free (pull_data->remote_name);
   if (pull_data->content_mirrorlist != pull_data->meta_mirrorlist)
     g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
+  /* we clear this *after* clearing content_mirrorlist to avoid unref'ing twice */
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);

@@ -974,8 +974,7 @@ on_request_sent (GObject        *object,
               if (local_error != NULL)
                 goto out;
 
-              if (pending->request_body)
-                (void) g_input_stream_close (pending->request_body, NULL, NULL);
+              (void) g_input_stream_close (pending->request_body, NULL, NULL);
               g_queue_insert_sorted (&pending->thread_closure->pending_queue,
                                      g_object_ref (task), pending_task_compare,
                                      NULL);
