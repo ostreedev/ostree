@@ -2252,6 +2252,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->is_mirror = (flags & OSTREE_REPO_PULL_FLAGS_MIRROR) > 0;
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
   pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
+  pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
 
   if (error)
     pull_data->async_error = &pull_data->cached_async_error;
@@ -2895,6 +2896,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_source_destroy (update_timeout);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
+  g_clear_object (&pull_data->cancellable);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
   if (pull_data->base_uri)
