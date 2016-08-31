@@ -353,13 +353,15 @@ global:
         ostree_repo_checkout_at;
 } LIBOSTREE_2016.7;
 
+/* No new symbols in 2016.9 */
+
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
 /* Remove comment when first new symbol is added
-LIBOSTREE_2016.9
+LIBOSTREE_2016.10
 global:
 	someostree_symbol_deleteme;
 } LIBOSTREE_2016.8;
