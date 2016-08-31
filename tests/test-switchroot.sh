@@ -6,7 +6,7 @@ setup_bootfs() {
 	mkdir -p "$1/proc" "$1/bin"
 	echo "quiet ostree=/ostree/boot.0 ro" >"$1/proc/cmdline"
 	touch "$1/this_is_bootfs"
-	cp "$(dirname "$this_script")/../src/switchroot/ostree-prepare-root" "$1/bin"
+	cp "$(dirname "$this_script")/../ostree-prepare-root" "$1/bin"
 }
 
 setup_rootfs() {
