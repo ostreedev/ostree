@@ -174,17 +174,19 @@ pivot_root(const char * new_root, const char * put_old)
 int
 main(int argc, char *argv[])
 {
-  const char *root_mountpoint = NULL;
+  const char *root_mountpoint = NULL, *root_arg = NULL;
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
   struct stat stbuf;
 
   if (argc < 2)
-    root_mountpoint = "/";
+    root_arg = "/";
   else
-    root_mountpoint = argv[1];
+    root_arg = argv[1];
 
-  root_mountpoint = realpath (root_mountpoint, NULL);
+  root_mountpoint = realpath (root_arg, NULL);
+  if (root_mountpoint == NULL)
+    err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
   deploy_path = resolve_deploy_path (root_mountpoint);
 
   /* Work-around for a kernel bug: for some reason the kernel
