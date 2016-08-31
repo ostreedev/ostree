@@ -2471,9 +2471,10 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       goto out;
 
     if (contenturl == NULL)
-      /* this is a bit hacky but greatly simplifies coding elsewhere; we take
-       * care in the out path to not double free if they're the same list */
-      pull_data->content_mirrorlist = pull_data->meta_mirrorlist;
+      {
+        pull_data->content_mirrorlist =
+          g_ptr_array_ref (pull_data->meta_mirrorlist);
+      }
     else
       {
         if (g_str_has_prefix (contenturl, "mirrorlist="))
@@ -3026,10 +3027,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_clear_object (&pull_data->cancellable);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);
-  if (pull_data->content_mirrorlist != pull_data->meta_mirrorlist)
-    g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
-  /* we clear this *after* clearing content_mirrorlist to avoid unref'ing twice */
   g_clear_pointer (&pull_data->meta_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
+  g_clear_pointer (&pull_data->content_mirrorlist, (GDestroyNotify) g_ptr_array_unref);
   g_clear_pointer (&pull_data->summary_data, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary_data_sig, (GDestroyNotify) g_bytes_unref);
   g_clear_pointer (&pull_data->summary, (GDestroyNotify) g_variant_unref);
