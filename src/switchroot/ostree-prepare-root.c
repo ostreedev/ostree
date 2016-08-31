@@ -80,26 +80,10 @@ parse_ostree_cmdline (void)
   char *cmdline = NULL;
   const char *iter;
   char *ret = NULL;
-  int tmp_errno;
 
   cmdline = read_proc_cmdline ();
   if (!cmdline)
-    {
-      // Mount proc
-      if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
-        err (EXIT_FAILURE, "failed to mount proc on /proc");
-
-      cmdline = read_proc_cmdline ();
-      tmp_errno = errno;
-
-      /* Leave the filesystem in the state that we found it: */
-      if (umount ("/proc"))
-        err (EXIT_FAILURE, "failed to umount proc from /proc");
-
-      errno = tmp_errno;
-      if (!cmdline)
-        err (EXIT_FAILURE, "failed to read /proc/cmdline");
-    }
+    err (EXIT_FAILURE, "failed to read /proc/cmdline");
 
   iter = cmdline;
   while (iter != NULL)
@@ -178,16 +162,35 @@ main(int argc, char *argv[])
   char *deploy_path = NULL;
   char srcpath[PATH_MAX];
   struct stat stbuf;
+  int we_mounted_proc = 0;
 
   if (argc < 2)
     root_arg = "/";
   else
     root_arg = argv[1];
 
+  if (stat ("/proc/cmdline", &stbuf) < 0)
+    {
+      if (errno != ENOENT)
+        err (EXIT_FAILURE, "stat(\"/proc/cmdline\") failed");
+      /* We need /proc mounted for /proc/cmdline and realpath (on musl) to
+       * work: */
+      if (mount ("proc", "/proc", "proc", 0, NULL) < 0)
+        err (EXIT_FAILURE, "failed to mount proc on /proc");
+      we_mounted_proc = 1;
+    }
+
   root_mountpoint = realpath (root_arg, NULL);
   if (root_mountpoint == NULL)
     err (EXIT_FAILURE, "realpath(\"%s\")", root_arg);
   deploy_path = resolve_deploy_path (root_mountpoint);
+
+  if (we_mounted_proc)
+    {
+      /* Leave the filesystem in the state that we found it: */
+      if (umount ("/proc"))
+        err (EXIT_FAILURE, "failed to umount proc from /proc");
+    }
 
   /* Work-around for a kernel bug: for some reason the kernel
    * refuses switching root if any file systems are mounted

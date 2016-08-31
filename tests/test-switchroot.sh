@@ -4,7 +4,14 @@ this_script="${BASH_SOURCE:-$(readlink -f "$0")}"
 
 setup_bootfs() {
 	mkdir -p "$1/proc" "$1/bin"
-	echo "quiet ostree=/ostree/boot.0 ro" >"$1/proc/cmdline"
+
+	# We need the real /proc mounted here so musl's realpath will work, but we
+	# want to be able to override /proc/cmdline, so bind mount.
+	mount -t proc proc "$1/proc"
+
+	echo "quiet ostree=/ostree/boot.0 ro" >"$1/override_cmdline"
+	mount --bind "$1/override_cmdline" "$1/proc/cmdline"
+
 	touch "$1/this_is_bootfs"
 	cp "$(dirname "$this_script")/../ostree-prepare-root" "$1/bin"
 }
