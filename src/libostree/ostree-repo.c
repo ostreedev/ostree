@@ -4204,7 +4204,7 @@ ostree_repo_sign_delta (OstreeRepo     *self,
  * @cancellable: A #GCancellable
  * @error: a #GError
  *
- * Add a GPG signature to a static delta.
+ * Add a GPG signature to the summary file.
  */
 gboolean
 ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
