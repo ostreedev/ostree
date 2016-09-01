@@ -4196,22 +4196,13 @@ ostree_repo_sign_delta (OstreeRepo     *self,
   return FALSE;
 }
 
-/**
- * ostree_repo_add_gpg_signature_summary:
- * @self: Self
- * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
- * @homedir: (allow-none): GPG home directory, or %NULL
- * @cancellable: A #GCancellable
- * @error: a #GError
- *
- * Add a GPG signature to the summary file.
- */
-gboolean
-ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
-                                       const gchar    **key_id,
-                                       const gchar    *homedir,
-                                       GCancellable   *cancellable,
-                                       GError        **error)
+static gboolean
+internal_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                         int             dir_fd,
+                                         const gchar    **key_id,
+                                         const gchar    *homedir,
+                                         GCancellable   *cancellable,
+                                         GError        **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GBytes) summary_data = NULL;
@@ -4220,11 +4211,11 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   g_autoptr(GVariant) normalized = NULL;
   guint i;
 
-  summary_data = ot_file_mapat_bytes (self->repo_dir_fd, "summary", error);
+  summary_data = ot_file_mapat_bytes (dir_fd, "summary", error);
   if (!summary_data)
     goto out;
 
-  if (!ot_util_variant_map_at (self->repo_dir_fd, "summary.sig",
+  if (!ot_util_variant_map_at (dir_fd, "summary.sig",
                                G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING),
                                OT_VARIANT_MAP_ALLOW_NOENT, &existing_signatures, error))
     goto out;
@@ -4243,7 +4234,7 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   normalized = g_variant_get_normal_form (new_metadata);
 
   if (!_ostree_repo_file_replace_contents (self,
-                                           self->repo_dir_fd,
+                                           dir_fd,
                                            "summary.sig",
                                            g_variant_get_data (normalized),
                                            g_variant_get_size (normalized),
@@ -4253,6 +4244,31 @@ ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
   ret = TRUE;
  out:
   return ret;
+}
+
+/**
+ * ostree_repo_add_gpg_signature_summary:
+ * @self: Self
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: A #GCancellable
+ * @error: a #GError
+ *
+ * Add a GPG signature to the summary file.
+ */
+gboolean
+ostree_repo_add_gpg_signature_summary (OstreeRepo     *self,
+                                       const gchar    **key_id,
+                                       const gchar    *homedir,
+                                       GCancellable   *cancellable,
+                                       GError        **error)
+{
+  return internal_repo_add_gpg_signature_summary (self,
+                                                  self->repo_dir_fd,
+                                                  key_id,
+                                                  homedir,
+                                                  cancellable,
+                                                  error);
 }
 
 /* Special remote for _ostree_repo_gpg_verify_with_metadata() */
@@ -4615,24 +4631,12 @@ ostree_repo_verify_summary (OstreeRepo    *self,
                                                 error);
 }
 
-/**
- * ostree_repo_regenerate_summary:
- * @self: Repo
- * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
- * @cancellable: Cancellable
- * @error: Error
- *
- * An OSTree repository can contain a high level "summary" file that
- * describes the available branches and other metadata.
- *
- * It is regenerated automatically after a commit if
- * `core/commit-update-summary` is set.
- */
-gboolean
-ostree_repo_regenerate_summary (OstreeRepo     *self,
-                                GVariant       *additional_metadata,
-                                GCancellable   *cancellable,
-                                GError        **error)
+static gboolean
+internal_repo_regenerate_summary (OstreeRepo     *self,
+                                  int             dir_fd,
+                                  GVariant       *additional_metadata,
+                                  GCancellable   *cancellable,
+                                  GError        **error)
 {
   gboolean ret = FALSE;
   g_autoptr(GHashTable) refs = NULL;
@@ -4725,12 +4729,45 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   }
 
   if (!_ostree_repo_file_replace_contents (self,
-                                           self->repo_dir_fd,
+                                           dir_fd,
                                            "summary",
                                            g_variant_get_data (summary),
                                            g_variant_get_size (summary),
                                            cancellable,
                                            error))
+    goto out;
+
+  ret = TRUE;
+ out:
+  if (ordered_keys)
+    g_list_free (ordered_keys);
+  return ret;
+}
+
+/**
+ * ostree_repo_regenerate_summary:
+ * @self: Repo
+ * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * An OSTree repository can contain a high level "summary" file that
+ * describes the available branches and other metadata.
+ *
+ * It is regenerated automatically after a commit if
+ * `core/commit-update-summary` is set.
+ */
+gboolean
+ostree_repo_regenerate_summary (OstreeRepo     *self,
+                                GVariant       *additional_metadata,
+                                GCancellable   *cancellable,
+                                GError        **error)
+{
+  gboolean ret = FALSE;
+
+  if (!internal_repo_regenerate_summary (self, self->repo_dir_fd,
+                                         additional_metadata,
+                                         cancellable, error))
     goto out;
 
   if (unlinkat (self->repo_dir_fd, "summary.sig", 0) < 0)
@@ -4744,8 +4781,6 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
 
   ret = TRUE;
  out:
-  if (ordered_keys)
-    g_list_free (ordered_keys);
   return ret;
 }
 
