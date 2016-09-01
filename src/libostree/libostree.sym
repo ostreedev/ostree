@@ -360,9 +360,14 @@ global:
  *                         NOTE NOTE NOTE
  */
 
+LIBOSTREE_2016.10 {
+global:
+        ostree_repo_regenerate_summary_ext;
+} LIBOSTREE_2016.8;
+
 /* Remove comment when first new symbol is added
-LIBOSTREE_2016.10
+LIBOSTREE_2016.11 {
 global:
 	someostree_symbol_deleteme;
-} LIBOSTREE_2016.8;
+} LIBOSTREE_2016.10;
  * Remove comment when first new symbol is added */

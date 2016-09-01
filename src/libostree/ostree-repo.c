@@ -4784,6 +4784,100 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   return ret;
 }
 
+
+/**
+ * ostree_repo_regenerate_summary_ext:
+ * @self: Repo
+ * @additional_metadata: (allow-none): A GVariant of type a{sv}, or %NULL
+ * @key_id: (array zero-terminated=1) (element-type utf8): NULL-terminated array of GPG keys.
+ * @homedir: (allow-none): GPG home directory, or %NULL
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * An OSTree repository can contain a high level "summary" file that
+ * describes the available branches and other metadata.
+ *
+ * It is regenerated automatically after a commit if
+ * `core/commit-update-summary` is set.
+ *
+ * This extended variant allows specifying GPG key IDs to sign the
+ * summary file before it's committed.
+ */
+gboolean
+ostree_repo_regenerate_summary_ext (OstreeRepo     *self,
+                                    GVariant       *additional_metadata,
+                                    const gchar   **key_id,
+                                    const gchar    *homedir,
+                                    GCancellable   *cancellable,
+                                    GError        **error)
+{
+  gboolean ret = FALSE;
+  g_autofree char *tmpdir_name_template = g_strdup("summary-XXXXXX");
+  glnx_fd_close int summary_tmpdir_fd = -1;
+
+  if (!glnx_mkdtempat (self->tmp_dir_fd, tmpdir_name_template, 0777, error))
+    goto out;
+
+  if (!glnx_opendirat (self->tmp_dir_fd, tmpdir_name_template, FALSE,
+                       &summary_tmpdir_fd, error))
+    goto out;
+
+  /* Generate the summary and optional signature file in the tmpdir */
+  if (!internal_repo_regenerate_summary (self, summary_tmpdir_fd,
+                                         additional_metadata,
+                                         cancellable, error))
+    goto out;
+
+  if (key_id &&
+      !internal_repo_add_gpg_signature_summary (self, summary_tmpdir_fd,
+                                                key_id, homedir,
+                                                cancellable, error))
+    goto out;
+
+  /* Rename them into place */
+  if (renameat (summary_tmpdir_fd, "summary",
+                self->repo_dir_fd, "summary") == -1)
+    {
+      glnx_set_prefix_error_from_errno (error, "%s",
+                                        "Unable to rename summary file");
+      goto out;
+    }
+  if (key_id)
+    {
+      if (renameat (summary_tmpdir_fd, "summary.sig",
+                    self->repo_dir_fd, "summary.sig") == -1)
+        {
+          glnx_set_prefix_error_from_errno (error, "%s",
+                                            "Unable to rename summary signature file");
+
+          /* Delete an existing signature since it no longer corresponds
+           * to the summary
+           */
+          (void) ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", NULL);
+
+          goto out;
+        }
+    }
+  else
+    {
+      /* Delete an existing signature since it no longer corresponds to
+       * the summary
+       */
+      if (!ot_ensure_unlinked_at (self->repo_dir_fd, "summary.sig", NULL))
+        {
+          g_prefix_error (error, "Unable to delete summary signature file: ");
+          goto out;
+        }
+    }
+
+  ret = TRUE;
+ out:
+  /* Always cleanup the tmpdir */
+  (void) glnx_shutil_rm_rf_at (self->tmp_dir_fd, tmpdir_name_template,
+                               NULL, NULL);
+  return ret;
+}
+
 gboolean
 _ostree_repo_is_locked_tmpdir (const char *filename)
 {

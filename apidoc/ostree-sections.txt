@@ -381,6 +381,7 @@ ostree_repo_verify_commit
 ostree_repo_verify_commit_ext
 ostree_repo_verify_summary
 ostree_repo_regenerate_summary
+ostree_repo_regenerate_summary_ext
 <SUBSECTION Standard>
 OSTREE_REPO
 OSTREE_IS_REPO

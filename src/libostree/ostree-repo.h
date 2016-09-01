@@ -1088,6 +1088,14 @@ gboolean ostree_repo_regenerate_summary (OstreeRepo     *self,
                                          GCancellable   *cancellable,
                                          GError        **error);
 
+_OSTREE_PUBLIC
+gboolean ostree_repo_regenerate_summary_ext (OstreeRepo     *self,
+                                             GVariant       *additional_metadata,
+                                             const gchar   **key_id,
+                                             const gchar    *homedir,
+                                             GCancellable   *cancellable,
+                                             GError        **error);
+
 
 G_END_DECLS
 
