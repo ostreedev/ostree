@@ -53,18 +53,11 @@ ostree_builtin_summary (int argc, char **argv, GCancellable *cancellable, GError
       if (!ostree_ensure_repo_writable (repo, error))
         goto out;
 
-      if (!ostree_repo_regenerate_summary (repo, NULL, cancellable, error))
+      if (!ostree_repo_regenerate_summary_ext (repo, NULL,
+                                               (const gchar **) opt_key_ids,
+                                               opt_gpg_homedir,
+                                               cancellable, error))
         goto out;
-
-      if (opt_key_ids)
-        {
-          if (!ostree_repo_add_gpg_signature_summary (repo,
-                                                      (const gchar **) opt_key_ids,
-                                                      opt_gpg_homedir,
-                                                      cancellable,
-                                                      error))
-            goto out;
-        }
     }
   else
     {
