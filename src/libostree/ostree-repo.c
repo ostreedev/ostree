@@ -2544,6 +2544,7 @@ load_metadata_internal (OstreeRepo       *self,
 {
   gboolean ret = FALSE;
   char loose_path_buf[_OSTREE_LOOSE_PATH_MAX];
+  struct stat stbuf;
   glnx_fd_close int fd = -1;
   g_autoptr(GInputStream) ret_stream = NULL;
   g_autoptr(GVariant) ret_variant = NULL;
@@ -2565,23 +2566,39 @@ load_metadata_internal (OstreeRepo       *self,
 
   if (fd != -1)
     {
+      if (fstat (fd, &stbuf) < 0)
+        {
+          glnx_set_error_from_errno (error);
+          goto out;
+        }
+
       if (out_variant)
         {
-          GMappedFile *mfile;
+          /* http://stackoverflow.com/questions/258091/when-should-i-use-mmap-for-file-access */
+          if (stbuf.st_size > 16*1024)
+            {
+              GMappedFile *mfile;
 
-          mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
-          if (!mfile)
-            goto out;
-          ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
-                                                 g_mapped_file_get_contents (mfile),
-                                                 g_mapped_file_get_length (mfile),
-                                                 TRUE,
-                                                 (GDestroyNotify) g_mapped_file_unref,
-                                                 mfile);
-          g_variant_ref_sink (ret_variant);
-
-          if (out_size)
-            *out_size = g_variant_get_size (ret_variant);
+              mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+              if (!mfile)
+                goto out;
+              ret_variant = g_variant_new_from_data (ostree_metadata_variant_type (objtype),
+                                                     g_mapped_file_get_contents (mfile),
+                                                     g_mapped_file_get_length (mfile),
+                                                     TRUE,
+                                                     (GDestroyNotify) g_mapped_file_unref,
+                                                     mfile);
+              g_variant_ref_sink (ret_variant);
+            }
+          else
+            {
+              GBytes *data = glnx_fd_readall_bytes (fd, cancellable, error);
+              if (!data)
+                goto out;
+              ret_variant = g_variant_new_from_bytes (ostree_metadata_variant_type (objtype),
+                                                      data, TRUE);
+              g_variant_ref_sink (ret_variant);
+            }
         }
       else if (out_stream)
         {
@@ -2589,15 +2606,10 @@ load_metadata_internal (OstreeRepo       *self,
           if (!ret_stream)
             goto out;
           fd = -1; /* Transfer ownership */
-          if (out_size)
-            {
-              struct stat stbuf;
-
-              if (!glnx_stream_fstat ((GFileDescriptorBased*)ret_stream, &stbuf, error))
-                goto out;
-              *out_size = stbuf.st_size;
-            }
         }
+
+      if (out_size)
+        *out_size = stbuf.st_size;
     }
   else if (self->parent_repo)
     {
