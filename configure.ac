@@ -306,7 +306,16 @@ AC_ARG_ENABLE(rofiles-fuse,
 AS_IF([ test x$enable_rofiles_fuse != xno ], [
     PKG_CHECK_MODULES(BUILDOPT_FUSE, $FUSE_DEPENDENCY)
 ], [enable_rofiles_fuse=no])
-AM_CONDITIONAL(BUILDOPT_FUSE, test x$enable_rofiles_fuse = xyes)
+
+AC_ARG_ENABLE(union-fuse,
+              [AS_HELP_STRING([--enable-union-fuse],
+                              [generate union-fuse helper [default=yes]])],,
+              enable_union_fuse=yes)
+AS_IF([ test x$enable_union_fuse != xno ], [
+    PKG_CHECK_MODULES(BUILDOPT_FUSE, $FUSE_DEPENDENCY)
+], [enable_union_fuse=no])
+
+AM_CONDITIONAL(BUILDOPT_FUSE, test x$enable_rofiles_fuse = xyes || test x$enable_union_fuse = xyes)
 
 AC_ARG_WITH(dracut,
             AS_HELP_STRING([--with-dracut],
@@ -398,6 +407,7 @@ echo "
     Rust (internal oxidation):                    $rust_debug_release
     rofiles-fuse:                                 $enable_rofiles_fuse
     HTTP backend:                                 $fetcher_backend
+    union-fuse:                                   $enable_union_fuse
     SELinux:                                      $with_selinux
     systemd:                                      $have_libsystemd
     libmount:                                     $with_libmount

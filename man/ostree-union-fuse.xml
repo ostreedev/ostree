@@ -1,0 +1,82 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+    "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+
+<!--
+Copyright 2016 Colin Walters <walters@verbum.org>
+Copyright (C) 2016 Red Hat, Inc.
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the
+Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+-->
+
+<refentry id="ostree">
+
+    <refentryinfo>
+        <title>ostree-union-fuse</title>
+        <productname>ostree-union-fuse</productname>
+
+        <authorgroup>
+            <author>
+                <contrib>Developer</contrib>
+                <firstname>Giuseppe</firstname>
+                <surname>Scrivano</surname>
+                <email>gscrivan@redhat.com</email>
+            </author>
+        </authorgroup>
+    </refentryinfo>
+
+    <refmeta>
+        <refentrytitle>ostree-union-fuse</refentrytitle>
+        <manvolnum>1</manvolnum>
+    </refmeta>
+
+    <refnamediv>
+        <refname>ostree-union-fuse</refname>
+        <refpurpose>Use FUSE to stack more OSTree commits and see the union of them.</refpurpose>
+    </refnamediv>
+
+    <refsynopsisdiv>
+      <cmdsynopsis>
+        <command>ostree-union-fuse -o whiteouts -o repo=REPO -o layers=LAYER_1[:LAYER_N] MNTPOINT</command>
+      </cmdsynopsis>
+    </refsynopsisdiv>
+
+    <refsect1>
+        <title>Description</title>
+
+        <para>
+          It allows the files of different commits to form a single
+          file system.
+          Each specified layer shadows the previous one, so that only
+          the newer version of a file is accessible.
+          If the option <option>-o whiteouts</option> is specified,
+          files that have the form <literal>.wh.NAME</literal> are
+          treated as whiteouts.  A whiteout file is used to remove a
+          file which is present in a previous layer.
+
+          ostree-union-fuse is an inspection tool for a transient
+          mount and it is not a replacement for checkout --union.
+	</para>
+
+    </refsect1>
+
+    <refsect1>
+        <title>See Also</title>
+        <para>
+            <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+        </para>
+    </refsect1>
+</refentry>
