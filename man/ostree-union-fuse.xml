@@ -69,6 +69,9 @@ Boston, MA 02111-1307, USA.
 
           ostree-union-fuse is an inspection tool for a transient
           mount and it is not a replacement for checkout --union.
+
+          If<option>-o memcache</option> is used ostree-union-fuse might
+          use additional memory to cache the results.
 	</para>
 
     </refsect1>

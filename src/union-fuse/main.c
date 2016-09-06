@@ -53,6 +53,7 @@ opt_config
   char *repo_location;
   char *layers;
   int  whiteouts;
+  int  memcache;
 };
 
 static struct opt_config config;
@@ -68,6 +69,7 @@ static GArray *layers;
 
 static int objects_basefd;
 
+static GHashTable *memcache_dir;
 
 /* path is a buffer at least (OSTREE_SHA256_STRING_LEN + 8) bytes.  */
 static void
@@ -337,40 +339,50 @@ callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
 {
   int i, err = 0;
   gboolean found_any = FALSE;
-  g_autoptr(GHashTable) files = NULL;
+  GHashTable *files = NULL;
   GHashTableIter iter;
   gpointer key, value;
   g_autofree char *path_copy = NULL;
-  /* name -> struct stat.  */
-  files = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  for (i = 0; i < layers->len; i++)
+  gboolean from_cache = FALSE;
+
+  if (memcache_dir)
+    files = g_hash_table_lookup (memcache_dir, path);
+
+  if (files)
+    from_cache = TRUE;
+  else
     {
-      struct layer *layer = g_array_index (layers, struct layer *, i);
-      g_autoptr(GFile) f = NULL;
-
-      if (layer->whiteouts)
+      /* name -> struct stat.  */
+      files = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+      for (i = 0; i < layers->len; i++)
         {
-          if (!path_copy)
-            path_copy = g_strdup (path);
-          /* If any component in path was deleted, reset everything.  */
-          if (check_if_any_component_present (path_copy, layer->whiteouts))
-            {
-              g_hash_table_remove_all (files);
-              found_any = FALSE;
-              continue;
-            }
-        }
+          struct layer *layer = g_array_index (layers, struct layer *, i);
+          g_autoptr(GFile) f = NULL;
 
-      f = g_file_resolve_relative_path (layer->root, path);
-      err = read_single_directory (files, f);
-      if (err == -ENOENT)
-        continue;
-      if (err != 0)
+          if (layer->whiteouts)
+            {
+              if (!path_copy)
+                path_copy = g_strdup (path);
+              /* If any component in path was deleted, reset everything.  */
+              if (check_if_any_component_present (path_copy, layer->whiteouts))
+                {
+                  g_hash_table_remove_all (files);
+                  found_any = FALSE;
+                  continue;
+                }
+            }
+
+          f = g_file_resolve_relative_path (layer->root, path);
+          err = read_single_directory (files, f);
+          if (err == -ENOENT)
+            continue;
+          if (err != 0)
+            goto out;
+          found_any = TRUE;
+        }
+      if (!found_any && err == -ENOENT)
         goto out;
-      found_any = TRUE;
     }
-  if (!found_any && err == -ENOENT)
-    goto out;
 
   filler (buf, ".", NULL, 0);
   filler (buf, "..", NULL, 0);
@@ -380,7 +392,13 @@ callback_readdir (const char *path, void *buf, fuse_fill_dir_t filler,
     if (filler (buf, key, value, 0))
       break;
 
+  if (!from_cache)
+    {
+       g_hash_table_replace (memcache_dir, g_strdup (path), g_steal_pointer (&files));
+    }
  out:
+  if (files != NULL && !from_cache)
+    g_object_unref (files);
   return err;
 }
 
@@ -749,7 +767,7 @@ static void
 usage (const char *progname)
 {
   fprintf (stdout,
-	   "usage: %s -orepo=repo [-owhiteouts] -olayers=BRANCH_1[:BRANCH_N] mountpoint [options]\n"
+	   "usage: %s -orepo=repo [-owhiteouts] [-o memcache] -olayers=BRANCH_1[:BRANCH_N] mountpoint [options]\n"
 	   "\n"
 	   "   Mount a tree from OSTree\n"
 	   "\n"
@@ -791,6 +809,7 @@ static struct fuse_opt rofs_opts[] = {
   MYFS_OPT ("layers=%s", layers, 0),
   MYFS_OPT ("repo=%s", repo_location, 0),
   MYFS_OPT ("whiteouts", whiteouts, 1),
+  MYFS_OPT ("memcache", memcache, 1),
   FUSE_OPT_END
 };
 
@@ -937,6 +956,9 @@ main (int argc, char *argv[])
       }
     g_strfreev (commits);
   }
+
+  if (config.memcache)
+    memcache_dir = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_object_unref);
 
   fuse_main (args.argc, args.argv, &callback_oper, NULL);
 
