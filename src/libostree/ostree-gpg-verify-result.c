@@ -370,11 +370,15 @@ ostree_gpg_verify_result_get (OstreeGpgVerifyResult *result,
 
           case OSTREE_GPG_SIGNATURE_ATTR_PUBKEY_ALGO_NAME:
             v_string = gpgme_pubkey_algo_name (signature->pubkey_algo);
+            if (v_string == NULL)
+              v_string = "[unknown name]";
             child = g_variant_new_string (v_string);
             break;
 
           case OSTREE_GPG_SIGNATURE_ATTR_HASH_ALGO_NAME:
             v_string = gpgme_hash_algo_name (signature->hash_algo);
+            if (v_string == NULL)
+              v_string = "[unknown name]";
             child = g_variant_new_string (v_string);
             break;
 
