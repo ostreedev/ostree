@@ -166,6 +166,15 @@ typedef enum {
 #define OSTREE_SUMMARY_SIG_GVARIANT_FORMAT G_VARIANT_TYPE (OSTREE_SUMMARY_SIG_GVARIANT_STRING)
 
 /**
+ * OSTREE_TIMESTAMP:
+ *
+ * The mtime used for stored files.  This was originally 0, changed to 1 for
+ * a few releases, then was reverted due to regressions it introduced from
+ * users who had been using zero before.
+ */
+#define OSTREE_TIMESTAMP (0)
+
+/**
  * OstreeRepoMode:
  * @OSTREE_REPO_MODE_BARE: Files are stored as themselves; checkouts are hardlinks; can only be written as root
  * @OSTREE_REPO_MODE_ARCHIVE_Z2: Files are compressed, should be owned by non-root.  Can be served via HTTP
