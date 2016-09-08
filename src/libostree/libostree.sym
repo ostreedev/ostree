@@ -354,6 +354,7 @@ global:
 } LIBOSTREE_2016.7;
 
 /* No new symbols in 2016.9 */
+/* No new symbols in 2016.10 */
 
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
@@ -361,7 +362,7 @@ global:
  */
 
 /* Remove comment when first new symbol is added
-LIBOSTREE_2016.10
+LIBOSTREE_2016.11
 global:
 	someostree_symbol_deleteme;
 } LIBOSTREE_2016.8;
