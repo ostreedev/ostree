@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 #define _OSTREE_SUMMARY_CACHE_DIR "summaries"
 #define _OSTREE_CACHE_DIR "cache"
 
-#define OSTREE_TIMESTAMP (1)
+#define OSTREE_TIMESTAMP (0)
 
 typedef enum {
   OSTREE_REPO_TEST_ERROR_PRE_COMMIT = (1 << 0)
