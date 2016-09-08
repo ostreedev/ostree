@@ -46,7 +46,7 @@ typedef struct {
 
   SoupSession *session;  /* not referenced */
   GMainContext *main_context;
-  GMainLoop *main_loop;
+  volatile gint running;
 
   int tmpdir_dfd;
   char *tmpdir_name;
@@ -144,7 +144,6 @@ thread_closure_unref (ThreadClosure *thread_closure)
       g_assert (thread_closure->session == NULL);
 
       g_clear_pointer (&thread_closure->main_context, g_main_context_unref);
-      g_clear_pointer (&thread_closure->main_loop, g_main_loop_unref);
 
       if (thread_closure->tmpdir_dfd != -1)
         close (thread_closure->tmpdir_dfd);
@@ -503,7 +502,12 @@ ostree_fetcher_session_thread (gpointer data)
     }
   closure->max_outstanding = 3 * max_conns;
 
-  g_main_loop_run (closure->main_loop);
+  /* This model ensures we don't hit a race using g_main_loop_quit();
+   * see also what pull_termination_condition() in ostree-repo-pull.c
+   * is doing.
+   */
+  while (g_atomic_int_get (&closure->running))
+    g_main_context_iteration (closure->main_context, TRUE);
 
   /* Since the ThreadClosure may be finalized from any thread we
    * unreference all data related to the SoupSession ourself to ensure
@@ -567,7 +571,8 @@ _ostree_fetcher_finalize (GObject *object)
   OstreeFetcher *self = OSTREE_FETCHER (object);
 
   /* Terminate the session thread. */
-  g_main_loop_quit (self->thread_closure->main_loop);
+  g_atomic_int_set (&self->thread_closure->running, 0);
+  g_main_context_wakeup (self->thread_closure->main_context);
   if (self->session_thread)
     {
       /* We need to explicitly synchronize to clean up TLS */
@@ -594,7 +599,7 @@ _ostree_fetcher_constructed (GObject *object)
   self->thread_closure = g_slice_new0 (ThreadClosure);
   self->thread_closure->ref_count = 1;
   self->thread_closure->main_context = g_main_context_ref (main_context);
-  self->thread_closure->main_loop = g_main_loop_new (main_context, FALSE);
+  self->thread_closure->running = 1;
   self->thread_closure->tmpdir_dfd = -1;
   self->thread_closure->tmpdir_lock = empty_lockfile;
 
