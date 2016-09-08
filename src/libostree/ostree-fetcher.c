@@ -502,6 +502,10 @@ ostree_fetcher_session_thread (gpointer data)
     }
   closure->max_outstanding = 3 * max_conns;
 
+  /* This model ensures we don't hit a race using g_main_loop_quit();
+   * see also what pull_termination_condition() in ostree-repo-pull.c
+   * is doing.
+   */
   while (g_atomic_int_get (&closure->running))
     g_main_context_iteration (closure->main_context, TRUE);
 
