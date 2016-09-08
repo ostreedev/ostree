@@ -1591,14 +1591,10 @@ ostree_sysroot_simple_write_deployment (OstreeSysroot      *sysroot,
       added_new = TRUE;
     }
 
-  if (!ostree_sysroot_write_deployments (sysroot, new_deployments, cancellable, error))
+  if (!_ostree_sysroot_write_deployments_internal (sysroot, new_deployments,
+                                                   postclean ? OSTREE_SYSROOT_CLEANUP_ALL : 0,
+                                                   cancellable, error))
     goto out;
-
-  if (postclean)
-    {
-      if (!ostree_sysroot_cleanup (sysroot, cancellable, error))
-        goto out;
-    }
 
   ret = TRUE;
  out:
