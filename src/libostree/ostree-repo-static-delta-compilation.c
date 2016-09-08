@@ -429,8 +429,8 @@ content_rollsums_free (ContentRollsum  *rollsum)
 {
   g_free (rollsum->from_checksum);
   _ostree_rollsum_matches_free (rollsum->matches);
-  g_bytes_unref (rollsum->tmp_from);
-  g_bytes_unref (rollsum->tmp_to);
+  g_clear_pointer (&rollsum->tmp_from, g_bytes_unref);
+  g_clear_pointer (&rollsum->tmp_to, g_bytes_unref);
   g_free (rollsum);
 }
 
@@ -438,8 +438,8 @@ static void
 content_bsdiffs_free (ContentBsdiff  *bsdiff)
 {
   g_free (bsdiff->from_checksum);
-  g_bytes_unref (bsdiff->tmp_from);
-  g_bytes_unref (bsdiff->tmp_to);
+  g_clear_pointer (&bsdiff->tmp_from, g_bytes_unref);
+  g_clear_pointer (&bsdiff->tmp_to, g_bytes_unref);
   g_free (bsdiff);
 }
 
@@ -756,6 +756,9 @@ process_one_rollsum (OstreeRepo                       *repo,
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
   }
 
+  g_clear_pointer (&rollsum->tmp_from, g_bytes_unref);
+  g_clear_pointer (&rollsum->tmp_to, g_bytes_unref);
+
   ret = TRUE;
  out:
   return ret;
@@ -851,6 +854,9 @@ process_one_bsdiff (OstreeRepo                       *repo,
   }
 
   g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
+
+  g_clear_pointer (&bsdiff_content->tmp_from, g_bytes_unref);
+  g_clear_pointer (&bsdiff_content->tmp_to, g_bytes_unref);
 
   ret = TRUE;
  out:
