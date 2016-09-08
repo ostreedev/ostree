@@ -483,6 +483,8 @@ get_unpacked_unlinked_content (OstreeRepo       *repo,
     goto out;
   
   { GMappedFile *mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+    if (!mfile)
+      goto out;
     ret_content = g_mapped_file_get_bytes (mfile);
     g_mapped_file_unref (mfile);
   }
