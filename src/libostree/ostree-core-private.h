@@ -121,10 +121,11 @@ static inline char * _ostree_get_commitpartial_path (const char *checksum)
   return g_strconcat ("state/", checksum, ".commitpartial", NULL);
 }
 
-void
+gboolean
 _ostree_parse_delta_name (const char  *delta_name,
                           char        **out_from,
-                          char        **out_to);
+                          char        **out_to,
+                          GError      **error);
 
 void
 _ostree_loose_path (char              *buf,

@@ -31,25 +31,49 @@ static void
 test_ostree_parse_delta_name (void)
 {
   {
-    g_autofree char *from;
-    g_autofree char *to;
-    _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d", &from, &to);
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (_ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d", &from, &to, NULL));
     g_assert_cmpstr (to, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
     g_assert_null (from);
   }
 
   {
-    g_autofree char *from;
-    g_autofree char *to;
-    _ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d-5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", &from, &to);
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (_ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d-5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", &from, &to, NULL));
     g_assert_cmpstr (from, ==, "30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d");
     g_assert_cmpstr (to, ==, "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03");
   }
 
   {
-    g_autofree char *from;
-    g_autofree char *to;
-    _ostree_parse_delta_name ("", &from, &to);
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (!_ostree_parse_delta_name ("", &from, &to, NULL));
+    g_assert_null (from);
+    g_assert_null (to);
+  }
+
+  {
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (!_ostree_parse_delta_name ("GARBAGE", &from, &to, NULL));
+    g_assert_null (from);
+    g_assert_null (to);
+  }
+
+  {
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (!_ostree_parse_delta_name ("GARBAGE-5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", &from, &to, NULL));
+    g_assert_null (from);
+    g_assert_null (to);
+  }
+
+  {
+    g_autofree char *from = NULL;
+    g_autofree char *to = NULL;
+    g_assert (!_ostree_parse_delta_name ("30d13b73cfe1e6988ffc345eac905f82a18def8ef1f0666fc392019e9eac388d-GARBAGE", &from, &to, NULL));
     g_assert_null (from);
     g_assert_null (to);
   }

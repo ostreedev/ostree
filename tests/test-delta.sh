@@ -26,7 +26,7 @@ skip_without_user_xattrs
 bindatafiles="bash true ostree"
 morebindatafiles="false ls"
 
-echo '1..10'
+echo '1..11'
 
 mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init --mode=archive-z2
@@ -235,3 +235,10 @@ ${CMD_PREFIX} ostree --repo=repo2 fsck
 ${CMD_PREFIX} ostree --repo=repo2 ls ${samerev} >/dev/null
 
 echo 'ok pull empty delta part'
+
+if ${CMD_PREFIX} ostree --repo=repo static-delta show GARBAGE 2> err.txt; then
+    assert_not_reached "static-delta show GARBAGE unexpectedly succeeded"
+fi
+assert_file_has_content err.txt "Invalid rev 'GARBAGE'"
+
+echo 'ok handle bad delta name'

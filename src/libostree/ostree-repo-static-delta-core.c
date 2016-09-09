@@ -795,7 +795,9 @@ _ostree_repo_static_delta_delete (OstreeRepo                    *self,
   g_autofree char *deltadir = NULL;
   struct stat buf;
 
-  _ostree_parse_delta_name (delta_id, &from, &to);
+  if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+    goto out;
+
   deltadir = _ostree_get_relative_static_delta_path (from, to, NULL);
 
   if (fstatat (self->repo_dir_fd, deltadir, &buf, 0) != 0)
@@ -830,7 +832,9 @@ _ostree_repo_static_delta_query_exists (OstreeRepo                    *self,
   g_autofree char *superblock_path = NULL;
   struct stat stbuf;
 
-  _ostree_parse_delta_name (delta_id, &from, &to);
+  if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+    return FALSE;
+
   superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
 
   if (fstatat (self->repo_dir_fd, superblock_path, &stbuf, 0) < 0)
@@ -854,7 +858,7 @@ gboolean
 _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                 const char                    *delta_id,
                                 GCancellable                  *cancellable,
-                                GError                      **error)
+                                GError                       **error)
 {
   gboolean ret = FALSE;
   g_autofree char *from = NULL; 
@@ -868,7 +872,9 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
   OstreeDeltaEndianness endianness;
   gboolean swap_endian = FALSE;
 
-  _ostree_parse_delta_name (delta_id, &from, &to);
+  if (!_ostree_parse_delta_name (delta_id, &from, &to, error))
+    goto out;
+
   superblock_path = _ostree_get_relative_static_delta_superblock_path (from, to);
 
   if (!ot_util_variant_map_at (self->repo_dir_fd, superblock_path,
