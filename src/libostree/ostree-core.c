@@ -1584,12 +1584,26 @@ _ostree_get_relative_static_delta_part_path (const char        *from,
   return _ostree_get_relative_static_delta_path (from, to, partstr);
 }
 
-void
-_ostree_parse_delta_name (const char  *delta_name,
+gboolean
+_ostree_parse_delta_name (const char   *delta_name,
                           char        **out_from,
-                          char        **out_to)
+                          char        **out_to,
+                          GError      **error)
 {
-  g_auto(GStrv) parts = g_strsplit (delta_name, "-", 2);
+  g_auto(GStrv) parts = NULL;
+  g_return_val_if_fail (delta_name != NULL, FALSE);
+
+  parts = g_strsplit (delta_name, "-", 2);
+
+  /* NB: if delta_name is "", parts[0] is NULL, but the error
+   * validate_checksum_string() gives for "" is nice enough,
+   * so we just coerce it here */
+  if (!ostree_validate_checksum_string (parts[0] ?: "", error))
+    return FALSE;
+
+  if (parts[0] && parts[1] &&
+      !ostree_validate_checksum_string (parts[1], error))
+    return FALSE;
 
   *out_from = *out_to = NULL;
   if (parts[0] && parts[1])
@@ -1601,6 +1615,8 @@ _ostree_parse_delta_name (const char  *delta_name,
     {
       ot_transfer_out_value (out_to, &parts[0]);
     }
+
+  return TRUE;
 }
 
 /*
