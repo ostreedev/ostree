@@ -2272,6 +2272,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *url_override = NULL;
   g_autofree char *base_meta_url = NULL;
   g_autofree char *base_content_url = NULL;
+  gboolean mirroring_into_archive;
 
   if (options)
     {
@@ -2311,6 +2312,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   pull_data->is_commit_only = (flags & OSTREE_REPO_PULL_FLAGS_COMMIT_ONLY) > 0;
   pull_data->is_untrusted = (flags & OSTREE_REPO_PULL_FLAGS_UNTRUSTED) > 0;
   pull_data->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
+
+  mirroring_into_archive = pull_data->is_mirror && self->mode == OSTREE_REPO_MODE_ARCHIVE_Z2;
 
   if (error)
     pull_data->async_error = &pull_data->cached_async_error;
@@ -2845,7 +2848,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                     &from_revision, error))
         goto out;
 
-      if (!disable_static_deltas && !pull_data->is_mirror &&
+      if (!disable_static_deltas && !mirroring_into_archive &&
           (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,
