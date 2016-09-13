@@ -260,7 +260,10 @@ void
 ostree_sysroot_unload (OstreeSysroot  *self)
 {
   if (self->sysroot_fd != -1)
-    (void) close (self->sysroot_fd);
+    {
+      (void) close (self->sysroot_fd);
+      self->sysroot_fd = -1;
+    }
 }
 
 /**
