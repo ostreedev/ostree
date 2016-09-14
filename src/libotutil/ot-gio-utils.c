@@ -315,37 +315,6 @@ ot_gfile_ensure_unlinked (GFile         *path,
 }
 
 /**
- * ot_util_fsync_directory:
- * @dir: Path to a directory
- * @cancellable: Cancellable
- * @error: Error
- *
- * Ensure that all entries in directory @dir are on disk.
- */
-gboolean
-ot_util_fsync_directory (GFile         *dir,
-                         GCancellable  *cancellable,
-                         GError       **error)
-{
-  gboolean ret = FALSE;
-  glnx_fd_close int dfd = -1;
-
-  if (!glnx_opendirat (AT_FDCWD, gs_file_get_path_cached (dir), TRUE,
-                       &dfd, error))
-    goto out;
-
-  if (fsync (dfd) != 0)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-
-  ret = TRUE;
- out:
-  return ret;
-}
-
-/**
  * ot_util_ensure_directory_and_fsync:
  * @dir: Path to a directory
  * @cancellable: Cancellable

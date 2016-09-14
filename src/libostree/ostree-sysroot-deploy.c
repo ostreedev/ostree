@@ -913,35 +913,32 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
                                   GCancellable          *cancellable,
                                   GError               **error)
 {
-  gboolean ret = FALSE;
   GKeyFile *origin =
     new_origin ? new_origin : ostree_deployment_get_origin (deployment);
 
   if (origin)
     {
-      g_autoptr(GFile) deployment_path = ostree_sysroot_get_deployment_directory (sysroot, deployment);
-      g_autoptr(GFile) origin_path = ostree_sysroot_get_deployment_origin_path (deployment_path);
-      g_autoptr(GFile) origin_parent = g_file_get_parent (origin_path);
+      g_autofree char *origin_path = NULL;
       g_autofree char *contents = NULL;
       gsize len;
-      g_autoptr(GBytes) contents_bytes = NULL;
+
+      origin_path = g_strdup_printf ("ostree/deploy/%s/deploy/%s.%d.origin",
+                                     ostree_deployment_get_osname (deployment),
+                                     ostree_deployment_get_csum (deployment),
+                                     ostree_deployment_get_deployserial (deployment));
 
       contents = g_key_file_to_data (origin, &len, error);
       if (!contents)
-        goto out;
-      contents_bytes = g_bytes_new_static (contents, len);
+        return FALSE;
 
-      if (!ot_gfile_replace_contents_fsync (origin_path, contents_bytes,
-                                            cancellable, error))
-        goto out;
-
-      if (!ot_util_fsync_directory (origin_parent, cancellable, error))
-        goto out;
+      if (!glnx_file_replace_contents_at (sysroot->sysroot_fd,
+                                          origin_path, (guint8*)contents, len,
+                                          GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                          cancellable, error))
+        return FALSE;
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
