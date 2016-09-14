@@ -1827,7 +1827,7 @@ _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
     {
       int new_bootversion = self->bootversion ? 0 : 1;
       glnx_unref_object OstreeBootloader *bootloader = NULL;
-      g_autoptr(GFile) new_loader_entries_dir = NULL;
+      g_autofree char* new_loader_entries_dir = NULL;
       glnx_unref_object OstreeRepo *repo = NULL;
       gboolean show_osname = FALSE;
 
@@ -1848,11 +1848,11 @@ _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
       if (!_ostree_sysroot_query_bootloader (self, &bootloader, cancellable, error))
         goto out;
 
-      new_loader_entries_dir = ot_gfile_resolve_path_printf (self->path, "boot/loader.%d/entries",
-                                                             new_bootversion);
-      if (!glnx_shutil_rm_rf_at (AT_FDCWD, gs_file_get_path_cached (new_loader_entries_dir), cancellable, error))
+      new_loader_entries_dir = g_strdup_printf ("boot/loader.%d/entries", new_bootversion);
+      if (!glnx_shutil_rm_rf_at (self->sysroot_fd, new_loader_entries_dir, cancellable, error))
         goto out;
-      if (!ot_util_ensure_directory_and_fsync (new_loader_entries_dir, cancellable, error))
+      if (!glnx_shutil_mkdir_p_at (self->sysroot_fd, new_loader_entries_dir, 0755,
+                                   cancellable, error))
         goto out;
       
       /* Need the repo to try and extract the versions for deployments.
