@@ -47,7 +47,7 @@ static gint opt_port = 0;
 static guint emitted_random_500s_count = 0;
 
 typedef struct {
-  GFile *root;
+  int root_dfd;
   gboolean running;
   GOutputStream *log;
 } OtTrivialHttpd;
@@ -101,34 +101,38 @@ compare_strings (gconstpointer a, gconstpointer b)
 }
 
 static GString *
-get_directory_listing (const char *path)
+get_directory_listing (int dfd,
+                       const char *path)
 {
-  GPtrArray *entries;
-  GString *listing;
+  g_autoptr(GPtrArray) entries = g_ptr_array_new_with_free_func (g_free);
+  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
+  g_autoptr(GError) local_error = NULL;
+  GError **error = &local_error;
+  guint i;
   char *escaped;
-  DIR *dir;
-  struct dirent *dent;
-  int i;
+  GString *listing;
 
-  entries = g_ptr_array_new ();
-  dir = opendir (path);
-  if (dir)
+  listing = g_string_new ("<html>\r\n");
+
+  if (!glnx_dirfd_iterator_init_at (dfd, path, FALSE, &dfd_iter, error))
+    goto out;
+
+  while (TRUE)
     {
-      while ((dent = readdir (dir)))
-        {
-          if (!strcmp (dent->d_name, ".") ||
-              (!strcmp (dent->d_name, "..") &&
-               !strcmp (path, "./")))
-            continue;
-          escaped = g_markup_escape_text (dent->d_name, -1);
-          g_ptr_array_add (entries, escaped);
-        }
-      closedir (dir);
+      struct dirent *dent;
+
+      if (!glnx_dirfd_iterator_next_dent (&dfd_iter, &dent, NULL, error))
+        goto out;
+
+      if (dent == NULL)
+        break;
+
+      escaped = g_markup_escape_text (dent->d_name, -1);
+      g_ptr_array_add (entries, escaped);
     }
 
   g_ptr_array_sort (entries, (GCompareFunc)compare_strings);
 
-  listing = g_string_new ("<html>\r\n");
   escaped = g_markup_escape_text (strchr (path, '/'), -1);
   g_string_append_printf (listing, "<head><title>Index of %s</title></head>\r\n", escaped);
   g_string_append_printf (listing, "<body><h1>Index of %s</h1>\r\n<p>\r\n", escaped);
@@ -138,11 +142,12 @@ get_directory_listing (const char *path)
       g_string_append_printf (listing, "<a href=\"%s\">%s</a><br>\r\n",
                               (char *)entries->pdata[i], 
                               (char *)entries->pdata[i]);
-      g_free (entries->pdata[i]);
+      g_free (g_steal_pointer (&entries->pdata[i]));
     }
   g_string_append (listing, "</body>\r\n</html>\r\n");
-
-  g_ptr_array_free (entries, TRUE);
+ out:
+  if (local_error)
+    g_printerr ("%s\n", local_error->message);
   return listing;
 }
 
@@ -192,7 +197,6 @@ do_get (OtTrivialHttpd    *self,
   char *slash;
   int ret;
   struct stat stbuf;
-  g_autofree char *safepath = NULL;
 
   httpd_log (self, "serving %s\n", path);
   if (strstr (path, "../") != NULL)
@@ -210,13 +214,11 @@ do_get (OtTrivialHttpd    *self,
       goto out;
     }
 
-  if (path[0] == '/')
+  while (path[0] == '/')
     path++;
 
-  safepath = g_build_filename (gs_file_get_path_cached (self->root), path, NULL);
-
   do
-    ret = stat (safepath, &stbuf);
+    ret = fstatat (self->root_dfd, path, &stbuf, 0);
   while (ret == -1 && errno == EINTR);
   if (ret == -1)
     {
@@ -237,7 +239,7 @@ do_get (OtTrivialHttpd    *self,
 
   if (S_ISDIR (stbuf.st_mode))
     {
-      slash = strrchr (safepath, '/');
+      slash = strrchr (path, '/');
       if (!slash || slash[1])
         {
           g_autofree char *redir_uri = NULL;
@@ -248,15 +250,15 @@ do_get (OtTrivialHttpd    *self,
         }
       else
         {
-          g_autofree char *index_realpath = g_strconcat (safepath, "/index.html", NULL);
-          if (stat (index_realpath, &stbuf) != -1)
+          g_autofree char *index_realpath = g_strconcat (path, "/index.html", NULL);
+          if (fstatat (self->root_dfd, index_realpath, &stbuf, 0) != -1)
             {
               g_autofree char *index_path = g_strconcat (path, "/index.html", NULL);
               do_get (self, server, msg, index_path, context);
             }
           else
             {
-              GString *listing = get_directory_listing (safepath);
+              GString *listing = get_directory_listing (self->root_dfd, path);
               soup_message_set_response (msg, "text/html",
                                          SOUP_MEMORY_TAKE,
                                          listing->str, listing->len);
@@ -275,18 +277,27 @@ do_get (OtTrivialHttpd    *self,
       
       if (msg->method == SOUP_METHOD_GET)
         {
+          glnx_fd_close int fd = -1;
           g_autoptr(GMappedFile) mapping = NULL;
           gsize buffer_length, file_size;
           SoupRange *ranges;
           int ranges_length;
           gboolean have_ranges;
 
-          mapping = g_mapped_file_new (safepath, FALSE, NULL);
+          fd = openat (self->root_dfd, path, O_RDONLY | O_CLOEXEC);
+          if (fd < 0)
+            {
+              soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
+              goto out;
+            }
+
+          mapping = g_mapped_file_new_from_fd (fd, FALSE, NULL);
           if (!mapping)
             {
               soup_message_set_status (msg, SOUP_STATUS_INTERNAL_SERVER_ERROR);
               goto out;
             }
+          (void) close (fd); fd = -1;
 
           file_size = g_mapped_file_get_length (mapping);
           have_ranges = soup_message_headers_get_ranges(msg->request_headers, file_size, &ranges, &ranges_length);
@@ -401,6 +412,8 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
 
   context = g_option_context_new ("[DIR] - Simple webserver");
 
+  app->root_dfd = -1;
+
   if (!ostree_option_context_parse (context, options, &argc, &argv, OSTREE_BUILTIN_FLAG_NO_REPO, NULL, cancellable, error))
     goto out;
 
@@ -409,7 +422,8 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   else
     dirpath = ".";
 
-  app->root = g_file_new_for_path (dirpath);
+  if (!glnx_opendirat (AT_FDCWD, dirpath, TRUE, &app->root_dfd, error))
+    goto out;
 
   if (!(opt_random_500s_percentage >= 0 && opt_random_500s_percentage <= 99))
     {
@@ -534,9 +548,11 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
   if (opt_autoexit)
     {
       gboolean is_symlink = FALSE;
+      g_autoptr(GFile) root = NULL;
       g_autoptr(GFileInfo) info = NULL;
 
-      info = g_file_query_info (app->root,
+      root = g_file_new_for_path (dirpath);
+      info = g_file_query_info (root,
                                 G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK,
                                 G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
                                 cancellable, error);
@@ -546,24 +562,22 @@ ostree_builtin_trivial_httpd (int argc, char **argv, GCancellable *cancellable, 
       is_symlink = g_file_info_get_is_symlink (info);
 
       if (is_symlink)
-        dirmon = g_file_monitor_file (app->root, 0, cancellable, error);
+        dirmon = g_file_monitor_file (root, 0, cancellable, error);
       else
-        dirmon = g_file_monitor_directory (app->root, 0, cancellable, error);
+        dirmon = g_file_monitor_directory (root, 0, cancellable, error);
 
       if (!dirmon)
         goto out;
       g_signal_connect (dirmon, "changed", G_CALLBACK (on_dir_changed), app);
     }
-  {
-    g_autofree gchar *path = g_file_get_path (app->root);
-    httpd_log (app, "serving at root %s\n", path);
-  }
+  httpd_log (app, "serving at root %s\n", dirpath);
   while (app->running)
     g_main_context_iteration (NULL, TRUE);
 
   ret = TRUE;
  out:
-  g_clear_object (&app->root);
+  if (app->root_dfd != -1)
+    (void) close (app->root_dfd);
   g_clear_object (&app->log);
   return ret;
 }
