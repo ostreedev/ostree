@@ -1635,25 +1635,28 @@ cleanup_legacy_current_symlinks (OstreeSysroot         *self,
                                  GCancellable          *cancellable,
                                  GError               **error)
 {
-  gboolean ret = FALSE;
   guint i;
-  g_autoptr(GHashTable) created_current_for_osname =
-    g_hash_table_new (g_str_hash, g_str_equal);
+  g_autoptr(GString) buf = g_string_new ("");
 
   for (i = 0; i < self->deployments->len; i++)
     {
       OstreeDeployment *deployment = self->deployments->pdata[i];
       const char *osname = ostree_deployment_get_osname (deployment);
-      g_autoptr(GFile) osdir = ot_gfile_resolve_path_printf (self->path, "ostree/deploy/%s", osname);
-      g_autoptr(GFile) legacy_link = g_file_get_child (osdir, "current");
 
-      if (!ot_gfile_ensure_unlinked (legacy_link, cancellable, error))
-        goto out;
+      g_string_truncate (buf, 0);
+      g_string_append_printf (buf, "ostree/deploy/%s/current", osname);
+
+      if (unlinkat (self->sysroot_fd, buf->str, 0) < 0)
+        {
+          if (errno != ENOENT)
+            {
+              glnx_set_error_from_errno (error);
+              return FALSE;
+            }
+        }
     }
 
-  ret = TRUE;
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
