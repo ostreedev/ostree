@@ -85,10 +85,6 @@ gboolean ot_gfile_ensure_unlinked (GFile         *path,
                                    GCancellable  *cancellable,
                                    GError       **error);
 
-gboolean ot_util_ensure_directory_and_fsync (GFile         *dir,
-                                             GCancellable  *cancellable,
-                                             GError       **error);
-
 #if !GLIB_CHECK_VERSION(2, 44, 0)
 gboolean
 ot_file_enumerator_iterate (GFileEnumerator  *direnum,
