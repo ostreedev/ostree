@@ -894,24 +894,13 @@ merge_configuration (OstreeSysroot         *sysroot,
   return ret;
 }
 
-/**
- * ostree_sysroot_write_origin_file:
- * @sysroot: System root
- * @deployment: Deployment
- * @new_origin: (allow-none): Origin content
- * @cancellable: Cancellable
- * @error: Error
- *
- * Immediately replace the origin file of the referenced @deployment
- * with the contents of @new_origin.  If @new_origin is %NULL,
- * this function will write the current origin of @deployment.
- */
-gboolean
-ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
-                                  OstreeDeployment      *deployment,
-                                  GKeyFile              *new_origin,
-                                  GCancellable          *cancellable,
-                                  GError               **error)
+static gboolean
+write_origin_file_internal (OstreeSysroot         *sysroot,
+                            OstreeDeployment      *deployment,
+                            GKeyFile              *new_origin,
+                            GLnxFileReplaceFlags   flags,
+                            GCancellable          *cancellable,
+                            GError               **error)
 {
   GKeyFile *origin =
     new_origin ? new_origin : ostree_deployment_get_origin (deployment);
@@ -933,12 +922,36 @@ ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
 
       if (!glnx_file_replace_contents_at (sysroot->sysroot_fd,
                                           origin_path, (guint8*)contents, len,
-                                          GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                          flags,
                                           cancellable, error))
         return FALSE;
     }
 
   return TRUE;
+}
+
+/**
+ * ostree_sysroot_write_origin_file:
+ * @sysroot: System root
+ * @deployment: Deployment
+ * @new_origin: (allow-none): Origin content
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Immediately replace the origin file of the referenced @deployment
+ * with the contents of @new_origin.  If @new_origin is %NULL,
+ * this function will write the current origin of @deployment.
+ */
+gboolean
+ostree_sysroot_write_origin_file (OstreeSysroot         *sysroot,
+                                  OstreeDeployment      *deployment,
+                                  GKeyFile              *new_origin,
+                                  GCancellable          *cancellable,
+                                  GError               **error)
+{
+  return write_origin_file_internal (sysroot, deployment, new_origin,
+                                     GLNX_FILE_REPLACE_DATASYNC_NEW,
+                                     cancellable, error);
 }
 
 static gboolean
@@ -2152,8 +2165,12 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
           goto out;
       }
 
-    if (!ostree_sysroot_write_origin_file (self, new_deployment, NULL,
-                                           cancellable, error))
+    /* Don't fsync here, as we assume that's all done in
+     * ostree_sysroot_write_deployments().
+     */
+    if (!write_origin_file_internal (self, new_deployment, NULL,
+                                     GLNX_FILE_REPLACE_NODATASYNC,
+                                     cancellable, error))
       {
         g_prefix_error (error, "Writing out origin file: ");
         goto out;
