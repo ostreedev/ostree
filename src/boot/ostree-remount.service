@@ -25,7 +25,7 @@ After=-.mount
 After=systemd-remount-fs.service
 Before=local-fs.target umount.target
 # Other early boot units that need to write to /var
-Before=systemd-random-seed.service plymouth-read-write.service
+Before=systemd-random-seed.service plymouth-read-write.service systemd-journal-flush.service
 # tmpfiles.d usually needs write access to a few places
 Before=systemd-tmpfiles-setup.service
 
