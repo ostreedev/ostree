@@ -157,3 +157,6 @@ will silently override earlier layers.
 
 Then to actually deploy this tree for the next boot:
 `ostree admin deploy $osname/$releasename/$description`
+
+This is essentially what [rpm-ostree](https://github.com/projectatomic/rpm-ostree/)
+does to support its [package layering model](https://rpm-ostree.readthedocs.io/en/latest/manual/administrator-handbook/#package-layering).
