@@ -1487,6 +1487,16 @@ ostree_sysroot_init_osname (OstreeSysroot       *self,
       goto out;
     }
 
+  /* This needs to be available and properly labeled early during the boot
+   * process (before tmpfiles.d kicks in), so that journald can flush logs from
+   * the first boot there. https://bugzilla.redhat.com/show_bug.cgi?id=1265295
+   * */
+  if (mkdirat (dfd, "var/log", 0755) < 0)
+    {
+      glnx_set_prefix_error_from_errno (error, "Creating %s", "var/log");
+      goto out;
+    }
+
   if (symlinkat ("../run", dfd, "var/run") < 0)
     {
       glnx_set_prefix_error_from_errno (error, "Symlinking %s", "var/run");
