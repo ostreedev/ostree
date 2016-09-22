@@ -97,7 +97,7 @@ ot_admin_builtin_status (int argc, char **argv, GCancellable *cancellable, GErro
   context = g_option_context_new ("List deployments");
 
   if (!ostree_admin_option_context_parse (context, options, &argc, &argv,
-                                          OSTREE_ADMIN_BUILTIN_FLAG_NONE,
+                                          OSTREE_ADMIN_BUILTIN_FLAG_UNLOCKED,
                                           &sysroot, cancellable, error))
     goto out;
 
