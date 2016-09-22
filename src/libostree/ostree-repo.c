@@ -3548,7 +3548,8 @@ ostree_repo_load_commit (OstreeRepo            *self,
  * ostree_repo_list_objects:
  * @self: Repo
  * @flags: Flags controlling enumeration
- * @out_objects: (out): Map of serialized object name to variant data
+ * @out_objects: (out) (transfer container) (element-type GVariant GVariant):
+ * Map of serialized object name to variant data
  * @cancellable: Cancellable
  * @error: Error
  *
@@ -3605,7 +3606,8 @@ ostree_repo_list_objects (OstreeRepo                  *self,
  * ostree_repo_list_commit_objects_starting_with:
  * @self: Repo
  * @start: List commits starting with this checksum
- * @out_commits: Array of GVariants
+ * @out_commits: (out) (transfer container) (element-type GVariant GVariant):
+ * Map of serialized commit name to variant data
  * @cancellable: Cancellable
  * @error: Error
  *
