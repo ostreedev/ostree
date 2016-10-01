@@ -75,10 +75,10 @@ Boston, MA 02111-1307, USA.
         <title>Description</title>
 
         <para>
-            Changes remote respository configurations.  The NAME refers to the name of the remote.
+            Changes remote repository configurations.  The NAME refers to the name of the remote.
         </para>
         <para>
-            The <command>gpg-import</command> subcommand can associate GPG keys to a specific remote respository for use when pulling signed commits from that repository (if GPG verification is enabled).
+            The <command>gpg-import</command> subcommand can associate GPG keys to a specific remote repository for use when pulling signed commits from that repository (if GPG verification is enabled).
         </para>
         <para>
             The GPG keys to import may be in binary OpenPGP format or ASCII armored.  The optional <arg>KEY-ID</arg> list can restrict which keys are imported from a keyring file or input stream.  All keys are imported if this list is omitted.  If neither <option>--keyring</option> nor <option>--stdin</option> options are given, then keys are imported from the user's personal GPG keyring.
