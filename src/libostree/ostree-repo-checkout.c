@@ -437,7 +437,7 @@ checkout_one_file_at (OstreeRepo                        *repo,
 
       need_copy = FALSE;
     }
-  else if (!is_symlink)
+  else
     {
       gboolean did_hardlink = FALSE;
       /* Try to do a hardlink first, if it's a regular file.  This also
