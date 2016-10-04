@@ -106,7 +106,7 @@ static gboolean
 fsync_is_enabled (OstreeRepo   *self,
                   OstreeRepoCheckoutAtOptions *options)
 {
-  return options->enable_fsync || !self->disable_fsync;
+  return options->enable_fsync;
 }
 
 static gboolean
@@ -860,7 +860,7 @@ ostree_repo_checkout_tree_at (OstreeRepo                        *self,
   new_opts.mode = options->mode;
   new_opts.overwrite_mode = options->overwrite_mode;
   new_opts.enable_uncompressed_cache = options->enable_uncompressed_cache;
-  new_opts.enable_fsync = !options->disable_fsync;
+  new_opts.enable_fsync = options->disable_fsync ? FALSE : self->disable_fsync;
   new_opts.process_whiteouts = options->process_whiteouts;
   new_opts.no_copy_fallback = options->no_copy_fallback;
   new_opts.subpath = options->subpath;
