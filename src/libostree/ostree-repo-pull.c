@@ -99,7 +99,7 @@ typedef struct {
   gboolean          is_commit_only;
   gboolean          is_untrusted;
 
-  char         *dir;
+  GPtrArray        *dirs;
   gboolean      commitpartial_exists;
 
   gboolean      have_previous_bytes;
@@ -117,6 +117,7 @@ typedef struct {
 typedef struct {
   OtPullData  *pull_data;
   GVariant    *object;
+  char        *path;
   gboolean     is_detached_meta;
 
   /* Only relevant when is_detached_meta is TRUE.  Controls
@@ -133,6 +134,7 @@ typedef struct {
 
 typedef struct {
   guchar csum[OSTREE_SHA256_DIGEST_LEN];
+  char *path;
   OstreeObjectType objtype;
   guint recursion_depth;
 } ScanObjectQueueData;
@@ -140,16 +142,19 @@ typedef struct {
 static void queue_scan_one_metadata_object (OtPullData         *pull_data,
                                             const char         *csum,
                                             OstreeObjectType    objtype,
+                                            const char         *path,
                                             guint               recursion_depth);
 
 static void queue_scan_one_metadata_object_c (OtPullData         *pull_data,
                                               const guchar       *csum,
                                               OstreeObjectType    objtype,
+                                              const char         *path,
                                               guint               recursion_depth);
 
 static gboolean scan_one_metadata_object_c (OtPullData         *pull_data,
                                             const guchar       *csum,
                                             OstreeObjectType    objtype,
+                                            const char         *path,
                                             guint               recursion_depth,
                                             GCancellable       *cancellable,
                                             GError            **error);
@@ -278,11 +283,13 @@ idle_worker (gpointer user_data)
   scan_one_metadata_object_c (pull_data,
                               scan_data->csum,
                               scan_data->objtype,
+                              scan_data->path,
                               scan_data->recursion_depth,
                               pull_data->cancellable,
                               &error);
   check_outstanding_requests_handle_error (pull_data, error);
 
+  g_free (scan_data->path);
   g_free (scan_data);
   return G_SOURCE_CONTINUE;
 }
@@ -381,12 +388,80 @@ static void
 enqueue_one_object_request (OtPullData        *pull_data,
                             const char        *checksum,
                             OstreeObjectType   objtype,
+                            const char        *path,
                             gboolean           is_detached_meta,
                             gboolean           object_is_stored);
 
 static gboolean
+matches_pull_dir (const char *current_file,
+                  const char *pull_dir,
+                  gboolean current_file_is_dir)
+{
+  const char *rest;
+
+  if (g_str_has_prefix (pull_dir, current_file))
+    {
+      rest = pull_dir + strlen (current_file);
+      if (*rest == 0)
+        {
+          /* The current file is exactly the same as the specified
+             pull dir. This matches always, even if the file is not a
+             directory. */
+          return TRUE;
+        }
+
+      if (*rest == '/')
+        {
+          /* The current file is a directory-prefix of the pull_dir.
+             Match only if this is supposed to be a directory */
+          return current_file_is_dir;
+        }
+
+      /* Matched a non-directory prefix such as /foo being a prefix of /fooo,
+         no match */
+      return FALSE;
+    }
+
+  if (g_str_has_prefix (current_file, pull_dir))
+    {
+      rest = current_file + strlen (pull_dir);
+      /* Only match if the prefix match matched the entire directory
+         component */
+      return *rest == '/';
+    }
+
+  return FALSE;
+}
+
+
+static gboolean
+pull_matches_subdir (OtPullData *pull_data,
+                     const char *path,
+                     const char *basename,
+                     gboolean basename_is_dir)
+{
+  int i;
+  g_autofree char *file = NULL;
+
+  if (pull_data->dirs == NULL)
+    return TRUE;
+
+  file = g_strconcat (path, basename, NULL);
+
+  for (i = 0; i < pull_data->dirs->len; i++)
+    {
+      const char *pull_dir = g_ptr_array_index (pull_data->dirs, i);
+      if (matches_pull_dir (file, pull_dir, basename_is_dir))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
 scan_dirtree_object (OtPullData   *pull_data,
                      const char   *checksum,
+                     const char   *path,
                      int           recursion_depth,
                      GCancellable *cancellable,
                      GError      **error)
@@ -396,7 +471,6 @@ scan_dirtree_object (OtPullData   *pull_data,
   g_autoptr(GVariant) tree = NULL;
   g_autoptr(GVariant) files_variant = NULL;
   g_autoptr(GVariant) dirs_variant = NULL;
-  char *subdir_target = NULL;
   const char *dirname = NULL;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
@@ -429,10 +503,7 @@ scan_dirtree_object (OtPullData   *pull_data,
 
       /* Skip files if we're traversing a request only directory, unless it exactly
        * matches the path */
-      if (pull_data->dir &&
-          /* Should always an initial slash, we assert it in scan_dirtree_object */
-          pull_data->dir[0] == '/' &&
-          strcmp (pull_data->dir+1, filename) != 0)
+      if (!pull_matches_subdir (pull_data, path, filename, FALSE))
         continue;
 
       file_checksum = ostree_checksum_from_bytes_v (csum);
@@ -451,31 +522,10 @@ scan_dirtree_object (OtPullData   *pull_data,
       else if (!file_is_stored && !g_hash_table_lookup (pull_data->requested_content, file_checksum))
         {
           g_hash_table_insert (pull_data->requested_content, file_checksum, file_checksum);
-          enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, FALSE, FALSE);
+          enqueue_one_object_request (pull_data, file_checksum, OSTREE_OBJECT_TYPE_FILE, path, FALSE, FALSE);
           file_checksum = NULL;  /* Transfer ownership */
         }
     }
-
-    if (pull_data->dir)
-      {
-        const char *subpath = NULL;  
-        const char *nextslash = NULL;
-        g_autofree char *dir_data = NULL;
-
-        g_assert (pull_data->dir[0] == '/'); // assert it starts with / like "/usr/share/rpm"
-        subpath = pull_data->dir + 1;  // refers to name minus / like "usr/share/rpm"
-        nextslash = strchr (subpath, '/'); //refers to start of next slash like "/share/rpm"
-        dir_data = pull_data->dir; // keep the original pointer around since strchr() points into it
-        pull_data->dir = NULL;
-
-        if (nextslash)
-          {
-            subdir_target = g_strndup (subpath, nextslash - subpath); // refers to first dir, like "usr"
-            pull_data->dir = g_strdup (nextslash); // sets dir to new deeper level like "/share/rpm"
-          }
-        else // we're as deep as it goes, i.e. subpath = "rpm"
-          subdir_target = g_strdup (subpath); 
-      }
 
   n = g_variant_n_children (dirs_variant);
 
@@ -485,6 +535,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       g_autoptr(GVariant) meta_csum = NULL;
       const guchar *tree_csum_bytes;
       const guchar *meta_csum_bytes;
+      g_autofree char *subpath = NULL;
 
       g_variant_get_child (dirs_variant, i, "(&s@ay@ay)",
                            &dirname, &tree_csum, &meta_csum);
@@ -492,7 +543,7 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (!ot_util_filename_validate (dirname, error))
         goto out;
 
-      if (subdir_target && strcmp (subdir_target, dirname) != 0)
+      if (!pull_matches_subdir (pull_data, path, dirname, TRUE))
         continue;
 
       tree_csum_bytes = ostree_checksum_bytes_peek_validate (tree_csum, error);
@@ -503,10 +554,12 @@ scan_dirtree_object (OtPullData   *pull_data,
       if (meta_csum_bytes == NULL)
         goto out;
 
+      subpath = g_strconcat (path, dirname, "/", NULL);
+
       queue_scan_one_metadata_object_c (pull_data, tree_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_DIR_TREE, subpath, recursion_depth + 1);
       queue_scan_one_metadata_object_c (pull_data, meta_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_DIR_META, subpath, recursion_depth + 1);
     }
 
   ret = TRUE;
@@ -584,6 +637,14 @@ lookup_commit_checksum_from_summary (OtPullData    *pull_data,
 }
 
 static void
+fetch_object_data_free (FetchObjectData *fetch_data)
+{
+  g_variant_unref (fetch_data->object);
+  g_free (fetch_data->path);
+  g_free (fetch_data);
+}
+
+static void
 content_fetch_on_write_complete (GObject        *object,
                                  GAsyncResult   *result,
                                  gpointer        user_data)
@@ -622,8 +683,7 @@ content_fetch_on_write_complete (GObject        *object,
  out:
   pull_data->n_outstanding_content_write_requests--;
   check_outstanding_requests_handle_error (pull_data, local_error);
-  g_variant_unref (fetch_data->object);
-  g_free (fetch_data);
+  fetch_object_data_free (fetch_data);
 }
 
 static void
@@ -712,10 +772,7 @@ content_fetch_on_complete (GObject        *object,
   pull_data->n_outstanding_content_fetches--;
   check_outstanding_requests_handle_error (pull_data, local_error);
   if (free_fetch_data)
-    {
-      g_variant_unref (fetch_data->object);
-      g_free (fetch_data);
-    }
+    fetch_object_data_free (fetch_data);
 }
 
 static void
@@ -753,12 +810,11 @@ on_metadata_written (GObject           *object,
       goto out;
     }
 
-  queue_scan_one_metadata_object_c (pull_data, csum, objtype, 0);
+  queue_scan_one_metadata_object_c (pull_data, csum, objtype, fetch_data->path, 0);
 
  out:
   pull_data->n_outstanding_metadata_write_requests--;
-  g_variant_unref (fetch_data->object);
-  g_free (fetch_data);
+  fetch_object_data_free (fetch_data);
 
   check_outstanding_requests_handle_error (pull_data, local_error);
 }
@@ -796,7 +852,7 @@ meta_fetch_on_complete (GObject           *object,
               /* There isn't any detached metadata, just fetch the commit */
               g_clear_error (&local_error);
               if (!fetch_data->object_is_stored)
-                enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
+                enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE);
             }
 
           /* When traversing parents, do not fail on a missing commit.
@@ -811,7 +867,7 @@ meta_fetch_on_complete (GObject           *object,
               if (pull_data->has_tombstone_commits)
                 {
                   enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_TOMBSTONE_COMMIT,
-                                              FALSE, FALSE);
+                                              fetch_data->path, FALSE, FALSE);
                 }
             }
         }
@@ -844,7 +900,7 @@ meta_fetch_on_complete (GObject           *object,
         goto out;
 
       if (!fetch_data->object_is_stored)
-        enqueue_one_object_request (pull_data, checksum, objtype, FALSE, FALSE);
+        enqueue_one_object_request (pull_data, checksum, objtype, fetch_data->path, FALSE, FALSE);
     }
   else
     {
@@ -874,10 +930,7 @@ meta_fetch_on_complete (GObject           *object,
   pull_data->n_fetched_metadata++;
   check_outstanding_requests_handle_error (pull_data, local_error);
   if (free_fetch_data)
-    {
-      g_variant_unref (fetch_data->object);
-      g_free (fetch_data);
-    }
+    fetch_object_data_free (fetch_data);
 }
 
 static void
@@ -1053,7 +1106,8 @@ scan_commit_object (OtPullData         *pull_data,
   if (parent_csum_bytes != NULL && pull_data->maxdepth == -1)
     {
       queue_scan_one_metadata_object_c (pull_data, parent_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_COMMIT, NULL,
+                                        recursion_depth + 1);
     }
   else if (parent_csum_bytes != NULL && depth > 0)
     {
@@ -1078,7 +1132,9 @@ scan_commit_object (OtPullData         *pull_data,
           g_hash_table_insert (pull_data->commit_to_depth, g_strdup (parent_checksum),
                                GINT_TO_POINTER (parent_depth));
           queue_scan_one_metadata_object_c (pull_data, parent_csum_bytes,
-                                            OSTREE_OBJECT_TYPE_COMMIT, recursion_depth + 1);
+                                            OSTREE_OBJECT_TYPE_COMMIT,
+                                            NULL,
+                                            recursion_depth + 1);
         }
     }
 
@@ -1101,10 +1157,10 @@ scan_commit_object (OtPullData         *pull_data,
         goto out;
 
       queue_scan_one_metadata_object_c (pull_data, tree_contents_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_DIR_TREE, recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_DIR_TREE, g_strdup ("/"), recursion_depth + 1);
 
       queue_scan_one_metadata_object_c (pull_data, tree_meta_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_DIR_META, recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_DIR_META, NULL, recursion_depth + 1);
     }
 
   ret = TRUE;
@@ -1116,23 +1172,26 @@ static void
 queue_scan_one_metadata_object (OtPullData         *pull_data,
                                 const char         *csum,
                                 OstreeObjectType    objtype,
+                                const char         *path,
                                 guint               recursion_depth)
 {
   guchar buf[OSTREE_SHA256_DIGEST_LEN];
   ostree_checksum_inplace_to_bytes (csum, buf);
-  queue_scan_one_metadata_object_c (pull_data, buf, objtype, recursion_depth);
+  queue_scan_one_metadata_object_c (pull_data, buf, objtype, path, recursion_depth);
 }
 
 static void
 queue_scan_one_metadata_object_c (OtPullData         *pull_data,
                                   const guchar         *csum,
                                   OstreeObjectType    objtype,
+                                  const char         *path,
                                   guint               recursion_depth)
 {
   ScanObjectQueueData *scan_data = g_new0 (ScanObjectQueueData, 1);
 
   memcpy (scan_data->csum, csum, sizeof (scan_data->csum));
   scan_data->objtype = objtype;
+  scan_data->path = g_strdup (path);
   scan_data->recursion_depth = recursion_depth;
 
   g_queue_push_tail (&pull_data->scan_object_queue, scan_data);
@@ -1143,6 +1202,7 @@ static gboolean
 scan_one_metadata_object_c (OtPullData         *pull_data,
                             const guchar         *csum,
                             OstreeObjectType    objtype,
+                            const char         *path,
                             guint               recursion_depth,
                             GCancellable       *cancellable,
                             GError            **error)
@@ -1190,7 +1250,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       g_hash_table_insert (pull_data->requested_metadata, duped_checksum, duped_checksum);
 
       do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-      enqueue_one_object_request (pull_data, tmp_checksum, objtype, do_fetch_detached, FALSE);
+      enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, do_fetch_detached, FALSE);
     }
   else if (objtype == OSTREE_OBJECT_TYPE_COMMIT && pull_data->is_commit_only)
     {
@@ -1207,7 +1267,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
 
       /* For commits, always refetch detached metadata. */
       if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        enqueue_one_object_request (pull_data, tmp_checksum, objtype, TRUE, TRUE);
+        enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
 
       /* For commits, check whether we only had a partial fetch */
       if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
@@ -1245,7 +1305,7 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
             case OSTREE_OBJECT_TYPE_DIR_META:
               break;
             case OSTREE_OBJECT_TYPE_DIR_TREE:
-              if (!scan_dirtree_object (pull_data, tmp_checksum, recursion_depth,
+              if (!scan_dirtree_object (pull_data, tmp_checksum, path, recursion_depth,
                                         pull_data->cancellable, error))
                 goto out;
               break;
@@ -1267,6 +1327,7 @@ static void
 enqueue_one_object_request (OtPullData        *pull_data,
                             const char        *checksum,
                             OstreeObjectType   objtype,
+                            const char        *path,
                             gboolean           is_detached_meta,
                             gboolean           object_is_stored)
 {
@@ -1308,6 +1369,7 @@ enqueue_one_object_request (OtPullData        *pull_data,
   fetch_data = g_new0 (FetchObjectData, 1);
   fetch_data->pull_data = pull_data;
   fetch_data->object = ostree_object_name_serialize (checksum, objtype);
+  fetch_data->path = g_strdup (path);
   fetch_data->is_detached_meta = is_detached_meta;
   fetch_data->object_is_stored = object_is_stored;
 
@@ -1478,7 +1540,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
               g_hash_table_insert (pull_data->requested_metadata, checksum, checksum);
               
               do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
-              enqueue_one_object_request (pull_data, checksum, objtype, do_fetch_detached, FALSE);
+              enqueue_one_object_request (pull_data, checksum, objtype, NULL, do_fetch_detached, FALSE);
               checksum = NULL;  /* Transfer ownership */
             }
         }
@@ -1487,7 +1549,7 @@ process_one_static_delta_fallback (OtPullData   *pull_data,
           if (!g_hash_table_lookup (pull_data->requested_content, checksum))
             {
               g_hash_table_insert (pull_data->requested_content, checksum, checksum);
-              enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, FALSE, FALSE);
+              enqueue_one_object_request (pull_data, checksum, OSTREE_OBJECT_TYPE_FILE, NULL, FALSE, FALSE);
               checksum = NULL;  /* Transfer ownership */
             }
         }
@@ -2227,6 +2289,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  *   * refs (as): Array of string refs
  *   * flags (i): An instance of #OstreeRepoPullFlags
  *   * subdir (s): Pull just this subdirectory
+ *   * subdirs (as): Pull just these subdirectories
  *   * override-remote-name (s): If local, add this remote to refspec
  *   * gpg-verify (b): GPG verify commits
  *   * gpg-verify-summary (b): GPG verify summary
@@ -2263,6 +2326,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   guint64 end_time;
   OstreeRepoPullFlags flags = 0;
   const char *dir_to_pull = NULL;
+  g_autofree char **dirs_to_pull = NULL;
   g_autofree char **refs_to_fetch = NULL;
   char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
@@ -2275,6 +2339,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char *base_content_url = NULL;
   gboolean mirroring_into_archive;
   gboolean inherit_transaction = FALSE;
+  int i;
 
   if (options)
     {
@@ -2284,6 +2349,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       /* Reduce risk of issues if enum happens to be 64 bit for some reason */
       flags = flags_i;
       (void) g_variant_lookup (options, "subdir", "&s", &dir_to_pull);
+      (void) g_variant_lookup (options, "subdirs", "^a&s", &dirs_to_pull);
       (void) g_variant_lookup (options, "override-remote-name", "s", &pull_data->remote_name);
       opt_gpg_verify_set =
         g_variant_lookup (options, "gpg-verify", "b", &pull_data->gpg_verify);
@@ -2304,6 +2370,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   if (dir_to_pull)
     g_return_val_if_fail (dir_to_pull[0] == '/', FALSE);
+
+  for (i = 0; dirs_to_pull != NULL && dirs_to_pull[i] != NULL; i++)
+    g_return_val_if_fail (dirs_to_pull[i][0] == '/', FALSE);
 
   g_return_val_if_fail (!(disable_static_deltas && require_static_deltas), FALSE);
   /* We only do dry runs with static deltas, because we don't really have any
@@ -2343,7 +2412,19 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                                         (GDestroyNotify)g_free, NULL);
   pull_data->requested_metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                          (GDestroyNotify)g_free, NULL);
-  pull_data->dir = g_strdup (dir_to_pull);
+  if (dir_to_pull != NULL || dirs_to_pull != NULL)
+    {
+      pull_data->dirs = g_ptr_array_new_with_free_func (g_free);
+      if (dir_to_pull != NULL)
+        g_ptr_array_add (pull_data->dirs, g_strdup (dir_to_pull));
+
+      if (dirs_to_pull != NULL)
+        {
+          for (i = 0; dirs_to_pull[i] != NULL; i++)
+            g_ptr_array_add (pull_data->dirs, g_strdup (dirs_to_pull[i]));
+        }
+    }
+
   g_queue_init (&pull_data->scan_object_queue);
 
   pull_data->start_time = g_get_monotonic_time ();
@@ -2838,7 +2919,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   while (g_hash_table_iter_next (&hash_iter, &key, &value))
     {
       const char *commit = value;
-      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, 0);
+      queue_scan_one_metadata_object (pull_data, commit, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
     }
 
   g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
@@ -2871,7 +2952,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
               goto out;
             }
           g_debug ("no delta superblock for %s-%s", from_revision ? from_revision : "empty", to_revision);
-          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, 0);
+          queue_scan_one_metadata_object (pull_data, to_revision, OSTREE_OBJECT_TYPE_COMMIT, NULL, 0);
         }
       else
         {
@@ -2994,7 +3075,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     }
 
   /* iterate over commits fetched and delete any commitpartial files */
-  if (!dir_to_pull && !pull_data->is_commit_only)
+  if (pull_data->dirs == NULL && !pull_data->is_commit_only)
     {
       g_hash_table_iter_init (&hash_iter, requested_refs_to_fetch);
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
