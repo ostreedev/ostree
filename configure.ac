@@ -335,6 +335,7 @@ echo "
     libarchive (parse tar files directly):        $with_libarchive
     static deltas:                                yes (always enabled now)
     O_TMPFILE:                                    $enable_otmpfile
+    wrpseudo-compat:                              $enable_wrpseudo_compat
     man pages (xsltproc):                         $enable_man
     api docs (gtk-doc):                           $enable_gtk_doc
     gjs-based tests:                              $have_gjs

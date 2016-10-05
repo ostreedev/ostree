@@ -21,6 +21,8 @@
 #include "config.h"
 
 #include "otutil.h"
+#include <sys/mount.h>
+#include <sys/wait.h>
 
 #include "ostree-core-private.h"
 #include "ostree-sysroot-private.h"
