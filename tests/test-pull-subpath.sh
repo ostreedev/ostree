@@ -36,9 +36,10 @@ mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init
 ${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ${remoteurl}
 
-${CMD_PREFIX} ostree --repo=repo pull --subpath=/baz origin main
+${CMD_PREFIX} ostree --repo=repo pull --subpath=/baz/deeper --subpath=/baz/another origin main
 
-${CMD_PREFIX} ostree --repo=repo ls origin:main /baz
+${CMD_PREFIX} ostree --repo=repo ls origin:main /baz/deeper
+${CMD_PREFIX} ostree --repo=repo ls origin:main /baz/another
 if ${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile 2>err.txt; then
     assert_not_reached
 fi

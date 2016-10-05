@@ -34,7 +34,7 @@ static gboolean opt_dry_run;
 static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
-static char* opt_subpath;
+static char** opt_subpaths;
 static char* opt_cache_dir;
 static int opt_depth = 0;
 static char* opt_url;
@@ -46,7 +46,7 @@ static GOptionEntry options[] = {
    { "disable-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_disable_static_deltas, "Do not use static deltas", NULL },
    { "require-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_require_static_deltas, "Require static deltas", NULL },
    { "mirror", 0, 0, G_OPTION_ARG_NONE, &opt_mirror, "Write refs suitable for a mirror", NULL },
-   { "subpath", 0, 0, G_OPTION_ARG_STRING, &opt_subpath, "Only pull the provided subpath", NULL },
+   { "subpath", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_subpaths, "Only pull the provided subpath(s)", NULL },
    { "untrusted", 0, 0, G_OPTION_ARG_NONE, &opt_untrusted, "Do not trust (local) sources", NULL },
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
@@ -216,9 +216,17 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     if (opt_url)
       g_variant_builder_add (&builder, "{s@v}", "override-url",
                              g_variant_new_variant (g_variant_new_string (opt_url)));
-    if (opt_subpath)
-      g_variant_builder_add (&builder, "{s@v}", "subdir",
-                             g_variant_new_variant (g_variant_new_string (opt_subpath)));
+    if (opt_subpaths && opt_subpaths[0] != NULL)
+      {
+        /* Special case the one-element case so that we excercise this
+           old single-argument version in the tests */
+        if (opt_subpaths[1] == NULL)
+          g_variant_builder_add (&builder, "{s@v}", "subdir",
+                                 g_variant_new_variant (g_variant_new_string (opt_subpaths[0])));
+        else
+          g_variant_builder_add (&builder, "{s@v}", "subdirs",
+                                 g_variant_new_variant (g_variant_new_strv ((const char *const*) opt_subpaths, -1)));
+      }
     g_variant_builder_add (&builder, "{s@v}", "flags",
                            g_variant_new_variant (g_variant_new_int32 (pullflags)));
     if (refs_to_fetch)
