@@ -2236,6 +2236,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  *   * override-commit-ids (as): Array of specific commit IDs to fetch for refs
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
+ *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, usefult to do mutliple pulls in one transaction.
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -2273,6 +2274,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   g_autofree char *base_meta_url = NULL;
   g_autofree char *base_content_url = NULL;
   gboolean mirroring_into_archive;
+  gboolean inherit_transaction = FALSE;
 
   if (options)
     {
@@ -2293,6 +2295,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "override-commit-ids", "^a&s", &override_commit_ids);
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
+      (void) g_variant_lookup (options, "inherit-transaction", "b", &inherit_transaction);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2822,7 +2825,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   if (pull_data->fetcher == NULL)
     goto out;
 
-  if (!ostree_repo_prepare_transaction (pull_data->repo, &pull_data->legacy_transaction_resuming,
+  pull_data->legacy_transaction_resuming = FALSE;
+  if (!inherit_transaction &&
+      !ostree_repo_prepare_transaction (pull_data->repo, &pull_data->legacy_transaction_resuming,
                                         cancellable, error))
     goto out;
 
@@ -2954,7 +2959,8 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
         }
     }
 
-  if (!ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
+  if (!inherit_transaction &&
+      !ostree_repo_commit_transaction (pull_data->repo, NULL, cancellable, error))
     goto out;
 
   end_time = g_get_monotonic_time ();
@@ -3020,8 +3026,9 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_propagate_error (error, pull_data->cached_async_error);
   else
     g_clear_error (&pull_data->cached_async_error);
-    
-  ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
+
+  if (!inherit_transaction)
+    ostree_repo_abort_transaction (pull_data->repo, cancellable, NULL);
   g_main_context_unref (pull_data->main_context);
   if (update_timeout)
     g_source_destroy (update_timeout);
