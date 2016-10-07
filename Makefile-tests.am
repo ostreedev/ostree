@@ -94,11 +94,16 @@ dist_test_scripts = \
 
 if BUILDOPT_FUSE
 dist_test_scripts += tests/test-rofiles-fuse.sh
+else
+EXTRA_DIST += tests/test-rofiles-fuse.sh
 endif
 
 # This one uses corrupt-repo-ref.js
+js_tests = tests/test-corruption.sh
 if BUILDOPT_GJS
 dist_test_scripts += tests/test-corruption.sh
+else
+EXTRA_DIST += $(js_tests)
 endif
 
 dist_installed_test_data = tests/archive-test.sh \
@@ -133,11 +138,16 @@ dist_gpgvinsttest_DATA = $(addprefix tests/gpg-verify-data/, \
 	gpg.conf lgpl2 lgpl2.sig pubring.gpg secring.gpg trustdb.gpg)
 endif
 
-if BUILDOPT_GJS
-dist_installed_test_scripts = tests/test-core.js \
+js_installed_tests = \
+	tests/test-core.js \
 	tests/test-sizes.js \
 	tests/test-sysroot.js \
 	$(NULL)
+
+if BUILDOPT_GJS
+dist_installed_test_scripts = $(js_installed_tests)
+else
+EXTRA_DIST += $(js_installed_tests)
 endif
 
 test_ltlibraries = libreaddir-rand.la
