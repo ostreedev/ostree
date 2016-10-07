@@ -22,6 +22,8 @@ include $(top_srcdir)/buildutil/glib-tap.mk
 EXTRA_DIST += \
 	buildutil/tap-driver.sh \
 	buildutil/tap-test \
+	tests/glib.supp \
+	tests/ostree.supp \
 	$(NULL)
 
 # We should probably consider flipping the default for DEBUG.  Also,
