@@ -35,6 +35,15 @@ assert_not_reached () {
 
 test_tmpdir=$(pwd)
 
+# Some tests look for specific English strings. Use a UTF-8 version
+# of the C (POSIX) locale if we have one, or fall back to POSIX
+# (https://sourceware.org/glibc/wiki/Proposals/C.UTF-8)
+if locale -a | grep C.UTF-8 >/dev/null; then
+  export LC_ALL=C.UTF-8
+else
+  export LC_ALL=C
+fi
+
 # Sanity check that we're in a tmpdir that has
 # just .testtmp (created by tap-driver for `make check`,
 # or nothing at all (as ginstest-runner does)
