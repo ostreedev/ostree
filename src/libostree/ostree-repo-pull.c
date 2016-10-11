@@ -1157,7 +1157,7 @@ scan_commit_object (OtPullData         *pull_data,
         goto out;
 
       queue_scan_one_metadata_object_c (pull_data, tree_contents_csum_bytes,
-                                        OSTREE_OBJECT_TYPE_DIR_TREE, g_strdup ("/"), recursion_depth + 1);
+                                        OSTREE_OBJECT_TYPE_DIR_TREE, "/", recursion_depth + 1);
 
       queue_scan_one_metadata_object_c (pull_data, tree_meta_csum_bytes,
                                         OSTREE_OBJECT_TYPE_DIR_META, NULL, recursion_depth + 1);
