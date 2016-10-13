@@ -2002,7 +2002,7 @@ allocate_deployserial (OstreeSysroot           *self,
     g_ptr_array_new_with_free_func (g_object_unref);
 
   osdir = ot_gfile_get_child_build_path (self->path, "ostree/deploy", osname, NULL);
-  
+
   if (!_ostree_sysroot_list_deployment_dirs_for_os (osdir, tmp_current_deployments,
                                                     cancellable, error))
     goto out;
@@ -2010,9 +2010,7 @@ allocate_deployserial (OstreeSysroot           *self,
   for (i = 0; i < tmp_current_deployments->len; i++)
     {
       OstreeDeployment *deployment = tmp_current_deployments->pdata[i];
-      
-      if (strcmp (ostree_deployment_get_osname (deployment), osname) != 0)
-        continue;
+
       if (strcmp (ostree_deployment_get_csum (deployment), revision) != 0)
         continue;
 
