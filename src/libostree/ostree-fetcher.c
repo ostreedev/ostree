@@ -65,6 +65,9 @@ typedef struct {
 
   /* Also protected by output_stream_set_lock. */
   guint64 total_downloaded;
+
+  GError *oob_error;
+
 } ThreadClosure;
 
 static void
@@ -158,6 +161,8 @@ thread_closure_unref (ThreadClosure *thread_closure)
 
       g_clear_pointer (&thread_closure->output_stream_set, g_hash_table_unref);
       g_mutex_clear (&thread_closure->output_stream_set_lock);
+
+      g_clear_pointer (&thread_closure->oob_error, g_error_free);
 
       g_slice_free (ThreadClosure, thread_closure);
     }
@@ -277,6 +282,29 @@ session_thread_config_flags (ThreadClosure *thread_closure,
 }
 
 static void
+on_authenticate (SoupSession *session, SoupMessage *msg, SoupAuth *auth,
+                 gboolean retrying, gpointer user_data)
+{
+  ThreadClosure *thread_closure = user_data;
+
+  if (msg->status_code == SOUP_STATUS_PROXY_UNAUTHORIZED)
+    {
+      SoupURI *uri = NULL;
+      g_object_get (session, SOUP_SESSION_PROXY_URI, &uri, NULL);
+      if (retrying)
+        {
+          g_autofree char *s = soup_uri_to_string (uri, FALSE);
+          g_set_error (&thread_closure->oob_error,
+                       G_IO_ERROR, G_IO_ERROR_PROXY_AUTH_FAILED,
+                       "Invalid username or password for proxy '%s'", s);
+        }
+      else
+        soup_auth_authenticate (auth, soup_uri_get_user (uri),
+                                      soup_uri_get_password (uri));
+    }
+}
+
+static void
 session_thread_set_proxy_cb (ThreadClosure *thread_closure,
                              gpointer data)
 {
@@ -285,6 +313,17 @@ session_thread_set_proxy_cb (ThreadClosure *thread_closure,
   g_object_set (thread_closure->session,
                 SOUP_SESSION_PROXY_URI,
                 proxy_uri, NULL);
+
+  /* libsoup won't necessarily pass any embedded username and password to proxy
+   * requests, so we have to be ready to handle 407 and handle them ourselves.
+   * See also: https://bugzilla.gnome.org/show_bug.cgi?id=772932
+   * */
+  if (soup_uri_get_user (proxy_uri) &&
+      soup_uri_get_password (proxy_uri))
+    {
+      g_signal_connect (thread_closure->session, "authenticate",
+                        G_CALLBACK (on_authenticate), thread_closure);
+    }
 }
 
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
@@ -998,10 +1037,23 @@ on_request_sent (GObject        *object,
                   code = G_IO_ERROR_FAILED;
                 }
 
-              local_error = g_error_new (G_IO_ERROR, code,
-                                         "Server returned status %u: %s",
-                                         msg->status_code,
-                                         soup_status_get_phrase (msg->status_code));
+              {
+                g_autofree char *errmsg =
+                  g_strdup_printf ("Server returned status %u: %s",
+                                   msg->status_code,
+                                   soup_status_get_phrase (msg->status_code));
+
+                /* Let's make OOB errors be the final one since they're probably
+                 * the cause for the error here. */
+                if (pending->thread_closure->oob_error)
+                  {
+                    local_error =
+                      g_error_copy (pending->thread_closure->oob_error);
+                    g_prefix_error (&local_error, "%s: ", errmsg);
+                  }
+                else
+                  local_error = g_error_new_literal (G_IO_ERROR, code, errmsg);
+              }
 
               if (pending->mirrorlist->len > 1)
                 g_prefix_error (&local_error,
