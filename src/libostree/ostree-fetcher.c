@@ -280,18 +280,19 @@ static void
 on_authenticate (SoupSession *session, SoupMessage *msg, SoupAuth *auth,
                  gboolean retrying, gpointer user_data)
 {
-  if (msg->status_code == SOUP_STATUS_PROXY_UNAUTHORIZED) {
-    SoupURI *uri = NULL;
-    g_object_get (session, SOUP_SESSION_PROXY_URI, &uri, NULL);
-    if (retrying)
-      {
-        g_autofree char *s = soup_uri_to_string (uri, FALSE);
-        g_warning ("Invalid username or password for proxy '%s'", s);
-      }
-    else
-      soup_auth_authenticate (auth, soup_uri_get_user (uri),
-                                    soup_uri_get_password (uri));
-  }
+  if (msg->status_code == SOUP_STATUS_PROXY_UNAUTHORIZED)
+    {
+      SoupURI *uri = NULL;
+      g_object_get (session, SOUP_SESSION_PROXY_URI, &uri, NULL);
+      if (retrying)
+        {
+          g_autofree char *s = soup_uri_to_string (uri, FALSE);
+          g_warning ("Invalid username or password for proxy '%s'", s);
+        }
+      else
+        soup_auth_authenticate (auth, soup_uri_get_user (uri),
+                                      soup_uri_get_password (uri));
+    }
 }
 
 static void
