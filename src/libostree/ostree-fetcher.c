@@ -277,6 +277,24 @@ session_thread_config_flags (ThreadClosure *thread_closure,
 }
 
 static void
+on_authenticate (SoupSession *session, SoupMessage *msg, SoupAuth *auth,
+                 gboolean retrying, gpointer user_data)
+{
+  if (msg->status_code == SOUP_STATUS_PROXY_UNAUTHORIZED) {
+    SoupURI *uri = NULL;
+    g_object_get (session, SOUP_SESSION_PROXY_URI, &uri, NULL);
+    if (retrying)
+      {
+        g_autofree char *s = soup_uri_to_string (uri, FALSE);
+        g_warning ("Invalid username or password for proxy '%s'", s);
+      }
+    else
+      soup_auth_authenticate (auth, soup_uri_get_user (uri),
+                                    soup_uri_get_password (uri));
+  }
+}
+
+static void
 session_thread_set_proxy_cb (ThreadClosure *thread_closure,
                              gpointer data)
 {
@@ -285,6 +303,17 @@ session_thread_set_proxy_cb (ThreadClosure *thread_closure,
   g_object_set (thread_closure->session,
                 SOUP_SESSION_PROXY_URI,
                 proxy_uri, NULL);
+
+  /* libsoup won't necessarily pass any embedded username and password to proxy
+   * requests, so we have to be ready to handle 407 and handle them ourselves.
+   * See also: https://bugzilla.gnome.org/show_bug.cgi?id=772932
+   * */
+  if (soup_uri_get_user (proxy_uri) &&
+      soup_uri_get_password (proxy_uri))
+    {
+      g_signal_connect (thread_closure->session, "authenticate",
+                        G_CALLBACK (on_authenticate), NULL);
+    }
 }
 
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
