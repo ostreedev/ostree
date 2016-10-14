@@ -43,14 +43,14 @@ deployment.  For short, we will call this the "tree", to
 distinguish it from the concept of a deployment.
 
 First, the tree must include a kernel stored as
-`/boot/vmlinuz(-.*)?-$checksum`.  The checksum should be a SHA256 hash
-of the kernel contents; it must be pre-computed before storing the
-kernel in the repository.  Optionally, the tree can contain an
-initramfs, stored as `/boot/initramfs(-.*)?-$checksum`.  If this
-exists, the checksum must include both the kernel and initramfs
-contents.  OSTree will use this to determine which kernels are shared.
-The rationale for this is to avoid computing checksums on the client
-by default.
+`vmlinuz(-.*)?-$checksum` in either `/boot` or `/usr/lib/ostree-boot`.
+The checksum should be a SHA256 hash of the kernel contents; it must be
+pre-computed before storing the kernel in the repository.  Optionally,
+the directory can also contain an initramfs, stored as
+`initramfs(-.*)?-$checksum`.  If this exists, the checksum must include
+both the kernel and initramfs contents.  OSTree will use this to
+determine which kernels are shared.  The rationale for this is to avoid
+computing checksums on the client by default.
 
 The deployment should not have a traditional UNIX `/etc`; instead, it
 should include `/usr/etc`.  This is the "default configuration".  When
