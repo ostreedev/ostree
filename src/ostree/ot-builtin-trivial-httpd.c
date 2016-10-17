@@ -44,6 +44,8 @@ static int opt_random_500s_percentage;
 static int opt_random_500s_max = 100;
 static gint opt_port = 0;
 
+static gchar **opt_expected_cookies;
+
 static guint emitted_random_500s_count = 0;
 
 typedef struct {
@@ -61,6 +63,7 @@ static GOptionEntry options[] = {
   { "random-500s", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_percentage, "Generate random HTTP 500 errors approximately for PERCENTAGE requests", "PERCENTAGE" },
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
   { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here", "PATH" },
+  { "expected-cookies", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_cookies, "Expect given cookies in the http request", "KEY=VALUE" },
   { NULL }
 };
 
@@ -199,6 +202,42 @@ do_get (OtTrivialHttpd    *self,
   struct stat stbuf;
 
   httpd_log (self, "serving %s\n", path);
+
+  if (opt_expected_cookies)
+    {
+      GSList *cookies = soup_cookies_from_request (msg);
+      GSList *l;
+      int i;
+
+      for (i = 0 ; opt_expected_cookies[i] != NULL; i++)
+        {
+          gboolean found = FALSE;
+          gchar *k = opt_expected_cookies[i];
+          gchar *v = strchr (k, '=') + 1;
+
+          for (l = cookies;  l != NULL ; l = g_slist_next (l))
+            {
+              SoupCookie *c = l->data;
+
+              if (!strncmp (k, soup_cookie_get_name (c), v - k - 1) &&
+                  !strcmp (v, soup_cookie_get_value (c)))
+                {
+                  found = TRUE;
+                  break;
+                }
+            }
+
+          if (!found)
+            {
+              httpd_log (self, "Expected cookie not found %s\n", k);
+              soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+              soup_cookies_free (cookies);
+              goto out;
+            }
+        }
+      soup_cookies_free (cookies);
+    }
+
   if (strstr (path, "../") != NULL)
     {
       soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
