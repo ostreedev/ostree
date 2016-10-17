@@ -33,7 +33,9 @@ typedef struct {
 
 static OstreeRemoteCommand remote_subcommands[] = {
   { "add", ot_remote_builtin_add },
+  { "add-cookie", ot_remote_builtin_add_cookie },
   { "delete", ot_remote_builtin_delete },
+  { "delete-cookie", ot_remote_builtin_delete_cookie },
   { "show-url", ot_remote_builtin_show_url },
   { "list", ot_remote_builtin_list },
   { "list-cookies", ot_remote_builtin_list_cookies },

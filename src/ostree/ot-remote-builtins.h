@@ -25,7 +25,9 @@
 G_BEGIN_DECLS
 
 gboolean ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_delete (int argc, char **argv, GCancellable *cancellable, GError **error);
+gboolean ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_gpg_import (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_list (int argc, char **argv, GCancellable *cancellable, GError **error);
 gboolean ot_remote_builtin_list_cookies (int argc, char **argv, GCancellable *cancellable, GError **error);
