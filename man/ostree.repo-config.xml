@@ -204,6 +204,18 @@ Boston, MA 02111-1307, USA.
       in the section <literal>GPG verification</literal>.
     </para>
   </refsect1>
+
+  <refsect1>
+    <title>Per-remote HTTP cookies</title>
+    <para>
+      Some content providers may want to control access to remote
+      repositories via HTTP cookies.  The <command>ostree remote
+      add-cookie</command> and <command>ostree remote
+      delete-cookie</command> commands will update a per-remote
+      lookaside cookie jar, named
+      <filename>$remotename.cookies.txt</filename>.
+    </para>
+  </refsect1>
   
   <refsect1>
     <title>See Also</title>

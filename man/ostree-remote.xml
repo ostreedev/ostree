@@ -69,6 +69,25 @@ Boston, MA 02111-1307, USA.
             <cmdsynopsis>
                 <command>ostree remote summary</command> <arg choice="opt" rep="repeat">OPTIONS</arg> <arg choice="req">NAME</arg>
             </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote add-cookie</command>
+                <arg choice="req">NAME</arg>
+                <arg choice="req">DOMAIN</arg>
+                <arg choice="req">PATH</arg>
+                <arg choice="req">COOKIE_NAME</arg>
+                <arg choice="req">VALUE</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote delete-cookie</command>
+                <arg choice="req">NAME</arg>
+                <arg choice="req">DOMAIN</arg>
+                <arg choice="req">PATH</arg>
+                <arg choice="req">COOKIE_NAME</arg>
+                <arg choice="req">VALUE</arg>
+            </cmdsynopsis>
+            <cmdsynopsis>
+                <command>ostree remote list-cookies</command> <arg choice="req">NAME</arg>
+            </cmdsynopsis>
     </refsynopsisdiv>
 
     <refsect1>
@@ -82,6 +101,9 @@ Boston, MA 02111-1307, USA.
         </para>
         <para>
             The GPG keys to import may be in binary OpenPGP format or ASCII armored.  The optional <arg>KEY-ID</arg> list can restrict which keys are imported from a keyring file or input stream.  All keys are imported if this list is omitted.  If neither <option>--keyring</option> nor <option>--stdin</option> options are given, then keys are imported from the user's personal GPG keyring.
+        </para>
+        <para>
+            The various cookie related command allow management of a remote specific cookie jar.
         </para>
     </refsect1>
 
