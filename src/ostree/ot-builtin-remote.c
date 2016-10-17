@@ -36,6 +36,7 @@ static OstreeRemoteCommand remote_subcommands[] = {
   { "delete", ot_remote_builtin_delete },
   { "show-url", ot_remote_builtin_show_url },
   { "list", ot_remote_builtin_list },
+  { "list-cookies", ot_remote_builtin_list_cookies },
   { "gpg-import", ot_remote_builtin_gpg_import },
   { "refs", ot_remote_builtin_refs },
   { "summary", ot_remote_builtin_summary },
