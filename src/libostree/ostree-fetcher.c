@@ -326,6 +326,16 @@ session_thread_set_proxy_cb (ThreadClosure *thread_closure,
     }
 }
 
+static void
+session_thread_set_cookie_jar_cb (ThreadClosure *thread_closure,
+                                  gpointer data)
+{
+  SoupCookieJar *jar = data;
+
+  soup_session_add_feature (thread_closure->session,
+                            SOUP_SESSION_FEATURE (jar));
+}
+
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 static void
 session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
@@ -744,6 +754,23 @@ _ostree_fetcher_set_proxy (OstreeFetcher *self,
                                proxy_uri,  /* takes ownership */
                                (GDestroyNotify) soup_uri_free);
     }
+}
+
+void
+_ostree_fetcher_set_cookie_jar (OstreeFetcher *self,
+                                const char    *jar_path)
+{
+  SoupCookieJar *jar;
+
+  g_return_if_fail (OSTREE_IS_FETCHER (self));
+  g_return_if_fail (jar_path != NULL);
+
+  jar = soup_cookie_jar_text_new (jar_path, TRUE);
+
+  session_thread_idle_add (self->thread_closure,
+                           session_thread_set_cookie_jar_cb,
+                           jar,  /* takes ownership */
+                           (GDestroyNotify) g_object_unref);
 }
 
 void

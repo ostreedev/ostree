@@ -59,6 +59,9 @@ OstreeFetcher *_ostree_fetcher_new (int                      tmpdir_dfd,
 
 int  _ostree_fetcher_get_dfd (OstreeFetcher *fetcher);
 
+void _ostree_fetcher_set_cookie_jar (OstreeFetcher *self,
+                                     const char    *jar_path);
+
 void _ostree_fetcher_set_proxy (OstreeFetcher *fetcher,
                                 const char    *proxy);
 

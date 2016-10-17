@@ -1964,6 +1964,19 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
       _ostree_fetcher_set_proxy (fetcher, http_proxy);
   }
 
+  {
+    g_autofree char *jar_path = NULL;
+    g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt",
+                                                    remote_name);
+
+    jar_path = g_build_filename (g_file_get_path (self->repodir), cookie_file,
+                                 NULL);
+
+    if (g_file_test(jar_path, G_FILE_TEST_IS_REGULAR))
+      _ostree_fetcher_set_cookie_jar (fetcher, jar_path);
+
+  }
+
   success = TRUE;
 
 out:
