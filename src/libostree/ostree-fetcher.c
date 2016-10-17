@@ -1057,6 +1057,7 @@ on_request_sent (GObject        *object,
               switch (msg->status_code)
                 {
                 case 404:
+                case 403:
                 case 410:
                   code = G_IO_ERROR_NOT_FOUND;
                   break;
