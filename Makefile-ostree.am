@@ -80,7 +80,9 @@ ostree_SOURCES += \
 ostree_SOURCES += \
 	src/ostree/ot-remote-builtins.h \
 	src/ostree/ot-remote-builtin-add.c \
+	src/ostree/ot-remote-builtin-add-cookie.c \
 	src/ostree/ot-remote-builtin-delete.c \
+	src/ostree/ot-remote-builtin-delete-cookie.c \
 	src/ostree/ot-remote-builtin-gpg-import.c \
 	src/ostree/ot-remote-builtin-list.c \
 	src/ostree/ot-remote-builtin-list-cookies.c \
