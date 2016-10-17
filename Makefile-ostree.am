@@ -83,6 +83,7 @@ ostree_SOURCES += \
 	src/ostree/ot-remote-builtin-delete.c \
 	src/ostree/ot-remote-builtin-gpg-import.c \
 	src/ostree/ot-remote-builtin-list.c \
+	src/ostree/ot-remote-builtin-list-cookies.c \
 	src/ostree/ot-remote-builtin-show-url.c \
 	src/ostree/ot-remote-builtin-refs.c \
 	src/ostree/ot-remote-builtin-summary.c \
