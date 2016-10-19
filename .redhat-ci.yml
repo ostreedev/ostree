@@ -1,0 +1,25 @@
+branches:
+    - master
+    - auto
+    - try
+
+container:
+    image: jlebon/ostree-tester:rhci
+
+tests:
+    - sh autogen.sh
+        --prefix=/usr
+        --libdir=/usr/lib64
+        --enable-installed-tests
+        --enable-gtk-doc
+    - make -j2
+    - make syntax-check
+    - make check
+    - make install
+    - gnome-desktop-testing-runner ostree
+    - sudo --user=testuser gnome-desktop-testing-runner ostree
+
+timeout: 30m
+
+artifacts:
+    - test-suite.log
