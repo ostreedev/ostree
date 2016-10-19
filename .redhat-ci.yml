@@ -4,7 +4,7 @@ branches:
     - try
 
 container:
-    image: jlebon/ostree-tester:rhci
+    image: projectatomic/ostree-tester
 
 tests:
     - sh autogen.sh
