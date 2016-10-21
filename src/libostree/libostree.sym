@@ -356,6 +356,7 @@ global:
 /* No new symbols in 2016.9 */
 /* No new symbols in 2016.10 */
 /* No new symbols in 2016.11 */
+/* No new symbols in 2016.12 */
 
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
