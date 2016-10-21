@@ -2035,8 +2035,18 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
   g_autoptr(GVariant) ret_metadata = NULL;
 
   _ostree_loose_path (buf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
-  
-  if (!ot_util_variant_map_at (self->objects_dir_fd, buf,
+
+  if (self->commit_stagedir_fd != -1 &&
+      !ot_util_variant_map_at (self->commit_stagedir_fd, buf,
+                               G_VARIANT_TYPE ("a{sv}"),
+                               OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
+    {
+      g_prefix_error (error, "Unable to read existing detached metadata: ");
+      goto out;
+    }
+
+  if (ret_metadata == NULL &&
+      !ot_util_variant_map_at (self->objects_dir_fd, buf,
                                G_VARIANT_TYPE ("a{sv}"),
                                OT_VARIANT_MAP_ALLOW_NOENT | OT_VARIANT_MAP_TRUSTED, &ret_metadata, error))
     {
@@ -2079,10 +2089,16 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   g_autoptr(GVariant) normalized = NULL;
   gsize normalized_size = 0;
   const guint8 *data = NULL;
+  int dest_dfd;
+
+  if (self->in_transaction)
+    dest_dfd = self->commit_stagedir_fd;
+  else
+    dest_dfd = self->objects_dir_fd;
 
   _ostree_loose_path (pathbuf, checksum, OSTREE_OBJECT_TYPE_COMMIT_META, self->mode);
 
-  if (!_ostree_repo_ensure_loose_objdir_at (self->objects_dir_fd, checksum,
+  if (!_ostree_repo_ensure_loose_objdir_at (dest_dfd, checksum,
                                             cancellable, error))
     return FALSE;
 
@@ -2096,7 +2112,7 @@ ostree_repo_write_commit_detached_metadata (OstreeRepo      *self,
   if (data == NULL)
     data = (guint8*)"";
 
-  if (!glnx_file_replace_contents_at (self->objects_dir_fd, pathbuf,
+  if (!glnx_file_replace_contents_at (dest_dfd, pathbuf,
                                       data, normalized_size,
                                       0, cancellable, error))
     {
