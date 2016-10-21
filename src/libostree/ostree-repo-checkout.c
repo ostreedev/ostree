@@ -450,7 +450,9 @@ checkout_one_file_at (OstreeRepo                        *repo,
           gboolean is_bare = ((current_repo->mode == OSTREE_REPO_MODE_BARE
                                && options->mode == OSTREE_REPO_CHECKOUT_MODE_NONE) ||
                               (current_repo->mode == OSTREE_REPO_MODE_BARE_USER
-                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER));
+                               && options->mode == OSTREE_REPO_CHECKOUT_MODE_USER
+                               /* NOTE: bare-user symlinks are not stored as symlinks */
+                               && !is_symlink));
           gboolean current_can_cache = (options->enable_uncompressed_cache
                                         && current_repo->enable_uncompressed_cache);
           gboolean is_archive_z2_with_cache = (current_repo->mode == OSTREE_REPO_MODE_ARCHIVE_Z2
