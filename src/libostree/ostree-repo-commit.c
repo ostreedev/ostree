@@ -2044,6 +2044,12 @@ ostree_repo_read_commit_detached_metadata (OstreeRepo      *self,
       goto out;
     }
 
+  if (ret_metadata == NULL && self->parent_repo)
+    return ostree_repo_read_commit_detached_metadata (self->parent_repo,
+                                                      checksum,
+                                                      out_metadata,
+                                                      cancellable,
+                                                      error);
   ret = TRUE;
   ot_transfer_out_value (out_metadata, &ret_metadata);
  out:
