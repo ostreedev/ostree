@@ -13,11 +13,12 @@ generating commits.
 
 In this section, we will describe some high level ideas and methods
 for managing content in OSTree repositories, mostly independent of any
-particular model or tool.  That said, a goal is to include at least
-some sample scripts and workflows upstream in a potential new
-"contrib" git repository.
+particular model or tool.  That said, there is an associated upstream
+project [ostree-releng-scripts](https://github.com/ostreedev/ostree-releng-scripts)
+which has some scripts that are intended to implement portions of
+this document.
 
-One example of software which can assist in managing OSTree
+Another example of software which can assist in managing OSTree
 repositories today is the [Pulp Project](http://www.pulpproject.org/),
 which has a
 [Pulp OSTree plugin](https://pulp-ostree.readthedocs.org/en/latest/).
@@ -42,6 +43,9 @@ ostree --repo=repo pull --mirror exampleos:exampleos/x86_64/standard
 
 You can use the `--depth=-1` option to retrieve all history, or a
 positive integer like `3` to retrieve just the last 3 commits.
+
+See also the `rsync-repos` script in
+[ostree-releng-scripts](https://github.com/ostreedev/ostree-releng-scripts).
 
 ## Separate development vs release repositories
 
@@ -94,7 +98,7 @@ want to "promote" that commit.  Let's create a new branch called
 complete system.  This might be where human testers get involved, for
 example.
 
-The build system can "promote" the `buildmaster` commit that passed
+A basic way to "promote" the `buildmaster` commit that passed
 testing like this:
 
 ```
@@ -104,6 +108,11 @@ ostree commit -b exampleos/x86_64/smoketested/standard -s 'Passed tests' --tree=
 Here we're generating a new commit object (perhaps include in the commit
 log links to build logs, etc.), but we're reusing the *content* from the `buildmaster`
 commit `aec070645fe53` that passed the smoketests.
+
+For a more sophisticated implementation of this model, see the
+[do-release-tags](https://github.com/ostreedev/ostree-releng-scripts/blob/master/do-release-tags)
+script, which includes support for things like propagating version
+numbers across commit promotion.
 
 We can easily generalize this model to have an arbitrary number of
 stages like `exampleos/x86_64/stage-1-pass/standard`,
