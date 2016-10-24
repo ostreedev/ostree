@@ -311,29 +311,11 @@ ostree_repo_prune (OstreeRepo        *self,
       while (g_hash_table_iter_next (&hash_iter, &key, &value))
         {
           const char *checksum = value;
-          OstreeRepoCommitState commitstate;
-          GError *local_error = NULL;
-
-          if (!ostree_repo_load_commit (self, checksum, NULL, &commitstate,
-                                        error))
-            goto out;
 
           g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
-                                                  cancellable, &local_error))
-            {
-              /* Don't fail traversing a partial commit */
-              if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0 &&
-                  g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-                {
-                  g_clear_error (&local_error);
-                }
-              else
-                {
-                  g_propagate_error (error, local_error);
-                  goto out;
-                }
-            }
+                                                  cancellable, error))
+            goto out;
         }
     }
 
@@ -349,34 +331,16 @@ ostree_repo_prune (OstreeRepo        *self,
           GVariant *serialized_key = key;
           const char *checksum;
           OstreeObjectType objtype;
-          OstreeRepoCommitState commitstate;
-          GError *local_error = NULL;
 
           ostree_object_name_deserialize (serialized_key, &checksum, &objtype);
 
           if (objtype != OSTREE_OBJECT_TYPE_COMMIT)
             continue;
 
-          if (!ostree_repo_load_commit (self, checksum, NULL, &commitstate,
-                                        error))
-            goto out;
-
           g_debug ("Finding objects to keep for commit %s", checksum);
           if (!ostree_repo_traverse_commit_union (self, checksum, depth, data.reachable,
-                                                  cancellable, &local_error))
-            {
-              /* Don't fail traversing a partial commit */
-              if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0 &&
-                  g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-                {
-                  g_clear_error (&local_error);
-                }
-              else
-                {
-                  g_propagate_error (error, local_error);
-                  goto out;
-                }
-            }
+                                                  cancellable, error))
+            goto out;
         }
     }
 

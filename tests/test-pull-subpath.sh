@@ -23,7 +23,7 @@ set -euo pipefail
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo '1..2'
+echo '1..4'
 
 repopath=${test_tmpdir}/ostree-srv/gnomerepo
 cp -a ${repopath} ${repopath}.orig
@@ -54,5 +54,26 @@ ${CMD_PREFIX} ostree --repo=repo ls origin:main /firstfile
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 assert_not_has_file repo/state/${rev}.commitpartial
 ${CMD_PREFIX} ostree --repo=repo fsck
-echo "ok"
+echo "ok subpaths"
+
+rm -rf repo
+
+${CMD_PREFIX} ostree --repo=repo init
+${CMD_PREFIX} ostree --repo=repo remote add --set=gpg-verify=false origin ${remoteurl}
+
+# Pull a directory which is not the first in the commit (/baz/another is before)
+${CMD_PREFIX} ostree --repo=repo pull --subpath=/baz/deeper origin main
+
+# Ensure it is there
+${CMD_PREFIX} ostree --repo=repo ls origin:main /baz/deeper
+
+# Now prune, this should not prune the /baz/deeper dirmeta even if the
+# /baz/another dirmeta is not in the repo.
+${CMD_PREFIX} ostree --repo=repo prune --refs-only
+
+# Ensure it is still there
+${CMD_PREFIX} ostree --repo=repo ls origin:main /baz/deeper
+
+echo "ok prune with commitpartial"
+
 done
