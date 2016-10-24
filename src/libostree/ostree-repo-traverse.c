@@ -301,6 +301,7 @@ static gboolean
 traverse_dirtree (OstreeRepo           *repo,
                   const char           *checksum,
                   GHashTable           *inout_reachable,
+                  gboolean              ignore_missing_dirs,
                   GCancellable         *cancellable,
                   GError              **error);
 
@@ -308,6 +309,7 @@ static gboolean
 traverse_iter (OstreeRepo                          *repo,
                OstreeRepoCommitTraverseIter        *iter,
                GHashTable                          *inout_reachable,
+               gboolean                             ignore_missing_dirs,
                GCancellable                        *cancellable,
                GError                             **error)
 {
@@ -316,11 +318,26 @@ traverse_iter (OstreeRepo                          *repo,
   while (TRUE)
     {
       g_autoptr(GVariant) key = NULL;
+      g_autoptr(GError) local_error = NULL;
       OstreeRepoCommitIterResult iterres =
-        ostree_repo_commit_traverse_iter_next (iter, cancellable, error);
-          
+        ostree_repo_commit_traverse_iter_next (iter, cancellable, &local_error);
+
       if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_ERROR)
-        goto out;
+        {
+          /* There is only one kind of not-found error, which is
+             failing to load the dirmeta itself, if so, we ignore that
+             (and the whole subtree) if told to. */
+          if (ignore_missing_dirs &&
+              g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_debug ("Ignoring not-found dirmeta");
+              ret = TRUE;
+            }
+          else
+            g_propagate_error (error, g_steal_pointer (&local_error));
+
+          goto out;
+        }
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_END)
         break;
       else if (iterres == OSTREE_REPO_COMMIT_ITER_RESULT_FILE)
@@ -357,7 +374,7 @@ traverse_iter (OstreeRepo                          *repo,
               key = NULL;
 
               if (!traverse_dirtree (repo, content_checksum, inout_reachable,
-                                     cancellable, error))
+                                     ignore_missing_dirs, cancellable, error))
                 goto out;
             }
         }
@@ -374,6 +391,7 @@ static gboolean
 traverse_dirtree (OstreeRepo           *repo,
                   const char           *checksum,
                   GHashTable           *inout_reachable,
+                  gboolean              ignore_missing_dirs,
                   GCancellable         *cancellable,
                   GError              **error)
 {
@@ -381,10 +399,22 @@ traverse_dirtree (OstreeRepo           *repo,
   g_autoptr(GVariant) dirtree = NULL;
   ostree_cleanup_repo_commit_traverse_iter
     OstreeRepoCommitTraverseIter iter = { 0, };
+  g_autoptr(GError) local_error = NULL;
 
   if (!ostree_repo_load_variant (repo, OSTREE_OBJECT_TYPE_DIR_TREE, checksum,
-                                 &dirtree, error))
-    goto out;
+                                 &dirtree, &local_error))
+    {
+      if (ignore_missing_dirs &&
+          g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_print ("Ignoring not-found dirmeta %s", checksum);
+          ret = TRUE;
+        }
+      else
+        g_propagate_error (error, g_steal_pointer (&local_error));
+
+      goto out;
+    }
 
   g_debug ("Traversing dirtree %s", checksum);
   if (!ostree_repo_commit_traverse_iter_init_dirtree (&iter, repo, dirtree,
@@ -392,7 +422,7 @@ traverse_dirtree (OstreeRepo           *repo,
                                                       error))
     goto out;
 
-  if (!traverse_iter (repo, &iter, inout_reachable, cancellable, error))
+  if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
     goto out;
 
   ret = TRUE;
@@ -430,6 +460,8 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
       g_autoptr(GVariant) commit = NULL;
       ostree_cleanup_repo_commit_traverse_iter
         OstreeRepoCommitTraverseIter iter = { 0, };
+      OstreeRepoCommitState commitstate;
+      gboolean ignore_missing_dirs = FALSE;
 
       key = ostree_object_name_serialize (commit_checksum, OSTREE_OBJECT_TYPE_COMMIT);
 
@@ -440,12 +472,20 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                                commit_checksum, &commit,
                                                error))
         goto out;
-        
+
       /* Just return if the parent isn't found; we do expect most
        * people to have partial repositories.
        */
       if (!commit)
         break;
+
+      /* See if the commit is partial, if so it's not an error to lack objects */
+      if (!ostree_repo_load_commit (repo, commit_checksum, NULL, &commitstate,
+                                    error))
+        goto out;
+
+      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) != 0)
+        ignore_missing_dirs = TRUE;
 
       g_hash_table_add (inout_reachable, key);
       key = NULL;
@@ -456,9 +496,9 @@ ostree_repo_traverse_commit_union (OstreeRepo      *repo,
                                                          error))
         goto out;
 
-      if (!traverse_iter (repo, &iter, inout_reachable, cancellable, error))
+      if (!traverse_iter (repo, &iter, inout_reachable, ignore_missing_dirs, cancellable, error))
         goto out;
-      
+
       if (maxdepth == -1 || maxdepth > 0)
         {
           g_free (tmp_checksum);
