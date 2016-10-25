@@ -26,6 +26,13 @@
 #include <string.h> /* Yeah...let's just do that here. */
 #include <libglnx.h>
 
+/* https://bugzilla.gnome.org/show_bug.cgi?id=766370 */
+#if !GLIB_CHECK_VERSION(2, 49, 3)
+#define OT_VARIANT_BUILDER_INITIALIZER {{0,}}
+#else
+#define OT_VARIANT_BUILDER_INITIALIZER {{{0,}}}
+#endif
+
 #define ot_gobject_refz(o) (o ? g_object_ref (o) : o)
 
 #define ot_transfer_out_value(outp, srcp) G_STMT_START {   \

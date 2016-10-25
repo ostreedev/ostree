@@ -3164,7 +3164,7 @@ ostree_repo_delete_object (OstreeRepo           *self,
 
       if (tombstone_commits)
         {
-          g_auto(GVariantBuilder) builder = {{0,}};
+          g_auto(GVariantBuilder) builder = OT_VARIANT_BUILDER_INITIALIZER;
           g_autoptr(GVariant) variant = NULL;
 
           g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{sv}"));
@@ -4653,7 +4653,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   g_autoptr(GVariant) summary = NULL;
   GList *ordered_keys = NULL;
   GList *iter = NULL;
-  g_auto(GVariantDict) additional_metadata_builder = {{0,}};
+  g_auto(GVariantDict) additional_metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
   if (!ostree_repo_list_refs (self, NULL, &refs, cancellable, error))
     goto out;
@@ -4686,7 +4686,7 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
   {
     guint i;
     g_autoptr(GPtrArray) delta_names = NULL;
-    g_auto(GVariantDict) deltas_builder = {{0,}};
+    g_auto(GVariantDict) deltas_builder = OT_VARIANT_BUILDER_INITIALIZER;
 
     if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
       goto out;
