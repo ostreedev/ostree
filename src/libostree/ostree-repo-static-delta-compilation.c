@@ -1255,7 +1255,7 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
   guint min_fallback_size;
   guint max_bsdiff_size;
   guint max_chunk_size;
-  g_auto(GVariantBuilder) metadata_builder = {{0,}};
+  g_auto(GVariantBuilder) metadata_builder = OT_VARIANT_BUILDER_INITIALIZER;
   DeltaOpts delta_opts = DELTAOPT_FLAG_NONE;
   guint64 total_compressed_size = 0;
   guint64 total_uncompressed_size = 0;
@@ -1391,8 +1391,8 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
       g_autoptr(GVariant) delta_part_content = NULL;
       g_autoptr(GVariant) delta_part = NULL;
       g_autoptr(GVariant) delta_part_header = NULL;
-      g_auto(GVariantBuilder) mode_builder = {{0,}};
-      g_auto(GVariantBuilder) xattr_builder = {{0,}};
+      g_auto(GVariantBuilder) mode_builder = OT_VARIANT_BUILDER_INITIALIZER;
+      g_auto(GVariantBuilder) xattr_builder = OT_VARIANT_BUILDER_INITIALIZER;
       guint8 compression_type_char;
 
       g_variant_builder_init (&mode_builder, G_VARIANT_TYPE ("a(uuu)"));
