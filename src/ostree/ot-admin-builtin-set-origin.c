@@ -120,7 +120,6 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   
   { GKeyFile *old_origin = ostree_deployment_get_origin (target_deployment);
     g_autofree char *origin_refspec = g_key_file_get_string (old_origin, "origin", "refspec", NULL);
-    g_autofree char *new_refspec = NULL;
     g_autofree char *origin_remote = NULL;
     g_autofree char *origin_ref = NULL;
   
@@ -129,7 +128,6 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
 
     { g_autofree char *new_refspec = g_strconcat (remotename, ":", branch ? branch : origin_ref, NULL);
       g_autoptr(GKeyFile) new_origin = NULL;
-      g_autoptr(GFile) origin_path = NULL;
       
       new_origin = ostree_sysroot_origin_new_from_refspec (sysroot, new_refspec);
 

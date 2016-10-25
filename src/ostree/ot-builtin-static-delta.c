@@ -399,7 +399,6 @@ ostree_builtin_static_delta (int argc, char **argv, GCancellable *cancellable, G
   gboolean ret = FALSE;
   OstreeCommand *command = NULL;
   const char *cmdname = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
   int i;
   gboolean want_help = FALSE;
 

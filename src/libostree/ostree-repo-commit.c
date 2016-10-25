@@ -592,7 +592,6 @@ write_object (OstreeRepo         *self,
   gboolean do_commit;
   OstreeRepoMode repo_mode;
   g_autofree char *temp_filename = NULL;
-  g_autoptr(GFile) stored_path = NULL;
   g_autofree guchar *ret_csum = NULL;
   glnx_unref_object OstreeChecksumInputStream *checksum_input = NULL;
   g_autoptr(GInputStream) file_input = NULL;
@@ -1093,9 +1092,6 @@ ostree_repo_prepare_transaction (OstreeRepo     *self,
 {
   gboolean ret = FALSE;
   gboolean ret_transaction_resume = FALSE;
-  g_autofree char *stagedir_name = NULL;
-  glnx_fd_close int stagedir_fd = -1;
-  g_auto(GLnxDirFdIterator) dfd_iter = { 0, };
 
   g_return_val_if_fail (self->in_transaction == FALSE, FALSE);
 
@@ -2529,7 +2525,6 @@ write_directory_to_mtree_internal (OstreeRepo                  *self,
   gboolean ret = FALSE;
   OstreeRepoCommitFilterResult filter_result;
   OstreeRepoFile *repo_dir = NULL;
-  g_autoptr(GFileEnumerator) dir_enum = NULL;
   g_autoptr(GFileInfo) child_info = NULL;
 
   if (dir)

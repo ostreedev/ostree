@@ -110,7 +110,6 @@ test_ensure_dir (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
   glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";
@@ -129,8 +128,6 @@ static void
 test_replace_file (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *filename = "bar";
   const char *checksum = "01234567890123456789012345678901";

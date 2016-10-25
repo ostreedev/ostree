@@ -4687,7 +4687,6 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     guint i;
     g_autoptr(GPtrArray) delta_names = NULL;
     g_auto(GVariantDict) deltas_builder = {{0,}};
-    g_autoptr(GVariant) deltas = NULL;
 
     if (!ostree_repo_list_static_delta_names (self, &delta_names, cancellable, error))
       goto out;
@@ -4890,7 +4889,6 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
     {
       g_autofree char *tmpdir_name_template = g_strconcat (tmpdir_prefix, "XXXXXX", NULL);
       glnx_fd_close int new_tmpdir_fd = -1;
-      g_autoptr(GError) local_error = NULL;
 
       /* No existing tmpdir found, create a new */
 

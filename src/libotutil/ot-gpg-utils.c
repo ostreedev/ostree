@@ -73,9 +73,6 @@ ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
                            GCancellable   *cancellable,
                            GError        **error)
 {
-  g_autoptr(GFile) pubring_file = NULL;
-  g_autoptr(GOutputStream) target_stream = NULL;
-  g_autofree char *pubring_path = NULL;
   g_autofree char *tmp_home_dir = NULL;
   gpgme_error_t gpg_error;
   gboolean ret = FALSE;

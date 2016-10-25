@@ -53,11 +53,6 @@ ot_admin_builtin_switch (int argc, char **argv, GCancellable *cancellable, GErro
   g_autofree char *new_remote = NULL;
   g_autofree char *new_ref = NULL;
   g_autofree char *new_refspec = NULL;
-  g_autofree char *new_revision = NULL;
-  g_autoptr(GFile) deployment_path = NULL;
-  g_autoptr(GFile) deployment_origin_path = NULL;
-  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
-  glnx_unref_object OstreeDeployment *new_deployment = NULL;
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;
