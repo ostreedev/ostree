@@ -896,7 +896,7 @@ time_zone_hhmm (parser_control *pc, textint s, long int mm)
   /* If the absolute number of minutes is larger than 24 hours,
      arrange to reject it by incrementing pc->zones_seen.  Thus,
      we allow only values in the range UTC-24:00 to UTC+24:00.  */
-  if (24 * 60 < abs (n_minutes))
+  if (24 * 60 < labs (n_minutes))
     pc->zones_seen++;
 
   return n_minutes;
