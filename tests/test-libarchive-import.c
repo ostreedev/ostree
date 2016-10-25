@@ -501,12 +501,10 @@ test_libarchive_selinux (gconstpointer data)
   {
     glnx_unref_object GFile *root = g_file_new_for_path ("/");
 
-    /* creation should always succeed */
-    sepol = ostree_sepolicy_new (root, NULL, &error);
-    g_assert (sepol != NULL);
+    sepol = ostree_sepolicy_new (root, NULL, NULL);
   }
 
-  if (ostree_sepolicy_get_name (sepol) == NULL)
+  if (sepol == NULL || ostree_sepolicy_get_name (sepol) == NULL)
     {
       g_test_skip ("SELinux disabled");
       goto out;
