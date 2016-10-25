@@ -689,7 +689,6 @@ parse_deployment (OstreeSysroot       *self,
   glnx_fd_close int deployment_dfd = -1;
   const char *deploy_basename;
   g_autofree char *treebootserial_target = NULL;
-  g_autofree char *deploy_dir = NULL;
   GKeyFile *origin = NULL;
   g_autofree char *unlocked_development_path = NULL;
   struct stat stbuf;

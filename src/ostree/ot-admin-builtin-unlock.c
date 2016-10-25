@@ -44,9 +44,6 @@ ot_admin_builtin_unlock (int argc, char **argv, GCancellable *cancellable, GErro
   gboolean ret = FALSE;
   GOptionContext *context;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
-  glnx_unref_object OstreeRepo *repo = NULL;
-  g_autoptr(GPtrArray) new_deployments = NULL;
-  glnx_unref_object OstreeDeployment *merge_deployment = NULL;
   OstreeDeployment *booted_deployment = NULL;
   OstreeDeploymentUnlockedState target_state;
 

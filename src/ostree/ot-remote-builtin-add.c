@@ -49,8 +49,6 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
   const char *remote_name;
   const char *remote_url;
   char **iter;
-  g_autofree char *target_name = NULL;
-  g_autoptr(GFile) target_conf = NULL;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
   gboolean ret = FALSE;
 

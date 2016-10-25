@@ -109,8 +109,6 @@ static void
 test_ensure_dir (void)
 {
   glnx_unref_object OstreeMutableTree *tree = ostree_mutable_tree_new ();
-  glnx_unref_object OstreeMutableTree *parent = NULL;
-  g_autoptr(GPtrArray) split_path = NULL;
   GError *error = NULL;
   const char *dirname = "foo";
   const char *filename = "bar";

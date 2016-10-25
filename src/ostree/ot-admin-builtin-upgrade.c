@@ -52,8 +52,6 @@ ot_admin_builtin_upgrade (int argc, char **argv, GCancellable *cancellable, GErr
   GOptionContext *context;
   glnx_unref_object OstreeSysroot *sysroot = NULL;
   glnx_unref_object OstreeSysrootUpgrader *upgrader = NULL;
-  g_autoptr(GFile) deployment_path = NULL;
-  g_autoptr(GFile) deployment_origin_path = NULL;
   g_autoptr(GKeyFile) origin = NULL;
   glnx_unref_object OstreeAsyncProgress *progress = NULL;
   gboolean changed;

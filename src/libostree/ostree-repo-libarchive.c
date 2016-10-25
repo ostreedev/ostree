@@ -300,7 +300,6 @@ aic_apply_modifier_filter (OstreeRepoArchiveImportContext *ctx,
                            const char  *relpath,
                            GFileInfo  **out_file_info)
 {
-  g_autofree char *hardlink = aic_get_final_entry_hardlink (ctx);
   g_autoptr(GFileInfo) file_info = NULL;
   g_autofree char *abspath = NULL;
   const char *cb_path = NULL;
@@ -915,7 +914,6 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
 #ifdef HAVE_LIBARCHIVE
   gboolean ret = FALSE;
   struct archive *a = NULL;
-  g_autoptr(GFileInfo) tmp_dir_info = NULL;
   OstreeRepoImportArchiveOptions opts = { 0, };
 
   a = archive_read_new ();
