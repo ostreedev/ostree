@@ -2146,7 +2146,10 @@ ostree_sysroot_deploy_tree (OstreeSysroot     *self,
         goto out;
     }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
   { ostree_cleanup_sepolicy_fscreatecon gpointer dummy = NULL;
+#pragma GCC diagnostic pop
 
     /* Explicitly override the label for the origin file to ensure
      * it's system_conf_t.
