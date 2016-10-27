@@ -764,7 +764,7 @@ _ostree_delta_get_endianness (GVariant *superblock,
           }
       }
 
-    return G_BYTE_ORDER;
+    return OSTREE_DELTA_ENDIAN_INVALID;
   }
 }
 
