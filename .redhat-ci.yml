@@ -23,3 +23,22 @@ timeout: 30m
 
 artifacts:
     - test-suite.log
+
+---
+
+inherit: true
+
+packages:
+  - clang
+
+tests:
+    - sh autogen.sh
+        --prefix=/usr
+        --libdir=/usr/lib64
+        --enable-installed-tests
+        --enable-gtk-doc
+    - make -j2 CC=clang CFLAGS='-Wall'
+
+context: Clang
+
+artifacts:
