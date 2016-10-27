@@ -37,7 +37,7 @@ tests:
         --libdir=/usr/lib64
         --enable-installed-tests
         --enable-gtk-doc
-    - make -j2 CC=clang CFLAGS='-Wall'
+    - make -j2 CC=clang CFLAGS='-Werror'
 
 context: Clang
 
