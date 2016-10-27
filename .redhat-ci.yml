@@ -6,12 +6,16 @@ branches:
 container:
     image: projectatomic/ostree-tester
 
+packages:
+  - libubsan
+
 tests:
     - sh autogen.sh
         --prefix=/usr
         --libdir=/usr/lib64
         --enable-installed-tests
         --enable-gtk-doc
+        CFLAGS='-fsanitize=undefined'
     - make -j2
     - make syntax-check
     - make check
