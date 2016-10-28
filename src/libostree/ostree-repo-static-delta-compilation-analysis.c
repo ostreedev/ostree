@@ -187,19 +187,44 @@ build_content_sizenames_filtered (OstreeRepo              *repo,
   return ret;
 }
 
+/* Given two arrays of strings, determine whether
+ * or not there exists a "fuzzy" match between
+ * them.  "fuzzy" is currently defined to be
+ * "has a common alphanumeric prefix".  It's
+ * common for files to have a version number suffix
+ * or the like.
+ */
 static gboolean
-string_array_nonempty_intersection (GPtrArray    *a,
-                                    GPtrArray    *b)
+has_fuzzy_string_match (GPtrArray    *a,
+                        GPtrArray    *b)
 {
   guint i;
   for (i = 0; i < a->len; i++)
     {
       guint j;
       const char *a_str = a->pdata[i];
+      const char *a_prefix_end;
+      size_t a_prefix_len;
+
+      a_prefix_end = a_str;
+      while (*a_prefix_end && g_ascii_isalnum (*a_prefix_end))
+        a_prefix_end++;
+      a_prefix_len = a_prefix_end - a_str;
+
       for (j = 0; j < b->len; j++)
         {
           const char *b_str = b->pdata[j];
-          if (strcmp (a_str, b_str) == 0)
+          const char *b_prefix_end = b_str;
+          size_t b_prefix_len;
+
+          while (*b_prefix_end && g_ascii_isalnum (*b_prefix_end))
+            b_prefix_end++;
+          b_prefix_len = b_prefix_end - b_str;
+
+          if (a_prefix_len != b_prefix_len)
+            continue;
+
+          if (strncmp (a_str, b_str, a_prefix_len) == 0)
             return TRUE;
         }
     }
@@ -285,9 +310,9 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
           if (from_sizenames->size > max_threshold)
             break;
 
-          if (!string_array_nonempty_intersection (from_sizenames->basenames, to_sizenames->basenames))
+          if (!has_fuzzy_string_match (from_sizenames->basenames, to_sizenames->basenames))
             continue;
-            
+
           /* Only one candidate right now */
           g_hash_table_insert (ret_modified_regfile_content,
                                g_strdup (to_sizenames->checksum),
