@@ -189,18 +189,30 @@ build_content_sizenames_filtered (OstreeRepo              *repo,
 
 static gboolean
 string_array_nonempty_intersection (GPtrArray    *a,
-                                    GPtrArray    *b)
+                                    GPtrArray    *b,
+                                    gboolean      fuzzy)
 {
   guint i;
   for (i = 0; i < a->len; i++)
     {
       guint j;
       const char *a_str = a->pdata[i];
+      const char *a_dot = strchr (a_str, '.');
       for (j = 0; j < b->len; j++)
         {
           const char *b_str = b->pdata[j];
-          if (strcmp (a_str, b_str) == 0)
-            return TRUE;
+          const char *b_dot = strchr (b_str, '.');
+          /* When doing fuzzy comparison, just compare the part before the '.' if it exists.  */
+          if (fuzzy && a_dot && b_dot && b_dot - b_str && b_dot - b_str == a_dot - a_str)
+            {
+              if (strncmp (a_str, b_str, a_dot - a_str) == 0)
+                return TRUE;
+            }
+          else
+            {
+              if (strcmp (a_str, b_str) == 0)
+                return TRUE;
+            }
         }
     }
   return FALSE;
@@ -258,6 +270,8 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
   upper = from_sizes->len;
   for (i = 0; i < to_sizes->len; i++)
     {
+      int fuzzy;
+      gboolean found = FALSE;
       OstreeDeltaContentSizeNames *to_sizenames = to_sizes->pdata[i];
       const guint64 min_threshold = to_sizenames->size *
         (1.0-similarity_percent_threshold/100.0);
@@ -268,31 +282,41 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
       if (to_sizenames->size == 0)
         continue;
 
-      for (j = lower; j < upper; j++)
+      for (fuzzy = 0; fuzzy < 2 && !found; fuzzy++)
         {
-          OstreeDeltaContentSizeNames *from_sizenames = from_sizes->pdata[j];
-
-          /* Don't build candidates for the empty object */
-          if (from_sizenames->size == 0)
-            continue;
-
-          if (from_sizenames->size < min_threshold)
+          for (j = lower; j < upper; j++)
             {
-              lower++;
-              continue;
+              OstreeDeltaContentSizeNames *from_sizenames = from_sizes->pdata[j];
+
+              /* Don't build candidates for the empty object */
+              if (from_sizenames->size == 0)
+                {
+                  continue;
+                }
+
+              if (from_sizenames->size < min_threshold)
+                {
+                  lower++;
+                  continue;
+                }
+
+              if (from_sizenames->size > max_threshold)
+                break;
+
+              if (!string_array_nonempty_intersection (from_sizenames->basenames,
+                                                       to_sizenames->basenames,
+                                                       fuzzy == 1))
+                {
+                  continue;
+                }
+
+              /* Only one candidate right now */
+              g_hash_table_insert (ret_modified_regfile_content,
+                                   g_strdup (to_sizenames->checksum),
+                                   g_strdup (from_sizenames->checksum));
+              found = TRUE;
+              break;
             }
-
-          if (from_sizenames->size > max_threshold)
-            break;
-
-          if (!string_array_nonempty_intersection (from_sizenames->basenames, to_sizenames->basenames))
-            continue;
-            
-          /* Only one candidate right now */
-          g_hash_table_insert (ret_modified_regfile_content,
-                               g_strdup (to_sizenames->checksum),
-                               g_strdup (from_sizenames->checksum));
-          break;
         }
     }
 
