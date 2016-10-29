@@ -1747,7 +1747,7 @@ _ostree_sysroot_write_deployments_internal (OstreeSysroot     *self,
 
   /* Assign a bootserial to each new deployment.
    */
-  assign_bootserials (new_deployments);
+  g_hash_table_unref (assign_bootserials (new_deployments));
 
   /* Determine whether or not we need to touch the bootloader
    * configuration.  If we have an equal number of deployments with
