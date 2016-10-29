@@ -936,7 +936,7 @@ keyfile_set_from_vardict (GKeyFile     *keyfile,
       else if (g_variant_is_of_type (child, G_VARIANT_TYPE_STRING_ARRAY))
         {
           gsize len;
-          const char *const*strv_child = g_variant_get_strv (child, &len);
+          g_autofree const gchar **strv_child = g_variant_get_strv (child, &len);
           g_key_file_set_string_list (keyfile, section, key, strv_child, len);
         }
       else
