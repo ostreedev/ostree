@@ -50,6 +50,7 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
   const char *remote_url;
   char **iter;
   g_autoptr(GVariantBuilder) optbuilder = NULL;
+  g_autoptr(GVariant) options = NULL;
   gboolean ret = FALSE;
 
   context = g_option_context_new ("NAME [metalink=|mirrorlist=]URL [BRANCH...] - Add a remote repository");
@@ -109,11 +110,13 @@ ot_remote_builtin_add (int argc, char **argv, GCancellable *cancellable, GError 
                            "gpg-verify",
                            g_variant_new_variant (g_variant_new_boolean (FALSE)));
 
+  options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
+
   if (!ostree_repo_remote_change (repo, NULL,
                                   opt_if_not_exists ? OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS : 
                                   OSTREE_REPO_REMOTE_CHANGE_ADD,
                                   remote_name, remote_url,
-                                  g_variant_builder_end (optbuilder),
+                                  options,
                                   cancellable, error))
     goto out;
 
