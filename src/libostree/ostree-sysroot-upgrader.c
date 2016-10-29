@@ -188,6 +188,7 @@ ostree_sysroot_upgrader_finalize (GObject *object)
   g_free (self->origin_remote);
   g_free (self->origin_ref);
   g_free (self->override_csum);
+  g_free (self->new_revision);
 
   G_OBJECT_CLASS (ostree_sysroot_upgrader_parent_class)->finalize (object);
 }
