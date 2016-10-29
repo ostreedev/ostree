@@ -87,12 +87,21 @@ _ostree_kernel_args_replace_take (OstreeKernelArgs   *kargs,
   gboolean existed;
   GPtrArray *values = g_ptr_array_new_with_free_func (g_free);
   const char *value = split_keyeq (arg);
+  gpointer old_key;
 
-  existed = g_hash_table_remove (kargs->table, arg);
-  if (!existed)
-    g_ptr_array_add (kargs->order, arg);
   g_ptr_array_add (values, g_strdup (value));
-  g_hash_table_replace (kargs->table, arg, values);
+  existed = g_hash_table_lookup_extended (kargs->table, arg, &old_key, NULL);
+
+  if (existed)
+    {
+      g_hash_table_replace (kargs->table, old_key, values);
+      g_free (arg);
+    }
+  else
+    {
+      g_ptr_array_add (kargs->order, arg);
+      g_hash_table_replace (kargs->table, arg, values);
+    }
 }
 
 void
