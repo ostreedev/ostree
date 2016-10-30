@@ -366,6 +366,13 @@ ostree_admin_option_context_parse (GOptionContext *context,
 
       g_print ("%s\n", deployment_path);
 
+      /* The g_autoptr, g_autofree etc. don't happen when we explicitly
+       * exit, making valgrind complain about leaks */
+      g_clear_object (&sysroot);
+      g_clear_object (&sysroot_path);
+      g_clear_object (&deployment_file);
+      g_clear_pointer (&deployments, g_ptr_array_unref);
+      g_clear_pointer (&deployment_path, g_free);
       exit (EXIT_SUCCESS);
     }
 
