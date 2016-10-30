@@ -198,7 +198,7 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
   else
     {
       char *ref_to_fetch;
-      refs_to_fetch = g_ptr_array_new ();
+      refs_to_fetch = g_ptr_array_new_with_free_func (g_free);
       if (!ostree_parse_refspec (argv[1], &remote, &ref_to_fetch, error))
         goto out;
       /* Transfer ownership */
