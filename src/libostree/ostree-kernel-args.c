@@ -53,6 +53,23 @@ split_keyeq (char *arg)
     }
 }
 
+static gboolean
+_arg_has_prefix (const char *arg,
+                 char      **prefixes)
+{
+  char **strviter;
+
+  for (strviter = prefixes; strviter && *strviter; strviter++)
+    {
+      const char *prefix = *strviter;
+
+      if (g_str_has_prefix (arg, prefix))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 OstreeKernelArgs *
 _ostree_kernel_args_new (void)
 {
@@ -145,16 +162,26 @@ _ostree_kernel_args_replace_argv (OstreeKernelArgs  *kargs,
 }
 
 void
-_ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
-                                 char            **argv)
+_ostree_kernel_args_append_argv_filtered (OstreeKernelArgs  *kargs,
+                                          char             **argv,
+                                          char             **prefixes)
 {
   char **strviter;
 
   for (strviter = argv; strviter && *strviter; strviter++)
     {
       const char *arg = *strviter;
-      _ostree_kernel_args_append (kargs, arg);
+
+      if (!_arg_has_prefix (arg, prefixes))
+        _ostree_kernel_args_append (kargs, arg);
     }
+}
+
+void
+_ostree_kernel_args_append_argv (OstreeKernelArgs  *kargs,
+                                 char             **argv)
+{
+  _ostree_kernel_args_append_argv_filtered (kargs, argv, NULL);
 }
 
 gboolean
@@ -166,6 +193,13 @@ _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
   g_autofree char *proc_cmdline = NULL;
   gsize proc_cmdline_len = 0;
   g_auto(GStrv) proc_cmdline_args = NULL;
+  /* When updating the filter list don't forget to update the list in the tests
+   * e.g. tests/test-admin-deploy-karg.sh and
+   * tests/test-admin-instutil-set-kargs.sh
+   */
+  char *filtered_prefixes[] = { "BOOT_IMAGE=", /* GRUB 2 */
+                                "initrd=", /* sd-boot */
+                                NULL };
 
   if (!g_file_load_contents (proc_cmdline_path, cancellable,
                              &proc_cmdline, &proc_cmdline_len,
@@ -175,7 +209,8 @@ _ostree_kernel_args_append_proc_cmdline (OstreeKernelArgs *kargs,
   g_strchomp (proc_cmdline);
 
   proc_cmdline_args = g_strsplit (proc_cmdline, " ", -1);
-  _ostree_kernel_args_append_argv (kargs, proc_cmdline_args);
+  _ostree_kernel_args_append_argv_filtered (kargs, proc_cmdline_args,
+                                            filtered_prefixes);
 
   return TRUE;
 }
