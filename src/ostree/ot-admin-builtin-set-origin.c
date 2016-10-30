@@ -96,6 +96,7 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
   { char **iter;
     g_autoptr(GVariantBuilder) optbuilder =
       g_variant_builder_new (G_VARIANT_TYPE ("a{sv}"));
+    g_autoptr(GVariant) options = NULL;
 
     for (iter = opt_set; iter && *iter; iter++)
       {
@@ -109,11 +110,13 @@ ot_admin_builtin_set_origin (int argc, char **argv, GCancellable *cancellable, G
         g_variant_builder_add (optbuilder, "{s@v}",
                                subkey, g_variant_new_variant (g_variant_new_string (subvalue)));
       }
-    
+
+    options = g_variant_ref_sink (g_variant_builder_end (optbuilder));
+
     if (!ostree_repo_remote_change (repo, NULL,
                                     OSTREE_REPO_REMOTE_CHANGE_ADD_IF_NOT_EXISTS, 
                                     remotename, url,
-                                    g_variant_builder_end (optbuilder),
+                                    options,
                                     cancellable, error))
       goto out;
   }
