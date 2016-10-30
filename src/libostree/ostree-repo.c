@@ -2593,7 +2593,7 @@ load_metadata_internal (OstreeRepo       *self,
             }
           else
             {
-              GBytes *data = glnx_fd_readall_bytes (fd, cancellable, error);
+              g_autoptr(GBytes) data = glnx_fd_readall_bytes (fd, cancellable, error);
               if (!data)
                 goto out;
               ret_variant = g_variant_new_from_bytes (ostree_metadata_variant_type (objtype),
