@@ -58,6 +58,8 @@ for arg in $(cat /proc/cmdline); do
     case "$arg" in
 	ostree=*) # Skip ostree arg that gets stripped out
 	   ;;
+	initrd=*|BOOT_IMAGE=*) # Skip options set by bootloader that gets filtered out
+	   ;;
 	*) assert_file_has_content sysroot/boot/loader/entries/ostree-testos-0.conf "options.*$arg"
 	   ;;
     esac
