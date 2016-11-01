@@ -2926,7 +2926,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
                                     &from_revision, error))
         goto out;
 
-      if (!disable_static_deltas && !mirroring_into_archive &&
+      if (!(disable_static_deltas || mirroring_into_archive || pull_data->is_commit_only) &&
           (from_revision == NULL || g_strcmp0 (from_revision, to_revision) != 0))
         {
           if (!request_static_delta_superblock_sync (pull_data, from_revision, to_revision,

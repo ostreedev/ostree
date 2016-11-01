@@ -35,7 +35,7 @@ function verify_initial_contents() {
     assert_file_has_content baz/cow '^moo$'
 }
 
-echo "1..12"
+echo "1..13"
 
 # Try both syntaxes
 repo_init
@@ -63,10 +63,26 @@ $OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
 echo moomoo > checkout-origin-main/baz/cow
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "" --tree=dir=checkout-origin-main
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo fsck
 ${CMD_PREFIX} ostree --repo=mirrorrepo pull --mirror origin main
 ${CMD_PREFIX} ostree --repo=mirrorrepo fsck
 echo "ok pull mirror (should not apply deltas)"
+
+cd ${test_tmpdir}
+rm mirrorrepo/refs/remotes/* -rf
+${CMD_PREFIX} ostree --repo=mirrorrepo prune --refs-only
+${CMD_PREFIX} ostree --repo=mirrorrepo pull origin main
+rm checkout-origin-main -rf
+$OSTREE --repo=ostree-srv/gnomerepo checkout main checkout-origin-main
+echo yetmorecontent > checkout-origin-main/baz/cowtest
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "" --tree=dir=checkout-origin-main
+rev=$(${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo rev-parse main)
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo static-delta generate main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
+${CMD_PREFIX} ostree --repo=mirrorrepo pull --commit-metadata-only origin main
+assert_has_file mirrorrepo/state/${rev}.commitpartial
+echo "ok pull commit metadata only (should not apply deltas)"
 
 cd ${test_tmpdir}
 mkdir mirrorrepo-local
@@ -79,6 +95,7 @@ echo "ok pull local mirror"
 
 cd ${test_tmpdir}
 ${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo commit -b main -s "Metadata string" --add-detached-metadata-string=SIGNATURE=HANCOCK --tree=ref=main
+${CMD_PREFIX} ostree --repo=ostree-srv/gnomerepo summary -u
 ${CMD_PREFIX} ostree --repo=repo pull origin main
 ${CMD_PREFIX} ostree --repo=repo fsck
 $OSTREE show --print-detached-metadata-key=SIGNATURE main > main-meta
