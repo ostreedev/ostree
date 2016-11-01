@@ -4668,9 +4668,17 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
     {
       const char *ref = iter->data;
       const char *commit = g_hash_table_lookup (refs, ref);
+      g_autofree char *remotename = NULL;
       g_autoptr(GVariant) commit_obj = NULL;
 
       g_assert (commit);
+
+      if (!ostree_parse_refspec (ref, &remotename, NULL, NULL))
+        g_assert_not_reached ();
+
+      /* Don't put remote refs in the summary */
+      if (remotename != NULL)
+        continue;
 
       if (!ostree_repo_load_variant (self, OSTREE_OBJECT_TYPE_COMMIT, commit, &commit_obj, error))
         goto out;
