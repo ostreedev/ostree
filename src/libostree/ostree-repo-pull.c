@@ -100,7 +100,6 @@ typedef struct {
   gboolean          is_untrusted;
 
   GPtrArray        *dirs;
-  gboolean      commitpartial_exists;
 
   gboolean      have_previous_bytes;
   guint64       previous_bytes_sec;
@@ -1249,68 +1248,41 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
       do_fetch_detached = (objtype == OSTREE_OBJECT_TYPE_COMMIT);
       enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, do_fetch_detached, FALSE);
     }
-  else if (objtype == OSTREE_OBJECT_TYPE_COMMIT && pull_data->is_commit_only)
+  else if (is_stored && objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
-                               pull_data->cancellable, error))
-        goto out;
-
-      g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
-      pull_data->n_scanned_metadata++;
-    }
-  else if (is_stored)
-    {
-      gboolean do_scan = pull_data->legacy_transaction_resuming || is_requested || pull_data->commitpartial_exists;
+      /* If we found a legacy transaction flag, assume we have to scan.
+       * We always do a scan of dirtree objects; see
+       * https://github.com/ostreedev/ostree/issues/543
+       */
+      gboolean do_scan_commit = pull_data->legacy_transaction_resuming;
+      OstreeRepoCommitState commitstate;
 
       /* For commits, always refetch detached metadata. */
-      if (objtype == OSTREE_OBJECT_TYPE_COMMIT)
-        enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
+      enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
 
-      /* For commits, check whether we only had a partial fetch */
-      if (!do_scan && objtype == OSTREE_OBJECT_TYPE_COMMIT)
+      if (!ostree_repo_load_commit (pull_data->repo, tmp_checksum, NULL, &commitstate, error))
+        goto out;
+
+      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0
+          || (pull_data->maxdepth != 0))
+        do_scan_commit = TRUE;
+
+      if (do_scan_commit)
         {
-          OstreeRepoCommitState commitstate;
-
-          if (!ostree_repo_load_commit (pull_data->repo, tmp_checksum, NULL, &commitstate, error))
+          if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
+                                   pull_data->cancellable, error))
             goto out;
-
-          if (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL)
-            {
-              do_scan = TRUE;
-              pull_data->commitpartial_exists = TRUE;
-            }
-          else if (pull_data->maxdepth != 0)
-            {
-              /* Not fully accurate, but the cost here of scanning all
-               * input commit objects if we're doing a depth fetch is
-               * pretty low.  We'll do more accurate handling of depth
-               * when parsing the actual commit.
-               */
-              do_scan = TRUE;
-            }
+          
+          g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
+          pull_data->n_scanned_metadata++;
         }
+    }
+  else if (is_stored && objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
+    {
+      if (!scan_dirtree_object (pull_data, tmp_checksum, path, recursion_depth,
+                                pull_data->cancellable, error))
+        goto out;
 
-      if (do_scan)
-        {
-          switch (objtype)
-            {
-            case OSTREE_OBJECT_TYPE_COMMIT:
-              if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
-                                       pull_data->cancellable, error))
-                goto out;
-              break;
-            case OSTREE_OBJECT_TYPE_DIR_META:
-              break;
-            case OSTREE_OBJECT_TYPE_DIR_TREE:
-              if (!scan_dirtree_object (pull_data, tmp_checksum, path, recursion_depth,
-                                        pull_data->cancellable, error))
-                goto out;
-              break;
-            default:
-              g_assert_not_reached ();
-              break;
-            }
-        }
       g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
       pull_data->n_scanned_metadata++;
     }
