@@ -4669,7 +4669,6 @@ ostree_repo_regenerate_summary (OstreeRepo     *self,
       const char *ref = iter->data;
       const char *commit = g_hash_table_lookup (refs, ref);
       g_autofree char *remotename = NULL;
-      g_autofree char *ref_value = NULL;
       g_autoptr(GVariant) commit_obj = NULL;
 
       g_assert (commit);
