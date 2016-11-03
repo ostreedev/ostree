@@ -32,6 +32,7 @@
 #include "ostree-diff.h"
 #include "ostree-rollsum.h"
 #include "otutil.h"
+#include "libglnx.h"
 #include "ostree-varint.h"
 #include "bsdiff/bsdiff.h"
 
@@ -413,15 +414,11 @@ process_one_object (OstreeRepo                       *repo,
 
 typedef struct {
   char *from_checksum;
-  GBytes *tmp_from;
-  GBytes *tmp_to;
 } ContentBsdiff;
 
 typedef struct {
   char *from_checksum;
   OstreeRollsumMatches *matches;
-  GBytes *tmp_from;
-  GBytes *tmp_to;
 } ContentRollsum;
 
 static void
@@ -429,8 +426,6 @@ content_rollsums_free (ContentRollsum  *rollsum)
 {
   g_free (rollsum->from_checksum);
   _ostree_rollsum_matches_free (rollsum->matches);
-  g_clear_pointer (&rollsum->tmp_from, g_bytes_unref);
-  g_clear_pointer (&rollsum->tmp_to, g_bytes_unref);
   g_free (rollsum);
 }
 
@@ -438,8 +433,6 @@ static void
 content_bsdiffs_free (ContentBsdiff  *bsdiff)
 {
   g_free (bsdiff->from_checksum);
-  g_clear_pointer (&bsdiff->tmp_from, g_bytes_unref);
-  g_clear_pointer (&bsdiff->tmp_to, g_bytes_unref);
   g_free (bsdiff);
 }
 
@@ -450,50 +443,40 @@ static gboolean
 get_unpacked_unlinked_content (OstreeRepo       *repo,
                                const char       *checksum,
                                GBytes          **out_content,
-                               GFileInfo       **out_finfo,
                                GCancellable     *cancellable,
                                GError          **error)
 {
-  gboolean ret = FALSE;
-  g_autofree char *tmpname = g_strdup ("/var/tmp/tmpostree-deltaobj-XXXXXX");
+  g_autofree char *tmpname = NULL;
   glnx_fd_close int fd = -1;
   g_autoptr(GBytes) ret_content = NULL;
   g_autoptr(GInputStream) istream = NULL;
-  g_autoptr(GFileInfo) ret_finfo = NULL;
   g_autoptr(GOutputStream) out = NULL;
 
-  fd = g_mkstemp (tmpname);
-  if (fd == -1)
-    {
-      glnx_set_error_from_errno (error);
-      goto out;
-    }
-  /* Doesn't need a name */
-  (void) unlink (tmpname);
+  if (!glnx_open_tmpfile_linkable_at (AT_FDCWD, "/tmp", O_RDWR | O_CLOEXEC,
+                                      &fd, &tmpname, error))
+    return FALSE;
+  /* We don't need the file name */
+  if (tmpname)
+    (void) unlinkat (AT_FDCWD, tmpname, 0);
 
-  if (!ostree_repo_load_file (repo, checksum, &istream, &ret_finfo, NULL,
+  if (!ostree_repo_load_file (repo, checksum, &istream, NULL, NULL,
                               cancellable, error))
-    goto out;
+    return FALSE;
 
-  g_assert (g_file_info_get_file_type (ret_finfo) == G_FILE_TYPE_REGULAR);
-  
   out = g_unix_output_stream_new (fd, FALSE);
   if (g_output_stream_splice (out, istream, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET,
                               cancellable, error) < 0)
-    goto out;
-  
-  { GMappedFile *mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
+    return FALSE;
+
+  { g_autoptr(GMappedFile) mfile = g_mapped_file_new_from_fd (fd, FALSE, error);
     if (!mfile)
-      goto out;
+      return FALSE;
     ret_content = g_mapped_file_get_bytes (mfile);
-    g_mapped_file_unref (mfile);
   }
 
-  ret = TRUE;
   if (out_content)
     *out_content = g_steal_pointer (&ret_content);
- out:
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -506,22 +489,20 @@ try_content_bsdiff (OstreeRepo                       *repo,
                     GError                           **error)
 {
   gboolean ret = FALSE;
-  g_autoptr(GBytes) tmp_from = NULL;
-  g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) from_finfo = NULL;
   g_autoptr(GFileInfo) to_finfo = NULL;
   ContentBsdiff *ret_bsdiff = NULL;
 
   *out_bsdiff = NULL;
 
-  if (!get_unpacked_unlinked_content (repo, from, &tmp_from, &from_finfo,
-                                      cancellable, error))
-    goto out;
-  if (!get_unpacked_unlinked_content (repo, to, &tmp_to, &to_finfo,
-                                      cancellable, error))
-    goto out;
+  if (!ostree_repo_load_file (repo, from, NULL, &from_finfo, NULL,
+                              cancellable, error))
+    return FALSE;
+  if (!ostree_repo_load_file (repo, from, NULL, &to_finfo, NULL,
+                              cancellable, error))
+    return FALSE;
 
-  if (g_bytes_get_size (tmp_to) + g_bytes_get_size (tmp_from) > max_bsdiff_size_bytes)
+  if (g_file_info_get_size (to_finfo) + g_file_info_get_size (from_finfo) > max_bsdiff_size_bytes)
     {
       ret = TRUE;
       goto out;
@@ -529,8 +510,6 @@ try_content_bsdiff (OstreeRepo                       *repo,
 
   ret_bsdiff = g_new0 (ContentBsdiff, 1);
   ret_bsdiff->from_checksum = g_strdup (from);
-  ret_bsdiff->tmp_from = tmp_from; tmp_from = NULL;
-  ret_bsdiff->tmp_to = tmp_to; tmp_to = NULL;
 
   ret = TRUE;
   if (out_bsdiff)
@@ -561,11 +540,9 @@ try_content_rollsum (OstreeRepo                       *repo,
   /* Load the content objects, splice them to uncompressed temporary files that
    * we can just mmap() and seek around in conveniently.
    */
-  if (!get_unpacked_unlinked_content (repo, from, &tmp_from, &from_finfo,
-                                      cancellable, error))
+  if (!get_unpacked_unlinked_content (repo, from, &tmp_from, cancellable, error))
     goto out;
-  if (!get_unpacked_unlinked_content (repo, to, &tmp_to, &to_finfo,
-                                      cancellable, error))
+  if (!get_unpacked_unlinked_content (repo, to, &tmp_to, cancellable, error))
     goto out;
 
   matches = _ostree_compute_rollsum_matches (tmp_from, tmp_to);
@@ -592,10 +569,8 @@ try_content_rollsum (OstreeRepo                       *repo,
 
   ret_rollsum = g_new0 (ContentRollsum, 1);
   ret_rollsum->from_checksum = g_strdup (from);
-  ret_rollsum->matches = matches; matches = NULL;
-  ret_rollsum->tmp_from = tmp_from; tmp_from = NULL;
-  ret_rollsum->tmp_to = tmp_to; tmp_to = NULL;
-  
+  ret_rollsum->matches = g_steal_pointer (&matches);
+
   ret = TRUE;
   if (out_rollsum)
     *out_rollsum = g_steal_pointer (&ret_rollsum);
@@ -651,7 +626,8 @@ process_one_rollsum (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  g_autoptr(GInputStream) content_stream = NULL;
+  g_autoptr(GBytes) tmp_from = NULL;
+  g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
   g_autoptr(GVariant) content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
@@ -665,9 +641,13 @@ process_one_rollsum (OstreeRepo                       *repo,
       *current_part_val = current_part = allocate_part (builder);
     }
 
-  tmp_to_buf = g_bytes_get_data (rollsum->tmp_to, &tmp_to_len);
+  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to,
+                                      cancellable, error))
+    goto out;
 
-  if (!ostree_repo_load_file (repo, to_checksum, &content_stream,
+  tmp_to_buf = g_bytes_get_data (tmp_to, &tmp_to_len);
+
+  if (!ostree_repo_load_file (repo, to_checksum, NULL,
                               &content_finfo, &content_xattrs,
                               cancellable, error))
     goto out;
@@ -754,9 +734,6 @@ process_one_rollsum (OstreeRepo                       *repo,
     g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_CLOSE);
   }
 
-  g_clear_pointer (&rollsum->tmp_from, g_bytes_unref);
-  g_clear_pointer (&rollsum->tmp_to, g_bytes_unref);
-
   ret = TRUE;
  out:
   return ret;
@@ -773,10 +750,11 @@ process_one_bsdiff (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  g_autoptr(GInputStream) content_stream = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
   g_autoptr(GVariant) content_xattrs = NULL;
   OstreeStaticDeltaPartBuilder *current_part = *current_part_val;
+  g_autoptr(GBytes) tmp_from = NULL;
+  g_autoptr(GBytes) tmp_to = NULL;
   const guint8 *tmp_to_buf;
   gsize tmp_to_len;
   const guint8 *tmp_from_buf;
@@ -789,10 +767,17 @@ process_one_bsdiff (OstreeRepo                       *repo,
       *current_part_val = current_part = allocate_part (builder);
     }
 
-  tmp_to_buf = g_bytes_get_data (bsdiff_content->tmp_to, &tmp_to_len);
-  tmp_from_buf = g_bytes_get_data (bsdiff_content->tmp_from, &tmp_from_len);
+  if (!get_unpacked_unlinked_content (repo, bsdiff_content->from_checksum, &tmp_from,
+                                      cancellable, error))
+    goto out;
+  if (!get_unpacked_unlinked_content (repo, to_checksum, &tmp_to,
+                                      cancellable, error))
+    goto out;
 
-  if (!ostree_repo_load_file (repo, to_checksum, &content_stream,
+  tmp_to_buf = g_bytes_get_data (tmp_to, &tmp_to_len);
+  tmp_from_buf = g_bytes_get_data (tmp_from, &tmp_from_len);
+
+  if (!ostree_repo_load_file (repo, to_checksum, NULL,
                               &content_finfo, &content_xattrs,
                               cancellable, error))
     goto out;
@@ -852,9 +837,6 @@ process_one_bsdiff (OstreeRepo                       *repo,
   }
 
   g_string_append_c (current_part->operations, (gchar)OSTREE_STATIC_DELTA_OP_UNSET_READ_SOURCE);
-
-  g_clear_pointer (&bsdiff_content->tmp_from, g_bytes_unref);
-  g_clear_pointer (&bsdiff_content->tmp_to, g_bytes_unref);
 
   ret = TRUE;
  out:
