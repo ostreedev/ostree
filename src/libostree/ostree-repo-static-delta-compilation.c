@@ -530,8 +530,6 @@ try_content_rollsum (OstreeRepo                       *repo,
   gboolean ret = FALSE;
   g_autoptr(GBytes) tmp_from = NULL;
   g_autoptr(GBytes) tmp_to = NULL;
-  g_autoptr(GFileInfo) from_finfo = NULL;
-  g_autoptr(GFileInfo) to_finfo = NULL;
   OstreeRollsumMatches *matches = NULL;
   ContentRollsum *ret_rollsum = NULL;
 
@@ -626,7 +624,6 @@ process_one_rollsum (OstreeRepo                       *repo,
 {
   gboolean ret = FALSE;
   guint64 content_size;
-  g_autoptr(GBytes) tmp_from = NULL;
   g_autoptr(GBytes) tmp_to = NULL;
   g_autoptr(GFileInfo) content_finfo = NULL;
   g_autoptr(GVariant) content_xattrs = NULL;
