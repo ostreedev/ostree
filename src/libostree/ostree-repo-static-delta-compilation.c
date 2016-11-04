@@ -498,7 +498,7 @@ try_content_bsdiff (OstreeRepo                       *repo,
   if (!ostree_repo_load_file (repo, from, NULL, &from_finfo, NULL,
                               cancellable, error))
     return FALSE;
-  if (!ostree_repo_load_file (repo, from, NULL, &to_finfo, NULL,
+  if (!ostree_repo_load_file (repo, to, NULL, &to_finfo, NULL,
                               cancellable, error))
     return FALSE;
 
