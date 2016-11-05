@@ -30,7 +30,7 @@ setup_fake_remote_repo1 "archive-z2" "" \
 assert_fail (){ 
   set +e
   $@
-  if [ $? == 0 ] ; then
+  if [ $? = 0 ] ; then
     echo 1>&2 "$@ did not fail"; exit 1
   fi
   set -euo pipefail
