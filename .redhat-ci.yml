@@ -6,20 +6,24 @@ branches:
 container:
     image: projectatomic/ostree-tester
 
+# XXX: we can wipe this off once a newer image is built with
+# it already included
 packages:
   - libubsan
 
+env:
+    CFLAGS: '-fsanitize=undefined'
+
+build:
+    config-opts: >
+      --prefix=/usr
+      --libdir=/usr/lib64
+      --enable-installed-tests
+      --enable-gtk-doc
+
 tests:
-    - sh autogen.sh
-        --prefix=/usr
-        --libdir=/usr/lib64
-        --enable-installed-tests
-        --enable-gtk-doc
-        CFLAGS='-fsanitize=undefined'
-    - make -j2
     - make syntax-check
     - make check
-    - make install
     - gnome-desktop-testing-runner ostree
     - sudo --user=testuser gnome-desktop-testing-runner ostree
 
@@ -32,17 +36,15 @@ artifacts:
 
 inherit: true
 
+# XXX: ditto
 packages:
   - clang
 
-tests:
-    - sh autogen.sh
-        --prefix=/usr
-        --libdir=/usr/lib64
-        --enable-installed-tests
-        --enable-gtk-doc
-    - make -j2 CC=clang CFLAGS='-Werror=unused-variable'
-
 context: Clang
 
+env:
+    CC: 'clang'
+    CFLAGS: '-Werror=unused-variable'
+
+tests:
 artifacts:

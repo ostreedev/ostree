@@ -9,6 +9,8 @@ RUN dnf install -y \
         fuse \
         gjs \
         parallel \
+        clang \
+        libubsan \
         gnome-desktop-testing \
         redhat-rpm-config \
         elfutils \
