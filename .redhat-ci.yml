@@ -6,11 +6,6 @@ branches:
 container:
     image: projectatomic/ostree-tester
 
-# XXX: we can wipe this off once a newer image is built with
-# it already included
-packages:
-  - libubsan
-
 env:
     CFLAGS: '-fsanitize=undefined'
 
@@ -35,10 +30,6 @@ artifacts:
 ---
 
 inherit: true
-
-# XXX: ditto
-packages:
-  - clang
 
 context: Clang
 
