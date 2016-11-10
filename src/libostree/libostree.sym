@@ -357,14 +357,15 @@ global:
 /* No new symbols in 2016.10 */
 /* No new symbols in 2016.11 */
 /* No new symbols in 2016.12 */
+/* No new symbols in 2016.13 */
 
 /*                         NOTE NOTE NOTE
  * Versions above here are released.  Only add symbols below this line.
  *                         NOTE NOTE NOTE
  */
 
-/* Remove comment when first new symbol is added
-LIBOSTREE_2016.12
+/* Remove comment when first new symbol is added, replace XX with new stable version.
+LIBOSTREE_2016.XX
 global:
 	someostree_symbol_deleteme;
 } LIBOSTREE_2016.8;
