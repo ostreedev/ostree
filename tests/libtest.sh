@@ -143,6 +143,10 @@ assert_not_has_dir () {
     fi
 }
 
+assert_file_has_mode () {
+    test `stat -c %a $1` == "$2" || (echo 1>&2 "File mode `stat -c %a $1` not matching $2"; exit 1)
+}
+
 assert_file_has_content () {
     if ! grep -q -e "$2" "$1"; then
         sed -e 's/^/# /' < "$1" >&2

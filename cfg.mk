@@ -27,4 +27,4 @@ local-checks-to-skip = \
 show-vc-list-except:
 	@$(VC_LIST_EXCEPT)
 
-VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|maint.mk|*.gpg|*.sig|.xz$$
+VC_LIST_ALWAYS_EXCLUDE_REGEX = ^ABOUT-NLS|maint.mk|*.gpg|*.sig|.xz|.gz$$
