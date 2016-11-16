@@ -433,8 +433,12 @@ Boston, MA 02111-1307, USA.
           in this directory.
         </para>
         <para>
-	    In addition to the system repository, OSTree supports a
-	    per-remote
+	  In addition to the system repository, OSTree supports two
+	  other paths.  First, there is a
+	  <literal>gpgkeypath</literal> option for remotes, which must
+	  point to the filename of an ASCII-armored key.
+	</para>
+	<para>Second, there is support for a per-remote
 	    <filename><replaceable>remotename</replaceable>.trustedkeys.gpg</filename>
 	    file stored in the toplevel of the repository (alongside
 	    <filename>objects/</filename> and such). This is

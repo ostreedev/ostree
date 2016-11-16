@@ -199,7 +199,8 @@ Boston, MA 02111-1307, USA.
   <refsect1>
     <title>Per-remote GPG keyrings and verification</title>
     <para>
-      OSTree supports a per-remote GPG keyring.  For more information see
+      OSTree supports a per-remote GPG keyring, as well as a
+      <literal>gpgkeypath</literal> option.  For more information see
       <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>.
       in the section <literal>GPG verification</literal>.
     </para>
