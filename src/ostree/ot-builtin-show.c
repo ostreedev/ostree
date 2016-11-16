@@ -34,6 +34,7 @@ static char* opt_print_metadata_key;
 static char* opt_print_detached_metadata_key;
 static gboolean opt_raw;
 static char *opt_gpg_homedir;
+static char *opt_gpg_verify_remote;
 
 static GOptionEntry options[] = {
   { "print-related", 0, 0, G_OPTION_ARG_NONE, &opt_print_related, "Show the \"related\" commits", NULL },
@@ -42,6 +43,7 @@ static GOptionEntry options[] = {
   { "print-detached-metadata-key", 0, 0, G_OPTION_ARG_STRING, &opt_print_detached_metadata_key, "Print string value of detached metadata key", "KEY" },
   { "raw", 0, 0, G_OPTION_ARG_NONE, &opt_raw, "Show raw variant data" },
   { "gpg-homedir", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_homedir, "GPG Homedir to use when looking for keyrings", "HOMEDIR"},
+  { "gpg-verify-remote", 0, 0, G_OPTION_ARG_STRING, &opt_gpg_verify_remote, "Use REMOTE name for GPG configuration", "REMOTE"},
   { NULL }
 };
 
@@ -170,9 +172,17 @@ print_object (OstreeRepo          *repo,
       GError *local_error = NULL;
       g_autoptr(GFile) gpg_homedir = opt_gpg_homedir ? g_file_new_for_path (opt_gpg_homedir) : NULL;
 
-      result = ostree_repo_verify_commit_ext (repo, checksum,
-                                              gpg_homedir, NULL, NULL,
-                                              &local_error);
+      if (opt_gpg_verify_remote)
+        {
+          result = ostree_repo_verify_commit_for_remote (repo, checksum, opt_gpg_verify_remote,
+                                                         NULL, &local_error);
+        }
+      else
+        {
+          result = ostree_repo_verify_commit_ext (repo, checksum,
+                                                  gpg_homedir, NULL, NULL,
+                                                  &local_error);
+        }
 
       if (g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {

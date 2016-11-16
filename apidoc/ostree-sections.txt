@@ -379,6 +379,7 @@ ostree_repo_add_gpg_signature_summary
 ostree_repo_gpg_verify_data
 ostree_repo_verify_commit
 ostree_repo_verify_commit_ext
+ostree_repo_verify_commit_for_remote
 ostree_repo_verify_summary
 ostree_repo_regenerate_summary
 <SUBSECTION Standard>
