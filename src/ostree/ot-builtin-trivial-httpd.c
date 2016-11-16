@@ -43,8 +43,8 @@ static int opt_random_500s_percentage;
  * cases involving repeated random 500s. */
 static int opt_random_500s_max = 100;
 static gint opt_port = 0;
-
 static gchar **opt_expected_cookies;
+static gchar **opt_expected_headers;
 
 static guint emitted_random_500s_count = 0;
 
@@ -64,6 +64,7 @@ static GOptionEntry options[] = {
   { "random-500s-max", 0, 0, G_OPTION_ARG_INT, &opt_random_500s_max, "Limit HTTP 500 errors to MAX (default 100)", "MAX" },
   { "log-file", 0, 0, G_OPTION_ARG_FILENAME, &opt_log, "Put logs here", "PATH" },
   { "expected-cookies", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_cookies, "Expect given cookies in the http request", "KEY=VALUE" },
+  { "expected-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_expected_headers, "Expect given headers in the http request", "KEY=VALUE" },
   { NULL }
 };
 
@@ -236,6 +237,36 @@ do_get (OtTrivialHttpd    *self,
             }
         }
       soup_cookies_free (cookies);
+    }
+
+  if (opt_expected_headers)
+    {
+      for (int i = 0 ; opt_expected_headers[i] != NULL; i++)
+        {
+          const gchar *kv = opt_expected_headers[i];
+          const gchar *eq = strchr (kv, '=');
+
+          g_assert (eq);
+
+          {
+            g_autofree char *k = g_strndup (kv, eq - kv);
+            const gchar *expected_v = eq + 1;
+            const gchar *found_v = soup_message_headers_get_one (msg->request_headers, k);
+
+            if (!found_v)
+              {
+                httpd_log (self, "Expected header not found %s\n", k);
+                soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+                goto out;
+              }
+            if (strcmp (found_v, expected_v) != 0)
+              {
+                httpd_log (self, "Expected header %s: %s but found %s\n", k, expected_v, found_v);
+                soup_message_set_status (msg, SOUP_STATUS_FORBIDDEN);
+                goto out;
+              }
+          }
+        }
     }
 
   if (strstr (path, "../") != NULL)
