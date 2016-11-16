@@ -43,4 +43,7 @@ gboolean ot_gpgme_ctx_tmp_home_dir (gpgme_ctx_t     gpgme_ctx,
 gpgme_data_t ot_gpgme_data_input (GInputStream *input_stream);
 gpgme_data_t ot_gpgme_data_output (GOutputStream *output_stream);
 
+gpgme_ctx_t ot_gpgme_new_ctx (const char *homedir,
+                              GError    **error);
+
 G_END_DECLS

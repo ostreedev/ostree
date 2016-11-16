@@ -411,3 +411,36 @@ ot_gpgme_data_output (GOutputStream *output_stream)
 
   return data;
 }
+
+gpgme_ctx_t
+ot_gpgme_new_ctx (const char *homedir,
+                  GError    **error)
+{
+  gpgme_error_t err;
+  ot_auto_gpgme_ctx gpgme_ctx_t context = NULL;
+
+  if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
+    {
+      ot_gpgme_error_to_gio_error (err, error);
+      g_prefix_error (error, "Unable to create gpg context: ");
+      return NULL;
+    }
+
+  if (homedir != NULL)
+    {
+      gpgme_engine_info_t info;
+
+      info = gpgme_ctx_get_engine_info (context);
+
+      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
+          != GPG_ERR_NO_ERROR)
+        {
+          ot_gpgme_error_to_gio_error (err, error);
+          g_prefix_error (error, "Unable to set gpg homedir to '%s': ",
+                          homedir);
+          return NULL;
+        }
+    }
+
+  return g_steal_pointer (&context);
+}
