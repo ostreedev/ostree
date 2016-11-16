@@ -80,6 +80,8 @@ mkdir repo
 ${CMD_PREFIX} ostree --repo=repo init
 ${CMD_PREFIX} ostree --repo=repo remote add origin $(cat httpd-address)/ostree/gnomerepo
 ${CMD_PREFIX} ostree --repo=repo pull origin main
+${CMD_PREFIX} ostree --repo=repo show --gpg-verify-remote=origin main | grep -o 'Found [[:digit:]] signature' > show-verify-remote
+assert_file_has_content show-verify-remote 'Found 1 signature'
 rm repo -rf
 
 # A test with corrupted detached signature

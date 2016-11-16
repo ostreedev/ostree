@@ -364,9 +364,17 @@ global:
  *                         NOTE NOTE NOTE
  */
 
+LIBOSTREE_2016.14 {
+global:
+       ostree_repo_verify_commit_for_remote;
+} LIBOSTREE_2016.8;
+
+/* Section for the stable release *after* this development one; don't
+ * edit this other than to update the last number. */
+
 /* Remove comment when first new symbol is added, replace XX with new stable version.
-LIBOSTREE_2016.XX
+LIBOSTREE_2016.XX {
 global:
 	someostree_symbol_deleteme;
-} LIBOSTREE_2016.8;
+} LIBOSTREE_2016.14;
  * Remove comment when first new symbol is added */

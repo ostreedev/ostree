@@ -1065,6 +1065,14 @@ OstreeGpgVerifyResult * ostree_repo_verify_commit_ext (OstreeRepo    *self,
                                                        GError       **error);
 
 _OSTREE_PUBLIC
+OstreeGpgVerifyResult *
+ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
+                                      const gchar   *commit_checksum,
+                                      const gchar   *remote_name,
+                                      GCancellable  *cancellable,
+                                      GError       **error);
+
+_OSTREE_PUBLIC
 OstreeGpgVerifyResult * ostree_repo_gpg_verify_data (OstreeRepo    *self,
                                                      const gchar   *remote_name,
                                                      GBytes        *data,

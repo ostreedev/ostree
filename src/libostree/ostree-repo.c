@@ -4510,6 +4510,36 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
 }
 
 /**
+ * ostree_repo_verify_commit_for_remote:
+ * @self: Repository
+ * @commit_checksum: ASCII SHA256 checksum
+ * @remote: OSTree remote to use for configuration
+ * @cancellable: Cancellable
+ * @error: Error
+ *
+ * Read GPG signature(s) on the commit named by the ASCII checksum
+ * @commit_checksum and return detailed results, based on the keyring
+ * configured for @remote.
+ *
+ * Returns: (transfer full): an #OstreeGpgVerifyResult, or %NULL on error
+ */
+OstreeGpgVerifyResult *
+ostree_repo_verify_commit_for_remote (OstreeRepo    *self,
+                                      const gchar   *commit_checksum,
+                                      const gchar   *remote_name,
+                                      GCancellable  *cancellable,
+                                      GError       **error)
+{
+  return _ostree_repo_verify_commit_internal (self,
+                                              commit_checksum,
+                                              remote_name,
+                                              NULL,
+                                              NULL,
+                                              cancellable,
+                                              error);
+}
+
+/**
  * ostree_repo_gpg_verify_data:
  * @self: Repository
  * @remote_name: (nullable): Name of remote
