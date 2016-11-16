@@ -25,6 +25,7 @@
 
 #include "libglnx.h"
 #include "ostree-gpg-verifier.h"
+#include "ot-gpg-utils.h"
 #include "ostree-gpg-verify-result-private.h"
 #include "otutil.h"
 
@@ -89,10 +90,9 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
                                       GCancellable       *cancellable,
                                       GError            **error)
 {
-  gpgme_ctx_t gpg_ctx = NULL;
   gpgme_error_t gpg_error = 0;
-  gpgme_data_t data_buffer = NULL;
-  gpgme_data_t signature_buffer = NULL;
+  ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
+  ot_auto_gpgme_data gpgme_data_t signature_buffer = NULL;
   g_autofree char *tmp_dir = NULL;
   g_autoptr(GOutputStream) target_stream = NULL;
   OstreeGpgVerifyResult *result = NULL;
@@ -191,14 +191,6 @@ _ostree_gpg_verifier_check_signature (OstreeGpgVerifier  *self,
   success = TRUE;
 
 out:
-
-  if (gpg_ctx != NULL)
-    gpgme_release (gpg_ctx);
-  if (data_buffer != NULL)
-    gpgme_data_release (data_buffer);
-  if (signature_buffer != NULL)
-    gpgme_data_release (signature_buffer);
-
   if (success)
     {
       /* Keep the temporary directory around for the life of the result

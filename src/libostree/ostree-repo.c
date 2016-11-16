@@ -1440,9 +1440,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
                                GError            **error)
 {
   OstreeRemote *remote;
-  gpgme_ctx_t source_context = NULL;
-  gpgme_ctx_t target_context = NULL;
-  gpgme_data_t data_buffer = NULL;
+  ot_auto_gpgme_ctx gpgme_ctx_t source_context = NULL;
+  ot_auto_gpgme_ctx gpgme_ctx_t target_context = NULL;
+  ot_auto_gpgme_data gpgme_data_t data_buffer = NULL;
   gpgme_import_result_t import_result;
   gpgme_import_status_t import_status;
   const char *tmp_dir = NULL;
@@ -1699,15 +1699,6 @@ out:
 
   if (target_tmp_dir != NULL)
     (void) glnx_shutil_rm_rf_at (AT_FDCWD, target_tmp_dir, NULL, NULL);
-
-  if (source_context != NULL)
-    gpgme_release (source_context);
-
-  if (target_context != NULL)
-    gpgme_release (target_context);
-
-  if (data_buffer != NULL)
-    gpgme_data_release (data_buffer);
 
   g_prefix_error (error, "GPG: ");
 
