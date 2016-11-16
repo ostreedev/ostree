@@ -35,6 +35,7 @@ static gboolean opt_disable_static_deltas;
 static gboolean opt_require_static_deltas;
 static gboolean opt_untrusted;
 static char** opt_subpaths;
+static char** opt_http_headers;
 static char* opt_cache_dir;
 static int opt_depth = 0;
 static char* opt_url;
@@ -51,6 +52,7 @@ static GOptionEntry options[] = {
    { "dry-run", 0, 0, G_OPTION_ARG_NONE, &opt_dry_run, "Only print information on what will be downloaded (requires static deltas)", NULL },
    { "depth", 0, 0, G_OPTION_ARG_INT, &opt_depth, "Traverse DEPTH parents (-1=infinite) (default: 0)", "DEPTH" },
    { "url", 0, 0, G_OPTION_ARG_STRING, &opt_url, "Pull objects from this URL instead of the one from the remote config", NULL },
+   { "http-header", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_http_headers, "Add NAME=VALUE as HTTP header to all requests", "NAME=VALUE" },
    { NULL }
  };
 
@@ -248,6 +250,29 @@ ostree_builtin_pull (int argc, char **argv, GCancellable *cancellable, GError **
     if (override_commit_ids)
       g_variant_builder_add (&builder, "{s@v}", "override-commit-ids",
                              g_variant_new_variant (g_variant_new_strv ((const char*const*)override_commit_ids->pdata, override_commit_ids->len)));
+
+    if (opt_http_headers)
+      {
+        GVariantBuilder hdr_builder;
+        g_variant_builder_init (&hdr_builder, G_VARIANT_TYPE ("a(ss)"));
+
+        for (char **iter = opt_http_headers; iter && *iter; iter++)
+          {
+            const char *kv = *iter;
+            const char *eq = strchr (kv, '=');
+            g_autofree char *key = NULL;
+            if (!eq)
+              {
+                g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "Missing '=' in --http-header");
+                goto out;
+              }
+            key = g_strndup (kv, eq - kv);
+            g_variant_builder_add (&hdr_builder, "(ss)", key, eq + 1);
+          }
+        g_variant_builder_add (&builder, "{s@v}", "http-headers",
+                               g_variant_new_variant (g_variant_builder_end (&hdr_builder)));
+      }
 
     if (!opt_dry_run)
       {

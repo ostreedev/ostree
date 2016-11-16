@@ -54,6 +54,8 @@ typedef struct {
   GCancellable *cancellable;
   OstreeAsyncProgress *progress;
 
+  GVariant         *extra_headers;
+
   gboolean      dry_run;
   gboolean      dry_run_emitted_progress;
   gboolean      legacy_transaction_resuming;
@@ -2276,6 +2278,23 @@ repo_remote_fetch_summary (OstreeRepo    *self,
   return ret;
 }
 
+/* Create the fetcher by unioning options from the remote config, plus
+ * any options specific to this pull (such as extra headers).
+ */
+static gboolean
+reinitialize_fetcher (OtPullData *pull_data, const char *remote_name, GError **error)
+{
+  g_clear_object (&pull_data->fetcher);
+  pull_data->fetcher = _ostree_repo_remote_new_fetcher (pull_data->repo, remote_name, error);
+  if (pull_data->fetcher == NULL)
+    return FALSE;
+
+  if (pull_data->extra_headers)
+    _ostree_fetcher_set_extra_headers (pull_data->fetcher, pull_data->extra_headers);
+
+  return TRUE;
+}
+
 /* ------------------------------------------------------------------------------------------
  * Below is the libsoup-invariant API; these should match
  * the stub functions in the #else clause
@@ -2308,6 +2327,7 @@ repo_remote_fetch_summary (OstreeRepo    *self,
  *   * dry-run (b): Only print information on what will be downloaded (requires static deltas)
  *   * override-url (s): Fetch objects from this URL if remote specifies no metalink in options
  *   * inherit-transaction (b): Don't initiate, finish or abort a transaction, usefult to do mutliple pulls in one transaction.
+ *   * http-headers (a(ss)): Additional headers to add to all HTTP requests
  */
 gboolean
 ostree_repo_pull_with_options (OstreeRepo             *self,
@@ -2368,6 +2388,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       (void) g_variant_lookup (options, "dry-run", "b", &pull_data->dry_run);
       (void) g_variant_lookup (options, "override-url", "&s", &url_override);
       (void) g_variant_lookup (options, "inherit-transaction", "b", &inherit_transaction);
+      (void) g_variant_lookup (options, "http-headers", "@a(ss)", &pull_data->extra_headers);
     }
 
   g_return_val_if_fail (pull_data->maxdepth >= -1, FALSE);
@@ -2467,8 +2488,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
 
   pull_data->phase = OSTREE_PULL_PHASE_FETCHING_REFS;
 
-  pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
-  if (pull_data->fetcher == NULL)
+  if (!reinitialize_fetcher (pull_data, remote_name_or_baseurl, error))
     goto out;
 
   pull_data->tmpdir_dfd = pull_data->repo->tmp_dir_fd;
@@ -2906,9 +2926,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   /* Now discard the previous fetcher, as it was bound to a temporary main context
    * for synchronous requests.
    */
-  g_clear_object (&pull_data->fetcher);
-  pull_data->fetcher = _ostree_repo_remote_new_fetcher (self, remote_name_or_baseurl, error);
-  if (pull_data->fetcher == NULL)
+  if (!reinitialize_fetcher (pull_data, remote_name_or_baseurl, error))
     goto out;
 
   pull_data->legacy_transaction_resuming = FALSE;
@@ -3120,6 +3138,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
     g_source_destroy (update_timeout);
   g_strfreev (configured_branches);
   g_clear_object (&pull_data->fetcher);
+  g_clear_pointer (&pull_data->extra_headers, (GDestroyNotify)g_variant_unref);
   g_clear_object (&pull_data->cancellable);
   g_clear_object (&pull_data->remote_repo_local);
   g_free (pull_data->remote_name);

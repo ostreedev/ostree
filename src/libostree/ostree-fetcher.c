@@ -53,6 +53,7 @@ typedef struct {
   GLnxLockFile tmpdir_lock;
   int base_tmpdir_dfd;
 
+  GVariant *extra_headers;
   int max_outstanding;
 
   /* Queue for libsoup, see bgo#708591 */
@@ -147,6 +148,8 @@ thread_closure_unref (ThreadClosure *thread_closure)
       g_assert (thread_closure->session == NULL);
 
       g_clear_pointer (&thread_closure->main_context, g_main_context_unref);
+
+      g_clear_pointer (&thread_closure->extra_headers, (GDestroyNotify)g_variant_unref);
 
       if (thread_closure->tmpdir_dfd != -1)
         close (thread_closure->tmpdir_dfd);
@@ -336,6 +339,16 @@ session_thread_set_cookie_jar_cb (ThreadClosure *thread_closure,
                             SOUP_SESSION_FEATURE (jar));
 }
 
+static void
+session_thread_set_headers_cb (ThreadClosure *thread_closure,
+                               gpointer data)
+{
+  GVariant *headers = data;
+
+  g_clear_pointer (&thread_closure->extra_headers, (GDestroyNotify)g_variant_unref);
+  thread_closure->extra_headers = g_variant_ref (headers);
+}
+
 #ifdef HAVE_LIBSOUP_CLIENT_CERTS
 static void
 session_thread_set_tls_interaction_cb (ThreadClosure *thread_closure,
@@ -446,6 +459,17 @@ session_thread_request_uri (ThreadClosure *thread_closure,
     {
       g_task_return_error (task, local_error);
       return;
+    }
+
+  if (SOUP_IS_REQUEST_HTTP (pending->request) && thread_closure->extra_headers)
+    {
+      glnx_unref_object SoupMessage *msg = soup_request_http_get_message ((SoupRequestHTTP*) pending->request);
+      g_autoptr(GVariantIter) viter = g_variant_iter_new (thread_closure->extra_headers);
+      const char *key;
+      const char *value;
+
+      while (g_variant_iter_next (viter, "(&s&s)", &key, &value))
+        soup_message_headers_append (msg->request_headers, key, value);
     }
 
   if (pending->is_stream)
@@ -810,6 +834,16 @@ _ostree_fetcher_set_tls_database (OstreeFetcher *self,
                                session_thread_set_tls_database_cb,
                                NULL, (GDestroyNotify) NULL);
     }
+}
+
+void
+_ostree_fetcher_set_extra_headers (OstreeFetcher *self,
+                                   GVariant      *extra_headers)
+{
+  session_thread_idle_add (self->thread_closure,
+                           session_thread_set_headers_cb,
+                           g_variant_ref (extra_headers),
+                           (GDestroyNotify) g_variant_unref);
 }
 
 static gboolean

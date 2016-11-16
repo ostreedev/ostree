@@ -46,6 +46,7 @@ dist_test_scripts = \
 	tests/test-archivez.sh \
 	tests/test-remote-add.sh \
 	tests/test-remote-cookies.sh \
+	tests/test-remote-headers.sh \
 	tests/test-remote-gpg-import.sh \
 	tests/test-commit-sign.sh \
 	tests/test-export.sh \
