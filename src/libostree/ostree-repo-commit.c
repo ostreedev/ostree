@@ -2281,7 +2281,15 @@ get_modified_xattrs (OstreeRepo                       *self,
     }
   else if (!(modifier && (modifier->flags & OSTREE_REPO_COMMIT_MODIFIER_FLAGS_SKIP_XATTRS) > 0))
     {
-      if (path)
+      if (path && OSTREE_IS_REPO_FILE (path))
+        {
+          if (!ostree_repo_file_get_xattrs (OSTREE_REPO_FILE (path),
+                                            &ret_xattrs,
+                                            cancellable,
+                                            error))
+            goto out;
+        }
+      else if (path)
         {
           if (!glnx_dfd_name_get_all_xattrs (AT_FDCWD, gs_file_get_path_cached (path),
                                              &ret_xattrs, cancellable, error))

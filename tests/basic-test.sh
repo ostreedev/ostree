@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-echo "1..58"
+echo "1..59"
 
 $OSTREE checkout test2 checkout-test2
 echo "ok checkout"
@@ -177,6 +177,9 @@ echo "ok user checkout"
 
 $OSTREE commit -b test2 -s "Another commit" --tree=ref=test2
 echo "ok commit from ref"
+
+$OSTREE commit -b test2 -s "Another commit with modifier" --tree=ref=test2 --owner-uid=`id -u`
+echo "ok commit from ref with modifier"
 
 $OSTREE commit -b trees/test2 -s 'ref with / in it' --tree=ref=test2
 echo "ok commit ref with /"
