@@ -1479,13 +1479,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
    * the keys to a new pubring.gpg file.  If the key data format is ASCII
    * armored, this step will convert them to binary. */
 
-  gpg_error = gpgme_new (&source_context);
-  if (gpg_error != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to create context: ");
-      goto out;
-    }
+  source_context = ot_gpgme_new_ctx (NULL, error);
+  if (!source_context)
+    goto out;
 
   if (source_stream != NULL)
     {
@@ -1569,13 +1565,9 @@ ostree_repo_remote_gpg_import (OstreeRepo         *self,
    * of the remote's keyring file.  We'll let the import operation alter
    * the pubring.gpg file, then rename it back to its permanent home. */
 
-  gpg_error = gpgme_new (&target_context);
-  if (gpg_error != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (gpg_error, error);
-      g_prefix_error (error, "Unable to create context: ");
-      goto out;
-    }
+  target_context = ot_gpgme_new_ctx (NULL, error);
+  if (!target_context)
+    goto out;
 
   /* No need for an output stream since we copy in a pubring.gpg. */
   if (!ot_gpgme_ctx_tmp_home_dir (target_context, tmp_dir, &target_tmp_dir,
@@ -3980,7 +3972,6 @@ sign_data (OstreeRepo     *self,
   g_autoptr(GOutputStream) tmp_signature_output = NULL;
   gpgme_ctx_t context = NULL;
   g_autoptr(GBytes) ret_signature = NULL;
-  gpgme_engine_info_t info;
   gpgme_error_t err;
   gpgme_key_t key = NULL;
   gpgme_data_t commit_buffer = NULL;
@@ -3992,34 +3983,9 @@ sign_data (OstreeRepo     *self,
     goto out;
   tmp_signature_output = g_unix_output_stream_new (tmp_fd, FALSE);
 
-  if ((err = gpgme_new (&context)) != GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Unable to create gpg context: ");
-      goto out;
-    }
-
-  info = gpgme_ctx_get_engine_info (context);
-
-  if ((err = gpgme_set_protocol (context, GPGME_PROTOCOL_OpenPGP)) !=
-      GPG_ERR_NO_ERROR)
-    {
-      ot_gpgme_error_to_gio_error (err, error);
-      g_prefix_error (error, "Unable to set gpg protocol: ");
-      goto out;
-    }
-  
-  if (homedir != NULL)
-    {
-      if ((err = gpgme_ctx_set_engine_info (context, info->protocol, NULL, homedir))
-          != GPG_ERR_NO_ERROR)
-        {
-          ot_gpgme_error_to_gio_error (err, error);
-          g_prefix_error (error, "Unable to set gpg homedir to '%s': ",
-                          homedir);
-          goto out;
-        }
-    }
+  context = ot_gpgme_new_ctx (homedir, error);
+  if (!context)
+    goto out;
 
   /* Get the secret keys with the given key id */
   err = gpgme_get_key (context, key_id, &key, 1);
@@ -4036,7 +4002,7 @@ sign_data (OstreeRepo     *self,
       g_prefix_error (error, "Unable to lookup key ID %s: ", key_id);
       goto out;
     }
-  
+
   /* Add the key to the context as a signer */
   if ((err = gpgme_signers_add (context, key)) != GPG_ERR_NO_ERROR)
     {
