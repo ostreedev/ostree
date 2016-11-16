@@ -26,7 +26,7 @@ unset OSTREE_GPG_HOME
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo "1..1"
+echo "1..2"
 
 cd ${test_tmpdir}
 mkdir repo
@@ -143,5 +143,32 @@ if ${OSTREE} pull R2:main >/dev/null 2>&1; then
 fi
 ${OSTREE} pull R3:main >/dev/null
 
-libtest_cleanup_gpg
 echo "ok"
+
+rm repo/refs/remotes/* -rf
+${OSTREE} prune --refs-only
+
+# Test the successful gpgkeypath option
+${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key3.asc R4 $(cat httpd-address)/ostree/gnomerepo
+${OSTREE} pull R4:main >/dev/null
+
+rm repo/refs/remotes/* -rf
+${OSTREE} prune --refs-only
+
+${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/INVALIDKEYPATH.asc R5 $(cat httpd-address)/ostree/gnomerepo
+if ${OSTREE} pull R5:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling with nonexistent key"
+fi
+assert_file_has_content err.txt "INVALIDKEYPATH.*No such file or directory"
+
+rm repo/refs/remotes/* -rf
+${OSTREE} prune --refs-only
+
+${OSTREE} remote add --set=gpgkeypath=${test_tmpdir}/gpghome/key2.asc R6 $(cat httpd-address)/ostree/gnomerepo
+if ${OSTREE} pull R6:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling with different key"
+fi
+assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+
+echo "ok"
+libtest_cleanup_gpg
