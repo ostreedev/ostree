@@ -1033,11 +1033,17 @@ scan_commit_object (OtPullData         *pull_data,
                     GError            **error)
 {
   gboolean ret = FALSE;
+  /* If we found a legacy transaction flag, assume we have to scan.
+   * We always do a scan of dirtree objects; see
+   * https://github.com/ostreedev/ostree/issues/543
+   */
+  OstreeRepoCommitState commitstate;
   g_autoptr(GVariant) commit = NULL;
   g_autoptr(GVariant) parent_csum = NULL;
   const guchar *parent_csum_bytes = NULL;
   gpointer depthp;
   gint depth;
+  gboolean is_partial;
 
   if (recursion_depth > OSTREE_MAX_RECURSION)
     {
@@ -1085,6 +1091,13 @@ scan_commit_object (OtPullData         *pull_data,
           goto out;
         }
     }
+
+  if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit, &commitstate, error))
+    goto out;
+
+  /* If we found a legacy transaction flag, assume all commits are partial */
+  is_partial = pull_data->legacy_transaction_resuming
+    || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
 
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
                                  &commit, error))
@@ -1134,7 +1147,11 @@ scan_commit_object (OtPullData         *pull_data,
         }
     }
 
-  if (!pull_data->is_commit_only)
+  /* We only recurse to looking whether we need dirtree/dirmeta
+   * objects if the commit is partial, and we're not doing a
+   * commit-only fetch.
+   */
+  if (is_partial && !pull_data->is_commit_only)
     {
       g_autoptr(GVariant) tree_contents_csum = NULL;
       g_autoptr(GVariant) tree_meta_csum = NULL;
@@ -1250,32 +1267,15 @@ scan_one_metadata_object_c (OtPullData         *pull_data,
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_COMMIT)
     {
-      /* If we found a legacy transaction flag, assume we have to scan.
-       * We always do a scan of dirtree objects; see
-       * https://github.com/ostreedev/ostree/issues/543
-       */
-      gboolean do_scan_commit = pull_data->legacy_transaction_resuming;
-      OstreeRepoCommitState commitstate;
-
       /* For commits, always refetch detached metadata. */
       enqueue_one_object_request (pull_data, tmp_checksum, objtype, path, TRUE, TRUE);
 
-      if (!ostree_repo_load_commit (pull_data->repo, tmp_checksum, NULL, &commitstate, error))
+      if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
+                               pull_data->cancellable, error))
         goto out;
 
-      if ((commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0
-          || (pull_data->maxdepth != 0))
-        do_scan_commit = TRUE;
-
-      if (do_scan_commit)
-        {
-          if (!scan_commit_object (pull_data, tmp_checksum, recursion_depth,
-                                   pull_data->cancellable, error))
-            goto out;
-          
-          g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
-          pull_data->n_scanned_metadata++;
-        }
+      g_hash_table_insert (pull_data->scanned_metadata, g_variant_ref (object), object);
+      pull_data->n_scanned_metadata++;
     }
   else if (is_stored && objtype == OSTREE_OBJECT_TYPE_DIR_TREE)
     {
