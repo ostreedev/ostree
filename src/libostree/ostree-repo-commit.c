@@ -2959,7 +2959,8 @@ ostree_repo_commit_modifier_new (OstreeRepoCommitModifierFlags  flags,
 OstreeRepoCommitModifier *
 ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier)
 {
-  g_atomic_int_inc (&modifier->refcount);
+  gint refcount = g_atomic_int_add (&modifier->refcount, 1);
+  g_assert (refcount > 1);
   return modifier;
 }
 

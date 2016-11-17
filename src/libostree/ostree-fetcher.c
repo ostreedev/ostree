@@ -128,11 +128,10 @@ G_DEFINE_TYPE (OstreeFetcher, _ostree_fetcher, G_TYPE_OBJECT)
 static ThreadClosure *
 thread_closure_ref (ThreadClosure *thread_closure)
 {
+  int refcount;
   g_return_val_if_fail (thread_closure != NULL, NULL);
-  g_return_val_if_fail (thread_closure->ref_count > 0, NULL);
-
-  g_atomic_int_inc (&thread_closure->ref_count);
-
+  refcount = g_atomic_int_add (&thread_closure->ref_count, 1);
+  g_assert (refcount > 0);
   return thread_closure;
 }
 
@@ -140,7 +139,6 @@ static void
 thread_closure_unref (ThreadClosure *thread_closure)
 {
   g_return_if_fail (thread_closure != NULL);
-  g_return_if_fail (thread_closure->ref_count > 0);
 
   if (g_atomic_int_dec_and_test (&thread_closure->ref_count))
     {
@@ -197,11 +195,10 @@ pending_task_compare (gconstpointer a,
 static OstreeFetcherPendingURI *
 pending_uri_ref (OstreeFetcherPendingURI *pending)
 {
+  gint refcount;
   g_return_val_if_fail (pending != NULL, NULL);
-  g_return_val_if_fail (pending->ref_count > 0, NULL);
-
-  g_atomic_int_inc (&pending->ref_count);
-
+  refcount = g_atomic_int_add (&pending->ref_count, 1);
+  g_assert (refcount > 0);
   return pending;
 }
 
