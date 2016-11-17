@@ -152,20 +152,12 @@ set_error_noent (GError **error, const char *path)
   return FALSE;
 }
 
-static gboolean
-remove_all (gpointer  key,
-            gpointer  value,
-            gpointer  user_data)
-{
-  return TRUE;
-}
-
 gboolean
 ostree_mutable_tree_remove_all_children (OstreeMutableTree *self,
                                          GError           **error)
 {
-  g_hash_table_foreach_remove (self->subdirs, remove_all, NULL);
-  g_hash_table_foreach_remove (self->files, remove_all, NULL);
+  g_hash_table_remove_all (self->subdirs);
+  g_hash_table_remove_all (self->files);
   return TRUE;
 }
 
