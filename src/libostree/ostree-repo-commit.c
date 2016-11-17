@@ -2960,7 +2960,7 @@ OstreeRepoCommitModifier *
 ostree_repo_commit_modifier_ref (OstreeRepoCommitModifier *modifier)
 {
   gint refcount = g_atomic_int_add (&modifier->refcount, 1);
-  g_assert (refcount > 1);
+  g_assert (refcount > 0);
   return modifier;
 }
 
