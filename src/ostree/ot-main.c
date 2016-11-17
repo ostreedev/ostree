@@ -125,7 +125,6 @@ ostree_run (int    argc,
   GError *error = NULL;
   GCancellable *cancellable = NULL;
   const char *command_name = NULL;
-  g_autofree char *prgname = NULL;
   gboolean success = FALSE;
   int in, out;
 
@@ -202,10 +201,6 @@ ostree_run (int    argc,
       goto out;
     }
 
-  prgname = g_strdup_printf ("%s %s", g_get_prgname (), command_name);
-  g_set_prgname (prgname);
-
-  
   if (!command->fn (argc, argv, cancellable, &error))
     goto out;
 
