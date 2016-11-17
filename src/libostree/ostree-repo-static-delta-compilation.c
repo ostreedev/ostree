@@ -157,6 +157,9 @@ xattr_chunk_equals (const void *one, const void *two)
   if (l1 != l2)
     return FALSE;
 
+  if (l1 == 0)
+    return l2 == 0;
+
   return memcmp (g_variant_get_data (v1), g_variant_get_data (v2), l1) == 0;
 }
 
