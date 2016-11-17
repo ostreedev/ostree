@@ -125,7 +125,6 @@ ostree_run (int    argc,
   GError *error = NULL;
   GCancellable *cancellable = NULL;
   const char *command_name = NULL;
-  g_autofree char *prgname = NULL;
   gboolean success = FALSE;
   int in, out;
 
