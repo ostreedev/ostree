@@ -161,11 +161,10 @@ ost_remote_new_from_keyfile (GKeyFile    *keyfile,
 static OstreeRemote *
 ost_remote_ref (OstreeRemote *remote)
 {
+  gint refcount;
   g_return_val_if_fail (remote != NULL, NULL);
-  g_return_val_if_fail (remote->ref_count > 0, NULL);
-
-  g_atomic_int_inc (&remote->ref_count);
-
+  refcount = g_atomic_int_add (&remote->ref_count, 1);
+  g_assert (refcount > 0);
   return remote;
 }
 
