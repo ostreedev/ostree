@@ -632,6 +632,9 @@ _ostree_metalink_request_sync (OstreeMetalink        *self,
   if (mainctx)
     g_main_context_pop_thread_default (mainctx);
   g_clear_object (&request.metalink);
+  g_clear_pointer (&request.verification_sha256, g_free);
+  g_clear_pointer (&request.verification_sha512, g_free);
+  g_clear_pointer (&request.last_metalink_error, g_free);
   g_clear_pointer (&request.urls, g_ptr_array_unref);
   g_clear_pointer (&request.parser, g_markup_parse_context_free);
   return ret;

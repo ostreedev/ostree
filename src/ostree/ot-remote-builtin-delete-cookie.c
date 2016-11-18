@@ -67,7 +67,7 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   cookie_name = argv[4];
 
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
-  jar_path = g_build_filename (g_file_get_path (repo->repodir), cookie_file, NULL);
+  jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
   jar = soup_cookie_jar_text_new (jar_path, FALSE);
   cookies = soup_cookie_jar_all_cookies (jar);
@@ -92,5 +92,7 @@ ot_remote_builtin_delete_cookie (int argc, char **argv, GCancellable *cancellabl
   if (!found)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Cookie not found in jar");
 
+  if (context)
+    g_option_context_free (context);
   return found;
 }

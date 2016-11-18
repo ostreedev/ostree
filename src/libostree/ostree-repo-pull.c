@@ -1982,7 +1982,7 @@ _ostree_repo_remote_new_fetcher (OstreeRepo  *self,
     g_autofree char *cookie_file = g_strdup_printf ("%s.cookies.txt",
                                                     remote_name);
 
-    jar_path = g_build_filename (g_file_get_path (self->repodir), cookie_file,
+    jar_path = g_build_filename (gs_file_get_path_cached (self->repodir), cookie_file,
                                  NULL);
 
     if (g_file_test(jar_path, G_FILE_TEST_IS_REGULAR))
@@ -2061,7 +2061,7 @@ fetch_mirrorlist (OstreeFetcher  *fetcher,
                   GError        **error)
 {
   gboolean ret = FALSE;
-  char **lines = NULL;
+  g_auto(GStrv) lines = NULL;
   g_autofree char *contents = NULL;
   SoupURI *mirrorlist = NULL;
   g_autoptr(GPtrArray) ret_mirrorlist =
@@ -2367,7 +2367,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
   const char *dir_to_pull = NULL;
   g_autofree char **dirs_to_pull = NULL;
   g_autofree char **refs_to_fetch = NULL;
-  char **override_commit_ids = NULL;
+  g_autofree char **override_commit_ids = NULL;
   GSource *update_timeout = NULL;
   gboolean disable_static_deltas = FALSE;
   gboolean require_static_deltas = FALSE;

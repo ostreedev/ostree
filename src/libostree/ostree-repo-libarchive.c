@@ -943,7 +943,10 @@ ostree_repo_write_archive_to_mtree (OstreeRepo                *self,
   ret = TRUE;
  out:
   if (a)
-    (void)archive_read_close (a);
+    {
+      (void)archive_read_close (a);
+      (void)archive_read_free (a);
+    }
   return ret;
 #else
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,

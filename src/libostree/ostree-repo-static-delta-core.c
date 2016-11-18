@@ -880,7 +880,9 @@ _ostree_repo_static_delta_dump (OstreeRepo                    *self,
                                OT_VARIANT_MAP_TRUSTED, &delta_superblock, error))
     goto out;
 
-  g_print ("%s\n", g_variant_print (delta_superblock, 1));
+  { g_autofree char *variant_string = g_variant_print (delta_superblock, 1);
+    g_print ("%s\n", variant_string);
+  }
 
   g_print ("Delta: %s\n", delta_id);
   { const char *endianness_description;

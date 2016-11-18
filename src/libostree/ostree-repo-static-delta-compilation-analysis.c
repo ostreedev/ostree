@@ -243,7 +243,7 @@ _ostree_delta_compute_similar_objects (OstreeRepo                 *repo,
 {
   gboolean ret = FALSE;
   g_autoptr(GHashTable) ret_modified_regfile_content =
-    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+    g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
   g_autoptr(GPtrArray) from_sizes = NULL;
   g_autoptr(GPtrArray) to_sizes = NULL;
   guint i, j;

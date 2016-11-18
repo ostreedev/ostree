@@ -105,6 +105,7 @@ parse_refspec (OstreeSysrootUpgrader  *self,
   csum = g_key_file_get_string (self->origin, "origin", "override-commit", NULL);
   if (csum != NULL && !ostree_validate_checksum_string (csum, error))
     goto out;
+  g_clear_pointer (&self->override_csum, g_free);
   self->override_csum = g_steal_pointer (&csum);
 
   ret = TRUE;
