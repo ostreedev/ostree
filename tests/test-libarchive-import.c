@@ -468,6 +468,8 @@ entry_pathname_test_helper (gconstpointer data, gboolean on)
       goto out;
     }
 
+  archive_read_free (a);
+  ostree_repo_commit_modifier_unref (modifier);
  out:
   g_assert_no_error (error);
 }
@@ -534,6 +536,7 @@ test_libarchive_selinux (gconstpointer data)
   g_assert_cmpstr (buf, ==, "system_u:object_r:etc_t:s0");
 
  out:
+  archive_read_free (a);
   if (modifier)
     ostree_repo_commit_modifier_unref (modifier);
   g_assert_no_error (error);
@@ -562,5 +565,6 @@ int main (int argc, char **argv)
 
   if (td.tmpd && g_getenv ("TEST_SKIP_CLEANUP") == NULL)
     (void) glnx_shutil_rm_rf_at (AT_FDCWD, td.tmpd, NULL, NULL);
+  g_free (td.tmpd);
   return r;
 }
