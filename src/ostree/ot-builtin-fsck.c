@@ -287,7 +287,7 @@ ostree_builtin_fsck (int argc, char **argv, GCancellable *cancellable, GError **
           if (opt_add_tombstones)
             {
               GError *local_error = NULL;
-              const char *parent = ostree_commit_get_parent (commit);
+              g_autofree char *parent = ostree_commit_get_parent (commit);
               if (parent)
                 {
                   g_autoptr(GVariant) parent_commit = NULL;

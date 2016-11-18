@@ -258,7 +258,7 @@ initable_init (GInitable     *initable,
   g_autoptr(GFileInputStream) filein = NULL;
   g_autoptr(GDataInputStream) datain = NULL;
   gboolean enabled = FALSE;
-  char *policytype = NULL;
+  g_autofree char *policytype = NULL;
   const char *selinux_prefix = "SELINUX=";
   const char *selinuxtype_prefix = "SELINUXTYPE=";
 
@@ -352,7 +352,7 @@ initable_init (GInitable     *initable,
           goto out;
         }
 
-      self->selinux_policy_name = g_strdup (policytype);
+      self->selinux_policy_name = g_steal_pointer (&policytype);
       self->selinux_policy_root = g_object_ref (etc_selinux_dir);
     }
 

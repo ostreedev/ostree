@@ -491,7 +491,7 @@ prune_repo (OstreeRepo    *repo,
 
   if (freed_space > 0)
     {
-      char *freed_space_str = g_format_size_full (freed_space, 0);
+      g_autofree char *freed_space_str = g_format_size_full (freed_space, 0);
       g_print ("Freed objects: %s\n", freed_space_str);
     }
 

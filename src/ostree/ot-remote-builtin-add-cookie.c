@@ -68,7 +68,7 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   value = argv[5];
 
   cookie_file = g_strdup_printf ("%s.cookies.txt", remote_name);
-  jar_path = g_build_filename (g_file_get_path (repo->repodir), cookie_file, NULL);
+  jar_path = g_build_filename (gs_file_get_path_cached (repo->repodir), cookie_file, NULL);
 
   jar = soup_cookie_jar_text_new (jar_path, FALSE);
 
@@ -80,5 +80,7 @@ ot_remote_builtin_add_cookie (int argc, char **argv, GCancellable *cancellable, 
   /* jar takes ownership of cookie */
   soup_cookie_jar_add_cookie (jar, cookie);
 
+  if (context)
+    g_option_context_free (context);
   return TRUE;
 }
