@@ -1070,13 +1070,11 @@ scan_commit_object (OtPullData         *pull_data,
     {
       glnx_unref_object OstreeGpgVerifyResult *result = NULL;
 
-      result = _ostree_repo_verify_commit_internal (pull_data->repo,
-                                                    checksum,
-                                                    pull_data->remote_name,
-                                                    NULL,
-                                                    NULL,
-                                                    cancellable,
-                                                    error);
+      result = ostree_repo_verify_commit_for_remote (pull_data->repo,
+                                                     checksum,
+                                                     pull_data->remote_name,
+                                                     cancellable,
+                                                     error);
 
       if (result == NULL)
         goto out;
