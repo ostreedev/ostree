@@ -1028,6 +1028,57 @@ static_deltapart_fetch_on_complete (GObject           *object,
 }
 
 static gboolean
+process_verify_result (OtPullData            *pull_data,
+                       const char            *checksum,
+                       OstreeGpgVerifyResult *result,
+                       GError               **error)
+{
+  if (result == NULL)
+    return FALSE;
+
+  /* Allow callers to output the results immediately. */
+  g_signal_emit_by_name (pull_data->repo,
+                         "gpg-verify-result",
+                         checksum, result);
+
+  return ostree_gpg_verify_result_require_valid_signature (result, error);
+}
+
+static gboolean
+gpg_verify_unwritten_commit (OtPullData         *pull_data,
+                             const char         *checksum,
+                             GVariant           *commit,
+                             GVariant           *detached_metadata,
+                             GCancellable       *cancellable,
+                             GError            **error)
+{
+  if (pull_data->gpg_verify)
+    {
+      glnx_unref_object OstreeGpgVerifyResult *result = NULL;
+      g_autoptr(GBytes) signed_data = g_variant_get_data_as_bytes (commit);
+
+      if (!detached_metadata)
+        {
+          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "No detached metadata found for GPG verification");
+          return FALSE;
+        }
+
+      result = _ostree_repo_gpg_verify_with_metadata (pull_data->repo,
+                                                      signed_data,
+                                                      detached_metadata,
+                                                      pull_data->remote_name,
+                                                      NULL, NULL,
+                                                      cancellable,
+                                                      error);
+      if (!process_verify_result (pull_data, checksum, result, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
 scan_commit_object (OtPullData         *pull_data,
                     const char         *checksum,
                     guint               recursion_depth,
@@ -1075,16 +1126,7 @@ scan_commit_object (OtPullData         *pull_data,
                                                      pull_data->remote_name,
                                                      cancellable,
                                                      error);
-
-      if (result == NULL)
-        goto out;
-
-      /* Allow callers to output the results immediately. */
-      g_signal_emit_by_name (pull_data->repo,
-                             "gpg-verify-result",
-                             checksum, result);
-
-      if (!ostree_gpg_verify_result_require_valid_signature (result, error))
+      if (!process_verify_result (pull_data, checksum, result, error))
         goto out;
     }
 
@@ -1563,7 +1605,6 @@ process_one_static_delta (OtPullData   *pull_data,
   {
     g_autoptr(GVariant) to_csum_v = NULL;
     g_autofree char *to_checksum = NULL;
-    g_autoptr(GVariant) to_commit = NULL;
     gboolean have_to_commit;
 
     to_csum_v = g_variant_get_child_value (delta_superblock, 3);
@@ -1578,10 +1619,16 @@ process_one_static_delta (OtPullData   *pull_data,
     if (!have_to_commit)
       {
         FetchObjectData *fetch_data;
+        g_autoptr(GVariant) to_commit = g_variant_get_child_value (delta_superblock, 4);
         g_autofree char *detached_path = _ostree_get_relative_static_delta_path (from_revision, to_revision, "commitmeta");
         g_autoptr(GVariant) detached_data = NULL;
 
         detached_data = g_variant_lookup_value (metadata, detached_path, G_VARIANT_TYPE("a{sv}"));
+
+        if (!gpg_verify_unwritten_commit (pull_data, to_revision, to_commit, detached_data,
+                                          cancellable, error))
+          goto out;
+
         if (detached_data && !ostree_repo_write_commit_detached_metadata (pull_data->repo,
                                                                           to_revision,
                                                                           detached_data,
@@ -1594,8 +1641,6 @@ process_one_static_delta (OtPullData   *pull_data,
         fetch_data->object = ostree_object_name_serialize (to_checksum, OSTREE_OBJECT_TYPE_COMMIT);
         fetch_data->is_detached_meta = FALSE;
         fetch_data->object_is_stored = FALSE;
-
-        to_commit = g_variant_get_child_value (delta_superblock, 4);
 
         ostree_repo_write_metadata_async (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, to_checksum,
                                           to_commit,

@@ -26,7 +26,7 @@ unset OSTREE_GPG_HOME
 
 setup_fake_remote_repo1 "archive-z2"
 
-echo "1..2"
+echo "1..4"
 
 cd ${test_tmpdir}
 mkdir repo
@@ -171,4 +171,39 @@ fi
 assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
 
 echo "ok"
+
+# Test deltas with signed commits; this test is a bit
+# weird here but this file has separate per-remote keys.
+cd ${test_tmpdir}
+rm repo/refs/remotes/* -rf
+${OSTREE} prune --refs-only
+echo $(date) > workdir/testfile-for-deltas-1
+# Sign with keyid 1 for first commit
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${test_tmpdir}/gpghome workdir
+prevrev=$(${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-parse main)
+# Pull the previous revision
+${OSTREE} pull R1:main
+assert_streq $(${OSTREE} rev-parse R1:main) ${prevrev}
+# Sign with keyid 2, but use remote r1
+echo $(date) > workdir/testfile-for-deltas-2
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main --gpg-sign ${TEST_GPG_KEYID_2} --gpg-homedir ${test_tmpdir}/gpghome workdir
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate main
+# Summary is signed with key1
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${test_tmpdir}/gpghome
+newrev=$(${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo rev-parse main)
+if ${OSTREE} pull --require-static-deltas R1:main 2>err.txt; then
+    assert_not_reached "Unexpectedly succeeded at pulling commit signed with untrusted key"
+fi
+assert_file_has_content err.txt "GPG signatures found, but none are in trusted keyring"
+
+echo "ok gpg untrusted signed commit for delta upgrades"
+
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo reset main{,^}
+${CMD_PREFIX} ostree  --repo=${test_tmpdir}/ostree-srv/gnomerepo commit -b main --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${test_tmpdir}/gpghome workdir
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo static-delta generate main
+${CMD_PREFIX} ostree --repo=${test_tmpdir}/ostree-srv/gnomerepo summary -u --gpg-sign ${TEST_GPG_KEYID_1} --gpg-homedir ${test_tmpdir}/gpghome
+${OSTREE} pull --require-static-deltas R1:main
+
+echo "ok gpg trusted signed commit for delta upgrades"
+
 libtest_cleanup_gpg
