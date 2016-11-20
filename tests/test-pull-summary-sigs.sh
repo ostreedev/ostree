@@ -21,7 +21,7 @@ set -euo pipefail
 
 . $(dirname $0)/libtest.sh
 
-echo "1..7"
+echo "1..9"
 
 COMMIT_SIGN="--gpg-homedir=${TEST_GPG_KEYHOME} --gpg-sign=${TEST_GPG_KEYID_1}"
 setup_fake_remote_repo1 "archive-z2" "${COMMIT_SIGN}"
@@ -148,5 +148,7 @@ assert_file_has_content summary.txt "Good signature from \"Ostree Tester <test@t
 grep static-deltas summary.txt > static-deltas.txt
 assert_file_has_content static-deltas.txt \
   $(${OSTREE} --repo=repo rev-parse origin:main)
+
+echo "ok verify remote summary"
 
 libtest_cleanup_gpg
