@@ -842,7 +842,7 @@ dispatch_set_read_source (OstreeRepo                 *repo,
   gboolean ret = FALSE;
   guint64 source_offset;
 
-  if (state->read_source_fd)
+  if (state->read_source_fd != -1)
     {
       (void) close (state->read_source_fd);
       state->read_source_fd = -1;
@@ -887,7 +887,7 @@ dispatch_unset_read_source (OstreeRepo                 *repo,
       goto out;
     }
 
-  if (state->read_source_fd)
+  if (state->read_source_fd != -1)
     {
       (void) close (state->read_source_fd);
       state->read_source_fd = -1;
