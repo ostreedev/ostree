@@ -50,7 +50,7 @@ AS_IF([test "$YACC" != "bison -y"], [AC_MSG_ERROR([bison not found but required]
 
 PKG_PROG_PKG_CONFIG
 
-AM_PATH_GLIB_2_0
+AM_PATH_GLIB_2_0(,,AC_MSG_ERROR([GLib not found]))
 
 dnl When bumping the gio-unix-2.0 dependency (or glib-2.0 in general),
 dnl remember to bump GLIB_VERSION_MIN_REQUIRED and

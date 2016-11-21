@@ -39,3 +39,24 @@ env:
 
 tests:
 artifacts:
+
+---
+
+inherit: true
+context: ASAN
+# Until the container is regenerated
+packages:
+  - libasan
+
+env:
+    # Suppress leak detection in configure (and build, since
+    # g-ir-scanner uses glib), because sadly some of them leak
+    ASAN_OPTIONS: 'detect_leaks=false'
+    CFLAGS: '-fsanitize=address -fno-omit-frame-pointer'
+
+tests:
+    - env OT_SKIP_READDIR_RAND=1 ASAN_OPTIONS='detect_leaks=true:malloc_context_size=20' make check
+
+artifacts:
+    - config.log
+    - test-suite.log
