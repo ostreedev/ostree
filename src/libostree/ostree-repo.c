@@ -4512,7 +4512,7 @@ ostree_repo_verify_commit_ext (OstreeRepo    *self,
  * ostree_repo_verify_commit_for_remote:
  * @self: Repository
  * @commit_checksum: ASCII SHA256 checksum
- * @remote: OSTree remote to use for configuration
+ * @remote_name: OSTree remote to use for configuration
  * @cancellable: Cancellable
  * @error: Error
  *
