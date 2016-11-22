@@ -15,7 +15,7 @@ for more information.  Instead, we use an instance of
 As a review proceeeds, the preferred method is to push `fixup!`
 commits via `git commit --fixup`.  Homu knows how to use
 `--autosquash` when performing the final merge.  See the
-[Git documentation](https://git-scm.com/docs/git-rebase]) for more
+[Git documentation](https://git-scm.com/docs/git-rebase) for more
 information.
 
 Alternative methods if you don't like Github (also fully supported):
