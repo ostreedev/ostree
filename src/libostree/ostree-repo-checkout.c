@@ -32,8 +32,6 @@
 #include "ostree-core-private.h"
 #include "ostree-repo-private.h"
 
-#define WHITEOUT_PREFIX ".wh."
-
 static gboolean
 checkout_object_for_uncompressed_cache (OstreeRepo      *self,
                                         const char      *loose_path,
@@ -414,14 +412,14 @@ checkout_one_file_at (OstreeRepo                        *repo,
   checksum = ostree_repo_file_get_checksum ((OstreeRepoFile*)source);
 
   is_whiteout = !is_symlink && options->process_whiteouts &&
-    g_str_has_prefix (destination_name, WHITEOUT_PREFIX);
+    g_str_has_prefix (destination_name, OSTREE_WHITEOUT_PREFIX);
 
   /* First, see if it's a Docker whiteout,
    * https://github.com/docker/docker/blob/1a714e76a2cb9008cd19609059e9988ff1660b78/pkg/archive/whiteouts.go
    */
   if (is_whiteout)
     {
-      const char *name = destination_name + (sizeof (WHITEOUT_PREFIX) - 1);
+      const char *name = destination_name + (sizeof (OSTREE_WHITEOUT_PREFIX) - 1);
 
       if (!name[0])
         {

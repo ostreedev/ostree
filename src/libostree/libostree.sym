@@ -366,6 +366,9 @@ global:
 
 LIBOSTREE_2016.14 {
 global:
+       ostree_mutable_tree_remove_all_children;
+       ostree_mutable_tree_remove_child;
+       ostree_mutable_tree_merge_layer;
        ostree_repo_verify_commit_for_remote;
 } LIBOSTREE_2016.8;
 

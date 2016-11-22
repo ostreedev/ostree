@@ -25,6 +25,7 @@
 #include "ostree-mutable-tree.h"
 #include "otutil.h"
 #include "ostree-core.h"
+#include "ostree-core-private.h"
 
 /**
  * SECTION:ostree-mutable-tree
@@ -148,6 +149,42 @@ set_error_noent (GError **error, const char *path)
   g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                "No such file or directory: %s",
                path);
+  return FALSE;
+}
+
+gboolean
+ostree_mutable_tree_remove_all_children (OstreeMutableTree *self,
+                                         GError           **error)
+{
+  g_hash_table_remove_all (self->subdirs);
+  g_hash_table_remove_all (self->files);
+  return TRUE;
+}
+
+gboolean
+ostree_mutable_tree_remove_child (OstreeMutableTree *self,
+                                  const char        *name,
+                                  GError           **error)
+{
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  if (g_hash_table_lookup (self->subdirs, name))
+    {
+      ostree_mutable_tree_set_contents_checksum (self, NULL);
+      g_hash_table_remove (self->subdirs, name);
+      return TRUE;
+    }
+
+  if (g_hash_table_lookup (self->files, name))
+    {
+      ostree_mutable_tree_set_contents_checksum (self, NULL);
+      g_hash_table_remove (self->files, name);
+      return TRUE;
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "No such child: %s", name);
+
   return FALSE;
 }
 
@@ -302,6 +339,150 @@ ostree_mutable_tree_ensure_parent_dirs (OstreeMutableTree  *self,
   ot_transfer_out_value (out_parent, &ret_parent);
  out:
   return ret;
+}
+
+static gboolean
+apply_whiteouts (OstreeMutableTree *self,
+                 OstreeMutableTree *layer,
+                 GError **error)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, layer->files);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const char *file_name = key;
+
+      if (!g_str_has_prefix (file_name, OSTREE_WHITEOUT_PREFIX))
+        continue;
+
+      if (strcmp (file_name, OSTREE_WHITEOUT_OPAQUE) == 0)
+        {
+          if (!ostree_mutable_tree_remove_all_children (self, error))
+            return FALSE;
+        }
+      else
+        {
+          g_autoptr(GError) local_error = NULL;
+          const char *whiteout_file_name =
+            file_name + strlen (OSTREE_WHITEOUT_PREFIX);
+
+          if (!ostree_mutable_tree_remove_child (self, whiteout_file_name, &local_error) &&
+              !g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+            {
+              g_propagate_error (error, g_steal_pointer (&local_error));
+              return FALSE;
+            }
+        }
+    }
+
+  g_hash_table_iter_init (&iter, layer->subdirs);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const char *dir_name = key;
+      OstreeMutableTree *layer_subdir = value;
+      OstreeMutableTree *self_subdir;
+
+      self_subdir = g_hash_table_lookup (self->subdirs, dir_name);
+      if (self_subdir == NULL)
+        continue;
+
+      if (!apply_whiteouts (self_subdir, layer_subdir, error))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+apply_layer (OstreeMutableTree *self,
+             OstreeMutableTree *layer,
+             GError **error)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, layer->files);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      g_autoptr(GError) local_error = NULL;
+      const char *file_name = key;
+      const char *checksum = value;
+
+      if (g_str_has_prefix (file_name, OSTREE_WHITEOUT_PREFIX))
+        continue;
+
+      if (!ostree_mutable_tree_remove_child (self, file_name, &local_error) &&
+          !g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+        {
+          g_propagate_error (error, g_steal_pointer (&local_error));
+          return FALSE;
+        }
+
+      if (!ostree_mutable_tree_replace_file (self, file_name, checksum, error))
+        return FALSE;
+    }
+
+  g_hash_table_iter_init (&iter, layer->subdirs);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const char *dir_name = key;
+      OstreeMutableTree *layer_subdir = value;
+      OstreeMutableTree *self_subdir;
+
+      if (g_str_has_prefix (dir_name, OSTREE_WHITEOUT_PREFIX))
+        continue;
+
+      /* Remove if a file, merge if a directory */
+      if (g_hash_table_lookup (self->files, dir_name))
+        {
+          ostree_mutable_tree_set_contents_checksum (self, NULL);
+          g_hash_table_remove (self->files, dir_name);
+        }
+
+      if (!ostree_mutable_tree_ensure_dir (self, dir_name, &self_subdir,
+                                           error))
+        return FALSE;
+
+      if (!apply_layer (self_subdir, layer_subdir, error))
+        return FALSE;
+    }
+
+  ostree_mutable_tree_set_metadata_checksum (self,
+                                             layer->metadata_checksum);
+
+  return TRUE;
+}
+
+
+/**
+ * ostree_mutable_tree_merge_layer:
+ * @self: Tree
+ * @layer: Layer Tree
+ * @error: Error
+ *
+ * This merges the tree @layer into @self as if it was an OCI/Docker
+ * style image layer. This means that any files in the layer starting
+ * with .wh. are removed from the @self tree before the new files in
+ * @layer are applied on top of @self (removing overwritten files)..
+ */
+gboolean
+ostree_mutable_tree_merge_layer (OstreeMutableTree *self,
+                                 OstreeMutableTree *layer,
+                                 GError           **error)
+{
+  /* We have to apply the whiteouts first, because the OCI
+   * spec doesn't require them to come before any new files,
+   * yet they should only affect the underlying layer.
+   */
+  if (!apply_whiteouts (self, layer, error))
+    return FALSE;
+
+  if (!apply_layer (self, layer, error))
+    return FALSE;
+
+  return TRUE;
 }
 
 /**

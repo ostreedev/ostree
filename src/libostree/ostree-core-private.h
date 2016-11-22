@@ -24,6 +24,9 @@
 
 G_BEGIN_DECLS
 
+#define OSTREE_WHITEOUT_PREFIX ".wh."
+#define OSTREE_WHITEOUT_OPAQUE ".wh..wh..opq"
+
 /* This file contains private implementation data format definitions
  * read by multiple implementation .c files.
  */

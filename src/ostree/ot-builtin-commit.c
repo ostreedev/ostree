@@ -77,7 +77,7 @@ static GOptionEntry options[] = {
   { "editor", 'e', 0, G_OPTION_ARG_NONE, &opt_editor, "Use an editor to write the commit message", NULL },
   { "branch", 'b', 0, G_OPTION_ARG_STRING, &opt_branch, "Branch", "BRANCH" },
   { "orphan", 0, 0, G_OPTION_ARG_NONE, &opt_orphan, "Create a commit without writing a ref", NULL },
-  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH or tar=TARFILE or ref=COMMIT" },
+  { "tree", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_trees, "Overlay the given argument as a tree", "dir=PATH, tar=TARFILE, ref=COMMIT, layer-tar=TARFILE or layer-ref=COMMIT" },
   { "add-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_metadata_strings, "Add a key/value pair to metadata", "KEY=VALUE" },
   { "add-detached-metadata-string", 0, 0, G_OPTION_ARG_STRING_ARRAY, &opt_detached_metadata_strings, "Add a key/value pair to detached metadata", "KEY=VALUE" },
   { "owner-uid", 0, 0, G_OPTION_ARG_INT, &opt_owner_uid, "Set file ownership user id", "UID" },
@@ -493,6 +493,34 @@ ostree_builtin_commit (int argc, char **argv, GCancellable *cancellable, GError 
               if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, mtree, modifier,
                                                        opt_tar_autocreate_parents,
                                                        cancellable, error))
+                goto out;
+            }
+          else if (strcmp (tree_type, "layer-tar") == 0)
+            {
+              glnx_unref_object OstreeMutableTree *layer_mtree = NULL;
+              layer_mtree = ostree_mutable_tree_new ();
+              object_to_commit = g_file_new_for_path (tree);
+              if (!ostree_repo_write_archive_to_mtree (repo, object_to_commit, layer_mtree, modifier,
+                                                       opt_tar_autocreate_parents,
+                                                       cancellable, error))
+                goto out;
+
+              if (!ostree_mutable_tree_merge_layer (mtree, layer_mtree, error))
+                goto out;
+            }
+          else if (strcmp (tree_type, "layer-ref") == 0)
+            {
+              glnx_unref_object OstreeMutableTree *layer_mtree = NULL;
+              layer_mtree = ostree_mutable_tree_new ();
+
+              if (!ostree_repo_read_commit (repo, tree, &object_to_commit, NULL, cancellable, error))
+                goto out;
+
+              if (!ostree_repo_write_directory_to_mtree (repo, object_to_commit, layer_mtree, modifier,
+                                                         cancellable, error))
+                goto out;
+
+              if (!ostree_mutable_tree_merge_layer (mtree, layer_mtree, error))
                 goto out;
             }
           else if (strcmp (tree_type, "ref") == 0)
