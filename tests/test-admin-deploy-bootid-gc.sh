@@ -51,7 +51,7 @@ fi
 newstagepath=$(ls -d sysroot/ostree/repo/tmp/staging-${NEW_TEST_BOOTID}-*)
 assert_has_dir "${newstagepath}"
 env OSTREE_BOOTID=${NEW_TEST_BOOTID} ${CMD_PREFIX} ostree admin deploy --karg=root=LABEL=MOO --karg=quiet --os=testos testos:testos/buildmaster/x86_64-runtime
-newstagepath=$(ls -d sysroot/ostree/repo/tmp/staging-${NEW_TEST_BOOTID}-*)
+newstagepath=$(echo sysroot/ostree/repo/tmp/staging-${NEW_TEST_BOOTID}-*)
 assert_not_has_dir "${stagepath}"
 assert_not_has_dir "${newstagepath}"
 
