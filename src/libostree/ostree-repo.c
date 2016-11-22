@@ -4869,7 +4869,7 @@ _ostree_repo_allocate_tmpdir (int tmpdir_dfd,
 
       /* We put the lock outside the dir, so we can hold the lock
        * until the directory is fully removed */
-      if (!_ostree_repo_try_lock_tmpdir (dfd_iter.fd, dent->d_name,
+      if (!_ostree_repo_try_lock_tmpdir (tmpdir_dfd, dent->d_name,
                                          file_lock_out, &did_lock,
                                          error))
         goto out;
