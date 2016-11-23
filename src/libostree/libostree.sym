@@ -359,22 +359,28 @@ global:
 /* No new symbols in 2016.12 */
 /* No new symbols in 2016.13 */
 
-/*                         NOTE NOTE NOTE
- * Versions above here are released.  Only add symbols below this line.
- *                         NOTE NOTE NOTE
- */
-
 LIBOSTREE_2016.14 {
 global:
        ostree_repo_verify_commit_for_remote;
 } LIBOSTREE_2016.8;
 
-/* Section for the stable release *after* this development one; don't
- * edit this other than to update the last number. */
+/*                         NOTE NOTE NOTE
+ * Versions above here are released.  Only add symbols below this line.
+ *                         NOTE NOTE NOTE
+ */
 
-/* Remove comment when first new symbol is added, replace XX with new stable version.
+/* Remove comment when first new symbol is added
 LIBOSTREE_2016.XX {
 global:
 	someostree_symbol_deleteme;
 } LIBOSTREE_2016.14;
- * Remove comment when first new symbol is added */
+*/
+
+/* Stub section for the stable release *after* this development one; don't
+ * edit this other than to update the last number.  This is just a copy/paste
+ * source.
+LIBOSTREE_2016.XX {
+global:
+	someostree_symbol_deleteme;
+} LIBOSTREE_2016.14;
+*/
