@@ -407,7 +407,7 @@ traverse_dirtree (OstreeRepo           *repo,
       if (ignore_missing_dirs &&
           g_error_matches (local_error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
         {
-          g_print ("Ignoring not-found dirmeta %s", checksum);
+          g_debug ("Ignoring not-found dirmeta %s", checksum);
           ret = TRUE;
         }
       else
