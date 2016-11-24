@@ -33,6 +33,7 @@ static char *opt_min_fallback_size;
 static char *opt_max_bsdiff_size;
 static char *opt_max_chunk_size;
 static char *opt_endianness;
+static char *opt_filename;
 static gboolean opt_empty;
 static gboolean opt_swap_endianness;
 static gboolean opt_inline;
@@ -71,6 +72,7 @@ static GOptionEntry generate_options[] = {
   { "min-fallback-size", 0, 0, G_OPTION_ARG_STRING, &opt_min_fallback_size, "Minimum uncompressed size in megabytes for individual HTTP request", NULL},
   { "max-bsdiff-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_bsdiff_size, "Maximum size in megabytes to consider bsdiff compression for input files", NULL},
   { "max-chunk-size", 0, 0, G_OPTION_ARG_STRING, &opt_max_chunk_size, "Maximum size of delta chunks in megabytes", NULL},
+  { "filename", 0, 0, G_OPTION_ARG_STRING, &opt_filename, "Write the delta content to PATH (a directory).  If not specified, the OSTree repository is used", "PATH"},
   { NULL }
 };
 
@@ -322,6 +324,9 @@ ot_static_delta_builtin_generate (int argc, char **argv, GCancellable *cancellab
       if (opt_inline)
         g_variant_builder_add (parambuilder, "{sv}",
                                "inline-parts", g_variant_new_boolean (TRUE));
+      if (opt_filename)
+        g_variant_builder_add (parambuilder, "{sv}",
+                               "filename", g_variant_new_bytestring (opt_filename));
 
       g_variant_builder_add (parambuilder, "{sv}", "verbose", g_variant_new_boolean (TRUE));
       if (opt_endianness || opt_swap_endianness)
