@@ -1137,6 +1137,13 @@ scan_commit_object (OtPullData         *pull_data,
   is_partial = pull_data->legacy_transaction_resuming
     || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
 
+  if (!ostree_repo_load_commit (pull_data->repo, checksum, &commit, &commitstate, error))
+    goto out;
+
+  /* If we found a legacy transaction flag, assume all commits are partial */
+  is_partial = pull_data->legacy_transaction_resuming
+    || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
+
   if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
                                  &commit, error))
     goto out;
