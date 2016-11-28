@@ -1137,10 +1137,6 @@ scan_commit_object (OtPullData         *pull_data,
   is_partial = pull_data->legacy_transaction_resuming
     || (commitstate & OSTREE_REPO_COMMIT_STATE_PARTIAL) > 0;
 
-  if (!ostree_repo_load_variant (pull_data->repo, OSTREE_OBJECT_TYPE_COMMIT, checksum,
-                                 &commit, error))
-    goto out;
-
   /* PARSE OSTREE_SERIALIZED_COMMIT_VARIANT */
   g_variant_get_child (commit, 1, "@ay", &parent_csum);
   if (g_variant_n_children (parent_csum) > 0)
