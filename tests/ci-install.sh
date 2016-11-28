@@ -5,7 +5,7 @@ set -x
 
 NULL=
 : "${ci_docker:=}"
-: "${ci_in_docker:=}"
+: "${ci_in_docker:=no}"
 : "${ci_suite:=jessie}"
 
 if [ $(id -u) = 0 ]; then
@@ -66,7 +66,7 @@ case "$ci_distro" in
             zlib1g-dev \
             ${NULL}
 
-        if [ -n "$ci_in_docker" ]; then
+        if [ "$ci_in_docker" = yes ]; then
             # Add the user that we will use to do the build inside the
             # Docker container, and let them use sudo
             adduser --disabled-password user </dev/null

@@ -50,7 +50,7 @@ ${make} install DESTDIR=$(pwd)/DESTDIR
 
 ( cd DESTDIR && find . )
 
-if [ -n "$ci_sudo" ] && [ -n "$ci_test" ]; then
+if [ "$ci_sudo" = yes ] && [ "$ci_test" = yes ]; then
     sudo ${make} install
     env \
         LD_LIBRARY_PATH=/usr/local/lib \
