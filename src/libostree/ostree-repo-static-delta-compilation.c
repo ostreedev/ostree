@@ -1532,17 +1532,17 @@ ostree_repo_static_delta_generate (OstreeRepo                   *self,
     /* floating */ GVariant *to_csum_v =
       ostree_checksum_to_bytes_v (to);
 
-    delta_descriptor = g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
-                                      "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
-                                      "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
-                                      g_variant_builder_end (&metadata_builder),
-                                      GUINT64_TO_BE (g_date_time_to_unix (now)),
-                                      from_csum_v,
-                                      to_csum_v,
-                                      to_commit,
-                                      g_variant_builder_new (G_VARIANT_TYPE ("ay")),
-                                      part_headers,
-                                      fallback_headers);
+    delta_descriptor = g_variant_ref_sink (g_variant_new ("(@a{sv}t@ay@ay@" OSTREE_COMMIT_GVARIANT_STRING "ay"
+                                                          "a" OSTREE_STATIC_DELTA_META_ENTRY_FORMAT
+                                                          "@a" OSTREE_STATIC_DELTA_FALLBACK_FORMAT ")",
+                                                          g_variant_builder_end (&metadata_builder),
+                                                          GUINT64_TO_BE (g_date_time_to_unix (now)),
+                                                          from_csum_v,
+                                                          to_csum_v,
+                                                          to_commit,
+                                                          g_variant_builder_new (G_VARIANT_TYPE ("ay")),
+                                                          part_headers,
+                                                          fallback_headers));
     g_date_time_unref (now);
   }
 
