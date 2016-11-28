@@ -5,6 +5,7 @@ sudo: required
 env:
   - ci_distro=ubuntu ci_suite=trusty
   - ci_docker=debian:jessie-slim ci_distro=debian ci_suite=jessie
+  - ci_docker=debian:stretch-slim ci_distro=debian ci_suite=stretch
   - ci_docker=ubuntu:xenial ci_distro=ubuntu ci_suite=xenial
 
 script:
