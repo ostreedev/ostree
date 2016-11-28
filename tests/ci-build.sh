@@ -40,7 +40,7 @@ if [ -n "$ci_docker" ]; then
         --env=ci_test="${ci_test}" \
         --env=ci_test_fatal="${ci_test_fatal}" \
         --privileged \
-        ostree-ci \
+        ci-image \
         tests/ci-build.sh
 fi
 

@@ -43,7 +43,7 @@ if [ -n "$ci_docker" ]; then
         -e "s/@ci_docker@/${ci_docker}/" \
         -e "s/@ci_suite@/${ci_suite}/" \
         < tests/ci-Dockerfile.in > Dockerfile
-    exec docker build -t ostree-ci .
+    exec docker build -t ci-image .
 fi
 
 case "$ci_distro" in
