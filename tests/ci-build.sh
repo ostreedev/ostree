@@ -66,10 +66,10 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
 ${make}
 [ "$ci_test" = no ] || ${make} check || maybe_fail_tests
 cat test/test-suite.log || :
-# TODO: if ostree aims to support distcheck, run that too
+[ "$ci_test" = no ] || ${make} distcheck || maybe_fail_tests
+cat test/test-suite.log || :
 
 ${make} install DESTDIR=$(pwd)/DESTDIR
-
 ( cd DESTDIR && find . )
 
 if [ "$ci_sudo" = yes ] && [ "$ci_test" = yes ]; then
