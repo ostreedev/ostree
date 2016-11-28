@@ -44,6 +44,12 @@ if [ -n "$ci_docker" ]; then
         tests/ci-build.sh
 fi
 
+maybe_fail_tests () {
+    if [ "$ci_test_fatal" = yes ]; then
+        exit 1
+    fi
+}
+
 NOCONFIGURE=1 ./autogen.sh
 
 srcdir="$(pwd)"
@@ -58,13 +64,6 @@ make="make -j${ci_parallel} V=1 VERBOSE=1"
     "$@"
 
 ${make}
-
-maybe_fail_tests () {
-    if [ "$ci_test_fatal" = yes ]; then
-        exit 1
-    fi
-}
-
 [ "$ci_test" = no ] || ${make} check || maybe_fail_tests
 # TODO: if ostree aims to support distcheck, run that too
 
