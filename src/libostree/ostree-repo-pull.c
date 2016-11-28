@@ -1478,8 +1478,8 @@ request_static_delta_superblock_sync (OtPullData  *pull_data,
           }
       }
 
-      ret_delta_superblock = g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
-                                                       delta_superblock_data, FALSE);
+      ret_delta_superblock = g_variant_ref_sink (g_variant_new_from_bytes ((GVariantType*)OSTREE_STATIC_DELTA_SUPERBLOCK_FORMAT,
+                                                                           delta_superblock_data, FALSE));
     }
   
   ret = TRUE;
@@ -2951,7 +2951,7 @@ ostree_repo_pull_with_options (OstreeRepo             *self,
       g_autofree char *from_revision = NULL;
       const char *ref = key;
       const char *to_revision = value;
-      GVariant *delta_superblock = NULL;
+      g_autoptr(GVariant) delta_superblock = NULL;
 
       if (!ostree_repo_resolve_rev (pull_data->repo, ref, TRUE,
                                     &from_revision, error))
